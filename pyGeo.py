@@ -33,7 +33,7 @@ import os, sys, string
 # =============================================================================
 import numpy
 from numpy import sin,cos,linspace,pi,zeros,where,hstack,mat,array,transpose,\
-    vstack,max
+    vstack,max,dot
 
 # =============================================================================
 # Extension modules
@@ -51,7 +51,7 @@ class pyGeo():
     Geo object class
     '''
 
-    def __init__(self,ref_axis,le_loc,chord,twist,rot_x,rot_y,af_list,N=10):
+    def __init__(self,L,ref_axis,le_loc,chord,twist,rot_x,rot_y,af_list,N=10):
 
         
         '''Create an instance of the geometry object. Input is through simple
@@ -60,6 +60,9 @@ class pyGeo():
         
         Input: 
         
+        L, scalar : Characteristic length of surface. Span for wings, 
+        blade length for wind turbines
+
         ref_axis, array, size(naf,3): List of points in space defining the 
         the reference  axis for the geometry. Units are consistent with the
         remainder of the geometry. For wind turbine blades, this
@@ -89,10 +92,14 @@ class pyGeo():
         input to pySpline'''
 
         # Save the data to the class
+        self.L        = L
         self.ref_axis = ref_axis
+        self.sloc     = ref_axis[:,2]/L
         self.le_loc   = le_loc
         self.chord    = chord
         self.twist    = twist
+        self.rot_x    = rot_x
+        self.rot_y    = rot_y
         self.af_list  = af_list
         self.surface  = None
         self.N        = N
@@ -162,9 +169,11 @@ class pyGeo():
             x[i,:,1] = y_cor_full*chord[i]
             x[i,:,2] = 0
             
-            x[i] = self._rotz(x[i],twist[i]*pi/180) # Twist Rotation
-            x[i] = self._rotx(x[i],rot_x[i]*pi/180) # Dihedral Rotation
-            x[i] = self._roty(x[i],rot_y[i]*pi/180) # Twist Rotation
+            for j in xrange(2*N-1):
+                x[i,j,:] = self._rotz(x[i,j,:],twist[i]*pi/180) # Twist Rotation
+                x[i,j,:] = self._rotx(x[i,j,:],rot_x[i]*pi/180) # Dihediral Rotation
+                x[i,j,:] = self._roty(x[i,j,:],rot_y[i]*pi/180) # Sweep Rotation
+            #end for
 
             # Finally translate according to axis:
 
@@ -210,31 +219,20 @@ class pyGeo():
 
     def _rotx(self,x,theta):
         ''' Rotate a set of airfoil coodinates in the local x frame'''
-        M = mat([[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]])
-
-        for i in xrange(len(x)):
-            x[i,:] = (M*mat(x[i,:]).T).T
-
-        return x
-
+        M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
+        
+        return dot(M,x)
 
     def _roty(self,x,theta):
         '''Rotate a set of airfoil coordiantes in the local y frame'''
-        M = mat([[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]])
-
-        for i in xrange(len(x)):
-            x[i,:] = (M*mat(x[i,:]).T).T
-
-        return x
+        M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
+        return dot(M,x)
 
     def _rotz(self,x,theta):
         '''Roate a set of airfoil coordinates in the local z frame'''
-        M = mat([[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]])
-
-        for i in xrange(len(x)):
-            x[i,:] = (M*mat(x[i,:]).T).T
-
-        return x
+        'rotatez:'
+        M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
+        return dot(M,x)
 
     def writeSurfaceTecplot(self,nu,nv,filename):
 
@@ -291,6 +289,50 @@ class pyGeo():
         f.close()
         
         return
+
+    def getRotations(self,s):
+        '''Return a (linearly) interpolated list of the twist, xrot and
+        y-rotations at a span-wise position s'''
+        
+        twist = numpy.interp([s],self.sloc,self.twist)
+        rot_x = numpy.interp([s],self.sloc,self.rot_x)
+        rot_y = numpy.interp([s],self.sloc,self.rot_y)
+
+        return twist[0],rot_x[0],rot_y[0]
+
+    def getLocalVector(self,s,x):
+        '''Return the vector x, rotated by the twist, rot_x, rot_y as 
+        linearly interpolated at span-wise position s. 
+        For example getLocalVecotr(0.5,[1,0,0]) will return the vector 
+        defining the local section direction at a span position of 0.5.'''
+
+        twist,rot_x,rot_y = self.getRotations(s)
+        x = self._rotz(x,twist*pi/180) # Twist Rotation
+        x = self._rotx(x,rot_x*pi/180) # Dihedral Rotation
+        x = self._roty(x,rot_y*pi/180) # Sweep Rotation
+
+        return x
+
+    def getLocalChord(self,s):
+        '''Return the linearly interpolated chord at span-wise postiion s'''
+
+        return numpy.interp([s],self.sloc,self.chord)[0]
+        
+    def getLocalLe_loc(self,s):
+        return numpy.interp([s],self.sloc,self.le_loc)[0]
+
+
+    def getRefPt(self,s):
+        '''Return the linearly interpolated reference location at a span-wise
+        position s. '''
+        
+        x = zeros(3);
+        x[2] = s*self.L
+        x[0] = numpy.interp([s],self.sloc,self.ref_axis[:,0])[0]
+        x[1] = numpy.interp([s],self.sloc,self.ref_axis[:,1])[0]
+
+        return x
+
 
     
 #==============================================================================
