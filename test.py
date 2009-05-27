@@ -39,4 +39,4 @@ geobj = pyGeo.pyGeo(ref_axis,le_loc,chord,tw_aero,rot_x,rot_y,airfoil_list,N=10)
 
 geobj.createSurface()
 
-geobj.writeSurfaceTecplot(150,20,'output.dat')
+geobj.writeSurfaceTecplot(150,200,'output.dat')
