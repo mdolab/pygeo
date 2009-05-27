@@ -2,8 +2,6 @@ from numpy import *
 import sys
 import pyGeo
 
-sys.path.append('../pySpline/python')
-import pySpline
 #Lets start setting things we know we will need
 naf = 11
 bl_length = 21.15
@@ -35,7 +33,7 @@ ref_axis[:,0] = 0
 rot_x = zeros(naf)
 rot_y = zeros(naf)
 
-geobj = pyGeo.pyGeo(ref_axis,le_loc,chord,tw_aero,rot_x,rot_y,airfoil_list,N=10)
+geobj = pyGeo.pyGeo(bl_length,ref_axis,le_loc,chord,tw_aero,rot_x,rot_y,airfoil_list,N=10)
 
 geobj.createSurface()
 
