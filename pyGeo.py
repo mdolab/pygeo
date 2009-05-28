@@ -123,7 +123,7 @@ class pyGeo():
         n_nodes = zeros((naf,2),int) #number of nodes read in 
         
         for i in xrange(naf):
-            n_temp,temp_x,temp_y = self._load_af(af_list[i])
+            n_temp,temp_x,temp_y = self.__load_af(af_list[i])
             
             # Find the trailing edge point
             index = where(temp_x == 1)
@@ -170,9 +170,9 @@ class pyGeo():
             x[i,:,2] = 0
             
             for j in xrange(2*N-1):
-                x[i,j,:] = self._rotz(x[i,j,:],twist[i]*pi/180) # Twist Rotation
-                x[i,j,:] = self._rotx(x[i,j,:],rot_x[i]*pi/180) # Dihediral Rotation
-                x[i,j,:] = self._roty(x[i,j,:],rot_y[i]*pi/180) # Sweep Rotation
+                x[i,j,:] = self.__rotz(x[i,j,:],twist[i]*pi/180) # Twist Rotation
+                x[i,j,:] = self.__rotx(x[i,j,:],rot_x[i]*pi/180) # Dihediral Rotation
+                x[i,j,:] = self.__roty(x[i,j,:],rot_y[i]*pi/180) # Sweep Rotation
             #end for
 
             # Finally translate according to axis:
@@ -193,7 +193,7 @@ class pyGeo():
         self.surface = pySpline.spline(u,v,self.x[:,:,0],self.x[:,:,1],self.x[:,:,2])
         return
 
-    def _load_af(self,filename):
+    def __load_af(self,filename):
         ''' Load the airfoil file from precomp format'''
         f = open(filename,'r')
 
@@ -217,18 +217,18 @@ class pyGeo():
         f.close()
         return naf,xnodes, ynodes
 
-    def _rotx(self,x,theta):
+    def __rotx(self,x,theta):
         ''' Rotate a set of airfoil coodinates in the local x frame'''
         M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
         
         return dot(M,x)
 
-    def _roty(self,x,theta):
+    def __roty(self,x,theta):
         '''Rotate a set of airfoil coordiantes in the local y frame'''
         M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
         return dot(M,x)
 
-    def _rotz(self,x,theta):
+    def __rotz(self,x,theta):
         '''Roate a set of airfoil coordinates in the local z frame'''
         'rotatez:'
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
@@ -307,9 +307,9 @@ class pyGeo():
         defining the local section direction at a span position of 0.5.'''
 
         twist,rot_x,rot_y = self.getRotations(s)
-        x = self._rotz(x,twist*pi/180) # Twist Rotation
-        x = self._rotx(x,rot_x*pi/180) # Dihedral Rotation
-        x = self._roty(x,rot_y*pi/180) # Sweep Rotation
+        x = self.__rotz(x,twist*pi/180) # Twist Rotation
+        x = self.__rotx(x,rot_x*pi/180) # Dihedral Rotation
+        x = self.__roty(x,rot_y*pi/180) # Sweep Rotation
 
         return x
 
