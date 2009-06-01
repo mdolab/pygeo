@@ -1,4 +1,4 @@
-61       n_af_nodes : no of airfoil nodes, counted clockwise starting
+61      n_af_nodes : no of airfoil nodes, counted clockwise starting
                       with leading edge (see users' manual, fig xx)
 
  xnode      ynode
