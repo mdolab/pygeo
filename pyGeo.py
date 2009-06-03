@@ -356,19 +356,36 @@ class pyGeo():
 
         '''Create the splined surface based on the input geometry'''
 
-        u = (self.ref_axis[:,2])/max(self.ref_axis[:,2])*2-1
+        u = (self.ref_axis[:,2])/max(self.ref_axis[:,2])#*2-1
         v = self.s
-        self.surf_u = pySpline.spline(u,v,self.surf_u_cor[:,:,0],\
-                                          self.surf_u_cor[:,:,1],\
-                                          self.surf_u_cor[:,:,2])
 
-        self.surf_l = pySpline.spline(u,v,self.surf_l_cor[:,:,0],\
-                                          self.surf_l_cor[:,:,1],\
-                                          self.surf_l_cor[:,:,2])
+        print 'u:',u
+        print 'v:',v
+
+        print 'creating upper surface...'
+        self.surf_u = pySpline.spline_lms(u,v,self.surf_u_cor[:,:,0],\
+                                              self.surf_u_cor[:,:,1],\
+                                              self.surf_u_cor[:,:,2],\
+                                              nctlv=13)
+
+        print 'creating lower surface...'
+        self.surf_l = pySpline.spline_lms(u,v,self.surf_l_cor[:,:,0],\
+                                              self.surf_l_cor[:,:,1],\
+                                              self.surf_l_cor[:,:,2],\
+                                              nctlv=13)
 
 #         self.surf_u.bcoef_x[:,1] = 0
 #         self.surf_l.bcoef_x[:,1] = 0
 
+        return
+
+    def joinSurfaces(self):
+        # self.surf_l.cx[0:self.surf_u.nctlu] = self.surf_u.cx[0:self.surf_u.nctlu]
+#         self.surf_l.cy[0:self.surf_u.nctlu] = self.surf_u.cy[0:self.surf_u.nctlu]
+#         self.surf_l.cz[0:self.surf_u.nctlu] = self.surf_u.cz[0:self.surf_u.nctlu]
+#         self.surf_l.cx[::self.surf_u.nctlv] =   self.surf_u.cx[::self.surf_u.nctlv]
+#         self.surf_l.cy[::self.surf_u.nctlv] =   self.surf_u.cy[::self.surf_u.nctlv]
+#         self.surf_l.cz[::self.surf_u.nctlv] =   self.surf_u.cz[::self.surf_u.nctlv]
         return
 
     def __load_af(self,filename):
@@ -412,15 +429,12 @@ class pyGeo():
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
         return dot(M,x)
 
-    def writeSurfaceTecplot(self,nu,nv,filename):
+    def writeSurfaceTecplot(self,u_plot,v_plot,filename):
 
         '''Write the surface to a tecplot file'''
 
-        u_plot = nu
-        v_plot = nv
-
-        u = linspace(-1,1,u_plot)
-        v = linspace(-1,1,v_plot)
+        u = linspace(0,1,u_plot)
+        v = linspace(0,1,v_plot)
         v = 0.5*(1-cos(linspace(0,pi,v_plot)))
         # Start tecplot output
 
@@ -436,9 +450,11 @@ class pyGeo():
         f.write('DATAPACKING=POINT,ZONETYPE=FEQUADRILATERAL\n')
         for i in xrange(u_plot):
             for j in xrange(v_plot):
+                result = self.surf_u.getValue(u[i],v[j])
                 points[i,j,:] = self.surf_u.getValue(u[i],v[j])
             # end for
         # end for
+
 
         # The next step will be to output all the x-y-z Data
         for i in xrange(u_plot):
@@ -455,14 +471,16 @@ class pyGeo():
             # end for
         # end for
 
+        print 'nu,nv:',self.surf_u.nctlu,self.surf_u.nctlv
         # Also dump out the control points
-        f.write('Zone I=%d, J=%d\n'%(self.naf,self.N))
+        f.write('Zone I=%d, J=%d\n'%(self.surf_u.nctlu,self.surf_u.nctlv))
         f.write('DATAPACKING=POINT\n')
-        for j in xrange(self.N):
-            for i in xrange(self.naf):
-                f.write("%.5g %.5g %.5g \n"%(self.surf_u.bcoef_x[i,j],\
-                                           self.surf_u.bcoef_y[i,j],\
-                                           self.surf_u.bcoef_z[i,j]))
+        print 'shape:',self.surf_u.cz.shape
+        for j in xrange(self.surf_u.nctlv):
+            for i in xrange(self.surf_u.nctlu):
+                f.write("%.5g %.5g %.5g \n"%(self.surf_u.cx[i*self.surf_u.nctlv+j],\
+                                                 self.surf_u.cy[i*self.surf_u.nctlv+j],\
+                                                 self.surf_u.cz[i*self.surf_u.nctlv+j]))
             # end for
         # end for 
 
@@ -491,13 +509,13 @@ class pyGeo():
         # end for
 
         # Also dump out the control points
-        f.write('Zone I=%d, J=%d\n'%(self.naf,self.N))
+        f.write('Zone I=%d, J=%d\n'%(self.surf_l.nctlu,self.surf_l.nctlv))
         f.write('DATAPACKING=POINT\n')
-        for j in xrange(self.N):
-            for i in xrange(self.naf):
-                f.write("%.5g %.5g %.5g \n"%(self.surf_l.bcoef_x[i,j],\
-                                           self.surf_l.bcoef_y[i,j],\
-                                           self.surf_l.bcoef_z[i,j]))
+        for j in xrange(self.surf_l.nctlv):
+            for i in xrange(self.surf_l.nctlu):
+                f.write("%.5g %.5g %.5g \n"%(self.surf_l.cx[i*self.surf_l.nctlv+j],\
+                                                 self.surf_l.cy[i*self.surf_l.nctlv+j],\
+                                                 self.surf_l.cz[i*self.surf_l.nctlv+j]))
             # end for
         # end for 
 
