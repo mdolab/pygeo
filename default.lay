@@ -2,7 +2,7 @@
 # Created by Tecplot 360 build 11.2-0-563
 $!VarSet |LFDSFN1| = '"output.dat"'
 $!VarSet |LFDSVL1| = '"X" "Y" "Z"'
-$!VarSet |LFDSFN2| = '"output_1surface.dat"'
+$!VarSet |LFDSFN2| = '"output2.dat"'
 $!VarSet |LFDSVL2| = '"X" "Y" "Z"'
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
@@ -919,7 +919,7 @@ $!THREEDAXIS
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [3]
+$!ACTIVEFIELDMAPS  =  [3-6,9-12]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1066,28 +1066,9 @@ $!GLOBALSCATTER
     COLOR = RED
     FILLCOLOR = RED
     }
-$!BLANKING 
-  VALUE
-    {
-    VALUEBLANKCELLMODE = ALLCORNERS
-    CONSTRAINT 1
-      {
-      INCLUDE = YES
-      VALUECUTOFF = 10
-      VARA = 3
-      }
-    CONSTRAINT 2
-      {
-      INCLUDE = YES
-      RELOP = GREATERTHANOREQUAL
-      VALUECUTOFF = 11
-      VARA = 3
-      }
-    }
 $!FIELDMAP  [1]
   MESH
     {
-    MESHTYPE = WIREFRAME
     COLOR = RED
     }
   CONTOUR
@@ -1102,8 +1083,8 @@ $!FIELDMAP  [1]
     }
   SCATTER
     {
+    SHOW = NO
     COLOR = RED
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1134,7 +1115,6 @@ $!FIELDMAP  [1]
 $!FIELDMAP  [2]
   MESH
     {
-    SHOW = NO
     COLOR = GREEN
     }
   CONTOUR
@@ -1149,21 +1129,16 @@ $!FIELDMAP  [2]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
+    SHOW = NO
     COLOR = GREEN
-    FRAMESIZE = 1
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -1186,8 +1161,8 @@ $!FIELDMAP  [2]
 $!FIELDMAP  [3]
   MESH
     {
-    MESHTYPE = WIREFRAME
-    COLOR = CUSTOM28
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -1201,8 +1176,8 @@ $!FIELDMAP  [3]
     }
   SCATTER
     {
+    SHOW = NO
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1233,7 +1208,7 @@ $!FIELDMAP  [3]
 $!FIELDMAP  [4]
   MESH
     {
-    SHOW = NO
+    MESHTYPE = HIDDENLINE
     COLOR = CYAN
     }
   CONTOUR
@@ -1248,12 +1223,8 @@ $!FIELDMAP  [4]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
+    SHOW = NO
     COLOR = CYAN
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1261,7 +1232,7 @@ $!FIELDMAP  [4]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -1285,11 +1256,14 @@ $!FIELDMAP  [5]
   MESH
     {
     SHOW = NO
-    COLOR = CUSTOM42
+    MESHTYPE = HIDDENLINE
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1297,8 +1271,12 @@ $!FIELDMAP  [5]
     }
   SCATTER
     {
-    SHOW = NO
-    COLOR = YELLOW
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = RED
+    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1307,7 +1285,7 @@ $!FIELDMAP  [5]
   EDGELAYER
     {
     SHOW = YES
-    COLOR = BLACK
+    COLOR = YELLOW
     }
   POINTS
     {
@@ -1329,11 +1307,15 @@ $!FIELDMAP  [5]
 $!FIELDMAP  [6]
   MESH
     {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
     COLOR = PURPLE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1341,7 +1323,296 @@ $!FIELDMAP  [6]
     }
   SCATTER
     {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = RED
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
     COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [7]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [8]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [9]
+  MESH
+    {
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [10]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [11]
+  MESH
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = CUSTOM19
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [12]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = CUSTOM19
+    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1392,36 +1663,36 @@ $!THREEDAXIS
   XDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -0.59137799999999995926
-    RANGEMAX = 2.7310180000000001677
+    RANGEMIN = -0.54062644999999998063
+    RANGEMAX = 1.5400554499999998814
     GRSPACING = 0.5
     AXISLINE
       {
-      EDGE = 2
+      EDGE = 3
       }
     }
 $!THREEDAXIS 
   YDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -3.574770500000000073
-    RANGEMAX = 0.91698050000000008719
-    GRSPACING = 1
+    RANGEMIN = -0.43407760000000000788
+    RANGEMAX = 0.5312736000000000125
+    GRSPACING = 0.2
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 4
       }
     }
 $!THREEDAXIS 
   ZDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -1.0575000000000018829
+    RANGEMIN = -1.0574999999999998845
     RANGEMAX = 22.207499999999999574
     GRSPACING = 5
     AXISLINE
       {
-      EDGE = 4
+      EDGE = 1
       }
     }
 $!ISOSURFACEATTRIBUTES  1
@@ -1612,8 +1883,8 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 0.5045850000000001
-    Y = 0.151265
+    X = 0.4997145
+    Y = 0.048598
     Z = 10.575
     }
   LIGHTSOURCE
@@ -1625,16 +1896,20 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 170.771
-  THETAANGLE = -30.657
-  ALPHAANGLE = -38.9208
+  PSIANGLE = 12.781
+  THETAANGLE = 143.963
+  ALPHAANGLE = -132.984
   VIEWERPOSITION
     {
-    X = 9.87542103768482
-    Y = -16.06214155591881
-    Z = -114.9466419874877
+    X = -10.64015510493263
+    Y = 13.38889909711892
+    Z = 82.13619502772015
     }
-  VIEWWIDTH = 2.22092
+  VIEWWIDTH = 7.57371
+$!FIELDLAYERS 
+  SHOWSCATTER = YES
+  SHOWEDGE = NO
+  USETRANSLUCENCY = YES
 $!STREAMTRACELAYERS 
   SHOW = NO
 $!SETSTYLEBASE CONFIG
