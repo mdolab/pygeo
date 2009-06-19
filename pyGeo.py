@@ -39,7 +39,7 @@ from numpy import sin,cos,linspace,pi,zeros,where,hstack,mat,array,transpose,\
 # Extension modules
 # =============================================================================
 
-sys.path.append('../pySpline/python')
+sys.path.append(os.path.abspath('../pySpline/python'))
 import pySpline
 
 # =============================================================================
@@ -118,12 +118,14 @@ class pyGeo():
         # This is the standard cosine distribution in x (one sided)
         s_interp = 0.5*(1-cos(linspace(0,pi,N)))
         #s_interp[1] = .001
-        s_interp = linspace(0,1,N)**3
+        #s_interp = linspace(0,1,N)**3
 
         self.s = s_interp
         
-        surf_u = zeros((naf,N,3)) #Mast list of points (upper)
-        surf_l = zeros((naf,N,3)) #Mast list of points (lower)
+        X = zeros([2,N,naf,3])
+
+#        surf_u = zeros((naf,N,3)) #Mast list of points (upper)
+#        surf_l = zeros((naf,N,3)) #Mast list of points (lower)
 
         n_nodes = zeros((naf,2),int) #number of nodes read in 
         
@@ -169,8 +171,8 @@ class pyGeo():
             y_l = hstack([y_l,0])
 
             # Reverse coordinates for lower spline
-            x_l = x_l[::-1]
-            y_l = y_l[::-1]
+            #x_l = x_l[::-1]
+            #y_l = y_l[::-1]
 
             # Now determine the lower surface 's' parameter
 
@@ -188,32 +190,25 @@ class pyGeo():
             # Final Coordinate Positions
             # --------------------------
 
-            surf_u[i,:,0] = (x_interp_u-le_loc[i])*chord[i]
-            surf_u[i,:,1] = y_interp_u*chord[i]
-            surf_u[i,:,2] = 0
-
-            surf_l[i,:,0] = (x_interp_l-le_loc[i])*chord[i]
-            surf_l[i,:,1] = y_interp_l*chord[i]
-            surf_l[i,:,2] = 0
-
+            X[0,:,i,0] = (x_interp_u-le_loc[i])*chord[i]
+            X[0,:,i,1] = y_interp_u*chord[i]
+            X[0,:,i,2] = 0
+            
+            X[1,:,i,0] = (x_interp_l-le_loc[i])*chord[i]
+            X[1,:,i,1] = y_interp_l*chord[i]
+            X[1,:,i,2] = 0
+            
             for j in xrange(N):
-                surf_u[i,j,:] = self.__rotz(surf_u[i,j,:],twist[i]*pi/180) # Twist Rotation
-                surf_u[i,j,:] = self.__rotx(surf_u[i,j,:],rot_x[i]*pi/180) # Dihediral Rotation
-                surf_u[i,j,:] = self.__roty(surf_u[i,j,:],rot_y[i]*pi/180) # Sweep Rotation
-
-                surf_l[i,j,:] = self.__rotz(surf_l[i,j,:],twist[i]*pi/180) # Twist Rotation
-                surf_l[i,j,:] = self.__rotx(surf_l[i,j,:],rot_x[i]*pi/180) # Dihediral Rotation
-                surf_l[i,j,:] = self.__roty(surf_l[i,j,:],rot_y[i]*pi/180) # Sweep Rotation
+                for isurf in xrange(2):
+                    X[isurf,j,i,:] = self.__rotz(X[isurf,j,i,:],twist[i]*pi/180) # Twist Rotation
+                    X[isurf,j,i,:] = self.__rotx(X[isurf,j,i,:],rot_x[i]*pi/180) # Dihediral Rotation
+                    X[isurf,j,i,:] = self.__roty(X[isurf,j,i,:],rot_y[i]*pi/180) # Sweep Rotation
             #end for
-
+            X[:,:,i,:] += ref_axis[i,:]
             # Finally translate according to axis:
-
-            surf_u[i,:,:] += ref_axis[i,:]
-            surf_l[i,:,:] += ref_axis[i,:]
         #end for
         
-        self.surf_u_cor = surf_u
-        self.surf_l_cor = surf_l
+        self.X = X
         
         return
 
@@ -356,27 +351,22 @@ class pyGeo():
 
         '''Create the splined surface based on the input geometry'''
 
-        u = (self.ref_axis[:,2])/max(self.ref_axis[:,2])#*2-1
-        v = self.s
+        print 'creating surface:'
+        u = zeros([2,self.N])
+        v = zeros([2,self.naf])
+
+        u[:] = self.s
+        v[:] = (self.ref_axis[:,2])/max(self.ref_axis[:,2])#*2-1
 
         print 'u:',u
         print 'v:',v
-
-        print 'creating upper surface...'
-        self.surf_u = pySpline.spline_lms(u,v,self.surf_u_cor[:,:,0],\
-                                              self.surf_u_cor[:,:,1],\
-                                              self.surf_u_cor[:,:,2],\
-                                              nctlv=13)
-
-        print 'creating lower surface...'
-        self.surf_l = pySpline.spline_lms(u,v,self.surf_l_cor[:,:,0],\
-                                              self.surf_l_cor[:,:,1],\
-                                              self.surf_l_cor[:,:,2],\
-                                              nctlv=13)
-
-#         self.surf_u.bcoef_x[:,1] = 0
-#         self.surf_l.bcoef_x[:,1] = 0
-
+        
+        print 'creating surfaces...'
+        self.surf1 = pySpline.spline(2,u,v,self.X,fit_type='interpolate')
+        self.surf2 = pySpline.spline(2,u,v,self.X,fit_type='lms',Nctlu=13,Nctlv=9)
+        self.surf1.writeTecplot('output.dat')
+        self.surf2.writeTecplot('output2.dat')
+        sys.exit(0)
         return
 
     def joinSurfaces(self):
@@ -429,105 +419,7 @@ class pyGeo():
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
         return dot(M,x)
 
-    def writeSurfaceTecplot(self,u_plot,v_plot,filename):
-
-        '''Write the surface to a tecplot file'''
-
-        u = linspace(0,1,u_plot)
-        v = linspace(0,1,v_plot)
-        v = 0.5*(1-cos(linspace(0,pi,v_plot)))
-        # Start tecplot output
-
-        nodes_total = u_plot*v_plot
-        elements_total = (u_plot-1)*(v_plot-1) 
-
-        f = open(filename,'w')
-        points = zeros((u_plot,v_plot,3),float) # section, nodes, [x,y,z]
-
-        f.write ('\"Blade Data\"\n')
-        f.write ('VARIABLES = "X", "Y","Z"\n')
-        f.write('Zone N=%d, E=%d\n'%(nodes_total,elements_total))
-        f.write('DATAPACKING=POINT,ZONETYPE=FEQUADRILATERAL\n')
-        for i in xrange(u_plot):
-            for j in xrange(v_plot):
-                result = self.surf_u.getValue(u[i],v[j])
-                points[i,j,:] = self.surf_u.getValue(u[i],v[j])
-            # end for
-        # end for
-
-
-        # The next step will be to output all the x-y-z Data
-        for i in xrange(u_plot):
-            for j in xrange(v_plot):
-                f.write("%.5g %.5g %.5g\n"%(points[i,j,0],points[i,j,1],points[i,j,2]))
-            # end for
-        # end for
-                                 
-        # now write out the connectivity
-        for i in xrange(u_plot-1):
-            for j in xrange(v_plot-1):
-                f.write( '%d %d %d %d\n'%(i*v_plot + (j+1), i*v_plot+(j+2), \
-                                              (i+1)*v_plot+(j+2),(i+1)*v_plot + (j+1)))
-            # end for
-        # end for
-
-        print 'nu,nv:',self.surf_u.nctlu,self.surf_u.nctlv
-        # Also dump out the control points
-        f.write('Zone I=%d, J=%d\n'%(self.surf_u.nctlu,self.surf_u.nctlv))
-        f.write('DATAPACKING=POINT\n')
-        print 'shape:',self.surf_u.cz.shape
-        for j in xrange(self.surf_u.nctlv):
-            for i in xrange(self.surf_u.nctlu):
-                f.write("%.5g %.5g %.5g \n"%(self.surf_u.cx[i*self.surf_u.nctlv+j],\
-                                                 self.surf_u.cy[i*self.surf_u.nctlv+j],\
-                                                 self.surf_u.cz[i*self.surf_u.nctlv+j]))
-            # end for
-        # end for 
-
-
-        f.write('Zone N=%d, E=%d\n'%(nodes_total,elements_total))
-        f.write('DATAPACKING=POINT,ZONETYPE=FEQUADRILATERAL\n')
-        for i in xrange(u_plot):
-            for j in xrange(v_plot):
-                points[i,j,:] = self.surf_l.getValue(u[i],v[j])
-            # end for
-        # end for
-
-        # The next step will be to output all the x-y-z Data
-        for i in xrange(u_plot):
-            for j in xrange(v_plot):
-                f.write("%.5g %.5g %.5g\n"%(points[i,j,0],points[i,j,1],points[i,j,2]))
-            # end for
-        # end for
-                                 
-        # now write out the connectivity
-        for i in xrange(u_plot-1):
-            for j in xrange(v_plot-1):
-                f.write( '%d %d %d %d\n'%(i*v_plot + (j+1), i*v_plot+(j+2), \
-                                              (i+1)*v_plot+(j+2),(i+1)*v_plot + (j+1)))
-            # end for
-        # end for
-
-        # Also dump out the control points
-        f.write('Zone I=%d, J=%d\n'%(self.surf_l.nctlu,self.surf_l.nctlv))
-        f.write('DATAPACKING=POINT\n')
-        for j in xrange(self.surf_l.nctlv):
-            for i in xrange(self.surf_l.nctlu):
-                f.write("%.5g %.5g %.5g \n"%(self.surf_l.cx[i*self.surf_l.nctlv+j],\
-                                                 self.surf_l.cy[i*self.surf_l.nctlv+j],\
-                                                 self.surf_l.cz[i*self.surf_l.nctlv+j]))
-            # end for
-        # end for 
-
-        f.close()
-        
-
-
-
-
-
-        return
-
+  
     def getRotations(self,s):
         '''Return a (linearly) interpolated list of the twist, xrot and
         y-rotations at a span-wise position s'''

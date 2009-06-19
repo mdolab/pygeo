@@ -1,5 +1,31 @@
-from numpy import *
-import sys
+# =============================================================================
+# Standard Python modules
+# =============================================================================
+import os, sys, string, pdb, copy, time
+
+# =============================================================================
+# External Python modules
+# =============================================================================
+from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
+    array, real, reshape, meshgrid, dot, cross
+
+# =============================================================================
+# Extension modules
+# =============================================================================
+
+#pyOPT
+sys.path.append(os.path.abspath('../../../../pyACDT/pyACDT/Optimization/pyOpt/'))
+
+# pySpline
+sys.path.append('../pySpline/python')
+
+#pyOPT
+sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/'))
+
+#pySNOPT
+sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'))
+
+#pyGeo
 import pyGeo
 
 #Lets start setting things we know we will need
@@ -40,7 +66,7 @@ ref_axis[:,0] = 0
 rot_x = zeros(naf)
 rot_y = zeros(naf)
 
-geobj = pyGeo.pyGeo(bl_length,ref_axis,le_loc,chord,tw_aero,rot_x,rot_y,airfoil_list,N=55)
+geobj = pyGeo.pyGeo(bl_length,ref_axis,le_loc,chord,tw_aero,rot_x,rot_y,airfoil_list,N=13)
 
 geobj.createSurface()
 geobj.joinSurfaces()
