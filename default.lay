@@ -1,8 +1,8 @@
 #!MC 1120
 # Created by Tecplot 360 build 11.2-0-563
-$!VarSet |LFDSFN1| = '"output.dat"'
-$!VarSet |LFDSVL1| = '"X" "Y" "Z"'
-$!VarSet |LFDSFN2| = '"output2.dat"'
+$!VarSet |LFBD| = '/home/gaetan/svn/pyMIL/pyGeo'
+$!VarSet |LFDSFN1| = '"|LFBD|/output.dat"'
+$!VarSet |LFDSFN2| = '"|LFBD|/output_def.dat"'
 $!VarSet |LFDSVL2| = '"X" "Y" "Z"'
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
@@ -877,10 +877,10 @@ $!PAGE
     PAPERGRIDSPACING = HALFINCH
     REGIONINWORKAREA
       {
-      X1 = 1
-      Y1 = 0.25
-      X2 = 10
-      Y2 = 8.25
+      X1 = 4.237
+      Y1 = 0.2135
+      X2 = 13.24
+      Y2 = 8.213
       }
     }
 ### Frame Number 1 ###
@@ -888,11 +888,9 @@ $!READDATASET  '|LFDSFN1|'
   INITIALPLOTTYPE = CARTESIAN3D
   INCLUDETEXT = NO
   INCLUDEGEOM = NO
-  ASSIGNSTRANDIDS = YES
-  VARLOADMODE = BYNAME
-  VARNAMELIST = '|LFDSVL1|'
-$!REMOVEVAR |LFDSVL1|
 $!REMOVEVAR |LFDSFN1|
+$!DELETEZONES  [7]
+$!DELETEZONES  [7]
 $!READDATASET  '|LFDSFN2|'
   INITIALPLOTTYPE = CARTESIAN3D
   INCLUDETEXT = NO
@@ -912,14 +910,14 @@ $!FRAMELAYOUT
     X = 1
     Y = 0.25
     }
-  WIDTH = 9
+  WIDTH = 15
   HEIGHT = 8
 $!THREEDAXIS 
-  ASPECTRATIOLIMIT = 25
+  ASPECTRATIOLIMIT = 250
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [3-6,9-12]
+$!ACTIVEFIELDMAPS  =  [1-2,7-10]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1066,6 +1064,30 @@ $!GLOBALSCATTER
     COLOR = RED
     FILLCOLOR = RED
     }
+  DATALABELS
+    {
+    COLORBYZONEMAP = YES
+    TEXTSHAPE
+      {
+      HEIGHT = 8
+      }
+    INCLUDEBOX = NO
+    NODELABELVAR = 1
+    }
+$!BLANKING 
+  IJK
+    {
+    ZONE = 1
+    }
+  VALUE
+    {
+    CONSTRAINT 1
+      {
+      INCLUDE = YES
+      VALUECUTOFF = 20
+      VARA = 3
+      }
+    }
 $!FIELDMAP  [1]
   MESH
     {
@@ -1088,7 +1110,7 @@ $!FIELDMAP  [1]
     }
   SHADE
     {
-    COLOR = WHITE
+    COLOR = CUSTOM42
     }
   EDGELAYER
     {
@@ -1098,6 +1120,10 @@ $!FIELDMAP  [1]
   POINTS
     {
     POINTSTOPLOT = SURFACENODES
+    IJKSKIP
+      {
+      I = 10
+      }
     }
   SURFACES
     {
@@ -1115,6 +1141,7 @@ $!FIELDMAP  [1]
 $!FIELDMAP  [2]
   MESH
     {
+    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
@@ -1144,6 +1171,10 @@ $!FIELDMAP  [2]
   POINTS
     {
     POINTSTOPLOT = SURFACENODES
+    IJKSKIP
+      {
+      I = 5
+      }
     }
   SURFACES
     {
@@ -1161,7 +1192,7 @@ $!FIELDMAP  [2]
 $!FIELDMAP  [3]
   MESH
     {
-    MESHTYPE = HIDDENLINE
+    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -1181,7 +1212,7 @@ $!FIELDMAP  [3]
     }
   SHADE
     {
-    COLOR = WHITE
+    COLOR = CUSTOM34
     }
   EDGELAYER
     {
@@ -1208,7 +1239,7 @@ $!FIELDMAP  [3]
 $!FIELDMAP  [4]
   MESH
     {
-    MESHTYPE = HIDDENLINE
+    SHOW = NO
     COLOR = CYAN
     }
   CONTOUR
@@ -1228,7 +1259,7 @@ $!FIELDMAP  [4]
     }
   SHADE
     {
-    COLOR = WHITE
+    COLOR = CUSTOM37
     }
   EDGELAYER
     {
@@ -1256,7 +1287,6 @@ $!FIELDMAP  [5]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = YELLOW
     }
   CONTOUR
@@ -1308,7 +1338,6 @@ $!FIELDMAP  [6]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = PURPLE
     }
   CONTOUR
@@ -1327,7 +1356,7 @@ $!FIELDMAP  [6]
       {
       GEOMSHAPE = SPHERE
       }
-    COLOR = RED
+    COLOR = CUSTOM3
     FRAMESIZE = 1
     }
   SHADE
@@ -1373,6 +1402,7 @@ $!FIELDMAP  [7]
     }
   SCATTER
     {
+    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -1418,6 +1448,7 @@ $!FIELDMAP  [8]
     }
   SCATTER
     {
+    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -1556,12 +1587,7 @@ $!FIELDMAP  [11]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
-    COLOR = CUSTOM19
-    FRAMESIZE = 1
+    COLOR = YELLOW
     }
   SHADE
     {
@@ -1607,12 +1633,7 @@ $!FIELDMAP  [12]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
-    COLOR = CUSTOM19
-    FRAMESIZE = 1
+    COLOR = PURPLE
     }
   SHADE
     {
@@ -1663,24 +1684,24 @@ $!THREEDAXIS
   XDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -0.54062644999999998063
-    RANGEMAX = 1.5400554499999998814
+    RANGEMIN = -0.54493769999999996934
+    RANGEMAX = 1.5590477000000000363
     GRSPACING = 0.5
     AXISLINE
       {
-      EDGE = 3
+      EDGE = 1
       }
     }
 $!THREEDAXIS 
   YDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -0.43407760000000000788
-    RANGEMAX = 0.5312736000000000125
-    GRSPACING = 0.2
+    RANGEMIN = -5.7474304999999992205
+    RANGEMAX = 5.8850694999999992874
+    GRSPACING = 5
     AXISLINE
       {
-      EDGE = 4
+      EDGE = 3
       }
     }
 $!THREEDAXIS 
@@ -1692,7 +1713,7 @@ $!THREEDAXIS
     GRSPACING = 5
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 4
       }
     }
 $!ISOSURFACEATTRIBUTES  1
@@ -1883,9 +1904,9 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 0.4997145
-    Y = 0.048598
-    Z = 10.575
+    X = 1.3728365
+    Y = 0.040428
+    Z = 2.527778
     }
   LIGHTSOURCE
     {
@@ -1896,20 +1917,20 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 12.781
-  THETAANGLE = 143.963
-  ALPHAANGLE = -132.984
+  PSIANGLE = 90
+  THETAANGLE = 180
+  ALPHAANGLE = 90
   VIEWERPOSITION
     {
-    X = -10.64015510493263
-    Y = 13.38889909711892
-    Z = 82.13619502772015
+    X = 4.941145053307933
+    Y = 30.37382984927467
+    Z = 6.616436250681136
     }
-  VIEWWIDTH = 7.57371
+  VIEWWIDTH = 46.1356
 $!FIELDLAYERS 
   SHOWSCATTER = YES
   SHOWEDGE = NO
-  USETRANSLUCENCY = YES
 $!STREAMTRACELAYERS 
   SHOW = NO
+$!REMOVEVAR |LFBD|
 $!SETSTYLEBASE CONFIG
