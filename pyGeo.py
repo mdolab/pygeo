@@ -26,21 +26,21 @@ __version__ = '$Revision: $'
 # =============================================================================
 # Standard Python modules
 # =============================================================================
-import os, sys, string
+import os, sys, string, copy, pdb
 
 # =============================================================================
 # External Python modules
 # =============================================================================
 import numpy
-from numpy import sin,cos,linspace,pi,zeros,where,hstack,mat,array,transpose,\
-    vstack,max,dot,sqrt,append
+from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
+    transpose, vstack, max, dot, sqrt, append, mod
 
 # =============================================================================
 # Extension modules
 # =============================================================================
 
 sys.path.append(os.path.abspath('../pySpline/python'))
-import pySpline
+import pySpline2
 
 # =============================================================================
 # pyGeo class
@@ -51,7 +51,7 @@ class pyGeo():
     Geo object class
     '''
 
-    def __init__(self,ref_axis,le_loc,chord,twist,rot_x,rot_y,af_list,N=15):
+    def __init__(self,file_name,ref_axis=None,le_loc=None,chord=None,af_list=None,N=15):
 
         
         '''Create an instance of the geometry object. Input is through simple
@@ -88,66 +88,54 @@ class pyGeo():
         v, array, size(2*N-1): parametric (chordwise) v coordinates for 
         input to pySpline'''
 
-        # Save the data to the class
-        assert (len(ref_axis)==len(le_loc) == len(chord) \
-            == len(twist) == len(af_list)),\
-            "All the input data must contain the same number of records"
+        self.loadPlot3D(file_name)
 
-        naf = len(chord)
-        self.naf = naf
-        self.ref_axis = ref_axis
-        self.ref_axis_refernece = copy.deepcopy(ref_axis)
+#         # Save the data to the class
+#         assert (ref_axis.N==len(le_loc) == len(chord)== len(af_list)),\
+#             "All the input data must contain the same number of records"
+
+#         naf = len(chord)
+#         self.naf = naf
+#         self.ref_axis = ref_axis
      
-        self.le_loc   = le_loc
-        self.chord    = chord
-        self.twist    = twist
-        self.rot_x    = rot_x
-        self.rot_y    = rot_y
-        self.af_list  = af_list
-        self.N        = N
-        self.DVlist   = {}
-        self.sloc = zeros(naf)
-        
-
-        for i in xrange(naf-1):
-            self.sloc[i+1] = self.sloc[i] +sqrt( (ref_axis[i+1,0]-ref_axis[i,0])**2 + \
-                                                 (ref_axis[i+1,1]-ref_axis[i,1])**2 +
-                                                 (ref_axis[i+1,2]-ref_axis[i,2])**2  )
-        #Normalize
-        self.sloc/=self.sloc[-1]
+#         self.le_loc   = le_loc
+#         self.chord    = chord
+#         self.af_list  = af_list
+#         self.N        = N
+#         self.DVlist   = {}
       
-        # This is the standard cosine distribution in x (one sided)
-        s_interp = 0.5*(1-cos(linspace(0,pi,N)))
-        self.s = s_interp
+#         # This is the standard cosine distribution in x (one sided)
+#         s_interp = 0.5*(1-cos(linspace(0,pi,N)))
+#         self.s = s_interp
         
-        X = zeros([2,N,naf,3])
-        for i in xrange(naf):
+#         X = zeros([2,N,naf,3])
+#         for i in xrange(naf):
 
-            X_u,Y_u,X_l,Y_l = self.__load_af(af_list[i],N)
+#             X_u,Y_u,X_l,Y_l = self.__load_af(af_list[i],N)
 
-            X[0,:,i,0] = (X_u-le_loc[i])*chord[i]
-            X[0,:,i,1] = Y_u*chord[i]
-            X[0,:,i,2] = 0
+#             X[0,:,i,0] = (X_u-le_loc[i])*chord[i]
+#             X[0,:,i,1] = Y_u*chord[i]
+#             X[0,:,i,2] = 0
             
-            X[1,:,i,0] = (X_l-le_loc[i])*chord[i]
-            X[1,:,i,1] = Y_l*chord[i]
-            X[1,:,i,2] = 0
+#             X[1,:,i,0] = (X_l-le_loc[i])*chord[i]
+#             X[1,:,i,1] = Y_l*chord[i]
+#             X[1,:,i,2] = 0
             
-            for j in xrange(N):
-                for isurf in xrange(2):
-                    X[isurf,j,i,:] = self.__rotz(X[isurf,j,i,:],twist[i]*pi/180) # Twist Rotation
-                    X[isurf,j,i,:] = self.__rotx(X[isurf,j,i,:],rot_x[i]*pi/180) # Dihediral Rotation
-                    X[isurf,j,i,:] = self.__roty(X[isurf,j,i,:],rot_y[i]*pi/180) # Sweep Rotation
-            #end for
+#             for j in xrange(N):
+#                 for isurf in xrange(2):
+#                     X[isurf,j,i,:] = self.__rotz(X[isurf,j,i,:],ref_axis.rot[i,2]*pi/180) # Twist Rotation
+#                     X[isurf,j,i,:] = self.__rotx(X[isurf,j,i,:],ref_axis.rot[i,0]*pi/180) # Dihediral Rotation
+#                     X[isurf,j,i,:] = self.__roty(X[isurf,j,i,:],ref_axis.rot[i,1]*pi/180) # Sweep Rotation
+#             #end for
            
-            # Finally translate according to axis:
-            X[:,:,i,:] += ref_axis[i,:]
-        #end for
+#             # Finally translate according to axis:
+#             X[:,:,i,:] += ref_axis.x[i,:]
+#         #end for
         
-        self.X = X
+#         self.X = X
         return
 
-    def createSurface(self):
+    def createSurface(self,fit_type='interpolate',ku=4,kv=4):
 
         '''Create the splined surface based on the input geometry'''
 
@@ -156,11 +144,10 @@ class pyGeo():
         v = zeros([2,self.naf])
 
         u[:] = self.s
-        v[:] = (self.ref_axis[:,2])/max(self.ref_axis[:,2])#*2-1
+        v[:] = self.ref_axis.sloc
                
         print 'creating surfaces...'
-        self.surf = pySpline.spline(2,u,v,self.X,fit_type='interpolate',ku=4,kv=2)
-        #self.surf = pySpline.spline(2,u,v,self.X,fit_type='lms',Nctlu=13,Nctlv=10,ku=4,kv=4)
+        self.surf = pySpline2.spline(2,u,v,self.X,fit_type=fit_type,ku=ku,kv=kv)
        
         return
 
@@ -254,48 +241,58 @@ class pyGeo():
         return dot(M,x)
 
   
-    def getRotations(self,s):
-        '''Return a (linearly) interpolated list of the twist, xrot and
-        y-rotations at a span-wise position s'''
+#     def getRotations(self,s):
+#         '''Return a (linearly) interpolated list of the twist, xrot and
+#         y-rotations at a span-wise position s'''
         
-        twist = numpy.interp([s],self.sloc,self.twist)
-        rot_x = numpy.interp([s],self.sloc,self.rot_x)
-        rot_y = numpy.interp([s],self.sloc,self.rot_y)
+#         twist = numpy.interp([s],self.sloc,self.twist)
+#         rot_x = numpy.interp([s],self.sloc,self.rot_x)
+#         rot_y = numpy.interp([s],self.sloc,self.rot_y)
 
-        return twist[0],rot_x[0],rot_y[0]
+#         return twist[0],rot_x[0],rot_y[0]
 
-    def getLocalVector(self,s,x):
-        '''Return the vector x, rotated by the twist, rot_x, rot_y as 
-        linearly interpolated at span-wise position s. 
-        For example getLocalVecotr(0.5,[1,0,0]) will return the vector 
-        defining the local section direction at a span position of 0.5.'''
+#     def getLocalVector(self,s,x):
+#         '''Return the vector x, rotated by the twist, rot_x, rot_y as 
+#         linearly interpolated at span-wise position s. 
+#         For example getLocalVecotr(0.5,[1,0,0]) will return the vector 
+#         defining the local section direction at a span position of 0.5.'''
 
-        twist,rot_x,rot_y = self.getRotations(s)
-        x = self.__rotz(x,twist*pi/180) # Twist Rotation
-        x = self.__rotx(x,rot_x*pi/180) # Dihedral Rotation
-        x = self.__roty(x,rot_y*pi/180) # Sweep Rotation
+#         twist,rot_x,rot_y = self.getRotations(s)
+#         x = self.__rotz(x,twist*pi/180) # Twist Rotation
+#         x = self.__rotx(x,rot_x*pi/180) # Dihedral Rotation
+#         x = self.__roty(x,rot_y*pi/180) # Sweep Rotation
 
-        return x
+#         return x
 
-    def getLocalChord(self,s):
-        '''Return the linearly interpolated chord at span-wise postiion s'''
+#     def getLocalChord(self,s):
+#         '''Return the linearly interpolated chord at span-wise postiion s'''
 
-        return numpy.interp([s],self.sloc,self.chord)[0]
+#         return numpy.interp([s],self.sloc,self.chord)[0]
         
-    def getLocalLe_loc(self,s):
-        return numpy.interp([s],self.sloc,self.le_loc)[0]
+#     def getLocalLe_loc(self,s):
+#         return numpy.interp([s],self.sloc,self.le_loc)[0]
 
 
-    def getRefPt(self,s):
-        '''Return the linearly interpolated reference location at a span-wise
-        position s. '''
+#     def getRefPt(self,s):
+#         '''Return the linearly interpolated reference location at a span-wise
+#         position s. '''
         
-        x = zeros(3);
-        x[2] = s*self.L
-        x[0] = numpy.interp([s],self.sloc,self.ref_axis[:,0])[0]
-        x[1] = numpy.interp([s],self.sloc,self.ref_axis[:,1])[0]
+#         x = zeros(3);
+#         x[2] = s*self.L
+#         x[0] = numpy.interp([s],self.sloc,self.ref_axis[:,0])[0]
+#         x[1] = numpy.interp([s],self.sloc,self.ref_axis[:,1])[0]
 
-        return x
+#         return x
+
+
+    def createAssociations(self):
+        '''Create the associated links between control pt sections and the
+        reference axis'''
+
+        assert self.ref_axis_reference.shape[0] == self.surf.Nctlv,\
+            'Must have the same number of control points in v (span-wise) as spanwise-stations'
+        #self.ctl_deltas = 
+
 
     def addVar(self,dv_name,value,mapping,lower=0,upper=1):
 
@@ -313,9 +310,137 @@ class pyGeo():
     
     def updateDV(self):
         '''Update the B-spline control points from the Design Varibales'''
-        print 'self.sloc',self.sloc
+
         for key in self.DVlist.keys():
-            self.DVlist[key].applyValue(self.surf,self.sloc)
+            self.DVlist[key].applyValue(self.surf,self.ref_axis.sloc)
+
+        return
+
+    def loadPlot3D(self,file_name):
+
+        '''Load a plot3D file and create the splines to go with each patch'''
+        print 'Loading plot3D file: %s ...'%(file_name)
+
+        f = open(file_name,'r')
+
+        # First load the number of patches
+        nPatch = int(f.readline())
+        
+        print 'nPatch = %d'%(nPatch)
+
+        patchSizes = zeros(nPatch*3,'intc')
+
+        # We can do 24 sizes per line 
+        nHeaderLines = 3*nPatch / 24 
+        if 3*nPatch% 24 != 0: nHeaderLines += 1
+
+        counter = 0
+
+        for nline in xrange(nHeaderLines):
+            aux = string.split(f.readline())
+            for i in xrange(len(aux)):
+                patchSizes[counter] = int(aux[i])
+                counter += 1
+
+        patchSizes = patchSizes.reshape([nPatch,3])
+      
+        # Total points
+        nPts = 0
+        for i in xrange(nPatch):
+            nPts += patchSizes[i,0]*patchSizes[i,1]*patchSizes[i,2]
+
+        print 'Number of Surface Points = %d'%(nPts)
+
+        nDataLines = int(nPts*3/6)
+        if nPts*3%6 !=0:  nDataLines += 1
+
+        dataTemp = zeros([nPts*3])
+        counter = 0
+     
+        for i in xrange(nDataLines):
+            aux = string.split(f.readline())
+            for j in xrange(len(aux)):
+                dataTemp[counter] = float(aux[j])
+                counter += 1
+            # end for
+        # end for
+        
+        f.close() # Done with the file
+
+        # Post Processing
+        patches = []
+        counter = 0
+
+        for ipatch in xrange(nPatch):
+            patches.append(zeros([patchSizes[ipatch,0],patchSizes[ipatch,1],3]))
+            for idim in xrange(3):
+                for j in xrange(patchSizes[ipatch,1]):
+                    for i in xrange(patchSizes[ipatch,0]):
+                        patches[ipatch][i,j,idim] = dataTemp[counter]
+                        counter += 1
+                    # end for
+                # end for
+            # end for
+        # end for
+
+        # Create the list of u and v coordinates
+        
+        u = []
+        for ipatch in xrange(nPatch):
+            u.append(zeros([patchSizes[ipatch,0]]))
+            singular_counter = 0
+            for j in xrange(patchSizes[ipatch,1]): #loop over each v, and average the 'u' parameter 
+                temp = zeros(patchSizes[ipatch,0])
+                for i in xrange(patchSizes[ipatch,0]-1):
+                    temp[i+1] = temp[i] + sqrt((patches[ipatch][i+1,j,0]-patches[ipatch][i,j,0])**2 +\
+                                               (patches[ipatch][i+1,j,1]-patches[ipatch][i,j,1])**2 +\
+                                               (patches[ipatch][i+1,j,2]-patches[ipatch][i,j,2])**2)
+                # end for
+                if temp[-1] == 0: # We have a singular point
+                    singular_counter += 1
+                    temp[:] = 0.0
+                else:
+                    temp /= temp[-1]
+                # end if
+
+                u[ipatch] += temp #accumulate the u-parameter calcs for each j
+            # end for 
+            u[ipatch]/=(patchSizes[ipatch,1]-singular_counter) #divide by the number of 'j's we had
+        # end for 
+
+        v = []
+        for ipatch in xrange(nPatch):
+            v.append(zeros([patchSizes[ipatch,1]]))
+            singular_counter = 0
+            for i in xrange(patchSizes[ipatch,0]): #loop over each v, and average the 'u' parameter 
+                temp = zeros(patchSizes[ipatch,1])
+                for j in xrange(patchSizes[ipatch,1]-1):
+                    temp[j+1] = temp[j] + sqrt((patches[ipatch][i,j+1,0]-patches[ipatch][i,j,0])**2 +\
+                                               (patches[ipatch][i,j+1,1]-patches[ipatch][i,j,1])**2 +\
+                                               (patches[ipatch][i,j+1,2]-patches[ipatch][i,j,2])**2)
+                # end for
+                if temp[-1] == 0: #We have a singular point
+                    singular_counter += 1
+                    temp[:] = 0.0
+                else:
+                    temp /= temp[-1]
+                #end if 
+
+                v[ipatch] += temp #accumulate the u-parameter calcs for each j
+            # end for 
+            v[ipatch]/=(patchSizes[ipatch,0]-singular_counter) #divide by the number of 'j's we had
+        # end for
+
+        # Now create a list of spline objects:
+
+        surfs = []
+
+        for ipatch in xrange(nPatch):
+            surfs.append(pySpline2.spline(u[ipatch],v[ipatch],patches[ipatch],task='lms',ku=4,kv=4))
+        
+        self.surfs = surfs
+        self.nPatch = nPatch
+        return
 
 
 class geoDV(object):
@@ -337,7 +462,6 @@ class geoDV(object):
 
         upper: Upper bound for the variable. '''
 
-
         self.name = dv_name
         self.value = value
         self.lower = lower
@@ -354,6 +478,59 @@ class geoDV(object):
 
         return
 
+
+class ref_axis(object):
+
+    def __init__(self,x,y,z,rot_z,rot_x,rot_y):
+
+        ''' Create a generic reference axis. This object bascally defines a
+        set of points in space (x,y,z) each with three rotations
+        associated with it. The purpose of the ref_axis is to link
+        groups of b-spline controls points together such that
+        high-level planform-type variables can be used as design
+        variables
+        
+        Input:
+
+        x: list of x-coordinates of axis
+        y: list of y-coordinates of axis
+        z: list of z-coordinates of axis
+
+        rot_z: list of z-axis rotations
+        rot_y: list of y-axis rotations
+        rot_x: list of z-axis rotations
+
+        Note: Rotations are performed in the order: Z-Y-X
+        '''
+
+        assert len(x)==len(y)==len(z)==len(rot_z)==len(rot_y)==len(rot_x),\
+            'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
+
+        self.N = len(x)
+        self.x = zeros([self.N,3])
+        self.x[:,0] = x
+        self.x[:,1] = y
+        self.x[:,2] = z
+        
+        self.rot = zeros([self.N,3])
+        self.rot[:,0] = rot_x
+        self.rot[:,1] = rot_y
+        self.rot[:,2] = rot_z
+
+        self.x0 = copy.deepcopy(x)
+        self.rot0 = copy.deepcopy(x)
+        self.sloc = zeros(self.N)
+        self.updateSloc()
+
+
+    def updateSloc(self):
+        
+        for i in xrange(self.N-1):
+            self.sloc[i+1] = self.sloc[i] +sqrt( (self.x[i+1,0]-self.x[i,0])**2 + \
+                                                 (self.x[i+1,1]-self.x[i,1])**2 +
+                                                 (self.x[i+1,2]-self.x[i,2])**2  )
+        #Normalize
+        self.sloc/=self.sloc[-1]
 
 class DVmapping(object):
 

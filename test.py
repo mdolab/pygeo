@@ -75,7 +75,9 @@ ref_axis[:,0] = 0
 rot_x = zeros(naf)
 rot_y = zeros(naf)
 
-geobj = pyGeo.pyGeo(ref_axis,le_loc,chord,tw_aero,rot_x,rot_y,airfoil_list,N=15)
+ref_axis = pyGeo.ref_axis(zeros(naf),zeros(naf),sloc*bl_length,tw_aero,zeros(naf),zeros(naf))
+
+geobj = pyGeo.pyGeo(ref_axis=ref_axis,le_loc=le_loc,chord=chord,airfoil_list=af_list,N=15)
 
 geobj.createSurface()
 geobj.surf.writeTecplot('output.dat')
@@ -91,6 +93,6 @@ geobj.updateDV()
 
 
 geobj.surf.writeTecplot('output_def.dat')
-
+geobj.surf.writeIGES('test.iges')
 
 print 'Done!'
