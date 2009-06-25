@@ -88,6 +88,9 @@ class pyGeo():
         v, array, size(2*N-1): parametric (chordwise) v coordinates for 
         input to pySpline'''
 
+
+        self.nPatch = None
+
         self.loadPlot3D(file_name)
 
 #         # Save the data to the class
@@ -135,21 +138,21 @@ class pyGeo():
 #         self.X = X
         return
 
-    def createSurface(self,fit_type='interpolate',ku=4,kv=4):
+#     def createSurface(self,fit_type='interpolate',ku=4,kv=4):
 
-        '''Create the splined surface based on the input geometry'''
+#         '''Create the splined surface based on the input geometry'''
 
-        print 'creating surfaces:'
-        u = zeros([2,self.N])
-        v = zeros([2,self.naf])
+#         print 'creating surfaces:'
+#         u = zeros([2,self.N])
+#         v = zeros([2,self.naf])
 
-        u[:] = self.s
-        v[:] = self.ref_axis.sloc
+#         u[:] = self.s
+#         v[:] = self.ref_axis.sloc
                
-        print 'creating surfaces...'
-        self.surf = pySpline2.spline(2,u,v,self.X,fit_type=fit_type,ku=ku,kv=kv)
+#         print 'creating surfaces...'
+#         self.surf = pySpline2.spline(2,u,v,self.X,fit_type=fit_type,ku=ku,kv=kv)
        
-        return
+#         return
 
     def __load_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
@@ -316,6 +319,45 @@ class pyGeo():
 
         return
 
+    def writeTecplot(self,file_name):
+        '''Write the surface patches to Tecplot'''
+        f = open(file_name,'w')
+        f.write ('VARIABLES = "X", "Y","Z"\n')
+        for ipatch in xrange(self.nPatch):
+            print 'Outputing patch %d'%(ipatch)
+            self.surfs[ipatch].writeTecplot(handle=f)
+            
+        f.close()
+        return
+
+    def writeIges(self,file_name):
+        '''write the surface patces to IGES format'''
+        f = open(file_name,'w')
+
+        #Note: Eventually we may want to put the CORRECT Data here
+        f.write('                                                                        S      1\n')
+        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
+        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254,0.0001,0.,             G      2\n')
+        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
+        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
+        
+        Dcount = 1;
+        Pcount = 1;
+
+        for ipatch in xrange(self.nPatch):
+            Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(f,Dcount,Pcount)
+        Pcount = 1
+        counter = 1
+        #for ipatch in xrange(self.nPatch):
+        for ipatch in xrange(self.nPatch):
+            Pcount,counter = self.surfs[ipatch].writeIGES_parameters(f,Pcount,counter)
+
+        # Write the terminate statment
+        f.write('S%7dG%7dD%7dP%7d%40sT%7s\n'%(1,4,Dcount-1,counter-1,' ',' '))
+            
+
+        f.close()
+
     def loadPlot3D(self,file_name):
 
         '''Load a plot3D file and create the splines to go with each patch'''
@@ -436,7 +478,7 @@ class pyGeo():
         surfs = []
 
         for ipatch in xrange(nPatch):
-            surfs.append(pySpline2.spline(u[ipatch],v[ipatch],patches[ipatch],task='lms',ku=4,kv=4))
+            surfs.append(pySpline2.spline(u[ipatch],v[ipatch],patches[ipatch],task='interpolate',ku=4,kv=4))
         
         self.surfs = surfs
         self.nPatch = nPatch
