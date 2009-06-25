@@ -29,12 +29,7 @@ sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'
 import pyGeo
 
 aircraft = pyGeo.pyGeo('full_aircraft.xyz')
-
-f = open('plot3d_example.dat','w')
-f.write ('VARIABLES = "X", "Y","Z"\n')
-for ipatch in xrange(aircraft.nPatch):
-    print 'outputing patch %d'%(ipatch)
-    aircraft.surfs[ipatch].writeTecplot(handle=f)
-
-f.close()
-
+aircraft.writeTecplot('plot3d_example.dat')
+aircraft.writeIges('plot3d_example.igs')
+for i in xrange(aircraft.nPatch):
+    print 'i,nu,nv',i,aircraft.surfs[i].Nu,aircraft.surfs[i].Nv
