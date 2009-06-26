@@ -39,7 +39,6 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 # Extension modules
 # =============================================================================
 
-sys.path.append(os.path.abspath('../pySpline/python'))
 import pySpline2
 
 # =============================================================================
@@ -51,8 +50,7 @@ class pyGeo():
     Geo object class
     '''
 
-    def __init__(self,file_name,ref_axis=None,le_loc=None,chord=None,af_list=None,N=15):
-
+    def __init__(self,init_type,*args, **kwargs):
         
         '''Create an instance of the geometry object. Input is through simple
         arrays. Most error checking is left to the user making an instance of
@@ -60,38 +58,56 @@ class pyGeo():
         
         Input: 
         
-        ref_axis, array, size(naf,3): List of points in space defining the 
-        the reference  axis for the geometry. Units are consistent with the
-        remainder of the geometry. For wind turbine blades, this
-        will be the pitch axis. For aircraft this will usually be the 1/4 
-        chord. The twist is defined about this axis. 
+        init_type, string: a key word defining how this geo object
+        will be defined. Valid Options/keyword argmuents are:
 
-        le_loc, array, size(naf) : Location of the LE point ahead of the 
-        reference axis. Typically this will be 1/4. United scaled by chord
+        'plot3d',file_name = 'file_name.xyz' : Load in a plot3D
+        surface patches and use them to create splined surfaces
+ 
 
-        chord, array, size(naf) : Chord lengths in consistent units
+        'iges',file_name = 'file_name.iges': Load the surface patches
+        from an iges file to create splined surfaes.
+
         
-        twist, array, size(naf) : Twist of each section about the reference
-        axis. Given in units of deg. 
+        'lifting_surface',ref_axis=ref_axis,le_loc=le_loc,scale=chord,xsec_list=af_list,
+        Create a lifting surface along a reference axis ref_axis,from
+        airfoils in af_list. Translate by le_loc and scale by
+        chord. Required Parameters are:
 
-        af_list, list, size(naf) : List of the filenames  to be read for each
-        cross section.
+            ref_axis, type ref_axis: A Reference axis object to position cross sections
 
-        Output:
+            le_loc, array, size(naf) : Location of the LE point ahead of the 
+            reference axis. Typically this will be 1/4. 
 
-        x,y,z, array, size(naf,2N-1) : Coordinates of the surface for input to 
-        pySpline.
-
-        u, array, size(naf): parametric (spanwise) u coordinates for 
-        input to pySpline 
+            scale, array, size(naf) : Chord lengths in consistent units
         
-        v, array, size(2*N-1): parametric (chordwise) v coordinates for 
-        input to pySpline'''
+            xsec_list, list, size(naf) : List of the filenames  to be read for each
+            cross section.
+        
+        Optional Parameters are:
 
+            N=<integer> : the number coordinates to use from the airfoil files
+            fit_type = 'lms' or 'interpolate': Least-mean squares or interpolate fitting type
+            ku = spline order in the u direction (chord-wise for lifting surfaces
+            kv = spline order in the v direction (span-wise for lifting surfaces
+'''
+        print 'pyGeo init_type is %s:'%(init_type)
 
-        self.nPatch = None
+        if init_type == 'plot3d':
+            assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
+            self.loadPlot3D(kwargs['file_name'],args,kwargs)
 
-        self.loadPlot3D(file_name)
+        elif init_type == 'iges':
+            assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for iges init_type'
+            self.loadIges(kwargs['file_name'],args,kwargs)
+
+        elif init_type == 'lifting_surface':
+            self.init_lifting_surface(args,kwargs)
+            
+        else:
+            print 'Unknown init type. Valid Init types are \'plot3d\', \'iges\' and \'lifting_surface\''
+            sys.exit(0)
+        return
 
 #         # Save the data to the class
 #         assert (ref_axis.N==len(le_loc) == len(chord)== len(af_list)),\
@@ -136,23 +152,6 @@ class pyGeo():
 #         #end for
         
 #         self.X = X
-        return
-
-#     def createSurface(self,fit_type='interpolate',ku=4,kv=4):
-
-#         '''Create the splined surface based on the input geometry'''
-
-#         print 'creating surfaces:'
-#         u = zeros([2,self.N])
-#         v = zeros([2,self.naf])
-
-#         u[:] = self.s
-#         v[:] = self.ref_axis.sloc
-               
-#         print 'creating surfaces...'
-#         self.surf = pySpline2.spline(2,u,v,self.X,fit_type=fit_type,ku=ku,kv=kv)
-       
-#         return
 
     def __load_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
@@ -354,13 +353,15 @@ class pyGeo():
 
         # Write the terminate statment
         f.write('S%7dG%7dD%7dP%7d%40sT%7s\n'%(1,4,Dcount-1,counter-1,' ',' '))
-            
-
         f.close()
 
-    def loadPlot3D(self,file_name):
+        return
+
+    def loadPlot3D(self,file_name,*args,**kwargs):
 
         '''Load a plot3D file and create the splines to go with each patch'''
+        
+
         print 'Loading plot3D file: %s ...'%(file_name)
 
         f = open(file_name,'r')
@@ -385,7 +386,10 @@ class pyGeo():
                 counter += 1
 
         patchSizes = patchSizes.reshape([nPatch,3])
-      
+
+        assert patchSizes[:,2].all() == 1, \
+            'Error: Plot 3d does not contain only surface patches. The third index (k) MUST be 1.'
+
         # Total points
         nPts = 0
         for i in xrange(nPatch):
@@ -468,21 +472,117 @@ class pyGeo():
                     temp /= temp[-1]
                 #end if 
 
-                v[ipatch] += temp #accumulate the u-parameter calcs for each j
+                v[ipatch] += temp #accumulate the v-parameter calcs for each i
             # end for 
-            v[ipatch]/=(patchSizes[ipatch,0]-singular_counter) #divide by the number of 'j's we had
+            v[ipatch]/=(patchSizes[ipatch,0]-singular_counter) #divide by the number of 'i's we had
         # end for
 
         # Now create a list of spline objects:
 
         surfs = []
-
         for ipatch in xrange(nPatch):
-            surfs.append(pySpline2.spline(u[ipatch],v[ipatch],patches[ipatch],task='interpolate',ku=4,kv=4))
+            surfs.append(pySpline2.surf_spline(task='interpolate',u=u[ipatch],v=v[ipatch],X=patches[ipatch],ku=4,kv=4))
         
         self.surfs = surfs
         self.nPatch = nPatch
         return
+
+
+    def loadIges(self,file_name,*args,**kwargs):
+
+        '''Load a Iges file and create the splines to go with each patch'''
+        print 'file_name',file_name
+        f = open(file_name,'r')
+        file = []
+        for line in f:
+            line = line.replace(';',',')
+            file.append(line)
+        f.close()
+        
+        start_lines   = int((file[-1][1:8]))
+        general_lines = int((file[-1][9:16]))
+        directory_lines = int((file[-1][17:24]))
+        parameter_lines = int((file[-1][25:32]))
+
+        print start_lines,general_lines,directory_lines,parameter_lines
+        
+        # Now we know how many lines we have to deal 
+
+        dir_offset  = start_lines + general_lines
+        para_offset = dir_offset + directory_lines
+
+        surf_list = []
+        for i in xrange(directory_lines/2):
+            if int(file[2*i + dir_offset][0:8]) == 128:
+                start = int(file[2*i + dir_offset][8:16])
+                num_lines = int(file[2*i + 1 + dir_offset][24:32])
+                surf_list.append([start,num_lines])
+            # end if
+        # end for
+        self.nPatch = len(surf_list)
+        
+        print 'Found %d surfaces in Iges File.'%(self.nPatch)
+
+        surfs = [];
+        print surf_list
+        weight = []
+        for ipatch in xrange(self.nPatch):  # Loop over our patches
+            data = []
+            # Create a list of all data
+            para_offset = surf_list[ipatch][0]+dir_offset + directory_lines-1 #-1 is for conversion from 1 based (iges) to python
+
+            for i in xrange(surf_list[ipatch][1]):
+                
+                aux = string.split(file[i+para_offset][0:65],',')
+                for j in xrange(len(aux)-1):
+                    data.append(float(aux[j]))
+                # end for
+            # end for
+            
+            # Now we extract what we need
+            Nctlu = int(data[1]+1)
+            Nctlv = int(data[2]+1)
+            ku    = int(data[3]+1)
+            kv    = int(data[4]+1)
+            
+            counter = 10
+            tu = data[counter:counter+Nctlu+ku]
+            counter += (Nctlu + ku)
+            
+            tv = data[counter:counter+Nctlv+kv]
+            counter += (Nctlv + kv)
+            
+            weights = data[counter:counter+Nctlu*Nctlv]
+            counter += Nctlu*Nctlv
+            weight.append(weights)
+            coef = zeros([Nctlu,Nctlv,3])
+            
+            
+            for j in xrange(Nctlv):
+                for i in xrange(Nctlu):
+                    coef[i,j,:] = data[counter:counter +3]
+                    counter+=3
+
+            # Last we need the ranges
+            range = zeros(4)
+           
+            range[0] = data[counter    ]
+            range[1] = data[counter + 1]
+            range[2] = data[counter + 2]
+            range[3] = data[counter + 3]
+
+            # We dont' strictly need the u and v coordiantes at end
+            surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
+        # end for
+
+
+        self.surfs = surfs
+        self.weights = weight
+        return 
+
+
+
+
 
 
 class geoDV(object):

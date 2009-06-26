@@ -28,8 +28,10 @@ sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'
 #pyGeo
 import pyGeo
 
-aircraft = pyGeo.pyGeo('full_aircraft.xyz')
-aircraft.writeTecplot('plot3d_example.dat')
-aircraft.writeIges('plot3d_example.igs')
-for i in xrange(aircraft.nPatch):
-    print 'i,nu,nv',i,aircraft.surfs[i].Nu,aircraft.surfs[i].Nv
+#aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
+#aircraft = pyGeo.pyGeo('iges',file_name='plot3d_example.igs')
+aircraft  = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
+#aircraft.surfs[0].coef[0,0,1] +=  ~2
+aircraft.writeTecplot('sailplane_split.dat')
+
+#aircraft.writeIges('plot3d_example.igs')
