@@ -35,3 +35,4 @@ aircraft  = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
 aircraft.writeTecplot('sailplane_split.dat')
 
 #aircraft.writeIges('plot3d_example.igs')
+
