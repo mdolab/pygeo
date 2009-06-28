@@ -345,9 +345,10 @@ class pyGeo():
 
         for ipatch in xrange(self.nPatch):
             Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(f,Dcount,Pcount)
+
         Pcount = 1
         counter = 1
-        #for ipatch in xrange(self.nPatch):
+
         for ipatch in xrange(self.nPatch):
             Pcount,counter = self.surfs[ipatch].writeIGES_parameters(f,Pcount,counter)
 
@@ -512,7 +513,7 @@ class pyGeo():
         para_offset = dir_offset + directory_lines
 
         surf_list = []
-        for i in xrange(directory_lines/2):
+        for i in xrange(directory_lines/2): #Directory lines is ALWAYS a multiple of 2
             if int(file[2*i + dir_offset][0:8]) == 128:
                 start = int(file[2*i + dir_offset][8:16])
                 num_lines = int(file[2*i + 1 + dir_offset][24:32])
@@ -529,11 +530,11 @@ class pyGeo():
         for ipatch in xrange(self.nPatch):  # Loop over our patches
             data = []
             # Create a list of all data
-            para_offset = surf_list[ipatch][0]+dir_offset + directory_lines-1 #-1 is for conversion from 1 based (iges) to python
+            para_offset = surf_list[ipatch][0]+para_offset-1 #-1 is for conversion from 1 based (iges) to python
 
             for i in xrange(surf_list[ipatch][1]):
                 
-                aux = string.split(file[i+para_offset][0:65],',')
+                aux = string.split(file[i+para_offset][0:70],',')
                 for j in xrange(len(aux)-1):
                     data.append(float(aux[j]))
                 # end for
@@ -553,11 +554,11 @@ class pyGeo():
             counter += (Nctlv + kv)
             
             weights = data[counter:counter+Nctlu*Nctlv]
+            if weights.all() ~= 1:
+                print 'WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly'
             counter += Nctlu*Nctlv
-            weight.append(weights)
+
             coef = zeros([Nctlu,Nctlv,3])
-            
-            
             for j in xrange(Nctlv):
                 for i in xrange(Nctlu):
                     coef[i,j,:] = data[counter:counter +3]
@@ -571,18 +572,11 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            # We dont' strictly need the u and v coordiantes at end
             surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
         # end for
-
-
         self.surfs = surfs
-        self.weights = weight
+
         return 
-
-
-
-
 
 
 class geoDV(object):
@@ -659,8 +653,8 @@ class ref_axis(object):
         self.rot[:,1] = rot_y
         self.rot[:,2] = rot_z
 
-        self.x0 = copy.deepcopy(x)
-        self.rot0 = copy.deepcopy(x)
+        self.x0 = copy.deepcopy(self.x)
+        self.rot0 = copy.deepcopy(self.rot)
         self.sloc = zeros(self.N)
         self.updateSloc()
 
@@ -689,18 +683,18 @@ class DVmapping(object):
 
         apply_to: literal reference to select what planform variable
         the mapping applies to. Valid litteral string are:
-                'x'  -> X-coordinate of the reference axis
-                'y'  -> Y-coordinate of the reference axis
-                'z'  -> Z-coordinate of the reference axis
-                'twist' -> rotation about the z-axis
-                'x-rot' -> rotation about the x-axis
-                'y-rot' -> rotation about the x-axis
+                \'x\'  -> X-coordinate of the reference axis
+                \'y\'  -> Y-coordinate of the reference axis
+                \'z\'  -> Z-coordinate of the reference axis
+                \'twist\' -> rotation about the z-axis
+                \'x-rot\' -> rotation about the x-axis
+                \'y-rot\' -> rotation about the x-axis
 
         formula: is a string which contains a python expression for
         the mapping. The value of the mapping is assigned as
-        'val'. Distance along the surface is specified as 's'. 
+        \'val\'. Distance along the surface is specified as \'s\'. 
 
-        For example, for a linear shearing sweep, the formula would be 's*val'
+        For example, for a linear shearing sweep, the formula would be \'s*val\'
         '''
         self.sec_start = sec_start
         self.sec_end   = sec_end
