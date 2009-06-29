@@ -95,63 +95,66 @@ class pyGeo():
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
-            self.loadPlot3D(kwargs['file_name'],args,kwargs)
+            self._loadPlot3D(kwargs['file_name'],*args,**kwargs)
 
         elif init_type == 'iges':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for iges init_type'
-            self.loadIges(kwargs['file_name'],args,kwargs)
+            self._loadIges(kwargs['file_name'],*args,**kwargs)
 
         elif init_type == 'lifting_surface':
-            self.init_lifting_surface(args,kwargs)
+            self._init_lifting_surface(*args,**kwargs)
             
         else:
             print 'Unknown init type. Valid Init types are \'plot3d\', \'iges\' and \'lifting_surface\''
             sys.exit(0)
+
         return
 
-#         # Save the data to the class
-#         assert (ref_axis.N==len(le_loc) == len(chord)== len(af_list)),\
-#             "All the input data must contain the same number of records"
 
-#         naf = len(chord)
-#         self.naf = naf
-#         self.ref_axis = ref_axis
-     
-#         self.le_loc   = le_loc
-#         self.chord    = chord
-#         self.af_list  = af_list
-#         self.N        = N
-#         self.DVlist   = {}
-      
-#         # This is the standard cosine distribution in x (one sided)
-#         s_interp = 0.5*(1-cos(linspace(0,pi,N)))
-#         self.s = s_interp
-        
-#         X = zeros([2,N,naf,3])
-#         for i in xrange(naf):
+    def _init_lifting_surface(self,*args,**kwargs):
 
-#             X_u,Y_u,X_l,Y_l = self.__load_af(af_list[i],N)
+        assert 'xsections' in kwargs and 'scale' in kwargs \
+               and 'offset' in kwargs and 'ref_axis' in kwargs,\
+               '\'xsections\', \'offset\',\'scale\' and \'ref_axis\' must be specified as kwargs'
 
-#             X[0,:,i,0] = (X_u-le_loc[i])*chord[i]
-#             X[0,:,i,1] = Y_u*chord[i]
-#             X[0,:,i,2] = 0
+        xsections = kwargs['xsections']
+        scale     = kwargs['scale']
+        offset    = kwargs['offset']
+        ref_axis  = kwargs['ref_axis']
+
+        assert len(xsections)==len(scale)==offset.shape[0]==ref_axis.N,\
+               'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
+
+        naf = len(xsections)
+        N = 15
+        X = zeros([2,N,naf,3]) #We will get two surfaces
+        for i in xrange(naf):
+
+            X_u,Y_u,X_l,Y_l = self.__load_af(xsections[i],N)
+
+            X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
+            X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
+            X[0,:,i,2] = 0
             
-#             X[1,:,i,0] = (X_l-le_loc[i])*chord[i]
-#             X[1,:,i,1] = Y_l*chord[i]
-#             X[1,:,i,2] = 0
+            X[1,:,i,0] = (X_l-offset[i,0])*scale[i]
+            X[1,:,i,1] = (Y_l-offset[i,1])*scale[i]
+            X[1,:,i,2] = 0
             
-#             for j in xrange(N):
-#                 for isurf in xrange(2):
-#                     X[isurf,j,i,:] = self.__rotz(X[isurf,j,i,:],ref_axis.rot[i,2]*pi/180) # Twist Rotation
-#                     X[isurf,j,i,:] = self.__rotx(X[isurf,j,i,:],ref_axis.rot[i,0]*pi/180) # Dihediral Rotation
-#                     X[isurf,j,i,:] = self.__roty(X[isurf,j,i,:],ref_axis.rot[i,1]*pi/180) # Sweep Rotation
-#             #end for
-           
-#             # Finally translate according to axis:
-#             X[:,:,i,:] += ref_axis.x[i,:]
-#         #end for
-        
-#         self.X = X
+            for j in xrange(N):
+                for isurf in xrange(2):
+                    X[isurf,j,i,:] = self.__rotz(X[isurf,j,i,:],ref_axis.rot[i,2]*pi/180) # Twist Rotation
+                    X[isurf,j,i,:] = self.__rotx(X[isurf,j,i,:],ref_axis.rot[i,0]*pi/180) # Dihediral Rotation
+                    X[isurf,j,i,:] = self.__roty(X[isurf,j,i,:],ref_axis.rot[i,1]*pi/180) # Sweep Rotation
+
+
+            # Finally translate according to axis:
+            X[:,:,i,:] += ref_axis.x[i,:]
+        # end for
+        self.surfs = []
+        self.surfs.append(pySpline2.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
+        self.surfs.append(pySpline2.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
+        self.nPatch = 2
+
 
     def __load_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
@@ -287,36 +290,36 @@ class pyGeo():
 #         return x
 
 
-    def createAssociations(self):
-        '''Create the associated links between control pt sections and the
-        reference axis'''
+#     def createAssociations(self):
+#         '''Create the associated links between control pt sections and the
+#         reference axis'''
 
-        assert self.ref_axis_reference.shape[0] == self.surf.Nctlv,\
-            'Must have the same number of control points in v (span-wise) as spanwise-stations'
-        #self.ctl_deltas = 
+#         assert self.ref_axis_reference.shape[0] == self.surf.Nctlv,\
+#             'Must have the same number of control points in v (span-wise) as spanwise-stations'
+#         #self.ctl_deltas = 
 
 
-    def addVar(self,dv_name,value,mapping,lower=0,upper=1):
+#     def addVar(self,dv_name,value,mapping,lower=0,upper=1):
 
-        '''Add a single (scalar) variable to the dv list. '''
+#         '''Add a single (scalar) variable to the dv list. '''
 
-        if dv_name in self.DVlist.keys():
-            print 'Error: dv_name is already in the list of keys. Please use a unique deisgn variable name'
-            sys.exit(0)
-        # end if
+#         if dv_name in self.DVlist.keys():
+#             print 'Error: dv_name is already in the list of keys. Please use a unique deisgn variable name'
+#             sys.exit(0)
+#         # end if
         
-        self.DVlist[dv_name] = geoDV(dv_name,value,mapping,lower,upper)
+#         self.DVlist[dv_name] = geoDV(dv_name,value,mapping,lower,upper)
         
         
-        return
+#         return
     
-    def updateDV(self):
-        '''Update the B-spline control points from the Design Varibales'''
+#     def updateDV(self):
+#         '''Update the B-spline control points from the Design Varibales'''
 
-        for key in self.DVlist.keys():
-            self.DVlist[key].applyValue(self.surf,self.ref_axis.sloc)
+#         for key in self.DVlist.keys():
+#             self.DVlist[key].applyValue(self.surf,self.ref_axis.sloc)
 
-        return
+#         return
 
     def writeTecplot(self,file_name):
         '''Write the surface patches to Tecplot'''
@@ -329,8 +332,8 @@ class pyGeo():
         f.close()
         return
 
-    def writeIges(self,file_name):
-        '''write the surface patces to IGES format'''
+    def writeIGES(self,file_name):
+        '''write the surface patches to IGES format'''
         f = open(file_name,'w')
 
         #Note: Eventually we may want to put the CORRECT Data here
@@ -358,11 +361,10 @@ class pyGeo():
 
         return
 
-    def loadPlot3D(self,file_name,*args,**kwargs):
+    def _loadPlot3D(self,file_name,*args,**kwargs):
 
         '''Load a plot3D file and create the splines to go with each patch'''
         
-
         print 'Loading plot3D file: %s ...'%(file_name)
 
         f = open(file_name,'r')
@@ -430,73 +432,24 @@ class pyGeo():
             # end for
         # end for
 
-        # Create the list of u and v coordinates
-        
-        u = []
-        for ipatch in xrange(nPatch):
-            u.append(zeros([patchSizes[ipatch,0]]))
-            singular_counter = 0
-            for j in xrange(patchSizes[ipatch,1]): #loop over each v, and average the 'u' parameter 
-                temp = zeros(patchSizes[ipatch,0])
-                for i in xrange(patchSizes[ipatch,0]-1):
-                    temp[i+1] = temp[i] + sqrt((patches[ipatch][i+1,j,0]-patches[ipatch][i,j,0])**2 +\
-                                               (patches[ipatch][i+1,j,1]-patches[ipatch][i,j,1])**2 +\
-                                               (patches[ipatch][i+1,j,2]-patches[ipatch][i,j,2])**2)
-                # end for
-                if temp[-1] == 0: # We have a singular point
-                    singular_counter += 1
-                    temp[:] = 0.0
-                else:
-                    temp /= temp[-1]
-                # end if
-
-                u[ipatch] += temp #accumulate the u-parameter calcs for each j
-            # end for 
-            u[ipatch]/=(patchSizes[ipatch,1]-singular_counter) #divide by the number of 'j's we had
-        # end for 
-
-        v = []
-        for ipatch in xrange(nPatch):
-            v.append(zeros([patchSizes[ipatch,1]]))
-            singular_counter = 0
-            for i in xrange(patchSizes[ipatch,0]): #loop over each v, and average the 'u' parameter 
-                temp = zeros(patchSizes[ipatch,1])
-                for j in xrange(patchSizes[ipatch,1]-1):
-                    temp[j+1] = temp[j] + sqrt((patches[ipatch][i,j+1,0]-patches[ipatch][i,j,0])**2 +\
-                                               (patches[ipatch][i,j+1,1]-patches[ipatch][i,j,1])**2 +\
-                                               (patches[ipatch][i,j+1,2]-patches[ipatch][i,j,2])**2)
-                # end for
-                if temp[-1] == 0: #We have a singular point
-                    singular_counter += 1
-                    temp[:] = 0.0
-                else:
-                    temp /= temp[-1]
-                #end if 
-
-                v[ipatch] += temp #accumulate the v-parameter calcs for each i
-            # end for 
-            v[ipatch]/=(patchSizes[ipatch,0]-singular_counter) #divide by the number of 'i's we had
-        # end for
-
         # Now create a list of spline objects:
-
         surfs = []
         for ipatch in xrange(nPatch):
-            surfs.append(pySpline2.surf_spline(task='interpolate',u=u[ipatch],v=v[ipatch],X=patches[ipatch],ku=4,kv=4))
+            surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
         
         self.surfs = surfs
         self.nPatch = nPatch
         return
 
 
-    def loadIges(self,file_name,*args,**kwargs):
+    def _loadIges(self,file_name,*args,**kwargs):
 
         '''Load a Iges file and create the splines to go with each patch'''
         print 'file_name',file_name
         f = open(file_name,'r')
         file = []
         for line in f:
-            line = line.replace(';',',')
+            line = line.replace(';',',')  #This is a bit of a hack...
             file.append(line)
         f.close()
         
@@ -554,7 +507,7 @@ class pyGeo():
             counter += (Nctlv + kv)
             
             weights = data[counter:counter+Nctlu*Nctlv]
-            if weights.all() ~= 1:
+            if weights.all() != 1:
                 print 'WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly'
             counter += Nctlu*Nctlv
 
@@ -579,45 +532,45 @@ class pyGeo():
         return 
 
 
-class geoDV(object):
+# class geoDV(object):
      
-    def __init__(self,dv_name,value,DVmapping,lower,upper):
+#     def __init__(self,dv_name,value,DVmapping,lower,upper):
         
-        '''Create a geometic desing variable with specified mapping
+#         '''Create a geometic desing variable with specified mapping
 
-        Input:
+#         Input:
         
-        dv_name: Design variable name. Should be unique. Can be used
-        to set pyOpt variables directly
+#         dv_name: Design variable name. Should be unique. Can be used
+#         to set pyOpt variables directly
 
-        DVmapping: One or more mappings which relate to this design
-        variable
+#         DVmapping: One or more mappings which relate to this design
+#         variable
 
-        lower: Lower bound for the variable. Again for setting in
-        pyOpt
+#         lower: Lower bound for the variable. Again for setting in
+#         pyOpt
 
-        upper: Upper bound for the variable. '''
+#         upper: Upper bound for the variable. '''
 
-        self.name = dv_name
-        self.value = value
-        self.lower = lower
-        self.upper = upper
-        self.DVmapping = DVmapping
+#         self.name = dv_name
+#         self.value = value
+#         self.lower = lower
+#         self.upper = upper
+#         self.DVmapping = DVmapping
 
-        return
+#         return
 
-    def applyValue(self,surf,s):
-        '''Set the actual variable. Surf is the spline surface.'''
+#     def applyValue(self,surf,s):
+#         '''Set the actual variable. Surf is the spline surface.'''
         
-        self.DVmapping.apply(surf,s,self.value)
+#         self.DVmapping.apply(surf,s,self.value)
         
 
-        return
+#         return
 
 
 class ref_axis(object):
 
-    def __init__(self,x,y,z,rot_z,rot_x,rot_y):
+    def __init__(self,x,y,z,rot_x,rot_y,rot_z):
 
         ''' Create a generic reference axis. This object bascally defines a
         set of points in space (x,y,z) each with three rotations
@@ -632,14 +585,14 @@ class ref_axis(object):
         y: list of y-coordinates of axis
         z: list of z-coordinates of axis
 
-        rot_z: list of z-axis rotations
+        rot_x: list of x-axis rotations
         rot_y: list of y-axis rotations
-        rot_x: list of z-axis rotations
+        rot_z: list of z-axis rotations
 
         Note: Rotations are performed in the order: Z-Y-X
         '''
 
-        assert len(x)==len(y)==len(z)==len(rot_z)==len(rot_y)==len(rot_x),\
+        assert len(x)==len(y)==len(z)==len(rot_x)==len(rot_y)==len(rot_z),\
             'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
 
         self.N = len(x)
@@ -668,59 +621,59 @@ class ref_axis(object):
         #Normalize
         self.sloc/=self.sloc[-1]
 
-class DVmapping(object):
+# class DVmapping(object):
 
-    def __init__(self,sec_start,sec_end,apply_to,formula):
+#     def __init__(self,sec_start,sec_end,apply_to,formula):
 
-        '''Create a generic mapping to apply to a set of b-spline control
-        points.
+#         '''Create a generic mapping to apply to a set of b-spline control
+#         points.
 
-        Input:
+#         Input:
         
-        sec_start: j index (spanwise) where mapping function starts
-        sec_end : j index (spanwise) where mapping function
-        ends. Python-based negative indexing is allowed. eg. -1 is the last element
+#         sec_start: j index (spanwise) where mapping function starts
+#         sec_end : j index (spanwise) where mapping function
+#         ends. Python-based negative indexing is allowed. eg. -1 is the last element
 
-        apply_to: literal reference to select what planform variable
-        the mapping applies to. Valid litteral string are:
-                \'x\'  -> X-coordinate of the reference axis
-                \'y\'  -> Y-coordinate of the reference axis
-                \'z\'  -> Z-coordinate of the reference axis
-                \'twist\' -> rotation about the z-axis
-                \'x-rot\' -> rotation about the x-axis
-                \'y-rot\' -> rotation about the x-axis
+#         apply_to: literal reference to select what planform variable
+#         the mapping applies to. Valid litteral string are:
+#                 \'x\'  -> X-coordinate of the reference axis
+#                 \'y\'  -> Y-coordinate of the reference axis
+#                 \'z\'  -> Z-coordinate of the reference axis
+#                 \'twist\' -> rotation about the z-axis
+#                 \'x-rot\' -> rotation about the x-axis
+#                 \'y-rot\' -> rotation about the x-axis
 
-        formula: is a string which contains a python expression for
-        the mapping. The value of the mapping is assigned as
-        \'val\'. Distance along the surface is specified as \'s\'. 
+#         formula: is a string which contains a python expression for
+#         the mapping. The value of the mapping is assigned as
+#         \'val\'. Distance along the surface is specified as \'s\'. 
 
-        For example, for a linear shearing sweep, the formula would be \'s*val\'
-        '''
-        self.sec_start = sec_start
-        self.sec_end   = sec_end
-        self.apply_to  = apply_to
-        self.formula   = formula
+#         For example, for a linear shearing sweep, the formula would be \'s*val\'
+#         '''
+#         self.sec_start = sec_start
+#         self.sec_end   = sec_end
+#         self.apply_to  = apply_to
+#         self.formula   = formula
 
-        return
+#         return
 
-    def apply(self,surf,s,val):
-        '''apply mapping to surface'''
+#     def apply(self,surf,s,val):
+#         '''apply mapping to surface'''
 
-        if self.apply_to == 'x':
-#             print 'ceofs'
-#             print surf.coef[0,0,self.sec_start:self.sec_end,0]
-#             print surf.coef[0,0,:,0]
-#             print 'formula'
-#             print eval(self.formula)
+#         if self.apply_to == 'x':
+# #             print 'ceofs'
+# #             print surf.coef[0,0,self.sec_start:self.sec_end,0]
+# #             print surf.coef[0,0,:,0]
+# #             print 'formula'
+# #             print eval(self.formula)
 
-            surf.coef[:,:,:,0] += eval(self.formula)
+#             surf.coef[:,:,:,0] += eval(self.formula)
 
-#            surf.coef[:,:,self.sec_start:self.sec_end,0]+= eval(self.formula)
-#             print 'formula:',self.formula
-#             print 's:',s
-#             print 'val:',val
-            print eval(self.formula).shape
-            print 'done x'
+# #            surf.coef[:,:,self.sec_start:self.sec_end,0]+= eval(self.formula)
+# #             print 'formula:',self.formula
+# #             print 's:',s
+# #             print 'val:',val
+#             print eval(self.formula).shape
+#             print 'done x'
 
 #==============================================================================
 # Class Test
