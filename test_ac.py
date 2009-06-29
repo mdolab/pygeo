@@ -27,7 +27,7 @@ sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'
 
 #pyGeo
 import pyGeo
-import pyspline
+
 naf = 10
 airfoil_list = ['af1-6.inp','af-07.inp','af8-9.inp','af8-9.inp','af-10.inp',\
                     'af-11.inp','af-12.inp', 'af-14.inp',\
@@ -49,66 +49,20 @@ le_loc = array([0.5000,0.3300,\
 
 offset = zeros([naf,2])
 offset[:,0] = le_loc
-blade  = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis)
+blade  = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu=13,Nctlv=naf)
 
-blade.writeTecplot('wing.dat')
-blade.writeIGES('wing.igs')
+#blade.writeTecplot('wing.dat')
+#blade.writeIGES('wing.igs')
 
-# print blade.surfs[0].coef[0,:,2]
-# print blade.surfs[1].coef[-1,:,2]
-
-
-#Test the knots
-Nctl = 20
-k=4
-N = 20
-x = 0.5*(1-cos(linspace(0,pi,N)))
-x = linspace(0,1,N)**3
-print 'x:',x
-
-t = pyspline.knots(x,Nctl,4)
-t2 = zeros(Nctl+k)
-t2[0:k] = 0
-t2[-5:-1] = 1
-t2[k-1:Nctl+1]= (0.5*(1-cos(linspace(0,pi,Nctl-k+2))))
-t2[k-1:Nctl+1] = linspace(0,1,Nctl-k+2)**3
-
-t3 = pyspline.bknot(x,k)
-
-print 't(mine):',t
-print 't(linspace method):',t2
-print 't(bknot):',t3
-
-plot(x)
-plot(linspace(0,N,Nctl+k),t)
-plot(t3)
-show()
-
-for i in xrange(N):
-    print x[i]
-
-print
-
-for i in xrange(Nctl+k):
-    print t[i]
-
-print
-
-for i in xrange(Nctl+k):
-    print t2[i]
-print 
+blade.stitchPatches()
 
 
-for i in xrange(Nctl+k):
-    print t3[i]
-print 
 
-
-# airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
-# chord = [1,.75,0.5]
+# airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp']
+# chord = [1,1,1]
 # tw_aero = [0,0,0]
-# ref_axis = pyGeo.ref_axis([2,2.25,2.5],[0,2.5,5],[0,0,0],[90,90,90],[0,15,30],[0,0,0])
+# ref_axis = pyGeo.ref_axis([0,0,0],[0,0,0],[0,2,4],[00,00,00],[0,0,0],[0,0,0])
 # offset = zeros((3,2))
 # vstab = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis)
-# vstab.writeTecplot('vstab.dat')
-# vstab.writeIGES('vstab.igs')
+# #vstab.writeTecplot('straight_test.dat')
+# vstab.writeIGES('straight_test.igs')

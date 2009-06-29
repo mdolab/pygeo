@@ -26,7 +26,7 @@ __version__ = '$Revision: $'
 # =============================================================================
 # Standard Python modules
 # =============================================================================
-import os, sys, string, copy, pdb
+import os, sys, string, copy, pdb, time
 
 # =============================================================================
 # External Python modules
@@ -95,11 +95,11 @@ class pyGeo():
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
-            self._loadPlot3D(kwargs['file_name'],*args,**kwargs)
+            self._loadPlot3D(kwargs['file_name'],args,kwargs)
 
         elif init_type == 'iges':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for iges init_type'
-            self._loadIges(kwargs['file_name'],*args,**kwargs)
+            self._loadIges(kwargs['file_name'],args,kwargs)
 
         elif init_type == 'lifting_surface':
             self._init_lifting_surface(*args,**kwargs)
@@ -117,6 +117,11 @@ class pyGeo():
                and 'offset' in kwargs and 'ref_axis' in kwargs,\
                '\'xsections\', \'offset\',\'scale\' and \'ref_axis\' must be specified as kwargs'
 
+        if 'fit_type' in kwargs:
+            fit_type = kwargs['fit_type']
+        else:
+            fit_type = 'interpolate'
+
         xsections = kwargs['xsections']
         scale     = kwargs['scale']
         offset    = kwargs['offset']
@@ -126,11 +131,11 @@ class pyGeo():
                'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
 
         naf = len(xsections)
-        N = 15
+        N = 30
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
-            X_u,Y_u,X_l,Y_l = self.__load_af(xsections[i],N)
+            X_u,Y_u,X_l,Y_l = self._load_af(xsections[i],N)
 
             X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
             X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
@@ -151,12 +156,182 @@ class pyGeo():
             X[:,:,i,:] += ref_axis.x[i,:]
         # end for
         self.surfs = []
-        self.surfs.append(pySpline2.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
-        self.surfs.append(pySpline2.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
+        self.surfs.append(pySpline2.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
+        self.surfs.append(pySpline2.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
         self.nPatch = 2
 
+    def _loadPlot3D(self,file_name,*args,**kwargs):
 
-    def __load_af(self,filename,N=35):
+        '''Load a plot3D file and create the splines to go with each patch'''
+        
+        print 'Loading plot3D file: %s ...'%(file_name)
+
+        f = open(file_name,'r')
+
+        # First load the number of patches
+        nPatch = int(f.readline())
+        
+        print 'nPatch = %d'%(nPatch)
+
+        patchSizes = zeros(nPatch*3,'intc')
+
+        # We can do 24 sizes per line 
+        nHeaderLines = 3*nPatch / 24 
+        if 3*nPatch% 24 != 0: nHeaderLines += 1
+
+        counter = 0
+
+        for nline in xrange(nHeaderLines):
+            aux = string.split(f.readline())
+            for i in xrange(len(aux)):
+                patchSizes[counter] = int(aux[i])
+                counter += 1
+
+        patchSizes = patchSizes.reshape([nPatch,3])
+
+        assert patchSizes[:,2].all() == 1, \
+            'Error: Plot 3d does not contain only surface patches. The third index (k) MUST be 1.'
+
+        # Total points
+        nPts = 0
+        for i in xrange(nPatch):
+            nPts += patchSizes[i,0]*patchSizes[i,1]*patchSizes[i,2]
+
+        print 'Number of Surface Points = %d'%(nPts)
+
+        nDataLines = int(nPts*3/6)
+        if nPts*3%6 !=0:  nDataLines += 1
+
+        dataTemp = zeros([nPts*3])
+        counter = 0
+     
+        for i in xrange(nDataLines):
+            aux = string.split(f.readline())
+            for j in xrange(len(aux)):
+                dataTemp[counter] = float(aux[j])
+                counter += 1
+            # end for
+        # end for
+        
+        f.close() # Done with the file
+
+        # Post Processing
+        patches = []
+        counter = 0
+
+        for ipatch in xrange(nPatch):
+            patches.append(zeros([patchSizes[ipatch,0],patchSizes[ipatch,1],3]))
+            for idim in xrange(3):
+                for j in xrange(patchSizes[ipatch,1]):
+                    for i in xrange(patchSizes[ipatch,0]):
+                        patches[ipatch][i,j,idim] = dataTemp[counter]
+                        counter += 1
+                    # end for
+                # end for
+            # end for
+        # end for
+
+        # Now create a list of spline objects:
+        surfs = []
+        for ipatch in xrange(nPatch):
+            surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
+            #surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
+        
+        self.surfs = surfs
+        self.nPatch = nPatch
+        return
+
+
+    def _loadIges(self,file_name,*args,**kwargs):
+
+        '''Load a Iges file and create the splines to go with each patch'''
+        print 'file_name',file_name
+        f = open(file_name,'r')
+        file = []
+        for line in f:
+            line = line.replace(';',',')  #This is a bit of a hack...
+            file.append(line)
+        f.close()
+        
+        start_lines   = int((file[-1][1:8]))
+        general_lines = int((file[-1][9:16]))
+        directory_lines = int((file[-1][17:24]))
+        parameter_lines = int((file[-1][25:32]))
+
+        print start_lines,general_lines,directory_lines,parameter_lines
+        
+        # Now we know how many lines we have to deal 
+
+        dir_offset  = start_lines + general_lines
+        para_offset = dir_offset + directory_lines
+
+        surf_list = []
+        for i in xrange(directory_lines/2): #Directory lines is ALWAYS a multiple of 2
+            if int(file[2*i + dir_offset][0:8]) == 128:
+                start = int(file[2*i + dir_offset][8:16])
+                num_lines = int(file[2*i + 1 + dir_offset][24:32])
+                surf_list.append([start,num_lines])
+            # end if
+        # end for
+        self.nPatch = len(surf_list)
+        
+        print 'Found %d surfaces in Iges File.'%(self.nPatch)
+
+        surfs = [];
+        print surf_list
+        weight = []
+        for ipatch in xrange(self.nPatch):  # Loop over our patches
+            data = []
+            # Create a list of all data
+            para_offset = surf_list[ipatch][0]+dir_offset+directory_lines-1 #-1 is for conversion from 1 based (iges) to python
+
+            for i in xrange(surf_list[ipatch][1]):
+                aux = string.split(file[i+para_offset][0:69],',')
+                for j in xrange(len(aux)-1):
+                    data.append(float(aux[j]))
+                # end for
+            # end for
+            
+            # Now we extract what we need
+            Nctlu = int(data[1]+1)
+            Nctlv = int(data[2]+1)
+            ku    = int(data[3]+1)
+            kv    = int(data[4]+1)
+            
+            counter = 10
+            tu = data[counter:counter+Nctlu+ku]
+            counter += (Nctlu + ku)
+            
+            tv = data[counter:counter+Nctlv+kv]
+            counter += (Nctlv + kv)
+            
+            weights = data[counter:counter+Nctlu*Nctlv]
+            weights = array(weights)
+            if weights.all() != 1:
+                print 'WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly'
+            counter += Nctlu*Nctlv
+
+            coef = zeros([Nctlu,Nctlv,3])
+            for j in xrange(Nctlv):
+                for i in xrange(Nctlu):
+                    coef[i,j,:] = data[counter:counter +3]
+                    counter+=3
+
+            # Last we need the ranges
+            range = zeros(4)
+           
+            range[0] = data[counter    ]
+            range[1] = data[counter + 1]
+            range[2] = data[counter + 2]
+            range[3] = data[counter + 3]
+
+            surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
+        # end for
+        self.surfs = surfs
+
+        return 
+
+    def _load_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
 
         # Interpolation Format
@@ -245,7 +420,217 @@ class pyGeo():
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
         return dot(M,x)
 
-  
+    def stitchPatches(self):
+
+        '''This function attempts to automatically determine the connectivity
+        between the pataches and then uses that connectivity to force
+        the control points to be coincidient at corners/along edges'''
+
+        #First we need the list of nodes and edges
+
+        nodes = []
+        edges = []
+        self.nPatch = 4
+        for ipatch in xrange(self.nPatch):
+            patch = self.surfs[ipatch]
+            # Go Counter clockwise for patch i             #Nominally:
+            n1 = patch.getValue(patch.range[0],patch.range[2])
+            n2 = patch.getValue(patch.range[1],patch.range[2])
+            n3 = patch.getValue(patch.range[1],patch.range[3])
+            n4 = patch.getValue(patch.range[0],patch.range[3])
+            nodes.append(n1)
+            nodes.append(n2)
+            nodes.append(n3)
+            nodes.append(n4)
+
+            edges.append(patch.getIsoEdgeCurve(v=0))
+            edges.append(patch.getIsoEdgeCurve(u=1))
+            edges.append(patch.getIsoEdgeCurve(v=1)) #Flipped Sense?
+            edges.append(patch.getIsoEdgeCurve(u=0))  #Flipped Sense?
+
+        # end for
+        N = len(nodes)
+        n_con = []
+        counter = -1
+        # Exhaustive search for connections
+        tol = 1e-3
+        timeA = time.time()
+        for i in xrange(N):
+            temp = array([],'int')
+            for j in xrange(i+1,N):
+
+                dist = self._e_dist(nodes[i],nodes[j])
+                if dist< tol:
+                    #pdb.set_trace()
+                    #print 'counter:',counter
+                    # i and j are connected
+                    ifound = False
+                    jfound = False
+                    for l in xrange(len(n_con)):
+                        if i in n_con[l] and j in n_con[l]:
+                            ifound = True
+                            jfound = True
+                        if i in n_con[l]:
+                            ifound = True
+                        if j in n_con[l]:
+                            jfound = True
+                    # end for
+                    #print 'founds:',ifound,jfound
+                    if not(ifound) and not(jfound):
+                        n_con.append([i,j])
+                        counter += 1
+                    if ifound and not(jfound):
+                        n_con[counter].append(j)
+                    if jfound and not(ifound):
+                        n_con[counter].append(i)
+                # end if
+            # end for
+        # end for
+
+        print 'time:',time.time()-timeA
+        for i in xrange(len(n_con)):
+            print n_con[i]
+
+        # Now we know which nodes are connected. Now we can be
+        # smart....we can figure out which faces are attached to which
+        # group of nodes and exhaustively test the edges on those faces
+
+        print 'figuring edges'
+        N = len(edges)
+        e_con = []
+        counter = -1
+        
+        tol = 1e-3
+        
+#         for i in xrange(N):
+#             temp = array([],'int')
+#             for j in xrange(i+1,N):
+
+#                 #rint 'testing edge %d and %d'%(i,j),edges[i]
+
+        print 'edge 0:',edges[0].getValue(0),edges[0].getValue(0.5),edges[0].getValue(1)
+        print 'edge 1:',edges[1].getValue(0),edges[1].getValue(0.5),edges[1].getValue(1)
+        print 'edge 2:',edges[2].getValue(0),edges[2].getValue(0.5),edges[2].getValue(1)
+        print 'edge 3:',edges[3].getValue(0),edges[3].getValue(0.5),edges[3].getValue(1)            
+        return
+
+
+
+    def _e_dist(self,x1,x2):
+        '''Get the eculidean distance between two points'''
+        return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
+    
+
+ 
+    def writeTecplot(self,file_name):
+        '''Write the surface patches to Tecplot'''
+        f = open(file_name,'w')
+        f.write ('VARIABLES = "X", "Y","Z"\n')
+        for ipatch in xrange(self.nPatch):
+            print 'Outputing patch %d'%(ipatch)
+            self.surfs[ipatch].writeTecplot(handle=f)
+            
+        f.close()
+        return
+
+    def writeIGES(self,file_name):
+        '''write the surface patches to IGES format'''
+        f = open(file_name,'w')
+
+        #Note: Eventually we may want to put the CORRECT Data here
+        f.write('                                                                        S      1\n')
+        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
+        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254,0.0001,0.,             G      2\n')
+        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
+        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
+        
+        Dcount = 1;
+        Pcount = 1;
+
+        for ipatch in xrange(self.nPatch):
+            Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(f,Dcount,Pcount)
+
+        Pcount = 1
+        counter = 1
+
+        for ipatch in xrange(self.nPatch):
+            Pcount,counter = self.surfs[ipatch].writeIGES_parameters(f,Pcount,counter)
+
+        # Write the terminate statment
+        f.write('S%7dG%7dD%7dP%7d%40sT%7s\n'%(1,4,Dcount-1,counter-1,' ',' '))
+        f.close()
+
+        return
+
+
+class ref_axis(object):
+
+    def __init__(self,x,y,z,rot_x,rot_y,rot_z):
+
+        ''' Create a generic reference axis. This object bascally defines a
+        set of points in space (x,y,z) each with three rotations
+        associated with it. The purpose of the ref_axis is to link
+        groups of b-spline controls points together such that
+        high-level planform-type variables can be used as design
+        variables
+        
+        Input:
+
+        x: list of x-coordinates of axis
+        y: list of y-coordinates of axis
+        z: list of z-coordinates of axis
+
+        rot_x: list of x-axis rotations
+        rot_y: list of y-axis rotations
+        rot_z: list of z-axis rotations
+
+        Note: Rotations are performed in the order: Z-Y-X
+        '''
+
+        assert len(x)==len(y)==len(z)==len(rot_x)==len(rot_y)==len(rot_z),\
+            'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
+
+        self.N = len(x)
+        self.x = zeros([self.N,3])
+        self.x[:,0] = x
+        self.x[:,1] = y
+        self.x[:,2] = z
+        
+        self.rot = zeros([self.N,3])
+        self.rot[:,0] = rot_x
+        self.rot[:,1] = rot_y
+        self.rot[:,2] = rot_z
+
+        self.x0 = copy.deepcopy(self.x)
+        self.rot0 = copy.deepcopy(self.rot)
+        self.sloc = zeros(self.N)
+        self.updateSloc()
+
+
+    def updateSloc(self):
+        
+        for i in xrange(self.N-1):
+            self.sloc[i+1] = self.sloc[i] +sqrt( (self.x[i+1,0]-self.x[i,0])**2 + \
+                                                 (self.x[i+1,1]-self.x[i,1])**2 +
+                                                 (self.x[i+1,2]-self.x[i,2])**2  )
+        #Normalize
+        self.sloc/=self.sloc[-1]
+
+#==============================================================================
+# Class Test
+#==============================================================================
+if __name__ == '__main__':
+	
+    # Run a Simple Test Case
+    print 'Testing pyGeo...'
+    print 'No tests implemented yet...'
+
+
+
+
+
+# Old stuff possibly useful
+ 
 #     def getRotations(self,s):
 #         '''Return a (linearly) interpolated list of the twist, xrot and
 #         y-rotations at a span-wise position s'''
@@ -321,215 +706,8 @@ class pyGeo():
 
 #         return
 
-    def writeTecplot(self,file_name):
-        '''Write the surface patches to Tecplot'''
-        f = open(file_name,'w')
-        f.write ('VARIABLES = "X", "Y","Z"\n')
-        for ipatch in xrange(self.nPatch):
-            print 'Outputing patch %d'%(ipatch)
-            self.surfs[ipatch].writeTecplot(handle=f)
-            
-        f.close()
-        return
-
-    def writeIGES(self,file_name):
-        '''write the surface patches to IGES format'''
-        f = open(file_name,'w')
-
-        #Note: Eventually we may want to put the CORRECT Data here
-        f.write('                                                                        S      1\n')
-        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
-        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254,0.0001,0.,             G      2\n')
-        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
-        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
-        
-        Dcount = 1;
-        Pcount = 1;
-
-        for ipatch in xrange(self.nPatch):
-            Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(f,Dcount,Pcount)
-
-        Pcount = 1
-        counter = 1
-
-        for ipatch in xrange(self.nPatch):
-            Pcount,counter = self.surfs[ipatch].writeIGES_parameters(f,Pcount,counter)
-
-        # Write the terminate statment
-        f.write('S%7dG%7dD%7dP%7d%40sT%7s\n'%(1,4,Dcount-1,counter-1,' ',' '))
-        f.close()
-
-        return
-
-    def _loadPlot3D(self,file_name,*args,**kwargs):
-
-        '''Load a plot3D file and create the splines to go with each patch'''
-        
-        print 'Loading plot3D file: %s ...'%(file_name)
-
-        f = open(file_name,'r')
-
-        # First load the number of patches
-        nPatch = int(f.readline())
-        
-        print 'nPatch = %d'%(nPatch)
-
-        patchSizes = zeros(nPatch*3,'intc')
-
-        # We can do 24 sizes per line 
-        nHeaderLines = 3*nPatch / 24 
-        if 3*nPatch% 24 != 0: nHeaderLines += 1
-
-        counter = 0
-
-        for nline in xrange(nHeaderLines):
-            aux = string.split(f.readline())
-            for i in xrange(len(aux)):
-                patchSizes[counter] = int(aux[i])
-                counter += 1
-
-        patchSizes = patchSizes.reshape([nPatch,3])
-
-        assert patchSizes[:,2].all() == 1, \
-            'Error: Plot 3d does not contain only surface patches. The third index (k) MUST be 1.'
-
-        # Total points
-        nPts = 0
-        for i in xrange(nPatch):
-            nPts += patchSizes[i,0]*patchSizes[i,1]*patchSizes[i,2]
-
-        print 'Number of Surface Points = %d'%(nPts)
-
-        nDataLines = int(nPts*3/6)
-        if nPts*3%6 !=0:  nDataLines += 1
-
-        dataTemp = zeros([nPts*3])
-        counter = 0
-     
-        for i in xrange(nDataLines):
-            aux = string.split(f.readline())
-            for j in xrange(len(aux)):
-                dataTemp[counter] = float(aux[j])
-                counter += 1
-            # end for
-        # end for
-        
-        f.close() # Done with the file
-
-        # Post Processing
-        patches = []
-        counter = 0
-
-        for ipatch in xrange(nPatch):
-            patches.append(zeros([patchSizes[ipatch,0],patchSizes[ipatch,1],3]))
-            for idim in xrange(3):
-                for j in xrange(patchSizes[ipatch,1]):
-                    for i in xrange(patchSizes[ipatch,0]):
-                        patches[ipatch][i,j,idim] = dataTemp[counter]
-                        counter += 1
-                    # end for
-                # end for
-            # end for
-        # end for
-
-        # Now create a list of spline objects:
-        surfs = []
-        for ipatch in xrange(nPatch):
-            surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-        
-        self.surfs = surfs
-        self.nPatch = nPatch
-        return
 
 
-    def _loadIges(self,file_name,*args,**kwargs):
-
-        '''Load a Iges file and create the splines to go with each patch'''
-        print 'file_name',file_name
-        f = open(file_name,'r')
-        file = []
-        for line in f:
-            line = line.replace(';',',')  #This is a bit of a hack...
-            file.append(line)
-        f.close()
-        
-        start_lines   = int((file[-1][1:8]))
-        general_lines = int((file[-1][9:16]))
-        directory_lines = int((file[-1][17:24]))
-        parameter_lines = int((file[-1][25:32]))
-
-        print start_lines,general_lines,directory_lines,parameter_lines
-        
-        # Now we know how many lines we have to deal 
-
-        dir_offset  = start_lines + general_lines
-        para_offset = dir_offset + directory_lines
-
-        surf_list = []
-        for i in xrange(directory_lines/2): #Directory lines is ALWAYS a multiple of 2
-            if int(file[2*i + dir_offset][0:8]) == 128:
-                start = int(file[2*i + dir_offset][8:16])
-                num_lines = int(file[2*i + 1 + dir_offset][24:32])
-                surf_list.append([start,num_lines])
-            # end if
-        # end for
-        self.nPatch = len(surf_list)
-        
-        print 'Found %d surfaces in Iges File.'%(self.nPatch)
-
-        surfs = [];
-        print surf_list
-        weight = []
-        for ipatch in xrange(self.nPatch):  # Loop over our patches
-            data = []
-            # Create a list of all data
-            para_offset = surf_list[ipatch][0]+para_offset-1 #-1 is for conversion from 1 based (iges) to python
-
-            for i in xrange(surf_list[ipatch][1]):
-                
-                aux = string.split(file[i+para_offset][0:70],',')
-                for j in xrange(len(aux)-1):
-                    data.append(float(aux[j]))
-                # end for
-            # end for
-            
-            # Now we extract what we need
-            Nctlu = int(data[1]+1)
-            Nctlv = int(data[2]+1)
-            ku    = int(data[3]+1)
-            kv    = int(data[4]+1)
-            
-            counter = 10
-            tu = data[counter:counter+Nctlu+ku]
-            counter += (Nctlu + ku)
-            
-            tv = data[counter:counter+Nctlv+kv]
-            counter += (Nctlv + kv)
-            
-            weights = data[counter:counter+Nctlu*Nctlv]
-            if weights.all() != 1:
-                print 'WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly'
-            counter += Nctlu*Nctlv
-
-            coef = zeros([Nctlu,Nctlv,3])
-            for j in xrange(Nctlv):
-                for i in xrange(Nctlu):
-                    coef[i,j,:] = data[counter:counter +3]
-                    counter+=3
-
-            # Last we need the ranges
-            range = zeros(4)
-           
-            range[0] = data[counter    ]
-            range[1] = data[counter + 1]
-            range[2] = data[counter + 2]
-            range[3] = data[counter + 3]
-
-            surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
-        # end for
-        self.surfs = surfs
-
-        return 
 
 
 # class geoDV(object):
@@ -568,58 +746,6 @@ class pyGeo():
 #         return
 
 
-class ref_axis(object):
-
-    def __init__(self,x,y,z,rot_x,rot_y,rot_z):
-
-        ''' Create a generic reference axis. This object bascally defines a
-        set of points in space (x,y,z) each with three rotations
-        associated with it. The purpose of the ref_axis is to link
-        groups of b-spline controls points together such that
-        high-level planform-type variables can be used as design
-        variables
-        
-        Input:
-
-        x: list of x-coordinates of axis
-        y: list of y-coordinates of axis
-        z: list of z-coordinates of axis
-
-        rot_x: list of x-axis rotations
-        rot_y: list of y-axis rotations
-        rot_z: list of z-axis rotations
-
-        Note: Rotations are performed in the order: Z-Y-X
-        '''
-
-        assert len(x)==len(y)==len(z)==len(rot_x)==len(rot_y)==len(rot_z),\
-            'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
-
-        self.N = len(x)
-        self.x = zeros([self.N,3])
-        self.x[:,0] = x
-        self.x[:,1] = y
-        self.x[:,2] = z
-        
-        self.rot = zeros([self.N,3])
-        self.rot[:,0] = rot_x
-        self.rot[:,1] = rot_y
-        self.rot[:,2] = rot_z
-
-        self.x0 = copy.deepcopy(self.x)
-        self.rot0 = copy.deepcopy(self.rot)
-        self.sloc = zeros(self.N)
-        self.updateSloc()
-
-
-    def updateSloc(self):
-        
-        for i in xrange(self.N-1):
-            self.sloc[i+1] = self.sloc[i] +sqrt( (self.x[i+1,0]-self.x[i,0])**2 + \
-                                                 (self.x[i+1,1]-self.x[i,1])**2 +
-                                                 (self.x[i+1,2]-self.x[i,2])**2  )
-        #Normalize
-        self.sloc/=self.sloc[-1]
 
 # class DVmapping(object):
 
@@ -674,15 +800,3 @@ class ref_axis(object):
 # #             print 'val:',val
 #             print eval(self.formula).shape
 #             print 'done x'
-
-#==============================================================================
-# Class Test
-#==============================================================================
-if __name__ == '__main__':
-	
-    # Run a Simple Test Case
-    print 'Testing pyGeo...'
-    print 'No tests implemented yet...'
-
-
-
