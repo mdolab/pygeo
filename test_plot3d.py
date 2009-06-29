@@ -34,4 +34,5 @@ import pyGeo
 
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 aircraft.writeTecplot('full_aircraft.dat')
-print help(pyGeo)
+# print help(pyGeo)
+aircraft.stitchPatches()

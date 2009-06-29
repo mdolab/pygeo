@@ -30,4 +30,4 @@ import pyGeo
 
 aircraft  = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
 aircraft.writeTecplot('sailplane_split.dat')
-
+aircraft.stitchPatches()

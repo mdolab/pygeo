@@ -1,6 +1,6 @@
 #!MC 1120
 # Created by Tecplot 360 build 11.2-0-563
-$!VarSet |LFDSFN1| = '"plot3d_example.dat"'
+$!VarSet |LFDSFN1| = '"full_aircraft.dat"'
 $!VarSet |LFDSVL1| = '"X" "Y" "Z"'
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
@@ -906,7 +906,7 @@ $!THREEDAXIS
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [1-2,4-5,7-8,10-11,13-14,16-17,19-20,22-23,25-26,28-29,31-32,34-35,37-38,40-41,43-44,46-47,49-50,52-53]
+$!ACTIVEFIELDMAPS  =  [2,5,8]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1057,7 +1057,6 @@ $!FIELDMAP  [1]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -1072,7 +1071,6 @@ $!FIELDMAP  [1]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -1104,7 +1102,6 @@ $!FIELDMAP  [1]
 $!FIELDMAP  [2]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
@@ -1119,11 +1116,6 @@ $!FIELDMAP  [2]
     }
   SCATTER
     {
-    SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = GREEN
     }
   SHADE
@@ -1155,7 +1147,6 @@ $!FIELDMAP  [2]
 $!FIELDMAP  [3]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -1170,12 +1161,7 @@ $!FIELDMAP  [3]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1207,12 +1193,13 @@ $!FIELDMAP  [4]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1220,7 +1207,6 @@ $!FIELDMAP  [4]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -1252,12 +1238,13 @@ $!FIELDMAP  [4]
 $!FIELDMAP  [5]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1265,7 +1252,6 @@ $!FIELDMAP  [5]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -1301,7 +1287,9 @@ $!FIELDMAP  [6]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1309,12 +1297,7 @@ $!FIELDMAP  [6]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1346,12 +1329,13 @@ $!FIELDMAP  [7]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1359,7 +1343,6 @@ $!FIELDMAP  [7]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -1391,12 +1374,13 @@ $!FIELDMAP  [7]
 $!FIELDMAP  [8]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1404,7 +1388,6 @@ $!FIELDMAP  [8]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -1440,7 +1423,9 @@ $!FIELDMAP  [9]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1448,12 +1433,7 @@ $!FIELDMAP  [9]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1485,12 +1465,13 @@ $!FIELDMAP  [10]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1498,7 +1479,6 @@ $!FIELDMAP  [10]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -1530,12 +1510,13 @@ $!FIELDMAP  [10]
 $!FIELDMAP  [11]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = CUSTOM39
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1543,7 +1524,6 @@ $!FIELDMAP  [11]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -1579,7 +1559,9 @@ $!FIELDMAP  [12]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1587,12 +1569,7 @@ $!FIELDMAP  [12]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1624,12 +1601,13 @@ $!FIELDMAP  [13]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1637,7 +1615,6 @@ $!FIELDMAP  [13]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -1669,12 +1646,13 @@ $!FIELDMAP  [13]
 $!FIELDMAP  [14]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1682,7 +1660,6 @@ $!FIELDMAP  [14]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -1718,7 +1695,9 @@ $!FIELDMAP  [15]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1726,12 +1705,7 @@ $!FIELDMAP  [15]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1763,12 +1737,13 @@ $!FIELDMAP  [16]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1776,7 +1751,6 @@ $!FIELDMAP  [16]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -1808,12 +1782,13 @@ $!FIELDMAP  [16]
 $!FIELDMAP  [17]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1821,7 +1796,6 @@ $!FIELDMAP  [17]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -1857,7 +1831,9 @@ $!FIELDMAP  [18]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1865,12 +1841,7 @@ $!FIELDMAP  [18]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1902,12 +1873,13 @@ $!FIELDMAP  [19]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1915,7 +1887,6 @@ $!FIELDMAP  [19]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -1947,12 +1918,13 @@ $!FIELDMAP  [19]
 $!FIELDMAP  [20]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1960,7 +1932,6 @@ $!FIELDMAP  [20]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -1996,7 +1967,9 @@ $!FIELDMAP  [21]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2004,12 +1977,7 @@ $!FIELDMAP  [21]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2041,12 +2009,13 @@ $!FIELDMAP  [22]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2054,7 +2023,6 @@ $!FIELDMAP  [22]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -2086,12 +2054,13 @@ $!FIELDMAP  [22]
 $!FIELDMAP  [23]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2099,7 +2068,6 @@ $!FIELDMAP  [23]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -2135,7 +2103,9 @@ $!FIELDMAP  [24]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2143,12 +2113,7 @@ $!FIELDMAP  [24]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2180,12 +2145,13 @@ $!FIELDMAP  [25]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2193,7 +2159,6 @@ $!FIELDMAP  [25]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -2225,12 +2190,13 @@ $!FIELDMAP  [25]
 $!FIELDMAP  [26]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2238,7 +2204,6 @@ $!FIELDMAP  [26]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -2274,7 +2239,9 @@ $!FIELDMAP  [27]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2282,12 +2249,7 @@ $!FIELDMAP  [27]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2319,12 +2281,13 @@ $!FIELDMAP  [28]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2332,7 +2295,6 @@ $!FIELDMAP  [28]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -2364,12 +2326,13 @@ $!FIELDMAP  [28]
 $!FIELDMAP  [29]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2377,7 +2340,6 @@ $!FIELDMAP  [29]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -2413,7 +2375,9 @@ $!FIELDMAP  [30]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2421,12 +2385,7 @@ $!FIELDMAP  [30]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2458,12 +2417,13 @@ $!FIELDMAP  [31]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2471,7 +2431,6 @@ $!FIELDMAP  [31]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -2503,12 +2462,13 @@ $!FIELDMAP  [31]
 $!FIELDMAP  [32]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2516,7 +2476,6 @@ $!FIELDMAP  [32]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -2552,7 +2511,9 @@ $!FIELDMAP  [33]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2560,12 +2521,7 @@ $!FIELDMAP  [33]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2596,9 +2552,7 @@ $!FIELDMAP  [33]
 $!FIELDMAP  [34]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -2610,7 +2564,6 @@ $!FIELDMAP  [34]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -2642,8 +2595,7 @@ $!FIELDMAP  [34]
 $!FIELDMAP  [35]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -2655,7 +2607,6 @@ $!FIELDMAP  [35]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -2699,12 +2650,7 @@ $!FIELDMAP  [36]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2735,8 +2681,6 @@ $!FIELDMAP  [36]
 $!FIELDMAP  [37]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -2749,7 +2693,6 @@ $!FIELDMAP  [37]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -2781,7 +2724,6 @@ $!FIELDMAP  [37]
 $!FIELDMAP  [38]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
@@ -2794,7 +2736,6 @@ $!FIELDMAP  [38]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -2838,12 +2779,7 @@ $!FIELDMAP  [39]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2874,9 +2810,7 @@ $!FIELDMAP  [39]
 $!FIELDMAP  [40]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -2888,7 +2822,6 @@ $!FIELDMAP  [40]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -2920,8 +2853,7 @@ $!FIELDMAP  [40]
 $!FIELDMAP  [41]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -2933,7 +2865,6 @@ $!FIELDMAP  [41]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -2977,12 +2908,7 @@ $!FIELDMAP  [42]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -3013,8 +2939,6 @@ $!FIELDMAP  [42]
 $!FIELDMAP  [43]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -3027,7 +2951,6 @@ $!FIELDMAP  [43]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -3059,7 +2982,6 @@ $!FIELDMAP  [43]
 $!FIELDMAP  [44]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
@@ -3072,7 +2994,6 @@ $!FIELDMAP  [44]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -3116,12 +3037,7 @@ $!FIELDMAP  [45]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -3152,9 +3068,7 @@ $!FIELDMAP  [45]
 $!FIELDMAP  [46]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -3166,7 +3080,6 @@ $!FIELDMAP  [46]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -3198,8 +3111,7 @@ $!FIELDMAP  [46]
 $!FIELDMAP  [47]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -3211,7 +3123,6 @@ $!FIELDMAP  [47]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -3255,12 +3166,7 @@ $!FIELDMAP  [48]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -3291,8 +3197,6 @@ $!FIELDMAP  [48]
 $!FIELDMAP  [49]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -3305,7 +3209,6 @@ $!FIELDMAP  [49]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -3337,7 +3240,6 @@ $!FIELDMAP  [49]
 $!FIELDMAP  [50]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
@@ -3350,7 +3252,6 @@ $!FIELDMAP  [50]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -3394,12 +3295,7 @@ $!FIELDMAP  [51]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -3430,9 +3326,7 @@ $!FIELDMAP  [51]
 $!FIELDMAP  [52]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = RED
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -3444,7 +3338,6 @@ $!FIELDMAP  [52]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -3476,8 +3369,7 @@ $!FIELDMAP  [52]
 $!FIELDMAP  [53]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -3489,7 +3381,6 @@ $!FIELDMAP  [53]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -3533,12 +3424,7 @@ $!FIELDMAP  [54]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -3589,8 +3475,8 @@ $!THREEDAXIS
   XDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -1.1999031000000000002
-    RANGEMAX = 17.871965099999997051
+    RANGEMIN = -1.1996481500000000242
+    RANGEMAX = 17.866611150000000663
     GRSPACING = 5
     AXISLINE
       {
@@ -3601,8 +3487,8 @@ $!THREEDAXIS
   YDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -0.86523434999999992989
-    RANGEMAX = 5.2980513500000006033
+    RANGEMIN = -0.86443820000000004544
+    RANGEMAX = 5.2813541999999999987
     GRSPACING = 2
     AXISLINE
       {
@@ -3613,8 +3499,8 @@ $!THREEDAXIS
   ZDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -0.68285269999999997914
-    RANGEMAX = 14.186456700000000808
+    RANGEMIN = -0.67553540000000000809
+    RANGEMAX = 14.186089399999998406
     GRSPACING = 5
     AXISLINE
       {
@@ -3809,9 +3695,9 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 2.11691
-    Y = -0.2208275000000002
-    Z = 0.2928430000000004
+    X = 8.333481500000001
+    Y = 2.20883
+    Z = 6.751149
     }
   LIGHTSOURCE
     {
@@ -3822,18 +3708,17 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 60.7697
-  THETAANGLE = 101.328
-  ALPHAANGLE = -94.2923
+  PSIANGLE = 56.7826
+  THETAANGLE = 134.052
+  ALPHAANGLE = -121.145
   VIEWERPOSITION
     {
-    X = -98.51545071881992
-    Y = 25.16419354312447
-    Z = 75.60450919373589
+    X = -72.58225512029763
+    Y = 72.52328316192381
+    Z = 70.99578611551097
     }
-  VIEWWIDTH = 12.409
+  VIEWWIDTH = 4.43467
 $!FIELDLAYERS 
-  SHOWSCATTER = YES
   SHOWEDGE = NO
 $!STREAMTRACELAYERS 
   SHOW = NO
