@@ -28,10 +28,6 @@ sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'
 #pyGeo
 import pyGeo
 
-# This script reads a surfaced-based plot3d file as typically
-# outputted by aerosurf. It then creates a b-spline surfaces for each
-# surface patch.
+aircraft  = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
+aircraft.writeTecplot('sailplane_split.dat')
 
-aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
-aircraft.writeTecplot('full_aircraft.dat')
-print help(pyGeo)
