@@ -430,7 +430,8 @@ class pyGeo():
 
         nodes = []
         edges = []
-        self.nPatch = 4
+        #self.nPatch = 2
+        
         for ipatch in xrange(self.nPatch):
             patch = self.surfs[ipatch]
             # Go Counter clockwise for patch i             #Nominally:
@@ -442,11 +443,6 @@ class pyGeo():
             nodes.append(n2)
             nodes.append(n3)
             nodes.append(n4)
-
-            edges.append(patch.getIsoEdgeCurve(v=0))
-            edges.append(patch.getIsoEdgeCurve(u=1))
-            edges.append(patch.getIsoEdgeCurve(v=1)) #Flipped Sense?
-            edges.append(patch.getIsoEdgeCurve(u=0))  #Flipped Sense?
 
         # end for
         N = len(nodes)
@@ -500,21 +496,84 @@ class pyGeo():
         e_con = []
         counter = -1
         
-        tol = 1e-3
+        tol = 1e-2
+
+        # We implictly know we have #patches * 4 Edges (some may be
+        # degenerate however)
+
+        #Loop over faces
+        timeA = time.time()
+        for ipatch in xrange(self.nPatch):
+            # Test this patch against the rest
+            for jpatch in xrange(ipatch+1,self.nPatch):
+                
+                # Patch i, edge 0
+                for i in xrange(4):
+                    for j in xrange(4):
+                        coinc,rev_flag=self._test_edge(self.surfs[ipatch],self.surfs[jpatch],i,j)
+                        if coinc:
+                            #print 'We have a coincidient edge'
+                            e_con.append([[ipatch,i],[jpatch,j],rev_flag])
+
+        #end
+
         
-#         for i in xrange(N):
-#             temp = array([],'int')
-#             for j in xrange(i+1,N):
-
-#                 #rint 'testing edge %d and %d'%(i,j),edges[i]
-
-        print 'edge 0:',edges[0].getValue(0),edges[0].getValue(0.5),edges[0].getValue(1)
-        print 'edge 1:',edges[1].getValue(0),edges[1].getValue(0.5),edges[1].getValue(1)
-        print 'edge 2:',edges[2].getValue(0),edges[2].getValue(0.5),edges[2].getValue(1)
-        print 'edge 3:',edges[3].getValue(0),edges[3].getValue(0.5),edges[3].getValue(1)            
+        print 'edge time:',time.time()-timeA
+        for i in xrange(len(e_con)):
+            print e_con[i]
         return
 
 
+    def _test_edge(self,surf1,surf2,i,j):
+        '''Test edge i on surf1 with edge j on surf2'''
+        tol = 1e-2
+        val1_beg = surf1.getValueEdge(i,0)
+        val1_end = surf1.getValueEdge(i,1)
+
+        val2_beg = surf2.getValueEdge(j,0)
+        val2_end = surf2.getValueEdge(j,1)
+
+        #Three things can happen:
+        coinc = False
+        rev_flag = False
+        
+        # Beginning and End match (same sense)
+        if self._e_dist(val1_beg,val2_beg) < tol and \
+               self._e_dist(val1_end,val2_end) < tol:
+            # End points are the same, now check the midpoint
+            mid1 = surf1.getValueEdge(i,0.5)
+            mid2 = surf2.getValueEdge(j,0.5)
+
+            if self._e_dist(mid1,mid2) < tol:
+                coinc = True
+            else:
+                coinc = False
+                #print 'end points but not middle'
+        
+            rev_flag = False
+
+        # Beginning and End match (opposite sense)
+        elif self._e_dist(val1_beg,val2_end) < tol and \
+               self._e_dist(val1_end,val2_beg) < tol:
+         
+            mid1 = surf1.getValueEdge(i,0.5)
+            mid2 = surf2.getValueEdge(j,0.5)
+
+            if self._e_dist(mid1,mid2) < tol:
+                coinc = True
+            else:
+                coinc = False
+                #print 'end points but not middle',mid1,mid2,self._e_dist(mid1,mid2)
+
+            rev_flag = True
+        # If nothing else
+        else:
+            coinc = False
+
+        return coinc,rev_flag
+                
+        
+        
 
     def _e_dist(self,x1,x2):
         '''Get the eculidean distance between two points'''
