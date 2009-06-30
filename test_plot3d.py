@@ -33,8 +33,9 @@ import pyGeo
 # surface patch.
 timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
+#aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
+aircraft.nPatch = 8
+aircraft.stitchPatches(1e-1,1e-1)
 aircraft.writeTecplot('full_aircraft.dat')
 
-# print help(pyGeo)
-aircraft.stitchPatches()
 print 'full time',time.time()-timeA
