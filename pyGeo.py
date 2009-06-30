@@ -234,8 +234,8 @@ class pyGeo():
         # Now create a list of spline objects:
         surfs = []
         for ipatch in xrange(nPatch):
-            surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            #surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
+            #surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
+            surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -420,7 +420,7 @@ class pyGeo():
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
         return dot(M,x)
 
-    def stitchPatches(self):
+    def stitchPatches(self,node_tol,edge_tol):
 
         '''This function attempts to automatically determine the connectivity
         between the pataches and then uses that connectivity to force
@@ -435,10 +435,10 @@ class pyGeo():
         for ipatch in xrange(self.nPatch):
             patch = self.surfs[ipatch]
             # Go Counter clockwise for patch i             #Nominally:
-            n1 = patch.getValue(patch.range[0],patch.range[2])
-            n2 = patch.getValue(patch.range[1],patch.range[2])
-            n3 = patch.getValue(patch.range[1],patch.range[3])
-            n4 = patch.getValue(patch.range[0],patch.range[3])
+            n1 = patch.getValue(patch.range[0],patch.range[2]) # (0,0)
+            n2 = patch.getValue(patch.range[1],patch.range[2]) # (1,0)
+            n3 = patch.getValue(patch.range[1],patch.range[3]) # (1,1)
+            n4 = patch.getValue(patch.range[0],patch.range[3]) # (0,1)
             nodes.append(n1)
             nodes.append(n2)
             nodes.append(n3)
@@ -449,14 +449,14 @@ class pyGeo():
         n_con = []
         counter = -1
         # Exhaustive search for connections
-        tol = 1e-3
+
         timeA = time.time()
         for i in xrange(N):
             temp = array([],'int')
             for j in xrange(i+1,N):
 
                 dist = self._e_dist(nodes[i],nodes[j])
-                if dist< tol:
+                if dist< node_tol:
                     #pdb.set_trace()
                     #print 'counter:',counter
                     # i and j are connected
@@ -495,8 +495,6 @@ class pyGeo():
         N = len(edges)
         e_con = []
         counter = -1
-        
-        tol = 1e-2
 
         # We implictly know we have #patches * 4 Edges (some may be
         # degenerate however)
@@ -506,27 +504,158 @@ class pyGeo():
         for ipatch in xrange(self.nPatch):
             # Test this patch against the rest
             for jpatch in xrange(ipatch+1,self.nPatch):
-                
-                # Patch i, edge 0
                 for i in xrange(4):
                     for j in xrange(4):
-                        coinc,rev_flag=self._test_edge(self.surfs[ipatch],self.surfs[jpatch],i,j)
+                        coinc,rev_flag=self._test_edge(self.surfs[ipatch],self.surfs[jpatch],i,j,edge_tol)
                         if coinc:
                             #print 'We have a coincidient edge'
                             e_con.append([[ipatch,i],[jpatch,j],rev_flag])
-
-        #end
+                        # end if
+                    # end for
+                # end for
+            # end for
+        # end for
 
         
         print 'edge time:',time.time()-timeA
         for i in xrange(len(e_con)):
             print e_con[i]
+
+        
+        
+
+
+        # Now we ACTUALLY stitch them together
+        
+        #First we do the corners:
+
+        # corners are in a list but we can back out patch with a mod
+            
+        for i in xrange(len(n_con)):
+            temp = 0
+            for j in xrange(len(n_con[i])):
+                
+                patch = n_con[i][j] / 4 #integer division
+                corner = n_con[i][j] % 4 #modulus division
+                
+                temp += self.surfs[patch].getValueCorner(corner)
+            # end for
+
+            # divide by number of n_con
+            temp /= len(n_con[i])
+
+            # Reset them
+
+            for j in xrange(len(n_con[i])):
+
+                patch = n_con[i][j] / 4 #integer division
+                corner = n_con[i][j] % 4 #modulus division
+
+                if corner == 0:
+                    self.surfs[patch].coef[ 0, 0,:] = temp
+                elif corner == 1:
+                    self.surfs[patch].coef[-1, 0,:] = temp
+                elif corner == 2:
+                    self.surfs[patch].coef[-1,-1,:] = temp
+                else:
+                    self.surfs[patch].coef[ 0,-1,:] = temp
+            # end for
+        # end for
+
+        # Next we do the edges:
+
+        for i in xrange(len(e_con)):
+            print '#-------------------------------------------------#'
+            print '#    Con ',i
+            print '#-------------------------------------------------#'
+
+            patch1 = self.surfs[e_con[i][0][0]]
+            patch2 = self.surfs[e_con[i][1][0]]
+
+            edge1  = e_con[i][0][1]
+            edge2  = e_con[i][1][1]
+
+            print 'edge1,edge2:',edge1,edge2
+#             check = False
+#             if edge1==edge2:
+#                 print 'numbers are same, probably degenerate'
+#                 print 'sense:',e_con[i][2]
+#                 check = True
+
+            check = True
+
+            if   edge1 == 0:
+                temp1 = patch1.coef[:,0,:]
+            elif edge1 == 1:
+                temp1 = patch1.coef[-1,:,:]
+            elif edge1 == 2:
+                temp1 = patch1.coef[:,-1,:]
+            else:
+                temp1 = patch1.coef[0,:,:]
+                
+
+            if  edge2 == 0:
+                temp2 = patch2.coef[:,0,:]
+            elif edge2 == 1:
+                temp2 = patch2.coef[-1,:,:]
+            elif edge2 == 2:
+                temp2 = patch2.coef[:,-1,:]
+            else:
+                temp2 = patch2.coef[0,:,:]
+
+            print
+            if check:
+                print 'edges,flag:',edge1,edge2,e_con[i][2]
+                print 'temp:',temp1
+                print 'temp2:',temp2
+            print
+
+            #Now average
+            
+#             if (e_con[i][2]): #if reverse is true
+#                 #Flip ONE of them
+#                 temp1 = temp1[::-1]
+            
+            if len(temp1) == len(temp2):
+                temp = (temp1+temp2)/2.0
+            else:
+                print 'control point vectors not same length...probably degenerate edge'
+                break
+            # end if
+            if check:
+                print 
+                print 'after:',temp
+                print 
+            # Now reset them
+
+            if edge1 == 0:
+                patch1.coef[:,0,:]= temp
+            elif edge1 == 1:
+                patch1.coef[-1,:,:]= temp
+            elif edge1 == 2:
+                patch1.coef[:,-1,:]=temp
+            else:
+                patch1.coef[0,:,:] = temp
+
+            if edge2 == 0:
+                patch2.coef[:,0,:]= temp
+            elif edge2 == 1:
+                patch2.coef[-1,:,:]= temp
+            elif edge2 == 2:
+                patch2.coef[:,-1,:]=temp
+            else:
+                patch2.coef[0,:,:] = temp
+
+
+
+
+
         return
 
 
-    def _test_edge(self,surf1,surf2,i,j):
+    def _test_edge(self,surf1,surf2,i,j,edge_tol):
         '''Test edge i on surf1 with edge j on surf2'''
-        tol = 1e-2
+
         val1_beg = surf1.getValueEdge(i,0)
         val1_end = surf1.getValueEdge(i,1)
 
@@ -538,48 +667,39 @@ class pyGeo():
         rev_flag = False
         
         # Beginning and End match (same sense)
-        if self._e_dist(val1_beg,val2_beg) < tol and \
-               self._e_dist(val1_end,val2_end) < tol:
+        if self._e_dist(val1_beg,val2_beg) < edge_tol and \
+               self._e_dist(val1_end,val2_end) < edge_tol:
             # End points are the same, now check the midpoint
             mid1 = surf1.getValueEdge(i,0.5)
             mid2 = surf2.getValueEdge(j,0.5)
-
-            if self._e_dist(mid1,mid2) < tol:
+            if self._e_dist(mid1,mid2) < edge_tol:
                 coinc = True
             else:
                 coinc = False
-                #print 'end points but not middle'
         
             rev_flag = False
 
         # Beginning and End match (opposite sense)
-        elif self._e_dist(val1_beg,val2_end) < tol and \
-               self._e_dist(val1_end,val2_beg) < tol:
+        elif self._e_dist(val1_beg,val2_end) < edge_tol and \
+               self._e_dist(val1_end,val2_beg) < edge_tol:
          
             mid1 = surf1.getValueEdge(i,0.5)
             mid2 = surf2.getValueEdge(j,0.5)
-
-            if self._e_dist(mid1,mid2) < tol:
+            if self._e_dist(mid1,mid2) < edge_tol:
                 coinc = True
             else:
                 coinc = False
-                #print 'end points but not middle',mid1,mid2,self._e_dist(mid1,mid2)
-
+                
             rev_flag = True
         # If nothing else
         else:
             coinc = False
 
         return coinc,rev_flag
-                
-        
-        
 
     def _e_dist(self,x1,x2):
         '''Get the eculidean distance between two points'''
         return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
-    
-
  
     def writeTecplot(self,file_name):
         '''Write the surface patches to Tecplot'''

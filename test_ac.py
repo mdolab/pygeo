@@ -54,7 +54,7 @@ blade  = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset
 #blade.writeTecplot('wing.dat')
 #blade.writeIGES('wing.igs')
 
-blade.stitchPatches()
+blade.stitchPatches(1e-3,1e-2) #node_tol,edge_tol
 
 
 
