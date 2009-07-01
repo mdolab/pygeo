@@ -906,7 +906,7 @@ $!THREEDAXIS
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [2-3,5-6,8-9,11-12,14-15,17-18,20-21,23-24]
+$!ACTIVEFIELDMAPS  =  [2-3,5-6,8-9,11-12,14-15,17-18,20-21,23-24,26-27,29-30,32-33,35-36,38-39,41-42,44-45,47-48,50-51,53-54,56-57,59-60,62-63,65-66,68-69]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1102,7 +1102,6 @@ $!FIELDMAP  [1]
 $!FIELDMAP  [2]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
     }
   CONTOUR
@@ -1245,7 +1244,6 @@ $!FIELDMAP  [4]
 $!FIELDMAP  [5]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = CUSTOM7
     }
   CONTOUR
@@ -1389,7 +1387,6 @@ $!FIELDMAP  [7]
 $!FIELDMAP  [8]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -1532,7 +1529,6 @@ $!FIELDMAP  [10]
 $!FIELDMAP  [11]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = CUSTOM7
     }
   CONTOUR
@@ -1673,7 +1669,6 @@ $!FIELDMAP  [13]
 $!FIELDMAP  [14]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = CUSTOM30
     }
   CONTOUR
@@ -1810,7 +1805,6 @@ $!FIELDMAP  [16]
 $!FIELDMAP  [17]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = CUSTOM7
     }
   CONTOUR
@@ -1947,7 +1941,6 @@ $!FIELDMAP  [19]
 $!FIELDMAP  [20]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -2084,7 +2077,6 @@ $!FIELDMAP  [22]
 $!FIELDMAP  [23]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -2175,6 +2167,2046 @@ $!FIELDMAP  [24]
       SHOWSTREAMTRACES = NO
       }
     }
+$!FIELDMAP  [25]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [26]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [27]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [28]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [29]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [30]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [31]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [32]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [33]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [34]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [35]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [36]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [37]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [38]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [39]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [40]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [41]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [42]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [43]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [44]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [45]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [46]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [47]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [48]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [49]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [50]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [51]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [52]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [53]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [54]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [55]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [56]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [57]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [58]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [59]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [60]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [61]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [62]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [63]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [64]
+  MESH
+    {
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [65]
+  MESH
+    {
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [66]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [67]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [68]
+  MESH
+    {
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [69]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = SPHERE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
 $!THREEDAXIS 
   XDETAIL
     {
@@ -2215,7 +4247,7 @@ $!THREEDAXIS
     GRSPACING = 2
     AXISLINE
       {
-      EDGE = 2
+      EDGE = 4
       }
     }
 $!THREEDAXIS 
@@ -2227,7 +4259,7 @@ $!THREEDAXIS
     GRSPACING = 5
     AXISLINE
       {
-      EDGE = 3
+      EDGE = 1
       }
     }
 $!ISOSURFACEATTRIBUTES  1
@@ -2418,9 +4450,9 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 2.320833768279529
-    Y = 1.066083784403235
-    Z = 1.76372046143626
+    X = 13.44522532443321
+    Y = 0.8208642296705323
+    Z = 0.7401258361491604
     }
   LIGHTSOURCE
     {
@@ -2431,16 +4463,16 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 30.7062
-  THETAANGLE = -110.105
-  ALPHAANGLE = 136.356
+  PSIANGLE = 68.2596
+  THETAANGLE = 112.325
+  ALPHAANGLE = -114.002
   VIEWERPOSITION
     {
-    X = 74.95743120287912
-    Y = 26.18449164674405
-    Z = 118.3354924373244
+    X = -104.595691292873
+    Y = 45.60646805789843
+    Z = 49.67532367111383
     }
-  VIEWWIDTH = 1.3075
+  VIEWWIDTH = 9.36609
 $!FIELDLAYERS 
   SHOWSCATTER = YES
   SHOWEDGE = NO
