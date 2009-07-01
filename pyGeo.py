@@ -234,8 +234,8 @@ class pyGeo():
         # Now create a list of spline objects:
         surfs = []
         for ipatch in xrange(nPatch):
-            #surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
+            surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
+            #surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -403,7 +403,7 @@ class pyGeo():
         Y_l = numpy.interp(s_interp,s,y_l)
 
         return X_u,Y_u,X_l,Y_l
-
+    
     def __rotx(self,x,theta):
         ''' Rotate a set of airfoil coodinates in the local x frame'''
         M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
@@ -426,7 +426,7 @@ class pyGeo():
         between the pataches and then uses that connectivity to force
         the control points to be coincidient at corners/along edges'''
 
-        #First we need the list of nodes and edges
+        #First we need the list of nodes NO WE DON'T
 
         nodes = []
         edges = []
@@ -492,9 +492,8 @@ class pyGeo():
         # group of nodes and exhaustively test the edges on those faces
 
         print 'figuring edges'
-        N = len(edges)
+
         e_con = []
-        counter = -1
 
         # We implictly know we have #patches * 4 Edges (some may be
         # degenerate however)
@@ -527,7 +526,7 @@ class pyGeo():
 
         # Now we ACTUALLY stitch them together
         
-        #First we do the corners:
+     #    #First we do the corners:
 
         # corners are in a list but we can back out patch with a mod
             
@@ -563,7 +562,7 @@ class pyGeo():
         # end for
 
         # Next we do the edges:
-
+        print 'edges:',len(e_con)
         for i in xrange(len(e_con)):
             print '#-------------------------------------------------#'
             print '#    Con ',i
@@ -575,78 +574,36 @@ class pyGeo():
             edge1  = e_con[i][0][1]
             edge2  = e_con[i][1][1]
 
-            print 'edge1,edge2:',edge1,edge2
-#             check = False
-#             if edge1==edge2:
-#                 print 'numbers are same, probably degenerate'
-#                 print 'sense:',e_con[i][2]
-#                 check = True
-
-            check = True
-
-            if   edge1 == 0:
-                temp1 = patch1.coef[:,0,:]
-            elif edge1 == 1:
-                temp1 = patch1.coef[-1,:,:]
-            elif edge1 == 2:
-                temp1 = patch1.coef[:,-1,:]
-            else:
-                temp1 = patch1.coef[0,:,:]
-                
-
-            if  edge2 == 0:
-                temp2 = patch2.coef[:,0,:]
-            elif edge2 == 1:
-                temp2 = patch2.coef[-1,:,:]
-            elif edge2 == 2:
-                temp2 = patch2.coef[:,-1,:]
-            else:
-                temp2 = patch2.coef[0,:,:]
-
-            print
-            if check:
-                print 'edges,flag:',edge1,edge2,e_con[i][2]
-                print 'temp:',temp1
-                print 'temp2:',temp2
-            print
-
+            coef1 = patch1.getCoefEdge(edge1)
+            coef2 = patch2.getCoefEdge(edge2)
+            
+            print 'ceof1:',coef1
+            print 'ceof2:',coef2
+            print 'rev  :',e_con[i][2]
+            
             #Now average
             
-#             if (e_con[i][2]): #if reverse is true
-#                 #Flip ONE of them
-#                 temp1 = temp1[::-1]
+            if (e_con[i][2]): #if reverse is true
+                 #Flip ONE of them
+                coef1 = coef1[::-1]
             
-            if len(temp1) == len(temp2):
-                temp = (temp1+temp2)/2.0
+            if len(coef1) == len(coef2):
+                coef = (coef1+coef2)/2.0
             else:
                 print 'control point vectors not same length...probably degenerate edge'
-                break
+
+            if (e_con[i][2]):
+                patch1.setCoefEdge(edge1,coef[::-1])
+            else:
+                patch1.setCoefEdge(edge1,coef)
             # end if
-            if check:
-                print 
-                print 'after:',temp
-                print 
+
+            patch2.setCoefEdge(edge2,coef)
+                
+
             # Now reset them
 
-            if edge1 == 0:
-                patch1.coef[:,0,:]= temp
-            elif edge1 == 1:
-                patch1.coef[-1,:,:]= temp
-            elif edge1 == 2:
-                patch1.coef[:,-1,:]=temp
-            else:
-                patch1.coef[0,:,:] = temp
-
-            if edge2 == 0:
-                patch2.coef[:,0,:]= temp
-            elif edge2 == 1:
-                patch2.coef[-1,:,:]= temp
-            elif edge2 == 2:
-                patch2.coef[:,-1,:]=temp
-            else:
-                patch2.coef[0,:,:] = temp
-
-
+       
 
 
 
