@@ -1,0 +1,56 @@
+# Written by ANSYS ICEM CFD/AI*Environment 11.0, user kenway, Thu Jul 02 04:50:00 PM EDT 2009
+
+begin family FUSE1
+    begin solver "Nastran"
+        begin bctype color
+            active 1
+            color 15479700 1
+        end bctype color
+    end solver "Nastran"
+end family FUSE1
+
+begin family FUSE2
+    begin solver "Nastran"
+        begin bctype color
+            active 1
+            color 12501000 1
+        end bctype color
+    end solver "Nastran"
+end family FUSE2
+
+begin family WING_TOP
+    begin solver "Nastran"
+        begin bctype color
+            active 1
+            color 15479700 1
+        end bctype color
+    end solver "Nastran"
+end family WING_TOP
+
+begin family WING_BOTTOM
+    begin solver "Nastran"
+        begin bctype color
+            active 1
+            color 12501000 1
+        end bctype color
+    end solver "Nastran"
+end family WING_BOTTOM
+
+begin family GEOM
+    begin solver "Nastran"
+        begin bctype color
+            active 1
+            color 16663900 1
+        end bctype color
+    end solver "Nastran"
+end family GEOM
+
+begin family PART_1
+    begin solver "Nastran"
+    end solver "Nastran"
+end family PART_1
+
+begin family PART_2
+    begin solver "Nastran"
+    end solver "Nastran"
+end family PART_2
