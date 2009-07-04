@@ -234,8 +234,8 @@ class pyGeo():
         # Now create a list of spline objects:
         surfs = []
         for ipatch in xrange(nPatch):
-            surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            #surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
+            #surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
+            surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -439,6 +439,11 @@ class pyGeo():
             n2 = patch.getValue(patch.range[1],patch.range[2]) # (1,0)
             n3 = patch.getValue(patch.range[1],patch.range[3]) # (1,1)
             n4 = patch.getValue(patch.range[0],patch.range[3]) # (0,1)
+            n1 = patch.getValue(0,0)
+            n2 = patch.getValue(1,0)
+            n3 = patch.getValue(0,1)
+            n4 = patch.getValue(1,1)
+
             nodes.append(n1)
             nodes.append(n2)
             nodes.append(n3)
@@ -524,7 +529,7 @@ class pyGeo():
         
 
 
-        # Now we ACTUALLY stitch them together
+  #       # Now we ACTUALLY stitch them together
         
      #    #First we do the corners:
 
@@ -555,9 +560,9 @@ class pyGeo():
                 elif corner == 1:
                     self.surfs[patch].coef[-1, 0,:] = temp
                 elif corner == 2:
-                    self.surfs[patch].coef[-1,-1,:] = temp
+                    self.surfs[patch].coef[0,-1,:] = temp
                 else:
-                    self.surfs[patch].coef[ 0,-1,:] = temp
+                    self.surfs[patch].coef[ -1,-1,:] = temp
             # end for
         # end for
 
@@ -588,9 +593,11 @@ class pyGeo():
                 coef1 = coef1[::-1]
             
             if len(coef1) == len(coef2):
-                coef = (coef1+coef2)/2.0
+                #coef = (coef1+coef2)/2.0
+                coef = coef1
             else:
                 print 'control point vectors not same length...probably degenerate edge'
+                break
 
             if (e_con[i][2]):
                 patch1.setCoefEdge(edge1,coef[::-1])
@@ -600,12 +607,6 @@ class pyGeo():
 
             patch2.setCoefEdge(edge2,coef)
                 
-
-            # Now reset them
-
-       
-
-
 
         return
 

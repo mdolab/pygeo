@@ -34,7 +34,7 @@ import pyGeo
 timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 #aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
-#ircraft.nPatch = 12
+#aircraft.nPatch = 10
 aircraft.stitchPatches(1e-1,1e-1)
 aircraft.writeTecplot('full_aircraft.dat')
 
