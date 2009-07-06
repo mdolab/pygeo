@@ -60,27 +60,27 @@ import pyGeo
 
 
 
-# Fuselage
+# # Fuselage
 
-naf = 10
-airfoil_list = ['af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp',
-                'af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp']
+# naf = 10
+# airfoil_list = ['af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp',
+#                 'af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp']
 
-chord = array([.1,.4,.45,.46,.45,.3,.15,.1,.08,.07])
-sloc  = linspace(0,5,naf)
-plot(sloc,chord)
-show()
-ref_axis = pyGeo.ref_axis(sloc,zeros(naf),zeros(naf),0*ones(naf),90*ones(naf),90*ones(naf))
+# chord = array([.1,.4,.45,.46,.45,.3,.15,.1,.08,.07])
+# sloc  = linspace(0,5,naf)
+# plot(sloc,chord)
+# show()
+# ref_axis = pyGeo.ref_axis(sloc,zeros(naf),zeros(naf),0*ones(naf),90*ones(naf),90*ones(naf))
 
-offset = zeros([naf,2])
-offset[:,0] = 0.5
+# offset = zeros([naf,2])
+# offset[:,0] = 0.5
 
-fuse  = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu=13,Nctlv=naf)
-fuse.writeTecplot('fuse.dat')
-fuse.writeIGES('fuse.igs')
+# fuse  = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu=13,Nctlv=naf)
+# fuse.writeTecplot('fuse.dat')
+# fuse.writeIGES('fuse.igs')
 
 # Wing
-
+naf=4
 airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
 chord = [1.25,1,.8,.65]
 tw_aero = [-4,0,4,4.5]
@@ -89,5 +89,31 @@ offset = zeros((4,2))
 offset[:,0] = .25 #1/4 chord
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 wing.writeTecplot('wing.dat')
-wing.writeIGES('wing.igs')
+#wing.writeIGES('wing.igs')
 
+#Winglet
+naf=4
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
+chord = [.65,.65,.65,.65]
+
+ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0.4,.405,.55,.6],[6,6.05,6.20,6.20],[0,0,-90,-90],[0,0,0,0],[4.5,4.5,0,0])
+offset = zeros((4,2))
+offset[:,0] = .25 #1/4 chord
+
+winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+winglet.writeTecplot('winglet.dat')
+#wing.writeIGES('winglet.igs')
+
+
+#Winglet2
+naf=2
+airfoil_list = ['af15-16.inp','af15-16.inp']
+chord = [.65,.65]
+
+ref_axis = pyGeo.ref_axis([1.25,1.25],[.6,1.2],[6.2,6.2],[-90,-90],[0,0],[0,0])
+offset = zeros((2,2))
+offset[:,0] = .25 #1/4 chord
+
+winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+winglet.writeTecplot('winglet2.dat')
+#wing.writeIGES('winglet.igs')
