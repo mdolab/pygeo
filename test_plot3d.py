@@ -35,7 +35,11 @@ timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 #aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
 #aircraft.nPatch = 10
-aircraft.stitchPatches(1e-1,1e-1)
+aircraft.calcEdgeConnectivity(1e-1,1e-1)
+aircraft.writeEdgeConnectivity('edge.con')
 aircraft.writeTecplot('full_aircraft.dat')
 
 print 'full time',time.time()-timeA
+
+for i in xrange(aircraft.nPatch):
+    print aircraft.surfs[i].edge_con,aircraft.surfs[i].master_edge
