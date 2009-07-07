@@ -90,8 +90,9 @@ class pyGeo():
             fit_type = 'lms' or 'interpolate': Least-mean squares or interpolate fitting type
             ku = spline order in the u direction (chord-wise for lifting surfaces
             kv = spline order in the v direction (span-wise for lifting surfaces
-'''
-        print 'pyGeo init_type is %s:'%(init_type)
+            '''
+        print ' '
+        print 'pyGeo init_type is: %s'%(init_type)
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
@@ -108,6 +109,12 @@ class pyGeo():
             print 'Unknown init type. Valid Init types are \'plot3d\', \'iges\' and \'lifting_surface\''
             sys.exit(0)
 
+        if 'con_file' in kwargs:
+            self.loadConFile(kwargs['con_file'])
+        
+        self.e_con = None
+
+                         
         return
 
 
@@ -404,6 +411,7 @@ class pyGeo():
 
         return X_u,Y_u,X_l,Y_l
     
+    
     def __rotx(self,x,theta):
         ''' Rotate a set of airfoil coodinates in the local x frame'''
         M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
@@ -420,88 +428,23 @@ class pyGeo():
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
         return dot(M,x)
 
-    def stitchPatches(self,node_tol,edge_tol):
+
+    def calcEdgeConnectivity(self,node_tol=1e-2,edge_tol=1e-1):
 
         '''This function attempts to automatically determine the connectivity
-        between the pataches and then uses that connectivity to force
-        the control points to be coincidient at corners/along edges'''
+        between the pataches'''
+        if not self.e_con == None:
+            print 'Warning edge connectivity will be overwritten. Enter 1 to continue, 0 to quit.'
+            ans = raw_input()
+            if ans == '0':
+                return
+            # end if
+        # end if
 
-        #First we need the list of nodes NO WE DON'T
-
-        nodes = []
-        edges = []
-        #self.nPatch = 2
-        
-        for ipatch in xrange(self.nPatch):
-            patch = self.surfs[ipatch]
-            # Go Counter clockwise for patch i             #Nominally:
-            n1 = patch.getValue(patch.range[0],patch.range[2]) # (0,0)
-            n2 = patch.getValue(patch.range[1],patch.range[2]) # (1,0)
-            n3 = patch.getValue(patch.range[1],patch.range[3]) # (1,1)
-            n4 = patch.getValue(patch.range[0],patch.range[3]) # (0,1)
-            n1 = patch.getValue(0,0)
-            n2 = patch.getValue(1,0)
-            n3 = patch.getValue(0,1)
-            n4 = patch.getValue(1,1)
-
-            nodes.append(n1)
-            nodes.append(n2)
-            nodes.append(n3)
-            nodes.append(n4)
-
-        # end for
-        N = len(nodes)
-        n_con = []
-        counter = -1
-        # Exhaustive search for connections
-
-        timeA = time.time()
-        for i in xrange(N):
-            temp = array([],'int')
-            for j in xrange(i+1,N):
-
-                dist = self._e_dist(nodes[i],nodes[j])
-                if dist< node_tol:
-                    #pdb.set_trace()
-                    #print 'counter:',counter
-                    # i and j are connected
-                    ifound = False
-                    jfound = False
-                    for l in xrange(len(n_con)):
-                        if i in n_con[l] and j in n_con[l]:
-                            ifound = True
-                            jfound = True
-                        if i in n_con[l]:
-                            ifound = True
-                        if j in n_con[l]:
-                            jfound = True
-                    # end for
-                    #print 'founds:',ifound,jfound
-                    if not(ifound) and not(jfound):
-                        n_con.append([i,j])
-                        counter += 1
-                    if ifound and not(jfound):
-                        n_con[counter].append(j)
-                    if jfound and not(ifound):
-                        n_con[counter].append(i)
-                # end if
-            # end for
-        # end for
-
-        print 'time:',time.time()-timeA
-        for i in xrange(len(n_con)):
-            print n_con[i]
-
-        # Now we know which nodes are connected. Now we can be
-        # smart....we can figure out which faces are attached to which
-        # group of nodes and exhaustively test the edges on those faces
-
-        print 'figuring edges'
+        print ' '
+        print 'Attempting to Determine Edge Connectivity'
 
         e_con = []
-
-        # We implictly know we have #patches * 4 Edges (some may be
-        # degenerate however)
 
         #Loop over faces
         timeA = time.time()
@@ -510,61 +453,101 @@ class pyGeo():
             for jpatch in xrange(ipatch+1,self.nPatch):
                 for i in xrange(4):
                     for j in xrange(4):
-                        coinc,rev_flag=self._test_edge(self.surfs[ipatch],self.surfs[jpatch],i,j,edge_tol)
+                        coinc,dir_flag=self._test_edge(self.surfs[ipatch],self.surfs[jpatch],i,j,edge_tol)
+                        cont_flag = 0 # By Default only C0 continuity
                         if coinc:
                             #print 'We have a coincidient edge'
-                            e_con.append([[ipatch,i],[jpatch,j],rev_flag])
-                        # end if
+                            e_con.append([[ipatch,i],[jpatch,j],cont_flag,dir_flag])
+                            
+
+                            # end if
                     # end for
                 # end for
             # end for
         # end for
 
+        self.e_con = e_con
+        self._setEdgeConnectivity()
+        print 'Time for Edge Calculation:',time.time()-timeA        
+        self.printEdgeConnectivity()
+
+        return
+
+    def _setEdgeConnectivity(self):
+        '''Internal function to set edge_con and master_edge flags in surfaces'''
+        if self.e_con == None:
+            print 'Error: No edge connectivity is set yet. Either run calcEdgeConnectivity or load in a file'
+            sys.exit(1)
+        for i in xrange(len(self.e_con)):
+            self.surfs[self.e_con[i][0][0]].edge_con[self.e_con[i][0][1]] = True
+            self.surfs[self.e_con[i][0][0]].master_edge[self.e_con[i][0][1]] = True
+
+            self.surfs[self.e_con[i][1][0]].edge_con[self.e_con[i][1][1]] = True
+            self.surfs[self.e_con[i][1][0]].master_edge[self.e_con[i][1][1]] = False
+
+
+
+
+    def printEdgeConnectivity(self):
+
+        '''Print the Edge Connectivity'''
         
-        print 'edge time:',time.time()-timeA
-        for i in xrange(len(e_con)):
-            print e_con[i]
-
+        print ' '
+        print 'Connection | Face    Edge  | Face    Edge  | Continuity |  Dir?'
         
-        
-
-
-  #       # Now we ACTUALLY stitch them together
-        
-     #    #First we do the corners:
-
-        # corners are in a list but we can back out patch with a mod
-            
-        for i in xrange(len(n_con)):
-            temp = 0
-            for j in xrange(len(n_con[i])):
-                
-                patch = n_con[i][j] / 4 #integer division
-                corner = n_con[i][j] % 4 #modulus division
-                
-                temp += self.surfs[patch].getValueCorner(corner)
-            # end for
-
-            # divide by number of n_con
-            temp /= len(n_con[i])
-
-            # Reset them
-
-            for j in xrange(len(n_con[i])):
-
-                patch = n_con[i][j] / 4 #integer division
-                corner = n_con[i][j] % 4 #modulus division
-
-                if corner == 0:
-                    self.surfs[patch].coef[ 0, 0,:] = temp
-                elif corner == 1:
-                    self.surfs[patch].coef[-1, 0,:] = temp
-                elif corner == 2:
-                    self.surfs[patch].coef[0,-1,:] = temp
-                else:
-                    self.surfs[patch].coef[ -1,-1,:] = temp
-            # end for
+        for i in xrange(len(self.e_con)):
+            print '%3d        |%3d     %3d    |%3d     %3d    |%3d         |%3d'\
+            %(i,self.e_con[i][0][0],self.e_con[i][0][1],self.e_con[i][1][0],self.e_con[i][1][1],self.e_con[i][2],self.e_con[i][3])
         # end for
+
+        print ' '
+
+        return
+
+    def writeEdgeConnectivity(self,file_name):
+
+        '''Print the current edge connectivity to a file'''
+
+        f = open(file_name ,'w')
+        f.write('Connection | Face    Edge  | Face    Edge  | Continuity |  Dir?\n')
+        
+        for i in xrange(len(self.e_con)):
+            f.write('%3d        |%3d     %3d    |%3d     %3d    |%3d         | %3d\n'
+                        %(i,self.e_con[i][0][0],self.e_con[i][0][1],self.e_con[i][1][0],self.e_con[i][1][1],self.e_con[i][2],self.e_con[i][3]))
+        # end for
+        
+
+    def loadEdgeConnectivity(self,file_name):
+
+        '''Load the current edge connectivity from a file'''
+        if not self.e_con == None:
+            print 'Warning edge connectivity will be overwritten. Enter 1 to continue, 0 to quit.'
+            ans = raw_input()
+            if ans == '0':
+                return
+            # end if
+        # end if
+        self.e_con = []
+        f = open(file_name,'r')
+        file = []
+        for line in f:
+            line = line.replace('|',' ')  #Get rid of the bars
+            file.append(line)
+        f.close()
+
+        for i in range(1,len(file)):
+            aux = string.split(file[i])
+            self.e_con.append([[int(aux[1]),int(aux[2])],[int(aux[3]),int(aux[4])],int(aux[5]),int(aux[6])])
+
+        # end for
+        self._setEdgeConnectivity()
+        return
+
+
+    def stitchEdges(self):
+        
+        '''Actually join the edges'''
+
 
         # Next we do the edges:
         print 'edges:',len(e_con)
@@ -612,6 +595,7 @@ class pyGeo():
 
 
     def _test_edge(self,surf1,surf2,i,j,edge_tol):
+
         '''Test edge i on surf1 with edge j on surf2'''
 
         val1_beg = surf1.getValueEdge(i,0)
@@ -622,8 +606,7 @@ class pyGeo():
 
         #Three things can happen:
         coinc = False
-        rev_flag = False
-        
+        dir_flag = 1
         # Beginning and End match (same sense)
         if self._e_dist(val1_beg,val2_beg) < edge_tol and \
                self._e_dist(val1_end,val2_end) < edge_tol:
@@ -635,7 +618,7 @@ class pyGeo():
             else:
                 coinc = False
         
-            rev_flag = False
+            dir_flag = 1
 
         # Beginning and End match (opposite sense)
         elif self._e_dist(val1_beg,val2_end) < edge_tol and \
@@ -648,26 +631,46 @@ class pyGeo():
             else:
                 coinc = False
                 
-            rev_flag = True
+            dir_flag = -1
         # If nothing else
         else:
             coinc = False
 
-        return coinc,rev_flag
+        return coinc,dir_flag
 
     def _e_dist(self,x1,x2):
         '''Get the eculidean distance between two points'''
         return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
  
+    
+    def addGeoObject(self,geo_obj):
+
+        '''Concentate two pyGeo objects into one'''
+
+        for  i in xrange(geo_obj.nPatch):
+            self.surfs.append(geo_obj.surfs[i])
+
+        # end for
+        self.nPatch += geo_obj.nPatch
+        self.e_con = None
+        print 'Warning: edge connections have been reset'
+        return 
+
+
+
     def writeTecplot(self,file_name):
         '''Write the surface patches to Tecplot'''
         f = open(file_name,'w')
         f.write ('VARIABLES = "X", "Y","Z"\n')
+        print ' '
+        print 'Writing Tecplot file: %s '%(file_name)
+        sys.stdout.write('Outputting Patch: ')
         for ipatch in xrange(self.nPatch):
-            print 'Outputing patch %d'%(ipatch)
+            sys.stdout.write('%d '%(ipatch))
             self.surfs[ipatch].writeTecplot(handle=f)
             
         f.close()
+        sys.stdout.write('\n')
         return
 
     def writeIGES(self,file_name):
@@ -937,3 +940,121 @@ if __name__ == '__main__':
 # #             print 'val:',val
 #             print eval(self.formula).shape
 #             print 'done x'
+
+
+
+
+#-----------------------------------------
+
+#NODE TESTING
+
+#-------------------------------------------
+
+      #First we need the list of nodes NO WE DON'T
+
+      #   nodes = []
+#         edges = []
+#         #self.nPatch = 2
+        
+#         for ipatch in xrange(self.nPatch):
+#             patch = self.surfs[ipatch]
+#             # Go Counter clockwise for patch i             #Nominally:
+#             n1 = patch.getValue(patch.range[0],patch.range[2]) # (0,0)
+#             n2 = patch.getValue(patch.range[1],patch.range[2]) # (1,0)
+#             n3 = patch.getValue(patch.range[1],patch.range[3]) # (1,1)
+#             n4 = patch.getValue(patch.range[0],patch.range[3]) # (0,1)
+#             n1 = patch.getValue(0,0)
+#             n2 = patch.getValue(1,0)
+#             n3 = patch.getValue(0,1)
+#             n4 = patch.getValue(1,1)
+
+#             nodes.append(n1)
+#             nodes.append(n2)
+#             nodes.append(n3)
+#             nodes.append(n4)
+
+#         # end for
+#         N = len(nodes)
+#         n_con = []
+#         counter = -1
+#         # Exhaustive search for connections
+
+#         timeA = time.time()
+#         for i in xrange(N):
+#             temp = array([],'int')
+#             for j in xrange(i+1,N):
+
+#                 dist = self._e_dist(nodes[i],nodes[j])
+#                 if dist< node_tol:
+#                     #pdb.set_trace()
+#                     #print 'counter:',counter
+#                     # i and j are connected
+#                     ifound = False
+#                     jfound = False
+#                     for l in xrange(len(n_con)):
+#                         if i in n_con[l] and j in n_con[l]:
+#                             ifound = True
+#                             jfound = True
+#                         if i in n_con[l]:
+#                             ifound = True
+#                         if j in n_con[l]:
+#                             jfound = True
+#                     # end for
+#                     #print 'founds:',ifound,jfound
+#                     if not(ifound) and not(jfound):
+#                         n_con.append([i,j])
+#                         counter += 1
+#                     if ifound and not(jfound):
+#                         n_con[counter].append(j)
+#                     if jfound and not(ifound):
+#                         n_con[counter].append(i)
+#                 # end if
+#             # end for
+#         # end for
+
+#         print 'time:',time.time()-timeA
+#         for i in xrange(len(n_con)):
+#             print n_con[i]
+
+#         # Now we know which nodes are connected. Now we can be
+#         # smart....we can figure out which faces are attached to which
+#         # group of nodes and exhaustively test the edges on those faces
+
+
+
+#   #       # Now we ACTUALLY stitch them together
+        
+#      #    #First we do the corners:
+
+#         # corners are in a list but we can back out patch with a mod
+            
+#         for i in xrange(len(n_con)):
+#             temp = 0
+#             for j in xrange(len(n_con[i])):
+                
+#                 patch = n_con[i][j] / 4 #integer division
+#                 corner = n_con[i][j] % 4 #modulus division
+                
+#                 temp += self.surfs[patch].getValueCorner(corner)
+#             # end for
+
+#             # divide by number of n_con
+#             temp /= len(n_con[i])
+
+#             # Reset them
+
+#             for j in xrange(len(n_con[i])):
+
+#                 patch = n_con[i][j] / 4 #integer division
+#                 corner = n_con[i][j] % 4 #modulus division
+
+#                 if corner == 0:
+#                     self.surfs[patch].coef[ 0, 0,:] = temp
+#                 elif corner == 1:
+#                     self.surfs[patch].coef[-1, 0,:] = temp
+#                 elif corner == 2:
+#                     self.surfs[patch].coef[0,-1,:] = temp
+#                 else:
+#                     self.surfs[patch].coef[ -1,-1,:] = temp
+#             # end for
+#         # end for
