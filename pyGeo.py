@@ -616,145 +616,66 @@ class pyGeo():
             return i / 2, mod(i,2)  #integer division
         else:
             return nJoined/2 + i-nJoined,0
+
+    def propagateKnotVectors(self):
+
+        '''This function propogates the knots according to the design groups'''
+
+        # Read number of design group
+        nGroups = 0;
+        dg = []
+        dg_counter = -1
+        for i in xrange(len(self.con)):
+            if self.con[i].dg > dg_counter:
+                dg.append([self.con[i]])
+                dg_counter += 1
+            else :
+                dg[self.con[i].dg].append(self.con[i])
+
+        nGroup =len(dg) 
         
-        
+        for i in xrange(nGroup):
+            # Take first edge entry
+            first_edge = dg[i][0]
+            if first_edge.e1 ==0 or first_edge.e1 == 1:  #Is it a u or a v?
+                knot_vec = self.surfs[first_edge.f1].tu.copy()
+            else:
+                knot_vec = self.surfs[first_edge.f1].tv.copy()
+            # end if
 
-#     def propagateKnotVectors(self):
+            # Next copy them to the rest of the face/edge combinations
 
-#         '''This function propogates the knot vectors from surface 1 outward'''
+            for j in xrange(len(dg[i])): # Loop over the edges with same dg's
+                cur_edge = dg[i][j] # current edge class
+                face1 = cur_edge.f1
+                edge1 = cur_edge.e1
 
-#         'Loop over connections'
-#         self.surfs[0].tu_flag = True
-#         self.surfs[0].tv_flag = True
-#         self.surfs[2].tv_flag = True
-        
-#         #for i in xrange(len(self.e_con)):
-#         for i in xrange(5):
+                if edge1 == 0 or edge1 == 1:
+                    self.surfs[face1].tu = knot_vec
+                else:
+                    self.surfs[face1].tv = knot_vec
+                # end if
 
-#             print ' '
-#             print '----------------------'
-#             print i
-#             print '----------------------'
-            
-#             surf1 = self.e_con[i][0][0]
-#             surf2 = self.e_con[i][1][0]
-            
-#             edge1 = self.e_con[i][0][1]
-#             edge2 = self.e_con[i][1][1]
-
-#             cont = True
-#             counter = 0
-#             while cont:
-#                 print ' '
-#                 print 'counter:',counter
-#                 counter += 1
-#                 # Do we need to propagate knot vector across this edge?
-#                 print 'facees,edges:',surf1,edge1,surf2,edge2
-#                 print 'flags1:',self.surfs[surf1].tu_flag,self.surfs[surf1].tv_flag
-#                 print 'flags2:',self.surfs[surf2].tu_flag,self.surfs[surf2].tv_flag
-#                 #
-                
-#                 # Is it a u or v direction?
-#                 #print 'reverse flag:',self.e_con[i][3]
-#                 cont = False
-#                 if edge1 == 0 or edge1 == 1:
-#                     if edge2 == 0 or edge2 == 1:
-#                         if self.surfs[surf1].tu_flag and not self.surfs[surf2].tu_flag:
-#                             print 'set1:'
-#                             if self.e_con[i][3] == 1: #Regular Direction
-#                                 self.surfs[surf2].tu = self.surfs[surf1].tu.copy()
-#                             else: # Reverse Direction
-#                                 self.surfs[surf2].tu = self.surfs[surf1].tu[::-1].copy()
-#                             # end if
-#                             self.surfs[surf2].tu_flag = True
-#                         #end if
-#                     # end if
-
-#                     if edge2 == 2 or edge2 == 3:
-#                         if self.surfs[surf1].tu_flag and not self.surfs[surf2].tv_flag:
-#                             print 'set2'
-#                             if self.e_con[i][3] == 1: #Regular Direction
-#                                 self.surfs[surf2].tv = self.surfs[surf1].tu.copy()
-#                             else: # Reverse Direction
-#                                 self.surfs[surf2].tv = self.surfs[surf1].tu[::-1].copy()
-#                             # end if
-#                             self.surfs[surf2].tv_flag = True
-#                         # end if
-#                     # enf if
-
-                        
-#                 else: #if edge1 ==2 or edge1 == 3
-#                     if edge2 == 0 or edge2 == 1:
-#                         if self.surfs[surf1].tv_flag and not self.surfs[surf2].tu_flag:
-#                             print 'set3'
-#                             if self.e_con[i][3] == 1: #Regular Direction
-#                                 self.surfs[surf2].tu = self.surfs[surf1].tv.copy()
-#                             else: # Reverse Direction
-#                                 self.surfs[surf2].tu = self.surfs[surf1].tv[::-1].copy()
-#                             # end if
-#                             self.surfs[surf2].tu_flag = True
-#                             cont = True
-#                         # end if
-#                     # end if
-
-#                     if edge2 == 2 or edge2 == 3:
-#                         if self.surfs[surf1].tv_flag and not self.surfs[surf2].tv_flag:
-#                             print 'set4'
-#                             if self.e_con[i][3] == 1: #Regular Direction
-#                                 self.surfs[surf2].tv = self.surfs[surf1].tv.copy()
-#                             else: # Reverse Direction
-#                                 self.surfs[surf2].tv = self.surfs[surf1].tv[::-1].copy()
-#                             # end if
-#                             self.surfs[surf2].tv_flag = True
-#                         # end if
-#                     # end if
-#                 # end if
-
-                            
-#                 # Now we have to see if we have to continue. Does face 2 have a connected edge OPPOSITE?
-#                 if edge2 == 0: edge_check = 1
-#                 if edge2 == 1: edge_check = 0
-#                 if edge2 == 2: edge_check = 3
-#                 if edge2 == 3: edge_check = 2
-
-#                 if not self.surfs[surf2].edge_con[edge_check] == []: #We have another edge connected
+                if cur_edge.type == 1: # A connected edge do th other side as well
+                    face2 = cur_edge.f2
+                    edge2 = cur_edge.e2
                     
-#                     # Find the face/edge this connection coorsponds to. Looking for face2, edge edge_check
-                        
-#                     # Now we know what edge its connected to
-                    
-#                     surf1 = surf2
-#                     edge1 = edge_check
-
-#                     edge2 = self.surfs[surf2].edge_con[edge_check][1] # edge of connected surface
-#                     surf2 = self.surfs[surf2].edge_con[edge_check][0] #surface edge_check is connected to
-
-
-#                     # ONLY keep going if the new surface hasn't already been set
-#                     if edge2 == 0 or edge2 == 1:
-#                         if self.surfs[surf2].tu_flag == True:
-#                             cont = False
-#                         else:
-#                             print 'found another edge'
-#                             cont = True
-#                     else:
-#                         if self.surfs[surf2].tv_flag == True:
-#                             cont = False
-#                         else:
-#                             print 'found another edge'
-#                             cont = True
-#                 else:
-#                     cont = False #We have exhausted all connections in this direction
-#                     # end if
-#                 # end if
-#             # end while
-#         # end for
+                    if edge2 == 0 or edge2 == 1:
+                        self.surfs[face2].tu = knot_vec
+                    else:
+                        self.surfs[face2].tv = knot_vec
+                    # end if
+                # end if
+            # end for
+        # end for
         
- 
-                            
+        # Just to be sure reset any jacobians
+        for i in xrange(self.nPatch):
+            self.surfs[i].J = None
 
-#         return
 
+        return
+                        
     def _flipEdge(self,edge):
         if edge == 0: return 1
         if edge == 1: return 0
@@ -823,7 +744,6 @@ class pyGeo():
             line = line.replace('|',' ')  #Get rid of the bars
             file.append(line)
         f.close()
-
         
         for i in range(1,len(file)):
             # Test for blank lines here'
@@ -834,72 +754,54 @@ class pyGeo():
         self._setEdgeConnectivity()
 
         return
-
-
     
 
-#     def fitSurfaces(self):
-#         '''This function does a lms fit on all the surfaces respecting
-#         the stitched edges as well as the continuity constraints'''
+    def fitSurfaces(self):
+        '''This function does a lms fit on all the surfaces respecting
+        the stitched edges as well as the continuity constraints'''
 
-
-#         # Just do it for two first
-
-#         # Make sure jacobians are calculated
-#         for ipatch in xrange(self.nPatch):
-#             if self.surfs[ipatch].J == None:
-#                 self.surf[ipatch]._calcJacobian()
-
-#         return
-
-    # def stitchEdges(self):
+        # Make sure jacobians are calculated
+        data = []
+        for ipatch in xrange(self.nPatch):
+            self.surfs[ipatch]._calcNFree()
+            self.surfs[ipatch]._calcJacobian()
+            data.append(self.surfs[ipatch]._getCropData())
+                    
+        # end for
+        # check lengths
         
-#         '''Actually join the edges'''
-
-
-#         # Next we do the edges:
-#         print 'edges:',len(e_con)
-#         for i in xrange(len(e_con)):
-#             print '#-------------------------------------------------#'
-#             print '#    Con ',i
-#             print '#-------------------------------------------------#'
-
-#             patch1 = self.surfs[e_con[i][0][0]]
-#             patch2 = self.surfs[e_con[i][1][0]]
-
-#             edge1  = e_con[i][0][1]
-#             edge2  = e_con[i][1][1]
-
-#             coef1 = patch1.getCoefEdge(edge1)
-#             coef2 = patch2.getCoefEdge(edge2)
+        # Size of new jacoian
             
-#             print 'ceof1:',coef1
-#             print 'ceof2:',coef2
-#             print 'rev  :',e_con[i][2]
-            
-#             #Now average
-            
-#             if (e_con[i][2]): #if reverse is true
-#                  #Flip ONE of them
-#                 coef1 = coef1[::-1]
-            
-#             if len(coef1) == len(coef2):
-#                 #coef = (coef1+coef2)/2.0
-#                 coef = coef1
-#             else:
-#                 print 'control point vectors not same length...probably degenerate edge'
-#                 break
+        M = 0
+        N = 0
+        for ipatch in xrange(self.nPatch):
+            M += self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free
+            N += self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free
+        # end for
+        print 'M is :',M
+        print 'N is :',N
 
-#             if (e_con[i][2]):
-#                 patch1.setCoefEdge(edge1,coef[::-1])
-#             else:
-#                 patch1.setCoefEdge(edge1,coef)
-#             # end if
+        return
 
-#             patch2.setCoefEdge(edge2,coef)
-                
+    def stitchEdges(self):
+        
+        '''Actually join the edges'''
 
-#         return
+        for i in xrange(len(self.con)):
+            if self.con[i].type == 1:
+                f1 = self.con[i].f1
+                e1 = self.con[i].e1
+                f2 = self.con[i].f2
+                e2 = self.con[i].e2
+
+                coef = self.surfs[f1].getCoefEdge(e1).copy()
+                if self.con[i].dir == -1:
+                    coef = coef[::-1]
+                # end if
+                self.surfs[f2].setCoefEdge(e2,coef)
+            # end if
+        # end for
+        return
 
 
     def _test_edge(self,surf1,surf2,i,j,edge_tol):
@@ -964,8 +866,6 @@ class pyGeo():
         print 'Warning: edge connections have been reset'
         return 
 
-
-
     def writeTecplot(self,file_name):
         '''Write the surface patches to Tecplot'''
         f = open(file_name,'w')
@@ -976,7 +876,17 @@ class pyGeo():
         for ipatch in xrange(self.nPatch):
             sys.stdout.write('%d '%(ipatch))
             self.surfs[ipatch].writeTecplot(handle=f)
-            
+
+        # We also want to output edge continuity for visualization
+        for i in xrange(len(self.con)):
+            if self.con[i].cont == 1: #output the edge
+                surf = self.con[i].f1
+                edge = self.con[i].e1
+                self.surfs[surf].writeTecplotEdge(f,edge)
+            # end if
+        # end for
+                
+
         f.close()
         sys.stdout.write('\n')
         return

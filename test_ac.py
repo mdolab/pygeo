@@ -58,8 +58,6 @@ import pyGeo
 
 # blade.stitchPatches(1e-3,1e-2) #node_tol,edge_tol
 
-
-
 # # Fuselage
 
 # naf = 10
@@ -81,15 +79,13 @@ import pyGeo
 
 # Wing
 naf=4
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
 chord = [1.25,1,.8,.65]
 tw_aero = [-4,0,4,4.5]
 ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0,0.1,0.2,0.4],[0,2,4,6],[00,00,00,0],[0,0,0,0],tw_aero)
 offset = zeros((4,2))
 offset[:,0] = .25 #1/4 chord
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
-
-
 
 #Corner
 naf=4
@@ -99,9 +95,7 @@ chord = [.65,.65,.65,.65]
 ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0.4,.405,.55,.6],[6,6.05,6.20,6.20],[0,0,-90,-90],[0,0,0,0],[4.5,4.5,0,0])
 offset = zeros((4,2))
 offset[:,0] = .25 #1/4 chord
-
 corner = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
-
 
 #Winglet
 naf=2
@@ -114,40 +108,40 @@ offset[:,0] = .25 #1/4 chord
 
 winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
-# Now add everything to the wing:
-wing.addGeoObject(corner)
-wing.addGeoObject(winglet)
+# # Now add everything to the wing:
+# wing.addGeoObject(corner)
+# del corner
+# wing.addGeoObject(winglet)
+# del winglet
 
+# #wing.calcEdgeConnectivity(1e-2,1e-2)
 
-wing.calcEdgeConnectivity(1e-2,1e-2)
-wing.writeEdgeConnectivity('test.con')
-#sys.exit(0)
-#wing.writeEdgeConnectivity('edge.con')
-#wing.loadEdgeConnectivity('edge_new.con')
-#wing.loadEdgeConnectivity('test.con')
-
-
-
-# print 'v knot vectors before:'
-# for i in xrange(wing.nPatch):
-#     print 'tv%d'%(i),wing.surfs[i].tv
-
-# # print 'u knot vectors before:'
-# # for i in xrange(wing.nPatch):
-# #     print 'tu%d'%(i),wing.surfs[i].tu
-
-
+# wing.loadEdgeConnectivity('test.con')
 # wing.propagateKnotVectors()
+# wing.stitchEdges()
+# wing.writeTecplot('wing.dat')
+# wing.writeIGES('wing.igs')
 
-# print 'v knot vectors after:'
 # for i in xrange(wing.nPatch):
-#     print 'tv%d'%(i),wing.surfs[i].tv
+#     print wing.surfs[i].master_edge
 
 
-# # print 'u knot vectors after:'
-# # for i in xrange(wing.nPatch):
-# #     print 'tu%d'%(i),wing.surfs[i].tu
-
-
+#wing.calcEdgeConnectivity(1e-2,1e-2)
+#wing.writeEdgeConnectivity('test2.con')
+wing.loadEdgeConnectivity('test2.con')
+wing.propagateKnotVectors()
+wing.stitchEdges()
+wing.fitSurfaces()
 wing.writeTecplot('wing.dat')
+
+for i in xrange(wing.nPatch):
+    print i,wing.surfs[i].master_edge,wing.surfs[i].Nu,wing.surfs[i].Nv,wing.surfs[i].Nu_free*wing.surfs[i].Nv_free
+
+
+# wing = pyGeo.pyGeo('iges',file_name='wing.igs')
+# wing.loadEdgeConnectivity('test.con')
+# wing.propagateKnotVectors()
+# #Qwing.stitchEdges()
+# wing.writeTecplot('wing2.dat')
+
 
