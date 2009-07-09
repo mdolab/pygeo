@@ -90,38 +90,64 @@ offset[:,0] = .25 #1/4 chord
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
 
-# #Corner
-# naf=4
-# airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
-# chord = [.65,.65,.65,.65]
 
-# ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0.4,.405,.55,.6],[6,6.05,6.20,6.20],[0,0,-90,-90],[0,0,0,0],[4.5,4.5,0,0])
-# offset = zeros((4,2))
-# offset[:,0] = .25 #1/4 chord
+#Corner
+naf=4
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
+chord = [.65,.65,.65,.65]
 
-# corner = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0.4,.405,.55,.6],[6,6.05,6.20,6.20],[0,0,-90,-90],[0,0,0,0],[4.5,4.5,0,0])
+offset = zeros((4,2))
+offset[:,0] = .25 #1/4 chord
+
+corner = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
 
-# #Winglet
-# naf=2
-# airfoil_list = ['af15-16.inp','af15-16.inp']
-# chord = [.65,.65]
+#Winglet
+naf=2
+airfoil_list = ['af15-16.inp','pinch.inp']
+chord = [.65,.65]
 
-# ref_axis = pyGeo.ref_axis([1.25,1.25],[.6,1.2],[6.2,6.2],[-90,-90],[0,0],[0,0])
-# offset = zeros((2,2))
-# offset[:,0] = .25 #1/4 chord
+ref_axis = pyGeo.ref_axis([1.25,1.25],[.6,1.2],[6.2,6.2],[-90,-90],[0,0],[0,0])
+offset = zeros((2,2))
+offset[:,0] = .25 #1/4 chord
 
-# winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
 # Now add everything to the wing:
-#wing.addGeoObject(corner)
-#wing.addGeoObject(winglet)
+wing.addGeoObject(corner)
+wing.addGeoObject(winglet)
 
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
+wing.writeEdgeConnectivity('test.con')
+#sys.exit(0)
 #wing.writeEdgeConnectivity('edge.con')
-#ing.loadEdgeConnectivity('edge.con')
+#wing.loadEdgeConnectivity('edge_new.con')
+#wing.loadEdgeConnectivity('test.con')
+
+
+
+# print 'v knot vectors before:'
+# for i in xrange(wing.nPatch):
+#     print 'tv%d'%(i),wing.surfs[i].tv
+
+# # print 'u knot vectors before:'
+# # for i in xrange(wing.nPatch):
+# #     print 'tu%d'%(i),wing.surfs[i].tu
+
+
+# wing.propagateKnotVectors()
+
+# print 'v knot vectors after:'
+# for i in xrange(wing.nPatch):
+#     print 'tv%d'%(i),wing.surfs[i].tv
+
+
+# # print 'u knot vectors after:'
+# # for i in xrange(wing.nPatch):
+# #     print 'tu%d'%(i),wing.surfs[i].tu
+
+
 wing.writeTecplot('wing.dat')
 
-for i in xrange(wing.nPatch):
-    print wing.surfs[i].edge_con,wing.surfs[i].master_edge

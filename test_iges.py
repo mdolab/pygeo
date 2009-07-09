@@ -28,8 +28,14 @@ sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'
 #pyGeo
 import pyGeo
 
-aircraft  = pyGeo.pyGeo('iges',file_name='DPW4_wb_no_tail_v03.igs')
-aircraft.writeTecplot('DPW.dat')
+#aircraft  = pyGeo.pyGeo('iges',file_name='DPW4_wb_no_tail_v03.igs')
+aircraft   = pyGeo.pyGeo('iges',file_name='surf_test.igs')
+#aircraft.nPatch = 2
+#aircraft.calcEdgeConnectivity(1e-2,1e-2)
+#aircraft.writeEdgeConnectivity('test.con')
+
+aircraft.writeTecplot('surf_test.dat')
+
 #aircraft.stitchPatches(1e-1,1e-1)
 
 #print 'knot vectors:'
