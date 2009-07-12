@@ -35,6 +35,8 @@ import numpy
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod
 
+from scipy import io
+
 # =============================================================================
 # Extension modules
 # =============================================================================
@@ -138,7 +140,7 @@ class pyGeo():
                'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
 
         naf = len(xsections)
-        N = 30
+        N = 7
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
@@ -441,7 +443,63 @@ class pyGeo():
             # end if
         # end if
 
-        print ' '
+            #First we need the list of nodes NO WE DON
+
+        nodes = []
+        for ipatch in xrange(self.nPatch):
+            patch = self.surfs[ipatch]
+            # Go Counter clockwise for patch i             #Nominally:
+            nodes.append(patch.getValue(patch.range[0],patch.range[2])) # (0,0)
+            nodes.append(patch.getValue(patch.range[1],patch.range[2])) # (1,0)
+            nodes.append(patch.getValue(patch.range[1],patch.range[3])) # (1,1)
+            nodes.append(patch.getValue(patch.range[0],patch.range[3])) # (0,1)
+        # end for
+
+        N = len(nodes)
+        n_con = []
+        counter = -1
+        # Exhaustive search for connections
+
+        for i in xrange(N):
+            temp = array([],'int')
+            for j in xrange(i+1,N):
+
+                dist = self._e_dist(nodes[i],nodes[j])
+                if dist< node_tol:
+                    ifound = False
+                    jfound = False
+                    for l in xrange(len(n_con)):
+                        if i in n_con[l] and j in n_con[l]:
+                            ifound = True
+                            jfound = True
+                        if i in n_con[l]:
+                            ifound = True
+                        if j in n_con[l]:
+                            jfound = True
+                    # end for
+
+                    if not(ifound) and not(jfound):
+                        n_con.append([i,j])
+                        counter += 1
+                    if ifound and not(jfound):
+                        n_con[counter].append(j)
+                    if jfound and not(ifound):
+                        n_con[counter].append(i)
+                # end if
+            # end for
+        # end for
+
+        # Finally convert back to face/edge# form
+
+        self.n_con = []
+        for i in xrange(len(n_con)):
+            self.n_con.append([])
+            for j in xrange(len(n_con[i])):
+                face = n_con[i][j] / 4
+                node = mod(n_con[i][j] ,4 )
+                self.n_con[i].append([face,node])
+            
+        print  ' '
         print 'Attempting to Determine Edge Connectivity'
 
         e_con = []
@@ -760,28 +818,51 @@ class pyGeo():
         '''This function does a lms fit on all the surfaces respecting
         the stitched edges as well as the continuity constraints'''
 
-        # Make sure jacobians are calculated
-        data = []
+        # Make sure number of free points are calculated
+
         for ipatch in xrange(self.nPatch):
             self.surfs[ipatch]._calcNFree()
-            self.surfs[ipatch]._calcJacobian()
-            data.append(self.surfs[ipatch]._getCropData())
-                    
         # end for
-        # check lengths
-        
-        # Size of new jacoian
-            
-        M = 0
-        N = 0
+
+        # Size of new jacobian and positions of block starts
+        M = [0]
+        N = [0]
+        for ipatch in xrange(0,self.nPatch):
+            M.append(M[ipatch] + self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free)
+            N.append(N[ipatch] + self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free)
+        # end for
+        print 'M,N:',M,N
+        J = zeros([M[-1],N[-1]])
+
+        #Do Loop to fill up the matrix
+        col_counter = 0
+
         for ipatch in xrange(self.nPatch):
-            M += self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free
-            N += self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free
-        # end for
-        print 'M is :',M
-        print 'N is :',N
+            for j in xrange(self.surfs[ipatch].Nctlv):
+                for i in xrange(self.surfs[ipatch].Nctlu):
+                    if self.surfs[ipatch].checkCtl(i,j): #Its a master control point
+                        temp = self.surfs[ipatch]._calcCtlDeriv(i,j)
+                        J[M[ipatch]:M[ipatch] + len(temp),col_counter] = temp
+                    else:
+                        # It wasn't a master control point...now
+                        # figure out where it should go...
+                        temp = self.surfs[ipatch]._calcCtlDeriv(i,j)+
+
+                        
+
+
+
+                        col_counter += 1
+
+                        
+
+        
+        print 'J;',J
+        data_save = {'J':J}
+        io.savemat('jacobian.mat',data_save)
 
         return
+
 
     def stitchEdges(self):
         
@@ -1221,67 +1302,7 @@ if __name__ == '__main__':
 
 #-------------------------------------------
 
-      #First we need the list of nodes NO WE DON'T
 
-      #   nodes = []
-#         edges = []
-#         #self.nPatch = 2
-        
-#         for ipatch in xrange(self.nPatch):
-#             patch = self.surfs[ipatch]
-#             # Go Counter clockwise for patch i             #Nominally:
-#             n1 = patch.getValue(patch.range[0],patch.range[2]) # (0,0)
-#             n2 = patch.getValue(patch.range[1],patch.range[2]) # (1,0)
-#             n3 = patch.getValue(patch.range[1],patch.range[3]) # (1,1)
-#             n4 = patch.getValue(patch.range[0],patch.range[3]) # (0,1)
-#             n1 = patch.getValue(0,0)
-#             n2 = patch.getValue(1,0)
-#             n3 = patch.getValue(0,1)
-#             n4 = patch.getValue(1,1)
-
-#             nodes.append(n1)
-#             nodes.append(n2)
-#             nodes.append(n3)
-#             nodes.append(n4)
-
-#         # end for
-#         N = len(nodes)
-#         n_con = []
-#         counter = -1
-#         # Exhaustive search for connections
-
-#         timeA = time.time()
-#         for i in xrange(N):
-#             temp = array([],'int')
-#             for j in xrange(i+1,N):
-
-#                 dist = self._e_dist(nodes[i],nodes[j])
-#                 if dist< node_tol:
-#                     #pdb.set_trace()
-#                     #print 'counter:',counter
-#                     # i and j are connected
-#                     ifound = False
-#                     jfound = False
-#                     for l in xrange(len(n_con)):
-#                         if i in n_con[l] and j in n_con[l]:
-#                             ifound = True
-#                             jfound = True
-#                         if i in n_con[l]:
-#                             ifound = True
-#                         if j in n_con[l]:
-#                             jfound = True
-#                     # end for
-#                     #print 'founds:',ifound,jfound
-#                     if not(ifound) and not(jfound):
-#                         n_con.append([i,j])
-#                         counter += 1
-#                     if ifound and not(jfound):
-#                         n_con[counter].append(j)
-#                     if jfound and not(ifound):
-#                         n_con[counter].append(i)
-#                 # end if
-#             # end for
-#         # end for
 
 #         print 'time:',time.time()-timeA
 #         for i in xrange(len(n_con)):
