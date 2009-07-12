@@ -85,7 +85,7 @@ tw_aero = [-4,0,4,4.5]
 ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0,0.1,0.2,0.4],[0,2,4,6],[00,00,00,0],[0,0,0,0],tw_aero)
 offset = zeros((4,2))
 offset[:,0] = .25 #1/4 chord
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 5,Nctlv= naf)
 
 #Corner
 naf=4
@@ -114,7 +114,7 @@ winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offse
 # wing.addGeoObject(winglet)
 # del winglet
 
-# #wing.calcEdgeConnectivity(1e-2,1e-2)
+ #wing.calcEdgeConnectivity(1e-2,1e-2)
 
 # wing.loadEdgeConnectivity('test.con')
 # wing.propagateKnotVectors()
@@ -126,7 +126,8 @@ winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offse
 #     print wing.surfs[i].master_edge
 
 
-#wing.calcEdgeConnectivity(1e-2,1e-2)
+wing.calcEdgeConnectivity(1e-2,1e-2)
+sys.exit(0)
 #wing.writeEdgeConnectivity('test2.con')
 wing.loadEdgeConnectivity('test2.con')
 wing.propagateKnotVectors()
