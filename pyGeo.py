@@ -35,13 +35,22 @@ import numpy
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod
 
-from scipy import io, linalg
-import scipy
+from numpy.linalg import lstsq
+from scipy import io
+try:
+    from petsc4py import PETSc
+    USE_PETSC = True
+    #USE_PETSC = False
+    print 'PETSc4py is available. Least Square Solutions will be performed with PETSC'
+except:
+    print 'PETSc4py is not available. Least Square Solutions will be performed with LAPACK'
+    USE_PETSC = False
 
 # =============================================================================
 # Extension modules
 # =============================================================================
 
+# pySpline Utilities
 import pySpline2
 
 # =============================================================================
@@ -117,7 +126,6 @@ class pyGeo():
         else:
             self.con = None
 
-                         
         return
 
 
@@ -141,7 +149,7 @@ class pyGeo():
                'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
 
         naf = len(xsections)
-        N = 7
+        N = 35
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
@@ -245,7 +253,7 @@ class pyGeo():
         surfs = []
         for ipatch in xrange(nPatch):
             #surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=9,Nctlv=9))
+            surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13))
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -287,7 +295,7 @@ class pyGeo():
         
         print 'Found %d surfaces in Iges File.'%(self.nPatch)
 
-        surfs = [];
+        self.surfs = [];
         print surf_list
         weight = []
         for ipatch in xrange(self.nPatch):  # Loop over our patches
@@ -335,9 +343,8 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
+            self.surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
         # end for
-        self.surfs = surfs
 
         return 
 
@@ -444,61 +451,6 @@ class pyGeo():
             # end if
         # end if
 
-         #    #First we need the list of nodes NO WE DON
-
-#         nodes = []
-#         for ipatch in xrange(self.nPatch):
-#             patch = self.surfs[ipatch]
-#             # Go Counter clockwise for patch i             #Nominally:
-#             nodes.append(patch.getValue(patch.range[0],patch.range[2])) # (0,0)
-#             nodes.append(patch.getValue(patch.range[1],patch.range[2])) # (1,0)
-#             nodes.append(patch.getValue(patch.range[1],patch.range[3])) # (1,1)
-#             nodes.append(patch.getValue(patch.range[0],patch.range[3])) # (0,1)
-#         # end for
-
-#         N = len(nodes)
-#         n_con = []
-#         counter = -1
-#         # Exhaustive search for connections
-
-#         for i in xrange(N):
-#             temp = array([],'int')
-#             for j in xrange(i+1,N):
-
-#                 dist = self._e_dist(nodes[i],nodes[j])
-#                 if dist< node_tol:
-#                     ifound = False
-#                     jfound = False
-#                     for l in xrange(len(n_con)):
-#                         if i in n_con[l] and j in n_con[l]:
-#                             ifound = True
-#                             jfound = True
-#                         if i in n_con[l]:
-#                             ifound = True
-#                         if j in n_con[l]:
-#                             jfound = True
-#                     # end for
-
-#                     if not(ifound) and not(jfound):
-#                         n_con.append([i,j])
-#                         counter += 1
-#                     if ifound and not(jfound):
-#                         n_con[counter].append(j)
-#                     if jfound and not(ifound):
-#                         n_con[counter].append(i)
-#                 # end if
-#             # end for
-#         # end for
-
-#         # Finally convert back to face/edge# form
-
-#         self.n_con = []
-#         for i in xrange(len(n_con)):
-#             self.n_con.append([])
-#             for j in xrange(len(n_con[i])):
-#                 face = n_con[i][j] / 4
-#                 node = mod(n_con[i][j] ,4 )
-#                 self.n_con[i].append([face,node])
             
         print  ' '
         print 'Attempting to Determine Edge Connectivity'
@@ -661,6 +613,7 @@ class pyGeo():
             self.con.append(edge(temp))
         # end for
         
+        # Set the edge connection info in the surfaces themselves
         self._setEdgeConnectivity()
         # Finally Print Connection Info
         self.printEdgeConnectivity()
@@ -734,6 +687,8 @@ class pyGeo():
         if edge == 1: return 0
         if edge == 2: return 3
         if edge == 3: return 2
+        else:
+            return None
 
     def _setEdgeConnectivity(self):
         '''Internal function to set edge_con and master_edge flags in surfaces'''
@@ -870,10 +825,6 @@ class pyGeo():
                 # end if
             # end for
         # end for
-                            
-
-                        
-
         
         return
 
@@ -949,6 +900,104 @@ class pyGeo():
         return
     
 
+    def _initJacobian(self):
+
+        '''Initialize the Jacobian either with PETSc or with Numpy for use with LAPACK'''
+        if USE_PETSC:
+            self.J = PETSc.Mat()
+            # Approximate Number of non zero entries per row:
+            nz = self.surfs[0].Nctlu_free*self.surfs[0].Nctlv_free
+            for i in xrange(1,self.nPatch):
+                if self.surfs[i].Nctlu_free*self.surfs[i].Nctlv_free > nz:
+                    nz = self.surfs[i].Nctlu_free*self.surfs[i].Nctlv_free
+                # end if
+            # end for
+            print 'nz:',nz
+            #temp = self.M[-1]/nz
+            #print temp
+            #nz2 = zeros(M[-1],'intc')
+            #nz2[:] = nz
+                       
+            self.J.createAIJ([self.M[-1],self.N[-1]],nnz=nz)
+            
+        else:
+            self.J = zeros([self.M[-1],self.N[-1]])
+        # end if
+
+    def _setCol(self,vec,i,j):
+        '''Set a column vector, vec, at position i,j'''
+        # Note: These are currently the same...There is probably a more efficient way to set in PETSc
+        if USE_PETSC:
+            self.J[i:i+len(vec),j] = vec 
+            #self.J.setValues(len(vec),i,1,j,vec)
+        else:
+            self.J[i:i+len(vec),j] = vec 
+        # end if
+        return 
+        
+    def _setRHS(self):
+        '''Set the RHS Vector'''
+        self.RHS = self.nPatch*[]
+        for idim in xrange(3):
+            if USE_PETSC:
+                self.RHS.append(PETSc.Vec())
+                self.RHS[idim].createSeq(self.M[-1])
+            else:
+                self.RHS.append(zeros(self.M[-1]))
+            # end if 
+            for ipatch in xrange(self.nPatch):
+                temp = self.surfs[ipatch]._getCropData(self.surfs[ipatch].X[:,:,idim]).flatten()
+                self.RHS[idim][self.M[ipatch]:self.M[ipatch] + len(temp)] = temp
+            # end for
+        # end for
+
+    def _solve(self):
+        '''Solve for the control points'''
+        print 'in solve...'
+        self.coef = zeros((self.N[-1],3))
+        if USE_PETSC:
+            self.J.assemblyBegin()
+            self.J.assemblyEnd()
+
+                        
+            ksp = PETSc.KSP()
+            ksp.create(PETSc.COMM_WORLD)
+            ksp.getPC().setType('none')
+            ksp.setType('lsqr')
+           
+            def monitor(ksp, its, rnorm):
+                if mod(its,50) == 0:
+                    print its,rnorm
+
+            ksp.setMonitor(monitor)
+            ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
+
+            X = PETSc.Vec()
+            X.createSeq(self.N[-1])
+
+            ksp.setOperators(self.J)
+            
+            for idim in xrange(3):
+                print 'solving %d'%(idim)
+                ksp.solve(self.RHS[idim], X) 
+                for i in xrange(self.N[-1]):
+                    self.coef[i,idim] = X.getValue(i)
+                # end if
+            # end for
+        else:
+            for idim in xrange(3):
+                X = lstsq(self.J,self.RHS[idim])
+                self.coef[:,idim] = X[0]
+                print 'residual norm:',X[1]
+            # end for
+        # end if
+
+        data_save = {'COEF':self.coef}
+        io.savemat('coef_lapack.mat',data_save)
+
+        return
+
+
     def fitSurfaces(self):
         '''This function does a lms fit on all the surfaces respecting
         the stitched edges as well as the continuity constraints'''
@@ -960,53 +1009,50 @@ class pyGeo():
         # end for
 
         # Size of new jacobian and positions of block starts
-        M = [0]
-        N = [0]
+        self.M = [0]
+        self.N = [0]
         for ipatch in xrange(0,self.nPatch):
-            M.append(M[ipatch] + self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free)
-            N.append(N[ipatch] + self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free)
+            self.M.append(self.M[ipatch] + self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free)
+            self.N.append(self.N[ipatch] + self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free)
         # end for
-        print 'M,N:',M,N
-        J = zeros([M[-1],N[-1]])
+        print 'M,N:',self.M,self.N
+
+        self._initJacobian()
 
         #Do Loop to fill up the matrix
         col_counter = -1
-
+        print 'Generating Matrix...'
         for ipatch in xrange(self.nPatch):
+            #print 'Patch %d'%(ipatch)
             for j in xrange(self.surfs[ipatch].Nctlv):
+                per_don =((j+0.0)/self.surfs[ipatch].Nctlv)
+                #print 'done %4.2f'%(per_don)
                 for i in xrange(self.surfs[ipatch].Nctlu):
-
-                    pt_type,edge_info,node_info = self.surfs[ipatch].checkCtl(i,j) # Fix this shit
+                    pt_type,edge_info,node_info = self.surfs[ipatch].checkCtl(i,j) 
 
                     if pt_type == 0: # Its a driving node
                         col_counter += 1
-                        temp = self.surfs[ipatch]._calcCtlDeriv(i,j)
-                        J[M[ipatch]:M[ipatch] + len(temp),col_counter] = temp
-                        
+                        self._setCol(self.surfs[ipatch]._calcCtlDeriv(i,j),self.M[ipatch],col_counter)
 
                         # Now check for nodes/edges
 
-                        if edge_info:
+                        if edge_info: #Its on a master edge driving another control point
 
                             # Unpack edge info
                             face  = edge_info[0][0]
                             edge  = edge_info[0][1]
                             index = edge_info[1]
-                            direct= edge_info[2]
+                            direction = edge_info[2]
                             edge_type = edge_info[3]
 
                             if edge_type == 1:
+                                self._setCol(self.surfs[face]._calcCtlDerivEdge(edge,index,direction),self.M[face],col_counter)
                             
-                                temp = self.surfs[face]._calcCtlDerivEdge(edge,index,direct)
-                                J[M[face]:M[face] + len(temp),col_counter] = temp
-                            
-                        if node_info:
+                        if node_info: # Its on a corner driving (potentially) multiplie control points
                             for k in xrange(len(node_info)): # Loop over the number of affected nodes
                                 face = node_info[k][0]
                                 node = node_info[k][1]
-
-                                temp = self.surfs[face]._calcCtlDerivNode(node)
-                                J[M[face]:M[face] + len(temp),col_counter] = temp
+                                self._setCol(self.surfs[face]._calcCtlDerivNode(node),self.M[face],col_counter)
                             # end for
                         # end if
                     # end if
@@ -1014,36 +1060,15 @@ class pyGeo():
             # end for
         # end for
 
-        #print 'J;',J
-        data_save = {'J':J}
-        io.savemat('jacobian.mat',data_save)
-
-
-        # Now get the RHS:
-
-        RHS = zeros((M[-1],3))
-
-        for ipatch in xrange(self.nPatch):
-            for idim in xrange(3):
-                temp = self.surfs[ipatch]._getCropData(self.surfs[ipatch].X[:,:,idim]).flatten()
-                RHS[M[ipatch]:M[ipatch] + len(temp),idim] = temp
-
-
-        # Now do the LMS Fit
-
-        Jt = transpose(J)
-        
-        ctlx = dot(dot(scipy.linalg.inv(dot(Jt,J)),Jt),RHS[:,0])
-        ctly = dot(dot(scipy.linalg.inv(dot(Jt,J)),Jt),RHS[:,1])
-        ctlz = dot(dot(scipy.linalg.inv(dot(Jt,J)),Jt),RHS[:,2])
-
-        print ctlz
-        print 
-        print self.surfs[0].coef[:,:,2]
-        print self.surfs[1].coef[:,:,2]
-        
-#        print ctly
-#        print ctlz
+        # Set the RHS
+        print 'Done Matrix...'
+        self._setRHS()
+        # Now Solve
+        self._solve()
+      
+        # # Pritn coef
+#         for i in xrange(self.coef.shape[0]):
+#             print self.coef[i,0]
 
 
         return
@@ -1535,3 +1560,62 @@ if __name__ == '__main__':
 #                     self.surfs[patch].coef[ -1,-1,:] = temp
 #             # end for
 #         # end for
+
+
+
+
+         #    #First we need the list of nodes NO WE DON
+
+#         nodes = []
+#         for ipatch in xrange(self.nPatch):
+#             patch = self.surfs[ipatch]
+#             # Go Counter clockwise for patch i             #Nominally:
+#             nodes.append(patch.getValue(patch.range[0],patch.range[2])) # (0,0)
+#             nodes.append(patch.getValue(patch.range[1],patch.range[2])) # (1,0)
+#             nodes.append(patch.getValue(patch.range[1],patch.range[3])) # (1,1)
+#             nodes.append(patch.getValue(patch.range[0],patch.range[3])) # (0,1)
+#         # end for
+
+#         N = len(nodes)
+#         n_con = []
+#         counter = -1
+#         # Exhaustive search for connections
+
+#         for i in xrange(N):
+#             temp = array([],'int')
+#             for j in xrange(i+1,N):
+
+#                 dist = self._e_dist(nodes[i],nodes[j])
+#                 if dist< node_tol:
+#                     ifound = False
+#                     jfound = False
+#                     for l in xrange(len(n_con)):
+#                         if i in n_con[l] and j in n_con[l]:
+#                             ifound = True
+#                             jfound = True
+#                         if i in n_con[l]:
+#                             ifound = True
+#                         if j in n_con[l]:
+#                             jfound = True
+#                     # end for
+
+#                     if not(ifound) and not(jfound):
+#                         n_con.append([i,j])
+#                         counter += 1
+#                     if ifound and not(jfound):
+#                         n_con[counter].append(j)
+#                     if jfound and not(ifound):
+#                         n_con[counter].append(i)
+#                 # end if
+#             # end for
+#         # end for
+
+#         # Finally convert back to face/edge# form
+
+#         self.n_con = []
+#         for i in xrange(len(n_con)):
+#             self.n_con.append([])
+#             for j in xrange(len(n_con[i])):
+#                 face = n_con[i][j] / 4
+#                 node = mod(n_con[i][j] ,4 )
+#                 self.n_con[i].append([face,node])
