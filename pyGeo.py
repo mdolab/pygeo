@@ -35,7 +35,8 @@ import numpy
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod
 
-from scipy import io
+from scipy import io, linalg
+import scipy
 
 # =============================================================================
 # Extension modules
@@ -443,61 +444,61 @@ class pyGeo():
             # end if
         # end if
 
-            #First we need the list of nodes NO WE DON
+         #    #First we need the list of nodes NO WE DON
 
-        nodes = []
-        for ipatch in xrange(self.nPatch):
-            patch = self.surfs[ipatch]
-            # Go Counter clockwise for patch i             #Nominally:
-            nodes.append(patch.getValue(patch.range[0],patch.range[2])) # (0,0)
-            nodes.append(patch.getValue(patch.range[1],patch.range[2])) # (1,0)
-            nodes.append(patch.getValue(patch.range[1],patch.range[3])) # (1,1)
-            nodes.append(patch.getValue(patch.range[0],patch.range[3])) # (0,1)
-        # end for
+#         nodes = []
+#         for ipatch in xrange(self.nPatch):
+#             patch = self.surfs[ipatch]
+#             # Go Counter clockwise for patch i             #Nominally:
+#             nodes.append(patch.getValue(patch.range[0],patch.range[2])) # (0,0)
+#             nodes.append(patch.getValue(patch.range[1],patch.range[2])) # (1,0)
+#             nodes.append(patch.getValue(patch.range[1],patch.range[3])) # (1,1)
+#             nodes.append(patch.getValue(patch.range[0],patch.range[3])) # (0,1)
+#         # end for
 
-        N = len(nodes)
-        n_con = []
-        counter = -1
-        # Exhaustive search for connections
+#         N = len(nodes)
+#         n_con = []
+#         counter = -1
+#         # Exhaustive search for connections
 
-        for i in xrange(N):
-            temp = array([],'int')
-            for j in xrange(i+1,N):
+#         for i in xrange(N):
+#             temp = array([],'int')
+#             for j in xrange(i+1,N):
 
-                dist = self._e_dist(nodes[i],nodes[j])
-                if dist< node_tol:
-                    ifound = False
-                    jfound = False
-                    for l in xrange(len(n_con)):
-                        if i in n_con[l] and j in n_con[l]:
-                            ifound = True
-                            jfound = True
-                        if i in n_con[l]:
-                            ifound = True
-                        if j in n_con[l]:
-                            jfound = True
-                    # end for
+#                 dist = self._e_dist(nodes[i],nodes[j])
+#                 if dist< node_tol:
+#                     ifound = False
+#                     jfound = False
+#                     for l in xrange(len(n_con)):
+#                         if i in n_con[l] and j in n_con[l]:
+#                             ifound = True
+#                             jfound = True
+#                         if i in n_con[l]:
+#                             ifound = True
+#                         if j in n_con[l]:
+#                             jfound = True
+#                     # end for
 
-                    if not(ifound) and not(jfound):
-                        n_con.append([i,j])
-                        counter += 1
-                    if ifound and not(jfound):
-                        n_con[counter].append(j)
-                    if jfound and not(ifound):
-                        n_con[counter].append(i)
-                # end if
-            # end for
-        # end for
+#                     if not(ifound) and not(jfound):
+#                         n_con.append([i,j])
+#                         counter += 1
+#                     if ifound and not(jfound):
+#                         n_con[counter].append(j)
+#                     if jfound and not(ifound):
+#                         n_con[counter].append(i)
+#                 # end if
+#             # end for
+#         # end for
 
-        # Finally convert back to face/edge# form
+#         # Finally convert back to face/edge# form
 
-        self.n_con = []
-        for i in xrange(len(n_con)):
-            self.n_con.append([])
-            for j in xrange(len(n_con[i])):
-                face = n_con[i][j] / 4
-                node = mod(n_con[i][j] ,4 )
-                self.n_con[i].append([face,node])
+#         self.n_con = []
+#         for i in xrange(len(n_con)):
+#             self.n_con.append([])
+#             for j in xrange(len(n_con[i])):
+#                 face = n_con[i][j] / 4
+#                 node = mod(n_con[i][j] ,4 )
+#                 self.n_con[i].append([face,node])
             
         print  ' '
         print 'Attempting to Determine Edge Connectivity'
@@ -726,12 +727,6 @@ class pyGeo():
                 # end if
             # end for
         # end for
-        
-        # Just to be sure reset any jacobians
-        for i in xrange(self.nPatch):
-            self.surfs[i].J = None
-
-
         return
                         
     def _flipEdge(self,edge):
@@ -743,22 +738,162 @@ class pyGeo():
     def _setEdgeConnectivity(self):
         '''Internal function to set edge_con and master_edge flags in surfaces'''
         if self.con == None:
-            print 'Error: No edge connectivity is set yet. Either run calcEdgeConnectivity or load in a file'
+            print 'Error: No edge connectivity is set yet. Either run calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
-        # enf if
-        
+        # end if
+
+        # Set the edge info
+       
         for i in xrange(len(self.con)):
 
-            if self.con[i].type == 1:
-                self.surfs[self.con[i].f1].edge_con[self.con[i].e1] = [self.con[i].f2,self.con[i].e2]
-                self.surfs[self.con[i].f1].master_edge[self.con[i].e1] = True
+            self.surfs[self.con[i].f1].edge_con[self.con[i].e1] = [self.con[i].f2,self.con[i].e2]
+            self.surfs[self.con[i].f1].master_edge[self.con[i].e1] = True
+            self.surfs[self.con[i].f1].dir[self.con[i].e1] = self.con[i].dir
+            self.surfs[self.con[i].f1].edge_type[self.con[i].e1] = self.con[i].type
 
+            if self.con[i].type == 1:
+                
                 self.surfs[self.con[i].f2].edge_con[self.con[i].e2] = [self.con[i].f1,self.con[i].e1]
                 self.surfs[self.con[i].f2].master_edge[self.con[i].e2] = False
+                self.surfs[self.con[i].f2].dir[self.con[i].e2] = self.con[i].dir
+                self.surfs[self.con[i].f2].edge_type[self.con[i].e2] = self.con[i].type
             # end if
         # end for
+
+        # Set the node info
+        for i in xrange(len(self.con)):
+        #for i in xrange(3):
+
+            f1 = self.con[i].f1
+            e1 = self.con[i].e1
+
+            n1,n2 = self._getNodesFromEdge(e1)
+
+            #print 'face1 %d, edge %d, nodes %d and %d'%(f1,e1,n1,n2)
+
+            if self.con[i].dir == 1:
+                n1_master = n1
+                n2_master = n2
+            else:
+                n1_master = n2
+                n2_master = n1
+
+            # if we haven't set this node yet, set them as a master
+            if self.surfs[f1].master_node[n1] == None:
+                self.surfs[f1].master_node[n1] = True
+            # end if
+            
+            if self.surfs[f1].master_node[n2] == None:
+                self.surfs[f1].master_node[n2] = True
+            # end if
+
+            if self.con[i].type == 1: # If there are two edges connected (type 1)
+                f2 = self.con[i].f2
+                e2 = self.con[i].e2
+                n1,n2 = self._getNodesFromEdge(e2)
+
+                self.surfs[f2].master_node[n1] = False
+                self.surfs[f2].master_node[n2] = False
+                
+                #print 'face2 %d, edge %d, nodes %d and %d'%(f2,e2,n1,n2)
+                
+
+                # Set the driven edge nodes to False ONLY if they are not already set
+                # We want to set this node to f1,n1_master iff f1,n1_master is a master node
+
+                if self.surfs[f1].node_con[n1_master] == []:
+                    self.surfs[f2].node_con[n1] = [f1,n1_master]
+                    cont = False
+
+                else:
+                    cur_face = self.surfs[f1].node_con[n1_master][0]
+                    cur_node = self.surfs[f1].node_con[n1_master][1]
+                    cont = True
+                    #print 'doing loop 1:'
+                    while cont:
+
+                        #print 'cur_face,cur_node:',cur_face,cur_node
+
+                        if self.surfs[cur_face].node_con[cur_node] == []:
+                            self.surfs[f2].node_con[n1] = [cur_face,cur_node]
+                            cont = False
+                            #print 'done loop 1'
+                        else:
+                            cur_face = self.surfs[cur_face].node_con[cur_node][0]
+                            cur_node = self.surfs[cur_face].node_con[cur_node][1]
+                        # end if
+                    # end while
+                # end if
+                
+               
+                if self.surfs[f1].node_con[n2_master] == []:
+                    self.surfs[f2].node_con[n2] = [f1,n2_master]
+                else:
+                    cont = True
+                    cur_face = self.surfs[f1].node_con[n2_master][0]
+                    cur_node = self.surfs[f1].node_con[n2_master][1]
+                    #print 'doing loop 2:'
+                    
+                    while cont:
+
+                        #print 'cur_face,cur_node:',cur_face,cur_node
+
+                        if self.surfs[cur_face].node_con[cur_node] == []:
+                            self.surfs[f2].node_con[n2] = [cur_face,cur_node]
+                            cont = False
+                            #print 'done loop 2'
+                            #print 
+                        else:
+                            cur_face = self.surfs[cur_face].node_con[cur_node][0]
+                            cur_node = self.surfs[cur_face].node_con[cur_node][1]
+                        # end if
+                    # end while
+                # end if
+            # end if
+        # end for
+
+        # Last thing we need to do is back propagate the slave nodes
+        # to the master nodes...currently they are just []
+
+        for ipatch in xrange(self.nPatch):
+            for j in xrange(4):
+
+                if self.surfs[ipatch].node_con[j] == []:
+                    # Loop over to find matches
+                    for jpatch in xrange(self.nPatch):
+                        for k in xrange(4):
+                            if self.surfs[jpatch].node_con[k] == [ipatch,j]:
+                                self.surfs[ipatch].node_con[j].append([jpatch,k])
+                            # end if
+                        # end for
+                    # end for
+                # end if
+            # end for
+        # end for
+                            
+
+                        
+
         
         return
+
+    def _getNodesFromEdge(self,edge):
+        '''Get the index of the two nodes coorsponding to edge edge'''
+        if edge == 0:
+            n1 = 0
+            n2 = 1
+        elif edge == 1:
+            n1 = 2
+            n2 = 3
+        elif edge == 2:
+            n1 = 0
+            n2 = 2
+        else:
+            n1 = 1
+            n2 = 3
+
+        return n1,n2
+        
 
     def printEdgeConnectivity(self):
 
@@ -835,31 +970,81 @@ class pyGeo():
         J = zeros([M[-1],N[-1]])
 
         #Do Loop to fill up the matrix
-        col_counter = 0
+        col_counter = -1
 
         for ipatch in xrange(self.nPatch):
             for j in xrange(self.surfs[ipatch].Nctlv):
                 for i in xrange(self.surfs[ipatch].Nctlu):
-                    if self.surfs[ipatch].checkCtl(i,j): #Its a master control point
+
+                    pt_type,edge_info,node_info = self.surfs[ipatch].checkCtl(i,j) # Fix this shit
+
+                    if pt_type == 0: # Its a driving node
+                        col_counter += 1
                         temp = self.surfs[ipatch]._calcCtlDeriv(i,j)
                         J[M[ipatch]:M[ipatch] + len(temp),col_counter] = temp
-                    else:
-                        # It wasn't a master control point...now
-                        # figure out where it should go...
-                        temp = self.surfs[ipatch]._calcCtlDeriv(i,j)+
-
                         
 
+                        # Now check for nodes/edges
 
+                        if edge_info:
 
-                        col_counter += 1
+                            # Unpack edge info
+                            face  = edge_info[0][0]
+                            edge  = edge_info[0][1]
+                            index = edge_info[1]
+                            direct= edge_info[2]
+                            edge_type = edge_info[3]
 
-                        
+                            if edge_type == 1:
+                            
+                                temp = self.surfs[face]._calcCtlDerivEdge(edge,index,direct)
+                                J[M[face]:M[face] + len(temp),col_counter] = temp
+                            
+                        if node_info:
+                            for k in xrange(len(node_info)): # Loop over the number of affected nodes
+                                face = node_info[k][0]
+                                node = node_info[k][1]
 
-        
-        print 'J;',J
+                                temp = self.surfs[face]._calcCtlDerivNode(node)
+                                J[M[face]:M[face] + len(temp),col_counter] = temp
+                            # end for
+                        # end if
+                    # end if
+                # end for
+            # end for
+        # end for
+
+        #print 'J;',J
         data_save = {'J':J}
         io.savemat('jacobian.mat',data_save)
+
+
+        # Now get the RHS:
+
+        RHS = zeros((M[-1],3))
+
+        for ipatch in xrange(self.nPatch):
+            for idim in xrange(3):
+                temp = self.surfs[ipatch]._getCropData(self.surfs[ipatch].X[:,:,idim]).flatten()
+                RHS[M[ipatch]:M[ipatch] + len(temp),idim] = temp
+
+
+        # Now do the LMS Fit
+
+        Jt = transpose(J)
+        
+        ctlx = dot(dot(scipy.linalg.inv(dot(Jt,J)),Jt),RHS[:,0])
+        ctly = dot(dot(scipy.linalg.inv(dot(Jt,J)),Jt),RHS[:,1])
+        ctlz = dot(dot(scipy.linalg.inv(dot(Jt,J)),Jt),RHS[:,2])
+
+        print ctlz
+        print 
+        print self.surfs[0].coef[:,:,2]
+        print self.surfs[1].coef[:,:,2]
+        
+#        print ctly
+#        print ctlz
+
 
         return
 

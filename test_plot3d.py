@@ -33,7 +33,7 @@ import pyGeo
 # surface patch.
 timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
-aircraft = pyGeo.pyGeo('plot3d',file_name='test.xyz')
+#aircraft = pyGeo.pyGeo('plot3d',file_name='test.xyz')
 #aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
 # #del aircraft.surfs[0]
 # #del aircraft.surfs[0]
@@ -50,16 +50,31 @@ aircraft = pyGeo.pyGeo('plot3d',file_name='test.xyz')
 # # del aircraft.surfs[4]
 # # del aircraft.surfs[4]
 # # del aircraft.surfs[5]
-# # del aircraft.surfs[8]
-# # del aircraft.surfs[8]
-# # del aircraft.surfs[8]
+#del aircraft.surfs[1]
+#del aircraft.surfs[2]
+#del aircraft.surfs[4]
+del aircraft.surfs[0]
+del aircraft.surfs[0]
+del aircraft.surfs[0]
 
-#aircraft.nPatch = 17
+#del aircraft.surfs[8]
+#del aircraft.surfs[8]
+#del aircraft.surfs[8]
+
+aircraft.nPatch = 4
 
 aircraft.calcEdgeConnectivity(1e-1,2e-1)
 aircraft.writeEdgeConnectivity('aircraft.con')
+aircraft.propagateKnotVectors()
+aircraft.stitchEdges()
+aircraft.fitSurfaces()
 
 aircraft.writeTecplot('full_aircraft.dat')
 
 print 'full time',time.time()-timeA
+
+int
+print 'Master Node Info:'
+for i in xrange(aircraft.nPatch):
+    print i,aircraft.surfs[i].master_node, aircraft.surfs[i].node_con
 
