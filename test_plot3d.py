@@ -53,15 +53,15 @@ aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 #del aircraft.surfs[1]
 #del aircraft.surfs[2]
 #del aircraft.surfs[4]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
+#del aircraft.surfs[0]
+#del aircraft.surfs[0]
+#del aircraft.surfs[0]
+#del aircraft.surfs[0]
+del aircraft.surfs[8]
+del aircraft.surfs[8]
+del aircraft.surfs[8]
 
-#del aircraft.surfs[8]
-#del aircraft.surfs[8]
-#del aircraft.surfs[8]
-
-aircraft.nPatch = 4
+aircraft.nPatch = 20
 
 aircraft.calcEdgeConnectivity(1e-1,2e-1)
 aircraft.writeEdgeConnectivity('aircraft.con')
