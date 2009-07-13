@@ -79,7 +79,7 @@ import pyGeo
 
 # Wing
 naf=4
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']#'af15-16.inp']
 chord = [1.25,1,.8,.65]
 tw_aero = [-4,0,4,4.5]
 ref_axis = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0,0.1,0.2,0.4],[0,2,4,6],[00,00,00,0],[0,0,0,0],tw_aero)
@@ -109,10 +109,10 @@ offset[:,0] = .25 #1/4 chord
 winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
 # # Now add everything to the wing:
-# wing.addGeoObject(corner)
-# del corner
-# wing.addGeoObject(winglet)
-# del winglet
+#wing.addGeoObject(corner)
+#del corner
+#wing.addGeoObject(winglet)
+#del winglet
 
  #wing.calcEdgeConnectivity(1e-2,1e-2)
 
@@ -127,16 +127,27 @@ winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offse
 
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
-sys.exit(0)
+
+print
+print 'Master Edge Info:'
+for i in xrange(wing.nPatch):
+    print wing.surfs[i].master_edge, wing.surfs[i].edge_con
+
+print 'Master Node Info:'
+for i in xrange(wing.nPatch):
+    print wing.surfs[i].master_node, wing.surfs[i].node_con
+
+
+#sys.exit(0)
 #wing.writeEdgeConnectivity('test2.con')
-wing.loadEdgeConnectivity('test2.con')
+#wing.loadEdgeConnectivity('test2.con')
 wing.propagateKnotVectors()
 wing.stitchEdges()
 wing.fitSurfaces()
 wing.writeTecplot('wing.dat')
 
-for i in xrange(wing.nPatch):
-    print i,wing.surfs[i].master_edge,wing.surfs[i].Nu,wing.surfs[i].Nv,wing.surfs[i].Nu_free*wing.surfs[i].Nv_free
+#for i in xrange(wing.nPatch):
+#    print i,wing.surfs[i].master_edge,wing.surfs[i].Nu,wing.surfs[i].Nv,wing.surfs[i].Nu_free*wing.surfs[i].Nv_free
 
 
 # wing = pyGeo.pyGeo('iges',file_name='wing.igs')
