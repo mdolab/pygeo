@@ -970,6 +970,7 @@ class pyGeo():
                     print its,rnorm
 
             ksp.setMonitor(monitor)
+            #ksp.setMonitor(ksp.Monitor())
             ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
 
             X = PETSc.Vec()
@@ -1072,6 +1073,10 @@ class pyGeo():
 
 
         return
+
+    def setRefAxis(self,patch_list,ref_axix):
+
+        
 
 
     def stitchEdges(self):
@@ -1262,7 +1267,6 @@ class edge(object):
               %(i,self.f1,self.e1,self.type,self.dof,self.cont,self.dir,self.dg,self.Nctl,self.f2,self.e2))
         
         return
-       
 
 
 class ref_axis(object):
@@ -1316,6 +1320,7 @@ class ref_axis(object):
                                                  (self.x[i+1,1]-self.x[i,1])**2 +
                                                  (self.x[i+1,2]-self.x[i,2])**2  )
         #Normalize
+        self.length = self.sloc[-1]
         self.sloc/=self.sloc[-1]
 
 #==============================================================================
