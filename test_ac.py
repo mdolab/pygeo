@@ -78,14 +78,23 @@ import pyGeo
 # fuse.writeIGES('fuse.igs')
 
 # Wing
-naf=4
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']#'af15-16.inp']
-chord = [1.25,1,.8,.65]
-tw_aero = [-4,0,4,4.5]
-ref_axis1 = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0,0.1,0.2,0.4],[0,2,4,6],[00,00,00,0],[0,0,0,0],tw_aero)
-offset = zeros((4,2))
+naf=8
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
+chord = [1.25,1,.8,.65,.65,0.65,.65,.65]
+x = [1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25]
+y = [0,0.1,0.2,0.4,.405,.55,.6,1.2]
+z = [0,2,4,6,6.05,6.2,6.2,6.2]
+rot_x = [0,0,0,0,0,-90,-90,-90]
+rot_y = [0,0,0,0,0,0,0,0]
+tw_aero = [-4,0,4,4.5,4.5,0,0,0]
+ref_axis1 = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
+offset = zeros((naf,2))
 offset[:,0] = .25 #1/4 chord
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis1,fit_type='lms',Nctlu = 13,Nctlv= naf)
+
+# Make the break-point vector
+breaks = [3,6]
+Nctlv = [4,4,4] # Length breaks + 1
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis1,breaks=breaks,fit_type='lms',Nctlu = 13,Nctlv=Nctlv)
 
 # #Corner
 # naf=4
@@ -116,11 +125,26 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=o
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 
-#wing.writeEdgeConnectivity('test2.con')
+wing.writeEdgeConnectivity('test.con')
 #wing.loadEdgeConnectivity('test2.con')
 wing.propagateKnotVectors()
 wing.stitchEdges()
-wing.fitSurfaces()
-wing.writeTecplot('wing.dat')
+#wing.fitSurfaces()
 
-wing.setRefAxis([0,1],ref_axis1)
+
+print 'Attaching Ref Axis...'
+wing.setRefAxis([0,1,2,3,4,5],ref_axis1)
+
+wing.writeTecplot('wing.dat',ref_axis1)
+
+
+print 'modifiying ref axis:'
+
+ref_axis1.x[:,2] *= 1.2
+ref_axis1.x[:,0] += 3*ref_axis1.xs.s
+ref_axis1.x[:,1] += 0.1*ref_axis1.xs.s**2
+
+wing.update(ref_axis1)
+
+wing.writeTecplot('wing2.dat',ref_axis1)
+

@@ -51,7 +51,7 @@ except:
 # =============================================================================
 
 # pySpline Utilities
-import pySpline2
+import pySpline
 
 # =============================================================================
 # pyGeo class
@@ -145,8 +145,13 @@ class pyGeo():
         offset    = kwargs['offset']
         ref_axis  = kwargs['ref_axis']
 
-        assert len(xsections)==len(scale)==offset.shape[0]==ref_axis.N,\
-               'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
+        if not len(xsections)==len(scale)==offset.shape[0]==ref_axis.N:
+            print 'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
+            print 'xsections:',len(xsections)
+            print 'scale:',len(scale)
+            print 'offset::',offset.shape[0]
+            print 'ref axis:',ref_axis.N
+            sys.exit(1)
 
         naf = len(xsections)
         N = 35
@@ -174,9 +179,30 @@ class pyGeo():
             X[:,:,i,:] += ref_axis.x[i,:]
         # end for
         self.surfs = []
-        self.surfs.append(pySpline2.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
-        self.surfs.append(pySpline2.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
-        self.nPatch = 2
+        if 'breaks' in kwargs:
+            breaks = kwargs['breaks']
+
+        if not breaks:
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
+            self.nPatch = 2
+        else:
+            # We have breaks
+            start = 0
+
+            for i in xrange(len(breaks)):
+                end = breaks[i]+1
+                
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],*args,**kwargs))
+                start = end-1
+            # end for
+
+            # DO the last one
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],*args,**kwargs))
+            self.nPatch = len(self.surfs)
+        # end if
 
     def _loadPlot3D(self,file_name,*args,**kwargs):
 
@@ -252,8 +278,8 @@ class pyGeo():
         # Now create a list of spline objects:
         surfs = []
         for ipatch in xrange(nPatch):
-            #surfs.append(pySpline2.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            surfs.append(pySpline2.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13))
+            #surfs.append(pySpline.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
+            surfs.append(pySpline.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13))
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -343,7 +369,7 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            self.surfs.append(pySpline2.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
+            self.surfs.append(pySpline.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
         # end for
 
         return 
@@ -991,6 +1017,15 @@ class pyGeo():
 
         return
 
+    def update(self,ref_axis):
+
+        '''update the ref axis and all the surfaces'''
+
+        ref_axis.update()
+        for ipatch in xrange(self.nPatch):
+            self.surfs[ipatch].update(ref_axis)
+        
+
 
     def fitSurfaces(self):
         '''This function does a lms fit on all the surfaces respecting
@@ -1159,7 +1194,7 @@ class pyGeo():
         print 'Warning: edge connections have been reset'
         return 
 
-    def writeTecplot(self,file_name):
+    def writeTecplot(self,file_name,ref_axis=None):
         '''Write the surface patches to Tecplot'''
         f = open(file_name,'w')
         f.write ('VARIABLES = "X", "Y","Z"\n')
@@ -1171,14 +1206,89 @@ class pyGeo():
             self.surfs[ipatch].writeTecplot(handle=f)
 
         # We also want to output edge continuity for visualization
-        for i in xrange(len(self.con)):
-            if self.con[i].cont == 1: #output the edge
-                surf = self.con[i].f1
-                edge = self.con[i].e1
-                self.surfs[surf].writeTecplotEdge(f,edge)
-            # end if
-        # end for
+        if self.con:
+            counter = 1
+            for i in xrange(len(self.con)): #Output Simple Edges (no continuity)
+                if self.con[i].cont == 0 and self.con[i].type == 1: #output the edge
+                    surf = self.con[i].f1
+                    edge = self.con[i].e1
+                    zone_name = 'simple_edge%d'%(counter)
+                    counter += 1
+                    self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
+                # end if
+            # end for
+
+            for i in xrange(len(self.con)): #Output Continuity edges
+                if self.con[i].cont == 1 and self.con[i].type == 1: #output the edge
+                    surf = self.con[i].f1
+                    edge = self.con[i].e1
+                    zone_name = 'continuity_edge%d'%(counter)
+                    counter += 1
+                    self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
+                # end if
+            # end for
+
+            for i in xrange(len(self.con)): #Output Continuity edges
+                if self.con[i].type == 0: #output the edge
+                    surf = self.con[i].f1
+                    edge = self.con[i].e1
+                    zone_name = 'mirror_edge%d'%(counter)
+                    counter += 1
+                    self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
+                # end if
+            # end for
+
+        # end if
+
+
+        # We also want to output Links if available
+
+        if ref_axis:
+            print 'writing ref_axis...'
+            num_vectors = 0
+            for ipatch in xrange(self.nPatch):
+                num_vectors += self.surfs[ipatch].Nctlu*self.surfs[ipatch].Nctlv
                 
+            coords = zeros((2*num_vectors,3))
+            icoord = 0
+            for ipatch in xrange(self.nPatch):
+                for j in xrange(len(self.surfs[ipatch].links)):
+                    x0 = ref_axis.xs.getValue(self.surfs[ipatch].links[j][0])
+                    coords[icoord    ,:] = x0
+                    coords[icoord + 1,:] = x0 + self.surfs[ipatch].links[j][1]
+                    icoord += 2
+                # end for
+            # end for
+
+            icoord = 0
+            conn = zeros((num_vectors,2))
+            for ivector  in xrange(num_vectors):
+                conn[ivector,:] = icoord, icoord+1
+                icoord += 2
+            # end for
+
+            f.write('Zone N= %d ,E= %d\n'%(2*num_vectors, num_vectors) )
+            f.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
+
+            for n in xrange(3):
+                for i in  range(2*num_vectors):
+                    f.write('%f\n'%(coords[i,n]))
+                #endfor
+            #endfor
+
+            for i in range(num_vectors):
+                f.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
+            #endfor
+
+
+            # Also dump the axis itself
+            
+            f.write('Zone T=%s I=%d\n'%('ref_axis',750))
+            s = linspace(0,1,750)
+            for i in xrange(750):
+                value = ref_axis.xs.getValue(s[i])
+                f.write('%f %f %f \n'%(value[0],value[1],value[2]))
+        # end for
 
         f.close()
         sys.stdout.write('\n')
@@ -1290,8 +1400,15 @@ class ref_axis(object):
         Note: Rotations are performed in the order: Z-Y-X
         '''
 
-        assert len(x)==len(y)==len(z)==len(rot_x)==len(rot_y)==len(rot_z),\
-            'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
+        if not  len(x)==len(y)==len(z)==len(rot_x)==len(rot_y)==len(rot_z):
+            print 'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
+            print 'x:',len(x)
+            print 'y:',len(y)
+            print 'z:',len(z)
+            print 'rot_x:',len(rot_x)
+            print 'rot_y:',len(rot_y)
+            print 'rot_z:',len(rot_z)
+            sys.exit(1)
 
         self.N = len(x)
         self.x = zeros([self.N,3])
@@ -1312,9 +1429,12 @@ class ref_axis(object):
         # Create an interpolating spline for the spatial part and for
         # the rotational part
 
-        self.xs = pySpline2.linear_spline('interpolate',X=self.x,k=4)
-        self.rots = pySpline2.linear_spline('interpolate',X=self.x,k=4)
+        self.update()
+        #self.rots = pySpline.linear_spline('interpolate',X=self.rot,k=2)
 
+
+    def update(self):
+        self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2)
 
     def updateSloc(self):
         
