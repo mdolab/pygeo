@@ -77,7 +77,7 @@ class pyGeo():
         surface patches and use them to create splined surfaces
  
 
-        'iges',file_name = 'file_name.iges': Load the surface patches
+        'iges',file_name = 'file_name.igs': Load the surface patches
         from an iges file to create splined surfaes.
 
         
@@ -906,20 +906,13 @@ class pyGeo():
         if USE_PETSC:
             self.J = PETSc.Mat()
             # Approximate Number of non zero entries per row:
-            nz = self.surfs[0].Nctlu_free*self.surfs[0].Nctlv_free
+            nz = self.surfs[0].Nctl_free
             for i in xrange(1,self.nPatch):
-                if self.surfs[i].Nctlu_free*self.surfs[i].Nctlv_free > nz:
-                    nz = self.surfs[i].Nctlu_free*self.surfs[i].Nctlv_free
+                if self.surfs[i].Nctl_free > nz:
+                    nz = self.surfs[i].Nctl_free
                 # end if
             # end for
-            print 'nz:',nz
-            #temp = self.M[-1]/nz
-            #print temp
-            #nz2 = zeros(M[-1],'intc')
-            #nz2[:] = nz
-                       
             self.J.createAIJ([self.M[-1],self.N[-1]],nnz=nz)
-            
         else:
             self.J = zeros([self.M[-1],self.N[-1]])
         # end if
@@ -1074,10 +1067,14 @@ class pyGeo():
 
         return
 
-    def setRefAxis(self,patch_list,ref_axix):
+    def setRefAxis(self,patch_list,ref_axis):
 
-        
-
+        '''Set the reference axis ref_axis to surfaces in patch_list'''
+        print 'patch_list:',patch_list
+        for i in xrange(len(patch_list)):
+            self.surfs[patch_list[i]].associateRefAxis(ref_axis)
+            
+         
 
     def stitchEdges(self):
         
@@ -1311,6 +1308,12 @@ class ref_axis(object):
         self.rot0 = copy.deepcopy(self.rot)
         self.sloc = zeros(self.N)
         self.updateSloc()
+
+        # Create an interpolating spline for the spatial part and for
+        # the rotational part
+
+        self.xs = pySpline2.linear_spline('interpolate',X=self.x,k=4)
+        self.rots = pySpline2.linear_spline('interpolate',X=self.x,k=4)
 
 
     def updateSloc(self):

@@ -85,28 +85,28 @@ tw_aero = [-4,0,4,4.5]
 ref_axis1 = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0,0.1,0.2,0.4],[0,2,4,6],[00,00,00,0],[0,0,0,0],tw_aero)
 offset = zeros((4,2))
 offset[:,0] = .25 #1/4 chord
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis1=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis1,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
-#Corner
-naf=4
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
-chord = [.65,.65,.65,.65]
+# #Corner
+# naf=4
+# airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
+# chord = [.65,.65,.65,.65]
 
-ref_axis2 = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0.4,.405,.55,.6],[6,6.05,6.20,6.20],[0,0,-90,-90],[0,0,0,0],[4.5,4.5,0,0])
-offset = zeros((4,2))
-offset[:,0] = .25 #1/4 chord
-corner = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis2=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+# ref_axis2 = pyGeo.ref_axis([1.25,1.25,1.25,1.25],[0.4,.405,.55,.6],[6,6.05,6.20,6.20],[0,0,-90,-90],[0,0,0,0],[4.5,4.5,0,0])
+# offset = zeros((4,2))
+# offset[:,0] = .25 #1/4 chord
+# corner = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis2=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
-#Winglet
-naf=2
-airfoil_list = ['af15-16.inp','pinch.inp']
-chord = [.65,.65]
+# #Winglet
+# naf=2
+# airfoil_list = ['af15-16.inp','pinch.inp']
+# chord = [.65,.65]
 
-ref_axis3 = pyGeo.ref_axis([1.25,1.25],[.6,1.2],[6.2,6.2],[-90,-90],[0,0],[0,0])
-offset = zeros((2,2))
-offset[:,0] = .25 #1/4 chord
+# ref_axis3 = pyGeo.ref_axis([1.25,1.25],[.6,1.2],[6.2,6.2],[-90,-90],[0,0],[0,0])
+# offset = zeros((2,2))
+# offset[:,0] = .25 #1/4 chord
 
-winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis3=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
+# winglet = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis3=ref_axis,fit_type='lms',Nctlu = 13,Nctlv= naf)
 
 # # Now add everything to the wing:
 #wing.addGeoObject(corner)
