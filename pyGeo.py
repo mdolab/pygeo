@@ -64,9 +64,10 @@ class pyGeo():
 
     def __init__(self,init_type,*args, **kwargs):
         
-        '''Create an instance of the geometry object. Input is through simple
-        arrays. Most error checking is left to the user making an instance of
-        this class. 
+        '''Create an instance of the geometry object. The initialization type,
+        init_type, specifies what type of initialization will be
+        used. There are currently 4 initialization types: plot3d, iges, lifting_surface and acdt_geo
+
         
         Input: 
         
@@ -102,109 +103,44 @@ class pyGeo():
             fit_type = 'lms' or 'interpolate': Least-mean squares or interpolate fitting type
             ku = spline order in the u direction (chord-wise for lifting surfaces
             kv = spline order in the v direction (span-wise for lifting surfaces
+        
+        'acdt_geo',acdt_geo=object : Load in a pyGeometry object and
+        use the aircraft components to create surfaces.
+      
+
+
             '''
         print ' '
         print 'pyGeo init_type is: %s'%(init_type)
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
-            self._loadPlot3D(kwargs['file_name'],args,kwargs)
+            self._readPlot3D(kwargs['file_name'],args,kwargs)
 
         elif init_type == 'iges':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for iges init_type'
-            self._loadIges(kwargs['file_name'],args,kwargs)
+            self._readIges(kwargs['file_name'],args,kwargs)
 
         elif init_type == 'lifting_surface':
             self._init_lifting_surface(*args,**kwargs)
-            
+        elif init_type == 'acdt_geo':
+            self._init_acdt_geo(*args,**kwargs)
         else:
             print 'Unknown init type. Valid Init types are \'plot3d\', \'iges\' and \'lifting_surface\''
             sys.exit(0)
 
         if 'con_file' in kwargs:
-            self.loadConFile(kwargs['con_file'])
+            self.readConFile(kwargs['con_file'])
         else:
             self.con = None
 
         return
 
+# ----------------------------------------------------------------------
+#               Initialization Type Functions
+# ----------------------------------------------------------------------
 
-    def _init_lifting_surface(self,*args,**kwargs):
-
-        assert 'xsections' in kwargs and 'scale' in kwargs \
-               and 'offset' in kwargs and 'ref_axis' in kwargs,\
-               '\'xsections\', \'offset\',\'scale\' and \'ref_axis\' must be specified as kwargs'
-
-        if 'fit_type' in kwargs:
-            fit_type = kwargs['fit_type']
-        else:
-            fit_type = 'interpolate'
-
-        xsections = kwargs['xsections']
-        scale     = kwargs['scale']
-        offset    = kwargs['offset']
-        ref_axis  = kwargs['ref_axis']
-
-        if not len(xsections)==len(scale)==offset.shape[0]==ref_axis.N:
-            print 'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
-            print 'xsections:',len(xsections)
-            print 'scale:',len(scale)
-            print 'offset::',offset.shape[0]
-            print 'ref axis:',ref_axis.N
-            sys.exit(1)
-
-        naf = len(xsections)
-        N = 35
-        X = zeros([2,N,naf,3]) #We will get two surfaces
-        for i in xrange(naf):
-
-            X_u,Y_u,X_l,Y_l = self._load_af(xsections[i],N)
-
-            X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
-            X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
-            X[0,:,i,2] = 0
-            
-            X[1,:,i,0] = (X_l-offset[i,0])*scale[i]
-            X[1,:,i,1] = (Y_l-offset[i,1])*scale[i]
-            X[1,:,i,2] = 0
-            
-            for j in xrange(N):
-                for isurf in xrange(2):
-                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],ref_axis.rot[i,2]*pi/180) # Twist Rotation
-                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],ref_axis.rot[i,0]*pi/180) # Dihediral Rotation
-                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],ref_axis.rot[i,1]*pi/180) # Sweep Rotation
-
-
-            # Finally translate according to axis:
-            X[:,:,i,:] += ref_axis.x[i,:]
-        # end for
-        self.surfs = []
-        if 'breaks' in kwargs:
-            breaks = kwargs['breaks']
-
-        if not breaks:
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
-            self.nPatch = 2
-        else:
-            # We have breaks
-            start = 0
-
-            for i in xrange(len(breaks)):
-                end = breaks[i]+1
-                
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],*args,**kwargs))
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],*args,**kwargs))
-                start = end-1
-            # end for
-
-            # DO the last one
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],*args,**kwargs))
-            self.nPatch = len(self.surfs)
-        # end if
-
-    def _loadPlot3D(self,file_name,*args,**kwargs):
+    def _readPlot3D(self,file_name,*args,**kwargs):
 
         '''Load a plot3D file and create the splines to go with each patch'''
         
@@ -285,11 +221,10 @@ class pyGeo():
         self.nPatch = nPatch
         return
 
-
-    def _loadIges(self,file_name,*args,**kwargs):
+    def _readIges(self,file_name,*args,**kwargs):
 
         '''Load a Iges file and create the splines to go with each patch'''
-        print 'file_name',file_name
+        print 'file_name is: %s'%(file_name)
         f = open(file_name,'r')
         file = []
         for line in f:
@@ -302,7 +237,7 @@ class pyGeo():
         directory_lines = int((file[-1][17:24]))
         parameter_lines = int((file[-1][25:32]))
 
-        print start_lines,general_lines,directory_lines,parameter_lines
+        #print start_lines,general_lines,directory_lines,parameter_lines
         
         # Now we know how many lines we have to deal 
 
@@ -322,7 +257,7 @@ class pyGeo():
         print 'Found %d surfaces in Iges File.'%(self.nPatch)
 
         self.surfs = [];
-        print surf_list
+        #print surf_list
         weight = []
         for ipatch in xrange(self.nPatch):  # Loop over our patches
             data = []
@@ -373,97 +308,119 @@ class pyGeo():
         # end for
 
         return 
+  
+    def _init_lifting_surface(self,*args,**kwargs):
 
-    def _load_af(self,filename,N=35):
-        ''' Load the airfoil file from precomp format'''
+        assert 'xsections' in kwargs and 'scale' in kwargs \
+               and 'offset' in kwargs and 'ref_axis' in kwargs,\
+               '\'xsections\', \'offset\',\'scale\' and \'ref_axis\' must be specified as kwargs'
 
-        # Interpolation Format
-        s_interp = 0.5*(1-cos(linspace(0,pi,N)))
+        if 'fit_type' in kwargs:
+            fit_type = kwargs['fit_type']
+        else:
+            fit_type = 'interpolate'
 
-        f = open(filename,'r')
+        xsections = kwargs['xsections']
+        scale     = kwargs['scale']
+        offset    = kwargs['offset']
+        ref_axis  = kwargs['ref_axis']
 
-        aux = string.split(f.readline())
-        npts = int(aux[0]) 
+        if not len(xsections)==len(scale)==offset.shape[0]==ref_axis.N:
+            print 'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
+            print 'xsections:',len(xsections)
+            print 'scale:',len(scale)
+            print 'offset::',offset.shape[0]
+            print 'ref axis:',ref_axis.N
+            sys.exit(1)
+
+        naf = len(xsections)
+        N = 35
+        X = zeros([2,N,naf,3]) #We will get two surfaces
+        for i in xrange(naf):
+
+            X_u,Y_u,X_l,Y_l = self._read_af(xsections[i],N)
+
+            X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
+            X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
+            X[0,:,i,2] = 0
+            
+            X[1,:,i,0] = (X_l-offset[i,0])*scale[i]
+            X[1,:,i,1] = (Y_l-offset[i,1])*scale[i]
+            X[1,:,i,2] = 0
+            
+            for j in xrange(N):
+                for isurf in xrange(2):
+                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],ref_axis.rot[i,2]*pi/180) # Twist Rotation
+                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],ref_axis.rot[i,0]*pi/180) # Dihediral Rotation
+                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],ref_axis.rot[i,1]*pi/180) # Sweep Rotation
+
+
+            # Finally translate according to axis:
+            X[:,:,i,:] += ref_axis.x[i,:]
+        # end for
+        self.surfs = []
+        if 'breaks' in kwargs:
+            breaks = kwargs['breaks']
+
+        if not breaks:
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
+            self.nPatch = 2
+        else:
+            # We have breaks
+            start = 0
+
+            for i in xrange(len(breaks)):
+                end = breaks[i]+1
+                
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],*args,**kwargs))
+                start = end-1
+            # end for
+
+            # DO the last one
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],*args,**kwargs))
+            self.nPatch = len(self.surfs)
+        # end if
+
+
+    def _init_acdt_geo(self,*args,**kwargs):
+
+        assert 'acdt_geo' in kwargs,\
+            'key word argument \'acdt_geo\' Must be specified for init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
+
+        if 'fit_type' in kwargs:
+            fit_type = kwargs['fit_type']
+        else:
+            fit_type = 'interpolate'
+
+        acg = kwargs['acdt_geo']
+        Components = acg._components
+        ncomp = len(Components)
+        counter = 0
+        self.surfs = []
+        # Write Aircraft Components
+        for comp1 in xrange(ncomp):
+            ncomp2 = len(Components[comp1])
+            for comp2 in xrange(ncomp2):
+                counter += 1
+                [m,n] = Components[comp1]._components[comp2].Surface_x.shape
+                X = zeros((m,n,3))
+                X[:,:,0] = Components[comp1]._components[comp2].Surface_x
+                X[:,:,1] = Components[comp1]._components[comp2].Surface_y
+                X[:,:,2] = Components[comp1]._components[comp2].Surface_z
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X,*args,**kwargs))
+            # end for
+        # end for
+
+        self.nPatch = len(self.surfs)
+		
         
-        xnodes = zeros(npts)
-        ynodes = zeros(npts)
 
-        f.readline()
-        f.readline()
-        f.readline()
-
-        for i in xrange(npts):
-            aux = string.split(f.readline())
-            xnodes[i] = float(aux[0])
-            ynodes[i] = float(aux[1])
-        # end for
-        f.close()
-
-        # -------------
-        # Upper Surfce
-        # -------------
-
-        # Find the trailing edge point
-        index = where(xnodes == 1)
-        te_index = index[0]
-        n_upper = te_index+1   # number of nodes on upper surface
-        n_lower = int(npts-te_index)+1 # nodes on lower surface
-
-        # upper Surface Nodes
-        x_u = xnodes[0:n_upper]
-        y_u = ynodes[0:n_upper]
-
-        # Now determine the upper surface 's' parameter
-
-        s = zeros(n_upper)
-        for j in xrange(n_upper-1):
-            s[j+1] = s[j] + sqrt((x_u[j+1]-x_u[j])**2 + (y_u[j+1]-y_u[j])**2)
-        # end for
-        s = s/s[-1] #Normalize s
-
-        # linearly interpolate to find the points at the positions we want
-        X_u = numpy.interp(s_interp,s,x_u)
-        Y_u = numpy.interp(s_interp,s,y_u)
-
-        # -------------
-        # Lower Surface
-        # -------------
-        x_l = xnodes[te_index:npts]
-        y_l = ynodes[te_index:npts]
-        x_l = hstack([x_l,0])
-        y_l = hstack([y_l,0])
-
-        # Now determine the lower surface 's' parameter
-
-        s = zeros(n_lower)
-        for j in xrange(n_lower-1):
-            s[j+1] = s[j] + sqrt((x_l[j+1]-x_l[j])**2 + (y_l[j+1]-y_l[j])**2)
-        # end for
-        s = s/s[-1] #Normalize s
-
-        # linearly interpolate to find the points at the positions we want
-        X_l = numpy.interp(s_interp,s,x_l)
-        Y_l = numpy.interp(s_interp,s,y_l)
-
-        return X_u,Y_u,X_l,Y_l
-    
-    
-    def _rotx(self,x,theta):
-        ''' Rotate a set of airfoil coodinates in the local x frame'''
-        M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
-        return dot(M,x)
-
-    def _roty(self,x,theta):
-        '''Rotate a set of airfoil coordiantes in the local y frame'''
-        M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
-        return dot(M,x)
-
-    def _rotz(self,x,theta):
-        '''Roate a set of airfoil coordinates in the local z frame'''
-        'rotatez:'
-        M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
-        return dot(M,x)
-
+# ----------------------------------------------------------------------
+#                      Edge Connection Information Functions
+# ----------------------------------------------------------------------    
 
     def calcEdgeConnectivity(self,node_tol=1e-2,edge_tol=1e-1):
 
@@ -646,76 +603,7 @@ class pyGeo():
         print 'Time for Edge Calculation:',time.time()-timeA
         return
 
-    def _getConIndex(self,edges,edge,nJoined,nMirrored):
-
-        i = edges.index(edge)
-        
-        if i < nJoined:
-            return i / 2, mod(i,2)  #integer division
-        else:
-            return nJoined/2 + i-nJoined,0
-
-    def propagateKnotVectors(self):
-
-        '''This function propogates the knots according to the design groups'''
-
-        # Read number of design group
-        nGroups = 0;
-        dg = []
-        dg_counter = -1
-        for i in xrange(len(self.con)):
-            if self.con[i].dg > dg_counter:
-                dg.append([self.con[i]])
-                dg_counter += 1
-            else :
-                dg[self.con[i].dg].append(self.con[i])
-
-        nGroup =len(dg) 
-        
-        for i in xrange(nGroup):
-            # Take first edge entry
-            first_edge = dg[i][0]
-            if first_edge.e1 ==0 or first_edge.e1 == 1:  #Is it a u or a v?
-                knot_vec = self.surfs[first_edge.f1].tu.copy()
-            else:
-                knot_vec = self.surfs[first_edge.f1].tv.copy()
-            # end if
-
-            # Next copy them to the rest of the face/edge combinations
-
-            for j in xrange(len(dg[i])): # Loop over the edges with same dg's
-                cur_edge = dg[i][j] # current edge class
-                face1 = cur_edge.f1
-                edge1 = cur_edge.e1
-
-                if edge1 == 0 or edge1 == 1:
-                    self.surfs[face1].tu = knot_vec
-                else:
-                    self.surfs[face1].tv = knot_vec
-                # end if
-
-                if cur_edge.type == 1: # A connected edge do th other side as well
-                    face2 = cur_edge.f2
-                    edge2 = cur_edge.e2
-                    
-                    if edge2 == 0 or edge2 == 1:
-                        self.surfs[face2].tu = knot_vec
-                    else:
-                        self.surfs[face2].tv = knot_vec
-                    # end if
-                # end if
-            # end for
-        # end for
-        return
-                        
-    def _flipEdge(self,edge):
-        if edge == 0: return 1
-        if edge == 1: return 0
-        if edge == 2: return 3
-        if edge == 3: return 2
-        else:
-            return None
-
+    
     def _setEdgeConnectivity(self):
         '''Internal function to set edge_con and master_edge flags in surfaces'''
         if self.con == None:
@@ -854,24 +742,6 @@ class pyGeo():
         
         return
 
-    def _getNodesFromEdge(self,edge):
-        '''Get the index of the two nodes coorsponding to edge edge'''
-        if edge == 0:
-            n1 = 0
-            n2 = 1
-        elif edge == 1:
-            n1 = 2
-            n2 = 3
-        elif edge == 2:
-            n1 = 0
-            n2 = 2
-        else:
-            n1 = 1
-            n2 = 3
-
-        return n1,n2
-        
-
     def printEdgeConnectivity(self):
 
         '''Print the Edge Connectivity'''
@@ -897,7 +767,7 @@ class pyGeo():
         return
         
 
-    def loadEdgeConnectivity(self,file_name):
+    def readEdgeConnectivity(self,file_name):
 
         '''Load the current edge connectivity from a file'''
         if not self.con == None:
@@ -925,6 +795,237 @@ class pyGeo():
 
         return
     
+    def _getConIndex(self,edges,edge,nJoined,nMirrored):
+
+        i = edges.index(edge)
+        
+        if i < nJoined:
+            return i / 2, mod(i,2)  #integer division
+        else:
+            return nJoined/2 + i-nJoined,0
+
+    def propagateKnotVectors(self):
+
+        '''This function propogates the knots according to the design groups'''
+
+        # Read number of design group
+        nGroups = 0;
+        dg = []
+        dg_counter = -1
+        for i in xrange(len(self.con)):
+            if self.con[i].dg > dg_counter:
+                dg.append([self.con[i]])
+                dg_counter += 1
+            else :
+                dg[self.con[i].dg].append(self.con[i])
+
+        nGroup =len(dg) 
+        
+        for i in xrange(nGroup):
+            # Take first edge entry
+            first_edge = dg[i][0]
+            if first_edge.e1 ==0 or first_edge.e1 == 1:  #Is it a u or a v?
+                knot_vec = self.surfs[first_edge.f1].tu.copy()
+            else:
+                knot_vec = self.surfs[first_edge.f1].tv.copy()
+            # end if
+
+            # Next copy them to the rest of the face/edge combinations
+
+            for j in xrange(len(dg[i])): # Loop over the edges with same dg's
+                cur_edge = dg[i][j] # current edge class
+                face1 = cur_edge.f1
+                edge1 = cur_edge.e1
+
+                if edge1 == 0 or edge1 == 1:
+                    self.surfs[face1].tu = knot_vec
+                else:
+                    self.surfs[face1].tv = knot_vec
+                # end if
+
+                if cur_edge.type == 1: # A connected edge do th other side as well
+                    face2 = cur_edge.f2
+                    edge2 = cur_edge.e2
+                    
+                    if edge2 == 0 or edge2 == 1:
+                        self.surfs[face2].tu = knot_vec
+                    else:
+                        self.surfs[face2].tv = knot_vec
+                    # end if
+                # end if
+            # end for
+        # end for
+        return
+                        
+    def _flipEdge(self,edge):
+        if edge == 0: return 1
+        if edge == 1: return 0
+        if edge == 2: return 3
+        if edge == 3: return 2
+        else:
+            return None
+   
+
+    def _getNodesFromEdge(self,edge):
+        '''Get the index of the two nodes coorsponding to edge edge'''
+        if edge == 0:
+            n1 = 0
+            n2 = 1
+        elif edge == 1:
+            n1 = 2
+            n2 = 3
+        elif edge == 2:
+            n1 = 0
+            n2 = 2
+        else:
+            n1 = 1
+            n2 = 3
+
+        return n1,n2
+
+    def stitchEdges(self):
+        
+        '''Actually join the edges'''
+
+        for i in xrange(len(self.con)):
+            if self.con[i].type == 1:
+                f1 = self.con[i].f1
+                e1 = self.con[i].e1
+                f2 = self.con[i].f2
+                e2 = self.con[i].e2
+
+                coef = self.surfs[f1].getCoefEdge(e1).copy()
+                if self.con[i].dir == -1:
+                    coef = coef[::-1]
+                # end if
+                self.surfs[f2].setCoefEdge(e2,coef)
+            # end if
+        # end for
+        return
+
+
+    def _test_edge(self,surf1,surf2,i,j,edge_tol):
+
+        '''Test edge i on surf1 with edge j on surf2'''
+
+        val1_beg = surf1.getValueEdge(i,0)
+        val1_end = surf1.getValueEdge(i,1)
+
+        val2_beg = surf2.getValueEdge(j,0)
+        val2_end = surf2.getValueEdge(j,1)
+
+        #Three things can happen:
+        coinc = False
+        dir_flag = 1
+        # Beginning and End match (same sense)
+        if self._e_dist(val1_beg,val2_beg) < edge_tol and \
+               self._e_dist(val1_end,val2_end) < edge_tol:
+            # End points are the same, now check the midpoint
+            mid1 = surf1.getValueEdge(i,0.5)
+            mid2 = surf2.getValueEdge(j,0.5)
+            if self._e_dist(mid1,mid2) < edge_tol:
+                coinc = True
+            else:
+                coinc = False
+        
+            dir_flag = 1
+
+        # Beginning and End match (opposite sense)
+        elif self._e_dist(val1_beg,val2_end) < edge_tol and \
+               self._e_dist(val1_end,val2_beg) < edge_tol:
+         
+            mid1 = surf1.getValueEdge(i,0.5)
+            mid2 = surf2.getValueEdge(j,0.5)
+            if self._e_dist(mid1,mid2) < edge_tol:
+                coinc = True
+            else:
+                coinc = False
+                
+            dir_flag = -1
+        # If nothing else
+        else:
+            coinc = False
+
+        return coinc,dir_flag
+
+# ----------------------------------------------------------------------
+#                        Surface Fitting Functions
+# ----------------------------------------------------------------------
+
+    def fitSurfaces(self):
+        '''This function does a lms fit on all the surfaces respecting
+        the stitched edges as well as the continuity constraints'''
+
+        # Make sure number of free points are calculated
+
+        for ipatch in xrange(self.nPatch):
+            self.surfs[ipatch]._calcNFree()
+        # end for
+
+        # Size of new jacobian and positions of block starts
+        self.M = [0]
+        self.N = [0]
+        for ipatch in xrange(0,self.nPatch):
+            self.M.append(self.M[ipatch] + self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free)
+            self.N.append(self.N[ipatch] + self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free)
+        # end for
+        print 'M,N:',self.M,self.N
+
+        self._initJacobian()
+
+        #Do Loop to fill up the matrix
+        col_counter = -1
+        print 'Generating Matrix...'
+        for ipatch in xrange(self.nPatch):
+            #print 'Patch %d'%(ipatch)
+            for j in xrange(self.surfs[ipatch].Nctlv):
+                per_don =((j+0.0)/self.surfs[ipatch].Nctlv)
+                #print 'done %4.2f'%(per_don)
+                for i in xrange(self.surfs[ipatch].Nctlu):
+                    pt_type,edge_info,node_info = self.surfs[ipatch].checkCtl(i,j) 
+
+                    if pt_type == 0: # Its a driving node
+                        col_counter += 1
+                        self._setCol(self.surfs[ipatch]._calcCtlDeriv(i,j),self.M[ipatch],col_counter)
+
+                        # Now check for nodes/edges
+
+                        if edge_info: #Its on a master edge driving another control point
+
+                            # Unpack edge info
+                            face  = edge_info[0][0]
+                            edge  = edge_info[0][1]
+                            index = edge_info[1]
+                            direction = edge_info[2]
+                            edge_type = edge_info[3]
+
+                            if edge_type == 1:
+                                self._setCol(self.surfs[face]._calcCtlDerivEdge(edge,index,direction),self.M[face],col_counter)
+                            
+                        if node_info: # Its on a corner driving (potentially) multiplie control points
+                            for k in xrange(len(node_info)): # Loop over the number of affected nodes
+                                face = node_info[k][0]
+                                node = node_info[k][1]
+                                self._setCol(self.surfs[face]._calcCtlDerivNode(node),self.M[face],col_counter)
+                            # end for
+                        # end if
+                    # end if
+                # end for
+            # end for
+        # end for
+
+        # Set the RHS
+        print 'Done Matrix...'
+        self._setRHS()
+        # Now Solve
+        self._solve()
+      
+        # # Pritn coef
+#         for i in xrange(self.coef.shape[0]):
+#             print self.coef[i,0]
+
+
+        return
 
     def _initJacobian(self):
 
@@ -1017,90 +1118,9 @@ class pyGeo():
 
         return
 
-    def update(self,ref_axis):
-
-        '''update the ref axis and all the surfaces'''
-
-        ref_axis.update()
-        for ipatch in xrange(self.nPatch):
-            self.surfs[ipatch].update(ref_axis)
-        
-
-
-    def fitSurfaces(self):
-        '''This function does a lms fit on all the surfaces respecting
-        the stitched edges as well as the continuity constraints'''
-
-        # Make sure number of free points are calculated
-
-        for ipatch in xrange(self.nPatch):
-            self.surfs[ipatch]._calcNFree()
-        # end for
-
-        # Size of new jacobian and positions of block starts
-        self.M = [0]
-        self.N = [0]
-        for ipatch in xrange(0,self.nPatch):
-            self.M.append(self.M[ipatch] + self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free)
-            self.N.append(self.N[ipatch] + self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free)
-        # end for
-        print 'M,N:',self.M,self.N
-
-        self._initJacobian()
-
-        #Do Loop to fill up the matrix
-        col_counter = -1
-        print 'Generating Matrix...'
-        for ipatch in xrange(self.nPatch):
-            #print 'Patch %d'%(ipatch)
-            for j in xrange(self.surfs[ipatch].Nctlv):
-                per_don =((j+0.0)/self.surfs[ipatch].Nctlv)
-                #print 'done %4.2f'%(per_don)
-                for i in xrange(self.surfs[ipatch].Nctlu):
-                    pt_type,edge_info,node_info = self.surfs[ipatch].checkCtl(i,j) 
-
-                    if pt_type == 0: # Its a driving node
-                        col_counter += 1
-                        self._setCol(self.surfs[ipatch]._calcCtlDeriv(i,j),self.M[ipatch],col_counter)
-
-                        # Now check for nodes/edges
-
-                        if edge_info: #Its on a master edge driving another control point
-
-                            # Unpack edge info
-                            face  = edge_info[0][0]
-                            edge  = edge_info[0][1]
-                            index = edge_info[1]
-                            direction = edge_info[2]
-                            edge_type = edge_info[3]
-
-                            if edge_type == 1:
-                                self._setCol(self.surfs[face]._calcCtlDerivEdge(edge,index,direction),self.M[face],col_counter)
-                            
-                        if node_info: # Its on a corner driving (potentially) multiplie control points
-                            for k in xrange(len(node_info)): # Loop over the number of affected nodes
-                                face = node_info[k][0]
-                                node = node_info[k][1]
-                                self._setCol(self.surfs[face]._calcCtlDerivNode(node),self.M[face],col_counter)
-                            # end for
-                        # end if
-                    # end if
-                # end for
-            # end for
-        # end for
-
-        # Set the RHS
-        print 'Done Matrix...'
-        self._setRHS()
-        # Now Solve
-        self._solve()
-      
-        # # Pritn coef
-#         for i in xrange(self.coef.shape[0]):
-#             print self.coef[i,0]
-
-
-        return
+# ----------------------------------------------------------------------
+#                Reference Axis Handling
+# ----------------------------------------------------------------------
 
     def setRefAxis(self,patch_list,ref_axis):
 
@@ -1109,78 +1129,19 @@ class pyGeo():
         for i in xrange(len(patch_list)):
             self.surfs[patch_list[i]].associateRefAxis(ref_axis)
             
-         
 
-    def stitchEdges(self):
+
+
+    def update(self,ref_axis):
+
+        '''update the ref axis and all the surfaces'''
+
+        ref_axis.update()
+        for ipatch in xrange(self.nPatch):
+            self.surfs[ipatch].update(ref_axis)
         
-        '''Actually join the edges'''
-
-        for i in xrange(len(self.con)):
-            if self.con[i].type == 1:
-                f1 = self.con[i].f1
-                e1 = self.con[i].e1
-                f2 = self.con[i].f2
-                e2 = self.con[i].e2
-
-                coef = self.surfs[f1].getCoefEdge(e1).copy()
-                if self.con[i].dir == -1:
-                    coef = coef[::-1]
-                # end if
-                self.surfs[f2].setCoefEdge(e2,coef)
-            # end if
-        # end for
         return
-
-
-    def _test_edge(self,surf1,surf2,i,j,edge_tol):
-
-        '''Test edge i on surf1 with edge j on surf2'''
-
-        val1_beg = surf1.getValueEdge(i,0)
-        val1_end = surf1.getValueEdge(i,1)
-
-        val2_beg = surf2.getValueEdge(j,0)
-        val2_end = surf2.getValueEdge(j,1)
-
-        #Three things can happen:
-        coinc = False
-        dir_flag = 1
-        # Beginning and End match (same sense)
-        if self._e_dist(val1_beg,val2_beg) < edge_tol and \
-               self._e_dist(val1_end,val2_end) < edge_tol:
-            # End points are the same, now check the midpoint
-            mid1 = surf1.getValueEdge(i,0.5)
-            mid2 = surf2.getValueEdge(j,0.5)
-            if self._e_dist(mid1,mid2) < edge_tol:
-                coinc = True
-            else:
-                coinc = False
-        
-            dir_flag = 1
-
-        # Beginning and End match (opposite sense)
-        elif self._e_dist(val1_beg,val2_end) < edge_tol and \
-               self._e_dist(val1_end,val2_beg) < edge_tol:
          
-            mid1 = surf1.getValueEdge(i,0.5)
-            mid2 = surf2.getValueEdge(j,0.5)
-            if self._e_dist(mid1,mid2) < edge_tol:
-                coinc = True
-            else:
-                coinc = False
-                
-            dir_flag = -1
-        # If nothing else
-        else:
-            coinc = False
-
-        return coinc,dir_flag
-
-    def _e_dist(self,x1,x2):
-        '''Get the eculidean distance between two points'''
-        return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
- 
-    
     def addGeoObject(self,geo_obj):
 
         '''Concentate two pyGeo objects into one'''
@@ -1193,6 +1154,11 @@ class pyGeo():
         self.con = None
         print 'Warning: edge connections have been reset'
         return 
+
+
+# ----------------------------------------------------------------------
+#                   Surface Writing Output Functions
+# ----------------------------------------------------------------------
 
     def writeTecplot(self,file_name,ref_axis=None):
         '''Write the surface patches to Tecplot'''
@@ -1239,8 +1205,6 @@ class pyGeo():
             # end for
 
         # end if
-
-
         # We also want to output Links if available
 
         if ref_axis:
@@ -1322,6 +1286,104 @@ class pyGeo():
         f.close()
 
         return
+
+# ----------------------------------------------------------------------
+#                              Utility Functions 
+# ----------------------------------------------------------------------
+
+    def _read_af(self,filename,N=35):
+        ''' Load the airfoil file from precomp format'''
+
+        # Interpolation Format
+        s_interp = 0.5*(1-cos(linspace(0,pi,N)))
+
+        f = open(filename,'r')
+
+        aux = string.split(f.readline())
+        npts = int(aux[0]) 
+        
+        xnodes = zeros(npts)
+        ynodes = zeros(npts)
+
+        f.readline()
+        f.readline()
+        f.readline()
+
+        for i in xrange(npts):
+            aux = string.split(f.readline())
+            xnodes[i] = float(aux[0])
+            ynodes[i] = float(aux[1])
+        # end for
+        f.close()
+
+        # -------------
+        # Upper Surfce
+        # -------------
+
+        # Find the trailing edge point
+        index = where(xnodes == 1)
+        te_index = index[0]
+        n_upper = te_index+1   # number of nodes on upper surface
+        n_lower = int(npts-te_index)+1 # nodes on lower surface
+
+        # upper Surface Nodes
+        x_u = xnodes[0:n_upper]
+        y_u = ynodes[0:n_upper]
+
+        # Now determine the upper surface 's' parameter
+
+        s = zeros(n_upper)
+        for j in xrange(n_upper-1):
+            s[j+1] = s[j] + sqrt((x_u[j+1]-x_u[j])**2 + (y_u[j+1]-y_u[j])**2)
+        # end for
+        s = s/s[-1] #Normalize s
+
+        # linearly interpolate to find the points at the positions we want
+        X_u = numpy.interp(s_interp,s,x_u)
+        Y_u = numpy.interp(s_interp,s,y_u)
+
+        # -------------
+        # Lower Surface
+        # -------------
+        x_l = xnodes[te_index:npts]
+        y_l = ynodes[te_index:npts]
+        x_l = hstack([x_l,0])
+        y_l = hstack([y_l,0])
+
+        # Now determine the lower surface 's' parameter
+
+        s = zeros(n_lower)
+        for j in xrange(n_lower-1):
+            s[j+1] = s[j] + sqrt((x_l[j+1]-x_l[j])**2 + (y_l[j+1]-y_l[j])**2)
+        # end for
+        s = s/s[-1] #Normalize s
+
+        # linearly interpolate to find the points at the positions we want
+        X_l = numpy.interp(s_interp,s,x_l)
+        Y_l = numpy.interp(s_interp,s,y_l)
+
+        return X_u,Y_u,X_l,Y_l
+    
+    
+    def _rotx(self,x,theta):
+        ''' Rotate a set of airfoil coodinates in the local x frame'''
+        M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
+        return dot(M,x)
+
+    def _roty(self,x,theta):
+        '''Rotate a set of airfoil coordiantes in the local y frame'''
+        M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
+        return dot(M,x)
+
+    def _rotz(self,x,theta):
+        '''Roate a set of airfoil coordinates in the local z frame'''
+        'rotatez:'
+        M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
+        return dot(M,x)
+
+    def _e_dist(self,x1,x2):
+        '''Get the eculidean distance between two points'''
+        return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
 
 
 class edge(object):
@@ -1430,11 +1492,13 @@ class ref_axis(object):
         # the rotational part
 
         self.update()
-        #self.rots = pySpline.linear_spline('interpolate',X=self.rot,k=2)
 
 
     def update(self):
         self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2)
+        self.rotxs = pySpline.linear_spline('interpolate',X=self.rot[:,0:0],k=2)
+        self.rotys = pySpline.linear_spline('interpolate',X=self.rot[:,1:1],k=2)
+        self.rotzs = pySpline.linear_spline('interpolate',X=self.rot[:,2:2],k=2)
 
     def updateSloc(self):
         
