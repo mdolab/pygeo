@@ -29,7 +29,10 @@ from pyGeometry_bodysurface import BodySurface
 from pyGeometry_system import System
 from pyGeometry_aircraft import Aircraft
 
-# Boeing 737 Test Example
+
+# ------------------------------------------
+#          Boeing 737 Test Example
+# ------------------------------------------
 
 input = {
     'Name':'B737',
@@ -78,19 +81,38 @@ input = {
                 }),
         },
    }
+
+# ------------------------------------------
+#             MDA Wing Example
+# ------------------------------------------
+
+input = {
+    'Name':'MDA_Wing',
+    '_components':{
+    0:LiftingSurface({
+    'Name':'Wing',
+    'Symmetry':False,
+    'xrLE':0.00,'yrLE':0.0,'zrLE':0.0,
+    'xRot':0.0,'yRot':0.0,'zRot':0.0,
+    '_components':{
+    0:{'Name':'External Segment','Type':'internal','Area':3.9825,'Span':4.5,'Taper':0.77,'SweepLE':10.0,'Dihedral':0.0 ,'xc_offset':0.0,'root_Incidence': 0.0,'root_Thickness':0.12,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence': 0.0,'tip_Thickness':0.12,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'},
+    1:{'Name':'External Segment','Type':'external','Area':0.38,'Span':0.5,'Taper':0.974,'SweepLE':10.0,'Dihedral':0.0 ,'xc_offset':0.0,'root_Incidence': 0.0,'root_Thickness':0.12,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence': 0.0,'tip_Thickness':0.00,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'}}}),
+    }
+    }
+
 acg = Aircraft(input)
 
 # Procedure for Using pyGEO
 
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
-wing = pyGeo.pyGeo('acdt_geo',acdt_geo=acg)
-#wing.calcEdgeConnectivity(1e-2,1e-2)
-#wing.writeEdgeConnectivity('wing.con') 
-wing.writeTecplot('acdt_geo.dat')
-wing.writeIGES('acdt_geo.igs')
-print 'Done Step 1' 
-sys.exit(0)
+# wing = pyGeo.pyGeo('acdt_geo',acdt_geo=acg)
+# wing.calcEdgeConnectivity(1e-2,1e-2)
+# wing.writeEdgeConnectivity('acdt_geo.con') 
+# wing.writeTecplot('acdt_geo.dat')
+# wing.writeIGES('acdt_geo.igs')
+# print 'Done Step 1' 
+# sys.exit(0)
 # ----------------------------------------------------------------------
 # Now: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -105,13 +127,13 @@ sys.exit(0)
 # are using for bspline surfaces
 
 # ----------------------------------------------------------------------
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis1,breaks=breaks,fit_type='lms',Nctlu = 13,Nctlv=Nctlv)
-# wing.readEdgeConnectivity('wing.con')
+# wing = pyGeo.pyGeo('acdt_geo',acdt_geo=acg)
+# wing.readEdgeConnectivity('acdt_geo.con')
 # wing.propagateKnotVectors()
 # wing.stitchEdges()
 # #wing.fitSurfaces()
-# wing.writeTecplot('wing.dat')
-# wing.writeIGES('wing.igs')
+# wing.writeTecplot('acdt_geo.dat')
+# wing.writeIGES('acdt_geo.igs')
 # print 'Done Step 2'
 # sys.exit(0)
 # ----------------------------------------------------------------------
@@ -124,8 +146,8 @@ sys.exit(0)
 
 # ----------------------------------------------------------------------
 
-wing = pyGeo.pyGeo('iges',file_name='wing.igs')
-wing.readEdgeConnectivity('wing.con')
+wing = pyGeo.pyGeo('iges',file_name='acdt_geo.igs')
+wing.readEdgeConnectivity('acdt_geo.con')
 wing.stitchEdges() # Just to be sure
 print 'Done Step 3'
 
@@ -135,18 +157,16 @@ print 'Done Step 3'
 # needs to run the commands in part 3 to fully define the geometry of
 # interest
 
+# Make a reference Axis:
+x = [.25,1.]
+y = [0,4.5]
+z = [0,0]
+rot_x = [0,0]
+rot_y = [0,0]
+tw_aero = [0,0] # ie rot_z
+ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
+
 print 'Attaching Ref Axis...'
-wing.setRefAxis([0,1,2,3,4,5],ref_axis1)
+wing.setRefAxis([0,1],ref_axis)
 
-wing.writeTecplot('wing.dat',ref_axis1)
-
-print 'modifiying ref axis:'
-
-ref_axis1.x[:,2] *= 1.2
-ref_axis1.x[:,0] += 3*ref_axis1.xs.s
-ref_axis1.x[:,1] += 0.4*ref_axis1.xs.s**2
-
-wing.update(ref_axis1)
-wing.stitchEdges() # Just to be sure
-wing.writeTecplot('wing2.dat',ref_axis1)
-
+wing.writeTecplot('acdt_geo.dat',write_links=True)
