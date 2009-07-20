@@ -353,7 +353,7 @@ class pyGeo():
             sys.exit(1)
 
         naf = len(xsections)
-        N = 35
+        N = 75
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
@@ -379,7 +379,7 @@ class pyGeo():
         # end for
         self.surfs = []
 
-        if not 'breaks' in kwargs:
+        if not 'breaks' in kwargs: #We will get two surfaces
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
             self.nPatch = 2
@@ -387,17 +387,20 @@ class pyGeo():
             # We have breaks
             start = 0
             breaks = kwargs['breaks']
+            assert 'Nctlv' in kwargs and 'Nctlu' in kwargs,
+            'Nctlu and Nctlv Must be included in pyGeo initialization. Additionally, Nctlv must be a list when break-points are used'
+            Ncltv=kwargs['Nctlv']
             for i in xrange(len(breaks)):
                 end = breaks[i]+1
-                
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],*args,**kwargs))
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],*args,**kwargs))
+                Nctlv = 
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],Nctlv=Nctlv[i],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],Nctlv=Nctlv[i],*args,**kwargs))
                 start = end-1
             # end for
 
             # DO the last one
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],,Nctlv=Nctlv[-1]*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],,Nctlv=Nctlv[-1]*args,**kwargs))
             self.nPatch = len(self.surfs)
         # end if
 
