@@ -1,4 +1,5 @@
 #!/usr/local/bin/python
+from __future__ import division
 '''
 pyGeo
 
@@ -26,21 +27,22 @@ __version__ = '$Revision: $'
 # =============================================================================
 # Standard Python modules
 # =============================================================================
+
 import os, sys, string, copy, pdb, time
 
 # =============================================================================
 # External Python modules
 # =============================================================================
-import numpy
-from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
-    transpose, vstack, max, dot, sqrt, append, mod
 
-from numpy.linalg import lstsq
-from scipy import io
+from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
+    transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid
+
+from numpy.linalg import lstsq,inv
+from scipy import io #Only used for debugging
+
 try:
     from petsc4py import PETSc
     USE_PETSC = True
-    #USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed with PETSC'
 except:
     print 'PETSc4py is not available. Least Square Solutions will be performed with LAPACK'
@@ -52,6 +54,15 @@ except:
 
 # pySpline Utilities
 import pySpline
+
+try:
+    import csm_pre
+    USE_CSM_PRE = True
+    print 'CSM_PRE is available. Surface associations can be performed'
+except:
+    print 'CSM_PRE is not available. Surface associations cannot be performed'
+    USE_CSM_PRE = False
+
 
 # =============================================================================
 # pyGeo class
@@ -123,6 +134,7 @@ class pyGeo():
 
         elif init_type == 'lifting_surface':
             self._init_lifting_surface(*args,**kwargs)
+
         elif init_type == 'acdt_geo':
             self._init_acdt_geo(*args,**kwargs)
         else:
@@ -133,6 +145,13 @@ class pyGeo():
             self.readConFile(kwargs['con_file'])
         else:
             self.con = None
+
+        # These are optional atributes which are set depending on the
+        # functionality employed
+
+        self.ref_axis = []
+        self.ref_axis_list = []
+        self.DV_list = {}
 
         return
 
@@ -800,7 +819,7 @@ class pyGeo():
         i = edges.index(edge)
         
         if i < nJoined:
-            return i / 2, mod(i,2)  #integer division
+            return i // 2, mod(i,2)  #integer division
         else:
             return nJoined/2 + i-nJoined,0
 
@@ -1126,20 +1145,38 @@ class pyGeo():
 
         '''Set the reference axis ref_axis to surfaces in patch_list'''
         print 'patch_list:',patch_list
+        self.ref_axis.append(ref_axis)
+        self.ref_axis_list.append(patch_list)
         for i in xrange(len(patch_list)):
             self.surfs[patch_list[i]].associateRefAxis(ref_axis)
-            
+        # end for
 
+        return
 
+    def update(self):
+        '''update the entire pyGeo Object'''
 
-    def update(self,ref_axis):
-
-        '''update the ref axis and all the surfaces'''
-
-        ref_axis.update()
-        for ipatch in xrange(self.nPatch):
-            self.surfs[ipatch].update(ref_axis)
         
+        # First, update the reference axis info from the design variables
+
+        for dv_name in self.DV_list:
+
+            # Call the each design variable with the ref axis its associated with
+            self.ref_axis[self.DV_list[dv_name].ref_axis_id] = \
+                     self.DV_list[dv_name](self.ref_axis[self.DV_list[dv_name].ref_axis_id]) 
+
+
+        # Second, update the ref_axis and consequently the design variables
+        for r in xrange(len(self.ref_axis)):
+            self.ref_axis[r].update()
+
+            for ipatch in self.ref_axis_list[r]:
+                self.surfs[ipatch].update(self.ref_axis[r])
+
+        # Third, run the stitch surfaces command to enforce master dv's
+
+        self.stitchEdges()
+                
         return
          
     def addGeoObject(self,geo_obj):
@@ -1156,12 +1193,27 @@ class pyGeo():
         return 
 
 
+    def addGeoDV(self,dv):
+
+        '''Add a design variable (or design variable group, no distinction) to the pyGeo object'''
+
+        self.DV_list[dv.name] = dv
+
+        
+
+
+
 # ----------------------------------------------------------------------
 #                   Surface Writing Output Functions
 # ----------------------------------------------------------------------
 
-    def writeTecplot(self,file_name,ref_axis=None):
-        '''Write the surface patches to Tecplot'''
+    def writeTecplot(self,file_name,write_con=True,write_ref_axis=True,write_links=False):
+        '''Write the pyGeo Object to Tecplot'''
+
+        # ---------------------------
+        #    Write out the surfaces
+        # ---------------------------
+        
         f = open(file_name,'w')
         f.write ('VARIABLES = "X", "Y","Z"\n')
         print ' '
@@ -1171,8 +1223,12 @@ class pyGeo():
             sys.stdout.write('%d '%(ipatch))
             self.surfs[ipatch].writeTecplot(handle=f)
 
+        # ---------------------------
+        #    Write out the edges
+        # ---------------------------
+
         # We also want to output edge continuity for visualization
-        if self.con:
+        if self.con and write_con:
             counter = 1
             for i in xrange(len(self.con)): #Output Simple Edges (no continuity)
                 if self.con[i].cont == 0 and self.con[i].type == 1: #output the edge
@@ -1205,54 +1261,68 @@ class pyGeo():
             # end for
 
         # end if
+
+        # ---------------------------------
+        #    Write out Ref Axis
+        # ---------------------------------
+        
         # We also want to output Links if available
 
-        if ref_axis:
-            print 'writing ref_axis...'
-            num_vectors = 0
-            for ipatch in xrange(self.nPatch):
-                num_vectors += self.surfs[ipatch].Nctlu*self.surfs[ipatch].Nctlv
-                
-            coords = zeros((2*num_vectors,3))
-            icoord = 0
-            for ipatch in xrange(self.nPatch):
-                for j in xrange(len(self.surfs[ipatch].links)):
-                    x0 = ref_axis.xs.getValue(self.surfs[ipatch].links[j][0])
-                    coords[icoord    ,:] = x0
-                    coords[icoord + 1,:] = x0 + self.surfs[ipatch].links[j][1]
+
+        if len(self.ref_axis)>0 and write_ref_axis:
+            N = 50
+            for r in xrange(len(self.ref_axis)):
+                f.write('Zone T=ref_axis%d I=%d\n'%(r,N))
+                s = linspace(0,1,N)
+                for i in xrange(N):
+                    value = self.ref_axis[r].xs.getValue(s[i])
+                    f.write('%f %f %f \n'%(value[0],value[1],value[2]))
+                    # end for
+
+        # ---------------------------------
+        #    Write out Links
+        # ---------------------------------
+
+        if len(self.ref_axis)>0 and write_links:
+            for r in xrange(len(self.ref_axis)):
+
+                num_vectors = 0
+                for ipatch in self.ref_axis_list[r]:
+                    num_vectors += self.surfs[ipatch].Nctlu*self.surfs[ipatch].Nctlv
+
+                coords = zeros((2*num_vectors,3))
+                icoord = 0
+                for ipatch in self.ref_axis_list[r]:
+                    for j in xrange(len(self.surfs[ipatch].links)):
+                        x0 = self.ref_axis[r].xs.getValue(self.surfs[ipatch].links[j][0])
+
+                        M = self.ref_axis[r].getRotMatrixLocalToGloabl(self.surfs[ipatch].links[j][0])
+
+                        coords[icoord    ,:] = x0
+                        coords[icoord + 1,:] = x0 + dot(M,self.surfs[ipatch].links[j][1])
+                        icoord += 2
+                    # end for
+                # end for
+
+                icoord = 0
+                conn = zeros((num_vectors,2))
+                for ivector  in xrange(num_vectors):
+                    conn[ivector,:] = icoord, icoord+1
                     icoord += 2
                 # end for
-            # end for
 
-            icoord = 0
-            conn = zeros((num_vectors,2))
-            for ivector  in xrange(num_vectors):
-                conn[ivector,:] = icoord, icoord+1
-                icoord += 2
-            # end for
+                f.write('Zone N= %d ,E= %d\n'%(2*num_vectors, num_vectors) )
+                f.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
 
-            f.write('Zone N= %d ,E= %d\n'%(2*num_vectors, num_vectors) )
-            f.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
-
-            for n in xrange(3):
-                for i in  range(2*num_vectors):
-                    f.write('%f\n'%(coords[i,n]))
+                for n in xrange(3):
+                    for i in  range(2*num_vectors):
+                        f.write('%f\n'%(coords[i,n]))
+                    #endfor
                 #endfor
-            #endfor
 
-            for i in range(num_vectors):
-                f.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
-            #endfor
-
-
-            # Also dump the axis itself
-            
-            f.write('Zone T=%s I=%d\n'%('ref_axis',750))
-            s = linspace(0,1,750)
-            for i in xrange(750):
-                value = ref_axis.xs.getValue(s[i])
-                f.write('%f %f %f \n'%(value[0],value[1],value[2]))
-        # end for
+                for i in range(num_vectors):
+                    f.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
+                #endfor
 
         f.close()
         sys.stdout.write('\n')
@@ -1287,10 +1357,121 @@ class pyGeo():
 
         return
 
-# ----------------------------------------------------------------------
-#                              Utility Functions 
-# ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    #                              Utility Functions 
+    # ----------------------------------------------------------------------
+    def attachSurface(self):#,surface_points):
 
+        '''Attach a list of surface points to pyGeo surfaces'''
+
+        # TEMPORARY - Load in the points from a file
+
+        f = open('surface_points.dat','r')
+        coordinates = []
+        for line in f:
+            aux = string.split(line)
+            coordinates.append([float(aux[0]),float(aux[1]),float(aux[2])])
+        # end for
+        f.close()
+        coordinates = transpose(array(coordinates))
+        nSurf = coordinates.shape[1]
+        # Now make the 'FE' Grid from the sufaces.
+
+        # Global 'N' Parameter
+        Nu = 25
+        Nv = 25
+        
+        nelem    = self.nPatch * (Nu-1)*(Nv-1)
+        nnode    = self.nPatch * Nu *Nv
+        conn     = zeros((4,nelem),int)
+        xyz      = zeros((3,nnode))
+        elemtype = 4*ones(nelem) # All Quads
+        
+        counter = 0
+        for ipatch in xrange(self.nPatch):
+            u = linspace(self.surfs[ipatch].range[0],self.surfs[ipatch].range[1],Nu)
+            v = linspace(self.surfs[ipatch].range[0],self.surfs[ipatch].range[1],Nv)
+            [U,V] = meshgrid(u,v)
+
+            temp = self.surfs[ipatch].getValueM(U,V)
+            for idim in xrange(self.surfs[ipatch].nDim):
+                xyz[idim,ipatch*Nu*Nv:(ipatch+1)*Nu*Nv]= temp[:,:,idim].flatten()
+            # end for
+
+            # Now do connectivity info
+           
+            for j in xrange(Nv-1):
+                for i in xrange(Nu-1):
+                    conn[0,counter] = Nu*Nv*ipatch + (j  )*Nu + i     + 1
+                    conn[1,counter] = Nu*Nv*ipatch + (j  )*Nu + i + 1 + 1 
+                    conn[2,counter] = Nu*Nv*ipatch + (j+1)*Nu + i + 1 + 1
+                    conn[3,counter] = Nu*Nv*ipatch + (j+1)*Nu + i     + 1
+                    counter += 1
+
+                # end for
+            # end for
+        # end for
+
+        # Now run the csm_pre command 
+#        print xyz
+#        print conn
+        [dist,nearest_elem,uvw,base_coord,weightt,weightr] = csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
+
+        # All we need from this is the nearest_elem array and the uvw array
+
+        # First we back out what patch nearest_elem belongs to:
+
+        patchID = (nearest_elem-1) // ((Nu-1)*(Nv-1))  # Integer Division
+
+        # Next we need to figure out what is the actual UV coordinate on the given surface
+
+        uv = zeros((nSurf,2))
+        print 'secondary search'
+        for i in xrange(nSurf):
+
+            # Local Element
+            local_elem = (nearest_elem[i]-1) - patchID[i]*(Nu-1)*(Nv-1)
+            #print local_elem
+            # Find out what its row/column index is
+
+            row = local_elem // (Nu-1)  # Integer Division
+            col = mod(local_elem,(Nu-1)) 
+
+            #print nearest_elem[i],local_elem,row,col
+
+            
+            if uvw[0,i] > 1:
+                u_local = 1
+            elif uvw[0,i] < 0:
+                u_local = 0
+            else:
+                u_local = uvw[0,i]
+
+            if uvw[1,i] > 1:
+                v_local = 1
+            elif uvw[1,i] < 0:
+                v_local = 0
+            else:
+                v_local = uvw[1,i]
+
+            uv[i,0] =  u_local/(Nu-1)+ col/(Nu-1)
+            uv[i,1] =  v_local/(Nv-1)+ row/(Nv-1)
+
+        # end for
+
+        # Check to see how far off the base_coord and the new point is:
+        counter = 0
+        for i in xrange(30):#(nSurf):
+            D = coordinates[:,i] - self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
+            D = sqrt(dot(D,D))
+            if D > 1e-4:
+
+                uv[i,0],uv[i,1],D2,converged = self.surfs[patchID[i]].projectPoint(coordinates[:,i],u0=uv[i,0],v0=uv[i,0])
+                print 'D2,D2:',D,sqrt(dot(D2,D2))
+                counter += 1
+        print 'counter:',counter
+        return
+        
     def _read_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
 
@@ -1339,8 +1520,8 @@ class pyGeo():
         s = s/s[-1] #Normalize s
 
         # linearly interpolate to find the points at the positions we want
-        X_u = numpy.interp(s_interp,s,x_u)
-        Y_u = numpy.interp(s_interp,s,y_u)
+        X_u = interp(s_interp,s,x_u)
+        Y_u = interp(s_interp,s,y_u)
 
         # -------------
         # Lower Surface
@@ -1359,8 +1540,8 @@ class pyGeo():
         s = s/s[-1] #Normalize s
 
         # linearly interpolate to find the points at the positions we want
-        X_l = numpy.interp(s_interp,s,x_l)
-        Y_l = numpy.interp(s_interp,s,y_l)
+        X_l = interp(s_interp,s,x_l)
+        Y_l = interp(s_interp,s,y_l)
 
         return X_u,Y_u,X_l,Y_l
     
@@ -1483,10 +1664,11 @@ class ref_axis(object):
         self.rot[:,1] = rot_y
         self.rot[:,2] = rot_z
 
+        self.scale = ones((self.N,1))
+
         self.x0 = copy.deepcopy(self.x)
         self.rot0 = copy.deepcopy(self.rot)
-        self.sloc = zeros(self.N)
-        self.updateSloc()
+        self.scale0 = copy.deepcopy(self.scale)
 
         # Create an interpolating spline for the spatial part and for
         # the rotational part
@@ -1495,20 +1677,83 @@ class ref_axis(object):
 
 
     def update(self):
-        self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2)
-        self.rotxs = pySpline.linear_spline('interpolate',X=self.rot[:,0:0],k=2)
-        self.rotys = pySpline.linear_spline('interpolate',X=self.rot[:,1:1],k=2)
-        self.rotzs = pySpline.linear_spline('interpolate',X=self.rot[:,2:2],k=2)
+        print 'pyGeo Update'
 
-    def updateSloc(self):
+        print 'spatial'
+        self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2)
+        print 'self.xs.k',self.xs.k
+        print 'rotatonal'
+        self.rotxs = pySpline.linear_spline('interpolate',X=self.rot[:,0:1],k=2,s=self.xs.s)
+        self.rotys = pySpline.linear_spline('interpolate',X=self.rot[:,1:2],k=2,s=self.xs.s)
+        self.rotzs = pySpline.linear_spline('interpolate',X=self.rot[:,2:3],k=2,s=self.xs.s)
+
+        self.scales = pySpline.linear_spline('interpolate',X=self.scale,k=2,s=self.xs.s)
+
+    
+    def getRotMatrixGlobalToLocal(self,s):
         
-        for i in xrange(self.N-1):
-            self.sloc[i+1] = self.sloc[i] +sqrt( (self.x[i+1,0]-self.x[i,0])**2 + \
-                                                 (self.x[i+1,1]-self.x[i,1])**2 +
-                                                 (self.x[i+1,2]-self.x[i,2])**2  )
-        #Normalize
-        self.length = self.sloc[-1]
-        self.sloc/=self.sloc[-1]
+        '''Return the rotation matrix to convert vector from global to local frames'''
+        return     dot(self._roty(self.rotys(s)[0]), dot(self._rotx(self.rotxs(s)[0]),self._rotz(self.rotzs(s)[0])))
+    
+    def getRotMatrixLocalToGloabl(self,s):
+        
+        '''Return the rotation matrix to convert vector from global to local frames'''
+        return inv(dot(self._roty(self.rotys(s)[0]), dot(self._rotx(self.rotxs(s)[0]),self._rotz(self.rotzs(s)[0]))))
+    
+    def _rotx(self,theta):
+        '''Return x rotation matrix'''
+        theta = theta*pi/180
+        M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
+        return M
+
+    def _roty(self,theta):
+        ''' Return y rotation matrix'''
+        theta = theta*pi/180
+        M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
+        return M
+
+    def _rotz(self,theta):
+        ''' Return z rotation matrix'''
+        theta = theta*pi/180
+        M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
+        return M
+
+
+class geoDV(object):
+     
+    def __init__(self,dv_name,value,lower,upper,function,ref_axis_id):
+        
+        '''Create a geometric design variable (or design variable group)
+
+        Input:
+        
+        dv_name: Design variable name. Should be unique. Can be used
+        to set pyOpt variables directly
+
+        value: Value of Design Variable
+        
+        lower: Lower bound for the variable. Again for setting in
+        pyOpt
+
+        upper: Upper bound for the variable. '''
+
+        self.name = dv_name
+        self.value = value
+        self.lower = lower
+        self.upper = upper
+        self.function = function
+        self.ref_axis_id = ref_axis_id
+        return
+
+
+    def __call__(self,ref_axis):
+
+        '''When the object is called, actually apply the function'''
+        # Execute the user-supplied function
+
+        return self.function(self.value,ref_axis)
+        
+ 
 
 #==============================================================================
 # Class Test
@@ -1529,9 +1774,9 @@ if __name__ == '__main__':
 #         '''Return a (linearly) interpolated list of the twist, xrot and
 #         y-rotations at a span-wise position s'''
         
-#         twist = numpy.interp([s],self.sloc,self.twist)
-#         rot_x = numpy.interp([s],self.sloc,self.rot_x)
-#         rot_y = numpy.interp([s],self.sloc,self.rot_y)
+#         twist = interp([s],self.sloc,self.twist)
+#         rot_x = interp([s],self.sloc,self.rot_x)
+#         rot_y = interp([s],self.sloc,self.rot_y)
 
 #         return twist[0],rot_x[0],rot_y[0]
 
@@ -1551,10 +1796,10 @@ if __name__ == '__main__':
 #     def getLocalChord(self,s):
 #         '''Return the linearly interpolated chord at span-wise postiion s'''
 
-#         return numpy.interp([s],self.sloc,self.chord)[0]
+#         return interp([s],self.sloc,self.chord)[0]
         
 #     def getLocalLe_loc(self,s):
-#         return numpy.interp([s],self.sloc,self.le_loc)[0]
+#         return interp([s],self.sloc,self.le_loc)[0]
 
 
 #     def getRefPt(self,s):
@@ -1563,8 +1808,8 @@ if __name__ == '__main__':
         
 #         x = zeros(3);
 #         x[2] = s*self.L
-#         x[0] = numpy.interp([s],self.sloc,self.ref_axis[:,0])[0]
-#         x[1] = numpy.interp([s],self.sloc,self.ref_axis[:,1])[0]
+#         x[0] = interp([s],self.sloc,self.ref_axis[:,0])[0]
+#         x[1] = interp([s],self.sloc,self.ref_axis[:,1])[0]
 
 #         return x
 
@@ -1600,100 +1845,6 @@ if __name__ == '__main__':
 
 #         return
 
-
-
-
-
-# class geoDV(object):
-     
-#     def __init__(self,dv_name,value,DVmapping,lower,upper):
-        
-#         '''Create a geometic desing variable with specified mapping
-
-#         Input:
-        
-#         dv_name: Design variable name. Should be unique. Can be used
-#         to set pyOpt variables directly
-
-#         DVmapping: One or more mappings which relate to this design
-#         variable
-
-#         lower: Lower bound for the variable. Again for setting in
-#         pyOpt
-
-#         upper: Upper bound for the variable. '''
-
-#         self.name = dv_name
-#         self.value = value
-#         self.lower = lower
-#         self.upper = upper
-#         self.DVmapping = DVmapping
-
-#         return
-
-#     def applyValue(self,surf,s):
-#         '''Set the actual variable. Surf is the spline surface.'''
-        
-#         self.DVmapping.apply(surf,s,self.value)
-        
-
-#         return
-
-
-
-# class DVmapping(object):
-
-#     def __init__(self,sec_start,sec_end,apply_to,formula):
-
-#         '''Create a generic mapping to apply to a set of b-spline control
-#         points.
-
-#         Input:
-        
-#         sec_start: j index (spanwise) where mapping function starts
-#         sec_end : j index (spanwise) where mapping function
-#         ends. Python-based negative indexing is allowed. eg. -1 is the last element
-
-#         apply_to: literal reference to select what planform variable
-#         the mapping applies to. Valid litteral string are:
-#                 \'x\'  -> X-coordinate of the reference axis
-#                 \'y\'  -> Y-coordinate of the reference axis
-#                 \'z\'  -> Z-coordinate of the reference axis
-#                 \'twist\' -> rotation about the z-axis
-#                 \'x-rot\' -> rotation about the x-axis
-#                 \'y-rot\' -> rotation about the x-axis
-
-#         formula: is a string which contains a python expression for
-#         the mapping. The value of the mapping is assigned as
-#         \'val\'. Distance along the surface is specified as \'s\'. 
-
-#         For example, for a linear shearing sweep, the formula would be \'s*val\'
-#         '''
-#         self.sec_start = sec_start
-#         self.sec_end   = sec_end
-#         self.apply_to  = apply_to
-#         self.formula   = formula
-
-#         return
-
-#     def apply(self,surf,s,val):
-#         '''apply mapping to surface'''
-
-#         if self.apply_to == 'x':
-# #             print 'ceofs'
-# #             print surf.coef[0,0,self.sec_start:self.sec_end,0]
-# #             print surf.coef[0,0,:,0]
-# #             print 'formula'
-# #             print eval(self.formula)
-
-#             surf.coef[:,:,:,0] += eval(self.formula)
-
-# #            surf.coef[:,:,self.sec_start:self.sec_end,0]+= eval(self.formula)
-# #             print 'formula:',self.formula
-# #             print 's:',s
-# #             print 'val:',val
-#             print eval(self.formula).shape
-#             print 'done x'
 
 
 
@@ -1811,3 +1962,62 @@ if __name__ == '__main__':
 #                 face = n_con[i][j] / 4
 #                 node = mod(n_con[i][j] ,4 )
 #                 self.n_con[i].append([face,node])
+
+# class DVmapping(object):
+
+#     def __init__(self,sec_start,sec_end,apply_to,formula):
+
+#         '''Create a generic mapping to apply to a set of b-spline control
+#         points.
+
+#         Input:
+        
+#         sec_start: j index (spanwise) where mapping function starts
+#         sec_end : j index (spanwise) where mapping function
+#         ends. Python-based negative indexing is allowed. eg. -1 is the last element
+
+#         apply_to: literal reference to select what planform variable
+#         the mapping applies to. Valid litteral string are:
+#                 \'x\'  -> X-coordinate of the reference axis
+#                 \'y\'  -> Y-coordinate of the reference axis
+#                 \'z\'  -> Z-coordinate of the reference axis
+#                 \'twist\' -> rotation about the z-axis
+#                 \'x-rot\' -> rotation about the x-axis
+#                 \'y-rot\' -> rotation about the x-axis
+
+#         formula: is a string which contains a python expression for
+#         the mapping. The value of the mapping is assigned as
+#         \'val\'. Distance along the surface is specified as \'s\'. 
+
+#         For example, for a linear shearing sweep, the formula would be \'s*val\'
+#         '''
+#         self.sec_start = sec_start
+#         self.sec_end   = sec_end
+#         self.apply_to  = apply_to
+#         self.formula   = formula
+
+#         return
+
+#     def apply(self,surf,s,val):
+#         '''apply mapping to surface'''
+
+#         if self.apply_to == 'x':
+# #             print 'ceofs'
+# #             print surf.coef[0,0,self.sec_start:self.sec_end,0]
+# #             print surf.coef[0,0,:,0]
+# #             print 'formula'
+# #             print eval(self.formula)
+
+#             surf.coef[:,:,:,0] += eval(self.formula)
+
+# #            surf.coef[:,:,self.sec_start:self.sec_end,0]+= eval(self.formula)
+# #             print 'formula:',self.formula
+# #             print 's:',s
+# #             print 'val:',val
+#             print eval(self.formula).shape
+#             print 'done x'
+
+
+
+
+
