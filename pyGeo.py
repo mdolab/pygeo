@@ -378,17 +378,15 @@ class pyGeo():
             X[:,:,i,:] += ref_axis.x[i,:]
         # end for
         self.surfs = []
-        if 'breaks' in kwargs:
-            breaks = kwargs['breaks']
 
-        if not breaks:
+        if not 'breaks' in kwargs:
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
             self.nPatch = 2
         else:
             # We have breaks
             start = 0
-
+            breaks = kwargs['breaks']
             for i in xrange(len(breaks)):
                 end = breaks[i]+1
                 
@@ -526,6 +524,7 @@ class pyGeo():
 
                 flip_edge = self._flipEdge(edges[i][0][1])
                 flip_index,order = self._getConIndex(edge_list,[edges[i][0][0],flip_edge],nJoined,nMirror)
+                print 'flip_index:',flip_index
                 edges[flip_index][-1] = dg_counter
                 
                 # Now we have to propagate along faces connected to both sides of edge
@@ -821,7 +820,7 @@ class pyGeo():
         if i < nJoined:
             return i // 2, mod(i,2)  #integer division
         else:
-            return nJoined/2 + i-nJoined,0
+            return nJoined//2 + i-nJoined,0 #integer division
 
     def propagateKnotVectors(self):
 
@@ -1141,15 +1140,25 @@ class pyGeo():
 #                Reference Axis Handling
 # ----------------------------------------------------------------------
 
-    def setRefAxis(self,patch_list,ref_axis):
+    def setRefAxis(self,patch_list,ref_axis,sections=None):
 
-        '''Set the reference axis ref_axis to surfaces in patch_list'''
+        '''Set the reference axis 'ref_axis' to surfaces in patch_list'''
         print 'patch_list:',patch_list
         self.ref_axis.append(ref_axis)
         self.ref_axis_list.append(patch_list)
-        for i in xrange(len(patch_list)):
-            self.surfs[patch_list[i]].associateRefAxis(ref_axis)
-        # end for
+
+        if not sections == None:
+            # We have specified what sections surfaces coorspond to:
+            for i in xrange(len(sections)):
+                for j in xrange(len(sections[i])):
+                    self.surfs[sections[i][j]].associateRefAxis(ref_axis,section=i)
+                # end for
+            # end for
+        else:
+            for i in xrange(len(patch_list)):
+                self.surfs[patch_list[i]].associateRefAxis(ref_axis)
+            # end for
+        # end if
 
         return
 
@@ -1272,8 +1281,9 @@ class pyGeo():
         if len(self.ref_axis)>0 and write_ref_axis:
             N = 50
             for r in xrange(len(self.ref_axis)):
+                s = self.ref_axis[r].xs.s
+                N = len(s)
                 f.write('Zone T=ref_axis%d I=%d\n'%(r,N))
-                s = linspace(0,1,N)
                 for i in xrange(N):
                     value = self.ref_axis[r].xs.getValue(s[i])
                     f.write('%f %f %f \n'%(value[0],value[1],value[2]))
@@ -1378,8 +1388,8 @@ class pyGeo():
         # Now make the 'FE' Grid from the sufaces.
 
         # Global 'N' Parameter
-        Nu = 25
-        Nv = 25
+        Nu = 30
+        Nv = 30
         
         nelem    = self.nPatch * (Nu-1)*(Nv-1)
         nnode    = self.nPatch * Nu *Nv
@@ -1413,8 +1423,7 @@ class pyGeo():
         # end for
 
         # Now run the csm_pre command 
-#        print xyz
-#        print conn
+
         [dist,nearest_elem,uvw,base_coord,weightt,weightr] = csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
 
         # All we need from this is the nearest_elem array and the uvw array
@@ -1426,7 +1435,7 @@ class pyGeo():
         # Next we need to figure out what is the actual UV coordinate on the given surface
 
         uv = zeros((nSurf,2))
-        print 'secondary search'
+        
         for i in xrange(nSurf):
 
             # Local Element
@@ -1439,7 +1448,6 @@ class pyGeo():
 
             #print nearest_elem[i],local_elem,row,col
 
-            
             if uvw[0,i] > 1:
                 u_local = 1
             elif uvw[0,i] < 0:
@@ -1459,17 +1467,24 @@ class pyGeo():
 
         # end for
 
-        # Check to see how far off the base_coord and the new point is:
-        counter = 0
-        for i in xrange(30):#(nSurf):
+        # Check to see how far the coordinate and the surface point is:
+        counter1 = 0
+        counter2 = 0 
+        tol = 1e-3
+        for i in xrange(nSurf):
             D = coordinates[:,i] - self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
             D = sqrt(dot(D,D))
-            if D > 1e-4:
-
+            if D > tol:
+                counter1 += 1
                 uv[i,0],uv[i,1],D2,converged = self.surfs[patchID[i]].projectPoint(coordinates[:,i],u0=uv[i,0],v0=uv[i,0])
-                print 'D2,D2:',D,sqrt(dot(D2,D2))
-                counter += 1
-        print 'counter:',counter
+                if sqrt(dot(D2,D2)) > tol:
+                    counter2 += 1
+                # end if
+            # end if
+        # end for
+
+        print '%d Points were worse than %f before.'%(counter1,tol)
+        print '%d Points were worse than %f after.'%(counter2,tol)
         return
         
     def _read_af(self,filename,N=35):
@@ -1621,7 +1636,7 @@ class edge(object):
 
 class ref_axis(object):
 
-    def __init__(self,x,y,z,rot_x,rot_y,rot_z):
+    def __init__(self,x,y,z,rot_x,rot_y,rot_z,breaks=None):
 
         ''' Create a generic reference axis. This object bascally defines a
         set of points in space (x,y,z) each with three rotations
@@ -1653,6 +1668,8 @@ class ref_axis(object):
             print 'rot_z:',len(rot_z)
             sys.exit(1)
 
+        self.breaks = breaks
+            
         self.N = len(x)
         self.x = zeros([self.N,3])
         self.x[:,0] = x
@@ -1679,10 +1696,29 @@ class ref_axis(object):
     def update(self):
         print 'pyGeo Update'
 
-        print 'spatial'
-        self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2)
-        print 'self.xs.k',self.xs.k
-        print 'rotatonal'
+        if self.breaks:
+            # Need to scale each section of ref axis to 1/(nbreaks + 1)
+            nBreaks = len(self.breaks)
+            s = zeros(self.N)
+            range = 1/(nBreaks + 1)
+            start = 0
+            for i in xrange(nBreaks):
+                
+                end = self.breaks[i]+1
+                s_temp = self._getParameterization(self.x[start:end,:],range)
+                s[start:end] = s_temp + i*range
+
+                start = end-1
+            # end for
+            s_temp = self._getParameterization(self.x[start:,:],range)
+            s[start:] = s_temp + (i+1)*range
+
+            self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2,s=s)
+        else:
+            self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2)
+        # end if
+                        
+
         self.rotxs = pySpline.linear_spline('interpolate',X=self.rot[:,0:1],k=2,s=self.xs.s)
         self.rotys = pySpline.linear_spline('interpolate',X=self.rot[:,1:2],k=2,s=self.xs.s)
         self.rotzs = pySpline.linear_spline('interpolate',X=self.rot[:,2:3],k=2,s=self.xs.s)
@@ -1690,6 +1726,18 @@ class ref_axis(object):
         self.scales = pySpline.linear_spline('interpolate',X=self.scale,k=2,s=self.xs.s)
 
     
+    def _getParameterization(self,x,range):
+        # We need to parameterize the curve
+        N = x.shape[0]
+        s = zeros(N)
+        for i in xrange(N-1):
+            s[i+1] = s[i] +  sqrt((x[i+1,0] - x[i,0])**2 + (x[i+1,1] - x[i,1])**2 + (x[i+1,2] - x[i,2])**2)
+        # end for
+        
+        return   (s/s[-1])*range
+
+
+
     def getRotMatrixGlobalToLocal(self,s):
         
         '''Return the rotation matrix to convert vector from global to local frames'''
