@@ -24,7 +24,6 @@ sys.path.append('../../pyHF/pycfd-csm/python/')
 #pyGeo
 import pyGeo
 
-
 # Wing Information
 
 naf=8
@@ -37,25 +36,33 @@ rot_x = [0,0,0,0,0,-90,-90,-90]
 rot_y = [0,0,0,0,0,0,0,0]
 tw_aero = [-4,0,4,4.5,4.5,0,0,0] # ie rot_z
 
- 
+offset = zeros((naf,2))
+offset[:,0] = .25 # Offset sections by 0.25 in x
+
 # Make the break-point vector
 breaks = [3,6] #zero based
-Nctlv = [4,4,4] # Length breaks + 1
-
+Nctlv = [8,6,5] # Length breaks + 1
+vspace = []
+for i in xrange(len(Nctlv)):
+    vspace.append(linspace(Nctlv[i]))
+print vspace
+sys.exit(0)
+         
+Nctlu = 13
 ref_axis1 = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks)
-offset = zeros((naf,2))
-offset[:,0] = .25 #1/4 chord
 
 # Procedure for Using pyGEO
 
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis1,breaks=breaks,fit_type='lms',Nctlu = 13,Nctlv=Nctlv)
-# wing.calcEdgeConnectivity(1e-2,1e-2)
-# wing.writeEdgeConnectivity('wing.con')
-# wing.writeTecplot('wing.dat')
-# print 'Done Step 1'
-# sys.exit(0)
+# Note: u direction is chordwise, v direction is span-wise
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
+                   ref_axis=ref_axis,breaks=breaks,fit_type='lms',Nctlu = Nctlu,Nctlv=Nctlv)
+wing.calcEdgeConnectivity(1e-2,1e-2)
+wing.writeEdgeConnectivity('wing.con')
+wing.writeTecplot('wing.dat')
+print 'Done Step 1'
+sys.exit(0)
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -70,7 +77,7 @@ offset[:,0] = .25 #1/4 chord
 # are using for bspline surfaces
 
 # ----------------------------------------------------------------------
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis1,breaks=breaks,fit_type='lms',Nctlu = 13,Nctlv=Nctlv)
+# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,ref_axis=ref_axis,breaks=breaks,fit_type='lms',Nctlu = 13,Nctlv=Nctlv)
 # wing.readEdgeConnectivity('wing.con')
 # wing.propagateKnotVectors()
 # wing.stitchEdges()
@@ -101,7 +108,7 @@ print 'Done Step 3'
 # interest
 
 print 'Attaching Ref Axis...'
-wing.setRefAxis([0,1,2,3,4,5],ref_axis1,sections=[[0,1],[2,3],[4,5]])
+wing.setRefAxis([0,1,2,3,4,5],ref_axis,sections=[[0,1],[2,3],[4,5]])
 wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
 
 # --------------------------------------
@@ -168,21 +175,21 @@ wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
 
 
 
-#ref_axis1.x[:,2] *= 1.2
+#ref_axis.x[:,2] *= 1.2
 
-#ref_axis1.x[:,0] += 2.4*ref_axis1.xs.s
-#ref_axis1.x[:,0] = ref_axis1.x0[:,0] + 2
+#ref_axis.x[:,0] += 2.4*ref_axis1.xs.s
+#ref_axis.x[:,0] = ref_axis1.x0[:,0] + 2
 
-#ref_axis1.x[:,1] += 0.4*ref_axis1.xs.s**2
-#ref_axis1.rot[1,2] = 30
-#ref_axis1.rot[2,2]= 30
-#ref_axis1.rot[:,2] = 0
-# ref_axis1.scale[0,0] = 1.2
-# ref_axis1.scale[1,0] = 1.5
-# ref_axis1.scale[2,0] = 1.2
-# ref_axis1.scale[3,0] = 1.1
-# ref_axis1.scale[4,0] = 0.9
-# ref_axis1.scale[5,0] = 0.7
-# ref_axis1.scale[6,0] = 0.6
-# ref_axis1.scale[7,0] = 0.4
+#ref_axis.x[:,1] += 0.4*ref_axis1.xs.s**2
+#ref_axis.rot[1,2] = 30
+#ref_axis.rot[2,2]= 30
+#ref_axis.rot[:,2] = 0
+# ref_axis.scale[0,0] = 1.2
+# ref_axis.scale[1,0] = 1.5
+# ref_axis.scale[2,0] = 1.2
+# ref_axis.scale[3,0] = 1.1
+# ref_axis.scale[4,0] = 0.9
+# ref_axis.scale[5,0] = 0.7
+# ref_axis.scale[6,0] = 0.6
+# ref_axis.scale[7,0] = 0.4
  
