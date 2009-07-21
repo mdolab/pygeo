@@ -353,7 +353,7 @@ class pyGeo():
             sys.exit(1)
 
         naf = len(xsections)
-        N = 35
+        N = 55
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 

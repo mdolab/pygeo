@@ -26,138 +26,42 @@ import pyGeo
 
 # Wing Information
 
-# naf=9
-# airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
-# chord = [1.25,1,.8,.65,.65,0.65,.65,.65,.65]
-# x = [1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25]
-# y = [0,0.1,0.2,0.4,.405,.55,.6,.9,1.2]
-# z = [0,2,4,6,6.05,6.2,6.2,6.2,6.2]
-# rot_x = [0,0,0,0,0,-90,-90,-90,-90]
-# rot_y = [0,0,0,0,0,0,0,0,0]
-# tw_aero = [-4,0,4,4.5,4.5,0,0,0,0] # ie rot_z
-
-# offset = zeros((naf,2))
-# offset[:,0] = .25 # Offset sections by 0.25 in x
-
-# # Make the break-point vector
-# breaks = [1,6] #zero based
-# Nctlv  = [4,4,2] # Length breaks + 1
-# ctlv_spacing = []
-# for i in xrange(len(Nctlv)):
-#     ctlv_spacing.append(linspace(0,1,Nctlv[i]))
-
-
-         
-# Nctlu = 6
-# ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks)
-
-
-
-
-# naf=4
-# airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
-# chord = [1.25,.65,.65,.65]
-# x = [1.25,1.25,1.25,1.25]
-# y = [0,0.4,.6,1.2]
-# z = [0,6,6.2,6.2]
-# rot_x = [0,0,-90,-90]
-# rot_y = [0,0,0,0]
-# tw_aero = [-4,4,0,0] # ie rot_z
-
-# offset = zeros((naf,2))
-# offset[:,0] = .25 # Offset sections by 0.25 in x
-
-# # Make the break-point vector
-# breaks = [1,2] #zero based
-# Nctlv  = [7,7,7] # Length breaks + 1
-# ctlv_spacing = []
-# for i in xrange(len(Nctlv)):
-#     ctlv_spacing.append(linspace(0,1,Nctlv[i]))
-
-
-         
-# Nctlu = 13
-# ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks)
-
-# # Procedure for Us
-
-
-
-# naf=10
-# airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp']
-# chord = 1*ones(naf)
-# x = 1.25*ones(naf)
-# y = zeros(naf)
-# z = linspace(0,6,naf)
-# rot_x = zeros(naf)
-# rot_y = zeros(naf)
-# tw_aero = zeros(naf)
-
-# offset = zeros((naf,2))
-# offset[:,0] = .25 # Offset sections by 0.25 in x
-
-# # Make the break-point vector
-# breaks = [] #zero based
-# Nctlv  = [10] # Length breaks + 1
-
-# ctlv_spacing = []
-# for i in xrange(len(Nctlv)):
-#     ctlv_spacing.append(linspace(0,1,Nctlv[i]))
-         
-# Nctlu = 13
-# ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
-
-
-
-
-naf=2
-airfoil_list = ['af15-16.inp','af15-16.inp']
-chord = 1*ones(naf)
-x = 1.25*ones(naf)
-y = zeros(naf)
-z = linspace(0,6,naf)
-rot_x = zeros(naf)
-rot_y = zeros(naf)
-tw_aero = zeros(naf)
+naf=4
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
+chord = [1.25,.65,.65,.65]
+x = [1.25,1.25,1.25,1.25]
+y = [0,0.4,.6,1.2]
+z = [0,6,6.2,6.2]
+rot_x = [0,0,-90,-90]
+rot_y = [0,0,0,0]
+tw_aero = [-4,4,0,0] # ie rot_z
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
-breaks = [] #zero based
-Nctlv  = [10] # Length breaks + 1
-
+breaks = [1,2] #zero based
+Nctlv  = [17,3,10] # Length breaks + 1
 ctlv_spacing = []
 for i in xrange(len(Nctlv)):
     ctlv_spacing.append(linspace(0,1,Nctlv[i]))
          
 Nctlu = 13
-ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
-
-
-
-
+ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks)
 
 # Procedure for Using pyGEO
 
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 # Note: u direction is chordwise, v direction is span-wise
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
-                   ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
-
-
-wing.calcEdgeConnectivity(1e-2,1e-2)
-wing.writeEdgeConnectivity('wing.con')
-wing.stitchEdges()
-wing.writeTecplot('wing.dat')
-print 'Done Step 1'
-
-temp = wing.surfs[0].X.flatten()
-print 
-for i in xrange(len(temp)):
-    print temp[i]
-sys.exit(0)
+# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
+#                    ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
+# wing.calcEdgeConnectivity(1e-2,1e-2)
+# wing.writeEdgeConnectivity('wing.con')
+# wing.stitchEdges()
+# wing.writeTecplot('wing.dat')
+# print 'Done Step 1'
+# sys.exit(0)
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -211,8 +115,8 @@ wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
 # --------------------------------------
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
-    ref_axis.x[0:4,2] = ref_axis.x0[0:4,2] * val
-    ref_axis.x[4:,2] = (ref_axis.x0[4:,2]-ref_axis.x0[3,2])+ref_axis.x[3,2]
+    ref_axis.x[0:2,2] = ref_axis.x0[0:2,2] * val
+    ref_axis.x[2:,2] = (ref_axis.x0[2:,2]-ref_axis.x0[1,2])+ref_axis.x[1,2]
 
     #ref_axis.x[:,0] += 2
     return ref_axis
@@ -221,7 +125,7 @@ def twist(val,ref_axis):
     '''Twist'''
     print 'before:',ref_axis.rot
     print 'val:',val
-    ref_axis.rot[0:4,2] = ref_axis.rot0[0:4,2] + val
+    ref_axis.rot[0:2,2] = ref_axis.rot0[0:2,2] + val
     print 'after:',ref_axis.rot
     return ref_axis
 
@@ -245,12 +149,12 @@ print wing.ref_axis[0].xs.s
 
 #                        Name, value, lower,upper,function, ref_axis_id
 wing.addGeoDV(pyGeo.geoDV('span',1,0.5,2.0,span_extension,0))
-wing.addGeoDV(pyGeo.geoDV('twist',zeros(4),-20,20,twist,0))
+wing.addGeoDV(pyGeo.geoDV('twist',0,-20,20,twist,0))
 #wing.addGeoDV(pyGeo.geoDV('sweep',0,-20,20,sweep,0))
 #wing.addGeoDV(pyGeo.geoDV('chord',ones(8),0.1,2,set_chord,0))
 
-#wing.DV_list['span'].value = 1
-wing.DV_list['twist'].value = [-5,-5,-5,-5]
+wing.DV_list['span'].value = .25
+#wing.DV_list['twist'].value = [-5]
 #wing.DV_list['sweep'].value = 2
 #wing.DV_list['chord'].value = [1.2,1.5,1.2,1.1,0.9,0.7,0.6,0.4]
 
