@@ -353,7 +353,7 @@ class pyGeo():
             sys.exit(1)
 
         naf = len(xsections)
-        N = 75
+        N = 35
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
@@ -386,21 +386,28 @@ class pyGeo():
         else:
             # We have breaks
             start = 0
+
             breaks = kwargs['breaks']
-            assert 'Nctlv' in kwargs and 'Nctlu' in kwargs,
-            'Nctlu and Nctlv Must be included in pyGeo initialization. Additionally, Nctlv must be a list when break-points are used'
-            Ncltv=kwargs['Nctlv']
+            Nctlu = kwargs['Nctlu']
+            Nctlv = kwargs['Nctlv']
+            if 'ctlv_spacing' in kwargs:
+                ctlv_spacing = kwargs['ctlv_spacing']
+            else:
+                ctlv_spacing = []
+                for i in xrange(len(Nctlv)):
+                    ctlv_spacing.append(linspace(0,1,Nctlv[i]))
+                # end for
+            # end if
             for i in xrange(len(breaks)):
                 end = breaks[i]+1
-                Nctlv = 
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],Nctlv=Nctlv[i],*args,**kwargs))
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],Nctlv=Nctlv[i],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],Nctlu=Nctlu,Nctlv=Nctlv[i],ctlv_spacing=ctlv_spacing[i]))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],Nctlu=Nctlu,Nctlv=Nctlv[i],ctlv_spacing=ctlv_spacing[i]))
                 start = end-1
-            # end for
+                # end for
 
             # DO the last one
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],,Nctlv=Nctlv[-1]*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],,Nctlv=Nctlv[-1]*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],Nctlu=Nctlu,Nctlv=Nctlv[-1],ctlv_spacing=ctlv_spacing[-1]))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],Nctlu=Nctlu,Nctlv=Nctlv[-1],ctlv_spacing=ctlv_spacing[-1]))
             self.nPatch = len(self.surfs)
         # end if
 
