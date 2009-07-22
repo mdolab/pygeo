@@ -29,7 +29,7 @@ import pyGeo
 naf=4
 airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
 chord = [1.25,.65,.65,.65]
-x = [1.25,1.25,1.25,1.25]
+x = [1.25,2,2,2]
 y = [0,0.4,.6,1.2]
 z = [0,6,6.2,6.2]
 rot_x = [0,0,-90,-90]
@@ -40,28 +40,35 @@ offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
-breaks = [1,2] #zero based
-Nctlv  = [17,3,10] # Length breaks + 1
+breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
+Nctlv  = [13,3,7] # Length breaks + 1
 ctlv_spacing = []
 for i in xrange(len(Nctlv)):
-    ctlv_spacing.append(linspace(0,1,Nctlv[i]))
+    ctlv_spacing.append( 0.5*(1-cos(linspace(0,pi,Nctlv[i]))))
          
 Nctlu = 13
-ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks)
+print 'calling ref axis'
+#ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
+ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
 
 # Procedure for Using pyGEO
 
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
-# Note: u direction is chordwise, v direction is span-wise
+#Note: u direction is chordwise, v direction is span-wise
 # wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
 #                    ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
-# wing.calcEdgeConnectivity(1e-2,1e-2)
-# wing.writeEdgeConnectivity('wing.con')
-# wing.stitchEdges()
-# wing.writeTecplot('wing.dat')
-# print 'Done Step 1'
-# sys.exit(0)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
+                   ref_axis=ref_axis,fit_type='lms',Nctlu=Nctlu,Nctlv=4)
+
+wing.calcEdgeConnectivity(1e-2,1e-2)
+wing.writeEdgeConnectivity('wing.con')
+wing.stitchEdges()
+wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
+print 'Done Step 1'
+
+
+#sys.exit(0)
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -95,10 +102,10 @@ ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks)
 
 # ----------------------------------------------------------------------
 
-wing = pyGeo.pyGeo('iges',file_name='wing.igs')
-wing.readEdgeConnectivity('wing.con')
-#wing.stitchEdges() # Just to be sure
-print 'Done Step 3'
+# wing = pyGeo.pyGeo('iges',file_name='wing.igs')
+# wing.readEdgeConnectivity('wing.con')
+# wing.stitchEdges() # Just to be sure
+# print 'Done Step 3'
 
 # ----------------------------------------------------------------------
 
@@ -106,9 +113,9 @@ print 'Done Step 3'
 # needs to run the commands in step 3 to fully define the geometry of
 # interest
 
-print 'Attaching Ref Axis...'
-wing.setRefAxis([0,1,2,3,4,5],ref_axis,sections=[[0,1],[2,3],[4,5]])
-wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
+#print 'Attaching Ref Axis...'
+#wing.setRefAxis([0,1,2,3,4,5],ref_axis,sections=[[0,1],[2,3],[4,5]])
+#wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
 
 # --------------------------------------
 # Define Design Variable functions here:
@@ -123,10 +130,7 @@ def span_extension(val,ref_axis):
 
 def twist(val,ref_axis):
     '''Twist'''
-    print 'before:',ref_axis.rot
-    print 'val:',val
     ref_axis.rot[0:2,2] = ref_axis.rot0[0:2,2] + val
-    print 'after:',ref_axis.rot
     return ref_axis
 
 def sweep(val,ref_axis):
@@ -144,7 +148,7 @@ def set_chord(val,ref_axis):
 #wing.attachSurface()
 
 
-print wing.ref_axis[0].xs.s
+print wing.ref_axis[0].x.shape
 
 
 #                        Name, value, lower,upper,function, ref_axis_id
@@ -153,7 +157,7 @@ wing.addGeoDV(pyGeo.geoDV('twist',0,-20,20,twist,0))
 #wing.addGeoDV(pyGeo.geoDV('sweep',0,-20,20,sweep,0))
 #wing.addGeoDV(pyGeo.geoDV('chord',ones(8),0.1,2,set_chord,0))
 
-wing.DV_list['span'].value = .25
+#wing.DV_list['span'].value = .25
 #wing.DV_list['twist'].value = [-5]
 #wing.DV_list['sweep'].value = 2
 #wing.DV_list['chord'].value = [1.2,1.5,1.2,1.1,0.9,0.7,0.6,0.4]
@@ -164,10 +168,12 @@ timeB = time.time()
 
 print 'update time is :',timeB-timeA
 
+
 wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
 
 
-
+print ref_axis.x
+print ref_axis.rot
 # ---------------------
 # Old Code Unused
 # ---------------------
