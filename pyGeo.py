@@ -1277,9 +1277,8 @@ class pyGeo():
     def update(self):
         '''update the entire pyGeo Object'''
 
-        
         # First, update the reference axis info from the design variables
-
+        timeA = time.time()
         for i in xrange(len(self.DV_listGlobal)):
 
             # Call the each design variable with the ref axis its associated with
@@ -1305,32 +1304,44 @@ class pyGeo():
         # end for
 
         # Second, update the end_point base_point on the ref_axis:
-
+        timeB = time.time()
         for i in xrange(len(self.ref_axis_con)):
             for j in xrange(len(self.ref_axis_con[i])-1):
 
                 self.ref_axis[j].updateEndPoint()
                 self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
                 self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
-
+        timeC = time.time()
         # Third, update the ref_axis and consequently the design variables
         for r in xrange(len(self.ref_axis)):
             self.ref_axis[r].update()
-
+                 
+            # THIS FUNCTION IS THE MOST TIME CONSUMING!
+            # -----------------------------------------
             for ipatch in self.ref_axis_surface_con[r]:
                 self.surfs[ipatch].update(self.ref_axis[r])
-
+            # end for
+            # -----------------------------------------
+                
+        # end for
+        timeD= time.time()
         # fourth update the Local coordinates
 
-        deltas = zeros((self.surfs[0].Nctlu,self.surfs[0].Nctlv))
-        deltas[12,5] = 0.05
-        deltas[12,10] = -0.01
-        self.surfs[0].updateSurfacePoints(deltas)
+        for i in xrange(len(self.DV_listLocal)):
+            self.surfs[self.DV_listLocal[i].surface_id] = \
+                self.DV_listLocal[i](self.surfs[self.DV_listLocal[i].surface_id])
+        # end for
 
-        # Fourth, run the stitch surfaces command to enforce master dv's
-
+        timeE = time.time()
+        # Fifth, run the stitch surfaces command to enforce master dv's
         self.stitchEdges()
-                
+        timeF = time.time()
+
+        print 'update DV:',timeB-timeA
+        print 'update base-end',timeC-timeB
+        print 'update refaxis and DV:',timeD-timeC
+        print 'update local dv:',timeE-timeD
+        print 'stitch edges:',timeF-timeE
         return
          
     def addGeoObject(self,geo_obj):
@@ -1355,22 +1366,24 @@ class pyGeo():
         return 
 
 
-    def addGeoDV(self,dv):
+    def addGeoDVLocal(self,dv_name,lower,upper,surface_id):
 
-        '''Add a design variable (or design variable group, no distinction) to the pyGeo object'''
-        if isinstance(dv,geoDVLocal):
-            self.DV_listLocal.append(dv)
-            self.DV_namesLocal[dv.name]=len(self.DV_listLocal)-1
-            # This isn't really the way it should be, but we have to
-            # get the actual number DV's from the surface and set them in the DV
-            self.surfs[dv.surface_id]._calcNFree()
-            self.DV_listLocal[-1].N = self.surfs[dv.surface_id].Nctl_free
+        '''Add a local design variable group'''
+        self.surfs[surface_id]._calcNFree() # Make sure we know how many free Control Points we have
+        self.surfs[surface_id]._getFreeIndex()
+        self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,surface_id))
 
-            
-        else:
-            self.DV_listGlobal.append(dv)
-            self.DV_namesGlobal[dv.name]=len(self.DV_listGlobal)-1
-        # end if
+        self.DV_listLocal[-1].Nctlu = self.surfs[surface_id].Nctlu_free
+        self.DV_listLocal[-1].Nctlv = self.surfs[surface_id].Nctlv_free
+        self.DV_listLocal[-1].value = zeros((self.DV_listLocal[-1].Nctlu,self.DV_listLocal[-1].Nctlv))
+        self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
+
+
+    def addGeoDVGlobal(self,dv_name,value,lower,upper,function,ref_axis_id):
+        '''Add a global design variable'''
+        self.DV_listGlobal.append(geoDVGlobal(dv_name,value,lower,upper,function,ref_axis_id))
+        self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
+        return 
 
 # ----------------------------------------------------------------------
 #                   Surface Writing Output Functions
@@ -1828,12 +1841,8 @@ class ref_axis(object):
                 
         # This is just to get the parameterization
 
-        temp_spline = pySpline.linear_spline(task='interpolate',X=self.x,k=2)
-        self.s = temp_spline.s
-        del temp_spline
-        
         self.rot = rot
-        self.scale = ones((self.N,1))
+        self.scale = ones(self.N)
         # end if
 
         self.x0 = copy.deepcopy(self.x)
@@ -1843,19 +1852,28 @@ class ref_axis(object):
         # Create an interpolating spline for the spatial part and for
         # the rotational part
 
-        self.update()
+
+        self.xs = pySpline.linear_spline(task='interpolate',X=self.base_point+self.x,k=2)
+        self.s = self.xs.s
+
+
+        self.rotxs = pySpline.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s)
+        self.rotys = pySpline.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s)
+        self.rotzs = pySpline.linear_spline(task='interpolate',X=self.rot[:,2],k=2,s=self.s)
+
+        self.scales = pySpline.linear_spline(task='interpolate',X=self.scale,k=2,s=self.s)
+
+        #self.update()
 
 
     def update(self):
 
-        self.xs = pySpline.linear_spline('interpolate',X=self.base_point+self.x,k=2,s=self.s)
+        self.xs.coef = self.base_point+self.x
+        self.rotxs.coef = self.rot[:,0]
+        self.rotys.coef = self.rot[:,1]
+        self.rotzs.coef = self.rot[:,2]
 
-        self.rotxs = pySpline.linear_spline('interpolate',X=self.rot[:,0:1],k=2,s=self.s)
-        self.rotys = pySpline.linear_spline('interpolate',X=self.rot[:,1:2],k=2,s=self.s)
-        self.rotzs = pySpline.linear_spline('interpolate',X=self.rot[:,2:3],k=2,s=self.s)
-
-        self.scales = pySpline.linear_spline('interpolate',X=self.scale,k=2,s=self.s)
-
+        self.scales.coef = self.scale
         return
         
 
@@ -1952,7 +1970,9 @@ class geoDVLocal(object):
         Note: Value is NOT specified, value will ALWAYS be initialized to 0
 
         '''
-        self.N = None
+        self.Nu = None
+        self.Nv = None
+        self.value = None
         self.name = dv_name
         self.lower = lower
         self.upper = upper
@@ -1963,7 +1983,9 @@ class geoDVLocal(object):
     def __call__(self,surface):
 
         '''When the object is called, apply the design variable values to the surface'''
-        pass
+        #call the surface with the values
+        surface.updateSurfacePoints(self.value)
+        return surface
 
         
         
