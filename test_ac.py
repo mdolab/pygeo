@@ -8,7 +8,7 @@ import os, sys, string, pdb, copy, time
 # External Python modules
 # =============================================================================
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
-    array, real, reshape, meshgrid, dot, cross, vstack
+    array, real, reshape, meshgrid, dot, cross, vstack, arctan
 
 # =============================================================================
 # Extension modules
@@ -26,30 +26,38 @@ import pyGeo
 
 # Wing Information
 
-naf=4
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
-chord = [1.25,.65,.65,.65]
-x = [1.25,2,2,2]
-y = [0,0.4,.6,1.2]
-z = [0,6,6.2,6.2]
-rot_x = [0,0,-90,-90]
-rot_y = [0,0,0,0]
-tw_aero = [-4,4,0,0] # ie rot_z
+naf=5
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
+chord = [1.25,.65,.65,.65,.65]
+x = [1.25,1.25,1.25,1.25,1.25]
+y = [0,0.4,.6,1.2,1.4]
+z = [0,6,6.2,6.2,6.2]
+rot_x = [0,0,-90,-90,-90]
+rot_y = [0,0,0,0,0]
+tw_aero = [-4,4,0,0,0] # ie rot_z
+X = zeros((naf,3))
+rot = zeros((naf,3))
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
 breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
-Nctlv  = [13,3,7] # Length breaks + 1
-ctlv_spacing = []
-for i in xrange(len(Nctlv)):
-    ctlv_spacing.append( 0.5*(1-cos(linspace(0,pi,Nctlv[i]))))
+nsections = [18,3,7] # Length breaks + 1
+section_spacing = []
+for i in xrange(len(nsections)):
+    #section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
+    section_spacing.append(1-linspace(1,0,nsections[i])**2)
+# Put spatial and rotations into two arrays
+X[:,0] = x
+X[:,1] = y
+X[:,2] = z
+rot[:,0] = rot_x
+rot[:,1] = rot_y
+rot[:,2] = tw_aero
          
 Nctlu = 13
-print 'calling ref axis'
-#ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero,breaks=breaks,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
-ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
+
 
 # Procedure for Using pyGEO
 
@@ -59,14 +67,13 @@ ref_axis = pyGeo.ref_axis(x,y,z,rot_x,rot_y,tw_aero)
 # wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
 #                    ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
-                   ref_axis=ref_axis,fit_type='lms',Nctlu=Nctlu,Nctlv=4)
+                   Xsec=X,rot=rot,breaks=breaks,nsections=nsections,section_spacing=section_spacing,fit_type='lms',Nctlu=Nctlu,Nfoil=50)
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 wing.writeEdgeConnectivity('wing.con')
 wing.stitchEdges()
 wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
 print 'Done Step 1'
-
 
 #sys.exit(0)
 # ----------------------------------------------------------------------
@@ -122,45 +129,61 @@ print 'Done Step 1'
 # --------------------------------------
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
-    ref_axis.x[0:2,2] = ref_axis.x0[0:2,2] * val
-    ref_axis.x[2:,2] = (ref_axis.x0[2:,2]-ref_axis.x0[1,2])+ref_axis.x[1,2]
+    #print 'span'
+    ref_axis.x[:,2] = ref_axis.x0[:,2] * val
+    return ref_axis
 
-    #ref_axis.x[:,0] += 2
+def winglet_extension(val,ref_axis):
+    '''extend the winglet'''
+    #print 'winglet'
+    ref_axis.x[:,1] = ref_axis.x0[:,1]*val
     return ref_axis
 
 def twist(val,ref_axis):
     '''Twist'''
-    ref_axis.rot[0:2,2] = ref_axis.rot0[0:2,2] + val
+    #print 'twist'
+    ref_axis.rot[:,2] = ref_axis.rot0[:,2] + ref_axis.s**2*val
     return ref_axis
 
 def sweep(val,ref_axis):
     '''Sweep the wing'''
-    ref_axis.x[:,0] = ref_axis.x0[:,0] +  val * ref_axis.xs.s
+    #print 'sweep'
+    ref_axis.x[:,0] = ref_axis.x0[:,0] +  val * ref_axis.s
+    angle = -arctan2(val,ref_axis.x[-1,2])*180/pi
+    
+    ref_axis.rot[:,1] = ref_axis.s * angle
     return ref_axis
 
 def set_chord(val,ref_axis):
     '''Set the scales (and thus chords) on the wing'''
-    ref_axis.scale = val
+    #print 'chord'
+    ref_axis[0].scale = linspace(val[0],val[1],ref_axis[0].N)
+    ref_axis[1].scale[:] = val[-1]
+    ref_axis[2].scale[:] = val[-1]
 
     return ref_axis
 # ------------------------------------------
+#                        Name, value, lower,upper,function, ref_axis_id -> must be a list
+# Add global Design Variables FIRST
+wing.addGeoDV(pyGeo.geoDVGlobal('span',1,0.5,2.0,span_extension,[0]))
+wing.addGeoDV(pyGeo.geoDVGlobal('winglet',1,0.5,2.0,winglet_extension,[2]))
+wing.addGeoDV(pyGeo.geoDVGlobal('twist',0,-20,20,twist,[0]))
+wing.addGeoDV(pyGeo.geoDVGlobal('sweep',0,-20,20,sweep,[0]))
+wing.addGeoDV(pyGeo.geoDVGlobal('chord',ones(13),0.1,2,set_chord,[0,1,2]))
 
-#wing.attachSurface()
+# Add sets of local Design Variables SECOND
+wing.addGeoDV(pyGeo.geoDVLocal('surface1',-0.1,0.1,0))
+                      
 
+idg = wing.DV_namesGlobal #NOTE: This is constant
 
-print wing.ref_axis[0].x.shape
-
-
-#                        Name, value, lower,upper,function, ref_axis_id
-wing.addGeoDV(pyGeo.geoDV('span',1,0.5,2.0,span_extension,0))
-wing.addGeoDV(pyGeo.geoDV('twist',0,-20,20,twist,0))
-#wing.addGeoDV(pyGeo.geoDV('sweep',0,-20,20,sweep,0))
-#wing.addGeoDV(pyGeo.geoDV('chord',ones(8),0.1,2,set_chord,0))
-
-#wing.DV_list['span'].value = .25
-#wing.DV_list['twist'].value = [-5]
-#wing.DV_list['sweep'].value = 2
-#wing.DV_list['chord'].value = [1.2,1.5,1.2,1.1,0.9,0.7,0.6,0.4]
+print 'idg',idg
+# Change the DV's
+wing.DV_listGlobal[idg['span']].value = 1.5
+wing.DV_listGlobal[idg['twist']].value = -5
+wing.DV_listGlobal[idg['sweep']].value = 2
+wing.DV_listGlobal[idg['chord']].value = array([1.0,.65])
+wing.DV_listGlobal[idg['winglet']].value = .5
 
 timeA = time.time()
 wing.update()
@@ -171,9 +194,18 @@ print 'update time is :',timeB-timeA
 
 wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
 
+# wing.surfs[0]._getFreeIndex()
+# wing.surfs[1]._getFreeIndex()
+# wing.surfs[2]._getFreeIndex()
+# wing.surfs[3]._getFreeIndex()
+# wing.surfs[4]._getFreeIndex()
+# wing.surfs[5]._getFreeIndex()
 
-print ref_axis.x
-print ref_axis.rot
+# free_coef = wing.surfs[1].getFreeCtl()
+
+# print 'free_coef',free_coef.shape
+# print free_coef
+
 # ---------------------
 # Old Code Unused
 # ---------------------
