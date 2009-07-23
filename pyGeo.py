@@ -125,8 +125,12 @@ class pyGeo():
         print 'pyGeo init_type is: %s'%(init_type)
         
         self.ref_axis = []
-        self.ref_axis_list = []
-        self.DV_list = {}
+        self.ref_axis_surface_con = []
+        self.ref_axis_con = []
+        self.DV_listGlobal = []
+        self.DV_listLocal  = []
+        self.DV_namesGlobal = {}
+        self.DV_namesLocal  = {}
 
 
         if init_type == 'plot3d':
@@ -334,28 +338,70 @@ class pyGeo():
     def _init_lifting_surface(self,*args,**kwargs):
 
         assert 'xsections' in kwargs and 'scale' in kwargs \
-               and 'offset' in kwargs and 'ref_axis' in kwargs,\
-               '\'xsections\', \'offset\',\'scale\' and \'ref_axis\' must be specified as kwargs'
+               and 'offset' in kwargs and 'Xsec' in kwargs and 'rot' in kwargs,\
+               '\'xsections\', \'offset\',\'scale\' and \'X\'  and \'rot\' must be specified as kwargs'
+
+        xsections = kwargs['xsections']
+        scale     = kwargs['scale']
+        offset    = kwargs['offset']
+        Xsec      = kwargs['Xsec']
+        rot       = kwargs['rot']
+
+        if not len(xsections)==len(scale)==offset.shape[0]:
+            print 'The length of input data is inconsistent. xsections,scale,offset.shape[0], Xsec, rot, must all have the same size'
+            print 'xsections:',len(xsections)
+            print 'scale:',len(scale)
+            print 'offset:',offset.shape[0]
+            print 'Xsec:',Xsec.shape[0]
+            print 'rot:',rot.shape[0]
+            sys.exit(1)
+
 
         if 'fit_type' in kwargs:
             fit_type = kwargs['fit_type']
         else:
             fit_type = 'interpolate'
 
-        xsections = kwargs['xsections']
-        scale     = kwargs['scale']
-        offset    = kwargs['offset']
-        ref_axis  = kwargs['ref_axis']
+        if 'breaks' in kwargs:
+            print 'we have breaks'
+            breaks = kwargs['breaks']
+            nBreaks = len(breaks)
+            
+            if 'nsections' in kwargs:
+                nsections = kwargs['nsections']
+            else: # Figure out how many sections are in each break
+                nsections = zeros(nBreaks +1,'int' )
+                counter = 0 
+                for i in xrange(nBreaks):
+                    nsections[i] = breaks[i] - counter + 1
+                    counter = breaks[i]
+                # end for
+                nsections[-1] = len(xsections) - counter
+                nsections[-1] 
+            # end if
 
-        if not len(xsections)==len(scale)==offset.shape[0]:
-            print 'The length of input data is inconsistent. xsections,scale,offset.shape[0] and ref_axis.N must all have the same size'
-            print 'xsections:',len(xsections)
-            print 'scale:',len(scale)
-            print 'offset::',offset.shape[0]
-            sys.exit(1)
-
+            if 'section_spacing' in kwargs:
+                section_spacing = kwargs['section_spacing']
+            else:
+                # Generate the section spacing
+                section_spacing = []
+                for i in xrange(len(nsections)):
+                    section_spacing.append(linspace(0,1,nsections[i]))
+                # end for
+            # end if
+        # end if
+        
+     
         naf = len(xsections)
-        N = 35
+        if 'Nfoil' in kwargs:
+            N = kwargs['Nfoil']
+        else:
+            N = 35
+        # end if
+        
+        # ------------------------------------------------------
+        # Generate the coordinates for the sections we are given 
+        # ------------------------------------------------------
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
@@ -371,70 +417,100 @@ class pyGeo():
             
             for j in xrange(N):
                 for isurf in xrange(2):
-                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],ref_axis.rot[i,2]*pi/180) # Twist Rotation
-                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],ref_axis.rot[i,0]*pi/180) # Dihediral Rotation
-                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],ref_axis.rot[i,1]*pi/180) # Sweep Rotation
+                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],rot[i,2]*pi/180) # Twist Rotation
+                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],rot[i,0]*pi/180) # Dihediral Rotation
+                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],rot[i,1]*pi/180) # Sweep Rotation
 
 
-            # Finally translate according to axis:
-            X[:,:,i,:] += ref_axis.x[i,:]
+            # Finally translate according to 
+            X[:,:,i,:] += Xsec[i,:]
         # end for
+
+        # --------------------------------------------------------------------------------
+        # Now, we interpolate them IF we have breaks and want MORE sections between breaks
+        # --------------------------------------------------------------------------------
+
         self.surfs = []
 
-        if not 'breaks' in kwargs: #We will get two surfaces
+        if breaks:
+
+            tot_sec = sum(nsections)-nBreaks
+            Xnew    = zeros([2,N,tot_sec,3])
+            Xsecnew = zeros((tot_sec,3))
+            rotnew  = zeros((tot_sec,3))
+            start   = 0
+            start2  = 0
+            for i in xrange(nBreaks+1):
+                # We have to interpolate the sectional data AND the positions (for the ref axis later)
+                if i == nBreaks:
+                    end = naf
+                else:
+                    end  = breaks[i]+1
+                #end if
+
+                end2 = start2 + nsections[i]
+
+                for j in xrange(N): # This is for the Data points
+
+                    # Interpolate across each point in the spanwise direction
+                    temp_spline = pySpline.linear_spline(task='interpolate',X=X[0,j,start:end,:],k=2) # surface 0
+                    Xnew[0,j,start2:end2,:] = temp_spline.getValueV(section_spacing[i])
+
+                    # Interpolate across each point in the spanwise direction
+                    temp_spline = pySpline.linear_spline(task='interpolate',X=X[1,j,start:end,:],k=2) # surface 1
+                    Xnew[1,j,start2:end2,:] = temp_spline.getValueV(section_spacing[i])
+
+
+
+                # end for
+                # Now we can generate and append the surfaces
+                print 'generating surface'
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
+
+                # Ref_axis:
+                temp_spline = pySpline.linear_spline(task='interpolate',X=Xsec[start:end,:],k=2) # spatial
+                s = temp_spline.s # We use the spatial basis calculated as the basis for the rotational components
+                Xsecnew[start2:end2,:] = temp_spline.getValueV(section_spacing[i])
+
+
+                temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,0],k=2,s=s) # X rot
+                rotnew[start2:end2,0] = temp_spline.getValueV(section_spacing[i])
+
+                temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,1],k=2,s=s) # Y rot
+                rotnew[start2:end2,1] = temp_spline.getValueV(section_spacing[i])
+
+                temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,2],k=2,s=s) # Z rot
+                rotnew[start2:end2,2] = temp_spline.getValueV(section_spacing[i])
+
+                # Generate and append the ref_axis
+
+                cur_ref_axis = ref_axis(Xsecnew[start2:end2],rotnew[start2:end2])
+                self.ref_axis.append(cur_ref_axis)
+                self.ref_axis_surface_con.append([2*i,2*i+1])
+                self.ref_axis_con.append(range(nBreaks+1))
+                self.surfs[2*i  ].associateRefAxis(cur_ref_axis)
+                self.surfs[2*i+1].associateRefAxis(cur_ref_axis)
+
+                start = end-1
+                start2 = end2-1
+            # end for
+            self.nPatch = len(self.surfs)
+        else:  #No breaks
+            
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
             self.nPatch = 2
-            self.surfs[0].associateRefAxis2(ref_axis,self.surfs[0].v)
-            self.surfs[1].associateRefAxis2(ref_axis,self.surfs[1].v)
-            self.ref_axis.append(ref_axis)
-            self.ref_axis_list.append([0,1])
-        else:
-            # We have breaks
-            start = 0
 
-            breaks = kwargs['breaks']
-            Nctlu = kwargs['Nctlu']
-            Nctlv = kwargs['Nctlv']
-            if 'ctlv_spacing' in kwargs:
-                ctlv_spacing = kwargs['ctlv_spacing']
-            else:
-                ctlv_spacing = []
-                for i in xrange(len(Nctlv)):
-                    ctlv_spacing.append(linspace(0,1,Nctlv[i]))
-                # end for
-            # end if
-            counter = 0
-            nBreaks = len(breaks)
-            range = 1.0/(nBreaks + 1)
-            for i in xrange(len(breaks)):
-                end = breaks[i]+1
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:end,:],Nctlu=Nctlu,Nctlv=Nctlv[i],ctlv_spacing=ctlv_spacing[i]))
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:end,:],Nctlu=Nctlu,Nctlv=Nctlv[i],ctlv_spacing=ctlv_spacing[i]))
-                start = end-1
-                s = (self.surfs[counter].v*range) + i*range
-          
-                self.surfs[counter    ].associateRefAxis2(ref_axis,s)
-                self.surfs[counter + 1].associateRefAxis2(ref_axis,s)
-                counter += 2
-                # end for
-
-            # DO the last one
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0,:,start:,:],Nctlu=Nctlu,Nctlv=Nctlv[-1],ctlv_spacing=ctlv_spacing[-1]))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1,:,start:,:],Nctlu=Nctlu,Nctlv=Nctlv[-1],ctlv_spacing=ctlv_spacing[-1]))
-            s = (self.surfs[counter].v*range) + (nBreaks)*range
-
-            self.surfs[counter    ].associateRefAxis2(ref_axis,s)
-            self.surfs[counter + 1].associateRefAxis2(ref_axis,s)
-
-            self.nPatch = len(self.surfs)
-            self.ref_axis.append(ref_axis)
-            self.ref_axis_list.append([0,1,2,3,4,5])
+            # Create the Reference Axis:
+            cur_ref_axis = ref_axis(Xsec,rot)
+            
+            self.surfs[0].associateRefAxis(cur_ref_axis)
+            self.surfs[1].associateRefAxis(cur_ref_axis)
+            self.ref_axis.append(cur_ref_axis)
+            self.ref_axis_surface_con.append([0,1])
+            self.ref_axis_con.append([0])
         # end if
-
-        # Lastly we attach the reference axis:
-
-        
 
 
 
@@ -1181,7 +1257,7 @@ class pyGeo():
         '''Set the reference axis 'ref_axis' to surfaces in patch_list'''
         print 'patch_list:',patch_list
         self.ref_axis.append(ref_axis)
-        self.ref_axis_list.append(patch_list)
+        self.ref_axis_surface_con.append(patch_list)
 
         if not sections == None:
             # We have specified what sections surfaces coorspond to:
@@ -1204,21 +1280,54 @@ class pyGeo():
         
         # First, update the reference axis info from the design variables
 
-        for dv_name in self.DV_list:
+        for i in xrange(len(self.DV_listGlobal)):
 
             # Call the each design variable with the ref axis its associated with
-            self.ref_axis[self.DV_list[dv_name].ref_axis_id] = \
-                     self.DV_list[dv_name](self.ref_axis[self.DV_list[dv_name].ref_axis_id]) 
+            #axis_list = self.DV_list[dv_name].ref_axis_id
 
+            if len(self.DV_listGlobal[i].ref_axis_id) == 1:
+                ref_index = self.DV_listGlobal[i].ref_axis_id[0]
+                self.ref_axis[ref_index] = self.DV_listGlobal[i](self.ref_axis[ref_index])
+            else: # Make up the list of ref axis to pass
+                axis_list = []
+                for j in self.DV_listGlobal[i].ref_axis_id:
+                    axis_list.append(self.ref_axis[j])
+                # end for
+                axis_list = self.DV_listGlobal[i](axis_list)
 
-        # Second, update the ref_axis and consequently the design variables
+                # Set axis back in list
+
+                for j in xrange(len(axis_list)):
+                    self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = axis_list[j]
+                # end for
+            # end if
+            
+        # end for
+
+        # Second, update the end_point base_point on the ref_axis:
+
+        for i in xrange(len(self.ref_axis_con)):
+            for j in xrange(len(self.ref_axis_con[i])-1):
+
+                self.ref_axis[j].updateEndPoint()
+                self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
+                self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
+
+        # Third, update the ref_axis and consequently the design variables
         for r in xrange(len(self.ref_axis)):
             self.ref_axis[r].update()
 
-            for ipatch in self.ref_axis_list[r]:
+            for ipatch in self.ref_axis_surface_con[r]:
                 self.surfs[ipatch].update(self.ref_axis[r])
 
-        # Third, run the stitch surfaces command to enforce master dv's
+        # fourth update the Local coordinates
+
+        deltas = zeros((self.surfs[0].Nctlu,self.surfs[0].Nctlv))
+        deltas[12,5] = 0.05
+        deltas[12,10] = -0.01
+        self.surfs[0].updateSurfacePoints(deltas)
+
+        # Fourth, run the stitch surfaces command to enforce master dv's
 
         self.stitchEdges()
                 
@@ -1234,19 +1343,34 @@ class pyGeo():
         # end for
         self.nPatch += geo_obj.nPatch
         self.con = None
-        print 'Warning: edge connections have been reset'
+        self.ref_axis = []
+        self.ref_axis_surface_con = []
+        self.ref_axis_con = []
+        self.DV_listGlobal = []
+        self.DV_listLocal = []
+        self.DV_namesGlobal = {}
+        self.DV_namesLocal = {}
+
+        print 'Warning: edge connections,reference_axis and design variables have been reset'
         return 
 
 
     def addGeoDV(self,dv):
 
         '''Add a design variable (or design variable group, no distinction) to the pyGeo object'''
+        if isinstance(dv,geoDVLocal):
+            self.DV_listLocal.append(dv)
+            self.DV_namesLocal[dv.name]=len(self.DV_listLocal)-1
+            # This isn't really the way it should be, but we have to
+            # get the actual number DV's from the surface and set them in the DV
+            self.surfs[dv.surface_id]._calcNFree()
+            self.DV_listLocal[-1].N = self.surfs[dv.surface_id].Nctl_free
 
-        self.DV_list[dv.name] = dv
-
-        
-
-
+            
+        else:
+            self.DV_listGlobal.append(dv)
+            self.DV_namesGlobal[dv.name]=len(self.DV_listGlobal)-1
+        # end if
 
 # ----------------------------------------------------------------------
 #                   Surface Writing Output Functions
@@ -1333,12 +1457,12 @@ class pyGeo():
             for r in xrange(len(self.ref_axis)):
 
                 num_vectors = 0
-                for ipatch in self.ref_axis_list[r]:
+                for ipatch in self.ref_axis_surface_con[r]:
                     num_vectors += self.surfs[ipatch].Nctlu*self.surfs[ipatch].Nctlv
 
                 coords = zeros((2*num_vectors,3))
                 icoord = 0
-                for ipatch in self.ref_axis_list[r]:
+                for ipatch in self.ref_axis_surface_con[r]:
                     for j in xrange(len(self.surfs[ipatch].links)):
                         x0 = self.ref_axis[r].xs.getValue(self.surfs[ipatch].links[j][0])
 
@@ -1598,17 +1722,17 @@ class pyGeo():
     
     
     def _rotx(self,x,theta):
-        ''' Rotate a set of airfoil coodinates in the local x frame'''
+        ''' Rotate a coordinate in the local x frame'''
         M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
         return dot(M,x)
 
     def _roty(self,x,theta):
-        '''Rotate a set of airfoil coordiantes in the local y frame'''
+        '''Rotate a coordinate in the local y frame'''
         M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
         return dot(M,x)
 
     def _rotz(self,x,theta):
-        '''Roate a set of airfoil coordinates in the local z frame'''
+        '''Roate a coordinate in the local z frame'''
         'rotatez:'
         M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
         return dot(M,x)
@@ -1672,7 +1796,7 @@ class edge(object):
 
 class ref_axis(object):
 
-    def __init__(self,x,y,z,rot_x,rot_y,rot_z,*args,**kwargs):
+    def __init__(self,X,rot,*args,**kwargs):
 
         ''' Create a generic reference axis. This object bascally defines a
         set of points in space (x,y,z) each with three rotations
@@ -1683,99 +1807,33 @@ class ref_axis(object):
         
         Input:
 
-        x: list of x-coordinates of axis
-        y: list of y-coordinates of axis
-        z: list of z-coordinates of axis
-
-        rot_x: list of x-axis rotations
-        rot_y: list of y-axis rotations
-        rot_z: list of z-axis rotations
+        X: array of size N,3: Contains the x-y-z coodinates of the axis
+        rot: array of size N,3: Contains the rotations of the axis
 
         Note: Rotations are performed in the order: Z-Y-X
         '''
 
-        if not  len(x)==len(y)==len(z)==len(rot_x)==len(rot_y)==len(rot_z):
-            print 'The length of x,y,z,rot_z,rot_y,rot_x must all be the same'
-            print 'x:',len(x)
-            print 'y:',len(y)
-            print 'z:',len(z)
-            print 'rot_x:',len(rot_x)
-            print 'rot_y:',len(rot_y)
-            print 'rot_z:',len(rot_z)
+        if not  X.shape == rot.shape:
+            print 'The shape of X and rot must be the same'
+            print 'X:',X.shape
+            print 'rot:',rot.shape
             sys.exit(1)
 
+        self.N = X.shape[0]
 
-        if 'breaks' in kwargs:
-  # We have breaks
-           
-            self.breaks = kwargs['breaks']
-            nBreaks = len(self.breaks)
-            Nctlv = kwargs['Nctlv']
-            ctlv_spacing = kwargs['ctlv_spacing']
-            start1 = 0
-            start2 = 0
-            range = 1/(nBreaks + 1)
+        self.base_point = X[0,:]
 
-            self.N = sum(Nctlv)-nBreaks
-            self.x = zeros([self.N,3])
-            self.rot = zeros([self.N,3])
-            self.s = zeros(self.N)
+        self.x = X-self.base_point
+        self.end_point = self.x[-1] + self.base_point
+                
+        # This is just to get the parameterization
 
-
-            for i in xrange(len(self.breaks)):
-                end1 = self.breaks[i]+1
-                end2 = start2 + Nctlv[i]
-
-                X = zeros([end1-start1,3])
-
-                X[:,0] = x[start1:end1]
-                X[:,1] = y[start1:end1]
-                X[:,2] = z[start1:end1]
-            # The data now must be set accordingly
-
-                temp_spline = pySpline.linear_spline(task='interpolate',X=X,k=2)
-                self.s[start2:end2] = ctlv_spacing[i]*range + i*range
-
-                self.x[start2:end2,:] = temp_spline.getValueV(ctlv_spacing[i])
-                self.rot[start2:end2,0] = pySpline.linear_spline(task='interpolate',X=array(rot_x[start1:end1]),k=2,s=temp_spline.s).getValueV(ctlv_spacing[i])
-                self.rot[start2:end2,1] = pySpline.linear_spline(task='interpolate',X=array(rot_y[start1:end1]),k=2,s=temp_spline.s).getValueV(ctlv_spacing[i])
-                self.rot[start2:end2,2] = pySpline.linear_spline(task='interpolate',X=array(rot_z[start1:end1]),k=2,s=temp_spline.s).getValueV(ctlv_spacing[i])
-
-                start1 = end1-1
-                start2 = end2-1
-            # end for
-            temp_spline = pySpline.linear_spline(task='interpolate',X=X,k=2)
-
-            self.x[start2:,:] = temp_spline.getValueV(ctlv_spacing[-1])
-            self.s[start2:] = ctlv_spacing[-1]*range + (nBreaks)*range
-
-            self.rot[start2:,0] = pySpline.linear_spline(task='interpolate',X=array(rot_x[start1:]),k=2,s=temp_spline.s).getValueV(ctlv_spacing[-1])
-            self.rot[start2:,1] = pySpline.linear_spline(task='interpolate',X=array(rot_y[start1:]),k=2,s=temp_spline.s).getValueV(ctlv_spacing[-1])
-            self.rot[start2:,2] = pySpline.linear_spline(task='interpolate',X=array(rot_z[start1:]),k=2,s=temp_spline.s).getValueV(ctlv_spacing[-1])
-
-            self.scale = ones((self.N,1))
-
-            # Get the full s for axis
-
-        else:
-            # Do it normally
-
-            self.N = len(x)
-            self.x = zeros([self.N,3])
-            self.x[:,0] = x
-            self.x[:,1] = y
-            self.x[:,2] = z
-            
-            temp_spline = pySpline.linear_spline(task='interpolate',X=self.x,k=2)
-            
-            self.s = temp_spline.s
-
-            self.rot = zeros([self.N,3])
-            self.rot[:,0] = rot_x
-            self.rot[:,1] = rot_y
-            self.rot[:,2] = rot_z
-
-            self.scale = ones((self.N,1))
+        temp_spline = pySpline.linear_spline(task='interpolate',X=self.x,k=2)
+        self.s = temp_spline.s
+        del temp_spline
+        
+        self.rot = rot
+        self.scale = ones((self.N,1))
         # end if
 
         self.x0 = copy.deepcopy(self.x)
@@ -1789,9 +1847,8 @@ class ref_axis(object):
 
 
     def update(self):
-        print 'pyGeo Update'
 
-        self.xs = pySpline.linear_spline('interpolate',X=self.x,k=2,s=self.s)
+        self.xs = pySpline.linear_spline('interpolate',X=self.base_point+self.x,k=2,s=self.s)
 
         self.rotxs = pySpline.linear_spline('interpolate',X=self.rot[:,0:1],k=2,s=self.s)
         self.rotys = pySpline.linear_spline('interpolate',X=self.rot[:,1:2],k=2,s=self.s)
@@ -1799,6 +1856,14 @@ class ref_axis(object):
 
         self.scales = pySpline.linear_spline('interpolate',X=self.scale,k=2,s=self.s)
 
+        return
+        
+
+    def updateEndPoint(self):
+        self.end_point = self.x[-1] + self.base_point
+        
+        return
+        
     def getRotMatrixGlobalToLocal(self,s):
         
         '''Return the rotation matrix to convert vector from global to local frames'''
@@ -1828,7 +1893,7 @@ class ref_axis(object):
         return M
 
 
-class geoDV(object):
+class geoDVGlobal(object):
      
     def __init__(self,dv_name,value,lower,upper,function,ref_axis_id):
         
@@ -1848,10 +1913,15 @@ class geoDV(object):
 
         self.name = dv_name
         self.value = value
+        if isinstance(value, int):
+            self.nVal = 1
+        else:
+            self.nVal = len(value)
+
         self.lower = lower
         self.upper = upper
         self.function = function
-        self.ref_axis_id = ref_axis_id
+        self.ref_axis_id = ref_axis_id # This is possibly a list
         return
 
 
@@ -1861,6 +1931,41 @@ class geoDV(object):
         # Execute the user-supplied function
 
         return self.function(self.value,ref_axis)
+        
+
+class geoDVLocal(object):
+     
+    def __init__(self,dv_name,lower,upper,surface_id):
+        
+        '''Create a set of gemoetric design variables whcih change the shape of a surface patch, surface_id
+
+        Input:
+        
+        dv_name: Design variable name. Should be unique. Can be used
+        to set pyOpt variables directly
+
+        lower: Lower bound for the variable. Again for setting in
+        pyOpt
+
+        upper: Upper bound for the variable.
+
+        Note: Value is NOT specified, value will ALWAYS be initialized to 0
+
+        '''
+        self.N = None
+        self.name = dv_name
+        self.lower = lower
+        self.upper = upper
+        self.surface_id = surface_id
+        return
+
+
+    def __call__(self,surface):
+
+        '''When the object is called, apply the design variable values to the surface'''
+        pass
+
+        
         
  
 
