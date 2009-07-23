@@ -43,11 +43,11 @@ offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
 breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
-nsections = [18,3,7] # Length breaks + 1
+nsections = [20,20,20] # Length breaks + 1
 section_spacing = []
 for i in xrange(len(nsections)):
-    #section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
-    section_spacing.append(1-linspace(1,0,nsections[i])**2)
+    section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
+    #section_spacing.append(1-linspace(1,0,nsections[i])**2)
 # Put spatial and rotations into two arrays
 X[:,0] = x
 X[:,1] = y
@@ -56,8 +56,7 @@ rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = tw_aero
          
-Nctlu = 13
-
+Nctlu = 17
 
 # Procedure for Using pyGEO
 
@@ -67,7 +66,7 @@ Nctlu = 13
 # wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
 #                    ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
-                   Xsec=X,rot=rot,breaks=breaks,nsections=nsections,section_spacing=section_spacing,fit_type='lms',Nctlu=Nctlu,Nfoil=50)
+                   Xsec=X,rot=rot,breaks=breaks,nsections=nsections,section_spacing=section_spacing,fit_type='lms',Nctlu=Nctlu,Nfoil=40)
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 wing.writeEdgeConnectivity('wing.con')
@@ -142,7 +141,7 @@ def winglet_extension(val,ref_axis):
 def twist(val,ref_axis):
     '''Twist'''
     #print 'twist'
-    ref_axis.rot[:,2] = ref_axis.rot0[:,2] + ref_axis.s**2*val
+    ref_axis.rot[:,2] = ref_axis.rot0[:,2] + ref_axis.s*val
     return ref_axis
 
 def sweep(val,ref_axis):
@@ -157,7 +156,7 @@ def sweep(val,ref_axis):
 def set_chord(val,ref_axis):
     '''Set the scales (and thus chords) on the wing'''
     #print 'chord'
-    ref_axis[0].scale = linspace(val[0],val[1],ref_axis[0].N)
+    ref_axis[0].scale[:] = val
     ref_axis[1].scale[:] = val[-1]
     ref_axis[2].scale[:] = val[-1]
 
@@ -165,25 +164,38 @@ def set_chord(val,ref_axis):
 # ------------------------------------------
 #                        Name, value, lower,upper,function, ref_axis_id -> must be a list
 # Add global Design Variables FIRST
-wing.addGeoDV(pyGeo.geoDVGlobal('span',1,0.5,2.0,span_extension,[0]))
-wing.addGeoDV(pyGeo.geoDVGlobal('winglet',1,0.5,2.0,winglet_extension,[2]))
-wing.addGeoDV(pyGeo.geoDVGlobal('twist',0,-20,20,twist,[0]))
-wing.addGeoDV(pyGeo.geoDVGlobal('sweep',0,-20,20,sweep,[0]))
-wing.addGeoDV(pyGeo.geoDVGlobal('chord',ones(13),0.1,2,set_chord,[0,1,2]))
+wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension,[0])
+wing.addGeoDVGlobal('winglet',1,0.5,2.0,winglet_extension,[2])
+wing.addGeoDVGlobal('twist',0,-20,20,twist,[0])
+wing.addGeoDVGlobal('sweep',0,-20,20,sweep,[0])
+wing.addGeoDVGlobal('chord',ones(13),0.1,2,set_chord,[0,1,2])
 
 # Add sets of local Design Variables SECOND
-wing.addGeoDV(pyGeo.geoDVLocal('surface1',-0.1,0.1,0))
-                      
+wing.addGeoDVLocal('surface1',-0.1,0.1,0)
+wing.addGeoDVLocal('surface2',-0.1,0.1,1)
+wing.addGeoDVLocal('surface3',-0.1,0.1,2)
+wing.addGeoDVLocal('surface4',-0.1,0.1,3)
+wing.addGeoDVLocal('surface5',-0.1,0.1,4)
+wing.addGeoDVLocal('surface6',-0.1,0.1,5)
 
+# Get the dictionary to use names for referecing 
 idg = wing.DV_namesGlobal #NOTE: This is constant
+idl = wing.DV_namesLocal  #NOTE: This is constant
 
 print 'idg',idg
+print 'idl',idl
 # Change the DV's
 wing.DV_listGlobal[idg['span']].value = 1.5
 wing.DV_listGlobal[idg['twist']].value = -5
 wing.DV_listGlobal[idg['sweep']].value = 2
-wing.DV_listGlobal[idg['chord']].value = array([1.0,.65])
+wing.DV_listGlobal[idg['chord']].value = linspace(1,.25,20)
 wing.DV_listGlobal[idg['winglet']].value = .5
+wing.DV_listLocal[idl['surface1']].value[5,5] = .14
+wing.DV_listLocal[idl['surface2']].value[5,5] = .24
+wing.DV_listLocal[idl['surface3']].value[5,5] = .34
+wing.DV_listLocal[idl['surface4']].value[5,5] = .44
+wing.DV_listLocal[idl['surface5']].value[5,5] = .54
+wing.DV_listLocal[idl['surface6']].value[5,5] = .64
 
 timeA = time.time()
 wing.update()
@@ -191,42 +203,5 @@ timeB = time.time()
 
 print 'update time is :',timeB-timeA
 
-
 wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
-
-# wing.surfs[0]._getFreeIndex()
-# wing.surfs[1]._getFreeIndex()
-# wing.surfs[2]._getFreeIndex()
-# wing.surfs[3]._getFreeIndex()
-# wing.surfs[4]._getFreeIndex()
-# wing.surfs[5]._getFreeIndex()
-
-# free_coef = wing.surfs[1].getFreeCtl()
-
-# print 'free_coef',free_coef.shape
-# print free_coef
-
-# ---------------------
-# Old Code Unused
-# ---------------------
-
-
-
-#ref_axis.x[:,2] *= 1.2
-
-#ref_axis.x[:,0] += 2.4*ref_axis1.xs.s
-#ref_axis.x[:,0] = ref_axis1.x0[:,0] + 2
-
-#ref_axis.x[:,1] += 0.4*ref_axis1.xs.s**2
-#ref_axis.rot[1,2] = 30
-#ref_axis.rot[2,2]= 30
-#ref_axis.rot[:,2] = 0
-# ref_axis.scale[0,0] = 1.2
-# ref_axis.scale[1,0] = 1.5
-# ref_axis.scale[2,0] = 1.2
-# ref_axis.scale[3,0] = 1.1
-# ref_axis.scale[4,0] = 0.9
-# ref_axis.scale[5,0] = 0.7
-# ref_axis.scale[6,0] = 0.6
-# ref_axis.scale[7,0] = 0.4
- 
+wing.writeIGES('wing.igs')
