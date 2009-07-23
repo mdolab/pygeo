@@ -54,6 +54,7 @@ except:
 
 # pySpline Utilities
 import pySpline
+import pySplineCS
 
 try:
     import csm_pre
@@ -241,7 +242,7 @@ class pyGeo():
         surfs = []
         for ipatch in xrange(nPatch):
             #surfs.append(pySpline.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            surfs.append(pySpline.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13))
+            surfs.append(pySplineCS.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13))
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -330,7 +331,7 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            self.surfs.append(pySpline.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
+            self.surfs.append(pySplineCS.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
         # end for
 
         return 
@@ -465,8 +466,8 @@ class pyGeo():
                 # end for
                 # Now we can generate and append the surfaces
                 print 'generating surface'
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
+                self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
+                self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
 
                 # Ref_axis:
                 temp_spline = pySpline.linear_spline(task='interpolate',X=Xsec[start:end,:],k=2) # spatial
@@ -498,8 +499,8 @@ class pyGeo():
             self.nPatch = len(self.surfs)
         else:  #No breaks
             
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
+            self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
+            self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
             self.nPatch = 2
 
             # Create the Reference Axis:
@@ -539,7 +540,7 @@ class pyGeo():
                 X[:,:,0] = Components[comp1]._components[comp2].Surface_x
                 X[:,:,1] = Components[comp1]._components[comp2].Surface_y
                 X[:,:,2] = Components[comp1]._components[comp2].Surface_z
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X,*args,**kwargs))
+                self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=X,*args,**kwargs))
             # end for
         # end for
 
@@ -1303,6 +1304,12 @@ class pyGeo():
             
         # end for
 
+        # check ref axis:
+        print self.ref_axis[0].x
+        print self.ref_axis[1].x
+        print self.ref_axis[2].x
+     
+
         # Second, update the end_point base_point on the ref_axis:
         timeB = time.time()
         for i in xrange(len(self.ref_axis_con)):
@@ -1312,6 +1319,14 @@ class pyGeo():
                 self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
                 self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
         timeC = time.time()
+
+        
+        print 'base/end points'
+        print self.ref_axis[0].base_point,self.ref_axis[0].end_point
+        print self.ref_axis[1].base_point,self.ref_axis[1].end_point
+        print self.ref_axis[2].base_point,self.ref_axis[2].end_point
+     
+
         # Third, update the ref_axis and consequently the design variables
         for r in xrange(len(self.ref_axis)):
             self.ref_axis[r].update()
@@ -1326,6 +1341,17 @@ class pyGeo():
         # end for
         timeD= time.time()
         # fourth update the Local coordinates
+
+#         print 'ref axis coef:'
+#         print self.ref_axis[0].xs.coef
+#         print self.ref_axis[0].rotxs.coef
+
+#         print self.ref_axis[1].xs.coef
+#         print self.ref_axis[1].rotxs.coef
+
+#         print self.ref_axis[2].xs.coef
+#         print self.ref_axis[2].rotxs.coef
+
 
         for i in xrange(len(self.DV_listLocal)):
             self.surfs[self.DV_listLocal[i].surface_id] = \
@@ -1367,7 +1393,6 @@ class pyGeo():
 
 
     def addGeoDVLocal(self,dv_name,lower,upper,surface_id):
-
         '''Add a local design variable group'''
         self.surfs[surface_id]._calcNFree() # Make sure we know how many free Control Points we have
         self.surfs[surface_id]._getFreeIndex()
@@ -1832,6 +1857,8 @@ class ref_axis(object):
             print 'rot:',rot.shape
             sys.exit(1)
 
+        X = X.astype('D')
+        rot = rot.astype('D')
         self.N = X.shape[0]
 
         self.base_point = X[0,:]
@@ -1853,15 +1880,15 @@ class ref_axis(object):
         # the rotational part
 
 
-        self.xs = pySpline.linear_spline(task='interpolate',X=self.base_point+self.x,k=2)
+        self.xs = pySplineCS.linear_spline(task='interpolate',X=self.base_point+self.x,k=2)
         self.s = self.xs.s
 
 
-        self.rotxs = pySpline.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s)
-        self.rotys = pySpline.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s)
-        self.rotzs = pySpline.linear_spline(task='interpolate',X=self.rot[:,2],k=2,s=self.s)
+        self.rotxs = pySplineCS.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s)
+        self.rotys = pySplineCS.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s)
+        self.rotzs = pySplineCS.linear_spline(task='interpolate',X=self.rot[:,2],k=2,s=self.s)
 
-        self.scales = pySpline.linear_spline(task='interpolate',X=self.scale,k=2,s=self.s)
+        self.scales = pySplineCS.linear_spline(task='interpolate',X=self.scale,k=2,s=self.s)
 
         #self.update()
 

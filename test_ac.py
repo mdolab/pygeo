@@ -8,12 +8,12 @@ import os, sys, string, pdb, copy, time
 # External Python modules
 # =============================================================================
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
-    array, real, reshape, meshgrid, dot, cross, vstack, arctan
+    array, real, reshape, meshgrid, dot, cross, vstack, arctan2
 
 # =============================================================================
 # Extension modules
 # =============================================================================
-from matplotlib.pylab import *
+#from matplotlib.pylab import *
 
 # pySpline
 sys.path.append('../pySpline/python')
@@ -25,6 +25,14 @@ sys.path.append('../../pyHF/pycfd-csm/python/')
 import pyGeo
 
 # Wing Information
+
+def c_atan2(x,y):
+    a=x.real
+    b=x.imag
+    c=y.real
+    d=y.imag
+    return complex(arctan2(a,c),(c*b-a*d)/(a**2+c**2))
+
 
 naf=5
 airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
@@ -43,7 +51,7 @@ offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
 breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
-nsections = [20,20,20] # Length breaks + 1
+nsections = [10,8,8] # Length breaks + 1
 section_spacing = []
 for i in xrange(len(nsections)):
     section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
@@ -146,11 +154,10 @@ def twist(val,ref_axis):
 
 def sweep(val,ref_axis):
     '''Sweep the wing'''
-    #print 'sweep'
-    ref_axis.x[:,0] = ref_axis.x0[:,0] +  val * ref_axis.s
-    angle = -arctan2(val,ref_axis.x[-1,2])*180/pi
-    
+    ref_axis.x[:,0] =  ref_axis.x0[:,0] +  val * ref_axis.s
+    angle = c_atan2(val,ref_axis.x[-1,2])*180/pi
     ref_axis.rot[:,1] = ref_axis.s * angle
+
     return ref_axis
 
 def set_chord(val,ref_axis):
@@ -187,8 +194,8 @@ print 'idl',idl
 # Change the DV's
 wing.DV_listGlobal[idg['span']].value = 1.5
 wing.DV_listGlobal[idg['twist']].value = -5
-wing.DV_listGlobal[idg['sweep']].value = 2
-wing.DV_listGlobal[idg['chord']].value = linspace(1,.25,20)
+wing.DV_listGlobal[idg['sweep']].value = 2 + 1.0e-40j
+wing.DV_listGlobal[idg['chord']].value = linspace(1,.25,10)
 wing.DV_listGlobal[idg['winglet']].value = .5
 wing.DV_listLocal[idl['surface1']].value[5,5] = .14
 wing.DV_listLocal[idl['surface2']].value[5,5] = .24
@@ -201,6 +208,9 @@ timeA = time.time()
 wing.update()
 timeB = time.time()
 
+print 'Coeffs:'
+print wing.surfs[0].coef
+#print wing.surfs[1].coef
 print 'update time is :',timeB-timeA
 
 wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
