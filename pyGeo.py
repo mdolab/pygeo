@@ -35,7 +35,8 @@ import os, sys, string, copy, pdb, time
 # =============================================================================
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
-    transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid
+    transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
+    real, imag
 
 from numpy.linalg import lstsq,inv
 from scipy import io #Only used for debugging
@@ -43,6 +44,7 @@ from scipy import io #Only used for debugging
 try:
     from petsc4py import PETSc
     USE_PETSC = True
+    USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed with PETSC'
 except:
     print 'PETSc4py is not available. Least Square Solutions will be performed with LAPACK'
@@ -131,7 +133,8 @@ class pyGeo():
         self.DV_listLocal  = []
         self.DV_namesGlobal = {}
         self.DV_namesLocal  = {}
-
+        self.J = None
+        self.J1 = None
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
@@ -460,8 +463,6 @@ class pyGeo():
                     temp_spline = pySpline.linear_spline(task='interpolate',X=X[1,j,start:end,:],k=2) # surface 1
                     Xnew[1,j,start2:end2,:] = temp_spline.getValueV(section_spacing[i])
 
-
-
                 # end for
                 # Now we can generate and append the surfaces
                 print 'generating surface'
@@ -498,8 +499,8 @@ class pyGeo():
             self.nPatch = len(self.surfs)
         else:  #No breaks
             
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs),complex=True)
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs),complex=True)
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
             self.nPatch = 2
 
             # Create the Reference Axis:
@@ -1184,6 +1185,7 @@ class pyGeo():
             self.J[i:i+len(vec),j] = vec 
         # end if
         return 
+
         
     def _setRHS(self):
         '''Set the RHS Vector'''
@@ -1274,16 +1276,18 @@ class pyGeo():
 
         return
 
+# ----------------------------------------------------------------------
+#                Update and Derivative Functions
+# ----------------------------------------------------------------------
+
     def update(self):
         '''update the entire pyGeo Object'''
 
         # First, update the reference axis info from the design variables
-        timeA = time.time()
+        
         for i in xrange(len(self.DV_listGlobal)):
 
             # Call the each design variable with the ref axis its associated with
-            #axis_list = self.DV_list[dv_name].ref_axis_id
-
             if len(self.DV_listGlobal[i].ref_axis_id) == 1:
                 ref_index = self.DV_listGlobal[i].ref_axis_id[0]
                 self.ref_axis[ref_index] = self.DV_listGlobal[i](self.ref_axis[ref_index])
@@ -1300,69 +1304,174 @@ class pyGeo():
                     self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = axis_list[j]
                 # end for
             # end if
-            
         # end for
 
         # Second, update the end_point base_point on the ref_axis:
-        timeB = time.time()
+        
         for i in xrange(len(self.ref_axis_con)):
             for j in xrange(len(self.ref_axis_con[i])-1):
 
                 self.ref_axis[j].updateEndPoint()
                 self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
                 self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
-        timeC = time.time()
-
         
-        print 'base/end points'
-        print self.ref_axis[0].base_point,self.ref_axis[0].end_point
-        print self.ref_axis[1].base_point,self.ref_axis[1].end_point
-        print self.ref_axis[2].base_point,self.ref_axis[2].end_point
-     
-
         # Third, update the ref_axis and consequently the design variables
         for r in xrange(len(self.ref_axis)):
             self.ref_axis[r].update()
                  
-            # THIS FUNCTION IS THE MOST TIME CONSUMING!
-            # -----------------------------------------
             for ipatch in self.ref_axis_surface_con[r]:
                 self.surfs[ipatch].update(self.ref_axis[r])
             # end for
-            # -----------------------------------------
-                
         # end for
-        timeD= time.time()
+
         # fourth update the Local coordinates
-
-#         print 'ref axis coef:'
-#         print self.ref_axis[0].xs.coef
-#         print self.ref_axis[0].rotxs.coef
-
-#         print self.ref_axis[1].xs.coef
-#         print self.ref_axis[1].rotxs.coef
-
-#         print self.ref_axis[2].xs.coef
-#         print self.ref_axis[2].rotxs.coef
-
 
         for i in xrange(len(self.DV_listLocal)):
             self.surfs[self.DV_listLocal[i].surface_id] = \
                 self.DV_listLocal[i](self.surfs[self.DV_listLocal[i].surface_id])
         # end for
-
-        timeE = time.time()
+            
         # Fifth, run the stitch surfaces command to enforce master dv's
         self.stitchEdges()
-        timeF = time.time()
 
-        print 'update DV:',timeB-timeA
-        print 'update base-end',timeC-timeB
-        print 'update refaxis and DV:',timeD-timeC
-        print 'update local dv:',timeE-timeD
-        print 'stitch edges:',timeF-timeE
         return
          
+    def calcCtlDeriv(self):
+
+        '''This function runs the complex step method over the design variable
+        and generates a (sparse) jacobian of the control pt
+        derivatives wrt to the design variables'''
+
+        # Initialize the jacobian
+
+        if not self.J1: # Not initialized
+            # Calculate the size Ncoef_free x Ndesign Variables
+            
+            M = [0]
+            for i in xrange(self.nPatch):
+                self.surfs[i]._calcNFree()
+                M.append(M[-1]+self.surfs[i].Nctl_free)
+            # end if
+
+            Nctl = M[-1]
+            print 'M:',M
+            # Calculate the Number of Design Variables:
+            
+
+            N = [0]
+            for i in xrange(len(self.DV_listGlobal)): #Global Variables
+                N.append(N[-1]+self.DV_listGlobal[i].nVal)
+            # end for
+            
+            NdvGlobal = N[-1]
+            Ndv = N[-1]
+            for i in xrange(len(self.DV_listLocal)): # Local Variables
+                Ndv += self.DV_listLocal[i].nVal
+            # end for
+                
+            NdvLocal = Ndv-NdvGlobal
+
+            print 'NdvGlobal:',NdvGlobal
+            print 'Nctl:',Nctl
+            print 'Ndv:',Ndv
+            # We know the approximate row filling factor: Its nGlobal + 1
+             
+            if USE_PETSC:
+                self.J1 = PETSc.Mat()
+                self.J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+1)
+            else:
+                self.J1 = zeros((Nctl*3,Ndv))
+            # end if
+        # end if 
+   
+        # This next section of code is basically the update() function
+        # however, it runs the getComplexCoef instead of update on the
+        # spline class
+        h = 1.0e-40j
+        col_counter = 0
+        for ii in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
+            nVal = self.DV_listGlobal[ii].nVal
+            for jj in xrange(nVal):
+                if nVal == 1:
+                    self.DV_listGlobal[ii].value += h
+                else:
+                    self.DV_listGlobal[ii].value[jj] += h
+                # end if
+
+                # -----------COPY OF UPDATE--------------
+                # First, update the reference axis info from the design variables
+                for i in xrange(len(self.DV_listGlobal)):
+
+                    # Call the each design variable with the ref axis its associated with
+                    if len(self.DV_listGlobal[i].ref_axis_id) == 1:
+                        ref_index = self.DV_listGlobal[i].ref_axis_id[0]
+                        self.ref_axis[ref_index] = self.DV_listGlobal[i](self.ref_axis[ref_index])
+                    else: # Make up the list of ref axis to pass
+                        axis_list = []
+                        for j in self.DV_listGlobal[i].ref_axis_id:
+                            axis_list.append(self.ref_axis[j])
+                        # end for
+                        axis_list = self.DV_listGlobal[i](axis_list)
+
+                        # Set axis back in list
+
+                        for j in xrange(len(axis_list)):
+                            self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = axis_list[j]
+                        # end for
+                    # end if
+                # end for
+
+                # Second, update the end_point base_point on the ref_axis:
+
+                for i in xrange(len(self.ref_axis_con)):
+                    for j in xrange(len(self.ref_axis_con[i])-1):
+
+                        self.ref_axis[j].updateEndPoint()
+                        self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
+                        self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
+                # -------END COPY OF UPDATE--------------
+
+                # Third, update the ref_axis and consequently the design variables
+                for r in xrange(len(self.ref_axis)):
+                    self.ref_axis[r].update()
+
+                    for ipatch in self.ref_axis_surface_con[r]:
+                        coef = self.surfs[ipatch].getComplexCoef(self.ref_axis[r])
+                        self.J1[M[ipatch]*3:M[ipatch+1]*3,col_counter] = imag(coef.flatten())/1e-40
+
+                    # end for
+                # end for
+                
+                # Increment Column Counter
+                col_counter += 1
+                #print 'col_counter:',col_counter
+
+                # Reset Design Variable Peturbation
+                if nVal == 1:
+                    self.DV_listGlobal[ii].value -= h
+                else:
+                    self.DV_listGlobal[ii].value[jj] -= h
+                # end if
+            # end for
+        # end for
+
+        # The next step is go to over all the LOCAL variables, compute the surface
+        # normal and 
+
+
+
+
+
+
+        if USE_PETSC:
+            self.J1.assemblyBegin()
+            self.J1.assemblyEnd()
+        # end if 
+       
+        return 
+
+
+
     def addGeoObject(self,geo_obj):
 
         '''Concentate two pyGeo objects into one'''
@@ -1393,6 +1502,8 @@ class pyGeo():
 
         self.DV_listLocal[-1].Nctlu = self.surfs[surface_id].Nctlu_free
         self.DV_listLocal[-1].Nctlv = self.surfs[surface_id].Nctlv_free
+        self.DV_listLocal[-1].nVal  = self.DV_listLocal[-1].Nctlu*self.DV_listLocal[-1].Nctlv
+
         self.DV_listLocal[-1].value = zeros((self.DV_listLocal[-1].Nctlu,self.DV_listLocal[-1].Nctlv))
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
 
@@ -1495,13 +1606,13 @@ class pyGeo():
                 coords = zeros((2*num_vectors,3))
                 icoord = 0
                 for ipatch in self.ref_axis_surface_con[r]:
-                    for j in xrange(len(self.surfs[ipatch].links)):
-                        x0 = self.ref_axis[r].xs.getValue(self.surfs[ipatch].links[j][0])
+                    for j in xrange(len(self.surfs[ipatch].links_s)):
+                        x0 = self.ref_axis[r].xs.getValue(self.surfs[ipatch].links_s[j])
 
-                        M = self.ref_axis[r].getRotMatrixLocalToGloabl(self.surfs[ipatch].links[j][0])
+                        M = self.ref_axis[r].getRotMatrixLocalToGloabl(self.surfs[ipatch].links_s[j])
 
                         coords[icoord    ,:] = x0
-                        coords[icoord + 1,:] = x0 + dot(M,self.surfs[ipatch].links[j][1])
+                        coords[icoord + 1,:] = x0 + dot(M,self.surfs[ipatch].links_x[j])
                         icoord += 2
                     # end for
                 # end for
@@ -1993,6 +2104,8 @@ class geoDVLocal(object):
         '''
         self.Nctlu = None
         self.Nctlv = None
+        self.nVal = None
+    
         self.value = None
         self.name = dv_name
         self.lower = lower

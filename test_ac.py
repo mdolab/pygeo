@@ -27,10 +27,10 @@ import pyGeo
 # Wing Information
 
 def c_atan2(x,y):
-    a=x.real
-    b=x.imag
-    c=y.real
-    d=y.imag
+    a=real(x)
+    b=imag(x)
+    c=real(y)
+    d=imag(y)
     return complex(arctan2(a,c),(c*b-a*d)/(a**2+c**2))
 
 
@@ -51,7 +51,7 @@ offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
 breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
-nsections = [20,20,20] # Length breaks + 1
+nsections = [10,10,10]# Length breaks + 1
 section_spacing = []
 for i in xrange(len(nsections)):
     section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
@@ -64,7 +64,7 @@ rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = tw_aero
          
-Nctlu = 17
+Nctlu = 25
 
 # Procedure for Using pyGEO
 
@@ -74,7 +74,7 @@ Nctlu = 17
 # wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
 #                    ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
-                   Xsec=X,rot=rot,breaks=breaks,nsections=nsections,section_spacing=section_spacing,fit_type='lms',Nctlu=Nctlu,Nfoil=40)
+                   Xsec=X,rot=rot,breaks=breaks,nsections=nsections,section_spacing=section_spacing,fit_type='lms',Nctlu=Nctlu,Nfoil=20)
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 wing.writeEdgeConnectivity('wing.con')
@@ -156,18 +156,28 @@ def sweep(val,ref_axis):
     '''Sweep the wing'''
     ref_axis.x[:,0] =  ref_axis.x0[:,0] +  val * ref_axis.s
     angle = c_atan2(val,ref_axis.x[-1,2])*180/pi
-    ref_axis.rot[:,1] = ref_axis.s * angle
+    #ref_axis.rot[:,1] = ref_axis.s * angle
 
     return ref_axis
 
-def set_chord(val,ref_axis):
+def set_chord1(val,ref_axis):
     '''Set the scales (and thus chords) on the wing'''
-    #print 'chord'
+    #print 'chord',val
     ref_axis[0].scale[:] = val
-    ref_axis[1].scale[:] = val[-1]
-    ref_axis[2].scale[:] = val[-1]
-
     return ref_axis
+
+def set_chord2(val,ref_axis):
+    '''Set the scales (and thus chords) on the wing'''
+    #print 'chord',val
+    ref_axis[1].scale[:] = val
+    return ref_axis
+
+def set_chord3(val,ref_axis):
+    '''Set the scales (and thus chords) on the wing'''
+    #print 'chord',val
+    ref_axis[2].scale[:] = val
+    return ref_axis
+
 # ------------------------------------------
 #                        Name, value, lower,upper,function, ref_axis_id -> must be a list
 # Add global Design Variables FIRST
@@ -175,7 +185,9 @@ wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension,[0])
 wing.addGeoDVGlobal('winglet',1,0.5,2.0,winglet_extension,[2])
 wing.addGeoDVGlobal('twist',0,-20,20,twist,[0])
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep,[0])
-wing.addGeoDVGlobal('chord',ones(13),0.1,2,set_chord,[0,1,2])
+wing.addGeoDVGlobal('chord1',ones(10),0.1,2,set_chord1,[0,1,2])
+wing.addGeoDVGlobal('chord2',ones(10),0.1,2,set_chord2,[0,1,2])
+wing.addGeoDVGlobal('chord3',ones(10),0.1,2,set_chord3,[0,1,2])
 
 # Add sets of local Design Variables SECOND
 wing.addGeoDVLocal('surface1',-0.1,0.1,0)
@@ -194,26 +206,32 @@ print 'idl',idl
 # Change the DV's -> Normally this is done from the Optimizer
 wing.DV_listGlobal[idg['span']].value = 1.5
 wing.DV_listGlobal[idg['twist']].value = -5
-wing.DV_listGlobal[idg['sweep']].value = 2 + 1.0e-40j
-wing.DV_listGlobal[idg['chord']].value = linspace(4,1.25,20)
+wing.DV_listGlobal[idg['sweep']].value = 2
+wing.DV_listGlobal[idg['chord1']].value = linspace(1,.65,10)
+wing.DV_listGlobal[idg['chord2']].value = linspace(.65,.5,10)
+wing.DV_listGlobal[idg['chord3']].value = linspace(.5,.35,10)
+
 wing.DV_listGlobal[idg['winglet']].value = .5
-wing.DV_listLocal[idl['surface1']].value[5,5] = .14
-wing.DV_listLocal[idl['surface2']].value[5,5] = .24
-wing.DV_listLocal[idl['surface3']].value[5,5] = .34
-wing.DV_listLocal[idl['surface4']].value[5,5] = .44
-wing.DV_listLocal[idl['surface5']].value[5,5] = .54
-wing.DV_listLocal[idl['surface6']].value[5,5] = .64
-print wing.DV_listLocal[idl['surface4']].Nctlu
-print wing.DV_listLocal[idl['surface4']].Nctlv
+wing.DV_listLocal[idl['surface1']].value[0,0] = .14
+wing.DV_listLocal[idl['surface2']].value[0,0] = .24
+wing.DV_listLocal[idl['surface3']].value[0,0] = .34
+wing.DV_listLocal[idl['surface4']].value[0,0] = .44
+wing.DV_listLocal[idl['surface5']].value[0,0] = .54
+wing.DV_listLocal[idl['surface6']].value[0,0] = .64
 
 timeA = time.time()
 wing.update()
 timeB = time.time()
+wing.calcCtlDeriv()
+timeC = time.time()
 
-print 'Coeffs:'
-print wing.surfs[0].coef
-#print wing.surfs[1].coef
-print 'update time is :',timeB-timeA
+print 'Update Time:',timeB-timeA
+print 'Derivative Time:',timeC-timeB
+
+# Now generate the jacobian
+
+
+
 
 wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
 wing.writeIGES('wing.igs')
