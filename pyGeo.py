@@ -54,7 +54,6 @@ except:
 
 # pySpline Utilities
 import pySpline
-import pySplineCS
 
 try:
     import csm_pre
@@ -242,7 +241,7 @@ class pyGeo():
         surfs = []
         for ipatch in xrange(nPatch):
             #surfs.append(pySpline.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            surfs.append(pySplineCS.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13))
+            surfs.append(pySpline.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13),complex=True)
         
         self.surfs = surfs
         self.nPatch = nPatch
@@ -331,7 +330,7 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            self.surfs.append(pySplineCS.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range))
+            self.surfs.append(pySpline.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range),complex=True)
         # end for
 
         return 
@@ -466,8 +465,8 @@ class pyGeo():
                 # end for
                 # Now we can generate and append the surfaces
                 print 'generating surface'
-                self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
-                self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
 
                 # Ref_axis:
                 temp_spline = pySpline.linear_spline(task='interpolate',X=Xsec[start:end,:],k=2) # spatial
@@ -499,8 +498,8 @@ class pyGeo():
             self.nPatch = len(self.surfs)
         else:  #No breaks
             
-            self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
-            self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs),complex=True)
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs),complex=True)
             self.nPatch = 2
 
             # Create the Reference Axis:
@@ -540,7 +539,7 @@ class pyGeo():
                 X[:,:,0] = Components[comp1]._components[comp2].Surface_x
                 X[:,:,1] = Components[comp1]._components[comp2].Surface_y
                 X[:,:,2] = Components[comp1]._components[comp2].Surface_z
-                self.surfs.append(pySplineCS.surf_spline(fit_type,ku=4,kv=4,X=X,*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X,*args,**kwargs),complex=True)
             # end for
         # end for
 
@@ -1304,12 +1303,6 @@ class pyGeo():
             
         # end for
 
-        # check ref axis:
-        print self.ref_axis[0].x
-        print self.ref_axis[1].x
-        print self.ref_axis[2].x
-     
-
         # Second, update the end_point base_point on the ref_axis:
         timeB = time.time()
         for i in xrange(len(self.ref_axis_con)):
@@ -1422,6 +1415,7 @@ class pyGeo():
         # ---------------------------
         
         f = open(file_name,'w')
+        print 'f is:',f
         f.write ('VARIABLES = "X", "Y","Z"\n')
         print ' '
         print 'Writing Tecplot file: %s '%(file_name)
@@ -1880,15 +1874,15 @@ class ref_axis(object):
         # the rotational part
 
 
-        self.xs = pySplineCS.linear_spline(task='interpolate',X=self.base_point+self.x,k=2)
+        self.xs = pySpline.linear_spline(task='interpolate',X=self.base_point+self.x,k=2,complex=True)
         self.s = self.xs.s
 
 
-        self.rotxs = pySplineCS.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s)
-        self.rotys = pySplineCS.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s)
-        self.rotzs = pySplineCS.linear_spline(task='interpolate',X=self.rot[:,2],k=2,s=self.s)
+        self.rotxs = pySpline.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s,complex=True)
+        self.rotys = pySpline.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s,complex=True)
+        self.rotzs = pySpline.linear_spline(task='interpolate',X=self.rot[:,2],k=2,s=self.s,complex=True)
 
-        self.scales = pySplineCS.linear_spline(task='interpolate',X=self.scale,k=2,s=self.s)
+        self.scales = pySpline.linear_spline(task='interpolate',X=self.scale,k=2,s=self.s,complex=True)
 
         #self.update()
 
@@ -1997,8 +1991,8 @@ class geoDVLocal(object):
         Note: Value is NOT specified, value will ALWAYS be initialized to 0
 
         '''
-        self.Nu = None
-        self.Nv = None
+        self.Nctlu = None
+        self.Nctlv = None
         self.value = None
         self.name = dv_name
         self.lower = lower

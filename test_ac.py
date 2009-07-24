@@ -51,7 +51,7 @@ offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
 breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
-nsections = [10,8,8] # Length breaks + 1
+nsections = [20,20,20] # Length breaks + 1
 section_spacing = []
 for i in xrange(len(nsections)):
     section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
@@ -186,16 +186,16 @@ wing.addGeoDVLocal('surface5',-0.1,0.1,4)
 wing.addGeoDVLocal('surface6',-0.1,0.1,5)
 
 # Get the dictionary to use names for referecing 
-idg = wing.DV_namesGlobal #NOTE: This is constant
-idl = wing.DV_namesLocal  #NOTE: This is constant
+idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global)
+idl = wing.DV_namesLocal  #NOTE: This is constant (idl -> id local)
 
 print 'idg',idg
 print 'idl',idl
-# Change the DV's
+# Change the DV's -> Normally this is done from the Optimizer
 wing.DV_listGlobal[idg['span']].value = 1.5
 wing.DV_listGlobal[idg['twist']].value = -5
 wing.DV_listGlobal[idg['sweep']].value = 2 + 1.0e-40j
-wing.DV_listGlobal[idg['chord']].value = linspace(1,.25,10)
+wing.DV_listGlobal[idg['chord']].value = linspace(4,1.25,20)
 wing.DV_listGlobal[idg['winglet']].value = .5
 wing.DV_listLocal[idl['surface1']].value[5,5] = .14
 wing.DV_listLocal[idl['surface2']].value[5,5] = .24
@@ -203,6 +203,8 @@ wing.DV_listLocal[idl['surface3']].value[5,5] = .34
 wing.DV_listLocal[idl['surface4']].value[5,5] = .44
 wing.DV_listLocal[idl['surface5']].value[5,5] = .54
 wing.DV_listLocal[idl['surface6']].value[5,5] = .64
+print wing.DV_listLocal[idl['surface4']].Nctlu
+print wing.DV_listLocal[idl['surface4']].Nctlv
 
 timeA = time.time()
 wing.update()
