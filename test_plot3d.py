@@ -13,20 +13,12 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # Extension modules
 # =============================================================================
 
-#pyOPT
-sys.path.append(os.path.abspath('../../../../pyACDT/pyACDT/Optimization/pyOpt/'))
-
 # pySpline
 sys.path.append('../pySpline/python')
 
-#pyOPT
-sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/'))
-
-#pySNOPT
-sys.path.append(os.path.abspath('../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT'))
-
 #pyGeo
-import pyGeo
+import pyGeo2 as pyGeo
+
 
 # This script reads a surfaced-based plot3d file as typically
 # outputted by aerosurf. It then creates a b-spline surfaces for each
@@ -67,9 +59,13 @@ aircraft.calcEdgeConnectivity(1e-1,2e-1)
 aircraft.writeEdgeConnectivity('aircraft.con')
 aircraft.propagateKnotVectors()
 aircraft.stitchEdges()
-aircraft.fitSurfaces()
-
+#aircraft.fitSurfaces()
+timeA = time.time()
 aircraft.writeTecplot('full_aircraft.dat')
+timeB =time.time()
+print 'Write time is:',timeB-timeA
+
+
 
 print 'full time',time.time()-timeA
 

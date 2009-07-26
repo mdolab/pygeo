@@ -490,6 +490,7 @@ class pyGeo():
                 self.ref_axis.append(cur_ref_axis)
                 self.ref_axis_surface_con.append([2*i,2*i+1])
                 self.ref_axis_con.append(range(nBreaks+1))
+                # Attach the current reference axis to the current two surfaces
                 self.surfs[2*i  ].associateRefAxis(cur_ref_axis)
                 self.surfs[2*i+1].associateRefAxis(cur_ref_axis)
 
@@ -1962,6 +1963,7 @@ class ref_axis(object):
             print 'rot:',rot.shape
             sys.exit(1)
 
+        # Note: Ref_axis data is ALWAYS Complex. 
         X = X.astype('D')
         rot = rot.astype('D')
         self.N = X.shape[0]
@@ -1971,12 +1973,11 @@ class ref_axis(object):
         self.x = X-self.base_point
         self.end_point = self.x[-1] + self.base_point
                 
-        # This is just to get the parameterization
-
         self.rot = rot
         self.scale = ones(self.N)
         # end if
 
+        # Deep copy the x,rot and scale for design variable reference
         self.x0 = copy.deepcopy(self.x)
         self.rot0 = copy.deepcopy(self.rot)
         self.scale0 = copy.deepcopy(self.scale)
@@ -1984,10 +1985,8 @@ class ref_axis(object):
         # Create an interpolating spline for the spatial part and for
         # the rotational part
 
-
         self.xs = pySpline.linear_spline(task='interpolate',X=self.base_point+self.x,k=2,complex=True)
         self.s = self.xs.s
-
 
         self.rotxs = pySpline.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s,complex=True)
         self.rotys = pySpline.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s,complex=True)
