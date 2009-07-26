@@ -22,7 +22,7 @@ sys.path.append('../pySpline/python')
 sys.path.append('../../pyHF/pycfd-csm/python/')
 
 #pyGeo
-import pyGeo
+import pyGeo2 as pyGeo
 
 # Wing Information
 
@@ -35,7 +35,8 @@ def c_atan2(x,y):
 
 
 naf=5
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp','pinch.inp']
+airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp',\
+                    'pinch.inp']
 chord = [1.25,.65,.65,.65,.65]
 x = [1.25,1.25,1.25,1.25,1.25]
 y = [0,0.4,.6,1.2,1.4]
@@ -71,15 +72,18 @@ Nctlu = 25
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
-#                    ref_axis=ref_axis,fit_type='lms',breaks=breaks,Nctlu = Nctlu,Nctlv=Nctlv,ctlv_spacing=ctlv_spacing)
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,offset=offset,\
-                   Xsec=X,rot=rot,breaks=breaks,nsections=nsections,section_spacing=section_spacing,fit_type='lms',Nctlu=Nctlu,Nfoil=20)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,\
+                   offset=offset, Xsec=X,rot=rot,breaks=breaks,\
+                   nsections=nsections,section_spacing=section_spacing,\
+                   fit_type='lms', Nctlu=Nctlu,Nfoil=20)
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 wing.writeEdgeConnectivity('wing.con')
 wing.stitchEdges()
-wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
+timeA = time.time()
+wing.writeTecplot('wing.dat',write_ref_axis=False,write_links=False)
+timeB =time.time()
+print 'Write time is:',timeB-timeA
 print 'Done Step 1'
 
 #sys.exit(0)
@@ -179,7 +183,7 @@ def set_chord3(val,ref_axis):
     return ref_axis
 
 # ------------------------------------------
-#                        Name, value, lower,upper,function, ref_axis_id -> must be a list
+#         Name, value, lower,upper,function, ref_axis_id -> must be a list
 # Add global Design Variables FIRST
 wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension,[0])
 wing.addGeoDVGlobal('winglet',1,0.5,2.0,winglet_extension,[2])
@@ -220,9 +224,9 @@ wing.DV_listLocal[idl['surface5']].value[0,0] = .54
 wing.DV_listLocal[idl['surface6']].value[0,0] = .64
 
 timeA = time.time()
-wing.update()
+#wing.update()
 timeB = time.time()
-wing.calcCtlDeriv()
+#wing.calcCtlDeriv()
 timeC = time.time()
 
 print 'Update Time:',timeB-timeA
@@ -233,5 +237,5 @@ print 'Derivative Time:',timeC-timeB
 
 
 
-wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
+wing.writeTecplot('wing2.dat',write_ref_axis=False,write_links=False)
 wing.writeIGES('wing.igs')
