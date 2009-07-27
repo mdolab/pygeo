@@ -1,3 +1,4 @@
+
 #!/usr/local/bin/python
 from __future__ import division
 '''
@@ -45,9 +46,11 @@ try:
     from petsc4py import PETSc
     USE_PETSC = True
     USE_PETSC = False
-    print 'PETSc4py is available. Least Square Solutions will be performed with PETSC'
+    print 'PETSc4py is available. Least Square Solutions will be performed \
+with PETSC'
 except:
-    print 'PETSc4py is not available. Least Square Solutions will be performed with LAPACK'
+    print 'PETSc4py is not available. Least Square Solutions will be performed\
+with LAPACK (Numpy Least Squares)'
     USE_PETSC = False
 
 # =============================================================================
@@ -79,7 +82,8 @@ class pyGeo():
         
         '''Create an instance of the geometry object. The initialization type,
         init_type, specifies what type of initialization will be
-        used. There are currently 4 initialization types: plot3d, iges, lifting_surface and acdt_geo
+        used. There are currently 4 initialization types: plot3d,
+        iges, lifting_surface and acdt_geo
 
         
         Input: 
@@ -95,39 +99,44 @@ class pyGeo():
         from an iges file to create splined surfaes.
 
         
-        'lifting_surface',ref_axis=ref_axis,le_loc=le_loc,scale=chord,xsec_list=af_list,
-        Create a lifting surface along a reference axis ref_axis,from
-        airfoils in af_list. Translate by le_loc and scale by
-        chord. Required Parameters are:
+        'lifting_surface',xsections=airfoil_list,scale=chord,offset=offset 
+         Xsec=X,rot=rot
 
-            ref_axis, type ref_axis: A Reference axis object to position cross sections
+         Mandatory Arguments:
+              
+              xsections: List of the cross section coordinate files
+              scsale   : List of the scaling factor for cross sections
+              offset   : List of x-y offset to apply BEFORE scaling
+              Xsec     : List of spatial coordinates as to the placement of 
+                         cross sections
+              rot      : List of x-y-z rotations to apply to cross sections
 
-            le_loc, array, size(naf) : Location of the LE point ahead of the 
-            reference axis. Typically this will be 1/4. 
+        Optional Arguments:
 
-            scale, array, size(naf) : Chord lengths in consistent units
-        
-            xsec_list, list, size(naf) : List of the filenames  to be read for each
-            cross section.
-        
-        Optional Parameters are:
-
-            N=<integer> : the number coordinates to use from the airfoil files
-            fit_type = 'lms' or 'interpolate': Least-mean squares or interpolate fitting type
-            ku = spline order in the u direction (chord-wise for lifting surfaces
-            kv = spline order in the v direction (span-wise for lifting surfaces
+              breaks   : List of ZERO-BASED index locations where to break 
+                         the wing into separate surfaces
+              nsections: List of length breaks+1 which specifies the number
+                         of control points in that section
+              section_spacing : List of lenght breaks + 1 containing lists of
+                         length nections which specifiy the spanwise spacing 
+                         of control points
+              fit_type : strig of either 'lms' or 'interpolate'. Used to 
+                         initialize the surface patches
+              Nctlu    : Number of control points in the chord-wise direction
+              Nfoil    : Common number of data points extracted from cross
+                         section file. Points are linearly interpolated to 
+                         match this value
         
         'acdt_geo',acdt_geo=object : Load in a pyGeometry object and
         use the aircraft components to create surfaces.
-      
-
-
-            '''
-        print ' '
-        print 'pyGeo init_type is: %s'%(init_type)
+        '''
         
+        print ' '
+        print '------------------------------------------------'
+        print 'pyGeo Initialization Type is: %s'%(init_type)
+        print '------------------------------------------------'
+
         self.ref_axis = []
-        self.ref_axis_surface_con = []
         self.ref_axis_con = []
         self.DV_listGlobal = []
         self.DV_listLocal  = []
@@ -135,13 +144,15 @@ class pyGeo():
         self.DV_namesLocal  = {}
         self.J = None
         self.J1 = None
-
+        self.con = None
         if init_type == 'plot3d':
-            assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for plot3d init_type'
+            assert 'file_name' in kwargs,'file_name must be specified as \
+file_name=\'filename\' for plot3d init_type'
             self._readPlot3D(kwargs['file_name'],args,kwargs)
 
         elif init_type == 'iges':
-            assert 'file_name' in kwargs,'file_name must be specified as file_name=\'filename\' for iges init_type'
+            assert 'file_name' in kwargs,'file_name must be specified as \
+file_name=\'filename\' for iges init_type'
             self._readIges(kwargs['file_name'],args,kwargs)
 
         elif init_type == 'lifting_surface':
@@ -150,24 +161,15 @@ class pyGeo():
         elif init_type == 'acdt_geo':
             self._init_acdt_geo(*args,**kwargs)
         else:
-            print 'Unknown init type. Valid Init types are \'plot3d\', \'iges\' and \'lifting_surface\''
+            print 'Unknown init type. Valid Init types are \'plot3d\', \
+\'iges\',\'lifting_surface\' and \'acdt\''
             sys.exit(0)
-
-        if 'con_file' in kwargs:
-            self.readConFile(kwargs['con_file'])
-        else:
-            self.con = None
-
-        # These are optional atributes which are set depending on the
-        # functionality employed
-
-      
 
         return
 
-# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #               Initialization Type Functions
-# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
     def _readPlot3D(self,file_name,*args,**kwargs):
 
@@ -199,7 +201,8 @@ class pyGeo():
         patchSizes = patchSizes.reshape([nPatch,3])
 
         assert patchSizes[:,2].all() == 1, \
-            'Error: Plot 3d does not contain only surface patches. The third index (k) MUST be 1.'
+            'Error: Plot 3d does not contain only surface patches.\
+ The third index (k) MUST be 1.'
 
         # Total points
         nPts = 0
@@ -243,9 +246,9 @@ class pyGeo():
         # Now create a list of spline objects:
         surfs = []
         for ipatch in xrange(nPatch):
-            #surfs.append(pySpline.surf_spline(task='interpolate',X=patches[ipatch],ku=4,kv=4))
-            surfs.append(pySpline.surf_spline(task='lms',X=patches[ipatch],ku=4,kv=4,Nctlu=13,Nctlv=13),complex=True)
-        
+            surfs.append(pySpline.surf_spline(task='lms',X=patches[ipatch],\
+                                                  ku=4,kv=4,Nctlu=13,Nctlv=13,\
+                                                  complex=True))
         self.surfs = surfs
         self.nPatch = nPatch
         return
@@ -274,7 +277,8 @@ class pyGeo():
         para_offset = dir_offset + directory_lines
 
         surf_list = []
-        for i in xrange(directory_lines/2): #Directory lines is ALWAYS a multiple of 2
+        # Directory lines is ALWAYS a multiple of 2
+        for i in xrange(directory_lines/2): 
             if int(file[2*i + dir_offset][0:8]) == 128:
                 start = int(file[2*i + dir_offset][8:16])
                 num_lines = int(file[2*i + 1 + dir_offset][24:32])
@@ -291,7 +295,8 @@ class pyGeo():
         for ipatch in xrange(self.nPatch):  # Loop over our patches
             data = []
             # Create a list of all data
-            para_offset = surf_list[ipatch][0]+dir_offset+directory_lines-1 #-1 is for conversion from 1 based (iges) to python
+            # -1 is for conversion from 1 based (iges) to python
+            para_offset = surf_list[ipatch][0]+dir_offset+directory_lines-1 
 
             for i in xrange(surf_list[ipatch][1]):
                 aux = string.split(file[i+para_offset][0:69],',')
@@ -316,7 +321,8 @@ class pyGeo():
             weights = data[counter:counter+Nctlu*Nctlv]
             weights = array(weights)
             if weights.all() != 1:
-                print 'WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly'
+                print 'WARNING: Not all weight in B-spline surface are 1.\
+ A NURBS surface CANNOT be replicated exactly'
             counter += Nctlu*Nctlv
 
             coef = zeros([Nctlu,Nctlv,3])
@@ -333,7 +339,9 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            self.surfs.append(pySpline.surf_spline(task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,range=range),complex=True)
+            self.surfs.append(pySpline.surf_spline(\
+                    task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
+                        range=range,complex=True))
         # end for
 
         return 
@@ -342,7 +350,8 @@ class pyGeo():
 
         assert 'xsections' in kwargs and 'scale' in kwargs \
                and 'offset' in kwargs and 'Xsec' in kwargs and 'rot' in kwargs,\
-               '\'xsections\', \'offset\',\'scale\' and \'X\'  and \'rot\' must be specified as kwargs'
+               '\'xsections\', \'offset\',\'scale\' and \'X\'  and \'rot\'\
+ must be specified as kwargs'
 
         xsections = kwargs['xsections']
         scale     = kwargs['scale']
@@ -351,7 +360,8 @@ class pyGeo():
         rot       = kwargs['rot']
 
         if not len(xsections)==len(scale)==offset.shape[0]:
-            print 'The length of input data is inconsistent. xsections,scale,offset.shape[0], Xsec, rot, must all have the same size'
+            print 'The length of input data is inconsistent. xsections,scale,\
+offset.shape[0], Xsec, rot, must all have the same size'
             print 'xsections:',len(xsections)
             print 'scale:',len(scale)
             print 'offset:',offset.shape[0]
@@ -420,18 +430,21 @@ class pyGeo():
             
             for j in xrange(N):
                 for isurf in xrange(2):
-                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],rot[i,2]*pi/180) # Twist Rotation
-                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],rot[i,0]*pi/180) # Dihediral Rotation
-                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],rot[i,1]*pi/180) # Sweep Rotation
+                    # Twist Rotation
+                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],rot[i,2]*pi/180)
+                    # Dihediral Rotation
+                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],rot[i,0]*pi/180)
+                    # Sweep Rotation
+                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],rot[i,1]*pi/180)
 
 
             # Finally translate according to 
             X[:,:,i,:] += Xsec[i,:]
         # end for
 
-        # --------------------------------------------------------------------------------
-        # Now, we interpolate them IF we have breaks and want MORE sections between breaks
-        # --------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------
+        # Now, we interpolate them IF we have breaks 
+        # ---------------------------------------------------------------------
 
         self.surfs = []
 
@@ -444,7 +457,7 @@ class pyGeo():
             start   = 0
             start2  = 0
             for i in xrange(nBreaks+1):
-                # We have to interpolate the sectional data AND the positions (for the ref axis later)
+                # We have to interpolate the sectional data 
                 if i == nBreaks:
                     end = naf
                 else:
@@ -456,43 +469,26 @@ class pyGeo():
                 for j in xrange(N): # This is for the Data points
 
                     # Interpolate across each point in the spanwise direction
-                    temp_spline = pySpline.linear_spline(task='interpolate',X=X[0,j,start:end,:],k=2) # surface 0
-                    Xnew[0,j,start2:end2,:] = temp_spline.getValueV(section_spacing[i])
+                    temp_spline = pySpline.linear_spline(\
+                        task='interpolate',X=X[0,j,start:end,:],k=2) # surface 0
+                    Xnew[0,j,start2:end2,:] = \
+                        temp_spline.getValueV(section_spacing[i])
 
                     # Interpolate across each point in the spanwise direction
-                    temp_spline = pySpline.linear_spline(task='interpolate',X=X[1,j,start:end,:],k=2) # surface 1
-                    Xnew[1,j,start2:end2,:] = temp_spline.getValueV(section_spacing[i])
+                    temp_spline = pySpline.linear_spline(\
+                        task='interpolate',X=X[1,j,start:end,:],k=2) # surface 1
+                    Xnew[1,j,start2:end2,:] = \
+                        temp_spline.getValueV(section_spacing[i])
 
                 # end for
                 # Now we can generate and append the surfaces
                 print 'generating surface'
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],Nctlv=nsections[i],*args,**kwargs))
-
-                # Ref_axis:
-                temp_spline = pySpline.linear_spline(task='interpolate',X=Xsec[start:end,:],k=2) # spatial
-                s = temp_spline.s # We use the spatial basis calculated as the basis for the rotational components
-                Xsecnew[start2:end2,:] = temp_spline.getValueV(section_spacing[i])
-
-
-                temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,0],k=2,s=s) # X rot
-                rotnew[start2:end2,0] = temp_spline.getValueV(section_spacing[i])
-
-                temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,1],k=2,s=s) # Y rot
-                rotnew[start2:end2,1] = temp_spline.getValueV(section_spacing[i])
-
-                temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,2],k=2,s=s) # Z rot
-                rotnew[start2:end2,2] = temp_spline.getValueV(section_spacing[i])
-
-                # Generate and append the ref_axis
-
-                cur_ref_axis = ref_axis(Xsecnew[start2:end2],rotnew[start2:end2])
-                self.ref_axis.append(cur_ref_axis)
-                self.ref_axis_surface_con.append([2*i,2*i+1])
-                self.ref_axis_con.append(range(nBreaks+1))
-                # Attach the current reference axis to the current two surfaces
-                self.surfs[2*i  ].associateRefAxis(cur_ref_axis)
-                self.surfs[2*i+1].associateRefAxis(cur_ref_axis)
+                self.surfs.append(pySpline.surf_spline(\
+                        fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
+                            Nctlv=nsections[i],*args,**kwargs))
+                self.surfs.append(pySpline.surf_spline(\
+                        fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
+                            Nctlv=nsections[i],*args,**kwargs))
 
                 start = end-1
                 start2 = end2-1
@@ -500,26 +496,23 @@ class pyGeo():
             self.nPatch = len(self.surfs)
         else:  #No breaks
             
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],\
+                                                       *args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],\
+                                                       *args,**kwargs))
             self.nPatch = 2
 
             # Create the Reference Axis:
-            cur_ref_axis = ref_axis(Xsec,rot)
-            
             self.surfs[0].associateRefAxis(cur_ref_axis)
             self.surfs[1].associateRefAxis(cur_ref_axis)
-            self.ref_axis.append(cur_ref_axis)
-            self.ref_axis_surface_con.append([0,1])
-            self.ref_axis_con.append([0])
         # end if
-
 
 
     def _init_acdt_geo(self,*args,**kwargs):
 
         assert 'acdt_geo' in kwargs,\
-            'key word argument \'acdt_geo\' Must be specified for init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
+            'key word argument \'acdt_geo\' Must be specified for \
+init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         if 'fit_type' in kwargs:
             fit_type = kwargs['fit_type']
@@ -541,14 +534,13 @@ class pyGeo():
                 X[:,:,0] = Components[comp1]._components[comp2].Surface_x
                 X[:,:,1] = Components[comp1]._components[comp2].Surface_y
                 X[:,:,2] = Components[comp1]._components[comp2].Surface_z
-                self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X,*args,**kwargs),complex=True)
+                self.surfs.append(pySpline.surf_spline(\
+                        fit_type,ku=4,kv=4,X=X,*args,**kwargs),complex=True)
             # end for
         # end for
 
         self.nPatch = len(self.surfs)
 		
-        
-
 # ----------------------------------------------------------------------
 #                      Edge Connection Information Functions
 # ----------------------------------------------------------------------    
@@ -558,14 +550,14 @@ class pyGeo():
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
         if not self.con == None:
-            print 'Warning edge connectivity will be overwritten. Enter 1 to continue, 0 to quit.'
+            print 'Warning edge connectivity will be overwritten. \
+ Enter 1 to continue, 0 to quit.'
             ans = raw_input()
             if ans == '0':
                 return
             # end if
         # end if
 
-            
         print  ' '
         print 'Attempting to Determine Edge Connectivity'
 
@@ -578,11 +570,13 @@ class pyGeo():
             for jpatch in xrange(ipatch+1,self.nPatch):
                 for i in xrange(4):
                     for j in xrange(4):
-                        coinc,dir_flag=self._test_edge(self.surfs[ipatch],self.surfs[jpatch],i,j,edge_tol)
+                        coinc,dir_flag=self._test_edge(\
+                            self.surfs[ipatch],self.surfs[jpatch],i,j,edge_tol)
                         cont_flag = 0 # By Default only C0 continuity
                         if coinc:
                             #print 'We have a coincidient edge'
-                            e_con.append([[ipatch,i],[jpatch,j],cont_flag,dir_flag,-1])
+                            e_con.append([[ipatch,i],[jpatch,j],cont_flag,\
+                                              dir_flag,-1])
                             # end if
                     # end for
                 # end for
@@ -630,18 +624,22 @@ class pyGeo():
                 found_new_edge = True
             # end if
             
-            if found_new_edge: #We have assigned a new edge...now we must propagate it
+            if found_new_edge:
+                # We have assigned a new edge...now we must propagate it
 
-                # Always set the other side of the patch of the edge we are dealing with 
+                # Always set the other side of the patch of the edge we 
+                # are dealing with 
 
                 # This is confusing...need to explain better
 
                 flip_edge = self._flipEdge(edges[i][0][1])
-                flip_index,order = self._getConIndex(edge_list,[edges[i][0][0],flip_edge],nJoined,nMirror)
+                flip_index,order = self._getConIndex(\
+                    edge_list,[edges[i][0][0],flip_edge],nJoined,nMirror)
                 #print 'flip_index:',flip_index
                 edges[flip_index][-1] = dg_counter
                 
-                # Now we have to propagate along faces connected to both sides of edge
+                # Now we have to propagate along faces connected to both 
+                # sides of edge
 
                 if len(edges[i]) == 2: # We have a mirrored edge:
                     pass # Nothing to do since we are at a mirrored edge
@@ -649,17 +647,24 @@ class pyGeo():
                     
                     cont2 = True
                     index = i
-                    order = 1 #This means we are starting with the patch coorsponding to the second edge entry
-                    while cont2: #Check the edge OPPOSITE the joined edge and keep going
+                    # This means we are starting with the patch coorsponding
+                    # to the second edge entry
+                    order = 1 
+                    while cont2: 
+                        # Check the edge OPPOSITE the joined edge and keep going
 
-                        cur_face = edges[index][order][0] # Joined face/edge to edge i
+                        # Joined face/edge to edge i
+                        cur_face = edges[index][order][0] 
                         cur_edge = edges[index][order][1]
-                        cur_edge = self._flipEdge(cur_edge) #Get the opposite edge
+                        # Get the opposite edge
+                        cur_edge = self._flipEdge(cur_edge) 
                         
                         # Find where that face/edge is
-                        new_index,order = self._getConIndex(edge_list,[cur_face,cur_edge],nJoined,nMirror)
+                        new_index,order = self._getConIndex(\
+                            edge_list,[cur_face,cur_edge],nJoined,nMirror)
 
-                        if not edges[new_index][-1] == -1: # if it has already been set
+                        # if it has already been set
+                        if not edges[new_index][-1] == -1: 
                             break 
                         # Order is the first or second listing on the
                         # edge. What we want to take the other face
@@ -670,9 +675,11 @@ class pyGeo():
                         else:
                             order = 0
                         
-                        edges[new_index][-1] = dg_counter #Set this to current counter
+                        # Set this to current counter
+                        edges[new_index][-1] = dg_counter 
                                                 
-                        if len(edges[new_index]) == 2: # If this new edge is a mirrored edge stop
+                        # If this new edge is a mirrored edge stop
+                        if len(edges[new_index]) == 2: 
                             cont2 = False
                         else:                          # Else we keep going
                             index = new_index
@@ -687,41 +694,53 @@ class pyGeo():
                 else:
                     cont2 = True
                     index = flip_index
-                    
-                    order = 1 #This means we proceeed with the patch coorsponding to the first edge entry
-                    while cont2: #Check the edge OPPOSITE the joined edge and keep going
+                    #This means we proceeed with the patch coorsponding
+                    # to the first edge entry
+                    order = 1
+                    # Check the edge OPPOSITE the joined edge and keep going
+                    while cont2: 
 
-                        cur_face = edges[index][order][0] #Joined face/edge to edge i
+                        # Joined face/edge to edge i
+                        cur_face = edges[index][order][0] 
                         cur_edge = edges[index][order][1]
                         cur_edge = self._flipEdge(cur_edge)
-                        new_index,order = self._getConIndex(edge_list,[cur_face,cur_edge],nJoined,nMirror)
+                        new_index,order = self._getConIndex(\
+                            edge_list,[cur_face,cur_edge],nJoined,nMirror)
 
-                        if not edges[new_index][-1] == -1: # if it has already been set
+                        # if it has already been set
+                        if not edges[new_index][-1] == -1:
                             break 
-                        
-                        edges[new_index][-1] = dg_counter #Set this to current counter
+                        # Set this to current counter
+                        edges[new_index][-1] = dg_counter 
                         if order == 0:
                             order =1
                         else:
                             order = 0             
-                        if len(edges[new_index]) == 2: # If this edge is a mirrored edge stop
-                            cont2 = False
 
+                        # If this edge is a mirrored edge stop
+                        if len(edges[new_index]) == 2: 
+                            cont2 = False
                         else:                          # Else we keep going
                             index = new_index
 
                     # end while
                 # end if
         # end for
-        # Now we can FINALLY set edge objects....creating strings is a bit clunky but it works
+        # Now we can FINALLY set edge objects....creating strings
+        # is a bit clunky but it works
         self.con = []
         for i in xrange(len(edges)):
             if i < nJoined/2: #Joined Edges
-                init_string = '%3d        |%3d     %3d    |%3d   | %3d  |  %3d       | %3d  | %3d           | %3d  | %3d     %3d      |\n'\
-                              %(i,edges[i][0][0],edges[i][0][1],1,7,edges[i][2],edges[i][3],edges[i][4],10,edges[i][1][0],edges[i][1][1])
+                init_string = '%3d        |%3d     %3d    |%3d   | %3d  |  %3d\
+       | %3d  | %3d           | %3d  | %3d     %3d      |\n'\
+                    %(i,edges[i][0][0],edges[i][0][1],1,7,edges[i][2],\
+                          edges[i][3],edges[i][4],10,edges[i][1][0],\
+                          edges[i][1][1])
             else: # Mirror Edges
-                init_string = '%3d        |%3d     %3d    |%3d   | %3d  |  %3d       | %3d  | %3d           | %3d  | %3d     %3d      |\n'\
-                              %(i,edges[i][0][0],edges[i][0][1],0,3,-1,1,edges[i][1],10,-1,-1)
+                init_string = '%3d        |%3d     %3d    |%3d   | %3d  |  %3d\
+       | %3d  | %3d           | %3d  | %3d     %3d      |\n'\
+                    %(i,edges[i][0][0],edges[i][0][1],0,3,-1,1,edges[i][1]\
+                          ,10,-1,-1)
             # end if
 
             temp = init_string.replace('|',' ')  #Get rid of the bars
@@ -737,9 +756,11 @@ class pyGeo():
 
     
     def _setEdgeConnectivity(self):
-        '''Internal function to set edge_con and master_edge flags in surfaces'''
+        '''Internal function to set edge_con and master_edge flags in
+        surfaces'''
         if self.con == None:
-            print 'Error: No edge connectivity is set yet. Either run calcEdgeConnectivity or load in a .con file'
+            print 'Error: No edge connectivity is set yet. Either run \
+ calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
         # end if
 
@@ -747,17 +768,21 @@ class pyGeo():
        
         for i in xrange(len(self.con)):
 
-            self.surfs[self.con[i].f1].edge_con[self.con[i].e1] = [self.con[i].f2,self.con[i].e2]
+            self.surfs[self.con[i].f1].edge_con[self.con[i].e1] = \
+                [self.con[i].f2,self.con[i].e2]
             self.surfs[self.con[i].f1].master_edge[self.con[i].e1] = True
             self.surfs[self.con[i].f1].dir[self.con[i].e1] = self.con[i].dir
-            self.surfs[self.con[i].f1].edge_type[self.con[i].e1] = self.con[i].type
+            self.surfs[self.con[i].f1].edge_type[self.con[i].e1] = \
+                self.con[i].type
 
             if self.con[i].type == 1:
                 
-                self.surfs[self.con[i].f2].edge_con[self.con[i].e2] = [self.con[i].f1,self.con[i].e1]
+                self.surfs[self.con[i].f2].edge_con[self.con[i].e2] = \
+                    [self.con[i].f1,self.con[i].e1]
                 self.surfs[self.con[i].f2].master_edge[self.con[i].e2] = False
                 self.surfs[self.con[i].f2].dir[self.con[i].e2] = self.con[i].dir
-                self.surfs[self.con[i].f2].edge_type[self.con[i].e2] = self.con[i].type
+                self.surfs[self.con[i].f2].edge_type[self.con[i].e2] = \
+                    self.con[i].type
             # end if
         # end for
 
@@ -788,7 +813,8 @@ class pyGeo():
                 self.surfs[f1].master_node[n2] = True
             # end if
 
-            if self.con[i].type == 1: # If there are two edges connected (type 1)
+            # If there are two edges connected (type 1)
+            if self.con[i].type == 1: 
                 f2 = self.con[i].f2
                 e2 = self.con[i].e2
                 n1,n2 = self._getNodesFromEdge(e2)
@@ -799,8 +825,10 @@ class pyGeo():
                 #print 'face2 %d, edge %d, nodes %d and %d'%(f2,e2,n1,n2)
                 
 
-                # Set the driven edge nodes to False ONLY if they are not already set
-                # We want to set this node to f1,n1_master iff f1,n1_master is a master node
+                # Set the driven edge nodes to False ONLY if they are not 
+                # already set
+                # We want to set this node to f1,n1_master iff f1,n1_master
+                # is a master node
 
                 if self.surfs[f1].node_con[n1_master] == []:
                     self.surfs[f2].node_con[n1] = [f1,n1_master]
@@ -820,8 +848,10 @@ class pyGeo():
                             cont = False
                             #print 'done loop 1'
                         else:
-                            cur_face = self.surfs[cur_face].node_con[cur_node][0]
-                            cur_node = self.surfs[cur_face].node_con[cur_node][1]
+                            cur_face = self.surfs[cur_face].\
+                                node_con[cur_node][0]
+                            cur_node = self.surfs[cur_face].\
+                                node_con[cur_node][1]
                         # end if
                     # end while
                 # end if
@@ -845,8 +875,8 @@ class pyGeo():
                             #print 'done loop 2'
                             #print 
                         else:
-                            cur_face = self.surfs[cur_face].node_con[cur_node][0]
-                            cur_node = self.surfs[cur_face].node_con[cur_node][1]
+                            cur_face= self.surfs[cur_face].node_con[cur_node][0]
+                            cur_node= self.surfs[cur_face].node_con[cur_node][1]
                         # end if
                     # end while
                 # end if
@@ -858,7 +888,6 @@ class pyGeo():
 
         for ipatch in xrange(self.nPatch):
             for j in xrange(4):
-
                 if self.surfs[ipatch].node_con[j] == []:
                     # Loop over to find matches
                     for jpatch in xrange(self.nPatch):
@@ -878,7 +907,8 @@ class pyGeo():
 
         '''Print the Edge Connectivity'''
         print ' '
-        print 'Connection | Face    Edge  | Type | dof  | Continutiy | Dir? | Driving Group | Nctl | Face    Edge     |'
+        print 'Connection | Face    Edge  | Type | dof  | Continutiy | Dir?\
+ | Driving Group | Nctl | Face    Edge     |'
         for i in xrange(len(self.con)):
             self.con[i].write_info(i,sys.stdout)
         # end for
@@ -891,7 +921,8 @@ class pyGeo():
         '''Write the current edge connectivity to a file'''
 
         f = open(file_name ,'w')
-        f.write('Connection | Face    Edge  | Type | dof  | Continutiy | Dir? | Driving Group | Nctl | Face    Edge     |\n')
+        f.write('Connection | Face    Edge  | Type | dof  | Continutiy | Dir?\
+ | Driving Group | Nctl | Face    Edge     |\n')
         for i in xrange(len(self.con)):
             self.con[i].write_info(i,f)
         # end for
@@ -903,7 +934,8 @@ class pyGeo():
 
         '''Load the current edge connectivity from a file'''
         if not self.con == None:
-            print 'Warning edge connectivity will be overwritten. Enter 1 to continue, 0 to quit.'
+            print 'Warning edge connectivity will be overwritten. Enter 1\
+ to continue, 0 to quit.'
             ans = raw_input()
             if ans == '0':
                 return
@@ -974,8 +1006,8 @@ class pyGeo():
                 else:
                     self.surfs[face1].tv = knot_vec
                 # end if
-
-                if cur_edge.type == 1: # A connected edge do th other side as well
+                # A connected edge do th other side as well
+                if cur_edge.type == 1: 
                     face2 = cur_edge.f2
                     edge2 = cur_edge.e2
                     
@@ -1098,8 +1130,10 @@ class pyGeo():
         self.M = [0]
         self.N = [0]
         for ipatch in xrange(0,self.nPatch):
-            self.M.append(self.M[ipatch] + self.surfs[ipatch].Nu_free*self.surfs[ipatch].Nv_free)
-            self.N.append(self.N[ipatch] + self.surfs[ipatch].Nctlu_free*self.surfs[ipatch].Nctlv_free)
+            self.M.append(self.M[ipatch] + self.surfs[ipatch].Nu_free*\
+                              self.surfs[ipatch].Nv_free)
+            self.N.append(self.N[ipatch] + self.surfs[ipatch].Nctlu_free*\
+                              self.surfs[ipatch].Nctlv_free)
         # end for
         print 'M,N:',self.M,self.N
 
@@ -1114,15 +1148,18 @@ class pyGeo():
                 per_don =((j+0.0)/self.surfs[ipatch].Nctlv)
                 #print 'done %4.2f'%(per_don)
                 for i in xrange(self.surfs[ipatch].Nctlu):
-                    pt_type,edge_info,node_info = self.surfs[ipatch].checkCtl(i,j) 
+                    pt_type,edge_info,node_info = \
+                        self.surfs[ipatch].checkCtl(i,j) 
 
                     if pt_type == 0: # Its a driving node
                         col_counter += 1
-                        self._setCol(self.surfs[ipatch]._calcCtlDeriv(i,j),self.M[ipatch],col_counter)
+                        self._setCol(self.surfs[ipatch]._calcCtlDeriv(i,j),\
+                                         self.M[ipatch],col_counter)
 
                         # Now check for nodes/edges
 
-                        if edge_info: #Its on a master edge driving another control point
+                        # Its on a master edge driving another control point
+                        if edge_info: 
 
                             # Unpack edge info
                             face  = edge_info[0][0]
@@ -1132,13 +1169,20 @@ class pyGeo():
                             edge_type = edge_info[3]
 
                             if edge_type == 1:
-                                self._setCol(self.surfs[face]._calcCtlDerivEdge(edge,index,direction),self.M[face],col_counter)
-                            
-                        if node_info: # Its on a corner driving (potentially) multiplie control points
-                            for k in xrange(len(node_info)): # Loop over the number of affected nodes
+                                self._setCol(self.surfs[face]._calcCtlDerivEdge\
+                                                 (edge,index,direction),\
+                                                 self.M[face],col_counter)
+
+                        # Its on a corner driving (potentially)
+                        # multiplie control points
+                        if node_info: 
+                            # Loop over the number of affected nodes
+                            for k in xrange(len(node_info)): 
                                 face = node_info[k][0]
                                 node = node_info[k][1]
-                                self._setCol(self.surfs[face]._calcCtlDerivNode(node),self.M[face],col_counter)
+                                self._setCol(self.surfs[face].\
+                                                 _calcCtlDerivNode(node),\
+                                                 self.M[face],col_counter)
                             # end for
                         # end if
                     # end if
@@ -1152,16 +1196,12 @@ class pyGeo():
         # Now Solve
         self._solve()
       
-        # # Pritn coef
-#         for i in xrange(self.coef.shape[0]):
-#             print self.coef[i,0]
-
-
         return
 
     def _initJacobian(self):
         
-        '''Initialize the Jacobian either with PETSc or with Numpy for use with LAPACK'''
+        '''Initialize the Jacobian either with PETSc or with Numpy for use
+with LAPACK'''
         if USE_PETSC:
             self.J = PETSc.Mat()
             # Approximate Number of non zero entries per row:
@@ -1178,7 +1218,8 @@ class pyGeo():
 
     def _setCol(self,vec,i,j):
         '''Set a column vector, vec, at position i,j'''
-        # Note: These are currently the same...There is probably a more efficient way to set in PETSc
+        # Note: These are currently the same...
+        # There is probably a more efficient way to set in PETSc
         if USE_PETSC:
             self.J[i:i+len(vec),j] = vec 
             #self.J.setValues(len(vec),i,1,j,vec)
@@ -1199,7 +1240,8 @@ class pyGeo():
                 self.RHS.append(zeros(self.M[-1]))
             # end if 
             for ipatch in xrange(self.nPatch):
-                temp = self.surfs[ipatch]._getCropData(self.surfs[ipatch].X[:,:,idim]).flatten()
+                temp = self.surfs[ipatch]._getCropData(\
+                    self.surfs[ipatch].X[:,:,idim]).flatten()
                 self.RHS[idim][self.M[ipatch]:self.M[ipatch] + len(temp)] = temp
             # end for
         # end for
@@ -1266,7 +1308,8 @@ class pyGeo():
 #             # We have specified what sections surfaces coorspond to:
 #             for i in xrange(len(sections)):
 #                 for j in xrange(len(sections[i])):
-#                     self.surfs[sections[i][j]].associateRefAxis(ref_axis,section=i)
+#                     self.surfs[sections[i][j]].associateRefAxis(\
+#                         ref_axis,section=i)
 #                 # end for
 #             # end for
 #         else:
@@ -1276,11 +1319,12 @@ class pyGeo():
 #         # end if
 
 #         return
-
-        def addRefAxis(self,surf_ids,X,rot,nsections=None,spacing=None):
+    def addRefAxis(self,surf_ids,X,rot,nrefsecs=None,spacing=None,\
+                       surf_sec=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
 
+            print 'addeding ref axis...'
             # A couple of things can happen here: 
             # 1. nsections < len(X)
             #    -> We do a LMS fit on the ref axis
@@ -1289,65 +1333,136 @@ class pyGeo():
             # 3. nsection < len(X)
             #    -> We reinterpolate before making the ref axis
 
-            if not nsections:
-                nsections == X.shape[0]
+            if nrefsecs == None:
+                nrefsecs = X.shape[0]
 
-            if nsections < X.shape[0]:
+            if nrefsecs < X.shape[0]:
                 # Do the lms fit
                 x = pySpline.linear_spline(task='lms',X=X,\
-                                                  Nctl=nsections,k=2)
-                s = axis.s
+                                                  Nctl=nrefsecs,k=2)
+                s = x.s
                 rotxs = pySpline.linear_spline(task='lms',s=s,X=rot[:,0],\
-                                                   Nctl=nsections,k=2)
+                                                   Nctl=nrefsecs,k=2)
                 rotys = pySpline.linear_spline(task='lms',s=s,X=rot[:,1],\
-                                                   Nctl=nsections,k=2)
+                                                   Nctl=nrefsecs,k=2)
                 rotzs = pySpline.linear_spline(task='lms',s=s,X=rot[:,2],\
-                                                   Nctl=nsections,k=2)
+                                                   Nctl=nrefsecs,k=2)
 
-                if not spacing:
-                    spacing = linspace(0,1,nsections)
+                if not spacing == None:
+                    spacing = linspace(0,1,nrefsecs)
                     
                 Xnew = x.getValue(spacing)
-                rotnew = zeros((nsections,3))
-                rotnew[:,0] = rotxs.getValue(spacing)
-                rotnew[:,1] = rotys.getValue(spacing)
-                rotnew[:,2] = rotzs.getValue(spacing)
+                rotnew = zeros((nrefsecs,3))
+                rotnew[:,0] = rotxs.getValueV(spacing)
+                rotnew[:,1] = rotys.getValueV(spacing)
+                rotnew[:,2] = rotzs.getValueV(spacing)
 
                 
-            elif nsections == X.shape[0]:
-
+            elif nrefsecs == X.shape[0]:
                 Xnew = X
                 rotnew = rot
 
-            else: #nsections > X.shape
+            else: #nrefsecs > X.shape
                 # Do the interpolate fit
-                x = pySpline.linear_spline(task='interpolate',X=X,\
-                                                  Nctl=nsections,k=2)
-                s = axis.s
+                x = pySpline.linear_spline(task='interpolate',X=X,k=2)
+                s = x.s
                 rotxs = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,0],Nctl=nsections,k=2)
+                    task='interpolate',s=s,X=rot[:,0],Nctl=nrefsecs,k=2)
                 rotys = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,1],Nctl=nsections,k=2)
+                    task='interpolate',s=s,X=rot[:,1],Nctl=nrefsecs,k=2)
                 rotzs = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,2],Nctl=nsections,k=2)
+                    task='interpolate',s=s,X=rot[:,2],Nctl=nrefsecs,k=2)
 
-                if not spacing:
-                    spacing = linspace(0,1,nsections)
+                if not spacing == None:
+                    spacing = linspace(0,1,nrefsecs)
                     
-                Xnew = x.getValue(spacing)
-                rotnew = zeros((nsections,3))
-                rotnew[:,0] = rotxs.getValue(spacing)
-                rotnew[:,1] = rotys.getValue(spacing)
-                rotnew[:,2] = rotzs.getValue(spacing)
+                Xnew = x.getValueV(spacing)
+                rotnew = zeros((nrefsecs,3))
+                rotnew[:,0] = rotxs.getValueV(spacing)
+                rotnew[:,1] = rotys.getValueV(spacing)
+                rotnew[:,2] = rotzs.getValueV(spacing)
                 
             # end if
 
-            print 'Xnew:',Xnew
-            print 'rot:',rotnew
+            # create the ref axis:
 
+            ra = ref_axis(Xnew,rotnew)
+            ref_axis_id = len(self.ref_axis)-1
+
+            if surf_sec == None: # We have not specified surface sections
+                surf_sec = []
+                for i in xrange(len(surf_ids)):
+                    surf_sec.append('[:,:]')
+                # end 
+            # end if
+
+            for ii in xrange(len(surf_ids)):
+                ipatch = surf_ids[ii]
+                ra.surf_ids.append(ipatch)
+                ra.surf_sec.append(surf_sec[ii])
+                # Now Sections ou the part of the surface we actually
+                # want to connect
+                exec('crop_coef = self.surfs[ipatch].coef'+surf_sec[ii])
+
+                # Get the direction of the ref axis on the surface
+                dir,max_s,min_s = \
+                    self.surfs[ipatch].getRefAxisDir(ra,crop_coef)
+                
+                Nctlu = crop_coef.shape[0]
+                Nctlv = crop_coef.shape[1]
+                ra.surf_sizes.append([Nctlu,Nctlv])
+                ra.links_x.append(zeros((Nctlu,Nctlv,3)))
+                ra.links_s.append(zeros((Nctlu,Nctlv)))
+                if dir == 1:
+                    #print 'along v:'
+                    for j in xrange(Nctlv):
+                        # Create a line (k=2 spline) for the control
+                        # points along U
+                        ctl_line = pySpline.linear_spline(\
+                            'lms',X=crop_coef[:,j],Nctl=2,k=2)
+                        # Now find the minimum distance between
+                        # midpoint and the ref_axis
+                        s,D,conv,eps = ra.xs.projectPoint(\
+                            ctl_line.getValue(0.5))
+                        if s > max_s:
+                            s = max_s
+                        if s < min_s:
+                            s = min_s
+                        # Now loop over the control points to set links
+                        base_point = ra.xs.getValue(s)
+                        M = ra.getRotMatrixGlobalToLocal(s)
+
+                        for i in xrange(Nctlu):
+                            D = crop_coef[i,j] - base_point
+                            D = dot(M,D) #Rotate to local frame
+                            ra.links_s[ii][i,j] = s
+                            ra.links_x[ii][i,j,:] = D
+                        # end for
+                     # end for
+                
+            # end for
+
+
+            self.ref_axis.append(ra)
             
+    def addRefAxisCon(self,axis1,axis2):
+        '''Add a reference axis connection to the connection list'''
         
+        # Attach axis2 to axis1 
+        # Find out the POSITION and DISTANCE on
+        # axis1 that axis2 will be attached
         
+        s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
+            self.ref_axis[axis2].xs.getValue(0))
+
+        self.ref_axis[axis2].base_point_s = s
+        self.ref_axis[axis2].base_point_D = D
+
+        self.ref_axis_con.append([axis1,axis2])
+
+        return
+
+
 
 # ----------------------------------------------------------------------
 #                Update and Derivative Functions
@@ -1360,10 +1475,11 @@ class pyGeo():
         
         for i in xrange(len(self.DV_listGlobal)):
 
-            # Call the each design variable with the ref axis its associated with
+            # Call the each design variable with the ref axis its associated
             if len(self.DV_listGlobal[i].ref_axis_id) == 1:
                 ref_index = self.DV_listGlobal[i].ref_axis_id[0]
-                self.ref_axis[ref_index] = self.DV_listGlobal[i](self.ref_axis[ref_index])
+                self.ref_axis[ref_index] = self.DV_listGlobal[i](\
+                    self.ref_axis[ref_index])
             else: # Make up the list of ref axis to pass
                 axis_list = []
                 for j in self.DV_listGlobal[i].ref_axis_id:
@@ -1374,7 +1490,8 @@ class pyGeo():
                 # Set axis back in list
 
                 for j in xrange(len(axis_list)):
-                    self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = axis_list[j]
+                    self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = \
+                        axis_list[j]
                 # end for
             # end if
         # end for
@@ -1382,18 +1499,43 @@ class pyGeo():
         # Second, update the end_point base_point on the ref_axis:
         
         for i in xrange(len(self.ref_axis_con)):
-            for j in xrange(len(self.ref_axis_con[i])-1):
+            axis1 = self.ref_axis_con[i][0]
+            axis2 = self.ref_axis_con[i][1]
+            
+            s = self.ref_axis[axis2].base_point_s
+            D = self.ref_axis[axis2].base_point_D
 
-                self.ref_axis[j].updateEndPoint()
-                self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
-                self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
-        
+            X0 = self.ref_axis[axis1].xs.getValue(s)
+
+            self.ref_axis[axis2].base_point = X0 + D
+
+
         # Third, update the ref_axis and consequently the design variables
         for r in xrange(len(self.ref_axis)):
             self.ref_axis[r].update()
                  
-            for ipatch in self.ref_axis_surface_con[r]:
-                self.surfs[ipatch].update(self.ref_axis[r])
+            for ii in xrange(len(self.ref_axis[r].surf_ids)):
+                ipatch = self.ref_axis[r].surf_ids[ii]
+                Nctlu = self.ref_axis[r].surf_sizes[ii][0]
+                Nctlv = self.ref_axis[r].surf_sizes[ii][1]
+                coef = zeros((Nctlu,Nctlv,3))
+                for i in xrange(Nctlu):
+                    for j in xrange(Nctlv):
+                          s = self.ref_axis[r].links_s[ii][i,j]
+                          M = self.ref_axis[r].getRotMatrixLocalToGloabl(s)
+                          X_base = self.ref_axis[r].xs.getValue(s)
+                          coef[i,j,:] = X_base + \
+                              dot(M,self.ref_axis[r].links_x[ii][i,j])*\
+                              self.ref_axis[r].scales(s)
+                    # end for
+                # end for
+
+                # Now we set the coef BACK in pySpline
+
+                exec('self.surfs[ipatch].coef'+self.ref_axis[r].surf_sec[ii]+\
+                         '=coef')
+
+
             # end for
         # end for
 
@@ -1472,13 +1614,15 @@ class pyGeo():
                 # end if
 
                 # -----------COPY OF UPDATE--------------
-                # First, update the reference axis info from the design variables
+                # First, update the reference axis from the design variables
                 for i in xrange(len(self.DV_listGlobal)):
 
-                    # Call the each design variable with the ref axis its associated with
+                    # Call the each design variable with the ref axis its 
+                    # associated with
                     if len(self.DV_listGlobal[i].ref_axis_id) == 1:
                         ref_index = self.DV_listGlobal[i].ref_axis_id[0]
-                        self.ref_axis[ref_index] = self.DV_listGlobal[i](self.ref_axis[ref_index])
+                        self.ref_axis[ref_index] = self.DV_listGlobal[i]\
+                            (self.ref_axis[ref_index])
                     else: # Make up the list of ref axis to pass
                         axis_list = []
                         for j in self.DV_listGlobal[i].ref_axis_id:
@@ -1489,7 +1633,8 @@ class pyGeo():
                         # Set axis back in list
 
                         for j in xrange(len(axis_list)):
-                            self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = axis_list[j]
+                            self.ref_axis[ self.DV_listGlobal[i].\
+                                               ref_axis_id[j]] = axis_list[j]
                         # end for
                     # end if
                 # end for
@@ -1500,17 +1645,22 @@ class pyGeo():
                     for j in xrange(len(self.ref_axis_con[i])-1):
 
                         self.ref_axis[j].updateEndPoint()
-                        self.ref_axis[j+1].base_point = self.ref_axis[j].end_point
-                        self.ref_axis[j+1].rot[0] = self.ref_axis[j].rot[-1]
+                        self.ref_axis[j+1].base_point = \
+                            self.ref_axis[j].end_point
+                        self.ref_axis[j+1].rot[0] = \
+                            self.ref_axis[j].rot[-1]
                 # -------END COPY OF UPDATE--------------
 
-                # Third, update the ref_axis and consequently the design variables
+                # Third, update the ref_axis and consequently the
+                # design variables
                 for r in xrange(len(self.ref_axis)):
                     self.ref_axis[r].update()
 
                     for ipatch in self.ref_axis_surface_con[r]:
-                        coef = self.surfs[ipatch].getComplexCoef(self.ref_axis[r])
-                        self.J1[M[ipatch]*3:M[ipatch+1]*3,col_counter] = imag(coef.flatten())/1e-40
+                        coef = self.surfs[ipatch].getComplexCoef(\
+                            self.ref_axis[r])
+                        self.J1[M[ipatch]*3:M[ipatch+1]*3,col_counter] =\
+                            imag(coef.flatten())/1e-40
 
                     # end for
                 # end for
@@ -1528,13 +1678,8 @@ class pyGeo():
             # end for
         # end for
 
-        # The next step is go to over all the LOCAL variables, compute the surface
-        # normal and 
-
-
-
-
-
+        # The next step is go to over all the LOCAL variables,
+        # compute the surface normal and 
 
         if USE_PETSC:
             self.J1.assemblyBegin()
@@ -1542,8 +1687,6 @@ class pyGeo():
         # end if 
        
         return 
-
-
 
     def addGeoObject(self,geo_obj):
 
@@ -1556,34 +1699,37 @@ class pyGeo():
         self.nPatch += geo_obj.nPatch
         self.con = None
         self.ref_axis = []
-        self.ref_axis_surface_con = []
-        self.ref_axis_con = []
         self.DV_listGlobal = []
         self.DV_listLocal = []
         self.DV_namesGlobal = {}
         self.DV_namesLocal = {}
 
-        print 'Warning: edge connections,reference_axis and design variables have been reset'
+        print 'Warning: edge connections,reference_axis and design variables \
+ have been reset'
         return 
 
 
     def addGeoDVLocal(self,dv_name,lower,upper,surface_id):
         '''Add a local design variable group'''
-        self.surfs[surface_id]._calcNFree() # Make sure we know how many free Control Points we have
+        # Make sure we know how many free Control Points we have
+        self.surfs[surface_id]._calcNFree() 
         self.surfs[surface_id]._getFreeIndex()
         self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,surface_id))
 
         self.DV_listLocal[-1].Nctlu = self.surfs[surface_id].Nctlu_free
         self.DV_listLocal[-1].Nctlv = self.surfs[surface_id].Nctlv_free
-        self.DV_listLocal[-1].nVal  = self.DV_listLocal[-1].Nctlu*self.DV_listLocal[-1].Nctlv
+        self.DV_listLocal[-1].nVal  = self.DV_listLocal[-1].Nctlu*\
+            self.DV_listLocal[-1].Nctlv
 
-        self.DV_listLocal[-1].value = zeros((self.DV_listLocal[-1].Nctlu,self.DV_listLocal[-1].Nctlv))
+        self.DV_listLocal[-1].value = \
+            zeros((self.DV_listLocal[-1].Nctlu,self.DV_listLocal[-1].Nctlv))
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
 
 
     def addGeoDVGlobal(self,dv_name,value,lower,upper,function,ref_axis_id):
         '''Add a global design variable'''
-        self.DV_listGlobal.append(geoDVGlobal(dv_name,value,lower,upper,function,ref_axis_id))
+        self.DV_listGlobal.append(geoDVGlobal(\
+                dv_name,value,lower,upper,function,ref_axis_id))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
         return 
 
@@ -1591,7 +1737,8 @@ class pyGeo():
 #                   Surface Writing Output Functions
 # ----------------------------------------------------------------------
 
-    def writeTecplot(self,file_name,write_con=True,write_ref_axis=True,write_links=False):
+    def writeTecplot(self,file_name,write_con=True,write_ref_axis=True,\
+                         write_links=False):
         '''Write the pyGeo Object to Tecplot'''
 
         # ---------------------------
@@ -1599,14 +1746,13 @@ class pyGeo():
         # ---------------------------
         
         f = open(file_name,'w')
-        print 'f is:',f
         f.write ('VARIABLES = "X", "Y","Z"\n')
         print ' '
         print 'Writing Tecplot file: %s '%(file_name)
         sys.stdout.write('Outputting Patch: ')
         for ipatch in xrange(self.nPatch):
             sys.stdout.write('%d '%(ipatch))
-            self.surfs[ipatch].writeTecplot(handle=f)
+            self.surfs[ipatch].writeTecplot(handle=f,size=0.05)
 
         # ---------------------------
         #    Write out the edges
@@ -1616,7 +1762,7 @@ class pyGeo():
         if self.con and write_con:
             counter = 1
             for i in xrange(len(self.con)): #Output Simple Edges (no continuity)
-                if self.con[i].cont == 0 and self.con[i].type == 1: #output the edge
+                if self.con[i].cont == 0 and self.con[i].type == 1:
                     surf = self.con[i].f1
                     edge = self.con[i].e1
                     zone_name = 'simple_edge%d'%(counter)
@@ -1626,7 +1772,7 @@ class pyGeo():
             # end for
 
             for i in xrange(len(self.con)): #Output Continuity edges
-                if self.con[i].cont == 1 and self.con[i].type == 1: #output the edge
+                if self.con[i].cont == 1 and self.con[i].type == 1:
                     surf = self.con[i].f1
                     edge = self.con[i].e1
                     zone_name = 'continuity_edge%d'%(counter)
@@ -1635,7 +1781,7 @@ class pyGeo():
                 # end if
             # end for
 
-            for i in xrange(len(self.con)): #Output Continuity edges
+            for i in xrange(len(self.con)): #Output Mirror (free) edges
                 if self.con[i].type == 0: #output the edge
                     surf = self.con[i].f1
                     edge = self.con[i].e1
@@ -1651,19 +1797,14 @@ class pyGeo():
         #    Write out Ref Axis
         # ---------------------------------
         
-        # We also want to output Links if available
-
+        # We also want to output Ref Axis if available
 
         if len(self.ref_axis)>0 and write_ref_axis:
-            N = 50
             for r in xrange(len(self.ref_axis)):
-                s = self.ref_axis[r].xs.s
-                N = len(s)
-                f.write('Zone T=ref_axis%d I=%d\n'%(r,N))
-                for i in xrange(N):
-                    value = self.ref_axis[r].xs.getValue(s[i])
-                    f.write('%f %f %f \n'%(value[0],value[1],value[2]))
-                    # end for
+                axis_name = 'ref_axis%d'%(r)
+                self.ref_axis[r].writeTecplot(f,axis_name)
+                
+               
 
         # ---------------------------------
         #    Write out Links
@@ -1671,45 +1812,9 @@ class pyGeo():
 
         if len(self.ref_axis)>0 and write_links:
             for r in xrange(len(self.ref_axis)):
+                self.ref_axis[r].writeLinks(f,self.surfs)
 
-                num_vectors = 0
-                for ipatch in self.ref_axis_surface_con[r]:
-                    num_vectors += self.surfs[ipatch].Nctlu*self.surfs[ipatch].Nctlv
-
-                coords = zeros((2*num_vectors,3))
-                icoord = 0
-                for ipatch in self.ref_axis_surface_con[r]:
-                    for j in xrange(len(self.surfs[ipatch].links_s)):
-                        x0 = self.ref_axis[r].xs.getValue(self.surfs[ipatch].links_s[j])
-
-                        M = self.ref_axis[r].getRotMatrixLocalToGloabl(self.surfs[ipatch].links_s[j])
-
-                        coords[icoord    ,:] = x0
-                        coords[icoord + 1,:] = x0 + dot(M,self.surfs[ipatch].links_x[j])
-                        icoord += 2
-                    # end for
-                # end for
-
-                icoord = 0
-                conn = zeros((num_vectors,2))
-                for ivector  in xrange(num_vectors):
-                    conn[ivector,:] = icoord, icoord+1
-                    icoord += 2
-                # end for
-
-                f.write('Zone N= %d ,E= %d\n'%(2*num_vectors, num_vectors) )
-                f.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
-
-                for n in xrange(3):
-                    for i in  range(2*num_vectors):
-                        f.write('%f\n'%(coords[i,n]))
-                    #endfor
-                #endfor
-
-                for i in range(num_vectors):
-                    f.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
-                #endfor
-
+              
         f.close()
         sys.stdout.write('\n')
         return
@@ -1729,13 +1834,15 @@ class pyGeo():
         Pcount = 1;
 
         for ipatch in xrange(self.nPatch):
-            Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(f,Dcount,Pcount)
+            Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(\
+                f,Dcount,Pcount)
 
         Pcount = 1
         counter = 1
 
         for ipatch in xrange(self.nPatch):
-            Pcount,counter = self.surfs[ipatch].writeIGES_parameters(f,Pcount,counter)
+            Pcount,counter = self.surfs[ipatch].writeIGES_parameters(\
+                f,Pcount,counter)
 
         # Write the terminate statment
         f.write('S%7dG%7dD%7dP%7d%40sT%7s\n'%(1,4,Dcount-1,counter-1,' ',' '))
@@ -1775,13 +1882,16 @@ class pyGeo():
         
         counter = 0
         for ipatch in xrange(self.nPatch):
-            u = linspace(self.surfs[ipatch].range[0],self.surfs[ipatch].range[1],Nu)
-            v = linspace(self.surfs[ipatch].range[0],self.surfs[ipatch].range[1],Nv)
+            u = linspace(self.surfs[ipatch].range[0],\
+                             self.surfs[ipatch].range[1],Nu)
+            v = linspace(self.surfs[ipatch].range[0],\
+                             self.surfs[ipatch].range[1],Nv)
             [U,V] = meshgrid(u,v)
 
             temp = self.surfs[ipatch].getValueM(U,V)
             for idim in xrange(self.surfs[ipatch].nDim):
-                xyz[idim,ipatch*Nu*Nv:(ipatch+1)*Nu*Nv]= temp[:,:,idim].flatten()
+                xyz[idim,ipatch*Nu*Nv:(ipatch+1)*Nu*Nv]= \
+                    temp[:,:,idim].flatten()
             # end for
 
             # Now do connectivity info
@@ -1800,7 +1910,8 @@ class pyGeo():
 
         # Now run the csm_pre command 
 
-        [dist,nearest_elem,uvw,base_coord,weightt,weightr] = csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
+        [dist,nearest_elem,uvw,base_coord,weightt,weightr] = \
+            csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
 
         # All we need from this is the nearest_elem array and the uvw array
 
@@ -1808,7 +1919,8 @@ class pyGeo():
 
         patchID = (nearest_elem-1) // ((Nu-1)*(Nv-1))  # Integer Division
 
-        # Next we need to figure out what is the actual UV coordinate on the given surface
+        # Next we need to figure out what is the actual UV coordinate 
+        # on the given surface
 
         uv = zeros((nSurf,2))
         
@@ -1848,11 +1960,14 @@ class pyGeo():
         counter2 = 0 
         tol = 1e-3
         for i in xrange(nSurf):
-            D = coordinates[:,i] - self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
+            D = coordinates[:,i] - \
+                self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
             D = sqrt(dot(D,D))
             if D > tol:
                 counter1 += 1
-                uv[i,0],uv[i,1],D2,converged = self.surfs[patchID[i]].projectPoint(coordinates[:,i],u0=uv[i,0],v0=uv[i,0])
+                uv[i,0],uv[i,1],D2,converged =\
+                    self.surfs[patchID[i]].projectPoint(\
+                    coordinates[:,i],u0=uv[i,0],v0=uv[i,0])
                 if sqrt(dot(D2,D2)) > tol:
                     counter2 += 1
                 # end if
@@ -2004,8 +2119,10 @@ class edge(object):
 
     def write_info(self,i,handle):
 
-        handle.write('%3d        |%3d     %3d    |%3d   | %3d  |  %3d       | %3d  | %3d           | %3d  | %3d     %3d      |\n'\
-              %(i,self.f1,self.e1,self.type,self.dof,self.cont,self.dir,self.dg,self.Nctl,self.f2,self.e2))
+        handle.write('%3d        |%3d     %3d    |%3d   | %3d  |  %3d       \
+| %3d  | %3d           | %3d  | %3d     %3d      |\n'\
+              %(i,self.f1,self.e1,self.type,self.dof,self.cont,self.dir,\
+                    self.dg,self.Nctl,self.f2,self.e2))
         
         return
 
@@ -2029,6 +2146,12 @@ class ref_axis(object):
         Note: Rotations are performed in the order: Z-Y-X
         '''
 
+        self.surf_ids = []
+        self.links_s = []
+        self.links_x = []
+        self.surf_sizes = []
+        self.surf_sec  = []
+       
         if not  X.shape == rot.shape:
             print 'The shape of X and rot must be the same'
             print 'X:',X.shape
@@ -2041,33 +2164,37 @@ class ref_axis(object):
         self.N = X.shape[0]
 
         self.base_point = X[0,:]
+        self.base_point_s = None
+        self.base_point_D = None
 
+        # Values are stored wrt the base point
         self.x = X-self.base_point
-        self.end_point = self.x[-1] + self.base_point
-                
         self.rot = rot
         self.scale = ones(self.N)
-        # end if
 
         # Deep copy the x,rot and scale for design variable reference
         self.x0 = copy.deepcopy(self.x)
         self.rot0 = copy.deepcopy(self.rot)
         self.scale0 = copy.deepcopy(self.scale)
 
-        # Create an interpolating spline for the spatial part and for
-        # the rotational part
-
-        self.xs = pySpline.linear_spline(task='interpolate',X=self.base_point+self.x,k=2,complex=True)
+        # Create an interpolating spline for the spatial part and use
+        # its  basis for the rotatinoal part
+        
+        self.xs = pySpline.linear_spline(\
+            task='interpolate',X=self.base_point+self.x,k=2,complex=True)
         self.s = self.xs.s
 
-        self.rotxs = pySpline.linear_spline(task='interpolate',X=self.rot[:,0],k=2,s=self.s,complex=True)
-        self.rotys = pySpline.linear_spline(task='interpolate',X=self.rot[:,1],k=2,s=self.s,complex=True)
-        self.rotzs = pySpline.linear_spline(task='interpolate',X=self.rot[:,2],k=2,s=self.s,complex=True)
+        self.rotxs = pySpline.linear_spline(\
+            task='interpolate',X=self.rot[:,0],k=2,s=self.s,complex=True)
+        self.rotys = pySpline.linear_spline(\
+            task='interpolate',X=self.rot[:,1],k=2,s=self.s,complex=True)
+        self.rotzs = pySpline.linear_spline(\
+            task='interpolate',X=self.rot[:,2],k=2,s=self.s,complex=True)
 
-        self.scales = pySpline.linear_spline(task='interpolate',X=self.scale,k=2,s=self.s,complex=True)
+        self.scales = pySpline.linear_spline(\
+            task='interpolate',X=self.scale,k=2,s=self.s,complex=True)
 
-        #self.update()
-
+        self.update()
 
     def update(self):
 
@@ -2078,22 +2205,78 @@ class ref_axis(object):
 
         self.scales.coef = self.scale
         return
-        
 
-    def updateEndPoint(self):
-        self.end_point = self.x[-1] + self.base_point
-        
+       
+    def writeTecplot(self,handle,axis_name):
+        '''Write the ref axis to the open file handle'''
+        N = len(self.s)
+        handle.write('Zone T=%s I=%d\n'%(axis_name,N))
+        values = self.xs.getValueV(self.s)
+        for i in xrange(N):
+            handle.write('%f %f %f \n'%(values[i,0],values[i,1],values[i,2]))
+        # end for
+
+
+    def writeLinks(self,handle,surfs):
+
+        for ii in xrange(len(self.surf_ids)):
+            ipatch = self.surf_ids[ii]
+
+            Nctlu = self.surf_sizes[ii][0]
+            Nctlv = self.surf_sizes[ii][1]
+            num_vectors = Nctlu*Nctlv
+            coords = zeros((2*num_vectors,3))
+            icoord = 0
+            counter = 0
+            exec('crop_coef = surfs[ipatch].coef'+self.surf_sec[ii])
+            for j in xrange(Nctlv):
+                for i in xrange(Nctlu):                    
+                    x0 = self.xs.getValue(self.links_s[ii][i,j])
+                    coords[icoord    ,:] = x0
+                    coords[icoord + 1,:] = crop_coef[i,j,:]
+                    counter += 1
+                    icoord  += 2
+                # end for
+            # end for
+
+            icoord = 0
+            conn = zeros((num_vectors,2))
+            for ivector  in xrange(num_vectors):
+                conn[ivector,:] = icoord, icoord+1
+                icoord += 2
+            # end for
+
+            handle.write('Zone N= %d ,E= %d\n'%(2*num_vectors, num_vectors) )
+            handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
+
+            for n in xrange(3):
+                for i in  range(2*num_vectors):
+                    handle.write('%f\n'%(coords[i,n]))
+                # end for
+            # end for
+
+            for i in range(num_vectors):
+                handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
+            # end for
+        # end for
+
         return
-        
+
     def getRotMatrixGlobalToLocal(self,s):
         
-        '''Return the rotation matrix to convert vector from global to local frames'''
-        return     dot(self._roty(self.rotys(s)), dot(self._rotx(self.rotxs(s)),self._rotz(self.rotzs(s))))
+        '''Return the rotation matrix to convert vector from global to
+        local frames'''
+        return     dot(self._roty(self.rotys(s)), \
+                           dot(self._rotx(self.rotxs(s)),\
+                                   self._rotz(self.rotzs(s))))
     
     def getRotMatrixLocalToGloabl(self,s):
         
-        '''Return the rotation matrix to convert vector from global to local frames'''
-        return inv(dot(self._roty(self.rotys(s)), dot(self._rotx(self.rotxs(s)),self._rotz(self.rotzs(s)))))
+        '''Return the rotation matrix to convert vector from global to
+        local frames'''
+        return inv(dot(self._roty(self.rotys(s))\
+                           , dot(self._rotx(self.rotxs(s)),\
+                                     self._rotz(self.rotzs(s)))))
     
     def _rotx(self,theta):
         '''Return x rotation matrix'''
@@ -2158,7 +2341,8 @@ class geoDVLocal(object):
      
     def __init__(self,dv_name,lower,upper,surface_id):
         
-        '''Create a set of gemoetric design variables whcih change the shape of a surface patch, surface_id
+        '''Create a set of gemoetric design variables whcih change the shape
+        of a surface patch, surface_id
 
         Input:
         
@@ -2187,14 +2371,11 @@ class geoDVLocal(object):
 
     def __call__(self,surface):
 
-        '''When the object is called, apply the design variable values to the surface'''
+        '''When the object is called, apply the design variable values to the
+        surface'''
         #call the surface with the values
         surface.updateSurfacePoints(self.value)
         return surface
-
-        
-        
- 
 
 #==============================================================================
 # Class Test
@@ -2208,257 +2389,29 @@ if __name__ == '__main__':
 
 
 
+# Temp Code:
 
-# Old stuff possibly useful
- 
-#     def getRotations(self,s):
-#         '''Return a (linearly) interpolated list of the twist, xrot and
-#         y-rotations at a span-wise position s'''
-        
-#         twist = interp([s],self.sloc,self.twist)
-#         rot_x = interp([s],self.sloc,self.rot_x)
-#         rot_y = interp([s],self.sloc,self.rot_y)
+#  # Ref_axis:
+#                 temp_spline = pySpline.linear_spline(task='interpolate',X=Xsec[start:end,:],k=2) # spatial
+#                 s = temp_spline.s # We use the spatial basis calculated as the basis for the rotational components
+#                 Xsecnew[start2:end2,:] = temp_spline.getValueV(section_spacing[i])
 
-#         return twist[0],rot_x[0],rot_y[0]
 
-#     def getLocalVector(self,s,x):
-#         '''Return the vector x, rotated by the twist, rot_x, rot_y as 
-#         linearly interpolated at span-wise position s. 
-#         For example getLocalVecotr(0.5,[1,0,0]) will return the vector 
-#         defining the local section direction at a span position of 0.5.'''
+#                 temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,0],k=2,s=s) # X rot
+#                 rotnew[start2:end2,0] = temp_spline.getValueV(section_spacing[i])
 
-#         twist,rot_x,rot_y = self.getRotations(s)
-#         x = self._rotz(x,twist*pi/180) # Twist Rotation
-#         x = self._rotx(x,rot_x*pi/180) # Dihedral Rotation
-#         x = self._roty(x,rot_y*pi/180) # Sweep Rotation
+#                 temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,1],k=2,s=s) # Y rot
+#                 rotnew[start2:end2,1] = temp_spline.getValueV(section_spacing[i])
 
-#         return x
+#                 temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,2],k=2,s=s) # Z rot
+#                 rotnew[start2:end2,2] = temp_spline.getValueV(section_spacing[i])
 
-#     def getLocalChord(self,s):
-#         '''Return the linearly interpolated chord at span-wise postiion s'''
+#                 # Generate and append the ref_axis
 
-#         return interp([s],self.sloc,self.chord)[0]
-        
-#     def getLocalLe_loc(self,s):
-#         return interp([s],self.sloc,self.le_loc)[0]
-
-
-#     def getRefPt(self,s):
-#         '''Return the linearly interpolated reference location at a span-wise
-#         position s. '''
-        
-#         x = zeros(3);
-#         x[2] = s*self.L
-#         x[0] = interp([s],self.sloc,self.ref_axis[:,0])[0]
-#         x[1] = interp([s],self.sloc,self.ref_axis[:,1])[0]
-
-#         return x
-
-
-#     def createAssociations(self):
-#         '''Create the associated links between control pt sections and the
-#         reference axis'''
-
-#         assert self.ref_axis_reference.shape[0] == self.surf.Nctlv,\
-#             'Must have the same number of control points in v (span-wise) as spanwise-stations'
-#         #self.ctl_deltas = 
-
-
-#     def addVar(self,dv_name,value,mapping,lower=0,upper=1):
-
-#         '''Add a single (scalar) variable to the dv list. '''
-
-#         if dv_name in self.DVlist.keys():
-#             print 'Error: dv_name is already in the list of keys. Please use a unique deisgn variable name'
-#             sys.exit(0)
-#         # end if
-        
-#         self.DVlist[dv_name] = geoDV(dv_name,value,mapping,lower,upper)
-        
-        
-#         return
-    
-#     def updateDV(self):
-#         '''Update the B-spline control points from the Design Varibales'''
-
-#         for key in self.DVlist.keys():
-#             self.DVlist[key].applyValue(self.surf,self.ref_axis.sloc)
-
-#         return
-
-
-
-
-
-#-----------------------------------------
-
-#NODE TESTING
-
-#-------------------------------------------
-
-
-
-#         print 'time:',time.time()-timeA
-#         for i in xrange(len(n_con)):
-#             print n_con[i]
-
-#         # Now we know which nodes are connected. Now we can be
-#         # smart....we can figure out which faces are attached to which
-#         # group of nodes and exhaustively test the edges on those faces
-
-
-
-#   #       # Now we ACTUALLY stitch them together
-        
-#      #    #First we do the corners:
-
-#         # corners are in a list but we can back out patch with a mod
-            
-#         for i in xrange(len(n_con)):
-#             temp = 0
-#             for j in xrange(len(n_con[i])):
-                
-#                 patch = n_con[i][j] / 4 #integer division
-#                 corner = n_con[i][j] % 4 #modulus division
-                
-#                 temp += self.surfs[patch].getValueCorner(corner)
-#             # end for
-
-#             # divide by number of n_con
-#             temp /= len(n_con[i])
-
-#             # Reset them
-
-#             for j in xrange(len(n_con[i])):
-
-#                 patch = n_con[i][j] / 4 #integer division
-#                 corner = n_con[i][j] % 4 #modulus division
-
-#                 if corner == 0:
-#                     self.surfs[patch].coef[ 0, 0,:] = temp
-#                 elif corner == 1:
-#                     self.surfs[patch].coef[-1, 0,:] = temp
-#                 elif corner == 2:
-#                     self.surfs[patch].coef[0,-1,:] = temp
-#                 else:
-#                     self.surfs[patch].coef[ -1,-1,:] = temp
-#             # end for
-#         # end for
-
-
-
-
-         #    #First we need the list of nodes NO WE DON
-
-#         nodes = []
-#         for ipatch in xrange(self.nPatch):
-#             patch = self.surfs[ipatch]
-#             # Go Counter clockwise for patch i             #Nominally:
-#             nodes.append(patch.getValue(patch.range[0],patch.range[2])) # (0,0)
-#             nodes.append(patch.getValue(patch.range[1],patch.range[2])) # (1,0)
-#             nodes.append(patch.getValue(patch.range[1],patch.range[3])) # (1,1)
-#             nodes.append(patch.getValue(patch.range[0],patch.range[3])) # (0,1)
-#         # end for
-
-#         N = len(nodes)
-#         n_con = []
-#         counter = -1
-#         # Exhaustive search for connections
-
-#         for i in xrange(N):
-#             temp = array([],'int')
-#             for j in xrange(i+1,N):
-
-#                 dist = self._e_dist(nodes[i],nodes[j])
-#                 if dist< node_tol:
-#                     ifound = False
-#                     jfound = False
-#                     for l in xrange(len(n_con)):
-#                         if i in n_con[l] and j in n_con[l]:
-#                             ifound = True
-#                             jfound = True
-#                         if i in n_con[l]:
-#                             ifound = True
-#                         if j in n_con[l]:
-#                             jfound = True
-#                     # end for
-
-#                     if not(ifound) and not(jfound):
-#                         n_con.append([i,j])
-#                         counter += 1
-#                     if ifound and not(jfound):
-#                         n_con[counter].append(j)
-#                     if jfound and not(ifound):
-#                         n_con[counter].append(i)
-#                 # end if
-#             # end for
-#         # end for
-
-#         # Finally convert back to face/edge# form
-
-#         self.n_con = []
-#         for i in xrange(len(n_con)):
-#             self.n_con.append([])
-#             for j in xrange(len(n_con[i])):
-#                 face = n_con[i][j] / 4
-#                 node = mod(n_con[i][j] ,4 )
-#                 self.n_con[i].append([face,node])
-
-# class DVmapping(object):
-
-#     def __init__(self,sec_start,sec_end,apply_to,formula):
-
-#         '''Create a generic mapping to apply to a set of b-spline control
-#         points.
-
-#         Input:
-        
-#         sec_start: j index (spanwise) where mapping function starts
-#         sec_end : j index (spanwise) where mapping function
-#         ends. Python-based negative indexing is allowed. eg. -1 is the last element
-
-#         apply_to: literal reference to select what planform variable
-#         the mapping applies to. Valid litteral string are:
-#                 \'x\'  -> X-coordinate of the reference axis
-#                 \'y\'  -> Y-coordinate of the reference axis
-#                 \'z\'  -> Z-coordinate of the reference axis
-#                 \'twist\' -> rotation about the z-axis
-#                 \'x-rot\' -> rotation about the x-axis
-#                 \'y-rot\' -> rotation about the x-axis
-
-#         formula: is a string which contains a python expression for
-#         the mapping. The value of the mapping is assigned as
-#         \'val\'. Distance along the surface is specified as \'s\'. 
-
-#         For example, for a linear shearing sweep, the formula would be \'s*val\'
-#         '''
-#         self.sec_start = sec_start
-#         self.sec_end   = sec_end
-#         self.apply_to  = apply_to
-#         self.formula   = formula
-
-#         return
-
-#     def apply(self,surf,s,val):
-#         '''apply mapping to surface'''
-
-#         if self.apply_to == 'x':
-# #             print 'ceofs'
-# #             print surf.coef[0,0,self.sec_start:self.sec_end,0]
-# #             print surf.coef[0,0,:,0]
-# #             print 'formula'
-# #             print eval(self.formula)
-
-#             surf.coef[:,:,:,0] += eval(self.formula)
-
-# #            surf.coef[:,:,self.sec_start:self.sec_end,0]+= eval(self.formula)
-# #             print 'formula:',self.formula
-# #             print 's:',s
-# #             print 'val:',val
-#             print eval(self.formula).shape
-#             print 'done x'
-
-
-
-
-
+#                 cur_ref_axis = ref_axis(Xsecnew[start2:end2],rotnew[start2:end2])
+#                 self.ref_axis.append(cur_ref_axis)
+#                 self.ref_axis_surface_con.append([2*i,2*i+1])
+#                 self.ref_axis_con.append(range(nBreaks+1))
+#                 # Attach the current reference axis to the current two surfaces
+#                 self.surfs[2*i  ].associateRefAxis(cur_ref_axis)
+#                 self.surfs[2*i+1].associateRefAxis(cur_ref_axis)
