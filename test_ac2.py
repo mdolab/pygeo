@@ -34,16 +34,15 @@ def c_atan2(x,y):
     return complex(arctan2(a,c),(c*b-a*d)/(a**2+c**2))
 
 
-naf=5
-airfoil_list = ['af15-16.inp','af15-16.inp','af15-16.inp','af15-16.inp',\
-                    'pinch.inp']
-chord = [1.25,.65,.65,.65,.65]
-x = [1.25,1.25,1.25,1.25,1.25]
-y = [0,0.4,.6,1.2,1.4]
-z = [0,6,6.2,6.2,6.2]
-rot_x = [0,0,-90,-90,-90]
-rot_y = [0,0,0,0,0]
-tw_aero = [-4,4,0,0,0] # ie rot_z
+naf=3
+airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
+chord = [1.25,1.25,1.25]
+x = [1.25,1.25,1.25]
+y = [0,0,0]
+z = [0,5,6]
+rot_x = [0,0,0]
+rot_y = [0,0,0]
+tw_aero = [0,0,0] # ie rot_z
 X = zeros((naf,3))
 rot = zeros((naf,3))
 
@@ -51,8 +50,8 @@ offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
-breaks = [1,2] #zero based (Must NOT contain 0 or index of last value)
-nsections = [10,10,10]# Length breaks + 1
+breaks = [1] #zero based (Must NOT contain 0 or index of last value)
+nsections = [15,5]# Length breaks + 1
 section_spacing = []
 for i in xrange(len(nsections)):
     section_spacing.append( 0.5*(1-cos(linspace(0,pi,nsections[i]))))
@@ -134,27 +133,23 @@ print '----------------------'
 print 'Attaching Ref Axis...'
 print '----------------------'
 
-X[:,0] += .25
 # Full ref_axis attachments
 surf_sec = ['[:,:]','[:,:]']
 wing.addRefAxis([0,1],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
                     spacing=section_spacing[0],surf_sec = surf_sec )
 wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
                     spacing=section_spacing[0],surf_sec = surf_sec )
-wing.addRefAxis([4,5],X[2:4,:],rot[2:4,:],nrefsecs=nsections[2],\
-                    spacing=section_spacing[0],surf_sec = surf_sec )
 
 # Flap-Type ref_axis attachment
-X = array([[1.75,.05,2],[1.75,0.2,4]])
+X = array([[2.,0,2],[2,0,4]])
 rot = array([[0,0,0],[0,0,0]])
-surf_sec = ['[15:,3:7]','[0:5,3:7]']
+surf_sec = ['[15:,6:11]','[0:5,6:11]']
 wing.addRefAxis([0,1],X,rot,surf_sec = surf_sec )
 
 # Now we specify How the ref axis move together
 wing.addRefAxisCon(0,1) # Wing and corner
-wing.addRefAxisCon(0,3)# Wing and flap
-wing.addRefAxisCon(1,2) # corner and 
-wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=False)
+wing.addRefAxisCon(0,2) # flap
+wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
 
 # --------------------------------------
 # Define Design Variable functions here:
@@ -203,6 +198,11 @@ def set_chord3(val,ref_axis):
     ref_axis[2].scale[:] = val
     return ref_axis
 
+def flap(val,ref_axis):
+    ref_axis.rot[:,2] = val
+
+    return ref_axis
+
 # ------------------------------------------
 #         Name, value, lower,upper,function, ref_axis_id -> must be a list
 # # Add global Design Variables FIRST
@@ -210,6 +210,7 @@ wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension,[0])
 #wing.addGeoDVGlobal('winglet',1,0.5,2.0,winglet_extension,[2])
 wing.addGeoDVGlobal('twist',0,-20,20,twist,[0])
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep,[0])
+wing.addGeoDVGlobal('flap',0,-20,20,flap,[2])
 # wing.addGeoDVGlobal('chord1',ones(10),0.1,2,set_chord1,[0,1,2])
 # wing.addGeoDVGlobal('chord2',ones(10),0.1,2,set_chord2,[0,1,2])
 # wing.addGeoDVGlobal('chord3',ones(10),0.1,2,set_chord3,[0,1,2])
@@ -229,7 +230,8 @@ idl = wing.DV_namesLocal  #NOTE: This is constant (idl -> id local)
 print 'idg',idg
 print 'idl',idl
 # # Change the DV's -> Normally this is done from the Optimizer
-#wing.DV_listGlobal[idg['span']].value = 1.1
+wing.DV_listGlobal[idg['span']].value = 1
+wing.DV_listGlobal[idg['flap']].value = 20
 # wing.DV_listGlobal[idg['winglet']].value = .5
 #wing.DV_listGlobal[idg['twist']].value = -5
 #wing.DV_listGlobal[idg['sweep']].value = .05
@@ -258,5 +260,4 @@ print 'Derivative Time:',timeC-timeB
 
 
 
-wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=False)
-wing.writeIGES('wing.igs')
+wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
