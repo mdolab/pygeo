@@ -45,7 +45,7 @@ from scipy import io #Only used for debugging
 try:
     from petsc4py import PETSc
     USE_PETSC = True
-    USE_PETSC = False
+    #USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
 with PETSC'
 except:
@@ -1387,7 +1387,6 @@ with LAPACK'''
             # create the ref axis:
 
             ra = ref_axis(Xnew,rotnew)
-            ref_axis_id = len(self.ref_axis)-1
 
             if surf_sec == None: # We have not specified surface sections
                 surf_sec = []
@@ -1413,6 +1412,7 @@ with LAPACK'''
                 ra.surf_sizes.append([Nctlu,Nctlv])
                 ra.links_x.append(zeros((Nctlu,Nctlv,3)))
                 ra.links_s.append(zeros((Nctlu,Nctlv)))
+                ra.surf_dir.append(dir)
                 if dir == 1:
                     #print 'along v:'
                     for j in xrange(Nctlv):
@@ -1439,13 +1439,39 @@ with LAPACK'''
                             ra.links_x[ii][i,j,:] = D
                         # end for
                      # end for
-                
+                else:
+                    #print 'along u:'
+                    for i in xrange(Nctlu):
+                        # Create a line (k=2 spline) for the control
+                        # points along U
+                        ctl_line = pySpline.linear_spline(\
+                            'lms',X=crop_coef[i,:],Nctl=2,k=2)
+                        # Now find the minimum distance between
+                        # midpoint and the ref_axis
+                        s,D,conv,eps = ra.xs.projectPoint(\
+                            ctl_line.getValue(0.5))
+                        if s > max_s:
+                            s = max_s
+                        if s < min_s:
+                            s = min_s
+                        # Now loop over the control points to set links
+                        base_point = ra.xs.getValue(s)
+                        M = ra.getRotMatrixGlobalToLocal(s)
+
+                        for j in xrange(Nctlv):
+                            D = crop_coef[i,j] - base_point
+                            D = dot(M,D) #Rotate to local frame
+                            ra.links_s[ii][i,j] = s
+                            ra.links_x[ii][i,j,:] = D
+                        # end for
+                     # end for
+                # end if
             # end for
 
 
             self.ref_axis.append(ra)
             
-    def addRefAxisCon(self,axis1,axis2):
+    def addRefAxisCon(self,axis1,axis2,con_type):
         '''Add a reference axis connection to the connection list'''
         
         # Attach axis2 to axis1 
@@ -1455,10 +1481,29 @@ with LAPACK'''
         s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
             self.ref_axis[axis2].xs.getValue(0))
 
+        M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
+        D = dot(M,D)
+
         self.ref_axis[axis2].base_point_s = s
         self.ref_axis[axis2].base_point_D = D
+        self.ref_axis[axis2].con_type = con_type
+        if con_type == 'full':
+            assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
+is only available for reference axis with 2 points. A typical usage is for \
+a hinge line'
+            
+            s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
+                self.ref_axis[axis2].xs.getValue(1))
 
-        self.ref_axis_con.append([axis1,axis2])
+            M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
+            D = dot(M,D)
+
+            self.ref_axis[axis2].end_point_s = s
+            self.ref_axis[axis2].end_point_D = D
+            
+        # end if
+            
+        self.ref_axis_con.append([axis1,axis2,con_type])
 
         return
 
@@ -1472,72 +1517,84 @@ with LAPACK'''
         '''update the entire pyGeo Object'''
 
         # First, update the reference axis info from the design variables
-        
+        #timeA = time.time()
         for i in xrange(len(self.DV_listGlobal)):
-
-            # Call the each design variable with the ref axis its associated
-            if len(self.DV_listGlobal[i].ref_axis_id) == 1:
-                ref_index = self.DV_listGlobal[i].ref_axis_id[0]
-                self.ref_axis[ref_index] = self.DV_listGlobal[i](\
-                    self.ref_axis[ref_index])
-            else: # Make up the list of ref axis to pass
-                axis_list = []
-                for j in self.DV_listGlobal[i].ref_axis_id:
-                    axis_list.append(self.ref_axis[j])
-                # end for
-                axis_list = self.DV_listGlobal[i](axis_list)
-
-                # Set axis back in list
-
-                for j in xrange(len(axis_list)):
-                    self.ref_axis[ self.DV_listGlobal[i].ref_axis_id[j]] = \
-                        axis_list[j]
-                # end for
-            # end if
+            # Call the each design variable with the ref axis list
+            self.ref_axis = self.DV_listGlobal[i](self.ref_axis)
         # end for
 
         # Second, update the end_point base_point on the ref_axis:
-        
+        #timeB = time.time()
         for i in xrange(len(self.ref_axis_con)):
             axis1 = self.ref_axis_con[i][0]
             axis2 = self.ref_axis_con[i][1]
-            
+            self.ref_axis[axis1].update()
             s = self.ref_axis[axis2].base_point_s
             D = self.ref_axis[axis2].base_point_D
+            M = self.ref_axis[axis1].getRotMatrixLocalToGloabl(s)
+            D = dot(M,D)
 
             X0 = self.ref_axis[axis1].xs.getValue(s)
+            self.ref_axis[axis2].base_point = X0 + \
+                D*self.ref_axis[axis1].scales(s)
 
-            self.ref_axis[axis2].base_point = X0 + D
+            if self.ref_axis[axis2].con_type == 'full':
 
+                s = self.ref_axis[axis2].end_point_s
+                D = self.ref_axis[axis2].end_point_D
+                M = self.ref_axis[axis1].getRotMatrixLocalToGloabl(s)
+                D = dot(M,D)
+                
+                X0 = self.ref_axis[axis1].xs.getValue(s)
+                self.ref_axis[axis2].end_point = X0 +\
+                    D*self.ref_axis[axis1].scales(s)
+            # end if
 
-        # Third, update the ref_axis and consequently the design variables
+            self.ref_axis[axis2].update()
+        # end for
+        #timeC = time.time()
+
+        # Third, update the design variables
         for r in xrange(len(self.ref_axis)):
-            self.ref_axis[r].update()
-                 
             for ii in xrange(len(self.ref_axis[r].surf_ids)):
                 ipatch = self.ref_axis[r].surf_ids[ii]
                 Nctlu = self.ref_axis[r].surf_sizes[ii][0]
                 Nctlv = self.ref_axis[r].surf_sizes[ii][1]
-                coef = zeros((Nctlu,Nctlv,3))
-                for i in xrange(Nctlu):
-                    for j in xrange(Nctlv):
-                          s = self.ref_axis[r].links_s[ii][i,j]
-                          M = self.ref_axis[r].getRotMatrixLocalToGloabl(s)
-                          X_base = self.ref_axis[r].xs.getValue(s)
-                          coef[i,j,:] = X_base + \
-                              dot(M,self.ref_axis[r].links_x[ii][i,j])*\
-                              self.ref_axis[r].scales(s)
-                    # end for
-                # end for
+                dir = self.ref_axis[r].surf_dir[ii]
+                s_pos = self.ref_axis[r].links_s[ii]
+                links = self.ref_axis[r].links_x[ii]
+                # Data from the ref_axis:
+                s = self.ref_axis[r].s    # parameter for ref axis
+                t = self.ref_axis[r].xs.t # common knot vector for ref axis
+                x = self.ref_axis[r].xs.coef
+                rot   = zeros((self.ref_axis[r].N,3),'d')
+                rot[:,0] = self.ref_axis[r].rotxs.coef
+                rot[:,1] = self.ref_axis[r].rotys.coef
+                rot[:,2] = self.ref_axis[r].rotzs.coef
+                scales   = self.ref_axis[r].scales.coef
 
-                # Now we set the coef BACK in pySpline
-
+                coef = pySpline.pyspline.getcoef(\
+                    dir,s,t,x,rot,scales,s_pos,links)
+# --------------------Python Version ----------------------------
+#                 coef = zeros((Nctlu,Nctlv,3))
+#                 for i in xrange(Nctlu):
+#                     for j in xrange(Nctlv):
+#                           s = self.ref_axis[r].links_s[ii][i,j]
+#                           M = self.ref_axis[r].getRotMatrixLocalToGloabl(s)
+#                           X_base = self.ref_axis[r].xs.getValue(s)
+#                           coef2[i,j,:] = X_base + \
+#                               dot(M,self.ref_axis[r].links_x[ii][i,j])*\
+#                               self.ref_axis[r].scales(s)
+#                     # end for
+#                 # end for
+# --------------------Python Version ----------------------------
+                
                 exec('self.surfs[ipatch].coef'+self.ref_axis[r].surf_sec[ii]+\
                          '=coef')
-
-
             # end for
         # end for
+
+        #timeD = time.time()
 
         # fourth update the Local coordinates
 
@@ -1545,10 +1602,16 @@ with LAPACK'''
             self.surfs[self.DV_listLocal[i].surface_id] = \
                 self.DV_listLocal[i](self.surfs[self.DV_listLocal[i].surface_id])
         # end for
-            
+        #timeE = time.time()
         # Fifth, run the stitch surfaces command to enforce master dv's
         self.stitchEdges()
+        #timeF = time.time()
 
+#         print 'time1:',timeB-timeA
+#         print 'time2:',timeC-timeB
+#         print 'time3:',timeD-timeC
+#         print 'time4:',timeE-timeD
+#         print 'time5:',timeF-timeE
         return
          
     def calcCtlDeriv(self):
@@ -1606,6 +1669,7 @@ with LAPACK'''
         col_counter = 0
         for ii in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
             nVal = self.DV_listGlobal[ii].nVal
+
             for jj in xrange(nVal):
                 if nVal == 1:
                     self.DV_listGlobal[ii].value += h
@@ -1614,60 +1678,91 @@ with LAPACK'''
                 # end if
 
                 # -----------COPY OF UPDATE--------------
-                # First, update the reference axis from the design variables
+                 # First, update the reference axis info from the design variables
+
                 for i in xrange(len(self.DV_listGlobal)):
-
-                    # Call the each design variable with the ref axis its 
-                    # associated with
-                    if len(self.DV_listGlobal[i].ref_axis_id) == 1:
-                        ref_index = self.DV_listGlobal[i].ref_axis_id[0]
-                        self.ref_axis[ref_index] = self.DV_listGlobal[i]\
-                            (self.ref_axis[ref_index])
-                    else: # Make up the list of ref axis to pass
-                        axis_list = []
-                        for j in self.DV_listGlobal[i].ref_axis_id:
-                            axis_list.append(self.ref_axis[j])
-                        # end for
-                        axis_list = self.DV_listGlobal[i](axis_list)
-
-                        # Set axis back in list
-
-                        for j in xrange(len(axis_list)):
-                            self.ref_axis[ self.DV_listGlobal[i].\
-                                               ref_axis_id[j]] = axis_list[j]
-                        # end for
-                    # end if
+                    # Call the each design variable with the ref axis list
+                    self.ref_axis = self.DV_listGlobal[i](self.ref_axis)
                 # end for
 
                 # Second, update the end_point base_point on the ref_axis:
 
                 for i in xrange(len(self.ref_axis_con)):
-                    for j in xrange(len(self.ref_axis_con[i])-1):
+                    axis1 = self.ref_axis_con[i][0]
+                    axis2 = self.ref_axis_con[i][1]
+                    self.ref_axis[axis1].update()
+                    s = self.ref_axis[axis2].base_point_s
+                    D = self.ref_axis[axis2].base_point_D
+                    R = self.ref_axis[axis1].getRotMatrixLocalToGloabl(s)
+                    D = dot(R,D)
 
-                        self.ref_axis[j].updateEndPoint()
-                        self.ref_axis[j+1].base_point = \
-                            self.ref_axis[j].end_point
-                        self.ref_axis[j+1].rot[0] = \
-                            self.ref_axis[j].rot[-1]
+                    X0 = self.ref_axis[axis1].xs.getValue(s)
+                    self.ref_axis[axis2].base_point = X0 + \
+                        D*self.ref_axis[axis1].scales(s)
+
+                    if self.ref_axis[axis2].con_type == 'full':
+
+                        s = self.ref_axis[axis2].end_point_s
+                        D = self.ref_axis[axis2].end_point_D
+                        R = self.ref_axis[axis1].getRotMatrixLocalToGloabl(s)
+                        D = dot(R,D)
+
+                        X0 = self.ref_axis[axis1].xs.getValue(s)
+                        self.ref_axis[axis2].end_point = X0 +\
+                            D*self.ref_axis[axis1].scales(s)
+                    # end if
+                        
+                    self.ref_axis[axis2].update()
+                # end for
+                timeC = time.time()
+
+
                 # -------END COPY OF UPDATE--------------
 
                 # Third, update the ref_axis and consequently the
                 # design variables
                 for r in xrange(len(self.ref_axis)):
-                    self.ref_axis[r].update()
+                    for ii in xrange(len(self.ref_axis[r].surf_ids)):
+                        ipatch = self.ref_axis[r].surf_ids[ii]
+                        Nctlu = self.ref_axis[r].surf_sizes[ii][0]
+                        Nctlv = self.ref_axis[r].surf_sizes[ii][1]
+                        dir = self.ref_axis[r].surf_dir[ii]
+                        s_pos = self.ref_axis[r].links_s[ii]
+                        links = self.ref_axis[r].links_x[ii]
+                        # Data from the ref_axis:
+                        s = self.ref_axis[r].s    # parameter for ref axis
+                        t = self.ref_axis[r].xs.t # common knot vector 
+                        x = self.ref_axis[r].xs.coef
+                        rot   = zeros((self.ref_axis[r].N,3),'D')
+                        rot[:,0] = self.ref_axis[r].rotxs.coef
+                        rot[:,1] = self.ref_axis[r].rotys.coef
+                        rot[:,2] = self.ref_axis[r].rotzs.coef
+                        scales   = self.ref_axis[r].scales.coef
 
-                    for ipatch in self.ref_axis_surface_con[r]:
-                        coef = self.surfs[ipatch].getComplexCoef(\
-                            self.ref_axis[r])
+                        # Just the coefficient affected by this ref_axis
+                        #print 'calling complex version'
+                        #print 'x:',x
+                        coef_temp = pySpline.pyspline_cs.getcoef(\
+                            dir,s,t,x,rot,scales,s_pos,links)
+                        
+                        # TOTAL size of the coefficients on the patch
+                        coef = zeros((self.surfs[ipatch].Nctlu,
+                                      self.surfs[ipatch].Nctlv,3),'D')
+                
+                        exec('coef'+self.ref_axis[r].surf_sec[ii]+'=coef_temp')
+                
+                        # Slice out ONLY the driving coefficients
+                        exec('coef = coef'+self.surfs[ipatch].slice_string)
+                
+                        # Set them in the jacobain
                         self.J1[M[ipatch]*3:M[ipatch+1]*3,col_counter] =\
                             imag(coef.flatten())/1e-40
-
                     # end for
                 # end for
                 
                 # Increment Column Counter
                 col_counter += 1
-                #print 'col_counter:',col_counter
+                print 'col_counter:',col_counter
 
                 # Reset Design Variable Peturbation
                 if nVal == 1:
@@ -1686,6 +1781,8 @@ with LAPACK'''
             self.J1.assemblyEnd()
         # end if 
        
+        self.J1.view()
+
         return 
 
     def addGeoObject(self,geo_obj):
@@ -1726,10 +1823,10 @@ with LAPACK'''
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
 
 
-    def addGeoDVGlobal(self,dv_name,value,lower,upper,function,ref_axis_id):
+    def addGeoDVGlobal(self,dv_name,value,lower,upper,function):
         '''Add a global design variable'''
         self.DV_listGlobal.append(geoDVGlobal(\
-                dv_name,value,lower,upper,function,ref_axis_id))
+                dv_name,value,lower,upper,function))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
         return 
 
@@ -1752,7 +1849,7 @@ with LAPACK'''
         sys.stdout.write('Outputting Patch: ')
         for ipatch in xrange(self.nPatch):
             sys.stdout.write('%d '%(ipatch))
-            self.surfs[ipatch].writeTecplot(handle=f,size=0.05)
+            self.surfs[ipatch].writeTecplot(handle=f,size=0.03)
 
         # ---------------------------
         #    Write out the edges
@@ -2151,7 +2248,8 @@ class ref_axis(object):
         self.links_x = []
         self.surf_sizes = []
         self.surf_sec  = []
-       
+        self.surf_dir = []
+        self.con_type = None
         if not  X.shape == rot.shape:
             print 'The shape of X and rot must be the same'
             print 'X:',X.shape
@@ -2164,13 +2262,18 @@ class ref_axis(object):
         self.N = X.shape[0]
 
         self.base_point = X[0,:]
+        
         self.base_point_s = None
         self.base_point_D = None
+
+        self.end_point   = X[-1,:]
+        self.end_point_s = None
+        self.end_point_D = None
 
         # Values are stored wrt the base point
         self.x = X-self.base_point
         self.rot = rot
-        self.scale = ones(self.N)
+        self.scale = ones(self.N,'D')
 
         # Deep copy the x,rot and scale for design variable reference
         self.x0 = copy.deepcopy(self.x)
@@ -2194,16 +2297,19 @@ class ref_axis(object):
         self.scales = pySpline.linear_spline(\
             task='interpolate',X=self.scale,k=2,s=self.s,complex=True)
 
-        self.update()
-
     def update(self):
-
+        
         self.xs.coef = self.base_point+self.x
         self.rotxs.coef = self.rot[:,0]
         self.rotys.coef = self.rot[:,1]
         self.rotzs.coef = self.rot[:,2]
 
         self.scales.coef = self.scale
+
+        if self.con_type == 'full':
+            self.xs.coef[-1,:] = self.end_point
+        # end if
+        
         return
 
        
@@ -2299,7 +2405,7 @@ class ref_axis(object):
 
 class geoDVGlobal(object):
      
-    def __init__(self,dv_name,value,lower,upper,function,ref_axis_id):
+    def __init__(self,dv_name,value,lower,upper,function):
         
         '''Create a geometric design variable (or design variable group)
 
@@ -2325,7 +2431,6 @@ class geoDVGlobal(object):
         self.lower = lower
         self.upper = upper
         self.function = function
-        self.ref_axis_id = ref_axis_id # This is possibly a list
         return
 
 
