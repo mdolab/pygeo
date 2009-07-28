@@ -102,9 +102,9 @@ Nctlu = 26
 
 # ----------------------------------------------------------------------
 # wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,\
-#                    offset=offset, Xsec=X,rot=rot,breaks=breaks,\
-#                    nsections=nsections,section_spacing=section_spacing,\
-#                    fit_type='lms', Nctlu=Nctlu,Nfoil=20)
+#                        offset=offset, Xsec=X,rot=rot,breaks=breaks,\
+#                        nsections=nsections,section_spacing=section_spacing,\
+#                        fit_type='lms', Nctlu=Nctlu,Nfoil=20)
 
 # wing.readEdgeConnectivity('wing.con')
 # wing.propagateKnotVectors()
