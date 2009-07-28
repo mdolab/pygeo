@@ -1572,7 +1572,8 @@ a hinge line'
                 rot[:,1] = self.ref_axis[r].rotys.coef
                 rot[:,2] = self.ref_axis[r].rotzs.coef
                 scales   = self.ref_axis[r].scales.coef
-
+                print 'caling getcoef'
+                print 'dir:',s_pos
                 coef = pySpline.pyspline.getcoef(\
                     dir,s,t,x,rot,scales,s_pos,links)
 # --------------------Python Version ----------------------------
@@ -1781,7 +1782,7 @@ a hinge line'
             self.J1.assemblyEnd()
         # end if 
        
-        self.J1.view()
+        #self.J1.view()
 
         return 
 
