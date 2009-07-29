@@ -1,12 +1,13 @@
-
 #!/usr/local/bin/python
-from __future__ import division
 '''
 pyGeo
 
-pyGeo performs the routine task of reading cross sectional information 
-about a wind turbine blade or aircraft wing and producing the data 
-necessary to create a surface with pySpline. 
+pyGeo is a (fairly) complete geometry surfacing engine. It performs
+multiple functions including producing surfaces from cross sections,
+fitting groups of surfaces with continutity constraints and has
+built-in design variable handling. The actual b-spline surfaces are of
+the pySpline surf_spline type. See the individual functions for
+additional information
 
 Copyright (c) 2009 by G. Kenway
 All rights reserved. Not to be used for commercial purposes.
@@ -24,7 +25,6 @@ History
 
 __version__ = '$Revision: $'
 
-
 # =============================================================================
 # Standard Python modules
 # =============================================================================
@@ -37,13 +37,16 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag
+    real, imag, dstack, floor
 
 from numpy.linalg import lstsq,inv
-from scipy import io #Only used for debugging
+#from scipy import io #Only used for debugging
 
 try:
+    import petsc4py
+    petsc4py.init(sys.argv)
     from petsc4py import PETSc
+    
     USE_PETSC = True
     #USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
@@ -964,9 +967,9 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         i = edges.index(edge)
         
         if i < nJoined:
-            return i // 2, mod(i,2)  #integer division
+            return int(floor(i/2.0)), mod(i,2)  #integer division
         else:
-            return nJoined//2 + i-nJoined,0 #integer division
+            return int(floor(nJoined/2.0)) + i-nJoined,0 #integer division
 
     def propagateKnotVectors(self):
 
@@ -1289,7 +1292,7 @@ with LAPACK'''
         # end if
 
         data_save = {'COEF':self.coef}
-        io.savemat('coef_lapack.mat',data_save)
+        #io.savemat('coef_lapack.mat',data_save)
 
         return
 
@@ -1297,34 +1300,12 @@ with LAPACK'''
 #                Reference Axis Handling
 # ----------------------------------------------------------------------
 
-#     def setRefAxis(self,patch_list,ref_axis,sections=None):
-
-#         '''Set the reference axis 'ref_axis' to surfaces in patch_list'''
-#         print 'patch_list:',patch_list
-#         self.ref_axis.append(ref_axis)
-#         self.ref_axis_surface_con.append(patch_list)
-
-#         if not sections == None:
-#             # We have specified what sections surfaces coorspond to:
-#             for i in xrange(len(sections)):
-#                 for j in xrange(len(sections[i])):
-#                     self.surfs[sections[i][j]].associateRefAxis(\
-#                         ref_axis,section=i)
-#                 # end for
-#             # end for
-#         else:
-#             for i in xrange(len(patch_list)):
-#                 self.surfs[patch_list[i]].associateRefAxis(ref_axis)
-#             # end for
-#         # end if
-
-#         return
     def addRefAxis(self,surf_ids,X,rot,nrefsecs=None,spacing=None,\
-                       surf_sec=None):
+                       us=None,ue=None,vs=None,ve=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
 
-            print 'addeding ref axis...'
+            print 'adding ref axis...'
             # A couple of things can happen here: 
             # 1. nsections < len(X)
             #    -> We do a LMS fit on the ref axis
@@ -1387,21 +1368,67 @@ with LAPACK'''
             # create the ref axis:
 
             ra = ref_axis(Xnew,rotnew)
-
-            if surf_sec == None: # We have not specified surface sections
-                surf_sec = []
+          
+            # Check if the start/end specifiers are NOT given at all
+            
+            if us == None: # No us was given
+                us = []
                 for i in xrange(len(surf_ids)):
-                    surf_sec.append('[:,:]')
-                # end 
+                    us.append(0)
+                # end for
             # end if
 
+            if ue == None: # No ue was given
+                ue = []
+                for i in xrange(len(surf_ids)):
+                    ue.append(self.surfs[surf_ids[i]].Nctlu_free)
+                # end for 
+            # end if
+            
+            if vs == None: # No vs was given
+                vs = []
+                for i in xrange(len(surf_ids)):
+                    vs.append(0)
+                # end for
+            # end if
+
+            if ve == None: # No ve was given
+                ve =[]
+                for i in xrange(len(surf_ids)):
+                    ve.append(self.surfs[surf_ids[i]].Nctlv_free)
+                # end for
+            # end if
+
+            # Now go back back over them and replace any Nones with
+            # the appropriate value
+
+            for i in xrange(len(surf_ids)):
+
+                if us[i] == None:
+                    us[i] = 0
+                # end if
+
+                if ue[i] == None:
+                    ue[i] = self.surfs[surf_ids[i]].Nctlu_free
+                # end if
+
+                if vs[i] == None:
+                    vs[i] = 0
+                # end if
+
+                if ve[i] == None:
+                    ve[i] = self.surfs[surf_ids[i]].Nctlv_free
+                # end if
+            # end for
+                
             for ii in xrange(len(surf_ids)):
                 ipatch = surf_ids[ii]
                 ra.surf_ids.append(ipatch)
-                ra.surf_sec.append(surf_sec[ii])
-                # Now Sections ou the part of the surface we actually
-                # want to connect
-                exec('crop_coef = self.surfs[ipatch].coef'+surf_sec[ii])
+                ra.surf_sec.append([slice(us[ii],ue[ii]),slice(vs[ii],ve[ii])])
+                # Now Section out the part of the (free control
+                # points) we actually want to connect
+                crop_coef = self.surfs[ipatch].getFreeCtl()\
+                    [slice(us[ii],ue[ii]),slice(vs[ii],ve[ii])]
 
                 # Get the direction of the ref axis on the surface
                 dir,max_s,min_s = \
@@ -1513,6 +1540,23 @@ a hinge line'
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
 
+    def finalize(self):
+
+        '''The finalize command must be run before the geometry can be fully
+        surface fitted or used with design variables. No further
+        changes in the edge connectivity is allowed. Two commands are
+        run for each surface: calcNfree and getFreeIndex. These
+        commands calculate the number and size of free control points
+        and calculates the slice string which is used to extract/set
+        those control points'''
+
+        for ipatch in xrange(self.nPatch):
+            self.surfs[ipatch]._getFreeIndex()
+            self.surfs[ipatch]._calcNFree()
+        # end for
+
+        return
+
     def update(self):
         '''update the entire pyGeo Object'''
 
@@ -1528,6 +1572,7 @@ a hinge line'
         for i in xrange(len(self.ref_axis_con)):
             axis1 = self.ref_axis_con[i][0]
             axis2 = self.ref_axis_con[i][1]
+
             self.ref_axis[axis1].update()
             s = self.ref_axis[axis2].base_point_s
             D = self.ref_axis[axis2].base_point_D
@@ -1535,17 +1580,18 @@ a hinge line'
             D = dot(M,D)
 
             X0 = self.ref_axis[axis1].xs.getValue(s)
+
             self.ref_axis[axis2].base_point = X0 + \
                 D*self.ref_axis[axis1].scales(s)
 
             if self.ref_axis[axis2].con_type == 'full':
-
                 s = self.ref_axis[axis2].end_point_s
                 D = self.ref_axis[axis2].end_point_D
                 M = self.ref_axis[axis1].getRotMatrixLocalToGloabl(s)
                 D = dot(M,D)
                 
                 X0 = self.ref_axis[axis1].xs.getValue(s)
+
                 self.ref_axis[axis2].end_point = X0 +\
                     D*self.ref_axis[axis1].scales(s)
             # end if
@@ -1572,26 +1618,14 @@ a hinge line'
                 rot[:,1] = self.ref_axis[r].rotys.coef
                 rot[:,2] = self.ref_axis[r].rotzs.coef
                 scales   = self.ref_axis[r].scales.coef
-                print 'caling getcoef'
-                print 'dir:',s_pos
+                #print 'caling getcoef'
                 coef = pySpline.pyspline.getcoef(\
                     dir,s,t,x,rot,scales,s_pos,links)
-# --------------------Python Version ----------------------------
-#                 coef = zeros((Nctlu,Nctlv,3))
-#                 for i in xrange(Nctlu):
-#                     for j in xrange(Nctlv):
-#                           s = self.ref_axis[r].links_s[ii][i,j]
-#                           M = self.ref_axis[r].getRotMatrixLocalToGloabl(s)
-#                           X_base = self.ref_axis[r].xs.getValue(s)
-#                           coef2[i,j,:] = X_base + \
-#                               dot(M,self.ref_axis[r].links_x[ii][i,j])*\
-#                               self.ref_axis[r].scales(s)
-#                     # end for
-#                 # end for
-# --------------------Python Version ----------------------------
                 
-                exec('self.surfs[ipatch].coef'+self.ref_axis[r].surf_sec[ii]+\
-                         '=coef')
+                # Update the section of free control points
+                self.surfs[ipatch].setFreeCtlSection(\
+                    coef,self.ref_axis[r].surf_sec[ii][0],\
+                        self.ref_axis[r].surf_sec[ii][1])
             # end for
         # end for
 
@@ -1615,6 +1649,26 @@ a hinge line'
 #         print 'time5:',timeF-timeE
         return
          
+    def returncoef(self):
+        '''Temp function to get the list of (compressed) coefficientzs for testing with fd'''
+        coef = array([])
+        for ipatch in xrange(self.nPatch):
+            temp = self.surfs[ipatch].getFreeCtl().flatten()
+            coef = hstack([coef,temp])
+        # end for
+            
+        return coef
+
+         
+    def returncoef2(self):
+        '''Temp function to get the list of (compressed) coefficientzs for testing with fd'''
+        coef = []
+        for ipatch in xrange(self.nPatch):
+            coef.append(self.surfs[ipatch].getFreeCtl().copy())
+        # end for
+            
+        return coef
+
     def calcCtlDeriv(self):
 
         '''This function runs the complex step method over the design variable
@@ -1653,30 +1707,34 @@ a hinge line'
             print 'NdvGlobal:',NdvGlobal
             print 'Nctl:',Nctl
             print 'Ndv:',Ndv
-            # We know the approximate row filling factor: Its nGlobal + 1
+            # We know the row filling factor: Its (exactly) nGlobal + 3
              
             if USE_PETSC:
                 self.J1 = PETSc.Mat()
-                self.J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+1)
+                self.J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3)
             else:
                 self.J1 = zeros((Nctl*3,Ndv))
             # end if
         # end if 
    
         # This next section of code is basically the update() function
-        # however, it runs the getComplexCoef instead of update on the
-        # spline class
         h = 1.0e-40j
         col_counter = 0
-        for ii in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
-            nVal = self.DV_listGlobal[ii].nVal
+        for idv in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
+            nVal = self.DV_listGlobal[idv].nVal
 
             for jj in xrange(nVal):
                 if nVal == 1:
-                    self.DV_listGlobal[ii].value += h
+                    self.DV_listGlobal[idv].value += h
                 else:
-                    self.DV_listGlobal[ii].value[jj] += h
+                    self.DV_listGlobal[idv].value[jj] += h
                 # end if
+
+                coef = []
+                # Create a list of the free coefficients for EACH surface
+                for ipatch in xrange(self.nPatch):
+                    coef.append(zeros((self.surfs[ipatch].Nctlu_free,\
+                                           self.surfs[ipatch].Nctlv_free,3),'D'))
 
                 # -----------COPY OF UPDATE--------------
                  # First, update the reference axis info from the design variables
@@ -1701,8 +1759,7 @@ a hinge line'
                     self.ref_axis[axis2].base_point = X0 + \
                         D*self.ref_axis[axis1].scales(s)
 
-                    if self.ref_axis[axis2].con_type == 'full':
-
+                    if self.ref_axis[axis2].con_type  == 'full':
                         s = self.ref_axis[axis2].end_point_s
                         D = self.ref_axis[axis2].end_point_D
                         R = self.ref_axis[axis1].getRotMatrixLocalToGloabl(s)
@@ -1717,13 +1774,12 @@ a hinge line'
                 # end for
                 timeC = time.time()
 
-
                 # -------END COPY OF UPDATE--------------
 
-                # Third, update the ref_axis and consequently the
-                # design variables
+                # Third, update the design variables
                 for r in xrange(len(self.ref_axis)):
                     for ii in xrange(len(self.ref_axis[r].surf_ids)):
+                        
                         ipatch = self.ref_axis[r].surf_ids[ii]
                         Nctlu = self.ref_axis[r].surf_sizes[ii][0]
                         Nctlv = self.ref_axis[r].surf_sizes[ii][1]
@@ -1734,57 +1790,103 @@ a hinge line'
                         s = self.ref_axis[r].s    # parameter for ref axis
                         t = self.ref_axis[r].xs.t # common knot vector 
                         x = self.ref_axis[r].xs.coef
-                        rot   = zeros((self.ref_axis[r].N,3),'D')
-                        rot[:,0] = self.ref_axis[r].rotxs.coef
-                        rot[:,1] = self.ref_axis[r].rotys.coef
-                        rot[:,2] = self.ref_axis[r].rotzs.coef
+                        rot   = dstack((self.ref_axis[r].rotxs.coef,\
+                                            self.ref_axis[r].rotys.coef, \
+                                            self.ref_axis[r].rotzs.coef))
                         scales   = self.ref_axis[r].scales.coef
 
                         # Just the coefficient affected by this ref_axis
-                        #print 'calling complex version'
-                        #print 'x:',x
+                     
+                        # Fortran Call Template
+                        #coef = getcoef(dir,s,t,x,rot,scale,s_pos,links,\
+                            #[nref,nx,ny])
+
                         coef_temp = pySpline.pyspline_cs.getcoef(\
                             dir,s,t,x,rot,scales,s_pos,links)
                         
                         # TOTAL size of the coefficients on the patch
-                        coef = zeros((self.surfs[ipatch].Nctlu,
-                                      self.surfs[ipatch].Nctlv,3),'D')
-                
-                        exec('coef'+self.ref_axis[r].surf_sec[ii]+'=coef_temp')
-                
-                        # Slice out ONLY the driving coefficients
-                        exec('coef = coef'+self.surfs[ipatch].slice_string)
-                
-                        # Set them in the jacobain
-                        self.J1[M[ipatch]*3:M[ipatch+1]*3,col_counter] =\
-                            imag(coef.flatten())/1e-40
+                        su = self.ref_axis[r].surf_sec[ii][0]
+                        sv = self.ref_axis[r].surf_sec[ii][1]
+                        coef[ipatch][su,sv] = coef_temp
+
                     # end for
                 # end for
-                
+                # Fourth 
+                for idv2 in xrange(len(self.DV_listLocal)):
+                    ipatch = self.DV_listLocal[idv2].surface_id
+                    slice_u = self.DV_listLocal[idv2].slice_u
+                    slice_v = self.DV_listLocal[idv2].slice_v
+                    value = self.DV_listLocal[idv2].value
+                    coef[ipatch] = self.surfs[ipatch].updateSurfacePointsDeriv(\
+                        coef[ipatch],value,slice_u,slice_v)
+                # end for
+
+                # Now set the column in J1
+                for ipatch in xrange(self.nPatch):
+                    self.J1[M[ipatch]*3:M[ipatch+1]*3,col_counter] =       \
+                        imag(coef[ipatch].flatten())/1e-40
                 # Increment Column Counter
                 col_counter += 1
                 print 'col_counter:',col_counter
 
                 # Reset Design Variable Peturbation
                 if nVal == 1:
-                    self.DV_listGlobal[ii].value -= h
+                    self.DV_listGlobal[idv].value -= h
                 else:
-                    self.DV_listGlobal[ii].value[jj] -= h
+                    self.DV_listGlobal[idv].value[jj] -= h
                 # end if
             # end for
         # end for
-
+        print 'local dv'
+        
         # The next step is go to over all the LOCAL variables,
         # compute the surface normal and 
+
+        for idv in xrange(len(self.DV_listLocal)): # This is the Master CS Loop
+            
+            nVal = self.DV_listLocal[idv].nVal
+            ipatch = self.DV_listLocal[idv].surface_id
+            
+            ipatch = self.DV_listLocal[idv].surface_id
+            normals = pySpline.pyspline.getctlnormals(\
+                self.surfs[ipatch].coef,self.surfs[ipatch].tu,\
+                    self.surfs[ipatch].tv,self.surfs[ipatch].ku, \
+                    self.surfs[ipatch].kv)
+
+            # NOTE: Normals are the FULL size of the surface
+
+            us = self.DV_listLocal[idv].slice_u.start
+            vs = self.DV_listLocal[idv].slice_v.start
+
+            Nctlu_free = self.surfs[ipatch].Nctlu_free
+            Nctlv_free = self.surfs[ipatch].Nctlv_free
+
+            for i in xrange(self.DV_listLocal[idv].Nctlu):
+                for j in xrange(self.DV_listLocal[idv].Nctlv):
+                    # Calculate the actual position
+                    index = M[ipatch]*3 + ((i+us)*Nctlv_free + j+vs)*3
+                    self.J1[index:index+3,col_counter] = -normals[i+us,j+vs]
+                    #print 'col_counter',col_counter,index,index+3
+                    col_counter += 1
+                # end for
+            # end for
+
+            # Now set the normal in the correct location
+
+
+
 
         if USE_PETSC:
             self.J1.assemblyBegin()
             self.J1.assemblyEnd()
         # end if 
        
-        #self.J1.view()
+        # Print the first column to a file
 
-        return 
+
+        #self.J1.view()
+        print 'done done done'
+        return coef
 
     def addGeoObject(self,geo_obj):
 
@@ -1807,21 +1909,45 @@ a hinge line'
         return 
 
 
-    def addGeoDVLocal(self,dv_name,lower,upper,surface_id):
-        '''Add a local design variable group'''
-        # Make sure we know how many free Control Points we have
-        self.surfs[surface_id]._calcNFree() 
-        self.surfs[surface_id]._getFreeIndex()
-        self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,surface_id))
+    def addGeoDVLocal(self,dv_name,lower,upper,surf=None,us=None,ue=None,\
+                          vs=None,ve=None):
 
-        self.DV_listLocal[-1].Nctlu = self.surfs[surface_id].Nctlu_free
-        self.DV_listLocal[-1].Nctlv = self.surfs[surface_id].Nctlv_free
-        self.DV_listLocal[-1].nVal  = self.DV_listLocal[-1].Nctlu*\
-            self.DV_listLocal[-1].Nctlv
+        '''Add a local design variable group.  For Local Design variables the
+        reference us,ue,vs,ve are given wrt the full surface since the
+        user will generally know the full size of the surface but not
+        where it has been clipped due to master/slave edges'''
 
-        self.DV_listLocal[-1].value = \
-            zeros((self.DV_listLocal[-1].Nctlu,self.DV_listLocal[-1].Nctlv))
+        if surf == None:
+            print 'Error: A surface must be specified with surf = <surf_id>'
+            sys.exit(1)
+
+        # First get the full and free size of the surface we are dealing with
+        Nctlu = self.surfs[surf].Nctlu
+        Nctlv = self.surfs[surf].Nctlv
+        Nctlu_free = self.surfs[surf].Nctlu_free
+        Nctlv_free = self.surfs[surf].Nctlv_free
+
+        if us == None:
+            us = 0
+
+        if ue == None or ue > Nctlu_free:
+            ue = Nctlu_free
+
+        if vs == None:
+            vs = 0
+            
+        if ve == None or ve > Nctlv_free:
+            ve = Nctlv_free
+
+        slice_u = slice(us,ue)
+        slice_v = slice(vs,ve)
+        
+        self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,\
+                                                surf,slice_u,slice_v))
+        
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
+        
+        return
 
 
     def addGeoDVGlobal(self,dv_name,value,lower,upper,function):
@@ -1835,29 +1961,30 @@ a hinge line'
 #                   Surface Writing Output Functions
 # ----------------------------------------------------------------------
 
-    def writeTecplot(self,file_name,write_con=True,write_ref_axis=True,\
-                         write_links=False):
+    def writeTecplot(self,file_name,surfs=True,edges=False,\
+                         ref_axis=True,links=False):
         '''Write the pyGeo Object to Tecplot'''
 
         # ---------------------------
         #    Write out the surfaces
         # ---------------------------
         
-        f = open(file_name,'w')
-        f.write ('VARIABLES = "X", "Y","Z"\n')
-        print ' '
-        print 'Writing Tecplot file: %s '%(file_name)
-        sys.stdout.write('Outputting Patch: ')
-        for ipatch in xrange(self.nPatch):
-            sys.stdout.write('%d '%(ipatch))
-            self.surfs[ipatch].writeTecplot(handle=f,size=0.03)
+        if surfs == True:
+            f = open(file_name,'w')
+            f.write ('VARIABLES = "X", "Y","Z"\n')
+            print ' '
+            print 'Writing Tecplot file: %s '%(file_name)
+            sys.stdout.write('Outputting Patch: ')
+            for ipatch in xrange(self.nPatch):
+                sys.stdout.write('%d '%(ipatch))
+                self.surfs[ipatch].writeTecplotSurface(handle=f,size=0.03)
 
         # ---------------------------
         #    Write out the edges
         # ---------------------------
 
         # We also want to output edge continuity for visualization
-        if self.con and write_con:
+        if self.con and edges==True:
             counter = 1
             for i in xrange(len(self.con)): #Output Simple Edges (no continuity)
                 if self.con[i].cont == 0 and self.con[i].type == 1:
@@ -1888,30 +2015,28 @@ a hinge line'
                     self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
                 # end if
             # end for
-
         # end if
 
         # ---------------------------------
         #    Write out Ref Axis
         # ---------------------------------
-        
-        # We also want to output Ref Axis if available
 
-        if len(self.ref_axis)>0 and write_ref_axis:
+        if len(self.ref_axis)>0 and ref_axis==True:
             for r in xrange(len(self.ref_axis)):
                 axis_name = 'ref_axis%d'%(r)
-                self.ref_axis[r].writeTecplot(f,axis_name)
-                
-               
+                self.ref_axis[r].writeTecplotAxis(f,axis_name)
+            # end for
+        # end if
 
         # ---------------------------------
         #    Write out Links
         # ---------------------------------
 
-        if len(self.ref_axis)>0 and write_links:
+        if len(self.ref_axis)>0 and links==True:
             for r in xrange(len(self.ref_axis)):
-                self.ref_axis[r].writeLinks(f,self.surfs)
-
+                self.ref_axis[r].writeTecplotLinks(f,self.surfs)
+            # end for
+        # end if
               
         f.close()
         sys.stdout.write('\n')
@@ -2015,7 +2140,7 @@ a hinge line'
 
         # First we back out what patch nearest_elem belongs to:
 
-        patchID = (nearest_elem-1) // ((Nu-1)*(Nv-1))  # Integer Division
+        patchID = int(floor( (nearest_elem-1.0) / ((Nu-1)*(Nv-1))))  # Integer Division
 
         # Next we need to figure out what is the actual UV coordinate 
         # on the given surface
@@ -2029,7 +2154,7 @@ a hinge line'
             #print local_elem
             # Find out what its row/column index is
 
-            row = local_elem // (Nu-1)  # Integer Division
+            row = int(floor(local_elem / (Nu-1.0)))  # Integer Division
             col = mod(local_elem,(Nu-1)) 
 
             #print nearest_elem[i],local_elem,row,col
@@ -2248,7 +2373,7 @@ class ref_axis(object):
         self.links_s = []
         self.links_x = []
         self.surf_sizes = []
-        self.surf_sec  = []
+        self.surf_sec = []
         self.surf_dir = []
         self.con_type = None
         if not  X.shape == rot.shape:
@@ -2314,7 +2439,7 @@ class ref_axis(object):
         return
 
        
-    def writeTecplot(self,handle,axis_name):
+    def writeTecplotAxis(self,handle,axis_name):
         '''Write the ref axis to the open file handle'''
         N = len(self.s)
         handle.write('Zone T=%s I=%d\n'%(axis_name,N))
@@ -2323,8 +2448,11 @@ class ref_axis(object):
             handle.write('%f %f %f \n'%(values[i,0],values[i,1],values[i,2]))
         # end for
 
+        return
 
-    def writeLinks(self,handle,surfs):
+    def writeTecplotLinks(self,handle,surfs):
+        '''Write out the surface links. Note surfs is the pyGeo 
+        list of surfaces'''
 
         for ii in xrange(len(self.surf_ids)):
             ipatch = self.surf_ids[ii]
@@ -2335,7 +2463,8 @@ class ref_axis(object):
             coords = zeros((2*num_vectors,3))
             icoord = 0
             counter = 0
-            exec('crop_coef = surfs[ipatch].coef'+self.surf_sec[ii])
+            crop_coef = surfs[ipatch].getFreeCtl()[self.surf_sec[ii][0]\
+                                                     ,self.surf_sec[ii][1]]
             for j in xrange(Nctlv):
                 for i in xrange(Nctlu):                    
                     x0 = self.xs.getValue(self.links_s[ii][i,j])
@@ -2434,18 +2563,17 @@ class geoDVGlobal(object):
         self.function = function
         return
 
-
     def __call__(self,ref_axis):
 
         '''When the object is called, actually apply the function'''
-        # Execute the user-supplied function
+        # Run the user-supplied function
 
         return self.function(self.value,ref_axis)
         
 
 class geoDVLocal(object):
      
-    def __init__(self,dv_name,lower,upper,surface_id):
+    def __init__(self,dv_name,lower,upper,surface_id,slice_u,slice_v):
         
         '''Create a set of gemoetric design variables whcih change the shape
         of a surface patch, surface_id
@@ -2463,11 +2591,14 @@ class geoDVLocal(object):
         Note: Value is NOT specified, value will ALWAYS be initialized to 0
 
         '''
-        self.Nctlu = None
-        self.Nctlv = None
-        self.nVal = None
+
+        self.Nctlu = slice_u.stop-slice_u.start
+        self.Nctlv = slice_v.stop-slice_v.start
+        self.nVal = self.Nctlu*self.Nctlv
+        self.slice_u = slice_u
+        self.slice_v = slice_v                                 
     
-        self.value = None
+        self.value = zeros((self.Nctlu,self.Nctlv),'D')
         self.name = dv_name
         self.lower = lower
         self.upper = upper
@@ -2480,7 +2611,7 @@ class geoDVLocal(object):
         '''When the object is called, apply the design variable values to the
         surface'''
         #call the surface with the values
-        surface.updateSurfacePoints(self.value)
+        surface.updateSurfacePoints(self.value,self.slice_u,self.slice_v)
         return surface
 
 #==============================================================================
@@ -2492,32 +2623,3 @@ if __name__ == '__main__':
     print 'Testing pyGeo...'
     print 'No tests implemented yet...'
 
-
-
-
-# Temp Code:
-
-#  # Ref_axis:
-#                 temp_spline = pySpline.linear_spline(task='interpolate',X=Xsec[start:end,:],k=2) # spatial
-#                 s = temp_spline.s # We use the spatial basis calculated as the basis for the rotational components
-#                 Xsecnew[start2:end2,:] = temp_spline.getValueV(section_spacing[i])
-
-
-#                 temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,0],k=2,s=s) # X rot
-#                 rotnew[start2:end2,0] = temp_spline.getValueV(section_spacing[i])
-
-#                 temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,1],k=2,s=s) # Y rot
-#                 rotnew[start2:end2,1] = temp_spline.getValueV(section_spacing[i])
-
-#                 temp_spline = pySpline.linear_spline(task='interpolate',X=rot[start:end,2],k=2,s=s) # Z rot
-#                 rotnew[start2:end2,2] = temp_spline.getValueV(section_spacing[i])
-
-#                 # Generate and append the ref_axis
-
-#                 cur_ref_axis = ref_axis(Xsecnew[start2:end2],rotnew[start2:end2])
-#                 self.ref_axis.append(cur_ref_axis)
-#                 self.ref_axis_surface_con.append([2*i,2*i+1])
-#                 self.ref_axis_con.append(range(nBreaks+1))
-#                 # Attach the current reference axis to the current two surfaces
-#                 self.surfs[2*i  ].associateRefAxis(cur_ref_axis)
-#                 self.surfs[2*i+1].associateRefAxis(cur_ref_axis)

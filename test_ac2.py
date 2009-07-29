@@ -13,26 +13,21 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # =============================================================================
 # Extension modules
 # =============================================================================
-#from matplotlib.pylab import *
 
-# pySpline
+# pySpline 
 sys.path.append('../pySpline/python')
 
-#cfd-csm pre
+#cfd-csm pre (Optional)
 sys.path.append('../../pyHF/pycfd-csm/python/')
 
 #pyGeo
 import pyGeo2 as pyGeo
 
-# Wing Information
+# ==============================================================================
+# Start of Script
+# ==============================================================================
 
-def c_atan2(x,y):
-    a=real(x)
-    b=imag(x)
-    c=real(y)
-    d=imag(y)
-    return complex(arctan2(a,c),(c*b-a*d)/(a**2+c**2))
-
+# Wing Information - Create a Geometry Object from cross sections
 
 naf=3
 airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
@@ -43,8 +38,6 @@ z = [0,5,6]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
 tw_aero = [0,0,0] # ie rot_z
-X = zeros((naf,3))
-rot = zeros((naf,3))
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
@@ -57,11 +50,14 @@ section_spacing = []
 s1 = hstack([linspace(0,.25,4),linspace(0.26,0.3,5),linspace(0.35,0.7,8),\
                  linspace(0.71,0.75,5),linspace(0.76,1,4)])
 
+#Create section spacing list
 section_spacing.append(s1)
 section_spacing.append(linspace(0,1,5))
 
-    #section_spacing.append(1-linspace(1,0,nsections[i])**2)
 # Put spatial and rotations into two arrays
+X = zeros((naf,3))
+rot = zeros((naf,3))
+
 X[:,0] = x
 X[:,1] = y
 X[:,2] = z
@@ -84,7 +80,7 @@ Nctlu = 26
 # wing.calcEdgeConnectivity(1e-2,1e-2)
 # wing.writeEdgeConnectivity('wing.con')
 # wing.stitchEdges()
-# wing.writeTecplot('wing.dat',write_ref_axis=False,write_links=False)
+# wing.writeTecplot('wing.dat',edges=True)
 # print 'Done Step 1'
 # sys.exit(0)
 # ----------------------------------------------------------------------
@@ -126,6 +122,8 @@ Nctlu = 26
 
 wing = pyGeo.pyGeo('iges',file_name='wing.igs')
 wing.readEdgeConnectivity('wing.con')
+#Call the finalize command after we have set the connections
+wing.finalize()
 wing.stitchEdges() # Just to be sure
 print 'Done Step 3'
 
@@ -134,48 +132,54 @@ print 'Done Step 3'
 # Step 4: Now the rest of the code is up to the user. The user only
 # needs to run the commands in step 3 to fully define the geometry of
 # interest
-print '----------------------'
-print 'Attaching Ref Axis...'
-print '----------------------'
+print '---------------------------'
+print 'Attaching Reference Axis...'
+print '---------------------------'
 
-# Full ref_axis attachments
-surf_sec = ['[:,:]','[:,:]']
+# End-Type ref_axis attachments
+# Note No surf_sec requried for the entire surface
 wing.addRefAxis([0,1],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
-                    spacing=section_spacing[0],surf_sec = surf_sec )
+                    spacing=section_spacing[0])
 wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
-                    spacing=section_spacing[0],surf_sec = surf_sec )
+                    spacing=section_spacing[0])
 
-#Flap-Type ref_axis attachment
-X = array([[2.,0,1.5],[2,0,3.5]])
-rot = array([[0,0,0],[0,0,0]])
-surf_sec = ['[15:,6:19]','[0:5,6:19]']
-wing.addRefAxis([0,1],X,rot,surf_sec = surf_sec )
+#Flap-Type (full) ref_axis attachment
+X = array([[2.,0,1.5],[2,0,3.5]]) # hinge Line
+rot = array([[0,0,0],[0,0,0]])        
+us = [15,None]
+ue = [None,5]
+vs = [6,6]
+ve = [19,19]
+
+wing.addRefAxis([0,1],X,rot,us=us,ue=ue,vs=vs,ve=ve)
 
 # Now we specify How the ref axis move together
 wing.addRefAxisCon(0,1,'end') # Wing and corner
 wing.addRefAxisCon(0,2,'full') # flap
-wing.writeTecplot('wing.dat',write_ref_axis=True,write_links=True)
+
+# Write out the surface
+wing.writeTecplot('wing.dat',ref_axis=True,links=True)
 
 # --------------------------------------
 # Define Design Variable functions here:
 # --------------------------------------
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
-    #print 'span'
+#    print 'span',val           
     ref_axis[0].x[:,2] = ref_axis[0].x0[:,2] * val
     return ref_axis
 
 def twist(val,ref_axis):
     '''Twist'''
-    #print 'twist'
-    ref_axis[0].rot[:,2] = ref_axis[0].rot0[:,2] + ref_axis[0].s*val
+#    print 'twist',val
+    ref_axis[0].rot[:,2] = val#ref_axis[0].rot0[:,2] + ref_axis[0].s*val
     ref_axis[1].rot[:,2] = ref_axis[0].rot[-1,2]
-
     return ref_axis
 
 def sweep(val,ref_axis):
     '''Sweep the wing'''
     # Interpret the val as an ANGLE
+#    print 'sweep',val
     angle = val*pi/180
     dz = ref_axis[0].x[-1,2] - ref_axis[0].x[0,2]
     dx = dz*tan(angle)
@@ -188,7 +192,8 @@ def sweep(val,ref_axis):
     return ref_axis
 
 def flap(val,ref_axis):
-    ref_axis[0].rot[:,2] = val
+#    print 'flap:',val
+    ref_axis[2].rot[:,2] = val
 
     return ref_axis
 
@@ -196,15 +201,15 @@ def flap(val,ref_axis):
 #         Name, value, lower,upper,function, ref_axis_id -> must be a list
 # # Add global Design Variables FIRST
 wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
-wing.addGeoDVGlobal('twist',0,-20,20,twist)
+wing.addGeoDVGlobal('twist',zeros(26),-20,20,twist)
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
 wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
 # # Add sets of local Design Variables SECOND
-wing.addGeoDVLocal('surface1',-0.1,0.1,0)
-wing.addGeoDVLocal('surface2',-0.1,0.1,1)
-wing.addGeoDVLocal('surface3',-0.1,0.1,2)
-wing.addGeoDVLocal('surface4',-0.1,0.1,3)
+wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,us=10,ue=15,vs=10,ve=15)
+#wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
+#wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
+#wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
 
 # # Get the dictionary to use names for referecing 
 idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global)
@@ -212,28 +217,47 @@ idl = wing.DV_namesLocal  #NOTE: This is constant (idl -> id local)
 
 print 'idg',idg
 print 'idl',idl
-# # Change the DV's -> Normally this is done from the Optimizer
-wing.DV_listGlobal[idg['span']].value = .95
-wing.DV_listGlobal[idg['flap']].value = -10
-wing.DV_listGlobal[idg['twist']].value = -6
-wing.DV_listGlobal[idg['sweep']].value = 15
 
-wing.DV_listLocal[idl['surface1']].value[7,7] = .14
+# # Change the DV's -> Normally this is done from the Optimizer
+wing.DV_listGlobal[idg['span']].value = 1
+wing.DV_listGlobal[idg['flap']].value = 0
+wing.DV_listGlobal[idg['twist']].value = linspace(0,5,26)
+wing.DV_listGlobal[idg['sweep']].value = 0
+
+wing.DV_listLocal[idl['surface1']].value[0,0] = 0.0
 # wing.DV_listLocal[idl['surface2']].value[5,5] = .14
 # wing.DV_listLocal[idl['surface3']].value[3,3] = .14
 # wing.DV_listLocal[idl['surface4']].value[2,2] = .14
 
-timeA = time.time()
 wing.update()
+timeA = time.time()
+coef_list1 = wing.calcCtlDeriv()
 timeB = time.time()
-wing.calcCtlDeriv()
-timeC = time.time()
+print 'Derivative Time:',timeB-timeA
 
-print 'Update Time:',timeB-timeA
-print 'Derivative Time:',timeC-timeB
+wing.update()
 
-# Now generate the jacobian
+dx = 1e-4
+coef0= wing.returncoef()
+coef_list0 = wing.returncoef2()
+wing.DV_listLocal[idl['surface1']].value[2,2] = 0 + dx
+wing.update()
+coefdx= wing.returncoef()
+
+coef_list2 = wing.returncoef2()
 
 
-wing.writeTecplot('wing2.dat',write_ref_axis=True,write_links=True)
-wing.writeIGES('wing_mod.igs')
+# # Get The full vector 
+dx1 = wing.J1[:,41]
+dx2 = (coefdx-coef0)/(dx)
+f1 = open('dx1','w')
+f2 = open('dx2','w')
+for i in xrange(len(dx1)):
+    f1.write('%15g \n'%(dx1[i]))
+    f2.write('%15g \n'%(dx2[i]))
+f1.close()
+f2.close()
+
+
+wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
+#wing.writeIGES('wing_mod.igs')
