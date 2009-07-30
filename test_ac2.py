@@ -257,7 +257,8 @@ for i in xrange(len(dx1)):
     f2.write('%15g \n'%(dx2[i]))
 f1.close()
 f2.close()
-
+patchID,uv = wing.attachSurface()
+wing.calcSurfaceDerivative(patchID,uv)
 
 wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')

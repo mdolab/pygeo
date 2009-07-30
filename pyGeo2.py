@@ -250,8 +250,8 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for ipatch in xrange(nPatch):
             surfs.append(pySpline.surf_spline(task='lms',X=patches[ipatch],\
-                                                  ku=4,kv=4,Nctlu=13,Nctlv=13,\
-                                                  complex=True))
+                                                  ku=4,kv=4,Nctlu=13,Nctlv=13))
+
         self.surfs = surfs
         self.nPatch = nPatch
         return
@@ -344,7 +344,7 @@ file_name=\'filename\' for iges init_type'
 
             self.surfs.append(pySpline.surf_spline(\
                     task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
-                        range=range,complex=True))
+                        range=range))
         # end for
 
         return 
@@ -538,7 +538,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 X[:,:,1] = Components[comp1]._components[comp2].Surface_y
                 X[:,:,2] = Components[comp1]._components[comp2].Surface_z
                 self.surfs.append(pySpline.surf_spline(\
-                        fit_type,ku=4,kv=4,X=X,*args,**kwargs),complex=True)
+                        fit_type,ku=4,kv=4,X=X,*args,**kwargs))
             # end for
         # end for
 
@@ -1148,8 +1148,9 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for ipatch in xrange(self.nPatch):
             #print 'Patch %d'%(ipatch)
             for j in xrange(self.surfs[ipatch].Nctlv):
-                per_don =((j+0.0)/self.surfs[ipatch].Nctlv)
+                per_don =((j+0.0)/self.surfs[ipatch].Nctlv) # Percent Done
                 #print 'done %4.2f'%(per_don)
+
                 for i in xrange(self.surfs[ipatch].Nctlu):
                     pt_type,edge_info,node_info = \
                         self.surfs[ipatch].checkCtl(i,j) 
@@ -2079,10 +2080,11 @@ a hinge line'
     def attachSurface(self):#,surface_points):
 
         '''Attach a list of surface points to pyGeo surfaces'''
-
+        print ''
+        print 'Attaching a discrete surface to the Geometry Object...'
         # TEMPORARY - Load in the points from a file
 
-        f = open('surface_points.dat','r')
+        f = open('wing.dtx','r')
         coordinates = []
         for line in f:
             aux = string.split(line)
@@ -2090,12 +2092,13 @@ a hinge line'
         # end for
         f.close()
         coordinates = transpose(array(coordinates))
+
         nSurf = coordinates.shape[1]
         # Now make the 'FE' Grid from the sufaces.
 
         # Global 'N' Parameter
-        Nu = 30
-        Nv = 30
+        Nu = 40
+        Nv = 40
         
         nelem    = self.nPatch * (Nu-1)*(Nv-1)
         nnode    = self.nPatch * Nu *Nv
@@ -2132,15 +2135,15 @@ a hinge line'
         # end for
 
         # Now run the csm_pre command 
-
+        print 'Running CSM_PRE...'
         [dist,nearest_elem,uvw,base_coord,weightt,weightr] = \
             csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
-
+        print 'Done CSM_PRE...'
         # All we need from this is the nearest_elem array and the uvw array
 
         # First we back out what patch nearest_elem belongs to:
 
-        patchID = int(floor( (nearest_elem-1.0) / ((Nu-1)*(Nv-1))))  # Integer Division
+        patchID = (nearest_elem-1) / ((Nu-1)*(Nv-1))  # Integer Division
 
         # Next we need to figure out what is the actual UV coordinate 
         # on the given surface
@@ -2154,7 +2157,8 @@ a hinge line'
             #print local_elem
             # Find out what its row/column index is
 
-            row = int(floor(local_elem / (Nu-1.0)))  # Integer Division
+            #row = int(floor(local_elem / (Nu-1.0)))  # Integer Division
+            row = local_elem / (Nu-1)
             col = mod(local_elem,(Nu-1)) 
 
             #print nearest_elem[i],local_elem,row,col
@@ -2173,34 +2177,88 @@ a hinge line'
             else:
                 v_local = uvw[1,i]
 
-            uv[i,0] =  u_local/(Nu-1)+ col/(Nu-1)
-            uv[i,1] =  v_local/(Nv-1)+ row/(Nv-1)
+            uv[i,0] =  u_local/(Nu-1)+ col/(Nu-1.0)
+            uv[i,1] =  v_local/(Nv-1)+ row/(Nv-1.0)
 
         # end for
 
-        # Check to see how far the coordinate and the surface point is:
-        counter1 = 0
-        counter2 = 0 
-        tol = 1e-3
-        for i in xrange(nSurf):
-            D = coordinates[:,i] - \
-                self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
-            D = sqrt(dot(D,D))
-            if D > tol:
-                counter1 += 1
-                uv[i,0],uv[i,1],D2,converged =\
-                    self.surfs[patchID[i]].projectPoint(\
-                    coordinates[:,i],u0=uv[i,0],v0=uv[i,0])
-                if sqrt(dot(D2,D2)) > tol:
-                    counter2 += 1
-                # end if
-            # end if
-        # end for
 
-        print '%d Points were worse than %f before.'%(counter1,tol)
-        print '%d Points were worse than %f after.'%(counter2,tol)
-        return
+        # THERE IS AN ERROR IN PROJECT POINT (I THINK)
+       #  # Check to see how far the coordinate and the surface point is:
+#         counter1 = 0
+#         counter2 = 0 
+#         tol = 1e-20
+#         for i in xrange(nSurf):
+#             D = coordinates[:,i] - \
+#                 self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
+#             D = sqrt(dot(D,D))
+
+#             if D > tol:
+#                 print 'uv before:',uv[i,0],uv[i,1],coordinates[:,i],self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
+#                 counter1 += 1
+#                 uv[i,0],uv[i,1],D2,converged =\
+#                     self.surfs[patchID[i]].projectPoint(\
+#                     coordinates[:,i],u0=uv[i,0],v0=uv[i,1])
+#                 print 'uv after:',uv[i,0],uv[i,1],self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
+#                 if sqrt(dot(D2,D2)) > tol:
+#                     counter2 += 1
+#                 # end if
+# #             # end if
+#         # end for
+
+#         print '%d Points were worse than %f before.'%(counter1,tol)
+#         print '%d Points were worse than %f after.'%(counter2,tol)
+        print 'Done Surface Attachment'
+
+        return patchID,uv
         
+
+    def calcSurfaceDerivative(self,patchID,uv):
+
+
+        '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
+
+        
+        #take the first point
+        i = 350
+        print 'First Point:',patchID[i],uv[i]
+
+
+        ku = self.surfs[patchID[i]].ku
+        kv = self.surfs[patchID[i]].kv
+
+        ileftu, mflag = self.surfs[patchID[i]].pyspline.intrv(self.surfs[patchID[i]].tu,uv[i][0],1)
+        ileftv, mflag = self.surfs[patchID[i]].pyspline.intrv(self.surfs[patchID[i]].tv,uv[i][1],1)
+
+        u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
+        v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
+        print 'ileftu',ileftu-1
+        print 'ileftv',ileftv-1
+        print 'u_list:',u_list
+        print 'v_list:',v_list
+        Nctlu = self.surfs[patchID[i]].Nctlu
+        Nctlv = self.surfs[patchID[i]].Nctlv
+
+        for ii in xrange(Nctlu):
+            for jj in xrange(Nctlv):
+
+                x = self.surfs[patchID[i]].calcPtDeriv(\
+                    uv[i][0],uv[i][1],ii,jj)
+                if not x == 0:
+                    print 'ii,jj',ii,jj
+                    print 'x:',x
+
+            # end for
+        # end for
+                
+
+        return
+
+
+
+
+
+
     def _read_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
 
