@@ -172,7 +172,7 @@ def span_extension(val,ref_axis):
 def twist(val,ref_axis):
     '''Twist'''
 #    print 'twist',val
-    ref_axis[0].rot[:,2] = val#ref_axis[0].rot0[:,2] + ref_axis[0].s*val
+    ref_axis[0].rot[:,2] = ref_axis[0].rot0[:,2] + ref_axis[0].s*val
     ref_axis[1].rot[:,2] = ref_axis[0].rot[-1,2]
     return ref_axis
 
@@ -201,7 +201,7 @@ def flap(val,ref_axis):
 #         Name, value, lower,upper,function, ref_axis_id -> must be a list
 # # Add global Design Variables FIRST
 wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
-wing.addGeoDVGlobal('twist',zeros(26),-20,20,twist)
+wing.addGeoDVGlobal('twist',0,-20,20,twist)
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
 wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
@@ -220,45 +220,56 @@ print 'idl',idl
 
 # # Change the DV's -> Normally this is done from the Optimizer
 wing.DV_listGlobal[idg['span']].value = 1
-wing.DV_listGlobal[idg['flap']].value = 0
-wing.DV_listGlobal[idg['twist']].value = linspace(0,5,26)
+wing.DV_listGlobal[idg['twist']].value = 0
 wing.DV_listGlobal[idg['sweep']].value = 0
+wing.DV_listGlobal[idg['flap']].value = 0
 
-wing.DV_listLocal[idl['surface1']].value[0,0] = 0.0
+#wing.DV_listLocal[idl['surface1']].value[0,0] = 0.0
 # wing.DV_listLocal[idl['surface2']].value[5,5] = .14
 # wing.DV_listLocal[idl['surface3']].value[3,3] = .14
 # wing.DV_listLocal[idl['surface4']].value[2,2] = .14
 
+patchID,uv = wing.attachSurface() #Attach the surface BEFORE any update
+wing.calcSurfaceDerivative(patchID,uv) 
+
 wing.update()
 timeA = time.time()
-coef_list1 = wing.calcCtlDeriv()
+coef_list1 = wing.calcCtlDeriv() # Answer shows up in C
 timeB = time.time()
 print 'Derivative Time:',timeB-timeA
 
+dx = 1e-5
+coef0 = wing.returncoef()
+coordinates0 = wing.getSurfacePoints(patchID,uv)
+print coordinates0
+wing.DV_listGlobal[idg['span']].value = 1 + dx
 wing.update()
-
-dx = 1e-4
-coef0= wing.returncoef()
-coef_list0 = wing.returncoef2()
-wing.DV_listLocal[idl['surface1']].value[2,2] = 0 + dx
-wing.update()
-coefdx= wing.returncoef()
-
-coef_list2 = wing.returncoef2()
-
+coefdx = wing.returncoef()
+coordinatesdx = wing.getSurfacePoints(patchID,uv)
 
 # # Get The full vector 
-dx1 = wing.J1[:,41]
-dx2 = (coefdx-coef0)/(dx)
+
+dx1 = wing.C[:,0]
+dx2 = (coordinatesdx-coordinates0)/(dx)
+
+#dx1 = wing.J1[:,0]
+#dx2 = (coefdx-coef0)/dx
+
 f1 = open('dx1','w')
 f2 = open('dx2','w')
+print 'sizes:',len(dx1),len(dx2)
 for i in xrange(len(dx1)):
-    f1.write('%15g \n'%(dx1[i]))
-    f2.write('%15g \n'%(dx2[i]))
+    if abs(dx1[i]) < 1e-12:
+        f1.write('0.0 \n')
+    else:
+        f1.write('%15g \n'%(dx1[i]))
+
+    if abs(dx2[i]) < 1e-12:
+        f2.write('0.0 \n')
+    else: 
+        f2.write('%15g \n'%(dx2[i]))
 f1.close()
 f2.close()
-patchID,uv = wing.attachSurface()
-wing.calcSurfaceDerivative(patchID,uv)
 
 wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')

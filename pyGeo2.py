@@ -147,6 +147,7 @@ class pyGeo():
         self.DV_namesLocal  = {}
         self.J = None
         self.J1 = None
+        self.J2 = None
         self.con = None
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as \
@@ -1556,6 +1557,53 @@ a hinge line'
             self.surfs[ipatch]._calcNFree()
         # end for
 
+        # Also calculate the global index for each control point
+        current_index = 0
+        for ipatch in xrange(self.nPatch):
+            current_index = self.surfs[ipatch]._assignGlobalIndex(current_index)
+        # end for
+            
+        # Now back propogate the masters to the slaves:
+
+        for ipatch in xrange(self.nPatch):
+            Nctlu = self.surfs[ipatch].Nctlu
+            Nctlv = self.surfs[ipatch].Nctlv
+            
+            for i in xrange(Nctlu):
+                for j in xrange(Nctlv):
+                    pt_type,edge_info,node_info=self.surfs[ipatch].checkCtl(i,j)
+                    
+                    if pt_type == 0:
+                        global_index = self.surfs[ipatch].globalCtlIndex[i,j]
+
+                        if edge_info:
+                            # Unpack edge info
+                            face  = edge_info[0][0]
+                            edge  = edge_info[0][1]
+                            index = edge_info[1]
+                            direction = edge_info[2]
+                            edge_type = edge_info[3]
+                    
+                            if edge_type == 1: # We have another attached ctl
+                                self.surfs[face].setCoefIndexEdge(\
+                                    edge,global_index,index,direction)
+                            # end if
+                        # end if
+
+                        if node_info: 
+                            # Loop over the number of affected nodes
+                            for k in xrange(len(node_info)): 
+                                face = node_info[k][0]
+                                node = node_info[k][1]
+                                self.surfs[face].setCoefIndexCorner(\
+                                    node,global_index)
+                            # end for
+                        # end if
+                    # end if
+                # end for
+            # end for
+        # end for
+
         return
 
     def update(self):
@@ -1669,6 +1717,18 @@ a hinge line'
         # end for
             
         return coef
+
+    def getSurfacePoints(self,patchID,uv):
+
+        '''Temp function to get ALL surface Points'''
+
+        N = len(patchID)
+        coordinates = zeros((N,3))
+        for i in xrange(N):
+            coordinates[i] = self.surfs[patchID[i]].getValue(uv[i][0],uv[i][1])
+
+        return coordinates.flatten()
+
 
     def calcCtlDeriv(self):
 
@@ -1814,12 +1874,16 @@ a hinge line'
                 # end for
                 # Fourth 
                 for idv2 in xrange(len(self.DV_listLocal)):
+
                     ipatch = self.DV_listLocal[idv2].surface_id
+                    print 'ipatch local:',ipatch
                     slice_u = self.DV_listLocal[idv2].slice_u
                     slice_v = self.DV_listLocal[idv2].slice_v
                     value = self.DV_listLocal[idv2].value
-                    coef[ipatch] = self.surfs[ipatch].updateSurfacePointsDeriv(\
-                        coef[ipatch],value,slice_u,slice_v)
+
+                    coef[ipatch] = self.surfs[ipatch].\
+                        updateSurfacePointsDeriv(coef[ipatch],value,\
+                                                     slice_u,slice_v)
                 # end for
 
                 # Now set the column in J1
@@ -1828,7 +1892,7 @@ a hinge line'
                         imag(coef[ipatch].flatten())/1e-40
                 # Increment Column Counter
                 col_counter += 1
-                print 'col_counter:',col_counter
+                #print 'col_counter:',col_counter
 
                 # Reset Design Variable Peturbation
                 if nVal == 1:
@@ -1874,9 +1938,6 @@ a hinge line'
 
             # Now set the normal in the correct location
 
-
-
-
         if USE_PETSC:
             self.J1.assemblyBegin()
             self.J1.assemblyEnd()
@@ -1884,8 +1945,14 @@ a hinge line'
        
         # Print the first column to a file
 
+        # Now Do the Try the matrix multiplication
+        if USE_PETSC:
+            self.C = PETSc.Mat()
+            self.J2.matMult(self.J1,result=self.C)
+        else:
+            self.C = dot(self.J2,self.J1)
+        # end if
 
-        #self.J1.view()
         print 'done done done'
         return coef
 
@@ -2097,8 +2164,8 @@ a hinge line'
         # Now make the 'FE' Grid from the sufaces.
 
         # Global 'N' Parameter
-        Nu = 40
-        Nv = 40
+        Nu = 20
+        Nv = 20
         
         nelem    = self.nPatch * (Nu-1)*(Nv-1)
         nnode    = self.nPatch * Nu *Nv
@@ -2218,46 +2285,79 @@ a hinge line'
 
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
-        
-        #take the first point
-        i = 350
-        print 'First Point:',patchID[i],uv[i]
+        print 'start surface derivative',len(patchID)
+        timeA = time.time()
+        if not self.J2: # Not initialized
+            # Calculate the size Ncoef_free x Ndesign Variables
+            
+            M = len(patchID)
 
+            N = [0]
+            for i in xrange(self.nPatch):
+                N.append(N[-1]+self.surfs[i].Nctl_free)
+            # end if
 
-        ku = self.surfs[patchID[i]].ku
-        kv = self.surfs[patchID[i]].kv
+            Nctl = N[-1]
 
-        ileftu, mflag = self.surfs[patchID[i]].pyspline.intrv(self.surfs[patchID[i]].tu,uv[i][0],1)
-        ileftv, mflag = self.surfs[patchID[i]].pyspline.intrv(self.surfs[patchID[i]].tv,uv[i][1],1)
+            # We know the row filling factor: Its (no more) than ku*kv
+            # control points for each control point. Since we don't
+            # use more than k=4 we will set at 16
+             
+            if USE_PETSC:
+                self.J2 = PETSc.Mat()
+                self.J2.createAIJ([M*3,N[-1]*3],nnz=16*3)
+            else:
+                self.J2 = zeros((M*3,N[-1]*3))
+            # end if
+        # end if 
+                
+        for i in xrange(len(patchID)):
+            #print 'patch id:',i
+            ku = self.surfs[patchID[i]].ku
+            kv = self.surfs[patchID[i]].kv
+            Nctlu = self.surfs[patchID[i]].Nctlu
+            Nctlv = self.surfs[patchID[i]].Nctlv
 
-        u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
-        v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
-        print 'ileftu',ileftu-1
-        print 'ileftv',ileftv-1
-        print 'u_list:',u_list
-        print 'v_list:',v_list
-        Nctlu = self.surfs[patchID[i]].Nctlu
-        Nctlv = self.surfs[patchID[i]].Nctlv
+            ileftu, mflagu = self.surfs[patchID[i]].pyspline.intrv(\
+                self.surfs[patchID[i]].tu,uv[i][0],1)
+            ileftv, mflagv = self.surfs[patchID[i]].pyspline.intrv(\
+                self.surfs[patchID[i]].tv,uv[i][1],1)
 
-        for ii in xrange(Nctlu):
-            for jj in xrange(Nctlv):
+            if mflagu == 0: # Its Inside so everything is ok
+                u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
+            if mflagu == 1: # Its at the right end so just need last one
+                u_list = [ileftu-ku-1]
 
-                x = self.surfs[patchID[i]].calcPtDeriv(\
-                    uv[i][0],uv[i][1],ii,jj)
-                if not x == 0:
-                    print 'ii,jj',ii,jj
-                    print 'x:',x
+            if mflagv == 0: # Its Inside so everything is ok
+                v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
+            if mflagv == 1: # Its at the right end so just need last one
+                v_list = [ileftv-kv-1]
+
+            for ii in xrange(len(u_list)):
+                for jj in xrange(len(v_list)):
+
+                    x = self.surfs[patchID[i]].calcPtDeriv(\
+                        uv[i][0],uv[i][1],u_list[ii],v_list[jj])
+
+                    index = 3*self.surfs[patchID[i]].globalCtlIndex[\
+                        u_list[ii],v_list[jj]]
+                    self.J2[3*i  ,index  ] = x
+                    self.J2[3*i+1,index+1] = x
+                    self.J2[3*i+2,index+2] = x
 
             # end for
+
         # end for
-                
+
+        # Assemble the (Constant) J2
+        if USE_PETSC:
+            self.J2.assemblyBegin()
+            self.J2.assemblyEnd()
+        # end if
+
+        print 'done surface derivative:',time.time()-timeA
 
         return
-
-
-
-
-
 
     def _read_af(self,filename,N=35):
         ''' Load the airfoil file from precomp format'''
