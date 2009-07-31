@@ -72,17 +72,17 @@ Nctlu = 26
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,\
-#                    offset=offset, Xsec=X,rot=rot,breaks=breaks,\
-#                    nsections=nsections,section_spacing=section_spacing,\
-#                    fit_type='lms', Nctlu=Nctlu,Nfoil=20)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,\
+                   offset=offset, Xsec=X,rot=rot,breaks=breaks,\
+                   nsections=nsections,section_spacing=section_spacing,\
+                   fit_type='lms', Nctlu=Nctlu,Nfoil=20)
 
-# wing.calcEdgeConnectivity(1e-2,1e-2)
-# wing.writeEdgeConnectivity('wing.con')
-# wing.stitchEdges()
-# wing.writeTecplot('wing.dat',edges=True)
-# print 'Done Step 1'
-# sys.exit(0)
+wing.calcEdgeConnectivity(1e-2,1e-2)
+wing.writeEdgeConnectivity('wing.con')
+wing.stitchEdges()
+wing.writeTecplot('wing.dat',edges=True)
+print 'Done Step 1'
+sys.exit(0)
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -207,9 +207,9 @@ wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
 # # Add sets of local Design Variables SECOND
 wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,us=10,ue=15,vs=10,ve=15)
-#wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
-#wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
-#wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
+wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
+wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
+wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
 
 # # Get the dictionary to use names for referecing 
 idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global)
@@ -241,7 +241,7 @@ print 'Derivative Time:',timeB-timeA
 dx = 1e-5
 coef0 = wing.returncoef()
 coordinates0 = wing.getSurfacePoints(patchID,uv)
-print coordinates0
+
 wing.DV_listGlobal[idg['span']].value = 1 + dx
 wing.update()
 coefdx = wing.returncoef()

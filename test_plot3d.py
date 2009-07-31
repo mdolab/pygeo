@@ -13,12 +13,14 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # Extension modules
 # =============================================================================
 
-# pySpline
+# pySpline 
 sys.path.append('../pySpline/python')
+
+#cfd-csm pre (Optional)
+sys.path.append('../../pyHF/pycfd-csm/python/')
 
 #pyGeo
 import pyGeo2 as pyGeo
-
 
 # This script reads a surfaced-based plot3d file as typically
 # outputted by aerosurf. It then creates a b-spline surfaces for each
