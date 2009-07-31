@@ -71,6 +71,8 @@ except:
     print 'CSM_PRE is not available. Surface associations cannot be performed'
     USE_CSM_PRE = False
 
+from geo_utils import *
+
 
 # =============================================================================
 # pyGeo class
@@ -422,7 +424,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
-            X_u,Y_u,X_l,Y_l = self._read_af(xsections[i],N)
+            X_u,Y_u,X_l,Y_l = read_af(xsections[i],N)
 
             X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
             X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
@@ -435,11 +437,11 @@ offset.shape[0], Xsec, rot, must all have the same size'
             for j in xrange(N):
                 for isurf in xrange(2):
                     # Twist Rotation
-                    X[isurf,j,i,:] = self._rotz(X[isurf,j,i,:],rot[i,2]*pi/180)
+                    X[isurf,j,i,:] = rotzV(X[isurf,j,i,:],rot[i,2]*pi/180)
                     # Dihediral Rotation
-                    X[isurf,j,i,:] = self._rotx(X[isurf,j,i,:],rot[i,0]*pi/180)
+                    X[isurf,j,i,:] = rotxV(X[isurf,j,i,:],rot[i,0]*pi/180)
                     # Sweep Rotation
-                    X[isurf,j,i,:] = self._roty(X[isurf,j,i,:],rot[i,1]*pi/180)
+                    X[isurf,j,i,:] = rotyV(X[isurf,j,i,:],rot[i,1]*pi/180)
 
 
             # Finally translate according to 
@@ -574,7 +576,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             for jpatch in xrange(ipatch+1,self.nPatch):
                 for i in xrange(4):
                     for j in xrange(4):
-                        coinc,dir_flag=self._test_edge(\
+                        coinc,dir_flag=test_edge(\
                             self.surfs[ipatch],self.surfs[jpatch],i,j,edge_tol)
                         cont_flag = 0 # By Default only C0 continuity
                         if coinc:
@@ -636,7 +638,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
                 # This is confusing...need to explain better
 
-                flip_edge = self._flipEdge(edges[i][0][1])
+                flip_edge = flipEdge(edges[i][0][1])
                 flip_index,order = self._getConIndex(\
                     edge_list,[edges[i][0][0],flip_edge],nJoined,nMirror)
                 #print 'flip_index:',flip_index
@@ -661,7 +663,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                         cur_face = edges[index][order][0] 
                         cur_edge = edges[index][order][1]
                         # Get the opposite edge
-                        cur_edge = self._flipEdge(cur_edge) 
+                        cur_edge = flipEdge(cur_edge) 
                         
                         # Find where that face/edge is
                         new_index,order = self._getConIndex(\
@@ -707,7 +709,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                         # Joined face/edge to edge i
                         cur_face = edges[index][order][0] 
                         cur_edge = edges[index][order][1]
-                        cur_edge = self._flipEdge(cur_edge)
+                        cur_edge = flipEdge(cur_edge)
                         new_index,order = self._getConIndex(\
                             edge_list,[cur_face,cur_edge],nJoined,nMirror)
 
@@ -797,7 +799,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             f1 = self.con[i].f1
             e1 = self.con[i].e1
 
-            n1,n2 = self._getNodesFromEdge(e1)
+            n1,n2 = getNodesFromEdge(e1)
 
             #print 'face1 %d, edge %d, nodes %d and %d'%(f1,e1,n1,n2)
 
@@ -821,7 +823,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             if self.con[i].type == 1: 
                 f2 = self.con[i].f2
                 e2 = self.con[i].e2
-                n1,n2 = self._getNodesFromEdge(e2)
+                n1,n2 = getNodesFromEdge(e2)
 
                 self.surfs[f2].master_node[n1] = False
                 self.surfs[f2].master_node[n2] = False
@@ -1024,32 +1026,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # end for
         # end for
         return
-                        
-    def _flipEdge(self,edge):
-        if edge == 0: return 1
-        if edge == 1: return 0
-        if edge == 2: return 3
-        if edge == 3: return 2
-        else:
-            return None
-   
-
-    def _getNodesFromEdge(self,edge):
-        '''Get the index of the two nodes coorsponding to edge edge'''
-        if edge == 0:
-            n1 = 0
-            n2 = 1
-        elif edge == 1:
-            n1 = 2
-            n2 = 3
-        elif edge == 2:
-            n1 = 0
-            n2 = 2
-        else:
-            n1 = 1
-            n2 = 3
-
-        return n1,n2
 
     def stitchEdges(self):
         
@@ -1070,51 +1046,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # end if
         # end for
         return
-
-
-    def _test_edge(self,surf1,surf2,i,j,edge_tol):
-
-        '''Test edge i on surf1 with edge j on surf2'''
-
-        val1_beg = surf1.getValueEdge(i,0)
-        val1_end = surf1.getValueEdge(i,1)
-
-        val2_beg = surf2.getValueEdge(j,0)
-        val2_end = surf2.getValueEdge(j,1)
-
-        #Three things can happen:
-        coinc = False
-        dir_flag = 1
-        # Beginning and End match (same sense)
-        if self._e_dist(val1_beg,val2_beg) < edge_tol and \
-               self._e_dist(val1_end,val2_end) < edge_tol:
-            # End points are the same, now check the midpoint
-            mid1 = surf1.getValueEdge(i,0.5)
-            mid2 = surf2.getValueEdge(j,0.5)
-            if self._e_dist(mid1,mid2) < edge_tol:
-                coinc = True
-            else:
-                coinc = False
-        
-            dir_flag = 1
-
-        # Beginning and End match (opposite sense)
-        elif self._e_dist(val1_beg,val2_end) < edge_tol and \
-               self._e_dist(val1_end,val2_beg) < edge_tol:
-         
-            mid1 = surf1.getValueEdge(i,0.5)
-            mid2 = surf2.getValueEdge(j,0.5)
-            if self._e_dist(mid1,mid2) < edge_tol:
-                coinc = True
-            else:
-                coinc = False
-                
-            dir_flag = -1
-        # If nothing else
-        else:
-            coinc = False
-
-        return coinc,dir_flag
 
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
@@ -1707,7 +1638,6 @@ a hinge line'
         # end for
             
         return coef
-
          
     def returncoef2(self):
         '''Temp function to get the list of (compressed) coefficientzs for testing with fd'''
@@ -1876,7 +1806,7 @@ a hinge line'
                 for idv2 in xrange(len(self.DV_listLocal)):
 
                     ipatch = self.DV_listLocal[idv2].surface_id
-                    print 'ipatch local:',ipatch
+
                     slice_u = self.DV_listLocal[idv2].slice_u
                     slice_v = self.DV_listLocal[idv2].slice_v
                     value = self.DV_listLocal[idv2].value
@@ -1902,7 +1832,6 @@ a hinge line'
                 # end if
             # end for
         # end for
-        print 'local dv'
         
         # The next step is go to over all the LOCAL variables,
         # compute the surface normal and 
@@ -1953,7 +1882,6 @@ a hinge line'
             self.C = dot(self.J2,self.J1)
         # end if
 
-        print 'done done done'
         return coef
 
     def addGeoObject(self,geo_obj):
@@ -2128,7 +2056,7 @@ a hinge line'
             Pcount,Dcount =self.surfs[ipatch].writeIGES_directory(\
                 f,Dcount,Pcount)
 
-        Pcount = 1
+        Pcount  = 1
         counter = 1
 
         for ipatch in xrange(self.nPatch):
@@ -2281,11 +2209,9 @@ a hinge line'
         
 
     def calcSurfaceDerivative(self,patchID,uv):
-
-
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
-        print 'start surface derivative',len(patchID)
+        print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
         timeA = time.time()
         if not self.J2: # Not initialized
             # Calculate the size Ncoef_free x Ndesign Variables
@@ -2355,104 +2281,10 @@ a hinge line'
             self.J2.assemblyEnd()
         # end if
 
-        print 'done surface derivative:',time.time()-timeA
+        print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
 
         return
-
-    def _read_af(self,filename,N=35):
-        ''' Load the airfoil file from precomp format'''
-
-        # Interpolation Format
-        s_interp = 0.5*(1-cos(linspace(0,pi,N)))
-
-        f = open(filename,'r')
-
-        aux = string.split(f.readline())
-        npts = int(aux[0]) 
-        
-        xnodes = zeros(npts)
-        ynodes = zeros(npts)
-
-        f.readline()
-        f.readline()
-        f.readline()
-
-        for i in xrange(npts):
-            aux = string.split(f.readline())
-            xnodes[i] = float(aux[0])
-            ynodes[i] = float(aux[1])
-        # end for
-        f.close()
-
-        # -------------
-        # Upper Surfce
-        # -------------
-
-        # Find the trailing edge point
-        index = where(xnodes == 1)
-        te_index = index[0]
-        n_upper = te_index+1   # number of nodes on upper surface
-        n_lower = int(npts-te_index)+1 # nodes on lower surface
-
-        # upper Surface Nodes
-        x_u = xnodes[0:n_upper]
-        y_u = ynodes[0:n_upper]
-
-        # Now determine the upper surface 's' parameter
-
-        s = zeros(n_upper)
-        for j in xrange(n_upper-1):
-            s[j+1] = s[j] + sqrt((x_u[j+1]-x_u[j])**2 + (y_u[j+1]-y_u[j])**2)
-        # end for
-        s = s/s[-1] #Normalize s
-
-        # linearly interpolate to find the points at the positions we want
-        X_u = interp(s_interp,s,x_u)
-        Y_u = interp(s_interp,s,y_u)
-
-        # -------------
-        # Lower Surface
-        # -------------
-        x_l = xnodes[te_index:npts]
-        y_l = ynodes[te_index:npts]
-        x_l = hstack([x_l,0])
-        y_l = hstack([y_l,0])
-
-        # Now determine the lower surface 's' parameter
-
-        s = zeros(n_lower)
-        for j in xrange(n_lower-1):
-            s[j+1] = s[j] + sqrt((x_l[j+1]-x_l[j])**2 + (y_l[j+1]-y_l[j])**2)
-        # end for
-        s = s/s[-1] #Normalize s
-
-        # linearly interpolate to find the points at the positions we want
-        X_l = interp(s_interp,s,x_l)
-        Y_l = interp(s_interp,s,y_l)
-
-        return X_u,Y_u,X_l,Y_l
-    
-    
-    def _rotx(self,x,theta):
-        ''' Rotate a coordinate in the local x frame'''
-        M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
-        return dot(M,x)
-
-    def _roty(self,x,theta):
-        '''Rotate a coordinate in the local y frame'''
-        M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
-        return dot(M,x)
-
-    def _rotz(self,x,theta):
-        '''Roate a coordinate in the local z frame'''
-        'rotatez:'
-        M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
-        return dot(M,x)
-
-    def _e_dist(self,x1,x2):
-        '''Get the eculidean distance between two points'''
-        return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
-
+   
 
 class edge(object):
 
@@ -2595,7 +2427,6 @@ class ref_axis(object):
         # end if
         
         return
-
        
     def writeTecplotAxis(self,handle,axis_name):
         '''Write the ref axis to the open file handle'''
@@ -2660,37 +2491,16 @@ class ref_axis(object):
         
         '''Return the rotation matrix to convert vector from global to
         local frames'''
-        return     dot(self._roty(self.rotys(s)), \
-                           dot(self._rotx(self.rotxs(s)),\
-                                   self._rotz(self.rotzs(s))))
+        return     dot(rotyM(self.rotys(s)),dot(rotxM(self.rotxs(s)),\
+                                                    rotzM(self.rotzs(s))))
     
     def getRotMatrixLocalToGloabl(self,s):
         
         '''Return the rotation matrix to convert vector from global to
         local frames'''
-        return inv(dot(self._roty(self.rotys(s))\
-                           , dot(self._rotx(self.rotxs(s)),\
-                                     self._rotz(self.rotzs(s)))))
+        return inv(dot(rotyM(self.rotys(s)),dot(rotxM(self.rotxs(s)),\
+                                                    rotzM(self.rotzs(s)))))
     
-    def _rotx(self,theta):
-        '''Return x rotation matrix'''
-        theta = theta*pi/180
-        M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
-        return M
-
-    def _roty(self,theta):
-        ''' Return y rotation matrix'''
-        theta = theta*pi/180
-        M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
-        return M
-
-    def _rotz(self,theta):
-        ''' Return z rotation matrix'''
-        theta = theta*pi/180
-        M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
-        return M
-
-
 class geoDVGlobal(object):
      
     def __init__(self,dv_name,value,lower,upper,function):
@@ -2762,7 +2572,6 @@ class geoDVLocal(object):
         self.upper = upper
         self.surface_id = surface_id
         return
-
 
     def __call__(self,surface):
 
