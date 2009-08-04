@@ -380,6 +380,19 @@ offset.shape[0], Xsec, rot, must all have the same size'
             fit_type = kwargs['fit_type']
         else:
             fit_type = 'interpolate'
+        # end if
+
+        if 'file_type' in kwargs:
+            file_type = kwargs['file_type']
+        else:
+            file_type = 'xfoil'
+        # end if
+
+        if 'end_type' in kwargs:
+            end_type = kwargs['end_type']
+        else:
+            end_type = 'flat'
+        # end if
 
         if 'breaks' in kwargs:
             print 'we have breaks'
@@ -408,8 +421,17 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     section_spacing.append(linspace(0,1,nsections[i]))
                 # end for
             # end if
+
+            if 'cont' in kwargs:
+                cont = kwargs['cont']
+            else:
+                cont = []
+                for i in xrange(nBreaks):
+                    cont.append[0] # Default is c0 contintity
+                # end for
+            # end if 
+
         # end if
-        
      
         naf = len(xsections)
         if 'Nfoil' in kwargs:
@@ -424,7 +446,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         X = zeros([2,N,naf,3]) #We will get two surfaces
         for i in xrange(naf):
 
-            X_u,Y_u,X_l,Y_l = read_af(xsections[i],N)
+            X_u,Y_u,X_l,Y_l = read_af(xsections[i],file_type,N)
 
             X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
             X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
@@ -462,31 +484,76 @@ offset.shape[0], Xsec, rot, must all have the same size'
             rotnew  = zeros((tot_sec,3))
             start   = 0
             start2  = 0
+
             for i in xrange(nBreaks+1):
                 # We have to interpolate the sectional data 
                 if i == nBreaks:
                     end = naf
+                    
                 else:
                     end  = breaks[i]+1
                 #end if
 
                 end2 = start2 + nsections[i]
 
+                # We need to figure out what derivative constraints are
+                # required
+
+                
+                
+                
                 for j in xrange(N): # This is for the Data points
 
-                    # Interpolate across each point in the spanwise direction
-                    temp_spline = pySpline.linear_spline(\
-                        task='interpolate',X=X[0,j,start:end,:],k=2) # surface 0
-                    Xnew[0,j,start2:end2,:] = \
-                        temp_spline.getValueV(section_spacing[i])
+                    if i == nBreaks:
 
-                    # Interpolate across each point in the spanwise direction
-                    temp_spline = pySpline.linear_spline(\
-                        task='interpolate',X=X[1,j,start:end,:],k=2) # surface 1
-                    Xnew[1,j,start2:end2,:] = \
-                        temp_spline.getValueV(section_spacing[i])
+                        # Interpolate across each point in the spanwise direction
+                        # Take a finite difference to get dv
 
+
+                        #dx1 = [X[0,j,end,2]-X[0,j,start,2],0,0]
+                        dx1 = [0,0,.25]
+                        dx2 = [0,-X[0,j,start,1],0]
+                        #dx2 = [0,-.12,0]
+                        print -X[0,j,start,1]
+
+#                         dx1 = [0,0,0]
+#                         dx2 = [0,0,0]
+                        temp_spline = pySpline.linear_spline(\
+                            task='interpolate',X=X[0,j,start:end,:],k=4,\
+                                dx1=dx1,dx2=dx2)
+                        Xnew[0,j,start2:end2,:] = \
+                            temp_spline.getValueV(section_spacing[i])
+
+                        # Interpolate across each point in the spanwise direction
+                        #dx1 = [X[0,j,end,2]-X[0,j,start,2],0,0]
+                        dx1 = [0,0,0.25]
+                        dx2 = [0,-X[1,j,start,1],0]
+                        #dx2 = [0,0,0]
+                               
+
+
+                        #dx1 = [0,0,0]
+                        #dx2 = [0,0,0]
+                        temp_spline = pySpline.linear_spline(\
+                            task='interpolate',X=X[1,j,start:end,:],k=4,\
+                                dx1=dx1,dx2=dx2)
+                        Xnew[1,j,start2:end2,:] = \
+                            temp_spline.getValueV(section_spacing[i])
+
+                    else:
+                            
+                        temp_spline = pySpline.linear_spline(\
+                            task='interpolate',X=X[0,j,start:end,:],k=2)
+                        Xnew[0,j,start2:end2,:] = \
+                            temp_spline.getValueV(section_spacing[i])
+
+                        temp_spline = pySpline.linear_spline(\
+                            task='interpolate',X=X[1,j,start:end,:],k=2)
+                        Xnew[1,j,start2:end2,:] = \
+                            temp_spline.getValueV(section_spacing[i])
+                    # end if
                 # end for
+
                 # Now we can generate and append the surfaces
                 print 'generating surface'
                 self.surfs.append(pySpline.surf_spline(\
@@ -500,6 +567,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 start2 = end2-1
             # end for
             self.nPatch = len(self.surfs)
+
+
         else:  #No breaks
             
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],\
