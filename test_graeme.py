@@ -30,11 +30,11 @@ import pyGeo2 as pyGeo
 # Wing Information - Create a Geometry Object from cross sections
 
 naf=3
-airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
+airfoil_list = ['naca0012.dat','naca0012.dat','pinch_xfoil.dat']
 chord = [1,1,1]
 x = [0,0,0]
 y = [0,0,0]
-z = [0,4,5]
+z = [0,4,4.125]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
 tw_aero = [0,0,0] # ie rot_z
@@ -44,17 +44,15 @@ offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
 breaks = [1] #zero based (Must NOT contain 0 or index of last value)
-nsections = [26,5]# Length breaks + 1
-section_spacing = []
-
-s1 = hstack([linspace(0,.25,4),linspace(0.26,0.3,5),linspace(0.35,0.7,8),\
-                 linspace(0.71,0.75,5),linspace(0.76,1,4)])
-
-#Create section spacing list
-section_spacing.append(s1)
-section_spacing.append(linspace(0,1,5))
-
-# Put spatial and rotations into two arrays
+cont = [1] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
+nsections = [10,8]# Length breaks + 1
+section_spacing = [linspace(0,1,10),linspace(0,1,5)]
+Nctlu = 13
+end_type = 'pinch'
+# 'pinch' or 'flat' or 'rounded' -> flat and rounded result in a
+#  a new surface on the end 
+                               
+# Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
 rot = zeros((naf,3))
 
@@ -64,22 +62,23 @@ X[:,2] = z
 rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = tw_aero
-         
-Nctlu = 26
-
+# ------------------------------------------------------------------
+    
 # Procedure for Using pyGEO
 
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,\
-                   offset=offset, Xsec=X,rot=rot,breaks=breaks,\
-                   nsections=nsections,section_spacing=section_spacing,\
-                   fit_type='lms', Nctlu=Nctlu,Nfoil=20)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+                       file_type='xfoil',scale=chord,offset=offset, \
+                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 wing.writeEdgeConnectivity('wing.con')
+wing.propagateKnotVectors()
 wing.stitchEdges()
+
 wing.writeTecplot('wing.dat',edges=True)
 print 'Done Step 1'
 sys.exit(0)

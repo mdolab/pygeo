@@ -1,6 +1,8 @@
 #!/usr/bin/python  
-from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot
-import string 
+from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
+    array,max,min,insert
+import numpy
+import string ,sys
 
 def rotxM(theta):
     '''Return x rotation matrix'''
@@ -39,45 +41,126 @@ def rotzV(x,theta):
 def e_dist(x1,x2):
     '''Get the eculidean distance between two points'''
     return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
-def read_af(filename,N=35):
-    ''' Load the airfoil file from precomp format'''
+
+def read_af(filename,file_type='xfoil',N=35):
+    ''' Load the airfoil file of type file_type'''
 
     # Interpolation Format
     s_interp = 0.5*(1-cos(linspace(0,pi,N)))
+   
+    if file_type == 'precomp':
+        f = open(filename,'r')
 
-    f = open(filename,'r')
-
-    aux = string.split(f.readline())
-    npts = int(aux[0]) 
-
-    xnodes = zeros(npts)
-    ynodes = zeros(npts)
-
-    f.readline()
-    f.readline()
-    f.readline()
-
-    for i in xrange(npts):
         aux = string.split(f.readline())
-        xnodes[i] = float(aux[0])
-        ynodes[i] = float(aux[1])
-    # end for
-    f.close()
+        npts = int(aux[0]) 
 
-    # -------------
-    # Upper Surfce
-    # -------------
+        xnodes = zeros(npts)
+        ynodes = zeros(npts)
 
-    # Find the trailing edge point
-    index = where(xnodes == 1)
-    te_index = index[0]
-    n_upper = te_index+1   # number of nodes on upper surface
-    n_lower = int(npts-te_index)+1 # nodes on lower surface
+        f.readline()
+        f.readline()
+        f.readline()
 
-    # upper Surface Nodes
-    x_u = xnodes[0:n_upper]
-    y_u = ynodes[0:n_upper]
+        for i in xrange(npts):
+            aux = string.split(f.readline())
+            xnodes[i] = float(aux[0])
+            ynodes[i] = float(aux[1])
+        # end for
+        f.close()
+    
+        # -------------
+        # Upper Surfce
+        # -------------
 
+        # Find the trailing edge point
+        index = where(xnodes == 1)
+        te_index = index[0]
+        n_upper = te_index+1   # number of nodes on upper surface
+        n_lower = int(npts-te_index)+1 # nodes on lower surface
+
+        # upper Surface Nodes
+        x_u = xnodes[0:n_upper]
+        y_u = ynodes[0:n_upper]
+
+        # -------------
+        # Lower Surface
+        # -------------
+        x_l = xnodes[te_index:npts]
+        y_l = ynodes[te_index:npts]
+        x_l = hstack([x_l,0])
+        y_l = hstack([y_l,0])
+
+    elif file_type == 'xfoil':
+
+        f = open(filename,'r')
+        line  = f.readline() # Read (and ignore) the first line
+        
+        r = []
+        while 1:
+            line = f.readline()
+            if not line: break # end of file
+            if line.isspace(): break # blank line
+            r.append([float(s) for s in line.split()])
+        # end while
+        r = array(r)
+        x = r[:,0]
+        y = r[:,1]
+
+        # Check for blunt TE:
+        if y[0] != y[-1]:
+            print 'Blunt Trailing Edge on airfoil: %s'%(filename)
+            yavg = 0.5*(y[0] + y[-1])
+            y[0]  = yavg
+            y[-1] = yavg
+        # end if
+        ntotal = len(x)
+
+        # Find the LE Point
+        xmin = min(x)
+        index = where(x == xmin)[0]
+
+        if len(index > 1): # We don't have a clearly defined LE node
+
+            # Merge the two 
+
+            if abs(yavg) > 1e-16:
+                print 'Error LE Fucked'
+                sys.exit(0)
+            else:
+                
+                
+
+
+        
+        le_index = index[-1]
+
+        n_upper = le_index + 2
+        n_lower = ntotal - le_index -1
+
+        # upper Surface Nodes
+        x_u = x[0:n_upper]
+        y_u = y[0:n_upper]
+
+        # lower Surface Nodes
+        x_l = x[n_upper-1:]
+        y_l = y[n_upper-1:]
+
+        # now reverse their directions to be consistent with other formats
+
+        x_u = x_u[::-1].copy()
+        y_u = y_u[::-1].copy()
+        x_l = x_l[::-1].copy()
+        y_l = y_l[::-1].copy()
+        
+    else:
+
+        print 'file_type is unknown. Supported file_type is \'xfoil\' \
+and \'precomp\''
+        sys.exit(1)
+    # end if
+
+
+    # ---------------------- Common Processing -----------------------
     # Now determine the upper surface 's' parameter
 
     s = zeros(n_upper)
@@ -89,14 +172,6 @@ def read_af(filename,N=35):
     # linearly interpolate to find the points at the positions we want
     X_u = interp(s_interp,s,x_u)
     Y_u = interp(s_interp,s,y_u)
-
-    # -------------
-    # Lower Surface
-    # -------------
-    x_l = xnodes[te_index:npts]
-    y_l = ynodes[te_index:npts]
-    x_l = hstack([x_l,0])
-    y_l = hstack([y_l,0])
 
     # Now determine the lower surface 's' parameter
 
