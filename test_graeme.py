@@ -34,7 +34,7 @@ airfoil_list = ['naca0012.dat','naca0012.dat','pinch_xfoil.dat']
 chord = [1,1,1]
 x = [0,0,0]
 y = [0,0,0]
-z = [0,4,4.125]
+z = [0,3.94,4]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
 tw_aero = [0,0,0] # ie rot_z
@@ -45,9 +45,9 @@ offset[:,0] = .25 # Offset sections by 0.25 in x
 # Make the break-point vector
 breaks = [1] #zero based (Must NOT contain 0 or index of last value)
 cont = [1] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [10,8]# Length breaks + 1
+nsections = [10,6]# Length breaks + 1
 section_spacing = [linspace(0,1,10),linspace(0,1,5)]
-Nctlu = 13
+Nctlu = 12
 end_type = 'pinch'
 # 'pinch' or 'flat' or 'rounded' -> flat and rounded result in a
 #  a new surface on the end 
@@ -74,15 +74,17 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-wing.calcEdgeConnectivity(1e-2,1e-2)
+wing.calcEdgeConnectivity(1e-6,1e-6)
 wing.writeEdgeConnectivity('wing.con')
-#wing.propagateKnotVectors()
+wing.propagateKnotVectors()
+wing.stitchEdges()
+print wing.surfs[0].tu
+print wing.surfs[1].tu
+print wing.surfs[2].tu
+print wing.surfs[3].tu
 
-#print (1-wing.surfs[2].tu)[::-1].copy()
-#print wing.surfs[3].tu
-#wing.surfs[3].tu = (1-wing.surfs[2].tu)[::-1].copy()
-#wing.stitchEdges()
 wing.writeTecplot('wing.dat',edges=True)
+wing.writeIGES('wing.igs')
 print 'Done Step 1'
 sys.exit(0)
 # ----------------------------------------------------------------------

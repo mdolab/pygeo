@@ -109,6 +109,7 @@ def read_af(filename,file_type='xfoil',N=35):
         # Check for blunt TE:
         if y[0] != y[-1]:
             print 'Blunt Trailing Edge on airfoil: %s'%(filename)
+            print 'Merging to a point...'
             yavg = 0.5*(y[0] + y[-1])
             y[0]  = yavg
             y[-1] = yavg
@@ -118,25 +119,17 @@ def read_af(filename,file_type='xfoil',N=35):
         # Find the LE Point
         xmin = min(x)
         index = where(x == xmin)[0]
-        print 'index:',index
+
         if len(index > 1): # We don't have a clearly defined LE node
 
             # Merge the two 
             
             xavg = 0.5*(x[index[0]] + x[index[1]])
             yavg = 0.5*(y[index[0]] + y[index[1]])
-        #    print 'xavg:',xavg
-        #    print 'yavg:',yavg
-        #    print 'xy shape:',x.shape,y.shape
-
-         #   print 'x:',x[78],x[79],x[80],x[81]
-         #   print 'y:',y[78],y[79],y[80],y[81]
-
+     
             x = delete(x,[index[0],index[-1]])
             y = delete(y,[index[0],index[-1]])
-          #  print 'x:',x[78],x[79],x[80],x[81]
-          #  print 'y:',y[78],y[79],y[80],y[81]
-
+            
             x = insert(x,index[0],xavg)
             y = insert(y,index[0],yavg)
             
@@ -162,16 +155,12 @@ def read_af(filename,file_type='xfoil',N=35):
         y_u = y_u[::-1].copy()
         x_l = x_l[::-1].copy()
         y_l = y_l[::-1].copy()
-        
-        #print 'x_l:',x_l
-        #print 'y_l:',y_l
     else:
 
         print 'file_type is unknown. Supported file_type is \'xfoil\' \
 and \'precomp\''
         sys.exit(1)
     # end if
-
 
     # ---------------------- Common Processing -----------------------
     # Now determine the upper surface 's' parameter
@@ -193,16 +182,11 @@ and \'precomp\''
         s[j+1] = s[j] + sqrt((x_l[j+1]-x_l[j])**2 + (y_l[j+1]-y_l[j])**2)
     # end for
     s = s/s[-1] #Normalize s
-    print 's is:',s
+    
     # linearly interpolate to find the points at the positions we want
 
     X_l = interp(s_interp,s,x_l)
     Y_l = interp(s_interp,s,y_l)
-
-    print 'X_l:',X_l
-    print 'Y_l:',Y_l
-    print 'X_u:',X_u
-    print 'Y_u:',Y_u
 
     return X_u,Y_u,X_l,Y_l
 
@@ -211,11 +195,8 @@ def test_edge(surf1,surf2,i,j,edge_tol):
 
     '''Test edge i on surf1 with edge j on surf2'''
 
-    val1_beg = surf1.getValueEdge(i,0)
-    val1_end = surf1.getValueEdge(i,1)
-
-    val2_beg = surf2.getValueEdge(j,0)
-    val2_end = surf2.getValueEdge(j,1)
+    val1_beg,val1_mid,val1_end = surf1.getOrigValuesEdge(i)
+    val2_beg,val2_mid,val2_end = surf2.getOrigValuesEdge(j)
 
     #Three things can happen:
     coinc = False
@@ -223,10 +204,9 @@ def test_edge(surf1,surf2,i,j,edge_tol):
     # Beginning and End match (same sense)
     if e_dist(val1_beg,val2_beg) < edge_tol and \
            e_dist(val1_end,val2_end) < edge_tol:
+
         # End points are the same, now check the midpoint
-        mid1 = surf1.getValueEdge(i,0.5)
-        mid2 = surf2.getValueEdge(j,0.5)
-        if e_dist(mid1,mid2) < edge_tol:
+        if e_dist(val1_mid,val2_mid) < edge_tol:
             coinc = True
         else:
             coinc = False
@@ -237,9 +217,7 @@ def test_edge(surf1,surf2,i,j,edge_tol):
     elif e_dist(val1_beg,val2_end) < edge_tol and \
            e_dist(val1_end,val2_beg) < edge_tol:
 
-        mid1 = surf1.getValueEdge(i,0.5)
-        mid2 = surf2.getValueEdge(j,0.5)
-        if e_dist(mid1,mid2) < edge_tol:
+        if e_dist(val1_mid,val2_mid) < edge_tol:
             coinc = True
         else:
             coinc = False

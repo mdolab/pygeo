@@ -489,7 +489,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # We have to interpolate the sectional data 
                 if i == nBreaks:
                     end = naf
-                    
                 else:
                     end  = breaks[i]+1
                 #end if
@@ -498,8 +497,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 # We need to figure out what derivative constraints are
                 # required
-
-                
                 
                 
                 for j in xrange(N): # This is for the Data points
@@ -508,32 +505,43 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv
+                        dv = (X[0,j,start] - X[0,j,start-1])
+                        # normalize
+                        dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
 
+                        # Now find the distance along the vector dv
+                        # that which a plane would go to intersect the next
 
-                        #dx1 = [X[0,j,end,2]-X[0,j,start,2],0,0]
-                        dx1 = [0,0,.25]
+                        # Take the vector between the points on both x-sections
+                        
+                        V = X[0,j,end-1]-X[0,j,start]
+
+                        # Now dot them
+                        
+                        dist = dot(dv,V)
+
+                        dx1 = dist*dv
                         dx2 = [0,-X[0,j,start,1],0]
-                        #dx2 = [0,-.12,0]
-                        #print -X[0,j,start,1]
 
-#                         dx1 = [0,0,0]
-#                         dx2 = [0,0,0]
+ 
+                        print 'dx2:',dx2
                         temp_spline = pySpline.linear_spline(\
                             task='interpolate',X=X[0,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
+                   
                         Xnew[0,j,start2:end2,:] = \
                             temp_spline.getValueV(section_spacing[i])
 
                         # Interpolate across each point in the spanwise direction
-                        #dx1 = [X[0,j,end,2]-X[0,j,start,2],0,0]
-                        dx1 = [0,0,0.25]
+                        
+                        dv = (X[1,j,start]-X[1,j,start-1])
+                        dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+                        V = X[0,j,end-1]-X[0,j,start]
+                        dist = dot(dv,V)
+                        
+                        dx1 = dist*dv
                         dx2 = [0,-X[1,j,start,1],0]
-                        #dx2 = [0,0,0]
-                               
 
-
-                        #dx1 = [0,0,0]
-                        #dx2 = [0,0,0]
                         temp_spline = pySpline.linear_spline(\
                             task='interpolate',X=X[1,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
@@ -620,7 +628,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 #                      Edge Connection Information Functions
 # ----------------------------------------------------------------------    
 
-    def calcEdgeConnectivity(self,node_tol=1e-2,edge_tol=1e-1):
+    def calcEdgeConnectivity(self,node_tol=1e-4,edge_tol=1e-4):
 
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
@@ -1061,12 +1069,44 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         nGroup =len(dg) 
         
         for i in xrange(nGroup):
+            
+            # Check to see if ANY of the edges have reversed
+            # orientation. If so, then we have to make sure we have a
+            # symmetric knot vector
+            symmetric = False
+            for j in xrange(len(dg[i])):
+                cur_edge = dg[i][j]
+                if cur_edge.dir == -1:
+                    symmetric = True
+                    break
+                # end if
+            # end for
+
             # Take first edge entry
             first_edge = dg[i][0]
             if first_edge.e1 ==0 or first_edge.e1 == 1:  #Is it a u or a v?
                 knot_vec = self.surfs[first_edge.f1].tu.copy()
             else:
                 knot_vec = self.surfs[first_edge.f1].tv.copy()
+            # end if
+
+            if symmetric: # We have to symmetrize the vector:
+                if mod(len(knot_vec),2) == 1: #its odd
+                    mid = (len(knot_vec) -1)/2
+                    beg1 = knot_vec[0:mid]
+                    beg2 = (1-knot_vec[mid+1:])[::-1]
+                    # Average
+                    beg = 0.5*(beg1+beg2)
+                    knot_vec[0:mid] = beg
+                    knot_vec[mid+1:] = (1-beg)[::-1]
+                else: # its even
+                    mid = len(knot_vec)/2
+                    beg1 = knot_vec[0:mid]
+                    beg2 = (1-knot_vec[mid:])[::-1]
+                    beg = 0.5*(beg1+beg2)
+                    knot_vec[0:mid] = beg
+                    knot_vec[mid:] = (1-beg)[::-1]
+                # end if
             # end if
 
             # Next copy them to the rest of the face/edge combinations
@@ -1094,6 +1134,15 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 # end if
             # end for
         # end for
+
+
+        print 'recomputing surfaces...'
+        for ipatch in xrange(self.nPatch):
+            self.surfs[ipatch].recompute()
+
+
+
+
         return
 
     def stitchEdges(self):
