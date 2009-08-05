@@ -76,9 +76,12 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
 
 wing.calcEdgeConnectivity(1e-2,1e-2)
 wing.writeEdgeConnectivity('wing.con')
-wing.propagateKnotVectors()
-wing.stitchEdges()
+#wing.propagateKnotVectors()
 
+#print (1-wing.surfs[2].tu)[::-1].copy()
+#print wing.surfs[3].tu
+#wing.surfs[3].tu = (1-wing.surfs[2].tu)[::-1].copy()
+#wing.stitchEdges()
 wing.writeTecplot('wing.dat',edges=True)
 print 'Done Step 1'
 sys.exit(0)

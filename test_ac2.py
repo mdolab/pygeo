@@ -119,7 +119,7 @@ sys.exit(0)
 # file as well as the connectivity file and we are good to go.
 
 # ----------------------------------------------------------------------
-
+timeStart = time.time()
 wing = pyGeo.pyGeo('iges',file_name='wing.igs')
 wing.readEdgeConnectivity('wing.con')
 #Call the finalize command after we have set the connections
@@ -273,3 +273,5 @@ f2.close()
 
 wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')
+print 'Full Script Time:',time.time()-timeStart
+time.sleep(15)
