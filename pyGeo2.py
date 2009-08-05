@@ -514,7 +514,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dx1 = [0,0,.25]
                         dx2 = [0,-X[0,j,start,1],0]
                         #dx2 = [0,-.12,0]
-                        print -X[0,j,start,1]
+                        #print -X[0,j,start,1]
 
 #                         dx1 = [0,0,0]
 #                         dx2 = [0,0,0]

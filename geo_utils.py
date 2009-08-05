@@ -1,6 +1,6 @@
 #!/usr/bin/python  
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,max,min,insert
+    array,max,min,insert,delete
 import numpy
 import string ,sys
 
@@ -118,25 +118,36 @@ def read_af(filename,file_type='xfoil',N=35):
         # Find the LE Point
         xmin = min(x)
         index = where(x == xmin)[0]
-
+        print 'index:',index
         if len(index > 1): # We don't have a clearly defined LE node
 
             # Merge the two 
+            
+            xavg = 0.5*(x[index[0]] + x[index[1]])
+            yavg = 0.5*(y[index[0]] + y[index[1]])
+        #    print 'xavg:',xavg
+        #    print 'yavg:',yavg
+        #    print 'xy shape:',x.shape,y.shape
 
-            if abs(yavg) > 1e-16:
-                print 'Error LE Fucked'
-                sys.exit(0)
-            else:
-                
-                
+         #   print 'x:',x[78],x[79],x[80],x[81]
+         #   print 'y:',y[78],y[79],y[80],y[81]
 
+            x = delete(x,[index[0],index[-1]])
+            y = delete(y,[index[0],index[-1]])
+          #  print 'x:',x[78],x[79],x[80],x[81]
+          #  print 'y:',y[78],y[79],y[80],y[81]
 
+            x = insert(x,index[0],xavg)
+            y = insert(y,index[0],yavg)
+            
+            ntotal = len(x)
+        # end if
         
-        le_index = index[-1]
+        le_index = index[0]
 
-        n_upper = le_index + 2
-        n_lower = ntotal - le_index -1
-
+        n_upper = le_index + 1
+        n_lower = ntotal - le_index
+       
         # upper Surface Nodes
         x_u = x[0:n_upper]
         y_u = y[0:n_upper]
@@ -152,6 +163,8 @@ def read_af(filename,file_type='xfoil',N=35):
         x_l = x_l[::-1].copy()
         y_l = y_l[::-1].copy()
         
+        #print 'x_l:',x_l
+        #print 'y_l:',y_l
     else:
 
         print 'file_type is unknown. Supported file_type is \'xfoil\' \
@@ -180,10 +193,16 @@ and \'precomp\''
         s[j+1] = s[j] + sqrt((x_l[j+1]-x_l[j])**2 + (y_l[j+1]-y_l[j])**2)
     # end for
     s = s/s[-1] #Normalize s
-
+    print 's is:',s
     # linearly interpolate to find the points at the positions we want
+
     X_l = interp(s_interp,s,x_l)
     Y_l = interp(s_interp,s,y_l)
+
+    print 'X_l:',X_l
+    print 'Y_l:',Y_l
+    print 'X_u:',X_u
+    print 'Y_u:',Y_u
 
     return X_u,Y_u,X_l,Y_l
 
