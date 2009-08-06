@@ -31,7 +31,8 @@ import pyGeo2 as pyGeo
 
 naf=3
 airfoil_list = ['naca0012.dat','naca0012.dat','pinch_xfoil.dat']
-chord = [1,1,1]
+#airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
+chord = [1,1,.50]
 x = [0,0,0]
 y = [0,0,0]
 z = [0,3.94,4]
@@ -41,12 +42,12 @@ tw_aero = [0,0,0] # ie rot_z
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
-
+offset[-1,0] = 0
 # Make the break-point vector
 breaks = [1] #zero based (Must NOT contain 0 or index of last value)
 cont = [1] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [10,6]# Length breaks + 1
-section_spacing = [linspace(0,1,10),linspace(0,1,5)]
+nsections = [10,10]# Length breaks + 1
+section_spacing = [linspace(0,1,10),linspace(0,1,10)]
 Nctlu = 12
 end_type = 'pinch'
 # 'pinch' or 'flat' or 'rounded' -> flat and rounded result in a
@@ -78,10 +79,6 @@ wing.calcEdgeConnectivity(1e-6,1e-6)
 wing.writeEdgeConnectivity('wing.con')
 wing.propagateKnotVectors()
 wing.stitchEdges()
-print wing.surfs[0].tu
-print wing.surfs[1].tu
-print wing.surfs[2].tu
-print wing.surfs[3].tu
 
 wing.writeTecplot('wing.dat',edges=True)
 wing.writeIGES('wing.igs')
