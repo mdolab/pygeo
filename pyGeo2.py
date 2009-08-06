@@ -499,32 +499,34 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # required
                 
                 
+                # Create a chord line representation
+
+                Xchord_line = array([X[0,0,start],X[0,-1,start]])
+                chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+
                 for j in xrange(N): # This is for the Data points
 
                     if i == nBreaks:
 
                         # Interpolate across each point in the spanwise direction
-                        # Take a finite difference to get dv
+                        # Take a finite difference to get dv and normalize
                         dv = (X[0,j,start] - X[0,j,start-1])
-                        # normalize
                         dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
 
-                        # Now find the distance along the vector dv
-                        # that which a plane would go to intersect the next
-
-                        # Take the vector between the points on both x-sections
-                        
+                        # Now project the vector between sucessive
+                        # airfoil points onto this vector                        
                         V = X[0,j,end-1]-X[0,j,start]
+                        dx1 = dot(dv,V) * dv
 
-                        # Now dot them
-                        
-                        dist = dot(dv,V)
+                        # For the second vector, project the point
+                        # onto the chord line of the previous section
 
-                        dx1 = dist*dv
-                        dx2 = [0,-X[0,j,start,1],0]
-
+                        # D is the vector we want
+                        s,D,converged,updated = \
+                            chord_line.projectPoint(X[0,j,end-1])
+                        dx2 = V-D
  
-                        print 'dx2:',dx2
+                        # Now generate the line and extract the points we want
                         temp_spline = pySpline.linear_spline(\
                             task='interpolate',X=X[0,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
@@ -537,10 +539,14 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dv = (X[1,j,start]-X[1,j,start-1])
                         dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
                         V = X[0,j,end-1]-X[0,j,start]
-                        dist = dot(dv,V)
-                        
-                        dx1 = dist*dv
-                        dx2 = [0,-X[1,j,start,1],0]
+                        dist = dv * dot(dv,V)
+
+                        # D is the vector we want
+                        s,D,converged,updated = \
+                            chord_line.projectPoint(X[1,j,end-1])
+                        # We already have the 'V' vector
+                        V = X[1,j,end-1]-X[1,j,start]
+                        dx2 = V-D
 
                         temp_spline = pySpline.linear_spline(\
                             task='interpolate',X=X[1,j,start:end,:],k=4,\
