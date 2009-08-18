@@ -17,6 +17,7 @@ s
 Developers:
 -----------
 - Gaetan Kenway (GKK)
+- Graeme Kennedy (GJK)
 
 History
 -------
@@ -44,7 +45,7 @@ from numpy.linalg import lstsq,inv
 
 try:
     import petsc4py
-    petsc4py.init(sys.argv)
+    # petsc4py.init(sys.argv)
     from petsc4py import PETSc
     
     USE_PETSC = True
@@ -2196,14 +2197,11 @@ a hinge line'
     # ----------------------------------------------------------------------
     #                              Utility Functions 
     # ----------------------------------------------------------------------
-    def attachSurface(self):#,surface_points):
 
-        '''Attach a list of surface points to pyGeo surfaces'''
-        print ''
-        print 'Attaching a discrete surface to the Geometry Object...'
-        # TEMPORARY - Load in the points from a file
+    def coordinatesFromFile(self,file_name):
+        '''Get a list of coordinates from a file - useful for testing'''
 
-        f = open('wing.dtx','r')
+        f = open(file_name,'r')
         coordinates = []
         for line in f:
             aux = string.split(line)
@@ -2212,21 +2210,53 @@ a hinge line'
         f.close()
         coordinates = transpose(array(coordinates))
 
+        return coordinates
+    
+    def attachSurface(self,coordinates,patch_list=None,Nu=20,Nv=20):
+
+        '''Attach a list of surface points to either all the pyGeo surfaces
+        of a subset of the list of surfaces provided by patch_list.
+
+        Arguments:
+             coordinates   :  a 3 by nSurf numpy array
+             patch_list    :  list of patches to locate next to nodes,
+                              None means all patches will be used
+             Nu,Nv         :  parameters that control the temporary
+                              discretization of each surface        
+             
+        Returns:
+             dist          :  distance between mesh location and point
+             patchID       :  patch on which each u,v coordinate is defined
+             uv            :  u,v coordinates in a 2 by nSurf array.
+
+        Modified by GJK to include a search on a subset of surfaces.
+        This is useful for associating points in a mesh where points may
+        lie on the edges between surfaces. Often, these points must be used
+        twice on two different surfaces for load/displacement transfer.        
+        '''
+        print ''
+        print 'Attaching a discrete surface to the Geometry Object...'
+
+        if patch_list == None:
+            patch_list = range(self.nPatch)
+        # end
+    
         nSurf = coordinates.shape[1]
         # Now make the 'FE' Grid from the sufaces.
 
         # Global 'N' Parameter
-        Nu = 20
-        Nv = 20
+        patches = len(patch_list)
         
-        nelem    = self.nPatch * (Nu-1)*(Nv-1)
-        nnode    = self.nPatch * Nu *Nv
+        nelem    = patches * (Nu-1)*(Nv-1)
+        nnode    = patches * Nu *Nv
         conn     = zeros((4,nelem),int)
         xyz      = zeros((3,nnode))
         elemtype = 4*ones(nelem) # All Quads
         
         counter = 0
-        for ipatch in xrange(self.nPatch):
+        for n in xrange(patches):
+            ipatch = patch_list[n]
+            
             u = linspace(self.surfs[ipatch].range[0],\
                              self.surfs[ipatch].range[1],Nu)
             v = linspace(self.surfs[ipatch].range[0],\
@@ -2235,7 +2265,7 @@ a hinge line'
 
             temp = self.surfs[ipatch].getValueM(U,V)
             for idim in xrange(self.surfs[ipatch].nDim):
-                xyz[idim,ipatch*Nu*Nv:(ipatch+1)*Nu*Nv]= \
+                xyz[idim,n*Nu*Nv:(n+1)*Nu*Nv]= \
                     temp[:,:,idim].flatten()
             # end for
 
@@ -2243,10 +2273,10 @@ a hinge line'
            
             for j in xrange(Nv-1):
                 for i in xrange(Nu-1):
-                    conn[0,counter] = Nu*Nv*ipatch + (j  )*Nu + i     + 1
-                    conn[1,counter] = Nu*Nv*ipatch + (j  )*Nu + i + 1 + 1 
-                    conn[2,counter] = Nu*Nv*ipatch + (j+1)*Nu + i + 1 + 1
-                    conn[3,counter] = Nu*Nv*ipatch + (j+1)*Nu + i     + 1
+                    conn[0,counter] = Nu*Nv*n + (j  )*Nu + i     + 1
+                    conn[1,counter] = Nu*Nv*n + (j  )*Nu + i + 1 + 1 
+                    conn[2,counter] = Nu*Nv*n + (j+1)*Nu + i + 1 + 1
+                    conn[3,counter] = Nu*Nv*n + (j+1)*Nu + i     + 1
                     counter += 1
 
                 # end for
@@ -2261,8 +2291,12 @@ a hinge line'
         # All we need from this is the nearest_elem array and the uvw array
 
         # First we back out what patch nearest_elem belongs to:
-
         patchID = (nearest_elem-1) / ((Nu-1)*(Nv-1))  # Integer Division
+
+        # Now go back through and adjust the patchID to the element list
+        for i in xrange(nSurf):
+            patchID[i] = patch_list[patchID[i]]
+        # end
 
         # Next we need to figure out what is the actual UV coordinate 
         # on the given surface
@@ -2301,6 +2335,8 @@ a hinge line'
 
         # end for
 
+        # Release the tree - otherwise fortran will get upset
+        csm_pre.release_adt()
 
         # THERE IS AN ERROR IN PROJECT POINT (I THINK)
        #  # Check to see how far the coordinate and the surface point is:
@@ -2329,7 +2365,7 @@ a hinge line'
 #         print '%d Points were worse than %f after.'%(counter2,tol)
         print 'Done Surface Attachment'
 
-        return patchID,uv
+        return dist,patchID,uv
         
 
     def calcSurfaceDerivative(self,patchID,uv):
