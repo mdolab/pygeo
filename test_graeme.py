@@ -23,6 +23,10 @@ sys.path.append('../../pyHF/pycfd-csm/python/')
 #pyGeo
 import pyGeo2 as pyGeo
 
+#pyLayout
+sys.path.append('../pyLayout/')
+import pyLayout
+
 # ==============================================================================
 # Start of Script
 # ==============================================================================
@@ -83,7 +87,14 @@ wing.stitchEdges()
 wing.writeTecplot('wing.dat',edges=True)
 wing.writeIGES('wing.igs')
 print 'Done Step 1'
+print 'Testing pyLayout'
 sys.exit(0)
+
+#Test code for pyLayout
+
+
+
+
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
