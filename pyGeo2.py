@@ -38,7 +38,7 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor
+    real, imag, dstack, floor, size
 
 from numpy.linalg import lstsq,inv
 #from scipy import io #Only used for debugging
@@ -838,159 +838,267 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
         
         # Set the edge connection info in the surfaces themselves
-        self._setEdgeConnectivity()
         # Finally Print Connection Info
         self.printEdgeConnectivity()
+        print 'going to set edge connectivity'
+
+        self._setEdgeConnectivity()
         print 'Time for Edge Calculation:',time.time()-timeA
         return
 
+    def _findConIndex(self,ipatch,edge=None):
+        '''Find the index of the entry in the edge list for ipatch and edge'''
+        for i in xrange(len(self.con)):
+            if self.con[i].f1 == ipatch and self.con[i].e1 == edge:
+                return i,True
+            # end if
+            if self.con[i].f2 == ipatch and self.con[i].e2 == edge:
+                return i,False
+            # end if
+        # end if
+        print 'Error: Edge was not found in the edge list. EVERY edge MUST \
+appear in the edge con list'
+        sys.exit(1)
+        return 
+
     
     def _setEdgeConnectivity(self):
-        '''Internal function to set edge_con and master_edge flags in
-        surfaces'''
+        '''Internal function to calculate the globalCtlIndex for each surface'''
+
         if self.con == None:
             print 'Error: No edge connectivity is set yet. Either run \
  calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
         # end if
 
-        # Set the edge info
-       
-        for i in xrange(len(self.con)):
-
-            self.surfs[self.con[i].f1].edge_con[self.con[i].e1] = \
-                [self.con[i].f2,self.con[i].e2]
-            self.surfs[self.con[i].f1].master_edge[self.con[i].e1] = True
-            self.surfs[self.con[i].f1].dir[self.con[i].e1] = self.con[i].dir
-            self.surfs[self.con[i].f1].edge_type[self.con[i].e1] = \
-                self.con[i].type
-
-            if self.con[i].type == 1:
-                
-                self.surfs[self.con[i].f2].edge_con[self.con[i].e2] = \
-                    [self.con[i].f1,self.con[i].e1]
-                self.surfs[self.con[i].f2].master_edge[self.con[i].e2] = False
-                self.surfs[self.con[i].f2].dir[self.con[i].e2] = self.con[i].dir
-                self.surfs[self.con[i].f2].edge_type[self.con[i].e2] = \
-                    self.con[i].type
-            # end if
-        # end for
-
-        # Set the node info
-        for i in xrange(len(self.con)):
-        #for i in xrange(3):
-
-            f1 = self.con[i].f1
-            e1 = self.con[i].e1
-
-            n1,n2 = getNodesFromEdge(e1)
-
-            #print 'face1 %d, edge %d, nodes %d and %d'%(f1,e1,n1,n2)
-
-            if self.con[i].dir == 1:
-                n1_master = n1
-                n2_master = n2
-            else:
-                n1_master = n2
-                n2_master = n1
-
-            # if we haven't set this node yet, set them as a master
-            if self.surfs[f1].master_node[n1] == None:
-                self.surfs[f1].master_node[n1] = True
-            # end if
-            
-            if self.surfs[f1].master_node[n2] == None:
-                self.surfs[f1].master_node[n2] = True
-            # end if
-
-            # If there are two edges connected (type 1)
-            if self.con[i].type == 1: 
-                f2 = self.con[i].f2
-                e2 = self.con[i].e2
-                n1,n2 = getNodesFromEdge(e2)
-
-                self.surfs[f2].master_node[n1] = False
-                self.surfs[f2].master_node[n2] = False
-                
-                #print 'face2 %d, edge %d, nodes %d and %d'%(f2,e2,n1,n2)
-                
-
-                # Set the driven edge nodes to False ONLY if they are not 
-                # already set
-                # We want to set this node to f1,n1_master iff f1,n1_master
-                # is a master node
-
-                if self.surfs[f1].node_con[n1_master] == []:
-                    self.surfs[f2].node_con[n1] = [f1,n1_master]
-                    cont = False
-
-                else:
-                    cur_face = self.surfs[f1].node_con[n1_master][0]
-                    cur_node = self.surfs[f1].node_con[n1_master][1]
-                    cont = True
-                    #print 'doing loop 1:'
-                    while cont:
-
-                        #print 'cur_face,cur_node:',cur_face,cur_node
-
-                        if self.surfs[cur_face].node_con[cur_node] == []:
-                            self.surfs[f2].node_con[n1] = [cur_face,cur_node]
-                            cont = False
-                            #print 'done loop 1'
-                        else:
-                            cur_face = self.surfs[cur_face].\
-                                node_con[cur_node][0]
-                            cur_node = self.surfs[cur_face].\
-                                node_con[cur_node][1]
-                        # end if
-                    # end while
-                # end if
-                
-               
-                if self.surfs[f1].node_con[n2_master] == []:
-                    self.surfs[f2].node_con[n2] = [f1,n2_master]
-                else:
-                    cont = True
-                    cur_face = self.surfs[f1].node_con[n2_master][0]
-                    cur_node = self.surfs[f1].node_con[n2_master][1]
-                    #print 'doing loop 2:'
-                    
-                    while cont:
-
-                        #print 'cur_face,cur_node:',cur_face,cur_node
-
-                        if self.surfs[cur_face].node_con[cur_node] == []:
-                            self.surfs[f2].node_con[n2] = [cur_face,cur_node]
-                            cont = False
-                            #print 'done loop 2'
-                            #print 
-                        else:
-                            cur_face= self.surfs[cur_face].node_con[cur_node][0]
-                            cur_node= self.surfs[cur_face].node_con[cur_node][1]
-                        # end if
-                    # end while
-                # end if
-            # end if
-        # end for
-
-        # Last thing we need to do is back propagate the slave nodes
-        # to the master nodes...currently they are just []
-
+        # This function will set the globalCtlIndex for each surface
+        
+        counter = 0
+        self.global_coef = []
         for ipatch in xrange(self.nPatch):
-            for j in xrange(4):
-                if self.surfs[ipatch].node_con[j] == []:
-                    # Loop over to find matches
-                    for jpatch in xrange(self.nPatch):
-                        for k in xrange(4):
-                            if self.surfs[jpatch].node_con[k] == [ipatch,j]:
-                                self.surfs[ipatch].node_con[j].append([jpatch,k])
+            Nctlu = self.surfs[ipatch].Nctlu # Temp value for this patch
+            Nctlv = self.surfs[ipatch].Nctlv # Temp value for this patch
+            for i in xrange(Nctlu):
+                for j in xrange(Nctlv):
+
+                    # This is the basic "internal" control type
+                    if i > 0 and i < Nctlu -1 and j > 0 and j < Nctlv -1:
+                        self.surfs[ipatch].globalCtlIndex[i,j] = counter
+                        counter += 1
+                        self.global_coef.append([[ipatch,i,j]])
+                    # end if
+                        
+                    # There are 8 other possibilites now: Each of 4
+                    # edges and 4 corners. Do the edges first
+                    else:
+                        if i > 0 and i < Nctlu-1 and j == 0:       # Edge 0
+                            icon, master = self._findConIndex(ipatch,edge=0)
+                            if master:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            else:
+                                patchID = self.con[icon].f1
+                                edge = self.con[icon].e1
+                                dir  = self.con[icon].dir
+                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    edge,i,dir)
+                                self.global_coef[g_index].append([ipatch,i,j])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
                             # end if
-                        # end for
-                    # end for
-                # end if
+                        # end if 
+
+                        elif i > 0 and i < Nctlu-1 and j == Nctlv-1: # Edge 1
+                            icon, master = self._findConIndex(ipatch,edge=1)
+                            if master:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            else:
+                                patchID = self.con[icon].f1
+                                edge = self.con[icon].e1
+                                dir  = self.con[icon].dir
+                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    edge,i,dir)
+                                self.global_coef[g_index].append([ipatch,i,j])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            # end if
+                        # end if  
+
+                        elif i == 0 and j > 0 and j < Nctlv -1:      # Edge 2
+                            icon, master = self._findConIndex(ipatch,edge=2)
+                            if master:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            else:
+                                patchID = self.con[icon].f1
+                                edge = self.con[icon].e1
+                                dir  = self.con[icon].dir
+                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    edge,j,dir)
+                                self.global_coef[g_index].append([ipatch,i,j])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            # end if
+                        # end if  
+
+                        elif i == Nctlu-1 and j > 0 and j < Nctlv-1: # Edge 3
+                            icon, master = self._findConIndex(ipatch,edge=3)
+                            if master:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            else:
+                                patchID = self.con[icon].f1
+                                edge = self.con[icon].e1
+                                dir  = self.con[icon].dir
+                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    edge,j,dir)
+                                self.global_coef[g_index].append([ipatch,i,j])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            # end if
+                        # end if  
+
+                        elif i == 0 and j == 0:             # Node 0
+                            icon1,master1 = self._findConIndex(ipatch,edge=0)
+                            icon2,master2 = self._findConIndex(ipatch,edge=2)
+                            if master1 and master2:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            else:
+                                if master1 == False:
+                                    patchID = self.con[icon1].f1
+                                    edge = self.con[icon1].e1
+                                    dir  = self.con[icon1].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,0,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                else:
+                                    patchID = self.con[icon2].f1
+                                    edge = self.con[icon2].e1
+                                    dir  = self.con[icon2].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,0,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                # end if 
+                             # end if
+                        # end if 
+
+                        elif i == Nctlu-1 and j == 0:       # Node 1
+                            icon1,master1 = self._findConIndex(ipatch,edge=0)
+                            icon2,master2 = self._findConIndex(ipatch,edge=3)
+                            if master1 and master2:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            else:
+                                if master1 == False:
+                                    patchID = self.con[icon1].f1
+                                    edge = self.con[icon1].e1
+                                    dir  = self.con[icon1].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,Nctlu-1,dir)
+                                    self.global_coef[g_index].append([patchID,i,jj])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                else:
+                                    patchID = self.con[icon2].f1
+                                    edge = self.con[icon2].e1
+                                    dir  = self.con[icon2].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,0,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                # end if 
+                            # end if
+                        # end if
+
+                        elif i == 0 and j == Nctlv-1:       # Node 2
+                            icon1,master1 = self._findConIndex(ipatch,edge=1)
+                            icon2,master2 = self._findConIndex(ipatch,edge=2)
+                            if master1 and master2:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            # end if
+                            else:
+                                if master1 == False:
+                                    patchiD = self.con[icon1].f1
+                                    edge = self.con[icon1].e1
+                                    dir  = self.con[icon1].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    edge,0,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                else:
+                                    patchID = self.con[icon2].f1
+                                    edge = self.con[icon2].e1
+                                    dir  = self.con[icon2].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,Nctlv-1,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                # end if 
+                            # end if
+                        # end if
+
+                        elif i == Nctlu-1 and j == Nctlv-1: # Node 3
+                            icon1,master1 = self._findConIndex(ipatch,edge=1)
+                            icon2,master2 = self._findConIndex(ipatch,edge=3)
+                            if master1 and master2:
+                                g_index = counter
+                                counter += 1
+                                self.global_coef.append([[ipatch,i,j]])
+                                self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                            # end if
+                            else:
+                                if master1 == False:
+                                    patchID = self.con[icon1].f1
+                                    edge = self.con[icon1].e1
+                                    dir  = self.con[icon1].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,Nctlu-1,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                else:
+                                    patchID = self.con[icon2].f1
+                                    edge = self.con[icon2].e1
+                                    dir  = self.con[icon2].dir
+                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                        edge,Nctlv-1,dir)
+                                    self.global_coef[g_index].append([ipatch,i,j])
+                                    self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                # end if 
+                            # end if
+                        # end if
+                    # end if
+                # end for
             # end for
         # end for
+        self.Ncoef = counter
         
+#         for ipatch in xrange(self.nPatch):
+#             print self.surfs[ipatch].globalCtlIndex
+#         # end for
+#         total = 0
+#         for i in xrange(len(self.global_coef)):
+#             print self.global_coef[i]
+#             total += len(self.global_coef[i])
+#         # end for
+
+#         print 'total:',total
+#         print 'tot:',2*self.surfs[0].Nctlu*self.surfs[0].Nctlv +2* self.surfs[2].Nctlu*self.surfs[2].Nctlv
+#         sys.exit(0)
+
         return
 
     def printEdgeConnectivity(self):
@@ -1152,25 +1260,25 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         return
 
-    def stitchEdges(self):
+#     def stitchEdges(self):
         
-        '''Actually join the edges'''
+#         '''Actually join the edges'''
 
-        for i in xrange(len(self.con)):
-            if self.con[i].type == 1:
-                f1 = self.con[i].f1
-                e1 = self.con[i].e1
-                f2 = self.con[i].f2
-                e2 = self.con[i].e2
+#         for i in xrange(len(self.con)):
+#             if self.con[i].type == 1:
+#                 f1 = self.con[i].f1
+#                 e1 = self.con[i].e1
+#                 f2 = self.con[i].f2
+#                 e2 = self.con[i].e2
 
-                coef = self.surfs[f1].getCoefEdge(e1).copy()
-                if self.con[i].dir == -1:
-                    coef = coef[::-1]
-                # end if
-                self.surfs[f2].setCoefEdge(e2,coef)
-            # end if
-        # end for
-        return
+#                 coef = self.surfs[f1].getCoefEdge(e1).copy()
+#                 if self.con[i].dir == -1:
+#                     coef = coef[::-1]
+#                 # end if
+#                 self.surfs[f2].setCoefEdge(e2,coef)
+#             # end if
+#         # end for
+#         return
 
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
@@ -1366,7 +1474,7 @@ with LAPACK'''
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
 
-            print 'adding ref axis...'
+            print 'Adding ref axis...'
             # A couple of things can happen here: 
             # 1. nsections < len(X)
             #    -> We do a LMS fit on the ref axis
@@ -1442,10 +1550,10 @@ with LAPACK'''
             if ue == None: # No ue was given
                 ue = []
                 for i in xrange(len(surf_ids)):
-                    ue.append(self.surfs[surf_ids[i]].Nctlu_free)
+                    ue.append(self.surfs[surf_ids[i]].Nctlu)
                 # end for 
             # end if
-            
+                              
             if vs == None: # No vs was given
                 vs = []
                 for i in xrange(len(surf_ids)):
@@ -1456,7 +1564,7 @@ with LAPACK'''
             if ve == None: # No ve was given
                 ve =[]
                 for i in xrange(len(surf_ids)):
-                    ve.append(self.surfs[surf_ids[i]].Nctlv_free)
+                    ve.append(self.surfs[surf_ids[i]].Nctlv)
                 # end for
             # end if
 
@@ -1470,7 +1578,7 @@ with LAPACK'''
                 # end if
 
                 if ue[i] == None:
-                    ue[i] = self.surfs[surf_ids[i]].Nctlu_free
+                    ue[i] = self.surfs[surf_ids[i]].Nctlu
                 # end if
 
                 if vs[i] == None:
@@ -1478,7 +1586,7 @@ with LAPACK'''
                 # end if
 
                 if ve[i] == None:
-                    ve[i] = self.surfs[surf_ids[i]].Nctlv_free
+                    ve[i] = self.surfs[surf_ids[i]].Nctlv
                 # end if
             # end for
                 
@@ -1488,13 +1596,16 @@ with LAPACK'''
                 ra.surf_sec.append([slice(us[ii],ue[ii]),slice(vs[ii],ve[ii])])
                 # Now Section out the part of the (free control
                 # points) we actually want to connect
-                crop_coef = self.surfs[ipatch].getFreeCtl()\
-                    [slice(us[ii],ue[ii]),slice(vs[ii],ve[ii])]
+                slice_u = slice(us[ii],ue[ii])
+                slice_v = slice(vs[ii],ve[ii])
+
+                indicies = self.surfs[ipatch].globalCtlIndex[slice_u,slice_v]
+                ra.indicies = indicies
+                crop_coef = self.surfs[ipatch].getCtlSlice(slice_u,slice_v)
 
                 # Get the direction of the ref axis on the surface
-                dir,max_s,min_s = \
-                    self.surfs[ipatch].getRefAxisDir(ra,crop_coef)
-                
+                dir,max_s,min_s = self.surfs[ipatch].getRefAxisDir(ra,crop_coef)
+
                 Nctlu = crop_coef.shape[0]
                 Nctlv = crop_coef.shape[1]
                 ra.surf_sizes.append([Nctlu,Nctlv])
@@ -1556,7 +1667,6 @@ with LAPACK'''
                 # end if
             # end for
 
-
             self.ref_axis.append(ra)
             
     def addRefAxisCon(self,axis1,axis2,con_type):
@@ -1601,69 +1711,69 @@ a hinge line'
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
 
-    def finalize(self):
+#     def finalize(self):
 
-        '''The finalize command must be run before the geometry can be fully
-        surface fitted or used with design variables. No further
-        changes in the edge connectivity is allowed. Two commands are
-        run for each surface: calcNfree and getFreeIndex. These
-        commands calculate the number and size of free control points
-        and calculates the slice string which is used to extract/set
-        those control points'''
+#         '''The finalize command must be run before the geometry can be fully
+#         surface fitted or used with design variables. No further
+#         changes in the edge connectivity is allowed. Two commands are
+#         run for each surface: calcNfree and getFreeIndex. These
+#         commands calculate the number and size of free control points
+#         and calculates the slice string which is used to extract/set
+#         those control points'''
 
-        for ipatch in xrange(self.nPatch):
-            self.surfs[ipatch]._getFreeIndex()
-            self.surfs[ipatch]._calcNFree()
-        # end for
+#         for ipatch in xrange(self.nPatch):
+#             self.surfs[ipatch]._getFreeIndex()
+#             self.surfs[ipatch]._calcNFree()
+#         # end for
 
-        # Also calculate the global index for each control point
-        current_index = 0
-        for ipatch in xrange(self.nPatch):
-            current_index = self.surfs[ipatch]._assignGlobalIndex(current_index)
-        # end for
+#         # Also calculate the global index for each control point
+#         current_index = 0
+#         for ipatch in xrange(self.nPatch):
+#             current_index = self.surfs[ipatch]._assignGlobalIndex(current_index)
+#         # end for
             
-        # Now back propogate the masters to the slaves:
+#         # Now back propogate the masters to the slaves:
 
-        for ipatch in xrange(self.nPatch):
-            Nctlu = self.surfs[ipatch].Nctlu
-            Nctlv = self.surfs[ipatch].Nctlv
+#         for ipatch in xrange(self.nPatch):
+#             Nctlu = self.surfs[ipatch].Nctlu
+#             Nctlv = self.surfs[ipatch].Nctlv
             
-            for i in xrange(Nctlu):
-                for j in xrange(Nctlv):
-                    pt_type,edge_info,node_info=self.surfs[ipatch].checkCtl(i,j)
+#             for i in xrange(Nctlu):
+#                 for j in xrange(Nctlv):
+#                     pt_type,edge_info,node_info=self.surfs[ipatch].checkCtl(i,j)
                     
-                    if pt_type == 0:
-                        global_index = self.surfs[ipatch].globalCtlIndex[i,j]
+#                     if pt_type == 0:
+#                         global_index = self.surfs[ipatch].globalCtlIndex[i,j]
 
-                        if edge_info:
-                            # Unpack edge info
-                            face  = edge_info[0][0]
-                            edge  = edge_info[0][1]
-                            index = edge_info[1]
-                            direction = edge_info[2]
-                            edge_type = edge_info[3]
+#                         if edge_info:
+#                             # Unpack edge info
+#                             face  = edge_info[0][0]
+#                             edge  = edge_info[0][1]
+#                             index = edge_info[1]
+#                             direction = edge_info[2]
+#                             edge_type = edge_info[3]
                     
-                            if edge_type == 1: # We have another attached ctl
-                                self.surfs[face].setCoefIndexEdge(\
-                                    edge,global_index,index,direction)
-                            # end if
-                        # end if
+#                             if edge_type == 1: # We have another attached ctl
+#                                 self.surfs[face].setCoefIndexEdge(\
+#                                     edge,global_index,index,direction)
+#                             # end if
+#                         # end if
 
-                        if node_info: 
-                            # Loop over the number of affected nodes
-                            for k in xrange(len(node_info)): 
-                                face = node_info[k][0]
-                                node = node_info[k][1]
-                                self.surfs[face].setCoefIndexCorner(\
-                                    node,global_index)
-                            # end for
-                        # end if
-                    # end if
-                # end for
-            # end for
-        # end for
+#                         if node_info: 
+#                             # Loop over the number of affected nodes
+#                             for k in xrange(len(node_info)): 
+#                                 face = node_info[k][0]
+#                                 node = node_info[k][1]
+#                                 self.surfs[face].setCoefIndexCorner(\
+#                                     node,global_index)
+#                             # end for
+#                         # end if
+#                     # end if
+#                 # end for
+#             # end for
+#         # end for
 
-        return
+#         return
 
     def update(self):
         '''update the entire pyGeo Object'''
@@ -1730,10 +1840,13 @@ a hinge line'
                 coef = pySpline.pyspline.getcoef(\
                     dir,s,t,x,rot,scales,s_pos,links)
                 
-                # Update the section of free control points
-                self.surfs[ipatch].setFreeCtlSection(\
-                    coef,self.ref_axis[r].surf_sec[ii][0],\
-                        self.ref_axis[r].surf_sec[ii][1])
+                print 'Here:'
+                self.setControlPoints(coef,self.ref_axis[r].indicies)
+
+#                 # Update the section of free control points
+#                 self.surfs[ipatch].setFreeCtlSection(\
+#                     coef,self.ref_axis[r].surf_sec[ii][0],\
+#                         self.ref_axis[r].surf_sec[ii][1])
             # end for
         # end for
 
@@ -1747,7 +1860,7 @@ a hinge line'
         # end for
         #timeE = time.time()
         # Fifth, run the stitch surfaces command to enforce master dv's
-        self.stitchEdges()
+        
         #timeF = time.time()
 
 #         print 'time1:',timeB-timeA
@@ -1757,24 +1870,6 @@ a hinge line'
 #         print 'time5:',timeF-timeE
         return
          
-    def returncoef(self):
-        '''Temp function to get the list of (compressed) coefficientzs for testing with fd'''
-        coef = array([])
-        for ipatch in xrange(self.nPatch):
-            temp = self.surfs[ipatch].getFreeCtl().flatten()
-            coef = hstack([coef,temp])
-        # end for
-            
-        return coef
-         
-    def returncoef2(self):
-        '''Temp function to get the list of (compressed) coefficientzs for testing with fd'''
-        coef = []
-        for ipatch in xrange(self.nPatch):
-            coef.append(self.surfs[ipatch].getFreeCtl().copy())
-        # end for
-            
-        return coef
 
     def getSurfacePoints(self,patchID,uv):
 
@@ -1786,6 +1881,55 @@ a hinge line'
             coordinates[i] = self.surfs[patchID[i]].getValue(uv[i][0],uv[i][1])
 
         return coordinates.flatten()
+
+
+    def setControlPoints(self,coef,index):
+        '''Take coefficients defined in coef, (may be of dimension 0 (scalar),
+        linear or 2D), and indicices (same shape as coef) which are
+        global indicies and then sets ALL the control points which are
+        affected ny these global control points'''
+
+        if size(coef) == 1: # Scalar Argument
+            for ii in xrange(len(self.surfs[self.global_index[index]])):
+                patchID = self.surfs[self.global_index[index][ii][0]]
+                i1 = self.surfs[self.global_index[index][ii][1]]
+                j1 = self.surfs[self.global_index[index][ii][2]]
+
+                self.surfs[patchID][i1,j1] = coef
+        else: #Vector Type Arguments
+
+            if len(coef.shape) == 1: # 1D array
+                N = coef.shape[0]
+                for i in xrange(N):
+                    for ii in xrange(len(self.surfs[self.global_index[index[i]]])):
+                        patchID = self.surfs[self.global_index[index[i]][ii][0]]
+                        i1 = self.surfs[self.global_index[index[i]][ii][1]]
+                        j1 = self.surfs[self.global_index[index[i]][ii][2]]
+                        self.surfs[patchID][i1,j1] = coef[i]
+                    # end for1
+                # end for
+            elif len(coef.shape)== 2:
+                N = coef.shape[0]
+                M = coef.shape[1]
+                for i in xrange(N):
+                    for j in xrange(M):
+                        for ii in xrange(len(self.surfs[self.global_index[index[i,j]]])):
+                            patchID = self.surfs[self.global_index[index[i,j]][ii][0]]
+                            i = self.surfs[self.global_index[index[i,j]][ii][1]]
+                            j = self.surfs[self.global_index[index[i,j]][ii][2]]
+                            self.surfs[patchID][i1,j1] = coef[i,j]
+                    # end for
+                # end for
+            # end if
+        # end if
+
+        return
+                            
+
+            
+            
+
+
 
 
     def calcCtlDeriv(self):
@@ -2012,26 +2156,6 @@ a hinge line'
 
         return coef
 
-    def addGeoObject(self,geo_obj):
-
-        '''Concentate two pyGeo objects into one'''
-
-        for  i in xrange(geo_obj.nPatch):
-            self.surfs.append(geo_obj.surfs[i])
-
-        # end for
-        self.nPatch += geo_obj.nPatch
-        self.con = None
-        self.ref_axis = []
-        self.DV_listGlobal = []
-        self.DV_listLocal = []
-        self.DV_namesGlobal = {}
-        self.DV_namesLocal = {}
-
-        print 'Warning: edge connections,reference_axis and design variables \
- have been reset'
-        return 
-
 
     def addGeoDVLocal(self,dv_name,lower,upper,surf=None,us=None,ue=None,\
                           vs=None,ve=None):
@@ -2048,20 +2172,20 @@ a hinge line'
         # First get the full and free size of the surface we are dealing with
         Nctlu = self.surfs[surf].Nctlu
         Nctlv = self.surfs[surf].Nctlv
-        Nctlu_free = self.surfs[surf].Nctlu_free
-        Nctlv_free = self.surfs[surf].Nctlv_free
+        #Nctlu_free = self.surfs[surf].Nctlu_free
+        #Nctlv_free = self.surfs[surf].Nctlv_free
 
         if us == None:
             us = 0
 
-        if ue == None or ue > Nctlu_free:
-            ue = Nctlu_free
+        if ue == None or ue > Nctlu:
+            ue = Nctlu
 
         if vs == None:
             vs = 0
             
-        if ve == None or ve > Nctlv_free:
-            ve = Nctlv_free
+        if ve == None or ve > Nctlv:
+            ve = Nctlv
 
         slice_u = slice(us,ue)
         slice_v = slice(vs,ve)
@@ -2380,13 +2504,7 @@ a hinge line'
             # Calculate the size Ncoef_free x Ndesign Variables
             
             M = len(patchID)
-
-            N = [0]
-            for i in xrange(self.nPatch):
-                N.append(N[-1]+self.surfs[i].Nctl_free)
-            # end if
-
-            Nctl = N[-1]
+            Nctl = self.Ncoef
 
             # We know the row filling factor: Its (no more) than ku*kv
             # control points for each control point. Since we don't
@@ -2394,9 +2512,9 @@ a hinge line'
              
             if USE_PETSC:
                 self.J2 = PETSc.Mat()
-                self.J2.createAIJ([M*3,N[-1]*3],nnz=16*3)
+                self.J2.createAIJ([M*3,Nctl*3],nnz=16*3)
             else:
-                self.J2 = zeros((M*3,N[-1]*3))
+                self.J2 = zeros((M*3,Nctl*3))
             # end if
         # end if 
                 
@@ -2428,16 +2546,15 @@ a hinge line'
                     x = self.surfs[patchID[i]].calcPtDeriv(\
                         uv[i][0],uv[i][1],u_list[ii],v_list[jj])
 
-                    index = 3*self.surfs[patchID[i]].globalCtlIndex[\
+                    index = 3*self.surfs[patchID[i]].globalCtlIndex[ \
                         u_list[ii],v_list[jj]]
                     self.J2[3*i  ,index  ] = x
                     self.J2[3*i+1,index+1] = x
                     self.J2[3*i+2,index+2] = x
-
+                # end for
             # end for
-
-        # end for
-
+        # end for 
+        
         # Assemble the (Constant) J2
         if USE_PETSC:
             self.J2.assemblyBegin()
@@ -2615,8 +2732,8 @@ class ref_axis(object):
             coords = zeros((2*num_vectors,3))
             icoord = 0
             counter = 0
-            crop_coef = surfs[ipatch].getFreeCtl()[self.surf_sec[ii][0]\
-                                                     ,self.surf_sec[ii][1]]
+            crop_coef = surfs[ipatch].getCtlSlice(self.surf_sec[ii][0]
+                                                     ,self.surf_sec[ii][1])
             for j in xrange(Nctlv):
                 for i in xrange(Nctlu):                    
                     x0 = self.xs.getValue(self.links_s[ii][i,j])

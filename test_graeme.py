@@ -74,25 +74,21 @@ rot[:,2] = tw_aero
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                       file_type='xfoil',scale=chord,offset=offset, \
-                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
-                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
+# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+#                        file_type='xfoil',scale=chord,offset=offset, \
+#                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+#                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.writeEdgeConnectivity('wing.con')
-wing.propagateKnotVectors()
-wing.stitchEdges()
+# wing.calcEdgeConnectivity(1e-6,1e-6)
+# wing.writeEdgeConnectivity('wing.con')
+# wing.propagateKnotVectors()
 
-wing.writeTecplot('wing.dat',edges=True)
-wing.writeIGES('wing.igs')
-print 'Done Step 1'
-print 'Testing pyLayout'
-L = pyLayout.Layout(wing,'input.py')
-print 'tacs is:',tacs
-
-sys.exit(0)
-
+# wing.writeTecplot('wing.dat',edges=True)
+# wing.writeIGES('wing.igs')
+# print 'Done Step 1'
+#print 'Testing pyLayout'
+#L = pyLayout.Layout(wing,'input.py')
+#print 'tacs is:',tacs
 
 #Test code for pyLayout
 
@@ -139,8 +135,6 @@ sys.exit(0)
 wing = pyGeo.pyGeo('iges',file_name='wing.igs')
 wing.readEdgeConnectivity('wing.con')
 #Call the finalize command after we have set the connections
-wing.finalize()
-wing.stitchEdges() # Just to be sure
 print 'Done Step 3'
 
 # ----------------------------------------------------------------------
@@ -162,10 +156,10 @@ wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
 #Flap-Type (full) ref_axis attachment
 X = array([[2.,0,1.5],[2,0,3.5]]) # hinge Line
 rot = array([[0,0,0],[0,0,0]])        
-us = [15,None]
+us = [5,None]
 ue = [None,5]
-vs = [6,6]
-ve = [19,19]
+vs = [2,2]
+ve = [6,6]
 
 wing.addRefAxis([0,1],X,rot,us=us,ue=ue,vs=vs,ve=ve)
 
@@ -175,6 +169,7 @@ wing.addRefAxisCon(0,2,'full') # flap
 
 # Write out the surface
 wing.writeTecplot('wing.dat',ref_axis=True,links=True)
+print 'Adding Design Variables'
 
 # --------------------------------------
 # Define Design Variable functions here:
@@ -244,11 +239,13 @@ wing.DV_listGlobal[idg['flap']].value = 0
 # wing.DV_listLocal[idl['surface2']].value[5,5] = .14
 # wing.DV_listLocal[idl['surface3']].value[3,3] = .14
 # wing.DV_listLocal[idl['surface4']].value[2,2] = .14
-
-patchID,uv = wing.attachSurface() #Attach the surface BEFORE any update
+coors = wing.coordinatesFromFile('wing.dtx')
+dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv) 
 
 wing.update()
+print 'Done Update:'
+sys.exit(0)
 timeA = time.time()
 coef_list1 = wing.calcCtlDeriv() # Answer shows up in C
 timeB = time.time()
