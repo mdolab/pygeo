@@ -88,7 +88,11 @@ wing.writeTecplot('wing.dat',edges=True)
 wing.writeIGES('wing.igs')
 print 'Done Step 1'
 print 'Testing pyLayout'
+L = pyLayout.Layout(wing,'input.py')
+print 'tacs is:',tacs
+
 sys.exit(0)
+
 
 #Test code for pyLayout
 

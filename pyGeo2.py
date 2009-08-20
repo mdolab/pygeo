@@ -1292,6 +1292,9 @@ with LAPACK'''
         
     def _setRHS(self):
         '''Set the RHS Vector'''
+        #NOTE: GET CROP DATA IS NOT WORKING! FIX ME!
+        
+        
         self.RHS = self.nPatch*[]
         for idim in xrange(3):
             if USE_PETSC:
