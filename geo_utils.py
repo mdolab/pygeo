@@ -254,3 +254,4 @@ def getNodesFromEdge(edge):
         n2 = 3
         
     return n1,n2
+
