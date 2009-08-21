@@ -864,7 +864,6 @@ appear in the edge con list'
     
     def _setEdgeConnectivity(self):
         '''Internal function to calculate the globalCtlIndex for each surface'''
-
         if self.con == None:
             print 'Error: No edge connectivity is set yet. Either run \
  calcEdgeConnectivity or load in a .con file'
@@ -875,17 +874,24 @@ appear in the edge con list'
         
         counter = 0
         self.global_coef = []
+        self.coef_sizes = []
+        self.slices = []
         for ipatch in xrange(self.nPatch):
             Nctlu = self.surfs[ipatch].Nctlu # Temp value for this patch
             Nctlv = self.surfs[ipatch].Nctlv # Temp value for this patch
+            u_count = 0
+            v_count = 0
+            master_bool_array = zeros((Nctlu,Nctlv),bool)
+            surf_start_index = counter
             for i in xrange(Nctlu):
                 for j in xrange(Nctlv):
-
+                    master_point = False
                     # This is the basic "internal" control type
                     if i > 0 and i < Nctlu -1 and j > 0 and j < Nctlv -1:
                         self.surfs[ipatch].globalCtlIndex[i,j] = counter
                         counter += 1
                         self.global_coef.append([[ipatch,i,j]])
+                        master_bool_array[i,j] = True
                     # end if
                         
                     # There are 8 other possibilites now: Each of 4
@@ -898,6 +904,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             else:
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
@@ -916,6 +923,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             else:
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
@@ -934,6 +942,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             else:
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
@@ -952,6 +961,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             else:
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
@@ -971,6 +981,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             else:
                                 if master1 == False:
                                     patchID = self.con[icon1].f1
@@ -1000,6 +1011,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             else:
                                 if master1 == False:
                                     patchID = self.con[icon1].f1
@@ -1029,6 +1041,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             # end if
                             else:
                                 if master1 == False:
@@ -1059,6 +1072,7 @@ appear in the edge con list'
                                 counter += 1
                                 self.global_coef.append([[ipatch,i,j]])
                                 self.surfs[ipatch].globalCtlIndex[i,j] = g_index
+                                master_bool_array[i,j] = True
                             # end if
                             else:
                                 if master1 == False:
@@ -1081,11 +1095,43 @@ appear in the edge con list'
                             # end if
                         # end if
                     # end if
-                # end for
-            # end for
-        # end for
-        self.Ncoef = counter
+                # end for  (j loop - Nctlv)
+            # end for (i loop - Nctlu)
+
+            # End of the global dv for this surface
+            surf_end_index = counter
+            self.slices.append([slice(surf_start_index,surf_end_index,1)])
+
+            # Now we figure out how the shape of the master control
+            # points on patch ipatch
+
+            # Just need to check the 4 edges
+            Nctlu_free = Nctlu
+            Nctlv_free = Nctlv
+            
+            if master_bool_array[0,:].any() == False:
+                Nctlu_free -= 1
+            # end if
+
+            if master_bool_array[Nctlu-1,:].any()== False:
+                Nctlu_free -= 1
+            # end if
+
+            if master_bool_array[:,0].any() == False:
+                Nctlv_free -= 1
+            # end if
+
+            if master_bool_array[:,Nctlv-1].any() == False:
+                Nctlv_free -= 1
+            # end if
+
+            self.coef_sizes.append([Nctlu_free,Nctlv_free])
+
+        # end for (ipatch loop)
+        self.Ncoef = counter  #Total Number of Free Coefficients
         
+#        print 'coef_sizes:',self.coef_sizes
+#        print 'slice:',self.slices
 #         for ipatch in xrange(self.nPatch):
 #             print self.surfs[ipatch].globalCtlIndex
 #         # end for
@@ -1098,7 +1144,7 @@ appear in the edge con list'
 #         print 'total:',total
 #         print 'tot:',2*self.surfs[0].Nctlu*self.surfs[0].Nctlv +2* self.surfs[2].Nctlu*self.surfs[2].Nctlv
 #         sys.exit(0)
-
+      
         return
 
     def printEdgeConnectivity(self):
@@ -1250,13 +1296,10 @@ appear in the edge con list'
             # end for
         # end for
 
-
         print 'recomputing surfaces...'
         for ipatch in xrange(self.nPatch):
             self.surfs[ipatch].recompute()
-
-
-
+        # end for
 
         return
 
@@ -1470,7 +1513,7 @@ with LAPACK'''
 # ----------------------------------------------------------------------
 
     def addRefAxis(self,surf_ids,X,rot,nrefsecs=None,spacing=None,\
-                       us=None,ue=None,vs=None,ve=None):
+                       section=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
 
@@ -1537,58 +1580,62 @@ with LAPACK'''
             # create the ref axis:
 
             ra = ref_axis(Xnew,rotnew)
-          
-            # Check if the start/end specifiers are NOT given at all
-            
-            if us == None: # No us was given
-                us = []
-                for i in xrange(len(surf_ids)):
-                    us.append(0)
+      
+            if section == None: # It is was not defined -> Assume full surface
+                pass
+
+
+            else:
+                X = zeros([2,2,3])
+                X[0,0,:] = section[0]
+                X[0,1,:] = section[1]
+                X[1,0,:] = section[2]
+                X[1,1,:] = section[3]
+
+                # We need to find the data control points that are
+                # inside of our "bounding box"
+                # Create a surface that represents that bounding box
+                
+                bounding_box = pySpline.surf_spline(task='lms',ku=2,kv=2,\
+                                                        Nctlu=2,Nctlv=2,X=X)
+
+                print 'Bounding box:',bounding_box
+              
+                # Loop Through all the control points in surfaces and
+                # find which are in the box
+                ipatch = 0
+                alist = []
+               #  print 'X:',X
+#                 print 
+#                 u0,v0,D,converged=bounding_box.projectPoint([.152,0,2])
+
+
+#                alist.append([u0,v0])
+                for i in xrange(self.surfs[ipatch].Nctlu):
+                    for j in xrange(self.surfs[ipatch].Nctlv):
+                        u0,v0,D,converged = bounding_box.projectPoint(\
+                            self.surfs[ipatch].coef[i,j])
+                        print 'i=%d,j=%d,u0=%f,v0=%f'%(i,j,u0,v0),self.surfs[ipatch].coef[i,j],converged
+                        
+                        if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
+                            alist.append([i,j,u0,v0])
+                        #end if
+                    # end for
                 # end for
-            # end if
+                
+                for i in xrange(len(alist)):
+                    print alist[i]
+                            
 
-            if ue == None: # No ue was given
-                ue = []
-                for i in xrange(len(surf_ids)):
-                    ue.append(self.surfs[surf_ids[i]].Nctlu)
-                # end for 
-            # end if
-                              
-            if vs == None: # No vs was given
-                vs = []
-                for i in xrange(len(surf_ids)):
-                    vs.append(0)
-                # end for
-            # end if
+                
 
-            if ve == None: # No ve was given
-                ve =[]
-                for i in xrange(len(surf_ids)):
-                    ve.append(self.surfs[surf_ids[i]].Nctlv)
-                # end for
-            # end if
+                sys.exit(0)
 
-            # Now go back back over them and replace any Nones with
-            # the appropriate value
-
-            for i in xrange(len(surf_ids)):
-
-                if us[i] == None:
-                    us[i] = 0
-                # end if
-
-                if ue[i] == None:
-                    ue[i] = self.surfs[surf_ids[i]].Nctlu
-                # end if
-
-                if vs[i] == None:
-                    vs[i] = 0
-                # end if
-
-                if ve[i] == None:
-                    ve[i] = self.surfs[surf_ids[i]].Nctlv
-                # end if
-            # end for
+                pass
+                
+                                                    
+    
+      
                 
             for ii in xrange(len(surf_ids)):
                 ipatch = surf_ids[ii]
@@ -1688,7 +1735,7 @@ with LAPACK'''
         if con_type == 'full':
             assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
 is only available for reference axis with 2 points. A typical usage is for \
-a hinge line'
+a flap hinge line'
             
             s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
                 self.ref_axis[axis2].xs.getValue(1))
@@ -1925,12 +1972,6 @@ a hinge line'
 
         return
                             
-
-            
-            
-
-
-
 
     def calcCtlDeriv(self):
 

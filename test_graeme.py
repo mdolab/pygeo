@@ -147,24 +147,27 @@ print 'Attaching Reference Axis...'
 print '---------------------------'
 
 # End-Type ref_axis attachments
-# Note No surf_sec requried for the entire surface
-wing.addRefAxis([0,1],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
-                    spacing=section_spacing[0])
-wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
-                    spacing=section_spacing[0])
+# Note No us,ue,vs,ve required for entire surface
+# wing.addRefAxis([0,1],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
+#                     spacing=section_spacing[0])
+# wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
+#                     spacing=section_spacing[0])
 
 #Flap-Type (full) ref_axis attachment
 X = array([[2.,0,1.5],[2,0,3.5]]) # hinge Line
 rot = array([[0,0,0],[0,0,0]])        
-us = [5,None]
-ue = [None,5]
-vs = [2,2]
-ve = [6,6]
 
-wing.addRefAxis([0,1],X,rot,us=us,ue=ue,vs=vs,ve=ve)
+# 
+pt1 = [0.10,0,1]
+pt2 = [0.10,0,3]
+pt3 = [0.45,0,3]
+pt4 = [0.45,0,1]
+
+
+wing.addRefAxis([0,1],X,rot,section = [pt1,pt2,pt3,pt4])
 
 # Now we specify How the ref axis move together
-wing.addRefAxisCon(0,1,'end') # Wing and corner
+wing.addRefAxisCon(0,1,'end') # Wing and cap
 wing.addRefAxisCon(0,2,'full') # flap
 
 # Write out the surface
