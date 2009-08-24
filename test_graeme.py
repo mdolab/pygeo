@@ -148,27 +148,30 @@ print '---------------------------'
 
 # End-Type ref_axis attachments
 # Note No us,ue,vs,ve required for entire surface
-# wing.addRefAxis([0,1],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
-#                     spacing=section_spacing[0])
-# wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
-#                     spacing=section_spacing[0])
+wing.addRefAxis([0,1],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
+                    spacing=section_spacing[0])
+wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
+                    spacing=section_spacing[0])
 
 #Flap-Type (full) ref_axis attachment
-X = array([[2.,0,1.5],[2,0,3.5]]) # hinge Line
+X = array([[.6,0,2],[.6,0,3]]) # hinge Line
 rot = array([[0,0,0],[0,0,0]])        
 
 # 
-pt1 = [0.10,0,1]
-pt2 = [0.10,0,3]
-pt3 = [0.45,0,3]
-pt4 = [0.45,0,1]
+pt1 = [0.60,0,2]
+pt2 = [0.60,0,3]
+pt3 = [1.1,0,2]
+pt4 = [1.1,0,3]
 
 
-wing.addRefAxis([0,1],X,rot,section = [pt1,pt2,pt3,pt4])
+#wing.addRefAxis([0,1],X,rot,section = [pt1,pt2,pt3,pt4])
+
+print 'Done Ref Axis Adding!'
+
 
 # Now we specify How the ref axis move together
 wing.addRefAxisCon(0,1,'end') # Wing and cap
-wing.addRefAxisCon(0,2,'full') # flap
+#wing.addRefAxisCon(0,2,'full') # flap
 
 # Write out the surface
 wing.writeTecplot('wing.dat',ref_axis=True,links=True)
@@ -185,7 +188,6 @@ def span_extension(val,ref_axis):
 
 def twist(val,ref_axis):
     '''Twist'''
-#    print 'twist',val
     ref_axis[0].rot[:,2] = ref_axis[0].rot0[:,2] + ref_axis[0].s*val
     ref_axis[1].rot[:,2] = ref_axis[0].rot[-1,2]
     return ref_axis
@@ -217,13 +219,13 @@ def flap(val,ref_axis):
 wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
 wing.addGeoDVGlobal('twist',0,-20,20,twist)
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
-wing.addGeoDVGlobal('flap',0,-20,20,flap)
+#wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
 # # Add sets of local Design Variables SECOND
-wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,us=10,ue=15,vs=10,ve=15)
-wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
-wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
-wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
+#wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,us=10,ue=15,vs=10,ve=15)
+#wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
+#wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
+#wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
 
 # # Get the dictionary to use names for referecing 
 idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global)
@@ -234,19 +236,22 @@ print 'idl',idl
 
 # # Change the DV's -> Normally this is done from the Optimizer
 wing.DV_listGlobal[idg['span']].value = 1
-wing.DV_listGlobal[idg['twist']].value = 0
+wing.DV_listGlobal[idg['twist']].value = 5
 wing.DV_listGlobal[idg['sweep']].value = 0
-wing.DV_listGlobal[idg['flap']].value = 0
+#wing.DV_listGlobal[idg['flap']].value = 0
 
 #wing.DV_listLocal[idl['surface1']].value[0,0] = 0.0
 # wing.DV_listLocal[idl['surface2']].value[5,5] = .14
 # wing.DV_listLocal[idl['surface3']].value[3,3] = .14
 # wing.DV_listLocal[idl['surface4']].value[2,2] = .14
-coors = wing.coordinatesFromFile('wing.dtx')
-dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
-wing.calcSurfaceDerivative(patchID,uv) 
+# coors = wing.coordinatesFromFile('wing.dtx')
+# dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
+# wing.calcSurfaceDerivative(patchID,uv) 
 
+print 'About to do update'
 wing.update()
+
+wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 print 'Done Update:'
 sys.exit(0)
 timeA = time.time()
