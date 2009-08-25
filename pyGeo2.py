@@ -861,7 +861,6 @@ appear in the edge con list'
         sys.exit(1)
         return 
 
-    
     def _setEdgeConnectivity(self):
         '''Internal function to calculate the globalCtlIndex for each surface'''
         if self.con == None:
@@ -978,6 +977,10 @@ appear in the edge con list'
                         elif i == 0 and j == 0:             # Node 0
                             icon1,master1 = self._findConIndex(isurf,edge=0)
                             icon2,master2 = self._findConIndex(isurf,edge=2)
+                            if master1 == False and master2 == False:
+                                print 'Both False'
+                                print 'isurf:',isurf
+                                print 'icon1,icon2:',icon1,icon2
                             if master1 and master2:
                                 g_index = counter
                                 counter += 1
@@ -993,6 +996,9 @@ appear in the edge con list'
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
+                                    if master2 == False:
+                                        #print 'set it with isurf=',isurf,i,j
+                                        print 'gindex:',g_index
                                 else:
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
@@ -1001,6 +1007,7 @@ appear in the edge con list'
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
+                               
                                 # end if 
                              # end if
                         # end if 
@@ -1021,8 +1028,9 @@ appear in the edge con list'
                                     dir  = self.con[icon1].dir
                                     g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,Nctlu-1,dir)
-                                    self.global_coef[g_index].append([patchID,i,jj])
+                                    self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
+
                                 else:
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
@@ -1031,6 +1039,7 @@ appear in the edge con list'
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
+                                    
                                 # end if 
                             # end if
                         # end if
@@ -1139,23 +1148,7 @@ appear in the edge con list'
             j = self.global_coef[ii][0][2]
             self.coef.append( self.surfs[isurf].coef[i,j])
         # end for
-                            
-
-#        print 'coef_sizes:',self.coef_sizes
-#        print 'slice:',self.slices
-#         for isurf in xrange(self.nSurf):
-#             print self.surfs[isurf].globalCtlIndex
-#         # end for
-#         total = 0
-#         for i in xrange(len(self.global_coef)):
-#             print self.global_coef[i]
-#             total += len(self.global_coef[i])
-#         # end for
-
-#         print 'total:',total
-#         print 'tot:',2*self.surfs[0].Nctlu*self.surfs[0].Nctlv +2* self.surfs[2].Nctlu*self.surfs[2].Nctlv
-#         sys.exit(0)
-      
+           
         return
 
     def printEdgeConnectivity(self):
@@ -1643,14 +1636,14 @@ appear in the edge con list'
                 ra.links_s.append(s)
                 ra.links_x.append(D)
 
-                # Do a really stupid check
-                base_point = ra.xs.getValue(ra.links_s[i])
-                D = ra.links_x[i]
-                #print 'base_point:',base_point
-                #print ra.links_s[i]
-                M = ra.getRotMatrixLocalToGlobal(s)
-                D = dot(M,D)
-                coef_check = base_point + D
+        #         # Do a really stupid check
+#                 base_point = ra.xs.getValue(ra.links_s[i])
+#                 D = ra.links_x[i]
+#                 #print 'base_point:',base_point
+#                 #print ra.links_s[i]
+#                 M = ra.getRotMatrixLocalToGlobal(s)
+#                 D = dot(M,D)
+#                 coef_check = base_point + D
 
               #  print 'Check:',self.coef[coef_list[i]]-coef_check
             # end for
@@ -1704,60 +1697,62 @@ a flap hinge line'
         '''update the entire pyGeo Object'''
 
         # First, update the reference axis info from the design variables
-        #timeA = time.time()
+        timeA = time.time()
         for i in xrange(len(self.DV_listGlobal)):
             # Call the each design variable with the ref axis list
             self.ref_axis = self.DV_listGlobal[i](self.ref_axis)
         # end for
 
         # Second, update the end_point base_point on the ref_axis:
-        #timeB = time.time()
-        for i in xrange(len(self.ref_axis_con)):
-            axis1 = self.ref_axis_con[i][0]
-            axis2 = self.ref_axis_con[i][1]
+        timeB = time.time()
+        if len(self.ref_axis_con)> 0:
+            for i in xrange(len(self.ref_axis_con)):
+                axis1 = self.ref_axis_con[i][0]
+                axis2 = self.ref_axis_con[i][1]
 
-            self.ref_axis[axis1].update()
-            s = self.ref_axis[axis2].base_point_s
-            D = self.ref_axis[axis2].base_point_D
-            M = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
-            D = dot(M,D)
-
-            X0 = self.ref_axis[axis1].xs.getValue(s)
-
-            self.ref_axis[axis2].base_point = X0 + \
-                D*self.ref_axis[axis1].scales(s)
-
-            if self.ref_axis[axis2].con_type == 'full':
-                s = self.ref_axis[axis2].end_point_s
-                D = self.ref_axis[axis2].end_point_D
+                self.ref_axis[axis1].update()
+                s = self.ref_axis[axis2].base_point_s
+                D = self.ref_axis[axis2].base_point_D
                 M = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
                 D = dot(M,D)
-                
+
                 X0 = self.ref_axis[axis1].xs.getValue(s)
 
-                self.ref_axis[axis2].end_point = X0 +\
+                self.ref_axis[axis2].base_point = X0 + \
                     D*self.ref_axis[axis1].scales(s)
-            # end if
 
-            self.ref_axis[axis2].update()
-        # end for
-        #timeC = time.time()
+                if self.ref_axis[axis2].con_type == 'full':
+                    s = self.ref_axis[axis2].end_point_s
+                    D = self.ref_axis[axis2].end_point_D
+                    M = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
+                    D = dot(M,D)
+
+                    X0 = self.ref_axis[axis1].xs.getValue(s)
+
+                    self.ref_axis[axis2].end_point = X0 +\
+                        D*self.ref_axis[axis1].scales(s)
+                # end if
+
+                self.ref_axis[axis2].update()
+        else:
+            for r in xrange(len(self.ref_axis)):
+                self.ref_axis[r].update()
+            # end for
+        timeC = time.time()
 
         # Third, update the design variables
         for r in xrange(len(self.ref_axis)):
-            print 'R:',r
             ra = self.ref_axis[r]
             for i in xrange(len(ra.links_s)):
                 base_point = ra.xs.getValue(ra.links_s[i])
                 D = ra.links_x[i]
                 M = ra.getRotMatrixLocalToGlobal(ra.links_s[i])
                 D = dot(M,D)
-
-                self.coef[ra.coef_list[i]] = base_point + D#*ra.scales(s)
+                self.coef[ra.coef_list[i]] = base_point + D*ra.scales(s)
             # end for
         # end for
 
-        #timeD = time.time()
+        timeD = time.time()
 
         # fourth update the Local coordinates
 
@@ -1765,29 +1760,34 @@ a flap hinge line'
 #             self.surfs[self.DV_listLocal[i].surface_id] = \
 #                 self.DV_listLocal[i](self.surfs[self.DV_listLocal[i].surface_id])
         # end for
-        #timeE = time.time()
-        # Fifth, run the stitch surfaces command to enforce master dv's
+        timeE = time.time()
+        # Fifth, run the updateSurfaceCoef command to acutally copy
+        # coefficients back to the surface
         
         # Copy All the Global DV back to the surfaces
+        self._updateSurfaceCoef()
+
+        timeF = time.time()
+
+        print 'time1:',timeB-timeA
+        print 'time2:',timeC-timeB
+        print 'time3:',timeD-timeC
+        print 'time4:',timeE-timeD
+        print 'time5:',timeF-timeE
+        return
+         
+    def _updateSurfaceCoef(self):
+        '''Copy the pyGeo list of control points back to the surfaces'''
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.global_coef[ii])):
                 isurf = self.global_coef[ii][jj][0]
                 i     = self.global_coef[ii][jj][1]
                 j     = self.global_coef[ii][jj][2]
                 self.surfs[isurf].coef[i,j] = self.coef[ii]
+                self.surfs[isurf].updated[i,j] = 1.0
             # end for
         # end for
             
-
-        #timeF = time.time()
-
-#         print 'time1:',timeB-timeA
-#         print 'time2:',timeC-timeB
-#         print 'time3:',timeD-timeC
-#         print 'time4:',timeE-timeD
-#         print 'time5:',timeF-timeE
-        return
-         
 
     def getSurfacePoints(self,patchID,uv):
 
@@ -1799,50 +1799,6 @@ a flap hinge line'
             coordinates[i] = self.surfs[patchID[i]].getValue(uv[i][0],uv[i][1])
 
         return coordinates.flatten()
-
-
-    def setControlPoints(self,coef,index):
-        '''Take coefficients defined in coef, (may be of dimension 0 (scalar),
-        linear or 2D), and indicices (same shape as coef) which are
-        global indicies and then sets ALL the control points which are
-        affected ny these global control points'''
-
-        if size(coef) == 1: # Scalar Argument
-            for ii in xrange(len(self.surfs[self.global_index[index]])):
-                patchID = self.surfs[self.global_index[index][ii][0]]
-                i1 = self.surfs[self.global_index[index][ii][1]]
-                j1 = self.surfs[self.global_index[index][ii][2]]
-
-                self.surfs[patchID][i1,j1] = coef
-        else: #Vector Type Arguments
-
-            if len(coef.shape) == 1: # 1D array
-                N = coef.shape[0]
-                for i in xrange(N):
-                    for ii in xrange(len(self.surfs[self.global_index[index[i]]])):
-                        patchID = self.surfs[self.global_index[index[i]][ii][0]]
-                        i1 = self.surfs[self.global_index[index[i]][ii][1]]
-                        j1 = self.surfs[self.global_index[index[i]][ii][2]]
-                        self.surfs[patchID][i1,j1] = coef[i]
-                    # end for1
-                # end for
-            elif len(coef.shape)== 2:
-                N = coef.shape[0]
-                M = coef.shape[1]
-                for i in xrange(N):
-                    for j in xrange(M):
-                        for ii in xrange(len(self.surfs[self.global_index[index[i,j]]])):
-                            patchID = self.surfs[self.global_index[index[i,j]][ii][0]]
-                            i = self.surfs[self.global_index[index[i,j]][ii][1]]
-                            j = self.surfs[self.global_index[index[i,j]][ii][2]]
-                            self.surfs[patchID][i1,j1] = coef[i,j]
-                    # end for
-                # end for
-            # end if
-        # end if
-
-        return
-                            
 
     def calcCtlDeriv(self):
 
