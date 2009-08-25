@@ -2369,11 +2369,6 @@ a flap hinge line'
         # First we back out what patch nearest_elem belongs to:
         patchID = (nearest_elem-1) / ((Nu-1)*(Nv-1))  # Integer Division
 
-        # Now go back through and adjust the patchID to the element list
-        for i in xrange(nSurf):
-            patchID[i] = patch_list[patchID[i]]
-        # end
-
         # Next we need to figure out what is the actual UV coordinate 
         # on the given surface
 
@@ -2410,6 +2405,11 @@ a flap hinge line'
             uv[i,1] =  v_local/(Nv-1)+ row/(Nv-1.0)
 
         # end for
+
+        # Now go back through and adjust the patchID to the element list
+        for i in xrange(nSurf):
+            patchID[i] = patch_list[patchID[i]]
+        # end
 
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()
