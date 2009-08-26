@@ -977,10 +977,6 @@ appear in the edge con list'
                         elif i == 0 and j == 0:             # Node 0
                             icon1,master1 = self._findConIndex(isurf,edge=0)
                             icon2,master2 = self._findConIndex(isurf,edge=2)
-                            if master1 == False and master2 == False:
-                                print 'Both False'
-                                print 'isurf:',isurf
-                                print 'icon1,icon2:',icon1,icon2
                             if master1 and master2:
                                 g_index = counter
                                 counter += 1
@@ -996,9 +992,6 @@ appear in the edge con list'
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                    if master2 == False:
-                                        #print 'set it with isurf=',isurf,i,j
-                                        print 'gindex:',g_index
                                 else:
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
@@ -1725,9 +1718,7 @@ a flap hinge line'
         if local:
             for i in xrange(len(self.DV_listLocal)):
                 surface = self.surfs[self.DV_listLocal[i].surface_id]
-                print 'before1:',self.coef[10]
                 self.coef = self.DV_listLocal[i](surface,self.coef)
-                print 'after1:',self.coef[10]
             # end for
         # end if
 
@@ -1738,7 +1729,6 @@ a flap hinge line'
         points'''
         self._updateCoef(local=True)
         self._updateSurfaceCoef()
-        print 'in update:',self.coef[10]
         return
 
     def _updateSurfaceCoef(self):
@@ -2654,7 +2644,6 @@ of \'x\', \'y\', \'z\' or \'quad\''
                 #end if
             # end for
         # end for
-        print 'found %d points:'%(len(coef_list))
         return coef_list
  
 

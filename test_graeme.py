@@ -244,7 +244,6 @@ wing.DV_listLocal[idl['surface1']].value[0] = 0
 coors = wing.getCoordinatesFromFile('wing.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv) 
-print 'uv:',uv
 
 print 'About to do update'
 wing.update()
@@ -290,6 +289,5 @@ for i in xrange(len(dx1)):
 f1.close()
 f2.close()
 
-print coordinatesdx
 #wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')
