@@ -55,24 +55,16 @@ del aircraft.surfs[8]
 del aircraft.surfs[8]
 del aircraft.surfs[8]
 
-aircraft.nPatch = 20
+aircraft.nSurf = 20
 
 aircraft.calcEdgeConnectivity(1e-1,2e-1)
 aircraft.writeEdgeConnectivity('aircraft.con')
 aircraft.propagateKnotVectors()
-aircraft.stitchEdges()
 #aircraft.fitSurfaces()
 timeA = time.time()
 aircraft.writeTecplot('full_aircraft.dat')
 timeB =time.time()
 print 'Write time is:',timeB-timeA
-
-
-
 print 'full time',time.time()-timeA
 
-int
-print 'Master Node Info:'
-for i in xrange(aircraft.nPatch):
-    print i,aircraft.surfs[i].master_node, aircraft.surfs[i].node_con
 
