@@ -154,11 +154,11 @@ wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
                     spacing=section_spacing[0])
 
 #Flap-Type (full) ref_axis attachment
-X = array([[.6,0,2],[.6,0,3]]) # hinge Line
+X = array([[.4,0,2],[.4,0,3]]) # hinge Line
 rot = array([[0,0,0],[0,0,0]])        
 
 # 
-flap_box = pyGeo.bounding_box('y',[0.6,0,2],[1.1,0,3])
+flap_box = pyGeo.bounding_box('y',[0.4,0,1.5],[1.1,0,3.5])
 
 wing.addRefAxis([0,1],X,rot,bounding_box=flap_box)
 
@@ -200,8 +200,6 @@ def sweep(val,ref_axis):
     dx = dz*tan(angle)
     ref_axis[1].x[:,0] =  ref_axis[1].x0[:,0] +  dx * ref_axis[1].s
 
-    ref_axis[0].x[5,0]*=1.05
-
     return ref_axis
 
 def flap(val,ref_axis):
@@ -219,7 +217,8 @@ wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
 wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
 # # Add sets of local Design Variables SECOND
-wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0)
+box = pyGeo.bounding_box('y',[-.3,0,-.1],[-.2499,0,.0001])
+wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,bounding_box = box)
 #wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
 #wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
 #wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
@@ -232,20 +231,20 @@ print 'idg',idg
 print 'idl',idl
 
 # # Change the DV's -> Normally this is done from the Optimizer
-wing.DV_listGlobal[idg['span']].value = 1.0
-wing.DV_listGlobal[idg['twist']].value = 10.0
-wing.DV_listGlobal[idg['sweep']].value = 28.0
-wing.DV_listGlobal[idg['flap']].value = 5.0
+wing.DV_listGlobal[idg['span']].value = 1
+wing.DV_listGlobal[idg['twist']].value = 0
+wing.DV_listGlobal[idg['sweep']].value = .0
+wing.DV_listGlobal[idg['flap']].value = 0.0
 
-wing.DV_listLocal[idl['surface1']].value[45] = .031
-# wing.DV_listLocal[idl['surface2']].value[5,5] = .14
-# wing.DV_listLocal[idl['surface3']].value[3,3] = .14
-# wing.DV_listLocal[idl['surface4']].value[2,2] = .14
-
+wing.DV_listLocal[idl['surface1']].value[0] = 0
+#wing.DV_listLocal[idl['surface2']].value[22] = 0
+#wing.DV_listLocal[idl['surface3']].value[45] = 0
+#wing.DV_listLocal[idl['surface4']].value[36] = 0
 
 coors = wing.getCoordinatesFromFile('wing.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv) 
+print 'uv:',uv
 
 print 'About to do update'
 wing.update()
@@ -253,42 +252,44 @@ wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 print 'Done Update:'
 
 timeA = time.time()
-coef_list1 = wing.calcCtlDeriv() # Answer shows up in C
-timeB = time.time()
-print 'Derivative Time:',timeB-timeA
-sys.exit(0)
-dx = 1e-5
-coef0 = wing.returncoef()
-coordinates0 = wing.getSurfacePoints(patchID,uv)
+wing.calcCtlDeriv() # Answer shows up in C
+print 'Derivative Time:',time.time()-timeA
 
-wing.DV_listGlobal[idg['span']].value = 1 + dx
+
+dx = 1.0e-5
+
+coef0 = wing.coef.astype('d')
+coordinates0 = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
+
+wing.DV_listGlobal[idg['span']].value = 1 
+wing.DV_listGlobal[idg['twist']].value = 0
+wing.DV_listGlobal[idg['sweep']].value = .0 
+wing.DV_listGlobal[idg['flap']].value = 0.0
+wing.DV_listLocal[idl['surface1']].value[0]= 0
 wing.update()
-coefdx = wing.returncoef()
-coordinatesdx = wing.getSurfacePoints(patchID,uv)
+coefdx = wing.coef.astype('d')
+coordinatesdx = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
 
 # # Get The full vector 
-
-dx1 = wing.C[:,0]
+dx1 = wing.C[:,4]
 dx2 = (coordinatesdx-coordinates0)/(dx)
 
-#dx1 = wing.J1[:,0]
-#dx2 = (coefdx-coef0)/dx
+#dx1 = wing.J1[:,54]
+#dx2 = ((coefdx-coef0)/dx).flatten()
 
 f1 = open('dx1','w')
 f2 = open('dx2','w')
 print 'sizes:',len(dx1),len(dx2)
 for i in xrange(len(dx1)):
-    if abs(dx1[i]) < 1e-12:
-        f1.write('0.0 \n')
-    else:
-        f1.write('%15g \n'%(dx1[i]))
+    if not dx1[i] == 0:
+        f1.write('%20.16f \n'%(dx1[i]))
 
-    if abs(dx2[i]) < 1e-12:
-        f2.write('0.0 \n')
-    else: 
-        f2.write('%15g \n'%(dx2[i]))
+    if not dx2[i] == 0:
+        f2.write('%20.16f \n'%(dx2[i]))
+        
 f1.close()
 f2.close()
 
-wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
+print coordinatesdx
+#wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')

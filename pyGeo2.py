@@ -49,7 +49,7 @@ try:
     from petsc4py import PETSc
     
     USE_PETSC = True
-    USE_PETSC = False
+    #USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
 with PETSC'
 except:
@@ -432,8 +432,11 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # end for
             # end if 
 
+        else:
+            breaks = None
         # end if
-     
+            
+       
         naf = len(xsections)
         if 'Nfoil' in kwargs:
             N = kwargs['Nfoil']
@@ -587,14 +590,11 @@ offset.shape[0], Xsec, rot, must all have the same size'
         else:  #No breaks
             
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],\
-                                                       *args,**kwargs))
+                                                       Nctlv=2,*args,**kwargs))
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],\
-                                                       *args,**kwargs))
+                                                       Nctlv=2,*args,**kwargs))
             self.nSurf = 2
 
-            # Create the Reference Axis:
-            self.surfs[0].associateRefAxis(cur_ref_axis)
-            self.surfs[1].associateRefAxis(cur_ref_axis)
         # end if
 
 
@@ -1148,7 +1148,10 @@ appear in the edge con list'
             j = self.global_coef[ii][0][2]
             self.coef.append( self.surfs[isurf].coef[i,j])
         # end for
-           
+            
+        # Finally turn self.coef into a complex array
+        self.coef = array(self.coef,'D')
+
         return
 
     def printEdgeConnectivity(self):
@@ -1645,7 +1648,7 @@ a flap hinge line'
 
     def _updateCoef(self,local=True):
         '''update the entire pyGeo Object'''
-        coef = copy.deepcopy(array(self.coef).astype('D'))
+        
         # First, update the reference axis info from the design variables
         for i in xrange(len(self.DV_listGlobal)):
             # Call the each design variable with the ref axis list
@@ -1697,10 +1700,16 @@ a flap hinge line'
             rot[:,1] = ra.rotys.coef
             rot[:,2] = ra.rotzs.coef
                         
-            #coef = getcoef(s_pos,links,coef,indicies,s,t,x,rot,scale)
-            coef = pySpline.pyspline_cs.getcomplexcoef(\
-                ra.links_s,ra.links_x,coef,ra.coef_list,\
-                    ra.xs.s,ra.xs.t,ra.xs.coef,rot,ra.scales.coef)
+            #coef = getcoef(type,s_pos,links,coef,indicies,s,t,x,rot,scale)
+            if ra.con_type == 'full':
+                self.coef = pySpline.pyspline_cs.getcomplexcoef(\
+                1,ra.links_s,ra.links_x,self.coef,ra.coef_list,\
+                        ra.xs.s,ra.xs.t,ra.xs.coef,rot,ra.scales.coef)
+            else:
+                self.coef = pySpline.pyspline_cs.getcomplexcoef(\
+                    0,ra.links_s,ra.links_x,self.coef,ra.coef_list,\
+                        ra.xs.s,ra.xs.t,ra.xs.coef,rot,ra.scales.coef)
+            # end if
 #---------------- PYTHON IMPLEMENTATION  ------------------
            #  for i in xrange(len(ra.links_s)):
 #                 base_point = ra.xs.getValue(ra.links_s[i])
@@ -1713,22 +1722,23 @@ a flap hinge line'
         # end for
 
         # fourth, update the coefficients (from local DV changes)
-#         print 'before local:'
-#         for i in xrange(len(coef)):
-#             print i,coef[i]
-        for i in xrange(len(self.DV_listLocal)):
-            surface = self.surfs[self.DV_listLocal[i].surface_id]
-            coef = self.DV_listLocal[i](surface,coef)
-        # end for
+        if local:
+            for i in xrange(len(self.DV_listLocal)):
+                surface = self.surfs[self.DV_listLocal[i].surface_id]
+                print 'before1:',self.coef[10]
+                self.coef = self.DV_listLocal[i](surface,self.coef)
+                print 'after1:',self.coef[10]
+            # end for
+        # end if
 
-        return coef
+        return
          
     def update(self):
         '''Run the update coefficients command and then set the control
         points'''
-        self.coef = self._updateCoef(local=True).astype('d')
+        self._updateCoef(local=True)
         self._updateSurfaceCoef()
-        
+        print 'in update:',self.coef[10]
         return
 
     def _updateSurfaceCoef(self):
@@ -1738,8 +1748,7 @@ a flap hinge line'
                 isurf = self.global_coef[ii][jj][0]
                 i     = self.global_coef[ii][jj][1]
                 j     = self.global_coef[ii][jj][2]
-                self.surfs[isurf].coef[i,j] = self.coef[ii]
-                self.surfs[isurf].updated[i,j] = 1.0
+                self.surfs[isurf].coef[i,j] = self.coef[ii].astype('d')
             # end for
         # end for
 
@@ -1786,7 +1795,6 @@ a flap hinge line'
    
         h = 1.0e-40j
         col_counter = 0
-        coef = zeros((len(self.coef),3),'D')
         for idv in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
             nVal = self.DV_listGlobal[idv].nVal
 
@@ -1798,8 +1806,8 @@ a flap hinge line'
                 # end if
 
                 # Now get the updated coefficients and set the column
-                coef = self._updateCoef(local=False)
-                self.J1[:,col_counter] = imag(coef.flatten())/1e-40
+                self._updateCoef(local=False)
+                self.J1[:,col_counter] = imag(self.coef.flatten())/1e-40
                 col_counter += 1    # Increment Column Counter
 
                 # Reset Design Variable Peturbation
@@ -1811,58 +1819,48 @@ a flap hinge line'
             # end for (nval loop)
         # end for (outer design variable loop)
         
-
         # The next step is go to over all the LOCAL variables,
-        # compute the surface normal and 
+        # compute the surface normal
+        print 'col counter before local dv',col_counter
+        for idv in xrange(len(self.DV_listLocal)): # This is the Master CS Loop
+            surface = self.surfs[self.DV_listLocal[idv].surface_id]
+            normals = self.DV_listLocal[idv].getNormals(\
+                surface,self.coef.astype('d'))
 
-#         for idv in xrange(len(self.DV_listLocal)): # This is the Master CS Loop
+            # Normals is the length of local dv on this surface
+            for i in xrange(self.DV_listLocal[idv].nVal):
+                index = 3*self.DV_listLocal[idv].coef_list[i]
+                self.J1[index:index+3,col_counter] = normals[i,:]
+                col_counter += 1
+            # end for
+        # end for
             
-#             nVal = self.DV_listLocal[idv].nVal
-#             isurf = self.DV_listLocal[idv].surface_id
-            
-#             isurf = self.DV_listLocal[idv].surface_id
-#             normals = pySpline.pyspline.getctlnormals(\
-#                 self.surfs[isurf].coef,self.surfs[isurf].tu,\
-#                     self.surfs[isurf].tv,self.surfs[isurf].ku, \
-#                     self.surfs[isurf].kv)
-
-#             # NOTE: Normals are the FULL size of the surface
-
-#             us = self.DV_listLocal[idv].slice_u.start
-#             vs = self.DV_listLocal[idv].slice_v.start
-
-#             Nctlu_free = self.surfs[isurf].Nctlu_free
-#             Nctlv_free = self.surfs[isurf].Nctlv_free
-
-#             for i in xrange(self.DV_listLocal[idv].Nctlu):
-#                 for j in xrange(self.DV_listLocal[idv].Nctlv):
-#                     # Calculate the actual position
-#                     index = M[isurf]*3 + ((i+us)*Nctlv_free + j+vs)*3
-#                     self.J1[index:index+3,col_counter] = -normals[i+us,j+vs]
-#                     #print 'col_counter',col_counter,index,index+3
-#                     col_counter += 1
-#                 # end for
-#             # end for
-
-#             # Now set the normal in the correct location
-#         # end for
         if USE_PETSC:
             self.J1.assemblyBegin()
             self.J1.assemblyEnd()
         # end if 
-       
-        # Print the first column to a file
 
         # Now Do the Try the matrix multiplication
         if USE_PETSC:
             self.C = PETSc.Mat()
             self.J2.matMult(self.J1,result=self.C)
-        else:
-            #self.C = dot(self.J2,self.J1)
             pass
+        else:
+            self.C = dot(self.J2,self.J1)
         # end if
 
         return 
+
+    def getSurfacePoints(self,patchID,uv):
+
+        '''Function to return ALL surface points'''
+
+        N = len(patchID)
+        coordinates = zeros((N,3))
+        for i in xrange(N):
+            coordinates[i] = self.surfs[patchID[i]].getValue(uv[i][0],uv[i][1])
+
+        return coordinates.flatten()
 
 
     def addGeoDVLocal(self,dv_name,lower,upper,surf=None,bounding_box=None):
@@ -2537,11 +2535,19 @@ class geoDVLocal(object):
 
         '''When the object is called, apply the design variable values to the
         surface'''
+
         coef = pySpline.pyspline_cs.updatesurfacepoints(\
             coef,self.local_coef_index,self.coef_list,self.value,\
-                surface.coef,surface.tu,surface.tv,surface.ku,surface.kv)
+                surface.globalCtlIndex,surface.tu,surface.tv,surface.ku,surface.kv)
 
         return coef
+
+    def getNormals(self,surf,coef):
+        normals = pySpline.pyspline_real.getctlnormals(\
+            coef,self.local_coef_index,self.coef_list,\
+                surf.globalCtlIndex,surf.tu,surf.tv,surf.ku,surf.kv)
+        return normals
+
 
 
 class bounding_box(object):
@@ -2629,11 +2635,8 @@ of \'x\', \'y\', \'z\' or \'quad\''
         # end if
 
         X = reshape(corners,[2,2,3])
-        print X
-        print X.shape
-
-        self.box = pySpline.surf_spline(task='lms',ku=2,kv=2,Nctlu=2,Nctlv=2,\
-                                            X=X)
+      
+        self.box=pySpline.surf_spline(task='lms',ku=2,kv=2,Nctlu=2,Nctlv=2,X=X)
         return
 
 
@@ -2651,7 +2654,7 @@ of \'x\', \'y\', \'z\' or \'quad\''
                 #end if
             # end for
         # end for
-
+        print 'found %d points:'%(len(coef_list))
         return coef_list
  
 
