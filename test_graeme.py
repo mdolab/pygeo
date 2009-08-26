@@ -158,13 +158,9 @@ X = array([[.6,0,2],[.6,0,3]]) # hinge Line
 rot = array([[0,0,0],[0,0,0]])        
 
 # 
-pt1 = [0.60,0,2]
-pt2 = [0.60,0,3]
-pt3 = [1.1,0,2]
-pt4 = [1.1,0,3]
+flap_box = pyGeo.bounding_box('y',[0.6,0,2],[1.1,0,3])
 
-
-wing.addRefAxis([0,1],X,rot,section = [pt1,pt2,pt3,pt4])
+wing.addRefAxis([0,1],X,rot,bounding_box=flap_box)
 
 print 'Done Ref Axis Adding!'
 
@@ -181,7 +177,7 @@ print 'Adding Design Variables'
 # --------------------------------------
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
-    print 'span',val           
+    #print 'span',val           
     ref_axis[0].x[:,2] = ref_axis[0].x0[:,2] * val
     return ref_axis
 
@@ -204,6 +200,8 @@ def sweep(val,ref_axis):
     dx = dz*tan(angle)
     ref_axis[1].x[:,0] =  ref_axis[1].x0[:,0] +  dx * ref_axis[1].s
 
+    ref_axis[0].x[5,0]*=1.05
+
     return ref_axis
 
 def flap(val,ref_axis):
@@ -221,7 +219,7 @@ wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
 wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
 # # Add sets of local Design Variables SECOND
-#wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,us=10,ue=15,vs=10,ve=15)
+wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0)
 #wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
 #wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
 #wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
@@ -234,18 +232,18 @@ print 'idg',idg
 print 'idl',idl
 
 # # Change the DV's -> Normally this is done from the Optimizer
-wing.DV_listGlobal[idg['span']].value = 1.2
-wing.DV_listGlobal[idg['twist']].value = 5
-wing.DV_listGlobal[idg['sweep']].value = 10
-wing.DV_listGlobal[idg['flap']].value = 10
+wing.DV_listGlobal[idg['span']].value = 1.0
+wing.DV_listGlobal[idg['twist']].value = 10.0
+wing.DV_listGlobal[idg['sweep']].value = 28.0
+wing.DV_listGlobal[idg['flap']].value = 5.0
 
-#wing.DV_listLocal[idl['surface1']].value[0,0] = 0.0
+wing.DV_listLocal[idl['surface1']].value[45] = .031
 # wing.DV_listLocal[idl['surface2']].value[5,5] = .14
 # wing.DV_listLocal[idl['surface3']].value[3,3] = .14
 # wing.DV_listLocal[idl['surface4']].value[2,2] = .14
 
 
-coors = wing.coordinatesFromFile('wing.dtx')
+coors = wing.getCoordinatesFromFile('wing.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv) 
 
@@ -253,12 +251,12 @@ print 'About to do update'
 wing.update()
 wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 print 'Done Update:'
-sys.exit(0)
+
 timeA = time.time()
 coef_list1 = wing.calcCtlDeriv() # Answer shows up in C
 timeB = time.time()
 print 'Derivative Time:',timeB-timeA
-
+sys.exit(0)
 dx = 1e-5
 coef0 = wing.returncoef()
 coordinates0 = wing.getSurfacePoints(patchID,uv)

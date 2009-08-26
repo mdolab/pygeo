@@ -38,7 +38,7 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor, size
+    real, imag, dstack, floor, size, reshape
 
 from numpy.linalg import lstsq,inv
 #from scipy import io #Only used for debugging
@@ -49,7 +49,7 @@ try:
     from petsc4py import PETSc
     
     USE_PETSC = True
-    #USE_PETSC = False
+    USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
 with PETSC'
 except:
@@ -910,7 +910,7 @@ appear in the edge con list'
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
                                 dir  = self.con[icon].dir
-                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                     edge,i,dir)
                                 self.global_coef[g_index].append([isurf,i,j])
                                 self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -929,7 +929,7 @@ appear in the edge con list'
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
                                 dir  = self.con[icon].dir
-                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                     edge,i,dir)
                                 self.global_coef[g_index].append([isurf,i,j])
                                 self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -948,7 +948,7 @@ appear in the edge con list'
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
                                 dir  = self.con[icon].dir
-                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                     edge,j,dir)
                                 self.global_coef[g_index].append([isurf,i,j])
                                 self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -967,7 +967,7 @@ appear in the edge con list'
                                 patchID = self.con[icon].f1
                                 edge = self.con[icon].e1
                                 dir  = self.con[icon].dir
-                                g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                     edge,j,dir)
                                 self.global_coef[g_index].append([isurf,i,j])
                                 self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -992,7 +992,7 @@ appear in the edge con list'
                                     patchID = self.con[icon1].f1
                                     edge = self.con[icon1].e1
                                     dir  = self.con[icon1].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1003,7 +1003,7 @@ appear in the edge con list'
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
                                     dir  = self.con[icon2].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1026,7 +1026,7 @@ appear in the edge con list'
                                     patchID = self.con[icon1].f1
                                     edge = self.con[icon1].e1
                                     dir  = self.con[icon1].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,Nctlu-1,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1035,7 +1035,7 @@ appear in the edge con list'
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
                                     dir  = self.con[icon2].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1059,7 +1059,7 @@ appear in the edge con list'
                                     patchiD = self.con[icon1].f1
                                     edge = self.con[icon1].e1
                                     dir  = self.con[icon1].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                     edge,0,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1067,7 +1067,7 @@ appear in the edge con list'
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
                                     dir  = self.con[icon2].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,Nctlv-1,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1090,7 +1090,7 @@ appear in the edge con list'
                                     patchID = self.con[icon1].f1
                                     edge = self.con[icon1].e1
                                     dir  = self.con[icon1].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,Nctlu-1,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1098,7 +1098,7 @@ appear in the edge con list'
                                     patchID = self.con[icon2].f1
                                     edge = self.con[icon2].e1
                                     dir  = self.con[icon2].dir
-                                    g_index,ii,jj = self.surfs[patchID].getGlobalIndexEdge(\
+                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
                                         edge,Nctlv-1,dir)
                                     self.global_coef[g_index].append([isurf,i,j])
                                     self.surfs[isurf].globalCtlIndex[i,j] = g_index
@@ -1175,8 +1175,8 @@ appear in the edge con list'
             self.con[i].write_info(i,f)
         # end for
         f.close()
-        return
         
+        return
 
     def readEdgeConnectivity(self,file_name):
 
@@ -1306,26 +1306,6 @@ appear in the edge con list'
         # end for
 
         return
-
-#     def stitchEdges(self):
-        
-#         '''Actually join the edges'''
-
-#         for i in xrange(len(self.con)):
-#             if self.con[i].type == 1:
-#                 f1 = self.con[i].f1
-#                 e1 = self.con[i].e1
-#                 f2 = self.con[i].f2
-#                 e2 = self.con[i].e2
-
-#                 coef = self.surfs[f1].getCoefEdge(e1).copy()
-#                 if self.con[i].dir == -1:
-#                     coef = coef[::-1]
-#                 # end if
-#                 self.surfs[f2].setCoefEdge(e2,coef)
-#             # end if
-#         # end for
-#         return
 
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
@@ -1517,7 +1497,7 @@ appear in the edge con list'
 # ----------------------------------------------------------------------
 
     def addRefAxis(self,surf_ids,X,rot,nrefsecs=None,spacing=None,\
-                       section=None):
+                       bounding_box=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
 
@@ -1585,7 +1565,7 @@ appear in the edge con list'
             ra = ref_axis(Xnew,rotnew)
 
             coef_list = []
-            if section == None: # It is was not defined -> Assume full surface
+            if bounding_box == None: # It is was not defined -> Assume full surface
                 for isurf in surf_ids:
                     for i in xrange(self.surfs[isurf].Nctlu):
                         for j in xrange(self.surfs[isurf].Nctlv):
@@ -1595,29 +1575,10 @@ appear in the edge con list'
                 # end for
             # end if
 
-            else:
-                X = zeros([2,2,3])
-                X[0,0,:] = section[0]
-                X[0,1,:] = section[1]
-                X[1,0,:] = section[2]
-                X[1,1,:] = section[3]
-
-                # We need to find the data control points that are
-                # inside of our "bounding box"
-                # Create a surface that represents that bounding box
-                
-                bounding_box = pySpline.surf_spline(task='lms',ku=2,kv=2,\
-                                                        Nctlu=2,Nctlv=2,X=X)
+            else:   # We have a bounding box
                 for isurf in surf_ids:
-                    for i in xrange(self.surfs[isurf].Nctlu):
-                        for j in xrange(self.surfs[isurf].Nctlv):
-                            u0,v0,D,converged = bounding_box.projectPoint(\
-                                self.surfs[isurf].coef[i,j])
-                            if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
-                                coef_list.append(self.surfs[isurf].globalCtlIndex[i,j])
-                            #end if
-                        # end for
-                    # end for
+                    coef_list = bounding_box.findBoundedCtl(\
+                        self.surfs[isurf],coef_list)
                 # end for
             # end if
 
@@ -1635,17 +1596,6 @@ appear in the edge con list'
                 D = dot(M,D) #Rotate to local frame
                 ra.links_s.append(s)
                 ra.links_x.append(D)
-
-        #         # Do a really stupid check
-#                 base_point = ra.xs.getValue(ra.links_s[i])
-#                 D = ra.links_x[i]
-#                 #print 'base_point:',base_point
-#                 #print ra.links_s[i]
-#                 M = ra.getRotMatrixLocalToGlobal(s)
-#                 D = dot(M,D)
-#                 coef_check = base_point + D
-
-              #  print 'Check:',self.coef[coef_list[i]]-coef_check
             # end for
             ra.coef_list = coef_list
             ra.surf_ids  = surf_ids
@@ -1693,18 +1643,17 @@ a flap hinge line'
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
 
-    def update(self):
+    def _updateCoef(self,local=True):
         '''update the entire pyGeo Object'''
-
+        coef = copy.deepcopy(array(self.coef).astype('D'))
         # First, update the reference axis info from the design variables
-        timeA = time.time()
         for i in xrange(len(self.DV_listGlobal)):
             # Call the each design variable with the ref axis list
             self.ref_axis = self.DV_listGlobal[i](self.ref_axis)
         # end for
 
         # Second, update the end_point base_point on the ref_axis:
-        timeB = time.time()
+        
         if len(self.ref_axis_con)> 0:
             for i in xrange(len(self.ref_axis_con)):
                 axis1 = self.ref_axis_con[i][0]
@@ -1738,44 +1687,50 @@ a flap hinge line'
             for r in xrange(len(self.ref_axis)):
                 self.ref_axis[r].update()
             # end for
-        timeC = time.time()
-
-        # Third, update the design variables
+       
+        # Third, update the coefficients (from global DV changes)
         for r in xrange(len(self.ref_axis)):
+            # Call the fortran function
             ra = self.ref_axis[r]
-            for i in xrange(len(ra.links_s)):
-                base_point = ra.xs.getValue(ra.links_s[i])
-                D = ra.links_x[i]
-                M = ra.getRotMatrixLocalToGlobal(ra.links_s[i])
-                D = dot(M,D)
-                self.coef[ra.coef_list[i]] = base_point + D*ra.scales(s)
-            # end for
+            rot = zeros((len(ra.xs.s),3),'D')
+            rot[:,0] = ra.rotxs.coef
+            rot[:,1] = ra.rotys.coef
+            rot[:,2] = ra.rotzs.coef
+                        
+            #coef = getcoef(s_pos,links,coef,indicies,s,t,x,rot,scale)
+            coef = pySpline.pyspline_cs.getcomplexcoef(\
+                ra.links_s,ra.links_x,coef,ra.coef_list,\
+                    ra.xs.s,ra.xs.t,ra.xs.coef,rot,ra.scales.coef)
+#---------------- PYTHON IMPLEMENTATION  ------------------
+           #  for i in xrange(len(ra.links_s)):
+#                 base_point = ra.xs.getValue(ra.links_s[i])
+#                 D = ra.links_x[i]
+#                 M = ra.getRotMatrixLocalToGlobal(ra.links_s[i])
+#                 D = dot(M,D)
+#                 coef[ra.coef_list[i]] = base_point + D*ra.scales(s)
+#             # end for
+# ---------------------------------------------------------
         # end for
 
-        timeD = time.time()
-
-        # fourth update the Local coordinates
-
-      #   for i in xrange(len(self.DV_listLocal)):
-#             self.surfs[self.DV_listLocal[i].surface_id] = \
-#                 self.DV_listLocal[i](self.surfs[self.DV_listLocal[i].surface_id])
+        # fourth, update the coefficients (from local DV changes)
+#         print 'before local:'
+#         for i in xrange(len(coef)):
+#             print i,coef[i]
+        for i in xrange(len(self.DV_listLocal)):
+            surface = self.surfs[self.DV_listLocal[i].surface_id]
+            coef = self.DV_listLocal[i](surface,coef)
         # end for
-        timeE = time.time()
-        # Fifth, run the updateSurfaceCoef command to acutally copy
-        # coefficients back to the surface
-        
-        # Copy All the Global DV back to the surfaces
-        self._updateSurfaceCoef()
 
-        timeF = time.time()
-
-        print 'time1:',timeB-timeA
-        print 'time2:',timeC-timeB
-        print 'time3:',timeD-timeC
-        print 'time4:',timeE-timeD
-        print 'time5:',timeF-timeE
-        return
+        return coef
          
+    def update(self):
+        '''Run the update coefficients command and then set the control
+        points'''
+        self.coef = self._updateCoef(local=True).astype('d')
+        self._updateSurfaceCoef()
+        
+        return
+
     def _updateSurfaceCoef(self):
         '''Copy the pyGeo list of control points back to the surfaces'''
         for ii in xrange(len(self.coef)):
@@ -1787,18 +1742,8 @@ a flap hinge line'
                 self.surfs[isurf].updated[i,j] = 1.0
             # end for
         # end for
-            
 
-    def getSurfacePoints(self,patchID,uv):
-
-        '''Temp function to get ALL surface Points'''
-
-        N = len(patchID)
-        coordinates = zeros((N,3))
-        for i in xrange(N):
-            coordinates[i] = self.surfs[patchID[i]].getValue(uv[i][0],uv[i][1])
-
-        return coordinates.flatten()
+        return
 
     def calcCtlDeriv(self):
 
@@ -1809,19 +1754,10 @@ a flap hinge line'
         # Initialize the jacobian
 
         if not self.J1: # Not initialized
-            # Calculate the size Ncoef_free x Ndesign Variables
-            
-            M = [0]
-            for i in xrange(self.nSurf):
-                self.surfs[i]._calcNFree()
-                M.append(M[-1]+self.surfs[i].Nctl_free)
-            # end if
+            # Calculate the size Ncoef x Ndesign Variables
+            Nctl = len(self.coef)
 
-            Nctl = M[-1]
-            print 'M:',M
             # Calculate the Number of Design Variables:
-            
-
             N = [0]
             for i in xrange(len(self.DV_listGlobal)): #Global Variables
                 N.append(N[-1]+self.DV_listGlobal[i].nVal)
@@ -1848,9 +1784,9 @@ a flap hinge line'
             # end if
         # end if 
    
-        # This next section of code is basically the update() function
         h = 1.0e-40j
         col_counter = 0
+        coef = zeros((len(self.coef),3),'D')
         for idv in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
             nVal = self.DV_listGlobal[idv].nVal
 
@@ -1861,108 +1797,10 @@ a flap hinge line'
                     self.DV_listGlobal[idv].value[jj] += h
                 # end if
 
-                coef = []
-                # Create a list of the free coefficients for EACH surface
-                for isurf in xrange(self.nSurf):
-                    coef.append(zeros((self.surfs[isurf].Nctlu_free,\
-                                           self.surfs[isurf].Nctlv_free,3),'D'))
-
-                # -----------COPY OF UPDATE--------------
-                 # First, update the reference axis info from the design variables
-
-                for i in xrange(len(self.DV_listGlobal)):
-                    # Call the each design variable with the ref axis list
-                    self.ref_axis = self.DV_listGlobal[i](self.ref_axis)
-                # end for
-
-                # Second, update the end_point base_point on the ref_axis:
-
-                for i in xrange(len(self.ref_axis_con)):
-                    axis1 = self.ref_axis_con[i][0]
-                    axis2 = self.ref_axis_con[i][1]
-                    self.ref_axis[axis1].update()
-                    s = self.ref_axis[axis2].base_point_s
-                    D = self.ref_axis[axis2].base_point_D
-                    R = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
-                    D = dot(R,D)
-
-                    X0 = self.ref_axis[axis1].xs.getValue(s)
-                    self.ref_axis[axis2].base_point = X0 + \
-                        D*self.ref_axis[axis1].scales(s)
-
-                    if self.ref_axis[axis2].con_type  == 'full':
-                        s = self.ref_axis[axis2].end_point_s
-                        D = self.ref_axis[axis2].end_point_D
-                        R = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
-                        D = dot(R,D)
-
-                        X0 = self.ref_axis[axis1].xs.getValue(s)
-                        self.ref_axis[axis2].end_point = X0 +\
-                            D*self.ref_axis[axis1].scales(s)
-                    # end if
-                        
-                    self.ref_axis[axis2].update()
-                # end for
-                timeC = time.time()
-
-                # -------END COPY OF UPDATE--------------
-
-                # Third, update the design variables
-                for r in xrange(len(self.ref_axis)):
-                    for ii in xrange(len(self.ref_axis[r].surf_ids)):
-                        
-                        isurf = self.ref_axis[r].surf_ids[ii]
-                        Nctlu = self.ref_axis[r].surf_sizes[ii][0]
-                        Nctlv = self.ref_axis[r].surf_sizes[ii][1]
-                        dir = self.ref_axis[r].surf_dir[ii]
-                        s_pos = self.ref_axis[r].links_s[ii]
-                        links = self.ref_axis[r].links_x[ii]
-                        # Data from the ref_axis:
-                        s = self.ref_axis[r].s    # parameter for ref axis
-                        t = self.ref_axis[r].xs.t # common knot vector 
-                        x = self.ref_axis[r].xs.coef
-                        rot   = dstack((self.ref_axis[r].rotxs.coef,\
-                                            self.ref_axis[r].rotys.coef, \
-                                            self.ref_axis[r].rotzs.coef))
-                        scales   = self.ref_axis[r].scales.coef
-
-                        # Just the coefficient affected by this ref_axis
-                     
-                        # Fortran Call Template
-                        #coef = getcoef(dir,s,t,x,rot,scale,s_pos,links,\
-                            #[nref,nx,ny])
-
-                        coef_temp = pySpline.pyspline_cs.getcoef(\
-                            dir,s,t,x,rot,scales,s_pos,links)
-                        
-                        # TOTAL size of the coefficients on the patch
-                        su = self.ref_axis[r].surf_sec[ii][0]
-                        sv = self.ref_axis[r].surf_sec[ii][1]
-                        coef[isurf][su,sv] = coef_temp
-
-                    # end for
-                # end for
-                # Fourth 
-                for idv2 in xrange(len(self.DV_listLocal)):
-
-                    isurf = self.DV_listLocal[idv2].surface_id
-
-                    slice_u = self.DV_listLocal[idv2].slice_u
-                    slice_v = self.DV_listLocal[idv2].slice_v
-                    value = self.DV_listLocal[idv2].value
-
-                    coef[isurf] = self.surfs[isurf].\
-                        updateSurfacePointsDeriv(coef[isurf],value,\
-                                                     slice_u,slice_v)
-                # end for
-
-                # Now set the column in J1
-                for isurf in xrange(self.nSurf):
-                    self.J1[M[isurf]*3:M[isurf+1]*3,col_counter] =       \
-                        imag(coef[isurf].flatten())/1e-40
-                # Increment Column Counter
-                col_counter += 1
-                #print 'col_counter:',col_counter
+                # Now get the updated coefficients and set the column
+                coef = self._updateCoef(local=False)
+                self.J1[:,col_counter] = imag(coef.flatten())/1e-40
+                col_counter += 1    # Increment Column Counter
 
                 # Reset Design Variable Peturbation
                 if nVal == 1:
@@ -1970,43 +1808,44 @@ a flap hinge line'
                 else:
                     self.DV_listGlobal[idv].value[jj] -= h
                 # end if
-            # end for
-        # end for
+            # end for (nval loop)
+        # end for (outer design variable loop)
         
+
         # The next step is go to over all the LOCAL variables,
         # compute the surface normal and 
 
-        for idv in xrange(len(self.DV_listLocal)): # This is the Master CS Loop
+#         for idv in xrange(len(self.DV_listLocal)): # This is the Master CS Loop
             
-            nVal = self.DV_listLocal[idv].nVal
-            isurf = self.DV_listLocal[idv].surface_id
+#             nVal = self.DV_listLocal[idv].nVal
+#             isurf = self.DV_listLocal[idv].surface_id
             
-            isurf = self.DV_listLocal[idv].surface_id
-            normals = pySpline.pyspline.getctlnormals(\
-                self.surfs[isurf].coef,self.surfs[isurf].tu,\
-                    self.surfs[isurf].tv,self.surfs[isurf].ku, \
-                    self.surfs[isurf].kv)
+#             isurf = self.DV_listLocal[idv].surface_id
+#             normals = pySpline.pyspline.getctlnormals(\
+#                 self.surfs[isurf].coef,self.surfs[isurf].tu,\
+#                     self.surfs[isurf].tv,self.surfs[isurf].ku, \
+#                     self.surfs[isurf].kv)
 
-            # NOTE: Normals are the FULL size of the surface
+#             # NOTE: Normals are the FULL size of the surface
 
-            us = self.DV_listLocal[idv].slice_u.start
-            vs = self.DV_listLocal[idv].slice_v.start
+#             us = self.DV_listLocal[idv].slice_u.start
+#             vs = self.DV_listLocal[idv].slice_v.start
 
-            Nctlu_free = self.surfs[isurf].Nctlu_free
-            Nctlv_free = self.surfs[isurf].Nctlv_free
+#             Nctlu_free = self.surfs[isurf].Nctlu_free
+#             Nctlv_free = self.surfs[isurf].Nctlv_free
 
-            for i in xrange(self.DV_listLocal[idv].Nctlu):
-                for j in xrange(self.DV_listLocal[idv].Nctlv):
-                    # Calculate the actual position
-                    index = M[isurf]*3 + ((i+us)*Nctlv_free + j+vs)*3
-                    self.J1[index:index+3,col_counter] = -normals[i+us,j+vs]
-                    #print 'col_counter',col_counter,index,index+3
-                    col_counter += 1
-                # end for
-            # end for
+#             for i in xrange(self.DV_listLocal[idv].Nctlu):
+#                 for j in xrange(self.DV_listLocal[idv].Nctlv):
+#                     # Calculate the actual position
+#                     index = M[isurf]*3 + ((i+us)*Nctlv_free + j+vs)*3
+#                     self.J1[index:index+3,col_counter] = -normals[i+us,j+vs]
+#                     #print 'col_counter',col_counter,index,index+3
+#                     col_counter += 1
+#                 # end for
+#             # end for
 
-            # Now set the normal in the correct location
-
+#             # Now set the normal in the correct location
+#         # end for
         if USE_PETSC:
             self.J1.assemblyBegin()
             self.J1.assemblyEnd()
@@ -2019,14 +1858,14 @@ a flap hinge line'
             self.C = PETSc.Mat()
             self.J2.matMult(self.J1,result=self.C)
         else:
-            self.C = dot(self.J2,self.J1)
+            #self.C = dot(self.J2,self.J1)
+            pass
         # end if
 
-        return coef
+        return 
 
 
-    def addGeoDVLocal(self,dv_name,lower,upper,surf=None,us=None,ue=None,\
-                          vs=None,ve=None):
+    def addGeoDVLocal(self,dv_name,lower,upper,surf=None,bounding_box=None):
 
         '''Add a local design variable group.  For Local Design variables the
         reference us,ue,vs,ve are given wrt the full surface since the
@@ -2038,29 +1877,33 @@ a flap hinge line'
             sys.exit(1)
 
         # First get the full and free size of the surface we are dealing with
-        Nctlu = self.surfs[surf].Nctlu
-        Nctlv = self.surfs[surf].Nctlv
-        #Nctlu_free = self.surfs[surf].Nctlu_free
-        #Nctlv_free = self.surfs[surf].Nctlv_free
-
-        if us == None:
-            us = 0
-
-        if ue == None or ue > Nctlu:
-            ue = Nctlu
-
-        if vs == None:
-            vs = 0
             
-        if ve == None or ve > Nctlv:
-            ve = Nctlv
-
-        slice_u = slice(us,ue)
-        slice_v = slice(vs,ve)
+        coef_list = []
+        if bounding_box == None:
+            counter = 0
+            # Assume all control points on surface are to be used
+            for i in xrange(self.surfs[surf].Nctlu):
+                for j in xrange(self.surfs[surf].Nctlv):
+                    cur_index = self.surfs[surf].globalCtlIndex[i,j]
+                    if self.global_coef[cur_index][0] == [surf,i,j]: 
+                        coef_list.append(cur_index)
+                    else:
+                        counter += 1
+                    # end if
+                # end for
+            # end for
+            if not counter == 0:
+                print ' ** Warning: %d coefficients on surface %d are driven and \
+are not included'%(counter,surf)
+            # end if
+        else:
+            # Use the bounding box to find the appropriate indicies
+            coef_list = bounding_box.findBoundedCtl(\
+                self.surfs[surf],coef_list)
+        # end if
         
-        self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,\
-                                                surf,slice_u,slice_v))
-        
+        self.DV_listLocal.append(geoDVLocal(\
+                dv_name,lower,upper,surf,coef_list,self.global_coef))
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
         
         return
@@ -2230,7 +2073,7 @@ a flap hinge line'
     #                              Utility Functions 
     # ----------------------------------------------------------------------
 
-    def coordinatesFromFile(self,file_name):
+    def getCoordinatesFromFile(self,file_name):
         '''Get a list of coordinates from a file - useful for testing'''
 
         f = open(file_name,'r')
@@ -2369,32 +2212,6 @@ a flap hinge line'
 
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()
-
-        # THERE IS AN ERROR IN PROJECT POINT (I THINK)
-       #  # Check to see how far the coordinate and the surface point is:
-#         counter1 = 0
-#         counter2 = 0 
-#         tol = 1e-20
-#         for i in xrange(nSurf):
-#             D = coordinates[:,i] - \
-#                 self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
-#             D = sqrt(dot(D,D))
-
-#             if D > tol:
-#                 print 'uv before:',uv[i,0],uv[i,1],coordinates[:,i],self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
-#                 counter1 += 1
-#                 uv[i,0],uv[i,1],D2,converged =\
-#                     self.surfs[patchID[i]].projectPoint(\
-#                     coordinates[:,i],u0=uv[i,0],v0=uv[i,1])
-#                 print 'uv after:',uv[i,0],uv[i,1],self.surfs[patchID[i]].getValue(uv[i,0],uv[i,1])
-#                 if sqrt(dot(D2,D2)) > tol:
-#                     counter2 += 1
-#                 # end if
-# #             # end if
-#         # end for
-
-#         print '%d Points were worse than %f before.'%(counter1,tol)
-#         print '%d Points were worse than %f after.'%(counter2,tol)
         print 'Done Surface Attachment'
 
         return dist,patchID,uv
@@ -2424,7 +2241,6 @@ a flap hinge line'
         # end if 
                 
         for i in xrange(len(patchID)):
-            #print 'patch id:',i
             ku = self.surfs[patchID[i]].ku
             kv = self.surfs[patchID[i]].kv
             Nctlu = self.surfs[patchID[i]].Nctlu
@@ -2620,8 +2436,6 @@ class ref_axis(object):
 
         return
 
- 
-
     def getRotMatrixGlobalToLocal(self,s):
         
         '''Return the rotation matrix to convert vector from global to
@@ -2676,7 +2490,7 @@ class geoDVGlobal(object):
 
 class geoDVLocal(object):
      
-    def __init__(self,dv_name,lower,upper,surface_id,slice_u,slice_v):
+    def __init__(self,dv_name,lower,upper,surface_id,coef_list,global_coef):
         
         '''Create a set of gemoetric design variables whcih change the shape
         of a surface patch, surface_id
@@ -2695,26 +2509,155 @@ class geoDVLocal(object):
 
         '''
 
-        self.Nctlu = slice_u.stop-slice_u.start
-        self.Nctlv = slice_v.stop-slice_v.start
-        self.nVal = self.Nctlu*self.Nctlv
-        self.slice_u = slice_u
-        self.slice_v = slice_v                                 
-    
-        self.value = zeros((self.Nctlu,self.Nctlv),'D')
+        self.nVal = len(coef_list)
+        self.value = zeros(self.nVal,'D')
         self.name = dv_name
         self.lower = lower
         self.upper = upper
         self.surface_id = surface_id
+        self.coef_list = coef_list
+        
+        # We also need to know what local surface i,j index is for
+        # each point in the coef_list since we need to know the
+        # position on the surface to get the normal. That's why we
+        # passed in the global_coef list so we can figure it out
+        
+        self.local_coef_index = zeros((self.nVal,2),'intc')
+        
+        for icoef in xrange(self.nVal):
+            current_point = global_coef[coef_list[icoef]]
+            # Since the local DV only have driving control points, the
+            # i,j index coorsponding to the first entryin the
+            # global_coef list is the one we want
+            self.local_coef_index[icoef,:] = global_coef[coef_list[icoef]][0][1:3]
+        # end for
         return
 
-    def __call__(self,surface):
+    def __call__(self,surface,coef):
 
         '''When the object is called, apply the design variable values to the
         surface'''
-        #call the surface with the values
-        surface.updateSurfacePoints(self.value,self.slice_u,self.slice_v)
-        return surface
+        coef = pySpline.pyspline_cs.updatesurfacepoints(\
+            coef,self.local_coef_index,self.coef_list,self.value,\
+                surface.coef,surface.tu,surface.tv,surface.ku,surface.kv)
+
+        return coef
+
+
+class bounding_box(object):
+
+    def __init__(self,type,pt1,pt2,pt3=None,pt4=None):
+
+        '''Initialize a bounding box. There are several ways to initialize
+        this class depending on the 'type' qualifier:
+
+        Inputs:
+        
+        type: string which inidicates the initialization type:
+        
+        'x': Define two corners (pt1,pt2) on a plane parallel to the
+        x=0 plane
+
+        'y': Define two corners (pt1,pt2) on a plane parallel to the
+        y=0 plane
+
+        'z': Define two corners (pt1,pt2) on a plane parallel to the
+        z=0 plane
+
+        'quad': Define FOUR corners (pt1,pt2,pt3,pt4) in a
+        COUNTER-CLOCKWISE orientation 
+
+        pt1,pt2 are required for all 'type' arguments
+        pt3,pt4 are ONLY requireed the quad type argument
+
+        '''
+
+        corners = zeros([4,3])
+        if type == 'x':
+            print 'Bounding Box Type is %s: Box is parallel to x=0 plane'%(type)
+            corners[0] = pt1
+
+            corners[1][1] = pt2[1]
+            corners[1][2] = pt1[2]
+
+            corners[2][1] = pt1[1]
+            corners[2][2] = pt2[2]
+
+            corners[3] = pt2
+
+            corners[:,0] = 0.5*(pt1[0] + pt2[0])
+
+        elif type == 'y':
+            print 'Bounding Box Type is %s: Box is parallel to y=0 plane'%(type)
+            corners[0] = pt1
+
+            corners[1][0] = pt2[0]
+            corners[1][2] = pt1[2]
+
+            corners[2][0] = pt1[0]
+            corners[2][2] = pt2[2]
+
+            corners[3] = pt2
+
+            corners[:,1] = 0.5*(pt1[1] + pt2[1])
+
+        elif type == 'z':
+            print 'Bounding Box Type is %s: Box is parallel to z=0 plane'%(type)
+            corners[0] = pt1
+
+            corners[1][0] = pt2[0]
+            corners[1][1] = pt1[1]
+
+            corners[2][0] = pt1[0]
+            corners[2][1] = pt2[1]
+
+            corners[3] = pt2
+
+            corners[:,2] = 0.5*(pt1[2] + pt2[2])
+
+        elif type == 'quad':
+            print 'Bounding Box Type is %s: Box is a general quad.'%(type)
+            
+            corners[0] = pt1
+            corners[1] = pt2
+            corners[2] = pt4 # Note the switch here from CC orientation
+            corners[3] = pt3
+        else:
+            print 'Error: type is unknown. \'type\' must be specified as one \
+of \'x\', \'y\', \'z\' or \'quad\''
+            sys.exit(1)
+        # end if
+
+        X = reshape(corners,[2,2,3])
+        print X
+        print X.shape
+
+        self.box = pySpline.surf_spline(task='lms',ku=2,kv=2,Nctlu=2,Nctlv=2,\
+                                            X=X)
+        return
+
+
+    def findBoundedCtl(self,surface,coef_list):
+
+        '''Take is a pySpline surface, and a (possibly non-empty) coef_list
+        and add to the coef_list the global index of the control point
+        on the surface that can be projected onto the box'''
+        
+        for i in xrange(surface.Nctlu):
+            for j in xrange(surface.Nctlv):
+                u0,v0,D,converged = self.box.projectPoint(surface.coef[i,j])
+                if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
+                    coef_list.append(surface.globalCtlIndex[i,j])
+                #end if
+            # end for
+        # end for
+
+        return coef_list
+ 
+
+
+        
+
 
 #==============================================================================
 # Class Test
