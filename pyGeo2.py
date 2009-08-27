@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 '''
 pyGeo
 
@@ -2669,11 +2668,6 @@ of \'x\', \'y\', \'z\' or \'quad\''
             # end for
         # end for
         return coef_list
- 
-
-
-        
-
 
 #==============================================================================
 # Class Test
