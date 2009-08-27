@@ -1783,11 +1783,14 @@ a flap hinge line'
 
         # Now Do the Try the matrix multiplication
         if USE_PETSC:
-            self.C = PETSc.Mat()
-            self.J2.matMult(self.J1,result=self.C)
-            pass
+            if self.J2:
+                self.C = PETSc.Mat()
+                self.J2.matMult(self.J1,result=self.C)
+            # end
         else:
-            self.C = dot(self.J2,self.J1)
+            if self.J2:
+                self.C = dot(self.J2,self.J1)
+            # end
         # end if
 
         return 
@@ -2267,34 +2270,38 @@ are not included'%(counter,surf)
         # For each segment, number the local variables
         localDVs = []
         for local in self.DV_listLocal:
-            localDVs.append( range(N,N+local.nVal) )
+            localDVs.append( numpy.arange(N,N+local.nVal,dtype=numpy.intc) )
             N += local.nVal
         # end
-
-        print localDVs
 
         # Create the list of local dvs for each surface patch
         surfDVs = []
         for i in xrange(self.nSurf):
-            surfDVs.append([])
+            surfDVs.append(None)
         # end
         
         for i in xrange(len(self.DV_listLocal)):
-            surfDVs[self.DV_listLocal[i].surface_id].extend( localDVs[i] )
+            sid = self.DV_listLocal[i].surface_id
+            if ( surfDVs[sid] == None ):
+                surfDVs[sid] = localDVs[i]
+            else:
+                numpy.hstack( surfDVs[sid], localDVs[i] )
+            # end
         # end
-        
+
         # Go through and add local objects for each design variable
-        convert = lambda s, ldvs : elems.SplineGeo( s.ku, s.kv, s.tu, s.tv,\
-                                                    s.coef[:,:,0], s.coef[:,:,1], s.coef[:,:,2],
-                                                    global_geo, ldvs, s.globalCtlIndex )
+        convert = lambda s, ldvs : elems.SplineGeo( s.ku, s.kv, s.tu.astype('d'), s.tv.astype('d'),\
+                                                    s.coef[:,:,0].astype('d'),
+                                                    s.coef[:,:,1].astype('d'),
+                                                    s.coef[:,:,2].astype('d'),
+                                                    global_geo, ldvs, s.globalCtlIndex.astype('intc') )
 
         tacs_surfs = []
         for i in xrange(self.nSurf):
-            ldvs = numpy.array( surfDVs[i], dtype = numpy.intc )
-            tacs_surfs.append( convert( self.surfs[i], ldvs ) )
+            tacs_surfs.append( convert( self.surfs[i], surfDVs[i] ) )
         # end
 
-        return global_Geo, tacs_surfs
+        return global_geo, tacs_surfs
    
 
 class edge(object):

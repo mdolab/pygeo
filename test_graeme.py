@@ -10,6 +10,9 @@ import os, sys, string, pdb, copy, time
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
     array, real, reshape, meshgrid, dot, cross, vstack, arctan2, tan
 
+import petsc4py
+petsc4py.init(sys.argv)
+
 # =============================================================================
 # Extension modules
 # =============================================================================
