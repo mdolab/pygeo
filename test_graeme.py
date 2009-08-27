@@ -211,7 +211,7 @@ def flap(val,ref_axis):
 # ------------------------------------------
 #         Name, value, lower,upper,function, ref_axis_id -> must be a list
 # # Add global Design Variables FIRST
-wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
+wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension,useit=False)
 wing.addGeoDVGlobal('twist',0,-20,20,twist)
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
 wing.addGeoDVGlobal('flap',0,-20,20,flap)
@@ -269,7 +269,7 @@ coefdx = wing.coef.astype('d')
 coordinatesdx = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
 
 # # Get The full vector 
-dx1 = wing.C[:,4]
+dx1 = wing.C[:,3]
 dx2 = (coordinatesdx-coordinates0)/(dx)
 
 #dx1 = wing.J1[:,54]

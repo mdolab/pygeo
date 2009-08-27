@@ -52,6 +52,11 @@ try:
     #USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
 with PETSC'
+    version = petsc4py.__version__
+    vals = string.split(version,'.')
+    PETSC_MAJOR_VERSION = vals[0]
+    PETSC_MINOR_VERSION = vals[1]
+    PETSC_UPDATE        = vals[2]
 except:
     print 'PETSc4py is not available. Least Square Solutions will be performed\
 with LAPACK (Numpy Least Squares)'
@@ -1759,7 +1764,9 @@ a flap hinge line'
             # Calculate the Number of Design Variables:
             N = [0]
             for i in xrange(len(self.DV_listGlobal)): #Global Variables
-                N.append(N[-1]+self.DV_listGlobal[i].nVal)
+                if self.DV_listGlobal[i].useit:
+                    N.append(N[-1]+self.DV_listGlobal[i].nVal)
+                # end if
             # end for
             
             NdvGlobal = N[-1]
@@ -1777,7 +1784,15 @@ a flap hinge line'
              
             if USE_PETSC:
                 self.J1 = PETSc.Mat()
-                self.J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3)
+                if PETSC_MAJOR_VERSION == 1:
+                    self.J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
+                elif PETSC_MAJOR_VERSION == 0:
+                    self.J1.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
+                else:
+                    print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+                    sys.exit(1)
+                # end if
+
             else:
                 self.J1 = zeros((Nctl*3,Ndv))
             # end if
@@ -1786,27 +1801,29 @@ a flap hinge line'
         h = 1.0e-40j
         col_counter = 0
         for idv in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
-            nVal = self.DV_listGlobal[idv].nVal
+            if self.DV_listGlobal[idv].useit:
+                nVal = self.DV_listGlobal[idv].nVal
 
-            for jj in xrange(nVal):
-                if nVal == 1:
-                    self.DV_listGlobal[idv].value += h
-                else:
-                    self.DV_listGlobal[idv].value[jj] += h
-                # end if
+                for jj in xrange(nVal):
+                    if nVal == 1:
+                        self.DV_listGlobal[idv].value += h
+                    else:
+                        self.DV_listGlobal[idv].value[jj] += h
+                    # end if
 
-                # Now get the updated coefficients and set the column
-                self._updateCoef(local=False)
-                self.J1[:,col_counter] = imag(self.coef.flatten())/1e-40
-                col_counter += 1    # Increment Column Counter
+                    # Now get the updated coefficients and set the column
+                    self._updateCoef(local=False)
+                    self.J1[:,col_counter] = imag(self.coef.flatten())/1e-40
+                    col_counter += 1    # Increment Column Counter
 
-                # Reset Design Variable Peturbation
-                if nVal == 1:
-                    self.DV_listGlobal[idv].value -= h
-                else:
-                    self.DV_listGlobal[idv].value[jj] -= h
-                # end if
-            # end for (nval loop)
+                    # Reset Design Variable Peturbation
+                    if nVal == 1:
+                        self.DV_listGlobal[idv].value -= h
+                    else:
+                        self.DV_listGlobal[idv].value[jj] -= h
+                    # end if
+                # end for (nval loop)
+            # end if (useit)
         # end for (outer design variable loop)
         
         # The next step is go to over all the LOCAL variables,
@@ -1897,10 +1914,10 @@ are not included'%(counter,surf)
         return
 
 
-    def addGeoDVGlobal(self,dv_name,value,lower,upper,function):
+    def addGeoDVGlobal(self,dv_name,value,lower,upper,function,useit=True):
         '''Add a global design variable'''
         self.DV_listGlobal.append(geoDVGlobal(\
-                dv_name,value,lower,upper,function))
+                dv_name,value,lower,upper,function,useit))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
         return 
 
@@ -2222,7 +2239,14 @@ are not included'%(counter,surf)
              
             if USE_PETSC:
                 self.J2 = PETSc.Mat()
-                self.J2.createAIJ([M*3,Nctl*3],nnz=16*3)
+                if PETSC_MAJOR_VERSION == 1:
+                    self.J1.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
+                elif PETSC_MAJOR_VERSION == 0:
+                    self.J1.createSeqAIJ([M*3,Nctl*3],nz=16*3)
+                else:
+                    print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+                    sys.exit(1)
+                # end if
             else:
                 self.J2 = zeros((M*3,Nctl*3))
             # end if
@@ -2440,7 +2464,7 @@ class ref_axis(object):
     
 class geoDVGlobal(object):
      
-    def __init__(self,dv_name,value,lower,upper,function):
+    def __init__(self,dv_name,value,lower,upper,function,useit):
         
         '''Create a geometric design variable (or design variable group)
 
@@ -2466,13 +2490,13 @@ class geoDVGlobal(object):
         self.lower = lower
         self.upper = upper
         self.function = function
+        self.useit=useit
         return
 
     def __call__(self,ref_axis):
 
         '''When the object is called, actually apply the function'''
         # Run the user-supplied function
-
         return self.function(self.value,ref_axis)
         
 
