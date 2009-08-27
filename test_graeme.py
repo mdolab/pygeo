@@ -241,7 +241,7 @@ wing.DV_listLocal[idl['surface1']].value[0] = 0
 #wing.DV_listLocal[idl['surface3']].value[45] = 0
 #wing.DV_listLocal[idl['surface4']].value[36] = 0
 
-coors = wing.getCoordinatesFromFile('wing.dtx')
+coors = wing.getCoordinatesFromFile('naca0012.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv) 
 
@@ -254,7 +254,6 @@ timeA = time.time()
 wing.calcCtlDeriv() # Answer shows up in C
 print 'Derivative Time:',time.time()-timeA
 
-
 dx = 1.0e-5
 
 coef0 = wing.coef.astype('d')
@@ -264,7 +263,7 @@ wing.DV_listGlobal[idg['span']].value = 1
 wing.DV_listGlobal[idg['twist']].value = 0
 wing.DV_listGlobal[idg['sweep']].value = .0 
 wing.DV_listGlobal[idg['flap']].value = 0.0
-wing.DV_listLocal[idl['surface1']].value[0]= 0
+wing.DV_listLocal[idl['surface1']].value[0]= 0+dx
 wing.update()
 coefdx = wing.coef.astype('d')
 coordinatesdx = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
