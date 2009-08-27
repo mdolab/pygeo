@@ -86,11 +86,7 @@ rot[:,2] = tw_aero
 # wing.writeTecplot('wing.dat',edges=True)
 # wing.writeIGES('wing.igs')
 # print 'Done Step 1'
-#print 'Testing pyLayout'
-#L = pyLayout.Layout(wing,'input.py')
-#print 'tacs is:',tacs
 
-#Test code for pyLayout
 
 
 
@@ -136,6 +132,13 @@ wing = pyGeo.pyGeo('iges',file_name='wing.igs')
 wing.readEdgeConnectivity('wing.con')
 #Call the finalize command after we have set the connections
 print 'Done Step 3'
+
+print 'Testing pyLayout'
+L = pyLayout.Layout(wing,'input.py')
+print 'tacs is:',tacs
+
+sys.exit(0)
+#Test code for pyLayout
 
 # ----------------------------------------------------------------------
 

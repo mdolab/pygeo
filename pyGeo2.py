@@ -875,270 +875,22 @@ appear in the edge con list'
         # end if
 
         # This function will set the globalCtlIndex for each surface
-        
-        counter = 0
-        self.global_coef = []
-        self.coef_sizes = []
-        self.coef_shapes = []
-        self.coef = []
-        self.slices = []
+
+        # Call the new function
+
+        sizes = []
         for isurf in xrange(self.nSurf):
-            Nctlu = self.surfs[isurf].Nctlu # Temp value for this patch
-            Nctlv = self.surfs[isurf].Nctlv # Temp value for this patch
-            u_count = 0
-            v_count = 0
-            master_bool_array = zeros((Nctlu,Nctlv),bool)
-            surf_start_index = counter
-            for i in xrange(Nctlu):
-                for j in xrange(Nctlv):
-                    master_point = False
-                    # This is the basic "internal" control type
-                    if i > 0 and i < Nctlu -1 and j > 0 and j < Nctlv -1:
-                        self.surfs[isurf].globalCtlIndex[i,j] = counter
-                        counter += 1
-                        self.global_coef.append([[isurf,i,j]])
-                        master_bool_array[i,j] = True
-                    # end if
-                        
-                    # There are 8 other possibilites now: Each of 4
-                    # edges and 4 corners. Do the edges first
-                    else:
-                        if i > 0 and i < Nctlu-1 and j == 0:       # Edge 0
-                            icon, master = self._findConIndex(isurf,edge=0)
-                            if master:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            else:
-                                patchID = self.con[icon].f1
-                                edge = self.con[icon].e1
-                                dir  = self.con[icon].dir
-                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                    edge,i,dir)
-                                self.global_coef[g_index].append([isurf,i,j])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                            # end if
-                        # end if 
-
-                        elif i > 0 and i < Nctlu-1 and j == Nctlv-1: # Edge 1
-                            icon, master = self._findConIndex(isurf,edge=1)
-                            if master:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            else:
-                                patchID = self.con[icon].f1
-                                edge = self.con[icon].e1
-                                dir  = self.con[icon].dir
-                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                    edge,i,dir)
-                                self.global_coef[g_index].append([isurf,i,j])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                            # end if
-                        # end if  
-
-                        elif i == 0 and j > 0 and j < Nctlv -1:      # Edge 2
-                            icon, master = self._findConIndex(isurf,edge=2)
-                            if master:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            else:
-                                patchID = self.con[icon].f1
-                                edge = self.con[icon].e1
-                                dir  = self.con[icon].dir
-                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                    edge,j,dir)
-                                self.global_coef[g_index].append([isurf,i,j])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                            # end if
-                        # end if  
-
-                        elif i == Nctlu-1 and j > 0 and j < Nctlv-1: # Edge 3
-                            icon, master = self._findConIndex(isurf,edge=3)
-                            if master:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            else:
-                                patchID = self.con[icon].f1
-                                edge = self.con[icon].e1
-                                dir  = self.con[icon].dir
-                                g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                    edge,j,dir)
-                                self.global_coef[g_index].append([isurf,i,j])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                            # end if
-                        # end if  
-
-                        elif i == 0 and j == 0:             # Node 0
-                            icon1,master1 = self._findConIndex(isurf,edge=0)
-                            icon2,master2 = self._findConIndex(isurf,edge=2)
-                            if master1 and master2:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            else:
-                                if master1 == False:
-                                    patchID = self.con[icon1].f1
-                                    edge = self.con[icon1].e1
-                                    dir  = self.con[icon1].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,0,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                else:
-                                    patchID = self.con[icon2].f1
-                                    edge = self.con[icon2].e1
-                                    dir  = self.con[icon2].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,0,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                               
-                                # end if 
-                             # end if
-                        # end if 
-
-                        elif i == Nctlu-1 and j == 0:       # Node 1
-                            icon1,master1 = self._findConIndex(isurf,edge=0)
-                            icon2,master2 = self._findConIndex(isurf,edge=3)
-                            if master1 and master2:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            else:
-                                if master1 == False:
-                                    patchID = self.con[icon1].f1
-                                    edge = self.con[icon1].e1
-                                    dir  = self.con[icon1].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,Nctlu-1,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-
-                                else:
-                                    patchID = self.con[icon2].f1
-                                    edge = self.con[icon2].e1
-                                    dir  = self.con[icon2].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,0,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                    
-                                # end if 
-                            # end if
-                        # end if
-
-                        elif i == 0 and j == Nctlv-1:       # Node 2
-                            icon1,master1 = self._findConIndex(isurf,edge=1)
-                            icon2,master2 = self._findConIndex(isurf,edge=2)
-                            if master1 and master2:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            # end if
-                            else:
-                                if master1 == False:
-                                    patchiD = self.con[icon1].f1
-                                    edge = self.con[icon1].e1
-                                    dir  = self.con[icon1].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                    edge,0,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                else:
-                                    patchID = self.con[icon2].f1
-                                    edge = self.con[icon2].e1
-                                    dir  = self.con[icon2].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,Nctlv-1,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                # end if 
-                            # end if
-                        # end if
-
-                        elif i == Nctlu-1 and j == Nctlv-1: # Node 3
-                            icon1,master1 = self._findConIndex(isurf,edge=1)
-                            icon2,master2 = self._findConIndex(isurf,edge=3)
-                            if master1 and master2:
-                                g_index = counter
-                                counter += 1
-                                self.global_coef.append([[isurf,i,j]])
-                                self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                master_bool_array[i,j] = True
-                            # end if
-                            else:
-                                if master1 == False:
-                                    patchID = self.con[icon1].f1
-                                    edge = self.con[icon1].e1
-                                    dir  = self.con[icon1].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,Nctlu-1,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                else:
-                                    patchID = self.con[icon2].f1
-                                    edge = self.con[icon2].e1
-                                    dir  = self.con[icon2].dir
-                                    g_index = self.surfs[patchID].getGlobalIndexEdge(\
-                                        edge,Nctlv-1,dir)
-                                    self.global_coef[g_index].append([isurf,i,j])
-                                    self.surfs[isurf].globalCtlIndex[i,j] = g_index
-                                # end if 
-                            # end if
-                        # end if
-                    # end if
-                # end for  (j loop - Nctlv)
-            # end for (i loop - Nctlu)
-
-            # End of the global dv for this surface
-            surf_end_index = counter
-            self.slices.append([slice(surf_start_index,surf_end_index,1)])
-            # Now we figure out how the shape of the master control
-            # points on patch isurf
-
-            # Just need to check the 4 edges
-            Nctlu_free = Nctlu
-            Nctlv_free = Nctlv
-            
-            if master_bool_array[0,:].any() == False:
-                Nctlu_free -= 1
-            # end if
-
-            if master_bool_array[Nctlu-1,:].any()== False:
-                Nctlu_free -= 1
-            # end if
-
-            if master_bool_array[:,0].any() == False:
-                Nctlv_free -= 1
-            # end if
-
-            if master_bool_array[:,Nctlv-1].any() == False:
-                Nctlv_free -= 1
-            # end if
-
-            self.coef_shapes.append([Nctlu_free,Nctlv_free])
-            self.coef_sizes.append(Nctlu_free*Nctlv_free)
-
-        # end for (isurf loop)
-        self.Ncoef = counter  #Total Number of Free Coefficients
+            sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
+        # end for
+        total,g_index,l_index = self.calcGlobalNumbering(sizes)
+        self.Ncoef = total  #Total Number of Free Coefficients
         
+        self.global_coef = g_index
+        for isurf in xrange(self.nSurf):
+            self.surfs[isurf].gloablCtlIndex = l_index[isurf]
+        # end for
+        
+        self.coef = []
         # Now Fill up the self.coef list:
         for ii in xrange(len(self.global_coef)):
             isurf = self.global_coef[ii][0][0]
@@ -1156,8 +908,178 @@ appear in the edge con list'
             self.petsc_coef.createSeq(3*self.Ncoef)
             self.petsc_coef[:] = self.coef.flatten().astype('d')
         # end
-
         return
+
+    def calcGlobalNumbering(self,sizes,surface_list=None):
+        '''Internal function to calculate the globalCtlIndex for each surface'''
+        if self.con == None:
+            print 'Error: No edge connectivity is set yet. Either run \
+ calcEdgeConnectivity or load in a .con file'
+            sys.exit(1)
+        # end if
+
+        def getIndexEdge(isurf,edge,index,dir):
+            '''Get the global index value from edge,index,dir information'''
+            if edge == 0:
+                if dir == 1:
+                    return l_index[isurf][index,0]
+                else:
+                    return l_index[isurf][Nu-1-index,0]
+                # end if
+            elif edge == 1:
+                if dir == 1:
+                    return l_index[isurf][index,Nv-1]
+                else:
+                    return l_index[isurf][Nu-1-index,Nv-1]
+                # end if
+            elif edge == 2:
+                if dir == 1:
+                    return l_index[isurf][0,index]
+                else:
+                    return l_index[isurf][0,Nv-1-index]
+                # end if
+            elif edge == 3:
+                if dir == 1:
+                    return l_index[isurf][Nu-1,index]
+                else:
+                    return l_index[isurf][Nu-1,Nv-1-index]
+                # end if
+            # end if
+
+            return
+             
+        # Check if sizes is the same length as the number of surfaces
+        #assert len(sizes) == self.nSurf,'The length of sizes must be the same as the \
+        #number of surface points'
+
+        # This function will calculate a global index ordering for a
+        # set of surfaces with the supplied connectivity
+      
+        def add_master(counter):
+            '''Add a master control point'''
+            l_index[isurf][i,j] = counter
+            counter =counter + 1
+            g_index.append([[isurf,i,j]])
+            return counter
+
+        def add_slave(icon,index):
+            current_index = getIndexEdge(self.con[icon].f1, self.con[icon].e1, index,\
+                                 self.con[icon].dir)
+            g_index[current_index].append([isurf,i,j])
+            l_index[isurf][i,j] = current_index
+            return
+        
+        counter = 0
+        g_index = []
+        l_index = []
+
+        if not surface_list: # W
+            surface_list = range(0,self.nSurf)            
+        
+        for ii in xrange(len(surface_list)):
+            isurf = surface_list[ii]
+            Nu = sizes[isurf][0]
+            Nv = sizes[isurf][1]
+            l_index.append(zeros((Nu,Nv),'intc'))
+            for i in xrange(Nu):
+                for j in xrange(Nv):
+                    # This is the basic "internal" control type
+                    if i > 0 and i < Nu -1 and j > 0 and j < Nv -1:
+                        counter = add_master(counter)
+
+                    # There are 8 other possibilites now: Each of 4
+                    # edges and 4 corners. Do the edges first
+                    else:
+                        if i > 0 and i < Nu-1 and j == 0:       # Edge 0
+                            icon, master = self._findConIndex(isurf,edge=0)
+                            if master:
+                                counter = add_master(counter)
+                            else:
+                                add_slave(icon,i)
+                            # end if
+                      
+                        elif i > 0 and i < Nu-1 and j == Nv-1: # Edge 1
+                            icon, master = self._findConIndex(isurf,edge=1)
+                            if master:
+                                counter = add_master(counter)
+                            else:
+                                add_slave(icon,i)
+                            # end if
+                   
+                        elif i == 0 and j > 0 and j < Nv -1:      # Edge 2
+                            icon, master = self._findConIndex(isurf,edge=2)
+                            if master:
+                                counter = add_master(counter)
+                            else:
+                                add_slave(icon,j)
+                            # end if
+
+                        elif i == Nu-1 and j > 0 and j < Nv-1: # Edge 3
+                            icon, master = self._findConIndex(isurf,edge=3)
+                            if master:
+                                counter = add_master(counter)
+                            else:
+                                add_slave(icon,j)
+                            # end if
+
+                        elif i == 0 and j == 0:             # Node 0
+                            icon1,master1 = self._findConIndex(isurf,edge=0)
+                            icon2,master2 = self._findConIndex(isurf,edge=2)
+                            if master1 and master2:
+                                counter = add_master(counter)
+                            else:
+                                if master1 == False:
+                                    add_slave(icon1,0)
+                                else:
+                                    add_slave(icon2,0)
+                                # end if
+                            # end if
+
+                        elif i == Nu-1 and j == 0:       # Node 1
+                            icon1,master1 = self._findConIndex(isurf,edge=0)
+                            icon2,master2 = self._findConIndex(isurf,edge=3)
+                            if master1 and master2:
+                                counter = add_master(counter)
+                            else:
+                                if master1 == False:
+                                    add_slave(icon1,Nu-1)
+                                else:
+                                    add_slave(icon2,0)
+                                # end if 
+                            # end if
+                        
+                        elif i == 0 and j == Nv-1:       # Node 2
+                            icon1,master1 = self._findConIndex(isurf,edge=1)
+                            icon2,master2 = self._findConIndex(isurf,edge=2)
+                            if master1 and master2:
+                                counter = add_master(counter)
+                            else:
+                                if master1 == False:
+                                    add_slave(icon1,0)
+                                else:
+                                    add_slave(icon2,Nv-1)
+                                # end if 
+                            # end if
+
+                        elif i == Nu-1 and j == Nv-1: # Node 3
+                            icon1,master1 = self._findConIndex(isurf,edge=1)
+                            icon2,master2 = self._findConIndex(isurf,edge=3)
+                            if master1 and master2:
+                                counter = add_master(counter)
+                            else:
+                                if master1 == False:
+                                    add_slave(icon1,Nu-1)
+                                else:
+                                    add_slave(icon2,Nv-1)
+                                # end if 
+                            # end if
+                        # end if (edges and nodes)
+                    # end if (middle or not)
+                # end for  (j loop - Nv)
+            # end for (i loop - Nu)
+        # end for (isurf loop)
+     
+        return counter,g_index,l_index
 
     def printEdgeConnectivity(self):
 
