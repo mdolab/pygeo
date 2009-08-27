@@ -219,9 +219,9 @@ wing.addGeoDVGlobal('flap',0,-20,20,flap)
 # # Add sets of local Design Variables SECOND
 box = pyGeo.bounding_box('y',[-.3,0,-.1],[-.2499,0,.0001])
 wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,bounding_box = box)
-#wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
-#wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
-#wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
+wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
+wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
+wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
 
 # # Get the dictionary to use names for referecing 
 idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global)
@@ -237,9 +237,9 @@ wing.DV_listGlobal[idg['sweep']].value = .0
 wing.DV_listGlobal[idg['flap']].value = 0.0
 
 wing.DV_listLocal[idl['surface1']].value[0] = 0
-#wing.DV_listLocal[idl['surface2']].value[22] = 0
-#wing.DV_listLocal[idl['surface3']].value[45] = 0
-#wing.DV_listLocal[idl['surface4']].value[36] = 0
+wing.DV_listLocal[idl['surface2']].value[22] = 0
+wing.DV_listLocal[idl['surface3']].value[45] = 0
+wing.DV_listLocal[idl['surface4']].value[36] = 0
 
 coors = wing.getCoordinatesFromFile('naca0012.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
@@ -290,3 +290,5 @@ f2.close()
 
 #wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')
+
+tacs_geo, tacs_surfs = wing.createTACSGeo()

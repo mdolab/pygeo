@@ -53,9 +53,9 @@ try:
 with PETSC'
     version = petsc4py.__version__
     vals = string.split(version,'.')
-    PETSC_MAJOR_VERSION = vals[0]
-    PETSC_MINOR_VERSION = vals[1]
-    PETSC_UPDATE        = vals[2]
+    PETSC_MAJOR_VERSION = int(vals[0])
+    PETSC_MINOR_VERSION = int(vals[1])
+    PETSC_UPDATE        = int(vals[2])
 except:
     print 'PETSc4py is not available. Least Square Solutions will be performed\
 with LAPACK (Numpy Least Squares)'
@@ -152,6 +152,7 @@ class pyGeo():
         self.DV_listLocal  = []
         self.DV_namesGlobal = {}
         self.DV_namesLocal  = {}
+        self.petsc_coef = None # Global vector of PETSc coefficients
         self.J = None
         self.J1 = None
         self.J2 = None
@@ -1149,6 +1150,13 @@ appear in the edge con list'
         # Finally turn self.coef into a complex array
         self.coef = array(self.coef,'D')
 
+        # Create a PETSc vector of the global knots
+        if USE_PETSC:
+            self.petsc_coef = PETSc.Vec()
+            self.petsc_coef.createSeq(3*self.Ncoef)
+            self.petsc_coef[:] = self.coef.flatten().astype('d')
+        # end
+
         return
 
     def printEdgeConnectivity(self):
@@ -1732,6 +1740,12 @@ a flap hinge line'
         '''Run the update coefficients command and then set the control
         points'''
         self._updateCoef(local=True)
+
+        # Update the values in PETSc
+        if USE_PETSC:
+            self.petsc_coef[:] = self.coef.flatten().astype('d')
+        # end
+            
         self._updateSurfaceCoef()
         return
 
@@ -1761,15 +1775,15 @@ a flap hinge line'
             Nctl = len(self.coef)
 
             # Calculate the Number of Design Variables:
-            N = [0]
+            N = 0
             for i in xrange(len(self.DV_listGlobal)): #Global Variables
                 if self.DV_listGlobal[i].useit:
-                    N.append(N[-1]+self.DV_listGlobal[i].nVal)
+                    N += self.DV_listGlobal[i].nVal
                 # end if
             # end for
             
-            NdvGlobal = N[-1]
-            Ndv = N[-1]
+            NdvGlobal = N
+            Ndv = N
             for i in xrange(len(self.DV_listLocal)): # Local Variables
                 Ndv += self.DV_listLocal[i].nVal
             # end for
@@ -1791,7 +1805,6 @@ a flap hinge line'
                     print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                     sys.exit(1)
                 # end if
-
             else:
                 self.J1 = zeros((Nctl*3,Ndv))
             # end if
@@ -2091,13 +2104,13 @@ are not included'%(counter,surf)
 
         return coordinates
     
-    def attachSurface(self,coordinates,patch_list=None,Nu=20,Nv=20):
+    def attachSurface(self,coordinates,patch_list=None,Nu=20,Nv=20,force_domain=True):
 
         '''Attach a list of surface points to either all the pyGeo surfaces
         of a subset of the list of surfaces provided by patch_list.
 
         Arguments:
-             coordinates   :  a 3 by nSurf numpy array
+             coordinates   :  a 3 by nPts numpy array
              patch_list    :  list of patches to locate next to nodes,
                               None means all patches will be used
              Nu,Nv         :  parameters that control the temporary
@@ -2106,7 +2119,7 @@ are not included'%(counter,surf)
         Returns:
              dist          :  distance between mesh location and point
              patchID       :  patch on which each u,v coordinate is defined
-             uv            :  u,v coordinates in a 2 by nSurf array.
+             uv            :  u,v coordinates in a 2 by nPts array.
 
         Modified by GJK to include a search on a subset of surfaces.
         This is useful for associating points in a mesh where points may
@@ -2120,7 +2133,7 @@ are not included'%(counter,surf)
             patch_list = range(self.nSurf)
         # end
     
-        nSurf = coordinates.shape[1]
+        nPts = coordinates.shape[1]
         # Now make the 'FE' Grid from the sufaces.
 
         # Global 'N' Parameter
@@ -2175,9 +2188,9 @@ are not included'%(counter,surf)
         # Next we need to figure out what is the actual UV coordinate 
         # on the given surface
 
-        uv = zeros((nSurf,2))
+        uv = zeros((nPts,2))
         
-        for i in xrange(nSurf):
+        for i in xrange(nPts):
 
             # Local Element
             local_elem = (nearest_elem[i]-1) - patchID[i]*(Nu-1)*(Nv-1)
@@ -2190,27 +2203,30 @@ are not included'%(counter,surf)
 
             #print nearest_elem[i],local_elem,row,col
 
-            if uvw[0,i] > 1:
-                u_local = 1
-            elif uvw[0,i] < 0:
-                u_local = 0
-            else:
-                u_local = uvw[0,i]
+            u_local = uvw[0,i]
+            v_local = uvw[1,i]
 
-            if uvw[1,i] > 1:
-                v_local = 1
-            elif uvw[1,i] < 0:
-                v_local = 0
-            else:
-                v_local = uvw[1,i]
+            if ( force_domain ):
+                if u_local > 1.0:
+                    u_local = 1.0
+                elif u_local < 0.0:
+                    u_local = 0.0
+                # end
 
+                if v_local > 1.0:
+                    v_local = 1.0
+                elif v_local < 0.0:
+                    v_local = 0.0
+                # end
+            # end
+            
             uv[i,0] =  u_local/(Nu-1)+ col/(Nu-1.0)
             uv[i,1] =  v_local/(Nv-1)+ row/(Nv-1.0)
 
         # end for
 
         # Now go back through and adjust the patchID to the element list
-        for i in xrange(nSurf):
+        for i in xrange(nPts):
             patchID[i] = patch_list[patchID[i]]
         # end
 
@@ -2239,9 +2255,9 @@ are not included'%(counter,surf)
             if USE_PETSC:
                 self.J2 = PETSc.Mat()
                 if PETSC_MAJOR_VERSION == 1:
-                    self.J1.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
+                    self.J2.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
                 elif PETSC_MAJOR_VERSION == 0:
-                    self.J1.createSeqAIJ([M*3,Nctl*3],nz=16*3)
+                    self.J2.createSeqAIJ([M*3,Nctl*3],nz=16*3)
                 else:
                     print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                     sys.exit(1)
@@ -2296,6 +2312,67 @@ are not included'%(counter,surf)
         print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
 
         return
+
+    def createTACSGeo(self):
+        '''
+        Create the spline classes for use within TACS
+        '''
+
+        try:
+            from pyTACS import elements as elems
+        except:
+            print 'Could not import TACS. Cannot create TACS splines.'
+            return
+        # end
+
+        if USE_PETSC == False:
+            print 'Must have PETSc to create TACS splines.'
+            return
+        # end
+
+        # Calculate the Number of global design variables
+        N = 0
+        for i in xrange(len(self.DV_listGlobal)): #Global Variables
+            if self.DV_listGlobal[i].useit:
+                N += self.DV_listGlobal[i].nVal
+            # end if
+        # end for
+
+        gdvs = numpy.arange(N,dtype=numpy.intc)
+
+        global_geo = elems.GlobalGeo( gdvs, self.petsc_coef, self.J1 )
+
+        # For each segment, number the local variables
+        localDVs = []
+        for local in self.DV_listLocal:
+            localDVs.append( range(N,N+local.nVal) )
+            N += local.nVal
+        # end
+
+        print localDVs
+
+        # Create the list of local dvs for each surface patch
+        surfDVs = []
+        for i in xrange(self.nSurf):
+            surfDVs.append([])
+        # end
+        
+        for i in xrange(len(self.DV_listLocal)):
+            surfDVs[self.DV_listLocal[i].surface_id].extend( localDVs[i] )
+        # end
+        
+        # Go through and add local objects for each design variable
+        convert = lambda s, ldvs : elems.SplineGeo( s.ku, s.kv, s.tu, s.tv,\
+                                                    s.coef[:,:,0], s.coef[:,:,1], s.coef[:,:,2],
+                                                    global_geo, ldvs, s.globalCtlIndex )
+
+        tacs_surfs = []
+        for i in xrange(self.nSurf):
+            ldvs = numpy.array( surfDVs[i], dtype = numpy.intc )
+            tacs_surfs.append( convert( self.surfs[i], ldvs ) )
+        # end
+
+        return global_Geo, tacs_surfs
    
 
 class edge(object):
@@ -2338,7 +2415,7 @@ class edge(object):
             self.e2   = int(aux[10])
         # end if
 
-        # Note Conection number is not necessary (only dummy character)
+        # Note Conection nubmer is not necessary (only dummy character)
             
         return
 
