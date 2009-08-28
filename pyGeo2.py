@@ -883,11 +883,11 @@ appear in the edge con list'
             sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
         # end for
         total,g_index,l_index = self.calcGlobalNumbering(sizes)
-        self.Ncoef = total  #Total Number of Free Coefficients
-        
         self.global_coef = g_index
+        self.Ncoef = total  #Total Number of Free Coefficients
+              
         for isurf in xrange(self.nSurf):
-            self.surfs[isurf].gloablCtlIndex = l_index[isurf]
+            self.surfs[isurf].globalCtlIndex = l_index[isurf]
         # end for
         
         self.coef = []
@@ -1843,7 +1843,7 @@ are not included'%(counter,surf)
             coef_list = bounding_box.findBoundedCtl(\
                 self.surfs[surf],coef_list)
         # end if
-        
+
         self.DV_listLocal.append(geoDVLocal(\
                 dv_name,lower,upper,surf,coef_list,self.global_coef))
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
@@ -2264,9 +2264,9 @@ are not included'%(counter,surf)
         # end for
 
         gdvs = numpy.arange(N,dtype=numpy.intc)
-
+      
         global_geo = elems.GlobalGeo( gdvs, self.petsc_coef, self.J1 )
-
+      
         # For each segment, number the local variables
         localDVs = []
         for local in self.DV_listLocal:
@@ -2300,7 +2300,7 @@ are not included'%(counter,surf)
         for i in xrange(self.nSurf):
             tacs_surfs.append( convert( self.surfs[i], surfDVs[i] ) )
         # end
-
+     
         return global_geo, tacs_surfs
    
 

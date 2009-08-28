@@ -136,12 +136,6 @@ wing.readEdgeConnectivity('wing.con')
 #Call the finalize command after we have set the connections
 print 'Done Step 3'
 
-print 'Testing pyLayout'
-L = pyLayout.Layout(wing,'input.py')
-print 'tacs is:',tacs
-
-sys.exit(0)
-#Test code for pyLayout
 
 # ----------------------------------------------------------------------
 
@@ -242,14 +236,16 @@ wing.DV_listGlobal[idg['twist']].value = 0
 wing.DV_listGlobal[idg['sweep']].value = .0
 wing.DV_listGlobal[idg['flap']].value = 0.0
 
-wing.DV_listLocal[idl['surface1']].value[0] = 0
-wing.DV_listLocal[idl['surface2']].value[22] = 0
-wing.DV_listLocal[idl['surface3']].value[45] = 0
-wing.DV_listLocal[idl['surface4']].value[36] = 0
+#wing.DV_listLocal[idl['surface1']].value[0] = 0
+#wing.DV_listLocal[idl['surface2']].value[22] = 0
+#wing.DV_listLocal[idl['surface3']].value[45] = 0
+#Qwing.DV_listLocal[idl['surface4']].value[36] = 0
 
 coors = wing.getCoordinatesFromFile('naca0012.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv) 
+
+
 
 print 'About to do update'
 wing.update()
@@ -259,6 +255,16 @@ print 'Done Update:'
 timeA = time.time()
 wing.calcCtlDeriv() # Answer shows up in C
 print 'Derivative Time:',time.time()-timeA
+
+print 'Testing pyLayout'
+L = pyLayout.Layout(wing,'input.py')
+print 'back in script'
+#print 'tacs is:',tacs
+
+sys.exit(0)
+#Test code for pyLayout
+
+
 
 dx = 1.0e-5
 
