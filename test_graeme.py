@@ -30,6 +30,9 @@ import pyGeo2 as pyGeo
 sys.path.append('../pyLayout/')
 import pyLayout
 
+#Design Variable Functions
+from dv_funcs import *
+
 # ==============================================================================
 # Start of Script
 # ==============================================================================
@@ -90,10 +93,6 @@ rot[:,2] = tw_aero
 # wing.writeIGES('wing.igs')
 # print 'Done Step 1'
 
-
-
-
-
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -147,7 +146,6 @@ print 'Attaching Reference Axis...'
 print '---------------------------'
 
 # End-Type ref_axis attachments
-# Note No us,ue,vs,ve required for entire surface
 wing.addRefAxis([0,1,2,3],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
                     spacing=section_spacing[0])
 wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
@@ -158,125 +156,104 @@ X = array([[.4,0,2],[.4,0,3]]) # hinge Line
 rot = array([[0,0,0],[0,0,0]])        
 
 # 
-flap_box = pyGeo.bounding_box('y',[0.4,0,1.5],[1.1,0,3.5])
-
-wing.addRefAxis([0,1],X,rot,bounding_box=flap_box)
+flap_box = pyGeo.point_select('y',pt1=[0.4,0,1.5],pt2=[1.1,0,3.5])
+wing.addRefAxis([0,1],X,rot,point_select=flap_box)
 
 print 'Done Ref Axis Adding!'
 
 # Now we specify How the ref axis move together
-wing.addRefAxisCon(0,1,'end') # Wing and cap
-wing.addRefAxisCon(0,2,'full') # flap
+wing.addRefAxisCon(0,1,'end') # Wing and cap ('Attach ra1 to ra0 with type 'end')
+wing.addRefAxisCon(0,2,'full') # flap ('Attach ra2 to ra0 with type 'full')
 
 # Write out the surface
 wing.writeTecplot('wing.dat',ref_axis=True,links=True)
-print 'Adding Design Variables'
 
-# --------------------------------------
-# Define Design Variable functions here:
-# --------------------------------------
-def span_extension(val,ref_axis):
-    '''Single design variable for span extension'''
-    #print 'span',val           
-    ref_axis[0].x[:,2] = ref_axis[0].x0[:,2] * val
-    return ref_axis
 
-def twist(val,ref_axis):
-    '''Twist'''
-    ref_axis[0].rot[:,2] = ref_axis[0].rot0[:,2] + ref_axis[0].s*val
-    ref_axis[1].rot[:,2] = ref_axis[0].rot[-1,2]
-    return ref_axis
-
-def sweep(val,ref_axis):
-    '''Sweep the wing'''
-    # Interpret the val as an ANGLE
-#    print 'sweep',val
-    angle = val*pi/180
-    dz = ref_axis[0].x[-1,2] - ref_axis[0].x[0,2]
-    dx = dz*tan(angle)
-    ref_axis[0].x[:,0] =  ref_axis[0].x0[:,0] +  dx * ref_axis[0].s
-
-    dz = ref_axis[1].x[-1,2] - ref_axis[1].x[0,2]
-    dx = dz*tan(angle)
-    ref_axis[1].x[:,0] =  ref_axis[1].x0[:,0] +  dx * ref_axis[1].s
-
-    return ref_axis
-
-def flap(val,ref_axis):
-#    print 'flap:',val
-    ref_axis[2].rot[:,2] = val
-
-    return ref_axis
 
 # ------------------------------------------
-#         Name, value, lower,upper,function, ref_axis_id -> must be a list
-# # Add global Design Variables FIRST
-wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension,useit=False)
+#         Name, value, lower,upper,function,
+# Add global Design Variables FIRST
+print ' ** Adding Global Design Variables **'
+wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
 wing.addGeoDVGlobal('twist',0,-20,20,twist)
 wing.addGeoDVGlobal('sweep',0,-20,20,sweep)
 wing.addGeoDVGlobal('flap',0,-20,20,flap)
 
-# # Add sets of local Design Variables SECOND
-box = pyGeo.bounding_box('y',[-.3,0,-.1],[-.2499,0,.0001])
-wing.addGeoDVLocal('surface1',-0.1,0.1,surf=0,bounding_box = box)
-wing.addGeoDVLocal('surface2',-0.1,0.1,surf=1)
-wing.addGeoDVLocal('surface3',-0.1,0.1,surf=2)
-wing.addGeoDVLocal('surface4',-0.1,0.1,surf=3)
+# Add Normal Design Variables SECOND
+print ' ** Adding Normal Design Variables **'
+wing.addGeoDVNormal('norm_surf0',-0.1,0.1,surf=0,overwrite=True)
+a_few = pyGeo.point_select('list',coef=[[5,6],[8,5],[9,2]])
+wing.addGeoDVNormal('norm_surf1',-0.1,0.1,surf=1,overwrite=True,\
+                        point_select=a_few)
+
+
+# Add Local Design Variables THIRD
+print ' ** Adding Local Design Variables **'
+wing.addGeoDVLocal('local_surf2',-0.1,0.1,surf=2)
+wing.addGeoDVLocal('local_surf3',-0.1,0.1,surf=3)
 
 # # Get the dictionary to use names for referecing 
 idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global)
+idn = wing.DV_namesNormal #NOTE: This is constant (idn -> id normal)
 idl = wing.DV_namesLocal  #NOTE: This is constant (idl -> id local)
 
 print 'idg',idg
+print 'idn',idn
 print 'idl',idl
 
-# # Change the DV's -> Normally this is done from the Optimizer
-wing.DV_listGlobal[idg['span']].value = 1
-wing.DV_listGlobal[idg['twist']].value = 0
-wing.DV_listGlobal[idg['sweep']].value = .0
-wing.DV_listGlobal[idg['flap']].value = 0.0
-
-#wing.DV_listLocal[idl['surface1']].value[0] = 0
-#wing.DV_listLocal[idl['surface2']].value[22] = 0
-#wing.DV_listLocal[idl['surface3']].value[45] = 0
-#Qwing.DV_listLocal[idl['surface4']].value[36] = 0
+# -------------- Attach the discrete coorsponding surface ----------------
 
 coors = wing.getCoordinatesFromFile('naca0012.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
-wing.calcSurfaceDerivative(patchID,uv) 
+wing.calcSurfaceDerivative(patchID,uv)
 
 
 
-print 'About to do update'
+
+# print 'About to do update'
+# wing.update()
+# wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
+# print 'Done Update:'
+
+# timeA = time.time()
+# wing.calcCtlDeriv() # Answer shows up in C
+# print 'Derivative Time:',time.time()-timeA
+
+# # print 'Testing pyLayout'
+# # L = pyLayout.Layout(wing,'input.py')
+# # print 'back in script'
+# # #print 'tacs is:',tacs
+
+# # sys.exit(0)
+# # #Test code for pyLayout
+
+
+
+# dx = 1.0e-5
+
+# coef0 = wing.coef.astype('d')
+# coordinates0 = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
+
+# wing.DV_listGlobal[idg['span']].value = 1 
+# # wing.DV_listGlobal[idg['twist']].value = 0
+# # wing.DV_listGlobal[idg['sweep']].value = .0 
+# # wing.DV_listGlobal[idg['flap']].value = 0.0
+# # wing.DV_listLocal[idl['surface1']].value[0]= 0+dx
+
+
+
 wing.update()
+wing.checkCoef()
 wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
-print 'Done Update:'
-
-timeA = time.time()
-wing.calcCtlDeriv() # Answer shows up in C
-print 'Derivative Time:',time.time()-timeA
-
-print 'Testing pyLayout'
-L = pyLayout.Layout(wing,'input.py')
-print 'back in script'
-#print 'tacs is:',tacs
-
+print wing.ref_axis[0].rot
 sys.exit(0)
-#Test code for pyLayout
 
 
 
-dx = 1.0e-5
 
-coef0 = wing.coef.astype('d')
-coordinates0 = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
 
-wing.DV_listGlobal[idg['span']].value = 1 
-wing.DV_listGlobal[idg['twist']].value = 0
-wing.DV_listGlobal[idg['sweep']].value = .0 
-wing.DV_listGlobal[idg['flap']].value = 0.0
-wing.DV_listLocal[idl['surface1']].value[0]= 0+dx
-wing.update()
+
+
 coefdx = wing.coef.astype('d')
 coordinatesdx = copy.deepcopy(wing.getSurfacePoints(patchID,uv))
 
@@ -303,4 +280,4 @@ f2.close()
 #wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 #wing.writeIGES('wing_mod.igs')
 
-tacs_geo, tacs_surfs = wing.createTACSGeo()
+#tacs_geo, tacs_surfs = wing.createTACSGeo()
