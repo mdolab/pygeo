@@ -1,12 +1,7 @@
 #!MC 1120
 # Created by Tecplot 360 build 11.2-0-563
-$!VarSet |LFBD| = '/nfs/opal/home/kenway/svn/pyMIL/pyGeo'
-$!VarSet |LFDSFN1| = '"|LFBD|/wing.dat"'
+$!VarSet |LFDSFN1| = '"wing.dat" "wing2.dat"'
 $!VarSet |LFDSVL1| = '"X" "Y" "Z"'
-$!VarSet |LFDSFN2| = '"|LFBD|/wing2.dat"'
-$!VarSet |LFDSVL2| = '"X" "Y" "Z"'
-$!VarSet |LFDSFN3| = '"|LFBD|/fucked_points.dat"'
-$!VarSet |LFDSVL3| = '"X" "Y" "Z"'
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
   LINKCOLORMAPS = YES
@@ -880,10 +875,10 @@ $!PAGE
     PAPERGRIDSPACING = HALFINCH
     REGIONINWORKAREA
       {
-      X1 = 3.507
-      Y1 = 0.2962
-      X2 = 12.51
-      Y2 = 8.297
+      X1 = 1
+      Y1 = 0.25
+      X2 = 10
+      Y2 = 8.25
       }
     }
 ### Frame Number 1 ###
@@ -896,28 +891,6 @@ $!READDATASET  '|LFDSFN1|'
   VARNAMELIST = '|LFDSVL1|'
 $!REMOVEVAR |LFDSVL1|
 $!REMOVEVAR |LFDSFN1|
-$!READDATASET  '|LFDSFN2|'
-  INITIALPLOTTYPE = CARTESIAN3D
-  INCLUDETEXT = NO
-  INCLUDEGEOM = NO
-  READDATAOPTION = APPEND
-  RESETSTYLE = NO
-  ASSIGNSTRANDIDS = YES
-  VARLOADMODE = BYNAME
-  VARNAMELIST = '|LFDSVL2|'
-$!REMOVEVAR |LFDSVL2|
-$!REMOVEVAR |LFDSFN2|
-$!READDATASET  '|LFDSFN3|'
-  INITIALPLOTTYPE = CARTESIAN3D
-  INCLUDETEXT = NO
-  INCLUDEGEOM = NO
-  READDATAOPTION = APPEND
-  RESETSTYLE = NO
-  ASSIGNSTRANDIDS = YES
-  VARLOADMODE = BYNAME
-  VARNAMELIST = '|LFDSVL3|'
-$!REMOVEVAR |LFDSVL3|
-$!REMOVEVAR |LFDSFN3|
 $!FRAMELAYOUT 
   SHOWHEADER = NO
   HEADERCOLOR = RED
@@ -926,14 +899,14 @@ $!FRAMELAYOUT
     X = 1
     Y = 0.25
     }
-  WIDTH = 15
+  WIDTH = 9
   HEIGHT = 8
 $!THREEDAXIS 
   ASPECTRATIOLIMIT = 25
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [29]
+$!ACTIVEFIELDMAPS  =  [15,17-19,21]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1080,30 +1053,10 @@ $!GLOBALSCATTER
     COLOR = RED
     FILLCOLOR = RED
     }
-$!BLANKING 
-  VALUE
-    {
-    VALUEBLANKCELLMODE = ALLCORNERS
-    CONSTRAINT 1
-      {
-      INCLUDE = YES
-      RELOP = GREATERTHANOREQUAL
-      VALUECUTOFF = 6.1
-      VARA = 3
-      }
-    CONSTRAINT 2
-      {
-      INCLUDE = YES
-      VALUECUTOFF = 5.8
-      VARA = 3
-      }
-    }
 $!FIELDMAP  [1]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
-    LINETHICKNESS = 0.02
+    COLOR = RED
     }
   CONTOUR
     {
@@ -1150,9 +1103,7 @@ $!FIELDMAP  [2]
   MESH
     {
     SHOW = NO
-    MESHTYPE = WIREFRAME
     COLOR = GREEN
-    LINETHICKNESS = 0.02
     }
   CONTOUR
     {
@@ -1168,9 +1119,9 @@ $!FIELDMAP  [2]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
-    COLOR = RED
+    COLOR = GREEN
     FRAMESIZE = 1
     }
   SHADE
@@ -1202,9 +1153,7 @@ $!FIELDMAP  [2]
 $!FIELDMAP  [3]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM30
-    LINETHICKNESS = 0.02
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -1219,16 +1168,10 @@ $!FIELDMAP  [3]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1257,9 +1200,7 @@ $!FIELDMAP  [4]
   MESH
     {
     SHOW = NO
-    MESHTYPE = WIREFRAME
-    COLOR = GREEN
-    LINETHICKNESS = 0.02
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -1275,9 +1216,9 @@ $!FIELDMAP  [4]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
-    COLOR = BLUE
+    COLOR = CYAN
     FRAMESIZE = 1
     }
   SHADE
@@ -1309,9 +1250,7 @@ $!FIELDMAP  [4]
 $!FIELDMAP  [5]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = GREEN
-    LINETHICKNESS = 0.02
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -1358,8 +1297,7 @@ $!FIELDMAP  [6]
   MESH
     {
     SHOW = NO
-    COLOR = BLACK
-    LINETHICKNESS = 0.8
+    COLOR = PURPLE
     }
   CONTOUR
     {
@@ -1375,14 +1313,13 @@ $!FIELDMAP  [6]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
-    COLOR = RED
+    COLOR = PURPLE
     FRAMESIZE = 1
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1410,13 +1347,13 @@ $!FIELDMAP  [6]
 $!FIELDMAP  [7]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM30
-    LINETHICKNESS = 0.02
+    COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1457,13 +1394,13 @@ $!FIELDMAP  [8]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = GREEN
-    LINETHICKNESS = 0.02
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1473,9 +1410,9 @@ $!FIELDMAP  [8]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
-    COLOR = BLUE
+    COLOR = GREEN
     FRAMESIZE = 1
     }
   SHADE
@@ -1507,13 +1444,13 @@ $!FIELDMAP  [8]
 $!FIELDMAP  [9]
   MESH
     {
-    MESHTYPE = WIREFRAME
-    COLOR = BLACK
-    LINETHICKNESS = 0.8
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1521,13 +1458,7 @@ $!FIELDMAP  [9]
     }
   SCATTER
     {
-    SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1535,7 +1466,7 @@ $!FIELDMAP  [9]
     }
   EDGELAYER
     {
-    SHOW = YES
+    SHOW = NO
     COLOR = BLUE
     }
   POINTS
@@ -1558,13 +1489,13 @@ $!FIELDMAP  [9]
 $!FIELDMAP  [10]
   MESH
     {
-    MESHTYPE = WIREFRAME
-    COLOR = CUSTOM1
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1572,13 +1503,7 @@ $!FIELDMAP  [10]
     }
   SCATTER
     {
-    SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = CYAN
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1586,7 +1511,7 @@ $!FIELDMAP  [10]
     }
   EDGELAYER
     {
-    SHOW = YES
+    SHOW = NO
     COLOR = CYAN
     }
   POINTS
@@ -1609,13 +1534,13 @@ $!FIELDMAP  [10]
 $!FIELDMAP  [11]
   MESH
     {
-    MESHTYPE = WIREFRAME
-    COLOR = BLACK
-    LINETHICKNESS = 0.02
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1623,7 +1548,6 @@ $!FIELDMAP  [11]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -1632,7 +1556,7 @@ $!FIELDMAP  [11]
     }
   EDGELAYER
     {
-    SHOW = YES
+    SHOW = NO
     COLOR = YELLOW
     }
   POINTS
@@ -1655,12 +1579,13 @@ $!FIELDMAP  [11]
 $!FIELDMAP  [12]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 0.02
+    COLOR = PURPLE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1668,22 +1593,15 @@ $!FIELDMAP  [12]
     }
   SCATTER
     {
-    SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
     {
-    SHOW = YES
+    SHOW = NO
     COLOR = PURPLE
     }
   POINTS
@@ -1706,13 +1624,13 @@ $!FIELDMAP  [12]
 $!FIELDMAP  [13]
   MESH
     {
-    MESHTYPE = HIDDENLINE
     COLOR = RED
-    LINETHICKNESS = 0.02
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1720,7 +1638,6 @@ $!FIELDMAP  [13]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -1729,7 +1646,7 @@ $!FIELDMAP  [13]
     }
   EDGELAYER
     {
-    SHOW = YES
+    SHOW = NO
     COLOR = RED
     }
   POINTS
@@ -1752,14 +1669,13 @@ $!FIELDMAP  [13]
 $!FIELDMAP  [14]
   MESH
     {
-    SHOW = NO
-    MESHTYPE = WIREFRAME
-    COLOR = BLACK
-    LINETHICKNESS = 0.02
+    COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1767,12 +1683,7 @@ $!FIELDMAP  [14]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = GREEN
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1780,7 +1691,7 @@ $!FIELDMAP  [14]
     }
   EDGELAYER
     {
-    SHOW = YES
+    SHOW = NO
     COLOR = GREEN
     }
   POINTS
@@ -1804,12 +1715,13 @@ $!FIELDMAP  [15]
   MESH
     {
     MESHTYPE = HIDDENLINE
-    COLOR = BLACK
-    LINETHICKNESS = 0.02
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1818,12 +1730,7 @@ $!FIELDMAP  [15]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -1855,12 +1762,13 @@ $!FIELDMAP  [16]
   MESH
     {
     SHOW = NO
-    MESHTYPE = WIREFRAME
     COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1870,7 +1778,7 @@ $!FIELDMAP  [16]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
     COLOR = CYAN
     FRAMESIZE = 1
@@ -1905,12 +1813,13 @@ $!FIELDMAP  [17]
   MESH
     {
     MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM15
-    LINETHICKNESS = 0.02
+    COLOR = CUSTOM7
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1919,10 +1828,6 @@ $!FIELDMAP  [17]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
     COLOR = YELLOW
     }
   SHADE
@@ -1955,12 +1860,13 @@ $!FIELDMAP  [18]
   MESH
     {
     SHOW = NO
-    MESHTYPE = WIREFRAME
     COLOR = PURPLE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -1970,7 +1876,7 @@ $!FIELDMAP  [18]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
     COLOR = PURPLE
     FRAMESIZE = 1
@@ -2005,12 +1911,13 @@ $!FIELDMAP  [19]
   MESH
     {
     MESHTYPE = HIDDENLINE
-    COLOR = RED
-    LINETHICKNESS = 0.02
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2019,21 +1926,15 @@ $!FIELDMAP  [19]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = RED
-    FRAMESIZE = 1
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = RED
     }
   POINTS
@@ -2057,12 +1958,13 @@ $!FIELDMAP  [20]
   MESH
     {
     SHOW = NO
-    MESHTYPE = WIREFRAME
     COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2072,7 +1974,7 @@ $!FIELDMAP  [20]
     {
     SYMBOLSHAPE
       {
-      GEOMSHAPE = SPHERE
+      GEOMSHAPE = CUBE
       }
     COLOR = GREEN
     FRAMESIZE = 1
@@ -2083,7 +1985,7 @@ $!FIELDMAP  [20]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -2107,12 +2009,13 @@ $!FIELDMAP  [21]
   MESH
     {
     MESHTYPE = HIDDENLINE
-    COLOR = BLUE
-    LINETHICKNESS = 1.5
+    COLOR = CUSTOM7
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2121,12 +2024,7 @@ $!FIELDMAP  [21]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = BLUE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2134,7 +2032,7 @@ $!FIELDMAP  [21]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = BLUE
     }
   POINTS
@@ -2159,11 +2057,12 @@ $!FIELDMAP  [22]
     {
     SHOW = NO
     COLOR = CYAN
-    LINETHICKNESS = 1.5
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2184,7 +2083,7 @@ $!FIELDMAP  [22]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -2207,11 +2106,13 @@ $!FIELDMAP  [22]
 $!FIELDMAP  [23]
   MESH
     {
-    COLOR = BLACK
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2219,13 +2120,7 @@ $!FIELDMAP  [23]
     }
   SCATTER
     {
-    SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = SPHERE
-      }
     COLOR = YELLOW
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2256,12 +2151,13 @@ $!FIELDMAP  [23]
 $!FIELDMAP  [24]
   MESH
     {
-    MESHTYPE = HIDDENLINE
-    COLOR = BLACK
+    COLOR = PURPLE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2269,13 +2165,7 @@ $!FIELDMAP  [24]
     }
   SCATTER
     {
-    SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
     COLOR = PURPLE
-    FRAMESIZE = 1
     }
   SHADE
     {
@@ -2310,7 +2200,9 @@ $!FIELDMAP  [25]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2353,7 +2245,9 @@ $!FIELDMAP  [26]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2396,7 +2290,9 @@ $!FIELDMAP  [27]
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -2439,61 +2335,17 @@ $!FIELDMAP  [28]
     }
   CONTOUR
     {
-    COLOR = CYAN
-    }
-  VECTOR
-    {
-    COLOR = CYAN
-    }
-  SCATTER
-    {
-    COLOR = CYAN
-    }
-  SHADE
-    {
-    COLOR = WHITE
-    }
-  EDGELAYER
-    {
-    SHOW = NO
-    COLOR = CYAN
-    }
-  POINTS
-    {
-    POINTSTOPLOT = SURFACENODES
-    }
-  SURFACES
-    {
-    SURFACESTOPLOT = KPLANES
-    }
-  VOLUMEMODE
-    {
-    VOLUMEOBJECTSTOPLOT
-      {
-      SHOWISOSURFACES = NO
-      SHOWSLICES = NO
-      SHOWSTREAMTRACES = NO
-      }
-    }
-$!FIELDMAP  [29]
-  MESH
-    {
-    SHOW = NO
-    COLOR = YELLOW
-    }
-  CONTOUR
-    {
     CONTOURTYPE = FLOOD
-    COLOR = YELLOW
+    COLOR = CYAN
     USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
-    COLOR = YELLOW
+    COLOR = CYAN
     }
   SCATTER
     {
-    COLOR = YELLOW
+    COLOR = CYAN
     }
   SHADE
     {
@@ -2502,7 +2354,7 @@ $!FIELDMAP  [29]
   EDGELAYER
     {
     SHOW = NO
-    COLOR = YELLOW
+    COLOR = CYAN
     }
   POINTS
     {
@@ -2544,8 +2396,8 @@ $!THREEDAXIS
   XDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -0.30056754999999996114
-    RANGEMAX = 0.80003855000000001496
+    RANGEMIN = -0.58670935000000001835
+    RANGEMAX = 0.81366435000000003619
     GRSPACING = 0.2
     AXISLINE
       {
@@ -2556,9 +2408,9 @@ $!THREEDAXIS
   YDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -1.1000000000000000888
-    RANGEMAX = 1.1000000000000000888
-    GRSPACING = 0.5
+    RANGEMIN = -0.22561064999999999592
+    RANGEMAX = 0.074901650000000000174
+    GRSPACING = 0.1
     AXISLINE
       {
       EDGE = 1
@@ -2764,9 +2616,9 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 0.5053548436140816
-    Y = 0.01454598631041676
-    Z = 3.979358048308414
+    X = 0.1134775
+    Y = -0.0753545
+    Z = 2
     }
   LIGHTSOURCE
     {
@@ -2777,21 +2629,18 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 160.705
-  THETAANGLE = -58.1864
-  ALPHAANGLE = -67.0457
+  PSIANGLE = 156.291
+  THETAANGLE = -8.80562
+  ALPHAANGLE = -48.9412
   VIEWERPOSITION
     {
-    X = 3.307187122923867
-    Y = -1.15233927934233
-    Z = -6.587928578743712
+    X = 1.490125732984564
+    Y = -7.07698137550434
+    Z = -14.1800800282422
     }
-  VIEWWIDTH = 4.22893
+  VIEWWIDTH = 1.63912
 $!FIELDLAYERS 
   SHOWSCATTER = YES
-  SHOWEDGE = NO
-  USETRANSLUCENCY = YES
 $!STREAMTRACELAYERS 
   SHOW = NO
-$!REMOVEVAR |LFBD|
 $!SETSTYLEBASE CONFIG
