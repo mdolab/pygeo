@@ -1684,53 +1684,77 @@ a flap hinge line'
 
         return
 
+    def getSizes( self ):
+        '''
+        Get the sizes:
+        - The number of global design variables
+        - The number of local design variables
+        - The number of control points
+        '''
+        
+        # Initialize the jacobian
+        # Calculate the size Ncoef x Ndesign Variables
+        Nctl = len(self.coef)
+
+        # Calculate the Number of Design Variables:
+        N = 0
+        for i in xrange(len(self.DV_listGlobal)): #Global Variables
+            if self.DV_listGlobal[i].useit:
+                N += self.DV_listGlobal[i].nVal
+            # end if
+        # end for
+            
+        NdvGlobal = N
+        Ndv = N
+        for i in xrange(len(self.DV_listLocal)): # Local Variables
+            Ndv += self.DV_listLocal[i].nVal
+        # end for
+                
+        NdvLocal = Ndv-NdvGlobal
+
+        # print 'NdvGlobal:',NdvGlobal
+        # print 'Ndv:',Ndv
+        # print 'Nctl:',Nctl
+
+        return NdvGlobal, NdvLocal, Nctl
+
+
+    def _initJ1( self ):
+        '''
+        Allocate the space for J1 and perform some setup        
+        '''
+
+        NdvGlobal, NdvLocal, Nctl = self.getSizes()
+        Ndv = NdvGlobal + NdvLocal
+        
+        if USE_PETSC:
+            J1 = PETSc.Mat()
+            
+            # We know the row filling factor: Its (exactly) nGlobal + 3            
+            if PETSC_MAJOR_VERSION == 1:
+                J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
+            elif PETSC_MAJOR_VERSION == 0:
+                J1.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
+            else:
+                print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+                sys.exit(1)
+            # end if
+        else:
+            J1 = zeros((Nctl*3,Ndv))
+        # end if
+
+        return J1
+        
+
     def calcCtlDeriv(self):
 
         '''This function runs the complex step method over the design variable
         and generates a (sparse) jacobian of the control pt
         derivatives wrt to the design variables'''
 
-        # Initialize the jacobian
-
-        if not self.J1: # Not initialized
-            # Calculate the size Ncoef x Ndesign Variables
-            Nctl = len(self.coef)
-
-            # Calculate the Number of Design Variables:
-            N = 0
-            for i in xrange(len(self.DV_listGlobal)): #Global Variables
-                if self.DV_listGlobal[i].useit:
-                    N += self.DV_listGlobal[i].nVal
-                # end if
-            # end for
-            
-            NdvGlobal = N
-            Ndv = N
-            for i in xrange(len(self.DV_listLocal)): # Local Variables
-                Ndv += self.DV_listLocal[i].nVal
-            # end for
-                
-            NdvLocal = Ndv-NdvGlobal
-
-            print 'NdvGlobal:',NdvGlobal
-            print 'Nctl:',Nctl
-            print 'Ndv:',Ndv
-            # We know the row filling factor: Its (exactly) nGlobal + 3
-             
-            if USE_PETSC:
-                self.J1 = PETSc.Mat()
-                if PETSC_MAJOR_VERSION == 1:
-                    self.J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
-                elif PETSC_MAJOR_VERSION == 0:
-                    self.J1.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
-                else:
-                    print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
-                    sys.exit(1)
-                # end if
-            else:
-                self.J1 = zeros((Nctl*3,Ndv))
-            # end if
-        # end if 
+        if not self.J1:
+            self.J1 = self._initJ1()
+        # end
    
         h = 1.0e-40j
         col_counter = 0
@@ -1784,7 +1808,9 @@ a flap hinge line'
         # Now Do the Try the matrix multiplication
         if USE_PETSC:
             if self.J2:
-                self.C = PETSc.Mat()
+                if not self.C:
+                    self.C = PETSc.Mat()
+                # end
                 self.J2.matMult(self.J1,result=self.C)
             # end
         else:
@@ -2057,11 +2083,10 @@ are not included'%(counter,surf)
         if patch_list == None:
             patch_list = range(self.nSurf)
         # end
-    
-        nPts = coordinates.shape[1]
-        # Now make the 'FE' Grid from the sufaces.
 
-        # Global 'N' Parameter
+        nPts = coordinates.shape[1]
+        
+        # Now make the 'FE' Grid from the sufaces.
         patches = len(patch_list)
         
         nelem    = patches * (Nu-1)*(Nv-1)
@@ -2160,37 +2185,52 @@ are not included'%(counter,surf)
         print 'Done Surface Attachment'
 
         return dist,patchID,uv
+
+    def _initJ2( self, M, Nctl ):
+        
+        # We know the row filling factor: Its (no more) than ku*kv
+        # control points for each control point. Since we don't
+        # use more than k=4 we will set at 16
+        
+        if USE_PETSC:
+            J2 = PETSc.Mat()
+            if PETSC_MAJOR_VERSION == 1:
+                J2.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
+            elif PETSC_MAJOR_VERSION == 0:
+                J2.createSeqAIJ([M*3,Nctl*3],nz=16*3)
+            else:
+                print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+                sys.exit(1)
+            # end if
+        else:
+            J2 = zeros((M*3,Nctl*3))
+        # end if
+
+        return
         
 
-    def calcSurfaceDerivative(self,patchID,uv):
+    def calcSurfaceDerivative(self,patchID,uv,indices=None,J2=None):
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
         print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
         timeA = time.time()
-        if not self.J2: # Not initialized
-            # Calculate the size Ncoef_free x Ndesign Variables
-            
+
+        # If no matrix is provided, use self.J2
+        if not J2:
+            J2 = self.J2
+        # end
+
+        if indices == None:
+            indices = numpy.arange(len(patchId),numpy.int)
+        # end
+
+        if not J2:
+            # Calculate the size Ncoef_free x Ndesign Variables            
             M = len(patchID)
             Nctl = self.Ncoef
 
-            # We know the row filling factor: Its (no more) than ku*kv
-            # control points for each control point. Since we don't
-            # use more than k=4 we will set at 16
-             
-            if USE_PETSC:
-                self.J2 = PETSc.Mat()
-                if PETSC_MAJOR_VERSION == 1:
-                    self.J2.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
-                elif PETSC_MAJOR_VERSION == 0:
-                    self.J2.createSeqAIJ([M*3,Nctl*3],nz=16*3)
-                else:
-                    print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
-                    sys.exit(1)
-                # end if
-            else:
-                self.J2 = zeros((M*3,Nctl*3))
-            # end if
-        # end if 
+            J2 = self._initJ2( M, Nctl )
+        # end                     
                 
         for i in xrange(len(patchID)):
             ku = self.surfs[patchID[i]].ku
@@ -2221,18 +2261,20 @@ are not included'%(counter,surf)
 
                     index = 3*self.surfs[patchID[i]].globalCtlIndex[ \
                         u_list[ii],v_list[jj]]
-                    self.J2[3*i  ,index  ] = x
-                    self.J2[3*i+1,index+1] = x
-                    self.J2[3*i+2,index+2] = x
+                    J2[3*indices[i]  ,index  ] = x
+                    J2[3*indices[i]+1,index+1] = x
+                    J2[3*indices[i]+2,index+2] = x
                 # end for
             # end for
         # end for 
         
         # Assemble the (Constant) J2
         if USE_PETSC:
-            self.J2.assemblyBegin()
-            self.J2.assemblyEnd()
+            J2.assemblyBegin()
+            J2.assemblyEnd()
         # end if
+
+        self.J2 = J2 # Make sure we're dealing with the same matrix
 
         print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
 
@@ -2290,11 +2332,18 @@ are not included'%(counter,surf)
         # end
 
         # Go through and add local objects for each design variable
-        convert = lambda s, ldvs : elems.SplineGeo( s.ku, s.kv, s.tu.astype('d'), s.tv.astype('d'),\
-                                                    s.coef[:,:,0].astype('d'),
-                                                    s.coef[:,:,1].astype('d'),
-                                                    s.coef[:,:,2].astype('d'),
-                                                    global_geo, ldvs, s.globalCtlIndex.astype('intc') )
+        def convert( s, ldvs ):
+            if ldvs == None:
+                ldvs = []
+            # end
+            
+            return elems.SplineGeo( int(s.ku), int(s.kv),
+                                    s.tu.astype('d'), s.tv.astype('d'),
+                                    s.coef[:,:,0].astype('d'),
+                                    s.coef[:,:,1].astype('d'),
+                                    s.coef[:,:,2].astype('d'),
+                                    global_geo, ldvs, s.globalCtlIndex.astype('intc') )
+        # end
 
         tacs_surfs = []
         for i in xrange(self.nSurf):
