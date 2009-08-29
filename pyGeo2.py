@@ -155,9 +155,10 @@ class pyGeo():
         self.DV_namesNormal = {}
         self.DV_namesLocal  = {}
         self.petsc_coef = None # Global vector of PETSc coefficients
-        self.J = None
-        self.J1 = None
-        self.J2 = None
+        self.J  = None
+        self.dCoefdx  = None
+        self.dPtdCoef = None
+        self.dPtdx    = None
         self.con = None
 
         if init_type == 'plot3d':
@@ -667,7 +668,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # Test this patch against the rest
             for i in xrange(4):
                 for jsurf in xrange(isurf+1,self.nSurf):
-
                     for j in xrange(4):
                         coinc,dir_flag=test_edge(\
                             self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
@@ -1689,11 +1689,17 @@ a flap hinge line'
 # ---------------------------------------------------------
         # end for
 
-        # fourth, update the coefficients (from local DV changes)
+        # fourth, update the coefficients (from normal DV changes)
         if local:
+            for i in xrange(len(self.DV_listNormal)):
+                surface = self.surfs[self.DV_listNormal[i].surface_id]
+                self.coef = self.DV_listNormal[i](surface,self.coef)
+            # end for
+
+            # fifth: update the coefficient from local DV changes
+            
             for i in xrange(len(self.DV_listLocal)):
-                surface = self.surfs[self.DV_listLocal[i].surface_id]
-                self.coef = self.DV_listLocal[i](surface,self.coef)
+                self.coef = self.DV_listLocal[i](self.coef)
             # end for
         # end if
 
@@ -1746,45 +1752,52 @@ a flap hinge line'
         # end for
             
         NdvGlobal = N
-        Ndv = N
-        for i in xrange(len(self.DV_listLocal)): # Local Variables
-            Ndv += self.DV_listLocal[i].nVal
+        
+        for i in xrange(len(self.DV_listNormal)): # Normal Variables
+            N += self.DV_listLocal[i].nVal
         # end for
                 
-        NdvLocal = Ndv-NdvGlobal
+        NdvNormal = N-NdvGlobal
+
+        for i in xrange(len(self.DV_listLocal)): # Normal Variables
+            N += self.DV_listLocal[i].nVal*3
+        # end for
+                
+        NdvLocal = N-(NdvNormal+NdvGlobal)
+
 
         # print 'NdvGlobal:',NdvGlobal
         # print 'Ndv:',Ndv
         # print 'Nctl:',Nctl
 
-        return NdvGlobal, NdvLocal, Nctl
+        return NdvGlobal, NdvNormal,NdvLocal,Nctl
 
 
-    def _initJ1( self ):
+    def _initdCoefdx( self ):
         '''
-        Allocate the space for J1 and perform some setup        
+        Allocate the space for dCoefdx and perform some setup        
         '''
 
-        NdvGlobal, NdvLocal, Nctl = self.getSizes()
-        Ndv = NdvGlobal + NdvLocal
+        NdvGlobal, NdvNormal, NdvLocal, Nctl = self.getSizes()
+        Ndv = NdvGlobal + NdvNormal + NdvLocal
         
         if USE_PETSC:
-            J1 = PETSc.Mat()
+            dCoefdx = PETSc.Mat()
             
             # We know the row filling factor: Its (exactly) nGlobal + 3            
             if PETSC_MAJOR_VERSION == 1:
-                J1.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
+                dCoefdx.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
             elif PETSC_MAJOR_VERSION == 0:
-                J1.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
+                dCoefdx.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
             else:
                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                 sys.exit(1)
             # end if
         else:
-            J1 = zeros((Nctl*3,Ndv))
+            dCoefdx = zeros((Nctl*3,Ndv))
         # end if
 
-        return J1
+        return dCoefdx
         
 
     def calcCtlDeriv(self):
@@ -1793,8 +1806,8 @@ a flap hinge line'
         and generates a (sparse) jacobian of the control pt
         derivatives wrt to the design variables'''
 
-        if not self.J1:
-            self.J1 = self._initJ1()
+        if not self.dCoefdx:
+            self.dCoefdx = self._initdCoefdx()
         # end
    
         h = 1.0e-40j
@@ -1812,7 +1825,7 @@ a flap hinge line'
 
                     # Now get the updated coefficients and set the column
                     self._updateCoef(local=False)
-                    self.J1[:,col_counter] = imag(self.coef.flatten())/1e-40
+                    self.dCoefdx[:,col_counter] = imag(self.coef.flatten())/1e-40
                     col_counter += 1    # Increment Column Counter
 
                     # Reset Design Variable Peturbation
@@ -1825,38 +1838,48 @@ a flap hinge line'
             # end if (useit)
         # end for (outer design variable loop)
         
-        # The next step is go to over all the LOCAL variables,
+        # The next step is go to over all the NORMAL and LOCAL variables,
         # compute the surface normal
-        print 'col counter before local dv',col_counter
-        for idv in xrange(len(self.DV_listLocal)): # This is the Master CS Loop
-            surface = self.surfs[self.DV_listLocal[idv].surface_id]
-            normals = self.DV_listLocal[idv].getNormals(\
+        
+        for idv in xrange(len(self.DV_listNormal)): 
+            surface = self.surfs[self.DV_listNormal[idv].surface_id]
+            normals = self.DV_listNormal[idv].getNormals(\
                 surface,self.coef.astype('d'))
 
             # Normals is the length of local dv on this surface
-            for i in xrange(self.DV_listLocal[idv].nVal):
-                index = 3*self.DV_listLocal[idv].coef_list[i]
-                self.J1[index:index+3,col_counter] = normals[i,:]
+            for i in xrange(self.DV_listNormal[idv].nVal):
+                index = 3*self.DV_listNormal[idv].coef_list[i]
+                self.dCoefdx[index:index+3,col_counter] = normals[i,:]
                 col_counter += 1
+            # end for
+        # end for
+
+        for idv in xrange(len(self.DV_listLocal)):
+            for i in xrange(self.DV_listLocal[idv].nVal):
+                for j in xrange(3):
+                    index = 3*self.DV_listLocal[idv].coef_list[i]
+                    self.dCoefdx[index+j,col_counter] = 1.0
+                    col_counter += 1
+                # end for
             # end for
         # end for
             
         if USE_PETSC:
-            self.J1.assemblyBegin()
-            self.J1.assemblyEnd()
+            self.dCoefdx.assemblyBegin()
+            self.dCoefdx.assemblyEnd()
         # end if 
 
         # Now Do the Try the matrix multiplication
         if USE_PETSC:
-            if self.J2:
-                if not self.C:
-                    self.C = PETSc.Mat()
+            if self.dPtdCoef:
+                if not self.dPtdx:
+                    self.dPtdx = PETSc.Mat()
                 # end
-                self.J2.matMult(self.J1,result=self.C)
+                self.dPtdCoef.matMult(self.dCoefdx,result=self.dPtdx)
             # end
         else:
-            if self.J2:
-                self.C = dot(self.J2,self.J1)
+            if self.dPtdCoef:
+                self.dPtdx = dot(self.dPtdCoef,self.dCoefdx)
             # end
         # end if
 
@@ -2317,51 +2340,51 @@ a flap hinge line'
 
         return dist,patchID,uv
 
-    def _initJ2( self, M, Nctl ):
+    def _initdPtdCoef( self, M, Nctl ):
         
         # We know the row filling factor: Its (no more) than ku*kv
         # control points for each control point. Since we don't
         # use more than k=4 we will set at 16
         
         if USE_PETSC:
-            J2 = PETSc.Mat()
+            dPtdCoef = PETSc.Mat()
             if PETSC_MAJOR_VERSION == 1:
-                J2.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
+                dPtdCoef.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
             elif PETSC_MAJOR_VERSION == 0:
-                J2.createSeqAIJ([M*3,Nctl*3],nz=16*3)
+                dPtdCoef.createSeqAIJ([M*3,Nctl*3],nz=16*3)
             else:
                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                 sys.exit(1)
             # end if
 
         else:
-            J2 = zeros((M*3,Nctl*3))
+            dPtdCoef = zeros((M*3,Nctl*3))
         # end if
 
-        return J2
+        return dPtdCoef
         
 
-    def calcSurfaceDerivative(self,patchID,uv,indices=None,J2=None):
+    def calcSurfaceDerivative(self,patchID,uv,indices=None,dPtdCoef=None):
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
         print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
         timeA = time.time()
 
-        # If no matrix is provided, use self.J2
-        if not J2:
-            J2 = self.J2
+        # If no matrix is provided, use self.dPtdCoef
+        if not dPtdCoef:
+            dPtdCoef = self.dPtdCoef
         # end
 
         if indices == None:
             indices = numpy.arange(len(patchID))#,numpy.int)
         # end
 
-        if not J2:
+        if not dPtdCoef:
             # Calculate the size Ncoef_free x Ndesign Variables            
             M = len(patchID)
             Nctl = self.Ncoef
 
-            J2 = self._initJ2( M, Nctl )
+            dPtdCoef = self._initdPtdCoef( M, Nctl )
         # end                     
                 
         for i in xrange(len(patchID)):
@@ -2393,20 +2416,20 @@ a flap hinge line'
 
                     index = 3*self.surfs[patchID[i]].globalCtlIndex[ \
                         u_list[ii],v_list[jj]]
-                    J2[3*indices[i]  ,index  ] = x
-                    J2[3*indices[i]+1,index+1] = x
-                    J2[3*indices[i]+2,index+2] = x
+                    dPtdCoef[3*indices[i]  ,index  ] = x
+                    dPtdCoef[3*indices[i]+1,index+1] = x
+                    dPtdCoef[3*indices[i]+2,index+2] = x
                 # end for
             # end for
         # end for 
         
-        # Assemble the (Constant) J2
+        # Assemble the (Constant) dPtdCoef
         if USE_PETSC:
-            J2.assemblyBegin()
-            J2.assemblyEnd()
+            dPtdCoef.assemblyBegin()
+            dPtdCoef.assemblyEnd()
         # end if
 
-        self.J2 = J2 # Make sure we're dealing with the same matrix
+        self.dPtdCoef = dPtdCoef # Make sure we're dealing with the same matrix
 
         print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
 
@@ -2439,7 +2462,7 @@ a flap hinge line'
 
         gdvs = numpy.arange(N,dtype=numpy.intc)
       
-        global_geo = elems.GlobalGeo( gdvs, self.petsc_coef, self.J1 )
+        global_geo = elems.GlobalGeo( gdvs, self.petsc_coef, self.dCoefdx )
       
         # For each segment, number the local variables
         localDVs = []
@@ -2796,7 +2819,7 @@ class geoDVLocal(object):
         '''
 
         self.nVal = len(coef_list)
-        self.value = zeros((self.nVal,3),'D')
+        self.value = zeros((3*self.nVal),'D')
         self.name = dv_name
         self.lower = lower
         self.upper = upper
@@ -2815,11 +2838,14 @@ class geoDVLocal(object):
         # end for
         return
 
-    def __call__(self,surface,coef):
+    def __call__(self,coef):
 
-        '''When the object is called, apply the design variable values to the
-        surface'''
-        pass
+        '''When the object is called, apply the design variable values to 
+        coefficients'''
+        
+        for i in xrange(self.nVal):
+            coef[self.coef_list[i]] += self.value[3*i:3*i+3]
+        # end for
       
         return coef
 

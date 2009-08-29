@@ -186,7 +186,6 @@ a_few = pyGeo.point_select('list',coef=[[5,6],[8,5],[9,2]])
 wing.addGeoDVNormal('norm_surf1',-0.1,0.1,surf=1,overwrite=True,\
                         point_select=a_few)
 
-
 # Add Local Design Variables THIRD
 print ' ** Adding Local Design Variables **'
 wing.addGeoDVLocal('local_surf2',-0.1,0.1,surf=2)
@@ -207,17 +206,16 @@ coors = wing.getCoordinatesFromFile('naca0012.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv)
 
+print 'About to do update'
+wing.update()
+wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
+print 'Done Update:'
 
+timeA = time.time()
+wing.calcCtlDeriv() 
+print 'Derivative Time:',time.time()-timeA
 
-
-# print 'About to do update'
-# wing.update()
-# wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
-# print 'Done Update:'
-
-# timeA = time.time()
-# wing.calcCtlDeriv() # Answer shows up in C
-# print 'Derivative Time:',time.time()-timeA
+sys.exit(0)
 
 # # print 'Testing pyLayout'
 # # L = pyLayout.Layout(wing,'input.py')
