@@ -146,17 +146,20 @@ class pyGeo():
         print 'pyGeo Initialization Type is: %s'%(init_type)
         print '------------------------------------------------'
 
-        self.ref_axis = []
-        self.ref_axis_con = []
-        self.DV_listGlobal = []
-        self.DV_listLocal  = []
+        self.ref_axis       = []
+        self.ref_axis_con   = []
+        self.DV_listGlobal  = []
+        self.DV_listNormal  = []
+        self.DV_listLocal   = []
         self.DV_namesGlobal = {}
+        self.DV_namesNormal = {}
         self.DV_namesLocal  = {}
         self.petsc_coef = None # Global vector of PETSc coefficients
         self.J = None
         self.J1 = None
         self.J2 = None
         self.con = None
+
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as \
 file_name=\'filename\' for plot3d init_type'
@@ -268,7 +271,7 @@ file_name=\'filename\' for iges init_type'
     def _readIges(self,file_name,*args,**kwargs):
 
         '''Load a Iges file and create the splines to go with each patch'''
-        print 'file_name is: %s'%(file_name)
+        print 'File Name is: %s'%(file_name)
         f = open(file_name,'r')
         file = []
         for line in f:
@@ -593,11 +596,11 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
 
         else:  #No breaks
-            
+            Nctlv = naf
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],\
-                                                       Nctlv=2,*args,**kwargs))
+                                                       Nctlv=Nctlv,*args,**kwargs))
             self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],\
-                                                       Nctlv=2,*args,**kwargs))
+                                                       Nctlv=Nctlv,*args,**kwargs))
             self.nSurf = 2
 
         # end if
@@ -662,22 +665,23 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         timeA = time.time()
         for isurf in xrange(self.nSurf):
             # Test this patch against the rest
-            for jpatch in xrange(isurf+1,self.nSurf):
-                for i in xrange(4):
+            for i in xrange(4):
+                for jsurf in xrange(isurf+1,self.nSurf):
+
                     for j in xrange(4):
                         coinc,dir_flag=test_edge(\
-                            self.surfs[isurf],self.surfs[jpatch],i,j,edge_tol)
+                            self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
                         cont_flag = 0 # By Default only C0 continuity
                         if coinc:
                             #print 'We have a coincidient edge'
-                            e_con.append([[isurf,i],[jpatch,j],cont_flag,\
+                            e_con.append([[isurf,i],[jsurf,j],cont_flag,\
                                               dir_flag,-1])
                             # end if
                     # end for
                 # end for
             # end for
         # end for
-      
+       
 
         # That calculates JUST the actual edge connectivity, i.e. The
         # Type 1's. We now have to set the remaining edges to type 0
@@ -1132,11 +1136,40 @@ appear in the edge con list'
             self.con.append(edge(file[i]))
         # end for
 
+        self._sortEdgeConnectivity() # Edge Connections MUST be sorted
         self.printEdgeConnectivity()
         self._setEdgeConnectivity()
 
         return
     
+
+    def _sortEdgeConnectivity(self):
+        # Go through edges and give each a unique id (uid). Connectd
+        # edges are first and then free ones
+        uid_max = 0
+        for i in xrange(len(self.con)):
+            if self.con[i].type == 0:
+                pass
+            else:
+                uid = self.con[i].f1*4 + self.con[i].e1
+                if uid>uid_max:
+                    uid_max = uid
+
+                self.con[i].uid = uid
+            # end if
+        # end for
+        uid_max += 1
+        for i in xrange(len(self.con)):
+            if self.con[i].type == 0:
+                self.con[i].uid = uid_max + self.con[i].f1*4 + self.con[i].e1
+            # end if
+        # end for
+
+        # Now sort them in place 
+        self.con.sort()
+        return
+
+
     def _getConIndex(self,edges,edge,nJoined,nMirrored):
 
         i = edges.index(edge)
@@ -1236,6 +1269,15 @@ appear in the edge con list'
         # end for
 
         return
+
+    def checkCoef(self):
+        '''Check all surface coefficients for consistency'''
+        for isurf in xrange(self.nSurf):
+            counter = self.surfs[isurf].checkCoef()
+            if counter > 0:
+                print '%d control points on surface %d'%(counter,isurf)
+        # end for
+
 
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
@@ -1427,7 +1469,7 @@ appear in the edge con list'
 # ----------------------------------------------------------------------
 
     def addRefAxis(self,surf_ids,X,rot,nrefsecs=None,spacing=None,\
-                       bounding_box=None):
+                       point_select=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
 
@@ -1495,7 +1537,7 @@ appear in the edge con list'
             ra = ref_axis(Xnew,rotnew)
 
             coef_list = []
-            if bounding_box == None: # It is was not defined -> Assume full surface
+            if point_select == None: # It is was not defined -> Assume full surface
                 for isurf in surf_ids:
                     for i in xrange(self.surfs[isurf].Nctlu):
                         for j in xrange(self.surfs[isurf].Nctlv):
@@ -1505,9 +1547,9 @@ appear in the edge con list'
                 # end for
             # end if
 
-            else:   # We have a bounding box
+            else:   # We have a point selection class passed in
                 for isurf in surf_ids:
-                    coef_list = bounding_box.findBoundedCtl(\
+                    coef_list = point_select.getControlPoints(\
                         self.surfs[isurf],coef_list)
                 # end for
             # end if
@@ -1611,7 +1653,6 @@ a flap hinge line'
                     self.ref_axis[axis2].end_point = X0 +\
                         D*self.ref_axis[axis1].scales(s)
                 # end if
-
                 self.ref_axis[axis2].update()
         else:
             for r in xrange(len(self.ref_axis)):
@@ -1832,42 +1873,132 @@ a flap hinge line'
 
         return coordinates.flatten()
 
+    def addGeoDVNormal(self,dv_name,lower,upper,surf=None,point_select=None,\
+                           overwrite=False):
 
-    def addGeoDVLocal(self,dv_name,lower,upper,surf=None,bounding_box=None):
-
-        '''Add a local design variable group.  For Local Design variables the
-        reference us,ue,vs,ve are given wrt the full surface since the
-        user will generally know the full size of the surface but not
-        where it has been clipped due to master/slave edges'''
+        '''Add a normal local design variable group.'''
 
         if surf == None:
             print 'Error: A surface must be specified with surf = <surf_id>'
             sys.exit(1)
+        # end if
 
-        # First get the full and free size of the surface we are dealing with
-            
         coef_list = []
-        if bounding_box == None:
+        if point_select == None:
             counter = 0
             # Assume all control points on surface are to be used
             for i in xrange(self.surfs[surf].Nctlu):
                 for j in xrange(self.surfs[surf].Nctlv):
-                    cur_index = self.surfs[surf].globalCtlIndex[i,j]
-                    if self.global_coef[cur_index][0] == [surf,i,j]: 
-                        coef_list.append(cur_index)
-                    else:
-                        counter += 1
+                    coef_list.append(self.surfs[surf].globalCtlIndex[i,j])
+                # end for
+            # end for
+        else:
+            # Use the bounding box to find the appropriate indicies
+            coef_list = point_select.getControlPoints(\
+                self.surfs[surf],coef_list)
+        # end if
+        
+        # Now, we have the list of the conrol points that we would
+        # LIKE to add to this dv group. However, some may already be
+        # specified in other normal of local dv groups. 
+
+        if overwrite:
+            # Loop over ALL normal and local group and force them to
+            # remove all dv in coef_list
+
+            for idv in xrange(len(self.DV_listNormal)):
+                self.DV_listNormal[idv].removeCoef(coef_list)
+            # end for
+            
+            for idv in xrange(len(self.DV_listLocal)):
+                self.DV_listLocal[idv].removeCoef(coef_list)
+        else:
+            # We need to (possibly) remove coef from THIS list since
+            # they already exist on other dvlocals or dvnormals
+           
+            new_list = copy.copy(coef_list)
+            for i in xrange(len(coef_list)):
+
+                for idv in xrange(len(self.DV_listNormal)):
+                    if coef_list[i] in self.DV_listNormal[idv].coef_list:
+                        new_list.remove(coef_list[i])
+                    # end if
+                # end for
+                for idv in xrange(len(self.DV_listLocal)):
+                    if coef_list[i] in self.DV_listLocal[idv].coef_list:
+                        new_list.remove(coef_list[i])
                     # end if
                 # end for
             # end for
-            if not counter == 0:
-                print ' ** Warning: %d coefficients on surface %d are driven and \
-are not included'%(counter,surf)
-            # end if
+            coef_list = new_list
+        # end if
+
+        self.DV_listNormal.append(geoDVNormal(\
+                dv_name,lower,upper,surf,coef_list,self.global_coef))
+        self.DV_namesNormal[dv_name] = len(self.DV_listLocal)-1
+        
+        return
+
+
+
+    def addGeoDVLocal(self,dv_name,lower,upper,surf=None,point_select=None,\
+                          overwrite=False):
+
+        '''Add a general local design variable group.'''
+
+        if surf == None:
+            print 'Error: A surface must be specified with surf = <surf_id>'
+            sys.exit(1)
+        # end if
+
+        coef_list = []
+        if point_select == None:
+            counter = 0
+            # Assume all control points on surface are to be used
+            for i in xrange(self.surfs[surf].Nctlu):
+                for j in xrange(self.surfs[surf].Nctlv):
+                    coef_list.append(self.surfs[surf].globalCtlIndex[i,j])
+                # end for
+            # end for
         else:
             # Use the bounding box to find the appropriate indicies
-            coef_list = bounding_box.findBoundedCtl(\
+            coef_list = point_select.getControlPoints(\
                 self.surfs[surf],coef_list)
+        # end if
+        
+        # Now, we have the list of the conrol points that we would
+        # LIKE to add to this dv group. However, some may already be
+        # specified in other normal of local dv groups. 
+
+        if overwrite:
+            # Loop over ALL normal and local group and force them to
+            # remove all dv in coef_list
+
+            for idv in xrange(len(self.DV_listNormal)):
+                self.DV_listNormal[idv].removeCoef(coef_list)
+            # end for
+            
+            for idv in xrange(len(self.DV_listLocal)):
+                self.DV_listLocal[idv].removeCoef(coef_list)
+        else:
+            # We need to (possibly) remove coef from THIS list since
+            # they already exist on other dvlocals or dvnormals
+           
+            new_list = copy.copy(coef_list)
+            for i in xrange(len(coef_list)):
+
+                for idv in xrange(len(self.DV_listNormal)):
+                    if coef_list[i] in self.DV_listNormal[idv].coef_list:
+                        new_list.remove(coef_list[i])
+                    # end if
+                # end for
+                for idv in xrange(len(self.DV_listLocal)):
+                    if coef_list[i] in self.DV_listLocal[idv].coef_list:
+                        new_list.remove(coef_list[i])
+                    # end if
+                # end for
+            # end for
+            coef_list = new_list
         # end if
 
         self.DV_listLocal.append(geoDVLocal(\
@@ -1901,7 +2032,7 @@ are not included'%(counter,surf)
             f.write ('VARIABLES = "X", "Y","Z"\n')
             print ' '
             print 'Writing Tecplot file: %s '%(file_name)
-            sys.stdout.write('Outputting Patch: ')
+            sys.stdout.write('Outputting Surface: ')
             for isurf in xrange(self.nSurf):
                 sys.stdout.write('%d '%(isurf))
                 self.surfs[isurf].writeTecplotSurface(handle=f,size=0.03)
@@ -2007,7 +2138,7 @@ are not included'%(counter,surf)
 
 
     def writeIGES(self,file_name):
-        '''write the surface patches to IGES format'''
+        '''write the surfaces to IGES format'''
         f = open(file_name,'w')
 
         #Note: Eventually we may want to put the CORRECT Data here
@@ -2202,11 +2333,12 @@ are not included'%(counter,surf)
                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                 sys.exit(1)
             # end if
+
         else:
             J2 = zeros((M*3,Nctl*3))
         # end if
 
-        return
+        return J2
         
 
     def calcSurfaceDerivative(self,patchID,uv,indices=None,J2=None):
@@ -2221,7 +2353,7 @@ are not included'%(counter,surf)
         # end
 
         if indices == None:
-            indices = numpy.arange(len(patchId),numpy.int)
+            indices = numpy.arange(len(patchID))#,numpy.int)
         # end
 
         if not J2:
@@ -2394,7 +2526,7 @@ class edge(object):
         # end if
 
         # Note Conection nubmer is not necessary (only dummy character)
-            
+        self.uid = None
         return
 
     def write_info(self,i,handle):
@@ -2405,6 +2537,8 @@ class edge(object):
                     self.dg,self.Nctl,self.f2,self.e2))
         
         return
+    def __cmp__(self, other):
+        return cmp(self.uid,other.uid)
 
 
 class ref_axis(object):
@@ -2554,7 +2688,7 @@ class geoDVGlobal(object):
         return self.function(self.value,ref_axis)
         
 
-class geoDVLocal(object):
+class geoDVNormal(object):
      
     def __init__(self,dv_name,lower,upper,surface_id,coef_list,global_coef):
         
@@ -2616,112 +2750,241 @@ class geoDVLocal(object):
                 surf.globalCtlIndex,surf.tu,surf.tv,surf.ku,surf.kv)
         return normals
 
+    def removeCoef(self,rm_list):
+        '''Remove coefficient from this dv if its in rm_list'''
+        for i in xrange(len(rm_list)):
+            if rm_list[i] in self.coef_list:
+                index = self.coef_list.index(rm_list[i])
+                del self.coef_list[index]
+                delete(self.local_coef_index,index)
+                delete(self.value,index)
+                self.nVal -= 1
+            # end if
+        # end for
+
+        return
 
 
-class bounding_box(object):
 
-    def __init__(self,type,pt1,pt2,pt3=None,pt4=None):
+class geoDVLocal(object):
+     
+    def __init__(self,dv_name,lower,upper,surface_id,coef_list,global_coef):
+        
+        '''Create a set of gemoetric design variables whcih change the shape
+        of a surface surface_id. Local design variables change the surface
+        in all three axis.
 
-        '''Initialize a bounding box. There are several ways to initialize
-        this class depending on the 'type' qualifier:
+        Input:
+        
+        dv_name: Design variable name. Should be unique. Can be used
+        to set pyOpt variables directly
+
+        lower: Lower bound for the variable. Again for setting in
+        pyOpt
+
+        upper: Upper bound for the variable.
+
+        surface_id: Surface this set of design variables belongs to
+
+        coef_list: The indicies on the surface used for these dvs
+
+        global_coef: The pyGeo global_design variable linkinng list to
+        determine if a design variable is free of driven
+        
+        Note: Value is NOT specified, value will ALWAYS be initialized to 0
+
+        '''
+
+        self.nVal = len(coef_list)
+        self.value = zeros((self.nVal,3),'D')
+        self.name = dv_name
+        self.lower = lower
+        self.upper = upper
+        self.surface_id = surface_id
+        self.coef_list = coef_list
+        
+        # We also need to know what local surface i,j index is for
+        # each point in the coef_list since we need to know the
+        # position on the surface to get the normal. That's why we
+        # passed in the global_coef list so we can figure it out
+        
+        self.local_coef_index = zeros((self.nVal,2),'intc')
+        
+        for icoef in xrange(self.nVal):
+            self.local_coef_index[icoef,:] = global_coef[coef_list[icoef]][0][1:3]
+        # end for
+        return
+
+    def __call__(self,surface,coef):
+
+        '''When the object is called, apply the design variable values to the
+        surface'''
+        pass
+      
+        return coef
+
+    def removeCoef(self,rm_list):
+        '''Remove coefficient from this dv if its in rm_list'''
+        for i in xrange(len(rm_list)):
+            if rm_list[i] in self.coef_list:
+                index = self.coef_list.index(rm_list[i])
+                del self.coef_list[index]
+                delete(self.local_coef_index,index)
+                delete(self.value,index)
+                self.nVal -= 1
+            # end if
+        # end for
+   
+class point_select(object):
+
+    def __init__(self,type,*args,**kwargs):
+
+        '''Initialize a control point selection class. There are several ways
+        to initialize this class depending on the 'type' qualifier:
 
         Inputs:
         
         type: string which inidicates the initialization type:
         
-        'x': Define two corners (pt1,pt2) on a plane parallel to the
+        'x': Define two corners (pt1=,pt2=) on a plane parallel to the
         x=0 plane
 
-        'y': Define two corners (pt1,pt2) on a plane parallel to the
+        'y': Define two corners (pt1=,pt2=) on a plane parallel to the
         y=0 plane
 
-        'z': Define two corners (pt1,pt2) on a plane parallel to the
+        'z': Define two corners (pt1=,pt2=) on a plane parallel to the
         z=0 plane
 
-        'quad': Define FOUR corners (pt1,pt2,pt3,pt4) in a
+        'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
         COUNTER-CLOCKWISE orientation 
 
-        pt1,pt2 are required for all 'type' arguments
-        pt3,pt4 are ONLY requireed the quad type argument
+        'slice': Define a grided region using two slice parameters:
+        slice_u= and slice_v are used as inputs
+
+        'list': Simply use a list of control point indidicies to
+        use. Use coef = [[i1,j1],[i2,j2],[i3,j3]] format
 
         '''
-
-        corners = zeros([4,3])
-        if type == 'x':
-            print 'Bounding Box Type is %s: Box is parallel to x=0 plane'%(type)
-            corners[0] = pt1
-
-            corners[1][1] = pt2[1]
-            corners[1][2] = pt1[2]
-
-            corners[2][1] = pt1[1]
-            corners[2][2] = pt2[2]
-
-            corners[3] = pt2
-
-            corners[:,0] = 0.5*(pt1[0] + pt2[0])
-
-        elif type == 'y':
-            print 'Bounding Box Type is %s: Box is parallel to y=0 plane'%(type)
-            corners[0] = pt1
-
-            corners[1][0] = pt2[0]
-            corners[1][2] = pt1[2]
-
-            corners[2][0] = pt1[0]
-            corners[2][2] = pt2[2]
-
-            corners[3] = pt2
-
-            corners[:,1] = 0.5*(pt1[1] + pt2[1])
-
-        elif type == 'z':
-            print 'Bounding Box Type is %s: Box is parallel to z=0 plane'%(type)
-            corners[0] = pt1
-
-            corners[1][0] = pt2[0]
-            corners[1][1] = pt1[1]
-
-            corners[2][0] = pt1[0]
-            corners[2][1] = pt2[1]
-
-            corners[3] = pt2
-
-            corners[:,2] = 0.5*(pt1[2] + pt2[2])
+        
+        if type == 'x' or type == 'y' or type == 'z':
+            assert 'pt1' in kwargs and 'pt2' in kwargs,'Error:, two points \
+must be specified with initialization type x,y, or z. Points are specified \
+with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
 
         elif type == 'quad':
-            print 'Bounding Box Type is %s: Box is a general quad.'%(type)
+            assert 'pt1' in kwargs and 'pt2' in kwargs and 'pt3' in kwargs \
+                and 'pt4' in kwargs,'Error:, four points \
+must be specified with initialization type quad. Points are specified \
+with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
             
-            corners[0] = pt1
-            corners[1] = pt2
-            corners[2] = pt4 # Note the switch here from CC orientation
-            corners[3] = pt3
+        elif type == 'slice':
+            assert 'slice_u'  in kwargs and 'slice_v' in kwargs,'Error: two \
+python slice objects must be specified with slice_u=slice1, slice_v=slice_2 \
+for slice type initialization'
+
+        elif type == 'list':
+            assert 'coef' in kwargs,'Error: a coefficient list must be \
+speficied in the following format: coef = [[i1,j1],[i2,j2],[i3,j3]]'
         else:
-            print 'Error: type is unknown. \'type\' must be specified as one \
-of \'x\', \'y\', \'z\' or \'quad\''
+            print 'Error: type must be one of: x,y,z,quad,slice or list'
             sys.exit(1)
         # end if
 
-        X = reshape(corners,[2,2,3])
-      
-        self.box=pySpline.surf_spline(task='lms',ku=2,kv=2,Nctlu=2,Nctlv=2,X=X)
+        if type == 'x' or type == 'y' or type =='z' or type == 'quad':
+            corners = zeros([4,3])
+            if type == 'x':
+                corners[0] = kwargs['pt1']
+
+                corners[1][1] = kwargs['pt2'][1]
+                corners[1][2] = kwargs['pt1'][2]
+
+                corners[2][1] = kwargs['pt1'][1]
+                corners[2][2] = kwargs['pt2'][2]
+
+                corners[3] = kwargs['pt2']
+
+                corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
+
+            elif type == 'y':
+                corners[0] = kwargs['pt1']
+
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][2] = kwargs['pt1'][2]
+
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][2] = kwargs['pt2'][2]
+
+                corners[3] = kwargs['pt2']
+
+                corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
+
+            elif type == 'z':
+                corners[0] = kwargs['pt1']
+
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][1] = kwargs['pt1'][1]
+
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][1] = kwargs['pt2'][1]
+
+                corners[3] = kwargs['pt2']
+
+                corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
+
+            elif type == 'quad':
+                corners[0] = kwargs['pt1']
+                corners[1] = kwargs['pt2']
+                corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
+                corners[3] = kwargs['pt3']
+            # end if
+
+            X = reshape(corners,[2,2,3])
+
+            self.box=pySpline.surf_spline(task='lms',ku=2,kv=2,\
+                                              Nctlu=2,Nctlv=2,X=X)
+
+        elif type == 'slice':
+            self.slice_u = kwargs['slice_u']
+            self.slice_v = kwargs['slice_v']
+        elif type == 'list':
+            self.coef_list = kwargs['coef']
+        # end if
+
+        self.type = type
+
         return
 
 
-    def findBoundedCtl(self,surface,coef_list):
+    def getControlPoints(self,surface,coef_list):
 
         '''Take is a pySpline surface, and a (possibly non-empty) coef_list
         and add to the coef_list the global index of the control point
         on the surface that can be projected onto the box'''
         
-        for i in xrange(surface.Nctlu):
-            for j in xrange(surface.Nctlv):
-                u0,v0,D,converged = self.box.projectPoint(surface.coef[i,j])
-                if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
-                    coef_list.append(surface.globalCtlIndex[i,j])
-                #end if
+        if self.type=='x'or self.type=='y' or self.type=='z' or self.type=='quad':
+
+            for i in xrange(surface.Nctlu):
+                for j in xrange(surface.Nctlv):
+                    u0,v0,D,converged = self.box.projectPoint(surface.coef[i,j])
+                    if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
+                        coef_list.append(surface.globalCtlIndex[i,j])
+                    #end if
+                # end for
             # end for
-        # end for
+        elif self.type == 'slice':
+
+            for i in self.slice_u:
+                for j in self.slice_v:
+                    coef_list.append(surface.globalCtlIndex[i,j])
+                # end for
+            # end for
+        elif self.type == 'list':
+            for i in xrange(len(self.coef_list)):
+                coef_list.append(surface.globalCtlIndex[self.coef_list[i][0],\
+                                                            self.coef_list[i][1]])
+            # end for
+        # end if
+
         return coef_list
 
 #==============================================================================
