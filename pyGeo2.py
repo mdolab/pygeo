@@ -649,18 +649,12 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
         if not self.con == None:
-            print 'Warning edge connectivity will be overwritten. \
- Enter 1 to continue, 0 to quit.'
-            ans = raw_input()
-            if ans == '0':
-                return
-            # end if
+            print 'Warning edge connectivity will be overwritten.'
         # end if
-
         print  ' '
         print 'Attempting to Determine Edge Connectivity'
 
-        e_con = []
+        e_con = [] #Temporary storage for edge entities
         
         #Loop over faces
         timeA = time.time()
@@ -2326,7 +2320,6 @@ a flap hinge line'
                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                 sys.exit(1)
             # end if
-
         else:
             dPtdCoef = zeros((M*3,Nctl*3))
         # end if
