@@ -1,7 +1,10 @@
-#!/usr/bin/python  
+# =============================================================================
+# Utility Functions for Use in pyGeo
+# =============================================================================
+
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete
-import numpy
+
 import string ,sys
 
 def rotxM(theta):
@@ -198,6 +201,14 @@ def test_edge(surf1,surf2,i,j,edge_tol):
     val1_beg,val1_mid,val1_end = surf1.getOrigValuesEdge(i)
     val2_beg,val2_mid,val2_end = surf2.getOrigValuesEdge(j)
 
+    # First we wil check to see if either edge is degenerate:
+
+    degen1 = surf1.checkDegenerateEdge(i)
+    degen2 = surf2.checkDegenerateEdge(j)
+
+    print 'degen1,degen2:',degen1,degen2
+
+
     #Three things can happen:
     coinc = False
     dir_flag = 1
@@ -229,6 +240,7 @@ def test_edge(surf1,surf2,i,j,edge_tol):
 
     return coinc,dir_flag
 
+
 def flipEdge(edge):
     if edge == 0: return 1
     if edge == 1: return 0
@@ -237,24 +249,6 @@ def flipEdge(edge):
     else:
         return None
    
-
-def getNodesFromEdge(edge):
-    '''Get the index of the two nodes coorsponding to edge edge'''
-    if edge == 0:
-        n1 = 0
-        n2 = 1
-    elif edge == 1:
-        n1 = 2
-        n2 = 3
-    elif edge == 2:
-        n1 = 0
-        n2 = 2
-    else:
-        n1 = 1
-        n2 = 3
-        
-    return n1,n2
-
 def unique(s):
     """Return a list of the elements in s, but without duplicates.
 

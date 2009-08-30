@@ -80,19 +80,19 @@ rot[:,2] = tw_aero
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-#                        file_type='xfoil',scale=chord,offset=offset, \
-#                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
-#                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+                       file_type='xfoil',scale=chord,offset=offset, \
+                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-# wing.calcEdgeConnectivity(1e-6,1e-6)
-# wing.writeEdgeConnectivity('wing.con')
-# wing.propagateKnotVectors()
+wing.calcEdgeConnectivity(1e-6,1e-6)
+wing.writeEdgeConnectivity('wing.con')
+wing.propagateKnotVectors()
 
-# wing.writeTecplot('wing.dat',edges=True)
-# wing.writeIGES('wing.igs')
-# print 'Done Step 1'
-#sys.exit(0)
+wing.writeTecplot('wing.dat',edges=True)
+wing.writeIGES('wing.igs')
+print 'Done Step 1'
+sys.exit(0)
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
