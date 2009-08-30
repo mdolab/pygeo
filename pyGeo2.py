@@ -905,6 +905,7 @@ appear in the edge con list'
             self.petsc_coef = PETSc.Vec()
             self.petsc_coef.createSeq(3*self.Ncoef)
             self.petsc_coef[:] = self.coef.flatten().astype('d')
+            self.petsc_coef.assemble()
         # end
         return
 
@@ -1677,6 +1678,7 @@ a flap hinge line'
         # Update the values in PETSc
         if USE_PETSC:
             self.petsc_coef[:] = self.coef.flatten().astype('d')
+            self.petsc_coef.assemble()
         # end
             
         self._updateSurfaceCoef()
@@ -1723,18 +1725,17 @@ a flap hinge line'
                 
         NdvNormal = N-NdvGlobal
 
-        for i in xrange(len(self.DV_listLocal)): # Normal Variables
+        for i in xrange(len(self.DV_listLocal)): # Local Variables
             N += self.DV_listLocal[i].nVal*3
         # end for
                 
         NdvLocal = N-(NdvNormal+NdvGlobal)
 
-
         # print 'NdvGlobal:',NdvGlobal
         # print 'Ndv:',Ndv
         # print 'Nctl:',Nctl
 
-        return NdvGlobal, NdvNormal,NdvLocal,Nctl
+        return NdvGlobal, NdvNormal, NdvLocal, Nctl
 
 
     def _initdCoefdx( self ):
@@ -2382,6 +2383,8 @@ a flap hinge line'
                     dPtdCoef[3*indices[i]  ,index  ] = x
                     dPtdCoef[3*indices[i]+1,index+1] = x
                     dPtdCoef[3*indices[i]+2,index+2] = x
+                    # for k in xrange(3):
+                    #     dPtdCoef.setValue( 3*indices[i]+k, index+k, x )
                 # end for
             # end for
         # end for 
@@ -2427,11 +2430,18 @@ a flap hinge line'
       
         global_geo = elems.GlobalGeo( gdvs, self.petsc_coef, self.dCoefdx )
       
-        # For each segment, number the local variables
+        # For each dv object, number the normal variables
+        normalDVs = []
+        for normal in self.DV_listNormal:
+            normalDVs.append( numpy.arange(N,N+normal.nVal,dtype=numpy.intc) )
+            N += normal.nVal
+        # end
+
+        # For each dv object, number all three coordinates
         localDVs = []
         for local in self.DV_listLocal:
-            localDVs.append( numpy.arange(N,N+local.nVal,dtype=numpy.intc) )
-            N += local.nVal
+            localDVs.append( numpy.arange(N,N+3*local.nVal,dtype=numpy.intc) )
+            N += 3*local.nVal
         # end
 
         # Create the list of local dvs for each surface patch
@@ -2440,6 +2450,15 @@ a flap hinge line'
             surfDVs.append(None)
         # end
         
+        for i in xrange(len(self.DV_listNormal)):
+            sid = self.DV_listNormal[i].surface_id
+            if ( surfDVs[sid] == None ):
+                surfDVs[sid] = normalDVs[i]
+            else:
+                numpy.hstack( surfDVs[sid], normalDVs[i] )
+            # end
+        # end
+
         for i in xrange(len(self.DV_listLocal)):
             sid = self.DV_listLocal[i].surface_id
             if ( surfDVs[sid] == None ):
@@ -2447,19 +2466,19 @@ a flap hinge line'
             else:
                 numpy.hstack( surfDVs[sid], localDVs[i] )
             # end
-        # end
+        # end        
 
         # Go through and add local objects for each design variable
         def convert( s, ldvs ):
             if ldvs == None:
                 ldvs = []
             # end
-            
+
             return elems.SplineGeo( int(s.ku), int(s.kv),
-                                    s.tu.astype('d'), s.tv.astype('d'),
-                                    s.coef[:,:,0].astype('d'),
-                                    s.coef[:,:,1].astype('d'),
-                                    s.coef[:,:,2].astype('d'),
+                                    s.tu, s.tv,
+                                    s.coef[:,:,0], 
+                                    s.coef[:,:,1], 
+                                    s.coef[:,:,2], 
                                     global_geo, ldvs, s.globalCtlIndex.astype('intc') )
         # end
 
