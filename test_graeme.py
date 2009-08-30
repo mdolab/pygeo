@@ -41,7 +41,7 @@ from dv_funcs import *
 
 naf=3
 airfoil_list = ['naca0012.dat','naca0012.dat','pinch_xfoil.dat']
-#airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
+airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
 chord = [1,1,.50]
 x = [0,0,0]
 y = [0,0,0]
@@ -58,7 +58,7 @@ breaks = [1] #zero based (Must NOT contain 0 or index of last value)
 cont = [1] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
 nsections = [10,10]# Length breaks + 1
 section_spacing = [linspace(0,1,10),linspace(0,1,10)]
-Nctlu = 12
+Nctlu = 9
 end_type = 'pinch'
 # 'pinch' or 'flat' or 'rounded' -> flat and rounded result in a
 #  a new surface on the end 
@@ -108,7 +108,7 @@ rot[:,2] = tw_aero
 
 # ----------------------------------------------------------------------
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                       file_type='xfoil',scale=chord,offset=offset, \
+                       file_type='precomp',scale=chord,offset=offset, \
                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
@@ -118,6 +118,7 @@ timeA = time.time()
 wing.fitSurfaces()
 timeB = time.time()
 print 'Fitting Time:',timeB-timeA
+wing.update()
 wing.writeTecplot('wing.dat')
 wing.writeIGES('wing.igs')
 print 'Done Step 2'

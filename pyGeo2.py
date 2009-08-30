@@ -977,7 +977,7 @@ appear in the edge con list'
         g_index = []
         l_index = []
 
-        if not surface_list: # W
+        if surface_list == None:
             surface_list = range(0,self.nSurf)            
         
         for ii in xrange(len(surface_list)):
@@ -1327,7 +1327,6 @@ appear in the edge con list'
             X[3*i:3*i+3] = self.coef[i].astype('d')
         # end for
 
-
         for ii in xrange(Npts):
             surfID = g_index[ii][0][0]
             i      = g_index[ii][0][1]
@@ -1368,10 +1367,14 @@ appear in the edge con list'
                 # end for
             # end for
         # end for 
+        if USE_PETSC:
+            self.J.assemblyBegin()
+            self.J.assemblyEnd()
+        # end if
         print 'Jacobian Matrix Assembled'
         
         # Now Solve
-        self._solve(pts,Npts,Nctl) # with RHS pts
+        self._solve(X,pts,Npts,Nctl) # with RHS pts
       
         return
 
@@ -1380,9 +1383,6 @@ appear in the edge con list'
         print 'LMS solving...'
 
         if USE_PETSC:
-            self.J.assemblyBegin()
-            self.J.assemblyEnd()
-                        
             ksp = PETSc.KSP()
             ksp.create(PETSc.COMM_WORLD)
             ksp.getPC().setType('none')
@@ -1394,7 +1394,6 @@ appear in the edge con list'
 
             ksp.setMonitor(monitor)
             ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
-
 
             ksp.setOperators(self.J)
             ksp.solve(rhs, X) 
@@ -1777,7 +1776,7 @@ a flap hinge line'
         and generates a (sparse) jacobian of the control pt
         derivatives wrt to the design variables'''
 
-        if not self.dCoefdx:
+        if self.dCoefdx == None:
             self.dCoefdx = self._initdCoefdx()
         # end
    
@@ -1843,7 +1842,7 @@ a flap hinge line'
         # Now Do the Try the matrix multiplication
         if USE_PETSC:
             if self.dPtdCoef:
-                if not self.dPtdx:
+                if self.dPtdx == None:
                     self.dPtdx = PETSc.Mat()
                 # end
                 self.dPtdCoef.matMult(self.dCoefdx,result=self.dPtdx)
@@ -2342,7 +2341,7 @@ a flap hinge line'
         timeA = time.time()
 
         # If no matrix is provided, use self.dPtdCoef
-        if not dPtdCoef:
+        if dPtdCoef == None:
             dPtdCoef = self.dPtdCoef
         # end
 
@@ -2350,7 +2349,7 @@ a flap hinge line'
             indices = numpy.arange(len(patchID))#,numpy.int)
         # end
 
-        if not dPtdCoef:
+        if dPtdCoef == None:
             # Calculate the size Ncoef_free x Ndesign Variables            
             M = len(patchID)
             Nctl = self.Ncoef
