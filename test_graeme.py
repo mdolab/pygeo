@@ -92,7 +92,7 @@ rot[:,2] = tw_aero
 # wing.writeTecplot('wing.dat',edges=True)
 # wing.writeIGES('wing.igs')
 # print 'Done Step 1'
-
+#sys.exit(0)
 # ----------------------------------------------------------------------
 # 0: -> Load wing.dat to check connectivity information and modifiy
 # wing.con file to correct any connectivity info and set
@@ -107,19 +107,22 @@ rot[:,2] = tw_aero
 # are using for bspline surfaces
 
 # ----------------------------------------------------------------------
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,scale=chord,\
-#                        offset=offset, Xsec=X,rot=rot,breaks=breaks,\
-#                        nsections=nsections,section_spacing=section_spacing,\
-#                        fit_type='lms', Nctlu=Nctlu,Nfoil=20)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+                       file_type='xfoil',scale=chord,offset=offset, \
+                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-# wing.readEdgeConnectivity('wing.con')
-# wing.propagateKnotVectors()
-# wing.stitchEdges()
-# #wing.fitSurfaces()
-# wing.writeTecplot('wing.dat')
-# wing.writeIGES('wing.igs')
-# print 'Done Step 2'
-# sys.exit(0)
+wing.readEdgeConnectivity('wing.con')
+wing.propagateKnotVectors()
+timeA = time.time()
+wing.fitSurfaces()
+timeB = time.time()
+print 'Fitting Time:',timeB-timeA
+wing.writeTecplot('wing.dat')
+wing.writeIGES('wing.igs')
+print 'Done Step 2'
+time.sleep(10)
+sys.exit(0)
 # ----------------------------------------------------------------------
 
 # Step 3: -> After step 2 we now have two files we need, the stored
@@ -206,7 +209,7 @@ coors = wing.getCoordinatesFromFile('naca0012.dtx')
 dist,patchID,uv = wing.attachSurface(coors) #Attach the surface BEFORE any update
 wing.calcSurfaceDerivative(patchID,uv)
 
-print 'About to do update'
+print 'About to do update..'
 wing.update()
 wing.writeTecplot('wing2.dat',ref_axis=True,links=True)
 print 'Done Update:'
