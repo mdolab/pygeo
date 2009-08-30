@@ -1305,8 +1305,13 @@ appear in the edge con list'
         if USE_PETSC:
             pts = PETSc.Vec()
             pts = pts.createSeq(Npts*3)
+
+            X = PETSc.Vec()
+            X.createSeq(Nctl*3)
+
         else:
             pts = zeros(Npts*3)
+            X = zero(Nctl*3)
         # end if 
 
         # Now Fill up the pt list
@@ -1316,6 +1321,12 @@ appear in the edge con list'
             j = g_index[ii][0][2]
             pts[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
         # end for
+
+        # Fill up the 'X' with the best curent solution guess
+        for i in xrange(len(self.coef)):
+            X[3*i:3*i+3] = self.coef[i].astype('d')
+        # end for
+
 
         for ii in xrange(Npts):
             surfID = g_index[ii][0][0]
@@ -1364,7 +1375,7 @@ appear in the edge con list'
       
         return
 
-    def _solve(self,rhs,Npts,Nctl):
+    def _solve(self,X,rhs,Npts,Nctl):
         '''Solve for the control points'''
         print 'LMS solving...'
 
@@ -1384,8 +1395,6 @@ appear in the edge con list'
             ksp.setMonitor(monitor)
             ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
 
-            X = PETSc.Vec()
-            X.createSeq(Nctl*3)
 
             ksp.setOperators(self.J)
             ksp.solve(rhs, X) 
