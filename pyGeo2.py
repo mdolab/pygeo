@@ -1281,189 +1281,151 @@ appear in the edge con list'
 
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
-# # ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#     def fitSurfaces(self):
-#         '''This function does a lms fit on all the surfaces respecting
-#         the stitched edges as well as the continuity constraints'''
+    def fitSurfaces(self):
+        '''This function does a lms fit on all the surfaces respecting
+        the stitched edges as well as the continuity constraints'''
 
-#         # Make sure number of free points are calculated
+        Nctl = len(self.coef)
 
-#         for isurf in xrange(self.nSurf):
-#             self.surfs[isurf]._calcNFree()
-#         # end for
+        sizes = []
+        for isurf in xrange(self.nSurf):
+            sizes.append([self.surfs[isurf].Nu,self.surfs[isurf].Nv])
+        # end for
 
-#         # Size of new jacobian and positions of block starts
-#         self.M = [0]
-#         self.N = [0]
-#         for isurf in xrange(0,self.nSurf):
-#             self.M.append(self.M[isurf] + self.surfs[isurf].Nu_free*\
-#                               self.surfs[isurf].Nv_free)
-#             self.N.append(self.N[isurf] + self.surfs[isurf].Nctlu_free*\
-#                               self.surfs[isurf].Nctlv_free)
-#         # end for
-#         print 'M,N:',self.M,self.N
+        Npts, g_index,l_index = self.calcGlobalNumbering(sizes)
 
-#         self._initJacobian()
-
-#         #Do Loop to fill up the matrix
-#         col_counter = -1
-#         print 'Generating Matrix...'
-#         for isurf in xrange(self.nSurf):
-#             #print 'Patch %d'%(isurf)
-#             for j in xrange(self.surfs[isurf].Nctlv):
-#                 per_don =((j+0.0)/self.surfs[isurf].Nctlv) # Percent Done
-#                 #print 'done %4.2f'%(per_don)
-
-#                 for i in xrange(self.surfs[isurf].Nctlu):
-#                     pt_type,edge_info,node_info = \
-#                         self.surfs[isurf].checkCtl(i,j) 
-
-#                     if pt_type == 0: # Its a driving node
-#                         col_counter += 1
-#                         self._setCol(self.surfs[isurf]._calcCtlDeriv(i,j),\
-#                                          self.M[isurf],col_counter)
-
-#                         # Now check for nodes/edges
-
-#                         # Its on a master edge driving another control point
-#                         if edge_info: 
-
-#                             # Unpack edge info
-#                             face  = edge_info[0][0]
-#                             edge  = edge_info[0][1]
-#                             index = edge_info[1]
-#                             direction = edge_info[2]
-#                             edge_type = edge_info[3]
-
-#                             if edge_type == 1:
-#                                 self._setCol(self.surfs[face]._calcCtlDerivEdge\
-#                                                  (edge,index,direction),\
-#                                                  self.M[face],col_counter)
-
-#                         # Its on a corner driving (potentially)
-#                         # multiplie control points
-#                         if node_info: 
-#                             # Loop over the number of affected nodes
-#                             for k in xrange(len(node_info)): 
-#                                 face = node_info[k][0]
-#                                 node = node_info[k][1]
-#                                 self._setCol(self.surfs[face].\
-#                                                  _calcCtlDerivNode(node),\
-#                                                  self.M[face],col_counter)
-#                             # end for
-#                         # end if
-#                     # end if
-#                 # end for
-#             # end for
-#         # end for
-
-#         # Set the RHS
-#         print 'Done Matrix...'
-#         self._setRHS()
-#         # Now Solve
-#         self._solve()
-      
-#         return
-
-#     def _initJacobian(self):
+        self._initJacobian(Npts,Nctl)
         
-#         '''Initialize the Jacobian either with PETSc or with Numpy for use
-# with LAPACK'''
-#         if USE_PETSC:
-#             self.J = PETSc.Mat()
-#             # Approximate Number of non zero entries per row:
-#             nz = self.surfs[0].Nctl_free
-#             for i in xrange(1,self.nSurf):
-#                 if self.surfs[i].Nctl_free > nz:
-#                     nz = self.surfs[i].Nctl_free
-#                 # end if
-#             # end for
-#             self.J.createAIJ([self.M[-1],self.N[-1]],nnz=nz)
-#         else:
-#             self.J = zeros([self.M[-1],self.N[-1]])
-#         # end if
+        print '------------- Fitting Surfaces Globally ------------------'
+        print 'Npts:',Npts
+        print 'Nctl:',Nctl
 
-#     def _setCol(self,vec,i,j):
-#         '''Set a column vector, vec, at position i,j'''
-#         # Note: These are currently the same...
-#         # There is probably a more efficient way to set in PETSc
-#         if USE_PETSC:
-#             self.J[i:i+len(vec),j] = vec 
-#             #self.J.setValues(len(vec),i,1,j,vec)
-#         else:
-#             self.J[i:i+len(vec),j] = vec 
-#         # end if
-#         return 
+        if USE_PETSC:
+            pts = PETSc.Vec()
+            pts = pts.createSeq(Npts*3)
+        else:
+            pts = zeros(Npts*3)
+        # end if 
 
-        
-#     def _setRHS(self):
-#         '''Set the RHS Vector'''
-#         #NOTE: GET CROP DATA IS NOT WORKING! FIX ME!
-        
-        
-#         self.RHS = self.nSurf*[]
-#         for idim in xrange(3):
-#             if USE_PETSC:
-#                 self.RHS.append(PETSc.Vec())
-#                 self.RHS[idim].createSeq(self.M[-1])
-#             else:
-#                 self.RHS.append(zeros(self.M[-1]))
-#             # end if 
-#             for isurf in xrange(self.nSurf):
-#                 temp = self.surfs[isurf]._getCropData(\
-#                     self.surfs[isurf].X[:,:,idim]).flatten()
-#                 self.RHS[idim][self.M[isurf]:self.M[isurf] + len(temp)] = temp
-#             # end for
-#         # end for
+        # Now Fill up the pt list
+        for ii in xrange(len(g_index)):
+            isurf = g_index[ii][0][0]
+            i = g_index[ii][0][1]
+            j = g_index[ii][0][2]
+            pts[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+        # end for
 
- #    def _solve(self):
-#         '''Solve for the control points'''
-#         print 'in solve...'
-#         self.coef = zeros((self.N[-1],3))
-#         if USE_PETSC:
-#             self.J.assemblyBegin()
-#             self.J.assemblyEnd()
+        for ii in xrange(Npts):
+            surfID = g_index[ii][0][0]
+            i      = g_index[ii][0][1]
+            j      = g_index[ii][0][2]
 
-                        
-#             ksp = PETSc.KSP()
-#             ksp.create(PETSc.COMM_WORLD)
-#             ksp.getPC().setType('none')
-#             ksp.setType('lsqr')
-           
-#             def monitor(ksp, its, rnorm):
-#                 if mod(its,50) == 0:
-#                     print its,rnorm
-
-#             ksp.setMonitor(monitor)
-#             #ksp.setMonitor(ksp.Monitor())
-#             ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
-
-#             X = PETSc.Vec()
-#             X.createSeq(self.N[-1])
-
-#             ksp.setOperators(self.J)
+            u = self.surfs[surfID].u[i]
+            v = self.surfs[surfID].v[j]
             
-#             for idim in xrange(3):
-#                 print 'solving %d'%(idim)
-#                 ksp.solve(self.RHS[idim], X) 
-#                 for i in xrange(self.N[-1]):
-#                     self.coef[i,idim] = X.getValue(i)
-#                 # end if
-#             # end for
-#         else:
-#             for idim in xrange(3):
-#                 X = lstsq(self.J,self.RHS[idim])
-#                 self.coef[:,idim] = X[0]
-#                 print 'residual norm:',X[1]
-#             # end for
-#         # end if
+            ku = self.surfs[surfID].ku
+            kv = self.surfs[surfID].kv
+                    
+            ileftu, mflagu = self.surfs[surfID].pyspline.intrv(\
+                self.surfs[surfID].tu,u,1)
+            ileftv, mflagv = self.surfs[surfID].pyspline.intrv(\
+                self.surfs[surfID].tv,v,1)
 
-#         data_save = {'COEF':self.coef}
-#         #io.savemat('coef_lapack.mat',data_save)
+            if mflagu == 0: # Its Inside so everything is ok
+                u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
+            if mflagu == 1: # Its at the right end so just need last one
+                u_list = [ileftu-ku-1]
 
-#         return
+            if mflagv == 0: # Its Inside so everything is ok
+                v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
+            if mflagv == 1: # Its at the right end so just need last one
+                v_list = [ileftv-kv-1]
 
+            for iii in xrange(len(u_list)):
+                for jjj in xrange(len(v_list)):
+
+                    x = self.surfs[surfID].calcPtDeriv(\
+                        u,v,u_list[iii],v_list[jjj])
+
+                    index = 3*self.surfs[surfID].globalCtlIndex[ \
+                        u_list[iii],v_list[jjj]]
+                    self.J[3*ii  ,index  ] = x
+                    self.J[3*ii+1,index+1] = x
+                    self.J[3*ii+2,index+2] = x
+                # end for
+            # end for
+        # end for 
+        print 'Jacobian Matrix Assembled'
+        
+        # Now Solve
+        self._solve(pts,Npts,Nctl) # with RHS pts
+      
+        return
+
+    def _solve(self,rhs,Npts,Nctl):
+        '''Solve for the control points'''
+        print 'LMS solving...'
+
+        if USE_PETSC:
+            self.J.assemblyBegin()
+            self.J.assemblyEnd()
+                        
+            ksp = PETSc.KSP()
+            ksp.create(PETSc.COMM_WORLD)
+            ksp.getPC().setType('none')
+            ksp.setType('lsqr')
+            print 'Iteration   Residual'
+            def monitor(ksp, its, rnorm):
+                if mod(its,100) == 0:
+                    print '%5d      %20.15g'%(its,rnorm)
+
+            ksp.setMonitor(monitor)
+            ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
+
+            X = PETSc.Vec()
+            X.createSeq(Nctl*3)
+
+            ksp.setOperators(self.J)
+            ksp.solve(rhs, X) 
+
+            coef_temp = zeros((Nctl,3))
+            for i in xrange(Nctl): # Copy the coefficient back over
+                self.coef[i,0] = complex(X.getValue(3*i  ))
+                self.coef[i,1] = complex(X.getValue(3*i+1))
+                self.coef[i,2] = complex(X.getValue(3*i+2))
+            # end for
+        else:
+            X = lstsq(self.J,rhs)
+            print 'residual norm:',X[1]
+            for i in xrange(Nctl): # Copy the coefficient back over
+                self.coef[i] = X[0][3*i:3*i+3].astype('D')
+            # end for
+        # end if
+
+        return
+
+    def _initJacobian(self,Npt,Nctl):
+        
+        '''Initialize the Jacobian either with PETSc or with Numpy for use
+with LAPACK'''
+      
+        if USE_PETSC:
+            self.J = PETSc.Mat()
+            # We know the row filling factor: 16*3 (4 for ku by 4 for
+            # kv and 3 spatial)
+            if PETSC_MAJOR_VERSION == 1:
+                self.J.createAIJ([Npt*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
+            elif PETSC_MAJOR_VERSION == 0:
+                self.J.createSeqAIJ([Npt*3,Nctl*3],nz=16*3)
+            else:
+                print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+                sys.exit(1)
+            # end if
+        else:
+            self.J = zeros((Npt*3,Nctl*3))
+        # end if
 # ----------------------------------------------------------------------
 #                Reference Axis Handling
 # ----------------------------------------------------------------------
