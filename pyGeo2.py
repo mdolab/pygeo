@@ -37,7 +37,7 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor, size, reshape
+    real, imag, dstack, floor, size, reshape, arange
 
 from numpy.linalg import lstsq,inv
 #from scipy import io #Only used for debugging
@@ -2400,7 +2400,7 @@ a flap hinge line'
         # end
 
         if indices == None:
-            indices = numpy.arange(len(patchID))#,numpy.int)
+            indices = arange(len(patchID),'intc')
         # end
 
         if dPtdCoef == None:
@@ -2486,21 +2486,21 @@ a flap hinge line'
             # end if
         # end for
 
-        gdvs = numpy.arange(N,dtype=numpy.intc)
+        gdvs = arange(N,dtype='intc')
       
         global_geo = elems.GlobalGeo( gdvs, self.petsc_coef, self.dCoefdx )
       
         # For each dv object, number the normal variables
         normalDVs = []
         for normal in self.DV_listNormal:
-            normalDVs.append( numpy.arange(N,N+normal.nVal,dtype=numpy.intc) )
+            normalDVs.append( arange(N,N+normal.nVal,dtype='intc') )
             N += normal.nVal
         # end
 
         # For each dv object, number all three coordinates
         localDVs = []
         for local in self.DV_listLocal:
-            localDVs.append( numpy.arange(N,N+3*local.nVal,dtype=numpy.intc) )
+            localDVs.append( arange(N,N+3*local.nVal,dtype='intc') )
             N += 3*local.nVal
         # end
 
@@ -2515,7 +2515,7 @@ a flap hinge line'
             if ( surfDVs[sid] == None ):
                 surfDVs[sid] = normalDVs[i]
             else:
-                numpy.hstack( surfDVs[sid], normalDVs[i] )
+                hstack( surfDVs[sid], normalDVs[i] )
             # end
         # end
 
@@ -2524,7 +2524,7 @@ a flap hinge line'
             if ( surfDVs[sid] == None ):
                 surfDVs[sid] = localDVs[i]
             else:
-                numpy.hstack( surfDVs[sid], localDVs[i] )
+                hstack( surfDVs[sid], localDVs[i] )
             # end
         # end        
 
