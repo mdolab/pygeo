@@ -197,49 +197,89 @@ and \'precomp\''
 def test_edge(surf1,surf2,i,j,edge_tol):
 
     '''Test edge i on surf1 with edge j on surf2'''
+    # First get the values at the beginning, middle and end of each segment
 
     val1_beg,val1_mid,val1_end = surf1.getOrigValuesEdge(i)
     val2_beg,val2_mid,val2_end = surf2.getOrigValuesEdge(j)
 
-    # First we wil check to see if either edge is degenerate:
+    # Second we wil check to see if either edge is degenerate:
 
-    degen1 = surf1.checkDegenerateEdge(i)
-    degen2 = surf2.checkDegenerateEdge(j)
+    degen1,val_degen1 = surf1.checkDegenerateEdge(i)
+    degen2,val_degen2 = surf2.checkDegenerateEdge(j)
 
-    print 'degen1,degen2:',degen1,degen2
-
-
-    #Three things can happen:
     coinc = False
-    dir_flag = 1
-    # Beginning and End match (same sense)
-    if e_dist(val1_beg,val2_beg) < edge_tol and \
-           e_dist(val1_end,val2_end) < edge_tol:
+    dir_flag = None
+    side  = None
+    if not degen1 and not degen2: # This is the 'regular' case where
+                                  # we have two non degenerate edges
+        #Three things can happen:
 
-        # End points are the same, now check the midpoint
-        if e_dist(val1_mid,val2_mid) < edge_tol:
+        # Beginning and End match (same sense)
+        if e_dist(val1_beg,val2_beg) < edge_tol and \
+               e_dist(val1_end,val2_end) < edge_tol:
+            if e_dist(val1_mid,val2_mid) < edge_tol:
+                coinc = True
+            else:
+                coinc = False
+            dir_flag = 1
+
+        # Beginning and End match (opposite sense)
+        elif e_dist(val1_beg,val2_end) < edge_tol and \
+               e_dist(val1_end,val2_beg) < edge_tol:
+
+            if e_dist(val1_mid,val2_mid) < edge_tol:
+                coinc = True
+            else:
+                coinc = False
+
+            dir_flag = -1
+        # end if
+        return coinc,dir_flag,side
+
+    elif degen1 and not degen2: # We have a degenerate edge on surf1
+        # Check to see if it matches either of the end points
+
+        if e_dist(val_degen1,val2_beg) < edge_tol:
+            # degenerate edge matches the BEGINNING of the second edge
             coinc = True
-        else:
-            coinc = False
-
-        dir_flag = 1
-
-    # Beginning and End match (opposite sense)
-    elif e_dist(val1_beg,val2_end) < edge_tol and \
-           e_dist(val1_end,val2_beg) < edge_tol:
-
-        if e_dist(val1_mid,val2_mid) < edge_tol:
+            side = 1
+        # end if
+        
+        if e_dist(val_degen1,val2_end) < edge_tol:
+            # degenerate edge matches the END of the second edge
             coinc = True
-        else:
-            coinc = False
+            side = -1
+        # end if
 
-        dir_flag = -1
-    # If nothing else
-    else:
-        coinc = False
+        return coinc,dir_flag,side
 
-    return coinc,dir_flag
+    elif not degen1 and degen2: # We have a degenerate edge on surf2
+        # Check to see if it match either of the end points
 
+        if e_dist(val_degen2,val1_beg) < edge_tol:
+            # degenerate edge matches the BEGINNING of the first edge
+            coinc = True
+            side = 1
+        # end if
+        
+        if e_dist(val_degen2,val1_end) < edge_tol:
+            # degenerate edge matches the END of the first edge
+            coinc = True
+            side = -1
+        # end if 
+
+        return coinc,dir_flag,side
+
+    elif degen1 and degen2: # We have TWO degenerate edges.
+        # The only case here is they exactly match
+        if e_dist(val_degen1,val_degen2) < edge_tol:
+            coinc = True
+            side = 0
+        # end if
+    # end if
+
+    return coinc,dir_flag,side
+        
 
 def flipEdge(edge):
     if edge == 0: return 1
