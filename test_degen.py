@@ -80,7 +80,8 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
                        Nctlu=Nctlu,Nfoil=45)
 
 wing.calcEdgeConnectivity(1e-6,1e-6)
-#wing.writeEdgeConnectivity('degen_wing.con')
+wing.writeEdgeConnectivity('degen_wing.con')
+#sys.exit(0)
 #wing.propagateKnotVectors()
 
 wing.writeTecplot('degen_wing.dat',edges=True)
