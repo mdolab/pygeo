@@ -604,6 +604,33 @@ offset.shape[0], Xsec, rot, must all have the same size'
                                                        Nctlv=Nctlv,*args,**kwargs))
             self.nSurf = 2
 
+
+            # Do the surface on the end
+            if end_type == 'flat':
+                print 'Doing a flat tip'
+
+                spacing = 6
+                v = linspace(0,1,spacing)
+                print 'v:',v
+                X2 = zeros((N,spacing,3))
+                # X = zeros([2,N,naf,3]) #We will get two surfaces
+                for j in xrange(1,N-1):
+                    # Create a linear spline 
+                    x1 = X[0,j,-1]
+                    x2 = X[1,N-j-1,-1]
+
+                    temp = pySpline.linear_spline(task='interpolate',\
+                                                      k=2,X=array([x1,x2]))
+                    X2[j,:,:] = temp.getValueV(v)
+
+                # end for
+                X2[0,:] = X[0,0,-1]
+                X2[-1,:] = X[1,0,-1]
+                
+                self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,\
+                                                           X=X2,Nctlv=spacing,\
+                                                           *args,**kwargs))
+                self.nSurf = 3
         # end if
 
 
@@ -663,19 +690,34 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             for i in xrange(4):
                 for jsurf in xrange(isurf+1,self.nSurf):
                     for j in xrange(4):
-                        coinc,dir_flag=test_edge(\
+                        coinc,dir_flag,side=test_edge(\
                             self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
                         cont_flag = 0 # By Default only C0 continuity
                         if coinc:
-                            #print 'We have a coincidient edge'
-                            e_con.append([[isurf,i],[jsurf,j],cont_flag,\
-                                              dir_flag,-1])
-                            # end if
+                            # However, only append it if the second (jsurf,j)
+                            # isn't already in the list. This is necessary
+                            # since degen edges would shown up more than once
+                            append_it = True
+                            for ii in xrange(len(e_con)):
+                                if [jsurf,j] in e_con[ii]:
+                                    append_it = False
+                                # end if
+                            # end for
+                            if append_it:
+                                e_con.append([[isurf,i],[jsurf,j],\
+                                                  cont_flag,dir_flag,side,-1])
+                                # end if
+                            # end for
+                       # end if
                     # end for
                 # end for
             # end for
         # end for
-       
+      
+        print 'e_con:'
+        for i in xrange(len(e_con)):
+            print e_con[i]
+
 
         # That calculates JUST the actual edge connectivity, i.e. The
         # Type 1's. We now have to set the remaining edges to type 0
@@ -698,6 +740,18 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # end for
         # end for 
 
+        print 'edge list:'
+        for i in xrange(len(edge_list)):
+            print edge_list[i]
+
+            
+        print 'Mirror List'
+        for i in xrange(len(mirrored_edges)):
+            print mirrored_edges[i]
+
+       # sys.exit(0)
+
+
         # Now we know the connected edges and the mirrored edges.  The
         # last thing we need is the driving group
         # information...basically how does the spacing on an edge
@@ -708,6 +762,10 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # concenate the two lists --- FULL list of edge info
         edges = e_con+mirrored_edges   # Full list of edge connections
         dg_counter = -1
+
+        print 'Edges'
+        for i in xrange(len(edges)):
+            print edges[i]
 
         for i in xrange(len(edges)):
             found_new_edge = False
@@ -821,6 +879,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
         # Now we can FINALLY set edge objects....creating strings
         # is a bit clunky but it works
+
+
         self.con = []
         for i in xrange(len(edges)):
             if i < nJoined/2: #Joined Edges

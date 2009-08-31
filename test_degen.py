@@ -39,27 +39,21 @@ from dv_funcs import *
 
 # Wing Information - Create a Geometry Object from cross sections
 
-naf=3
-airfoil_list = ['naca0012.dat','naca0012.dat','pinch_xfoil.dat']
-#airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
-chord = [1,1,.50]
-x = [0,0,0]
-y = [0,0,0]
-z = [0,3.94,4]
-rot_x = [0,0,0]
-rot_y = [0,0,0]
-tw_aero = [0,0,0] # ie rot_z
+naf=2
+airfoil_list = ['naca0012.dat','naca0012.dat']
+chord = [1,1]
+x = [0,0]
+y = [0,0]
+z = [0,4]
+rot_x = [0,0]
+rot_y = [0,0]
+tw_aero = [0,0] # ie rot_z
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
-offset[-1,0] = 0
 # Make the break-point vector
-breaks = [1] #zero based (Must NOT contain 0 or index of last value)
-cont = [1] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [10,10]# Length breaks + 1
-section_spacing = [linspace(0,1,10),linspace(0,1,10)]
 Nctlu = 9
-end_type = 'pinch'
+end_type = 'flat'
 # 'pinch' or 'flat' or 'rounded' -> flat and rounded result in a
 #  a new surface on the end 
                                
@@ -82,15 +76,15 @@ rot[:,2] = tw_aero
 #Note: u direction is chordwise, v direction is span-wise
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
                        file_type='xfoil',scale=chord,offset=offset, \
-                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
-                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
+                       Xsec=X,rot=rot,end_type=end_type,fit_type='lms',\
+                       Nctlu=Nctlu,Nfoil=45)
 
 wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.writeEdgeConnectivity('wing.con')
-wing.propagateKnotVectors()
+#wing.writeEdgeConnectivity('degen_wing.con')
+#wing.propagateKnotVectors()
 
-wing.writeTecplot('wing.dat',edges=True)
-wing.writeIGES('wing.igs')
+wing.writeTecplot('degen_wing.dat',edges=True)
+wing.writeIGES('degen_wing.igs')
 print 'Done Step 1'
 sys.exit(0)
 # ----------------------------------------------------------------------
