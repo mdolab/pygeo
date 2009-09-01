@@ -690,29 +690,48 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for isurf in xrange(self.nSurf):
             # Test this patch against the rest
             for i in xrange(4):
-                for jsurf in xrange(isurf+1,self.nSurf):
+                for jsurf in xrange(self.nSurf):
                     for j in xrange(4):
-                        coinc,dir_flag,side,type = test_edge(\
-                            self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
-                        cont_flag = 0 # By Default only C0 continuity
-                       
-                        if coinc and not type == 1: 
-                            # Only check what we have if we possibly
-                            # have degenerat edges since they may show
-                            # up more than once
+                        if not [isurf,i] == [jsurf,j]: 
+                            # Make sure we're not comparing the same edge
+
+                            coinc,dir_flag,side,type = test_edge(\
+                                self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
+                            cont_flag = 0 # By Default only C0 continuity
+
                             append_it = True
-                            for ii in xrange(len(e_con)):
-                                if [jsurf,j] in e_con[ii]:
-                                    append_it = False
-                                # end if
-                            # end for
+                            if coinc and type == 2: 
+                                for ii in xrange(len(e_con)):
+                                    if [isurf,i] in e_con[ii]:
+                                        append_it = False
+                                        break
+                                    # end if
+                                # end for
+
+                            if coinc and type == 3: 
+                                for ii in xrange(len(e_con)):
+                                    if [jsurf,j] in e_con[ii]:
+                                        append_it = False
+                                        break
+                                    # end if
+                                # end for
+                            
+                            elif coinc and type == 1: #Check if type 1 is in but flipped
+                                append_it = True
+                                for ii in xrange(len(e_con)):
+                                    if [jsurf,j] in e_con[ii] and [isurf,i] in e_con[ii]:
+                                        append_it = False
+                                        break
+                                    # end if
+                                # end for
+                            # end if
+                            else:
+                                append_it = False
+
                             if append_it:
                                 e_con.append([[isurf,i],[jsurf,j],\
                                                   cont_flag,dir_flag,side,type,-1])
                             # end if
-                        elif coinc and type == 1: #Always append the type 1 to e_con
-                            e_con.append([[isurf,i],[jsurf,j],\
-                                              cont_flag,dir_flag,side,type,-1])
                         # end if 
                     # end for
                 # end for
@@ -728,10 +747,23 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             for i in xrange(4):
                 found_it = False
                 for j in xrange(len(e_con)): # Check the edge cons
-                    if [isurf,i] in e_con[j]:
+                    # This is a little tricker now
+                    if [isurf,i] in e_con[j] and e_con[j][5] == 1:
+                        # This means we found the edge regularlly
+                        # connected to another so we definatly found it
+                        found_it = True
+                        break #
+
+                    if [isurf,i] == e_con[j][0] and not e_con[j][5] == 3:
+                        # We have a type 3: Corner to degen: That edge
+                        # (that the corner is on) may still be free
                         found_it = True
                         break
                     # end if
+
+                    if [isurf,i] == e_con[j][1] and not e_con[j][5] ==2:
+                        found_it = True
+                        break
                 # end for
             
                 if found_it == False:
@@ -747,7 +779,199 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for i in xrange(len(e_con)):
             print e_con[i]
 
-      
+        # Now we must figure out the driving group information.  Lets
+        # do this a little differently. Make a list of length number
+        # of surfaces with elements a list of the design group index
+        # for that direction. Then we can propogate this information
+        # back to the edges trivially. 
+
+        self.con = []
+        for i in xrange(len(e_con)):
+            init_string ='%3d        |%3d     %3d    |%3d   | %3d  |  %3d       \
+| %3d  | %3d           | %3d  | %3d     %3d      |\n'\
+                %(i,e_con[i][0][0],e_con[i][0][1],e_con[i][5],e_con[i][2],
+                  e_con[i][3],e_con[i][4],e_con[i][6],10,e_con[i][1][0],\
+                      e_con[i][1][1])
+            temp = init_string.replace('|',' ')  #Get rid of the bars
+            self.con.append(edge(temp))
+        # end for
+        
+        # Finally Print Connection Info
+        self.printEdgeConnectivity()
+
+       
+        design_group = []
+        for isurf in xrange(self.nSurf):
+            design_group.append([-1,-1]) # -1 means it isn't assigned
+                                         # a group yet
+        # end for
+
+        # Now loop over the edges ...
+            
+        dg_counter = -1
+        for i in xrange(len(e_con)):
+        #for i in xrange(5):
+            
+            f1 = self.con[i].f1
+            e1 = self.con[i].e1
+            
+            f2 = self.con[i].f2
+            e2 = self.con[i].e2
+
+            type = self.con[i].type
+
+            # Note the use if integer division: edge 0 and edge 1
+            # produce 0, which is the u direction, edge 2 and 3 give 2
+            # whcih is the second, v direction
+            prop_near_side = False
+            prop_far_side  = False
+
+            if type == 0: # Got to do this one first since f2/e2 is garbage
+                if design_group[f1][e1/2] == -1:
+                    dg_counter += 1
+                    design_group[f1][e1/2] = dg_counter
+                # end if
+
+            else: # All other edge types
+
+                if design_group[f1][e1/2] == -1 and design_group[f2][e2/2] == -1: 
+
+                    # f1/e1 and f2/e2 are NOT set yet
+
+                    if type == 1: # Regular Connection
+                        dg_counter += 1
+                        design_group[f1][e1/2] = dg_counter
+                        design_group[f2][e2/2] = dg_counter
+                        print 'setting both true from 1'
+                        prop_far_side = True
+                        prop_near_side = True
+                        dg_set = dg_counter
+                    elif type == 2: # Degen to Corner
+
+                        # Set the degen one, the edge the corner is on should 
+                        # come up again
+                        dg_counter += 1
+                        design_group[f1][e1/2] = dg_counter
+                        prop_near_side = False
+                        prop_far_side  = False
+
+                    elif type == 3: # Corner to Degen
+
+                        # Set the degen one, the edge the corner is on
+                        # should come up again
+                        dg_counter += 1
+                        design_group[f2][e2/2] = dg_counter
+                        prop_near_side = False
+                        prop_far_side  = False
+
+                elif design_group[f1][e1/2] == -1 and not design_group[f2][e2/2] == -1:
+
+                    # f1/e1 is NOT set but f2/e2 IS set
+                    if type == 1:
+                        design_group[f1][e1/2] = design_group[f2][e2/2]
+                      
+                        print 'setting both true from 2'
+                        prop_near_side = True
+                        prop_far_side = True
+
+                    elif type ==2:
+                        print 'type2 here'
+                    elif type ==3:
+                        print 'type3 here'
+
+                elif not design_group[f1][e1/2] == -1 and design_group[f2][e2/2] == -1:
+                    # f1/e1 IS set but f2/e2 is NOT Set
+                    if type == 1: # Regular
+                        dg_set = design_group[f1][e1/2]
+                        design_group[f2][e2/2] = dg_set
+                        prop_far_side = True
+
+                    if type == 2: # Degen to Corner
+                        print 'This shouldnt happen 2'
+                    if type == 3: # Corner to Degen
+                        # This means degen isn't set...so set it! :)
+                        dg_counter += 1
+                        design_group[f2][e2/2] = dg_counter
+                    
+                    
+            # end if
+
+            # Now we must propagate the edge, in both directions. 
+            print 'prop_flags are:'
+            print 'prop_near_side',prop_near_side
+            print 'prop_far_side:',prop_far_side
+
+
+#            prop_near_side = False
+#            prop_far_side = False
+            if prop_near_side:
+                # Take the driving face we just found (f1,e1) and find
+                # the connection on the other side
+                cur_face = f1
+                cur_edge = e1
+                check_counter = 0
+                print 'In prop near side:'
+                while check_counter < 5:
+                    check_counter += 1
+                    
+                    opposite_edge = flipEdge(cur_edge)
+                    
+                    connected,cur_face,cur_edge = self._isEdgeConnected(
+                        cur_face,opposite_edge)
+                    
+                    if not connected:
+                        break
+
+                    if design_group[cur_face][cur_edge/2] == -1: 
+                        # This one has not been set yet
+                        design_group[cur_face][cur_edge/2] = dg_set
+                    else:
+                        # We have a circular type reference so break
+                        break
+                    # end if
+                # end while
+            
+            if prop_far_side:
+
+                
+                cur_face = f2
+                cur_edge = e2
+                check_counter = 0
+                print 'prop_far_side',cur_face,cur_edge
+                while check_counter < 5:
+                    check_counter += 1
+                   
+                    opposite_edge = flipEdge(cur_edge)
+
+                    # Now find the con index for (f1 other_side)
+
+                    connected,cur_face,cur_edge = self._isEdgeConnected(
+                        cur_face,opposite_edge)
+                    
+                    if not connected:
+                        break
+
+                    if design_group[cur_face][cur_edge/2] == -1: 
+                        # This one has not been set yet
+                        design_group[cur_face][cur_edge/2] = dg_set
+                    else:
+                        # We have a circular type reference so break
+                        break
+                    # end if
+                # end while
+            # end if
+
+        # end for
+        print 'design_group'
+        for i in xrange(len(design_group)):
+            print design_group[i]
+        # end for
+
+            
+            
+
+
+
 #         mirrored_edges = []
 
 #         print 'edge list:'
@@ -895,21 +1119,9 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 #  e_con.append([[isurf,i],[jsurf,j],\
 #                                               cont_flag,dir_flag,side,type,-1])
 
-        self.con = []
-        for i in xrange(len(e_con)):
-            init_string ='%3d        |%3d     %3d    |%3d   | %3d  |  %3d       \
-| %3d  | %3d           | %3d  | %3d     %3d      |\n'\
-                %(i,e_con[i][0][0],e_con[i][0][1],e_con[i][5],e_con[i][2],
-                  e_con[i][3],e_con[i][4],e_con[i][6],10,e_con[i][1][0],\
-                      e_con[i][1][1])
-            temp = init_string.replace('|',' ')  #Get rid of the bars
-            self.con.append(edge(temp))
-        # end for
-        
-        # Finally Print Connection Info
-        self.printEdgeConnectivity()
+     
         print 'Going to set edge connectivity'
-        self._setEdgeConnectivity()
+        #self._setEdgeConnectivity()
         print 'Time for Edge Calculation:',time.time()-timeA
         return
 
@@ -949,6 +1161,32 @@ appear in the edge con list'
         print 'We were looking for surface %d and edge %d'%(isurf,edge)
         sys.exit(1)
         return 
+
+    def _isEdgeConnected(self,isurf,edge):
+        '''Find if another edge is regurally connected to isurf,edge'''
+        # Basically only look at edge type 1's
+        
+        # Search just the master ones first
+        for i in xrange(len(self.con)):
+            if self.con[i].f1 == isurf and \
+                    self.con[i].e1 == edge and \
+                    self.con[i].type == 1:
+                
+                return True,self.con[i].f2,self.con[i].e2
+
+        for i in xrange(len(self.con)):
+            if self.con[i].f2 == isurf and \
+                    self.con[i].e2 == edge and \
+                    self.con[i].type == 1:
+                
+                return True,self.con[i].f1,self.con[i].e1
+                # end if
+            # end if
+        # end for 
+        return  False,None,None
+
+
+
 
     def _setEdgeConnectivity(self):
         '''Internal function to set the global/local numbering'''
@@ -2129,6 +2367,7 @@ a flap hinge line'
             print ' '
             print 'Writing Tecplot file: %s '%(file_name)
             sys.stdout.write('Outputting Surface: ')
+            
             for isurf in xrange(self.nSurf):
                 sys.stdout.write('%d '%(isurf))
                 self.surfs[isurf].writeTecplotSurface(handle=f,size=0.03)

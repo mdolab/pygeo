@@ -279,7 +279,7 @@ def test_edge(surf1,surf2,i,j,edge_tol):
             side = 0
         # end if
         type = 4
-        return coinc,dir_flag,type
+        return coinc,dir_flag,side,type
     # end if
 
     return coinc,dir_flag,side,type
