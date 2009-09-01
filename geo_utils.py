@@ -208,7 +208,7 @@ def test_edge(surf1,surf2,i,j,edge_tol):
     degen2,val_degen2 = surf2.checkDegenerateEdge(j)
 
     coinc = False # Default return is False
-    dir_flag  = 0
+    dir_flag  = 1
     side  = 0 
     type = None
     if not degen1 and not degen2: # This is the 'regular' case where
