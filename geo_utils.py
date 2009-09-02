@@ -236,53 +236,9 @@ def test_edge(surf1,surf2,i,j,edge_tol):
             dir_flag = -1
         # end if
         type = 1 # Standard edge to edge connection
-        return coinc,dir_flag,side,type
+        return coinc,dir_flag
 
-    elif degen1 and not degen2: # We have a degenerate edge on surf1
-        # Check to see if it matches either of the end points
-
-        if e_dist(val_degen1,val2_beg) < edge_tol:
-            # degenerate edge matches the BEGINNING of the second edge
-            coinc = True
-            side = 1
-        # end if
-        
-        if e_dist(val_degen1,val2_end) < edge_tol:
-            # degenerate edge matches the END of the second edge
-            coinc = True
-            side = -1
-        # end if
-        type = 2 # Type: Degen to corner
-        return coinc,dir_flag,side,type
-
-    elif not degen1 and degen2: # We have a degenerate edge on surf2
-        # Check to see if it match either of the end points
-
-        if e_dist(val_degen2,val1_beg) < edge_tol:
-            # degenerate edge matches the BEGINNING of the first edge
-            coinc = True
-            side = 1
-        # end if
-        
-        if e_dist(val_degen2,val1_end) < edge_tol:
-            # degenerate edge matches the END of the first edge
-            coinc = True
-            side = -1
-        # end if 
-        type = 3 # Type: Corner to Degen
-        return coinc,dir_flag,side,type
-
-    elif degen1 and degen2: # We have TWO degenerate edges.
-        # The only case here is they exactly match
-        if e_dist(val_degen1,val_degen2) < edge_tol:
-            coinc = True
-            side = 0
-        # end if
-        type = 4
-        return coinc,dir_flag,side,type
-    # end if
-
-    return coinc,dir_flag,side,type
+    return coinc,dir_flag
         
 
 def flipEdge(edge):
