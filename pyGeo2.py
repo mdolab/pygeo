@@ -968,36 +968,130 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         print 'Time for Edge Calculation:',time.time()-timeA
         return
 
+    def _checkCorner(self,isurf,node):
+        '''Check a corner to seee if its a master and such'''
+
+        if node == 0:
+        
+            icon1,master1,degen1 = self._findConIndex(isurf,edge=0)
+            icon2,master2,degen2 = self._findConIndex(isurf,edge=2) 
+                            
+            print 'icon1:',icon1
+            print 'icon2:',icon2
+
+        # end if
+        if node == 2:
+        
+            icon1,master1,degen1 = self._findConIndex(isurf,edge=1)
+            icon2,master2,degen2 = self._findConIndex(isurf,edge=2) 
+                            
+            print 'icon1:',icon1
+            print 'icon2:',icon2
+
+        # end if
+
+
+
+        return
+            
+
+
+   #  def _findConIndex(self,isurf,edge=None):
+#         '''Find the index of the entry in the edge list for isurf and edge'''
+#         # Search just the master ones first
+#         for i in xrange(len(self.con)):
+#             if self.con[i].f1 == isurf and self.con[i].e1 == edge:
+#                 if self.con[i].type in [0,1]:
+#                     # Its a free or master connected edge
+#                     return i,True,False
+#                 elif self.con[i].type == 2: # Degen to Corner
+#                     return i,True,True
+#                 elif self.con[i].type == 3: #Corner to Degen
+#                     return i,True,False
+#                 elif self.con[i].type == 4: #Degen to Degen
+#                     return i,True,True
+#             # end if
+#         # end for
+
+#         for i in xrange(len(self.con)):
+#             if self.con[i].f2 == isurf and self.con[i].e2 == edge:
+#                 if self.con[i].type in [0,1]:
+#                     return i,False,False# Regular or degen to corner
+#                 elif self.con[i].type == 2: 
+#                     return i,False,True # Degen to Corner
+#                 elif self.con[i].type == 3:
+#                     return i,False,True  # Corner to Degen
+#                 elif self.con[i].type == 4:
+#                     return i,False, True  # Degen to Degen
+#                 # end if
+#             # end if
+#         # end for 
+
+
     def _findConIndex(self,isurf,edge=None):
         '''Find the index of the entry in the edge list for isurf and edge'''
-        # Search just the master ones first
+        # Return the icon index for edge that is of type 1 or 0 if it exists
+        
+        # Search the full list to see how many times isurf,edge is in there:
+        # Type 0 and 1 edges will be in there once and only once
+
+        finds = 0
         for i in xrange(len(self.con)):
-            if self.con[i].f1 == isurf and self.con[i].e1 == edge:
-                if self.con[i].type in [0,1]:
-                    # Its a free or master connected edge
-                    return i,True,False
-                elif self.con[i].type == 2: # Degen to Corner
-                    return i,True,True
-                elif self.con[i].type == 3: #Corner to Degen
-                    return i,True,False
-                elif self.con[i].type == 4: #Degen to Degen
-                    return i,True,True
+            if (self.con[i].f1 == isurf and self.con[i].e1 == edge) or \
+               (self.con[i].f2 == isurf and self.con[i].e2 == edge):
+                
+                finds += 1
             # end if
         # end for
+       
+        if finds == 1: # We found it once and only once
 
-        for i in xrange(len(self.con)):
-            if self.con[i].f2 == isurf and self.con[i].e2 == edge:
-                if self.con[i].type in [0,1]:
-                    return i,False,False# Regular or degen to corner
-                elif self.con[i].type == 2: 
-                    return i,False,True # Degen to Corner
-                elif self.con[i].type == 3:
-                    return i,False,True  # Corner to Degen
-                elif self.con[i].type == 4:
-                    return i,False, True  # Degen to Degen
-                # end if
-            # end if
-        # end for 
+            # Now get the actual index
+            
+            for i in xrange(len(self.con)):
+                
+                if self.con[i].f1 == isurf and self.con[i].e1 == edge:
+                    if self.con[i].type in [0,1]: # Free or Connected and free
+                        return i,True,False
+
+                    if self.con[i].type == 2:
+                        return i,True,True
+                    
+                    if self.con[i].type == 3:
+                        return i,True,False
+
+
+                if self.con[i].f2 == isurf and self.con[i].e2 == edge:
+                    
+                    if self.con[i].type in [0,1]:
+                        return i,False,False
+
+                    if self.con[i].type == 2:
+                        return i,False,True
+                    
+                    if self.con[i].type == 3:
+                        return i,False,True
+        else:
+
+            # This means the edge was used to define degenerate
+            # edges is is in there more than once, so just return
+            # the one where its type 0 or 1
+          
+
+            for i in xrange(len(self.con)):
+
+                if self.con[i].f1 == isurf and self.con[i].e1 == edge and \
+                        self.con[i].type in [0,1]:
+                    return i,True,False
+
+                if self.con[i].f2 == isurf and self.con[i].e2 == edge and \
+                        self.con[i].type in [0,1]:
+                    return i,False,False
+
+
+
+
+
 
         print 'Error: Edge was not found in the edge list. EVERY edge MUST \
 appear in the edge con list'
@@ -1134,29 +1228,51 @@ appear in the edge con list'
             return counter
 
         def add_slave(icon,index):
-            if self.con[icon].type in [0,1]:
-                current_index = getIndexEdge(self.con[icon].f1, self.con[icon].e1, index,\
-                                     self.con[icon].dir)
+            current_index = getIndexEdge(self.con[icon].f1, self.con[icon].e1, index,\
+                                             self.con[icon].dir)
+            
+            g_index[current_index].append([isurf,i,j])
+            l_index[isurf][i,j] = current_index
+            
+        def add_slave_degen(icon,index):
 
-                g_index[current_index].append([isurf,i,j])
-                l_index[isurf][i,j] = current_index
-            elif self.con[icon].type in [3,4]:
-                if self.con[icon].side == 1:
-                    print 'icon:',icon
-                    print 'f1:',self.con[icon].f1
-                    print 'e1:',self.con[icon].e1
-#                     current_index = getIndexEdge(self.con[icon].f1,self.con[icon].e1,0,\
-#                                                      self.con[icon].dir)
-#                     g_index[current_index].append([isurf,i,j])
-#                     l_index[isurf][i,j] = current_index
-#                     print 'setting here:',current_index
-                else:
-                    current_index = getIndexEdge(self.con[icon].f1,self.con[icon].e1,-1,\
-                                                     self.con[icon].dir)
-#                     g_index[current_index].append([isurf,i,j])
-#                     l_index[isurf][i,j] = current_index
-                # end if
-            # end if
+            '''Add a degenerate slave point'''
+
+            type = self.con[icon].type
+            side = self.con[icon].side
+
+            if side == 1:
+
+                if type == 2: # Degen to Corner
+                    
+                    current_index = getIndexEdge(self.con[icon].f2,
+                                                 self.con[icon].e2,
+                                                 0,self.con[icon].dir)
+                    g_index[current_index].append([isurf,i,j])
+                    l_index[isurf][i,j] = current_index
+
+                elif type == 3: # Corner to Degen
+                    current_index = getIndexEdge(self.con[icon].f1,
+                                                 self.con[icon].e1,
+                                                 0,self.con[icon].dir)
+                    g_index[current_index].append([isurf,i,j])
+                    l_index[isurf][i,j] = current_index
+
+            else:
+                if type == 2: # Degen to Corner
+                    
+                    current_index = getIndexEdge(self.con[icon].f2,
+                                                 self.con[icon].e2,
+                                                 -1,self.con[icon].dir)
+                    g_index[current_index].append([isurf,i,j])
+                    l_index[isurf][i,j] = current_index
+
+                elif type == 3: # Corner to Degen
+                    current_index = getIndexEdge(self.con[icon].f1,
+                                                 self.con[icon].e1,
+                                                 -1,self.con[icon].dir)
+                    g_index[current_index].append([isurf,i,j])
+                    l_index[isurf][i,j] = current_index
                 
             return
         
@@ -1167,7 +1283,8 @@ appear in the edge con list'
         if surface_list == None:
             surface_list = range(0,self.nSurf)            
         
-        for ii in xrange(len(surface_list)):
+        #for ii in xrange(len(surface_list)):
+        for ii in xrange(1):
             isurf = surface_list[ii]
             Nu = sizes[isurf][0]
             Nv = sizes[isurf][1]
@@ -1186,7 +1303,11 @@ appear in the edge con list'
                             if master:
                                 counter = add_master(counter)
                             else:
-                                add_slave(icon,i)
+                                if degen: 
+                                    add_slave_degen(icon,i)
+                                else:
+                                    add_slave(icon,i)
+                                # end if
                             # end if
                       
                         elif i > 0 and i < Nu-1 and j == Nv-1: # Edge 1
@@ -1194,7 +1315,11 @@ appear in the edge con list'
                             if master:
                                 counter = add_master(counter)
                             else:
-                                add_slave(icon,i)
+                                if degen: 
+                                    add_slave_degen(icon,i)
+                                else:
+                                    add_slave(icon,i)
+                                # end if
                             # end if
                    
                         elif i == 0 and j > 0 and j < Nv -1:      # Edge 2
@@ -1202,7 +1327,11 @@ appear in the edge con list'
                             if master:
                                 counter = add_master(counter)
                             else:
-                                add_slave(icon,j)
+                                if degen: 
+                                    add_slave_degen(icon,i)
+                                else:
+                                    add_slave(icon,i)
+                                # end if
                             # end if
 
                         elif i == Nu-1 and j > 0 and j < Nv-1: # Edge 3
@@ -1210,13 +1339,20 @@ appear in the edge con list'
                             if master:
                                 counter = add_master(counter)
                             else:
-                                add_slave(icon,j)
-                            # end if
+                                if degen: 
+                                    add_slave_degen(icon,i)
+                                else:
+                                    add_slave(icon,i)
+                                # end if
 
                         elif i == 0 and j == 0:             # Node 0
+                            
                             icon1,master1,degen1 = self._findConIndex(isurf,edge=0)
                             icon2,master2,degen2 = self._findConIndex(isurf,edge=2) 
-                            if master1 and master2:
+                            
+                            print 'Node 0: degen1,degen2:',degen1,degen2
+                            self._checkCorner(isurf,0)
+                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):
                                 counter = add_master(counter)
                             else:
                                 if master1 == False:
@@ -1229,7 +1365,10 @@ appear in the edge con list'
                         elif i == Nu-1 and j == 0:       # Node 1
                             icon1,master1,degen1 = self._findConIndex(isurf,edge=0)
                             icon2,master2,degen2 = self._findConIndex(isurf,edge=3)
-                            if master1 and master2:
+
+                            print 'node 1: degen1,degen2:',degen1,degen2
+
+                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):                            
                                 counter = add_master(counter)
                             else:
                                 if master1 == False:
@@ -1242,7 +1381,11 @@ appear in the edge con list'
                         elif i == 0 and j == Nv-1:       # Node 2
                             icon1,master1,degen1 = self._findConIndex(isurf,edge=1)
                             icon2,master2,degen2 = self._findConIndex(isurf,edge=2)
-                            if master1 and master2:
+
+                            print 'node 2: degen1,degen2:',degen1,degen2
+                            self._checkCorner(isurf,2)
+                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):                                                        
+                                print 'node 2 adding master'
                                 counter = add_master(counter)
                             else:
                                 if master1 == False:
@@ -1255,7 +1398,9 @@ appear in the edge con list'
                         elif i == Nu-1 and j == Nv-1: # Node 3
                             icon1,master1,degen1 = self._findConIndex(isurf,edge=1)
                             icon2,master2,degen2 = self._findConIndex(isurf,edge=3)
-                            if master1 and master2:
+
+                            print 'node 3: degen1,degen2:',degen1,degen2
+                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):                                                        
                                 counter = add_master(counter)
                             else:
                                 if master1 == False:
