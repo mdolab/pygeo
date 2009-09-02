@@ -690,49 +690,15 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for isurf in xrange(self.nSurf):
             # Test this patch against the rest
             for i in xrange(4):
-                for jsurf in xrange(self.nSurf):
+                for jsurf in xrange(isurf+1,self.nSurf):
                     for j in xrange(4):
-                        if not [isurf,i] == [jsurf,j]: 
-                            # Make sure we're not comparing the same edge
+                        coinc,dir_flag = test_edge(\
+                            self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
+                        cont_flag = 0 # By Default only C0 continuity
+                        
+                        e_con.append([[isurf,i],[jsurf,j],\
+                                          cont_flag,dir_flag,type,-1])
 
-                            coinc,dir_flag,side,type = test_edge(\
-                                self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
-                            cont_flag = 0 # By Default only C0 continuity
-
-                            append_it = True
-                            if coinc and type == 2: 
-                                for ii in xrange(len(e_con)):
-                                    if [isurf,i] in e_con[ii]:
-                                        append_it = False
-                                        break
-                                    # end if
-                                # end for
-
-                            if coinc and type == 3: 
-                                for ii in xrange(len(e_con)):
-                                    if [jsurf,j] in e_con[ii]:
-                                        append_it = False
-                                        break
-                                    # end if
-                                # end for
-                            
-                            elif coinc and type == 1: #Check if type 1 is in but flipped
-                                append_it = True
-                                for ii in xrange(len(e_con)):
-                                    if [jsurf,j] in e_con[ii] and [isurf,i] in e_con[ii]:
-                                        append_it = False
-                                        break
-                                    # end if
-                                # end for
-                            # end if
-                            else:
-                                append_it = False
-
-                            if append_it:
-                                e_con.append([[isurf,i],[jsurf,j],\
-                                                  cont_flag,dir_flag,side,type,-1])
-                            # end if
-                        # end if 
                     # end for
                 # end for
             # end for
@@ -740,38 +706,43 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
       
 #         That calculates JUST the actual edge connectivity, i.e. The
-#         Type > 0. We now have to set the ones that are "free" to
-#         type ones. But only if they are not degenerate
+#         Type = 1. Now we find and add degenerate edges
 
         for isurf in xrange(self.nSurf):
             for i in xrange(4):
                 found_it = False
-                for j in xrange(len(e_con)): # Check the edge cons
-                    # This is a little tricker now
-                    if [isurf,i] in e_con[j] and e_con[j][5] == 1:
-                        # This means we found the edge regularlly
-                        # connected to another so we definatly found it
-                        found_it = True
-                        break #
-
-                    if [isurf,i] == e_con[j][0] and not e_con[j][5] == 3:
-                        # We have a type 3: Corner to degen: That edge
-                        # (that the corner is on) may still be free
+                for j in xrange(len(e_con)):
+                    if [isurf,1] in e_con[j]:
                         found_it = True
                         break
                     # end if
-
-                    if [isurf,i] == e_con[j][1] and not e_con[j][5] ==2:
-                        found_it = True
-                        break
                 # end for
-            
-                if found_it == False:
-                    e_con.append([[isurf,i],[-1,-1],0,1,0,0,-1])
+                if not found_it:
+                    # Check if degenerate:
+                    degen,values = self.surfs[isruf].checkDegenerateEdge(i)
+                    if degen:
+                        e_con.append([[isurf,i],[-1,-1],0,1,2,-1])
                     # end if
                 # end if
             # end for
-        # end for 
+        # end for
+
+# Now Add the remainder as type 0
+
+        for isurf in xrange(nSurf):
+            for i in xrange(4):
+                found_it = False
+                for j in xrange(len(e_con)):
+                    if [isurf,i] in e_con[j]:
+                        found_it = True
+                        break
+                    # end if
+                # end for
+                if not found_it:
+                    e_con.append([[isurf,i],[-1,-1],0,1,0,-1])
+                # end if
+            # end for
+        # end for
 
 
         print 'e_con:'
@@ -779,6 +750,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for i in xrange(len(e_con)):
             print e_con[i]
 
+
+        sys.exit(0)
         # Now we must figure out the driving group information.  Lets
         # do this a little differently. Make a list of length number
         # of surfaces with elements a list of the design group index
