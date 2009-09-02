@@ -897,13 +897,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # end if
 
             # Now we must propagate the edge, in both directions. 
-            print 'prop_flags are:'
-            print 'prop_near_side',prop_near_side
-            print 'prop_far_side:',prop_far_side
 
-
-#            prop_near_side = False
-#            prop_far_side = False
             if prop_near_side:
                 # Take the driving face we just found (f1,e1) and find
                 # the connection on the other side
@@ -932,7 +926,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 # end while
             
             if prop_far_side:
-
                 
                 cur_face = f2
                 cur_edge = e2
@@ -970,158 +963,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             
             
 
-
-
-#         mirrored_edges = []
-
-#         print 'edge list:'
-#         for i in xrange(len(edge_list)):
-#             print edge_list[i]
-
-            
-#         print 'Mirror List'
-#         for i in xrange(len(mirrored_edges)):
-#             print mirrored_edges[i]
-
-#        # sys.exit(0)
-
-
-  #       # Now we know the connected edges and the mirrored edges.  The
-#         # last thing we need is the driving group
-#         # information...basically how does the spacing on an edge
-#         # propagate across the connections
-
-#         nJoined  = len(e_con)*2        # Number of joined edges
-#         nMirror  = len(mirrored_edges) # Number of free or mirrored edges
-#         # concenate the two lists --- FULL list of edge info
-#         edges = e_con+mirrored_edges   # Full list of edge connections
-#         dg_counter = -1
-
-#         print 'Edges'
-#         for i in xrange(len(edges)):
-#             print edges[i]
-
-#         for i in xrange(len(edges)):
-#             found_new_edge = False
-#             if edges[i][-1] == -1: # it hasn't been assigned a driving group yet
-#                 dg_counter += 1
-#                 edges[i][-1] = dg_counter
-#                 found_new_edge = True
-#             # end if
-            
-#             if found_new_edge:
-#                 # We have assigned a new edge...now we must propagate it
-
-#                 # Always set the other side of the patch of the edge we 
-#                 # are dealing with 
-
-#                 # This is confusing...need to explain better
-
-#                 flip_edge = flipEdge(edges[i][0][1])
-#                 flip_index,order = self._getConIndex(\
-#                     edge_list,[edges[i][0][0],flip_edge],nJoined,nMirror)
-#                 #print 'flip_index:',flip_index
-#                 edges[flip_index][-1] = dg_counter
-                
-#                 # Now we have to propagate along faces connected to both 
-#                 # sides of edge
-
-#                 if len(edges[i]) == 2: # We have a mirrored edge:
-#                     pass # Nothing to do since we are at a mirrored edge
-#                 else:
-                    
-#                     cont2 = True
-#                     index = i
-#                     # This means we are starting with the patch coorsponding
-#                     # to the second edge entry
-#                     order = 1 
-#                     while cont2: 
-#                         # Check the edge OPPOSITE the joined edge and keep going
-
-#                         # Joined face/edge to edge i
-#                         cur_face = edges[index][order][0] 
-#                         cur_edge = edges[index][order][1]
-#                         # Get the opposite edge
-#                         cur_edge = flipEdge(cur_edge) 
-                        
-#                         # Find where that face/edge is
-#                         new_index,order = self._getConIndex(\
-#                             edge_list,[cur_face,cur_edge],nJoined,nMirror)
-
-#                         # if it has already been set
-#                         if not edges[new_index][-1] == -1: 
-#                             break 
-#                         # Order is the first or second listing on the
-#                         # edge. What we want to take the other face
-#                         # connection
-                        
-#                         if order == 0:
-#                             order =1
-#                         else:
-#                             order = 0
-                        
-#                         # Set this to current counter
-#                         edges[new_index][-1] = dg_counter 
-                                                
-#                         # If this new edge is a mirrored edge stop
-#                         if len(edges[new_index]) == 2: 
-#                             cont2 = False
-#                         else:                          # Else we keep going
-#                             index = new_index
-#                         # end if
-#                     # end while
-#                 # end if
-
-#                 # Do along the First direction
-
-#                 if len(edges[flip_index]) == 2: # We have a mirrored edge:
-#                     pass # Nothing to do since we are at a mirrored edge
-#                 else:
-#                     cont2 = True
-#                     index = flip_index
-#                     #This means we proceeed with the patch coorsponding
-#                     # to the first edge entry
-#                     order = 1
-#                     # Check the edge OPPOSITE the joined edge and keep going
-#                     while cont2: 
-
-#                         # Joined face/edge to edge i
-#                         cur_face = edges[index][order][0] 
-#                         cur_edge = edges[index][order][1]
-#                         cur_edge = flipEdge(cur_edge)
-#                         new_index,order = self._getConIndex(\
-#                             edge_list,[cur_face,cur_edge],nJoined,nMirror)
-
-#                         # if it has already been set
-#                         if not edges[new_index][-1] == -1:
-#                             break 
-#                         # Set this to current counter
-#                         edges[new_index][-1] = dg_counter 
-#                         if order == 0:
-#                             order =1
-#                         else:
-#                             order = 0             
-
-#                         # If this edge is a mirrored edge stop
-#                         if len(edges[new_index]) == 2: 
-#                             cont2 = False
-#                         else:                          # Else we keep going
-#                             index = new_index
-
-#                     # end while
-#                 # end if
-#         # end for
-#         # Now we can FINALLY set edge objects....creating strings
-#         # is a bit clunky but it works
- # print 'Connection | Face    Edge  | Type | Continutiy | Dir? | side\
-#  | Driving Group | Nctl | Face    Edge     |'
-#  print 'f1/e1 f2/e2 cont dir side type dg'
-#  e_con.append([[isurf,i],[jsurf,j],\
-#                                               cont_flag,dir_flag,side,type,-1])
-
-     
         print 'Going to set edge connectivity'
-        #self._setEdgeConnectivity()
+        self._setEdgeConnectivity()
         print 'Time for Edge Calculation:',time.time()-timeA
         return
 
@@ -1299,16 +1142,19 @@ appear in the edge con list'
                 l_index[isurf][i,j] = current_index
             elif self.con[icon].type in [3,4]:
                 if self.con[icon].side == 1:
-                    current_index = getIndexEdge(self.con[icon].f1,self.con[icon].e1,0,\
-                                                     self.con[icon].dir)
-                    g_index[current_index].append([isurf,i,j])
-                    l_index[isurf][i,j] = current_index
-
+                    print 'icon:',icon
+                    print 'f1:',self.con[icon].f1
+                    print 'e1:',self.con[icon].e1
+#                     current_index = getIndexEdge(self.con[icon].f1,self.con[icon].e1,0,\
+#                                                      self.con[icon].dir)
+#                     g_index[current_index].append([isurf,i,j])
+#                     l_index[isurf][i,j] = current_index
+#                     print 'setting here:',current_index
                 else:
                     current_index = getIndexEdge(self.con[icon].f1,self.con[icon].e1,-1,\
                                                      self.con[icon].dir)
-                    g_index[current_index].append([isurf,i,j])
-                    l_index[isurf][i,j] = current_index
+#                     g_index[current_index].append([isurf,i,j])
+#                     l_index[isurf][i,j] = current_index
                 # end if
             # end if
                 
@@ -1325,7 +1171,7 @@ appear in the edge con list'
             isurf = surface_list[ii]
             Nu = sizes[isurf][0]
             Nv = sizes[isurf][1]
-            l_index.append(zeros((Nu,Nv),'intc'))
+            l_index.append(-1*ones((Nu,Nv),'intc'))
             for i in xrange(Nu):
                 for j in xrange(Nv):
                     # This is the basic "internal" control type
