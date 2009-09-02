@@ -29,14 +29,14 @@ timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 #aircraft = pyGeo.pyGeo('plot3d',file_name='test.xyz')
 #aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
-del aircraft.surfs[0]
+#del aircraft.surfs[4]
+#del aircraft.surfs[4]
+#del aircraft.surfs[4]
+#del aircraft.surfs[4]
+#del aircraft.surfs[0]
+#del aircraft.surfs[0]
+#del aircraft.surfs[0]
+#del aircraft.surfs[0]
 
 # del aircraft.surfs[8]
 # del aircraft.surfs[8]
@@ -60,11 +60,12 @@ del aircraft.surfs[0]
 # del aircraft.surfs[8]
 # del aircraft.surfs[8]
 
-aircraft.nSurf = 9
+aircraft.nSurf = 23
 
-aircraft.calcEdgeConnectivity()
+#aircraft.calcEdgeConnectivity()
 #aircraft.writeEdgeConnectivity('aircraft.con')
-#aircraft.propagateKnotVectors()
+aircraft.readEdgeConnectivity('aircraft.con')
+#propagateKnotVectors()
 #aircraft.fitSurfaces()
 timeA = time.time()
 aircraft.writeTecplot('full_aircraft.dat')
