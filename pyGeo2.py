@@ -37,7 +37,7 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor, size, reshape, arange
+    real, imag, dstack, floor, size, reshape, arange,alltrue
 
 from numpy.linalg import lstsq,inv
 #from scipy import io #Only used for debugging
@@ -695,31 +695,30 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                         coinc,dir_flag = test_edge(\
                             self.surfs[isurf],self.surfs[jsurf],i,j,edge_tol)
                         cont_flag = 0 # By Default only C0 continuity
-                        
-                        e_con.append([[isurf,i],[jsurf,j],\
-                                          cont_flag,dir_flag,type,-1])
-
+                        if coinc:
+                            e_con.append([[isurf,i],[jsurf,j],\
+                                              cont_flag,dir_flag,1,-1])
+                        # end if
                     # end for
                 # end for
             # end for
         # end for
-
       
-#         That calculates JUST the actual edge connectivity, i.e. The
-#         Type = 1. Now we find and add degenerate edges
+#  That calculates JUST the actual edge connectivity, i.e. The
+#  Type = 1. Now we find and add degenerate edges
 
         for isurf in xrange(self.nSurf):
             for i in xrange(4):
                 found_it = False
-                for j in xrange(len(e_con)):
-                    if [isurf,1] in e_con[j]:
+                for j in xrange(len(e_con)): # this is just a linear search
+                    if [isurf,i] in e_con[j]:
                         found_it = True
                         break
                     # end if
                 # end for
                 if not found_it:
                     # Check if degenerate:
-                    degen,values = self.surfs[isruf].checkDegenerateEdge(i)
+                    degen,values = self.surfs[isurf].checkDegenerateEdge(i)
                     if degen:
                         e_con.append([[isurf,i],[-1,-1],0,1,2,-1])
                     # end if
@@ -728,8 +727,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
 
 # Now Add the remainder as type 0
-
-        for isurf in xrange(nSurf):
+        for isurf in xrange(self.nSurf):
             for i in xrange(4):
                 found_it = False
                 for j in xrange(len(e_con)):
@@ -744,14 +742,77 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # end for
         # end for
 
+# Next calculate the NODE connectivity. It should be possible to set
+# this from the edge information but with original data, this is easier.
 
-        print 'e_con:'
-        print 'f1/e1 f2/e2 cont dir side type dg'
-        for i in xrange(len(e_con)):
-            print e_con[i]
+        self.node_con = []
+
+        for isurf in xrange(self.nSurf):
+            for i in xrange(4): 
+                for jsurf in xrange(self.nSurf):
+                    for j in xrange(4):
+                        
+                        if not [isurf,i] == [jsurf,j]: # Don't compare the same node
+                            
+                            coincident = test_node(self.surfs[isurf],self.surfs[jsurf],
+                                                   i,j,node_tol)
+                            if coincident:
+                                
+                                in_list1,index1 = self._inNodeList(isurf,i)
+                                in_list2,index2 = self._inNodeList(jsurf,j)
+
+                                if not in_list1 and not in_list2:
+                                    # Add a new entry with both nodes
+                                    self.node_con.append([[isurf,i],[jsurf,j]])
+                                elif in_list1 and not in_list2:
+                                    # Add [jsurf,j] to index1
+                                    self.node_con[index1].append([jsurf,j])
+                                elif not in_list1 and in_list2:
+                                    # Add [isurf,i] to index2
+                                    self.node_con[index2].append([isurf,i])
+                                elif in_list1 and in_list2:
+                                    pass # Nothing to do since both already in list
+                                # end if
+
+                            else: # Not coincident Add the FIRST one
+                                  # if its not already in the
+                                  # list... this is because EVERY node
+                                  # will show up as isurf,i exactly once
+                                in_list,index = self._inNodeList(isurf,i)
+                                if not in_list:
+                                    self.node_con.append([[isurf,i]])
+                            # end if
+                        # end if
+                    # end for (j loop)
+                # end for (jsurf)
+            # end for (i loop)
+        # end for (isurf)
+
+        for i in xrange(len(self.node_con)):
+            print self.node_con[i]
+        # end for
+            
+
+        def isEdgeConnected(isurf,edge):
+            '''Find if another edge is regurally connected to isurf,edge'''
+            # Basically only look at edge type 1's
+
+            # Search just the master ones first
+            for i in xrange(len(self.con)):
+                if self.con[i].f1 == isurf and self.con[i].e1 == edge and \
+                        self.con[i].type == 1:
+                    return True,self.con[i].f2,self.con[i].e2
+                # end if
+            # end for
+            for i in xrange(len(self.con)):
+                if self.con[i].f2 == isurf and  self.con[i].e2 == edge and \
+                        self.con[i].type == 1:
+                    return True,self.con[i].f1,self.con[i].e1
+                # end if
+            # end for 
+            return  False,None,None
 
 
-        sys.exit(0)
         # Now we must figure out the driving group information.  Lets
         # do this a little differently. Make a list of length number
         # of surfaces with elements a list of the design group index
@@ -760,19 +821,13 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         self.con = []
         for i in xrange(len(e_con)):
-            init_string ='%3d        |%3d     %3d    |%3d   | %3d  |  %3d       \
-| %3d  | %3d           | %3d  | %3d     %3d      |\n'\
-                %(i,e_con[i][0][0],e_con[i][0][1],e_con[i][5],e_con[i][2],
-                  e_con[i][3],e_con[i][4],e_con[i][6],10,e_con[i][1][0],\
+            init_string ='%3d %3d %3d %3d %3d %3d %3d %3d %3d %3d\n'\
+                %(i,e_con[i][0][0],e_con[i][0][1],e_con[i][4],e_con[i][2],
+                  e_con[i][3],e_con[i][5],10,e_con[i][1][0],\
                       e_con[i][1][1])
-            temp = init_string.replace('|',' ')  #Get rid of the bars
-            self.con.append(edge(temp))
+            self.con.append(edge(init_string))
         # end for
         
-        # Finally Print Connection Info
-        self.printEdgeConnectivity()
-
-       
         design_group = []
         for isurf in xrange(self.nSurf):
             design_group.append([-1,-1]) # -1 means it isn't assigned
@@ -783,8 +838,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             
         dg_counter = -1
         for i in xrange(len(e_con)):
-        #for i in xrange(5):
-            
+
             f1 = self.con[i].f1
             e1 = self.con[i].e1
             
@@ -793,108 +847,50 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
             type = self.con[i].type
 
-            # Note the use if integer division: edge 0 and edge 1
-            # produce 0, which is the u direction, edge 2 and 3 give 2
-            # whcih is the second, v direction
+            # Don't propagate by default
             prop_near_side = False
             prop_far_side  = False
 
-            if type == 0: # Got to do this one first since f2/e2 is garbage
+            if type == 0 or type == 2:
+
                 if design_group[f1][e1/2] == -1:
                     dg_counter += 1
                     design_group[f1][e1/2] = dg_counter
+                    prop_near_side = True
                 # end if
 
-            else: # All other edge types
+            else: #type 1
 
-                if design_group[f1][e1/2] == -1 and design_group[f2][e2/2] == -1: 
-
-                    # f1/e1 and f2/e2 are NOT set yet
-
-                    if type == 1: # Regular Connection
-                        dg_counter += 1
-                        design_group[f1][e1/2] = dg_counter
-                        design_group[f2][e2/2] = dg_counter
-                        print 'setting both true from 1'
-                        prop_far_side = True
-                        prop_near_side = True
-                        dg_set = dg_counter
-                    elif type == 2: # Degen to Corner
-
-                        # Set the degen one, the edge the corner is on should 
-                        # come up again
-                        dg_counter += 1
-                        design_group[f1][e1/2] = dg_counter
-                        prop_near_side = False
-                        prop_far_side  = False
-
-                    elif type == 3: # Corner to Degen
-
-                        # Set the degen one, the edge the corner is on
-                        # should come up again
-                        dg_counter += 1
-                        design_group[f2][e2/2] = dg_counter
-                        prop_near_side = False
-                        prop_far_side  = False
-
-                elif design_group[f1][e1/2] == -1 and not design_group[f2][e2/2] == -1:
-
-                    # f1/e1 is NOT set but f2/e2 IS set
-                    if type == 1:
-                        design_group[f1][e1/2] = design_group[f2][e2/2]
-                      
-                        print 'setting both true from 2'
-                        prop_near_side = True
-                        prop_far_side = True
-
-                    elif type ==2:
-                        print 'type2 here'
-                    elif type ==3:
-                        print 'type3 here'
-
-                elif not design_group[f1][e1/2] == -1 and design_group[f2][e2/2] == -1:
-                    # f1/e1 IS set but f2/e2 is NOT Set
-                    if type == 1: # Regular
-                        dg_set = design_group[f1][e1/2]
-                        design_group[f2][e2/2] = dg_set
-                        prop_far_side = True
-
-                    if type == 2: # Degen to Corner
-                        print 'This shouldnt happen 2'
-                    if type == 3: # Corner to Degen
-                        # This means degen isn't set...so set it! :)
-                        dg_counter += 1
-                        design_group[f2][e2/2] = dg_counter
-                    
-                    
+                if design_group[f1][e1/2] == -1:
+                    dg_counter += 1
+                    design_group[f1][e1/2] = dg_counter
+                    design_group[f2][e2/2] = dg_counter
+                    prop_near_side = True
+                    prop_far_side = True
+                # end if
             # end if
 
-            # Now we must propagate the edge, in both directions. 
-
+             # Now we must propagate the edge, in both directions. 
             if prop_near_side:
                 # Take the driving face we just found (f1,e1) and find
                 # the connection on the other side
                 cur_face = f1
                 cur_edge = e1
-                check_counter = 0
-                print 'In prop near side:'
-                while check_counter < 5:
-                    check_counter += 1
+                while True:
                     
+                    #print 'In prop near side:',i,cur_face,cur_edge
                     opposite_edge = flipEdge(cur_edge)
-                    
-                    connected,cur_face,cur_edge = self._isEdgeConnected(
+                    #print 'checking connection on face %d edge %d'%(cur_face,opposite_edge)
+                    connected,cur_face,cur_edge = isEdgeConnected(
                         cur_face,opposite_edge)
-                    
+                    #print 'connected,new face edge:',connected,cur_face,cur_edge
                     if not connected:
                         break
 
                     if design_group[cur_face][cur_edge/2] == -1: 
-                        # This one has not been set yet
-                        design_group[cur_face][cur_edge/2] = dg_set
+                        design_group[cur_face][cur_edge/2] = dg_counter
                     else:
-                        # We have a circular type reference so break
-                        break
+                        break    # We have a circular type reference so break
                     # end if
                 # end while
             
@@ -902,201 +898,140 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 
                 cur_face = f2
                 cur_edge = e2
-                check_counter = 0
-                print 'prop_far_side',cur_face,cur_edge
-                while check_counter < 5:
-                    check_counter += 1
-                   
+                
+                while True:
+                    #print 'In prop far side:',i,cur_face,cur_edge
                     opposite_edge = flipEdge(cur_edge)
 
                     # Now find the con index for (f1 other_side)
-
-                    connected,cur_face,cur_edge = self._isEdgeConnected(
+                    #print 'checking connection on face %d edge %d'%(cur_face,opposite_edge)
+                    connected,cur_face,cur_edge = isEdgeConnected(
                         cur_face,opposite_edge)
-                    
+                    #print 'connected,new face edge:',connected,cur_face,cur_edge
                     if not connected:
                         break
 
                     if design_group[cur_face][cur_edge/2] == -1: 
-                        # This one has not been set yet
-                        design_group[cur_face][cur_edge/2] = dg_set
+                        design_group[cur_face][cur_edge/2] = dg_counter
                     else:
-                        # We have a circular type reference so break
-                        break
+                        break   # We have a circular type reference so break
                     # end if
                 # end while
             # end if
 
         # end for
-        print 'design_group'
-        for i in xrange(len(design_group)):
-            print design_group[i]
+
+        # Last thing we need to do is set the design_group info into
+        # the edge objects
+        for i in xrange(len(self.con)):
+            self.con[i].dg = design_group[self.con[i].f1][self.con[i].e1/2]
         # end for
 
-            
-            
+        print 'Edge con'
+        self.printEdgeConnectivity()
+       
+      #   print 'Going to calculate node connectivity'
+#         self._calcNodeConnectivity()
 
         print 'Going to set edge connectivity'
         self._setEdgeConnectivity()
         print 'Time for Edge Calculation:',time.time()-timeA
         return
 
-    def _checkCorner(self,isurf,node):
-        '''Check a corner to seee if its a master and such'''
-
-        if node == 0:
-        
-            icon1,master1,degen1 = self._findConIndex(isurf,edge=0)
-            icon2,master2,degen2 = self._findConIndex(isurf,edge=2) 
-                            
-            print 'icon1:',icon1
-            print 'icon2:',icon2
-
-        # end if
-        if node == 2:
-        
-            icon1,master1,degen1 = self._findConIndex(isurf,edge=1)
-            icon2,master2,degen2 = self._findConIndex(isurf,edge=2) 
-                            
-            print 'icon1:',icon1
-            print 'icon2:',icon2
-
-        # end if
-
-
-
-        return
-            
-
-
-   #  def _findConIndex(self,isurf,edge=None):
-#         '''Find the index of the entry in the edge list for isurf and edge'''
-#         # Search just the master ones first
-#         for i in xrange(len(self.con)):
-#             if self.con[i].f1 == isurf and self.con[i].e1 == edge:
-#                 if self.con[i].type in [0,1]:
-#                     # Its a free or master connected edge
-#                     return i,True,False
-#                 elif self.con[i].type == 2: # Degen to Corner
-#                     return i,True,True
-#                 elif self.con[i].type == 3: #Corner to Degen
-#                     return i,True,False
-#                 elif self.con[i].type == 4: #Degen to Degen
-#                     return i,True,True
-#             # end if
-#         # end for
-
-#         for i in xrange(len(self.con)):
-#             if self.con[i].f2 == isurf and self.con[i].e2 == edge:
-#                 if self.con[i].type in [0,1]:
-#                     return i,False,False# Regular or degen to corner
-#                 elif self.con[i].type == 2: 
-#                     return i,False,True # Degen to Corner
-#                 elif self.con[i].type == 3:
-#                     return i,False,True  # Corner to Degen
-#                 elif self.con[i].type == 4:
-#                     return i,False, True  # Degen to Degen
-#                 # end if
-#             # end if
-#         # end for 
-
-
-    def _findConIndex(self,isurf,edge=None):
-        '''Find the index of the entry in the edge list for isurf and edge'''
-        # Return the icon index for edge that is of type 1 or 0 if it exists
-        
-        # Search the full list to see how many times isurf,edge is in there:
-        # Type 0 and 1 edges will be in there once and only once
-
-        finds = 0
-        for i in xrange(len(self.con)):
-            if (self.con[i].f1 == isurf and self.con[i].e1 == edge) or \
-               (self.con[i].f2 == isurf and self.con[i].e2 == edge):
-                
-                finds += 1
+ 
+    def _inNodeList(self,isurf,inode):
+        '''Check if isurf,edge in node list'''
+        for i in xrange(len(self.node_con)):
+            if [isurf,inode] in self.node_con[i]:
+                return True, i
             # end if
         # end for
-       
-        if finds == 1: # We found it once and only once
-
-            # Now get the actual index
-            
-            for i in xrange(len(self.con)):
-                
-                if self.con[i].f1 == isurf and self.con[i].e1 == edge:
-                    if self.con[i].type in [0,1]: # Free or Connected and free
-                        return i,True,False
-
-                    if self.con[i].type == 2:
-                        return i,True,True
-                    
-                    if self.con[i].type == 3:
-                        return i,True,False
-
-
-                if self.con[i].f2 == isurf and self.con[i].e2 == edge:
-                    
-                    if self.con[i].type in [0,1]:
-                        return i,False,False
-
-                    if self.con[i].type == 2:
-                        return i,False,True
-                    
-                    if self.con[i].type == 3:
-                        return i,False,True
-        else:
-
-            # This means the edge was used to define degenerate
-            # edges is is in there more than once, so just return
-            # the one where its type 0 or 1
-          
-
-            for i in xrange(len(self.con)):
-
-                if self.con[i].f1 == isurf and self.con[i].e1 == edge and \
-                        self.con[i].type in [0,1]:
-                    return i,True,False
-
-                if self.con[i].f2 == isurf and self.con[i].e2 == edge and \
-                        self.con[i].type in [0,1]:
-                    return i,False,False
-
-
-
-
-
-
-        print 'Error: Edge was not found in the edge list. EVERY edge MUST \
-appear in the edge con list'
-        print 'We were looking for surface %d and edge %d'%(isurf,edge)
-        sys.exit(1)
-        return 
-
-    def _isEdgeConnected(self,isurf,edge):
-        '''Find if another edge is regurally connected to isurf,edge'''
-        # Basically only look at edge type 1's
         
+        return False, None
+
+ #    def _calcNodeConnectivity(self):
+
+#         '''Calc the global node connections from the edge connections'''
+
+#         # Create the empty numbering list
+
+#         def edgesFromNode(node):
+#             if node == 0:
+#                 return 0,2
+#             elif node == 1:
+#                 return 0,3
+#             elif node == 2:
+#                 return 1,2
+#             elif node ==3:
+#                 reutrn 1,3
+                
+
+#         self.node_con = []
+ 
+
+#         # Loop over all corners
+#         for isurf in xrange(self.nSurf):
+#             for inode in xrange(4): # Loop over the 4 nodes
+                
+#                 in_list,index = self._inNodeList(isurf,inode)
+
+#                 if in_list: # Its already in the list, don't do anything
+#                     pass
+#                 else: 
+#                     self.node_con.append([[isurf,inode]])
+
+#                     # Now we need to find the other nodes connected to this one.
+#                     # We do this by looking at the EDGES on either side of the given node
+                    
+#                     e1,e2 = edgesFromNode(inode)
+
+#                     # Now get the edge index for these edges
+                    
+#                     icon1 = self._findConIndex(isurf,e1)
+#                     icon2 = self._findConIndex(isurf,e2)
+
+
+
+#                 # end if
+
+
+
+#         print 'node con'
+#         for i in xrange(len(self.node_con)):
+#             print self.node_con[i]
+
+#         sys.exit(0)
+
+
+    def _findEdgeIndex(self,isurf,edge=None):
+        '''Find the index of the entry in the edge list for isurf and edge'''
         # Search just the master ones first
         for i in xrange(len(self.con)):
-            if self.con[i].f1 == isurf and \
-                    self.con[i].e1 == edge and \
-                    self.con[i].type == 1:
-                
-                return True,self.con[i].f2,self.con[i].e2
-
-        for i in xrange(len(self.con)):
-            if self.con[i].f2 == isurf and \
-                    self.con[i].e2 == edge and \
-                    self.con[i].type == 1:
-                
-                return True,self.con[i].f1,self.con[i].e1
+            if self.con[i].f1 == isurf and self.con[i].e1 == edge:
+                if self.con[i].type in [0,1]:
+                    # Its a free or master connected edge
+                    return i,True,False
+                elif self.con[i].type == 2: # Degen to Corner
+                    return i,False,True
                 # end if
             # end if
-        # end for 
-        return  False,None,None
+            if self.con[i].f2 == isurf and self.con[i].e2 == edge:
+                return i,False,False # Only edge type 1 have second
+                                     # connections
+            # end if
+        # end for
 
-
-
+    def _findNodeIndex(self,isurf,node):
+        for i in xrange(len(self.node_con)):
+            if [isurf,node] in self.node_con[i]:
+                if [isurf,node] == self.node_con[i][0]:
+                    return True,None,None
+                else:
+                    # Return the face/node of the driving one
+                    return False,self.node_con[i][0][0],self.node_con[i][0][1]
+                # end if
+            # end if
+        # end for
 
     def _setEdgeConnectivity(self):
         '''Internal function to set the global/local numbering'''
@@ -1113,12 +1048,10 @@ appear in the edge con list'
         # end for
 
         self.Ncoef,self.g_index,self.l_index = self.calcGlobalNumbering(sizes)
-        
-        for i in xrange(len(self.l_index)):
-            print self.l_index[i]
-        # end for
 
-     
+    #     for i in xrange(len(self.l_index)):
+#             print self.l_index[i]
+
         self.coef = []
         # Now Fill up the self.coef list:
         for ii in xrange(len(self.g_index)):
@@ -1131,7 +1064,7 @@ appear in the edge con list'
         # Finally turn self.coef into a complex array
         self.coef = array(self.coef,'D')
 
-        # Create a PETSc vector of the global knots
+        # Create a PETSc vector of the global coefficients
         if USE_PETSC:
             self.petsc_coef = PETSc.Vec()
             self.petsc_coef.createSeq(3*self.Ncoef)
@@ -1140,6 +1073,8 @@ appear in the edge con list'
         # end
         return
 
+
+
     def calcGlobalNumbering(self,sizes,surface_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
         if self.con == None:
@@ -1147,6 +1082,14 @@ appear in the edge con list'
  calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
         # end if
+
+ 
+        def add_master(counter):
+            '''Add a master control point'''
+            l_index[isurf][i,j] = counter
+            counter =counter + 1
+            g_index.append([[isurf,i,j]])
+            return counter
 
         def getIndexEdge(isurf,edge,index,dir):
             '''Get the global index value from edge,index,dir information'''
@@ -1185,79 +1128,60 @@ appear in the edge con list'
             # end if
 
             return
-             
-        # Check if sizes is the same length as the number of surfaces
-        #assert len(sizes) == self.nSurf,'The length of sizes must be the same as the \
-        #number of surface points'
 
-        # This function will calculate a global index ordering for a
-        # set of surfaces with the supplied connectivity
-      
-        def add_master(counter):
-            '''Add a master control point'''
-            l_index[isurf][i,j] = counter
-            counter =counter + 1
-            g_index.append([[isurf,i,j]])
-            return counter
-
-        def add_slave(icon,index):
+        def getIndexNode(face,node):
+            if node == 0:
+                return l_index[face][0,0]
+            elif node == 1:
+                return l_index[face][-1,0]
+            elif node == 2:
+                return l_index[face][0,-1]
+            elif node == 3:
+                return l_index[face][-1,-1]
+            
+        def add_slave_edge(icon,index):
+            '''Add a slave control point'''
             current_index = getIndexEdge(self.con[icon].f1, self.con[icon].e1, index,\
                                              self.con[icon].dir)
-            
             g_index[current_index].append([isurf,i,j])
             l_index[isurf][i,j] = current_index
             
         def add_slave_degen(icon,index):
 
             '''Add a degenerate slave point'''
+            # Find which side has been set, since once should already be set
+            cur_index1 = getIndexEdge(self.con[icon].f1, self.con[icon].e1, 0,\
+                                          self.con[icon].dir)
 
-            type = self.con[icon].type
-            side = self.con[icon].side
+            cur_index2 = getIndexEdge(self.con[icon].f1, self.con[icon].e1, -1,\
+                                          self.con[icon].dir)
 
-            if side == 1:
-
-                if type == 2: # Degen to Corner
-                    
-                    current_index = getIndexEdge(self.con[icon].f2,
-                                                 self.con[icon].e2,
-                                                 0,self.con[icon].dir)
-                    g_index[current_index].append([isurf,i,j])
-                    l_index[isurf][i,j] = current_index
-
-                elif type == 3: # Corner to Degen
-                    current_index = getIndexEdge(self.con[icon].f1,
-                                                 self.con[icon].e1,
-                                                 0,self.con[icon].dir)
-                    g_index[current_index].append([isurf,i,j])
-                    l_index[isurf][i,j] = current_index
-
-            else:
-                if type == 2: # Degen to Corner
-                    
-                    current_index = getIndexEdge(self.con[icon].f2,
-                                                 self.con[icon].e2,
-                                                 -1,self.con[icon].dir)
-                    g_index[current_index].append([isurf,i,j])
-                    l_index[isurf][i,j] = current_index
-
-                elif type == 3: # Corner to Degen
-                    current_index = getIndexEdge(self.con[icon].f1,
-                                                 self.con[icon].e1,
-                                                 -1,self.con[icon].dir)
-                    g_index[current_index].append([isurf,i,j])
-                    l_index[isurf][i,j] = current_index
-                
+            if not cur_index1 == -1: 
+                g_index[cur_index1].append([isurf,i,j])
+                l_index[isurf][i,j] = cur_index1
+            elif not cur_index2 == -1: 
+                g_index[cur_index2].append([isurf,i,j])
+                l_index[isurf][i,j] = cur_index2
             return
-        
+
+        def add_slave_node(face,node):
+            '''Add a slave control point to the current isurf,i,j from face,node'''
+            
+            current_index = getIndexNode(face,node)
+
+            g_index[current_index].append([isurf,i,j])
+            l_index[isurf][i,j] = current_index
+
+
+        # ----------------- Start of Edge Computation ---------------------
         counter = 0
         g_index = []
         l_index = []
 
         if surface_list == None:
             surface_list = range(0,self.nSurf)            
-        
-        #for ii in xrange(len(surface_list)):
-        for ii in xrange(1):
+
+        for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
             Nu = sizes[isurf][0]
             Nv = sizes[isurf][1]
@@ -1272,130 +1196,91 @@ appear in the edge con list'
                     # edges and 4 corners. Do the edges first
                     else:
                         if i > 0 and i < Nu-1 and j == 0:       # Edge 0
-                            icon, master, degen = self._findConIndex(isurf,edge=0)
+                            icon, master, degen = self._findEdgeIndex(isurf,edge=0)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 if degen: 
                                     add_slave_degen(icon,i)
                                 else:
-                                    add_slave(icon,i)
+                                    add_slave_edge(icon,i)
                                 # end if
                             # end if
                       
                         elif i > 0 and i < Nu-1 and j == Nv-1: # Edge 1
-                            icon, master, degen = self._findConIndex(isurf,edge=1)
+                            icon, master, degen = self._findEdgeIndex(isurf,edge=1)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 if degen: 
                                     add_slave_degen(icon,i)
                                 else:
-                                    add_slave(icon,i)
+                                    add_slave_edge(icon,i)
                                 # end if
                             # end if
                    
                         elif i == 0 and j > 0 and j < Nv -1:      # Edge 2
-                            icon, master, degen = self._findConIndex(isurf,edge=2)
+                            icon, master, degen = self._findEdgeIndex(isurf,edge=2)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 if degen: 
-                                    add_slave_degen(icon,i)
+                                    add_slave_degen(icon,j)
                                 else:
-                                    add_slave(icon,i)
+                                    add_slave_edge(icon,j)
                                 # end if
                             # end if
 
                         elif i == Nu-1 and j > 0 and j < Nv-1: # Edge 3
-                            icon, master, degen = self._findConIndex(isurf,edge=3)
+                            icon, master, degen = self._findEdgeIndex(isurf,edge=3)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 if degen: 
-                                    add_slave_degen(icon,i)
+                                    add_slave_degen(icon,j)
                                 else:
-                                    add_slave(icon,i)
+                                    add_slave_edge(icon,j)
                                 # end if
 
                         elif i == 0 and j == 0:             # Node 0
-                            
-                            icon1,master1,degen1 = self._findConIndex(isurf,edge=0)
-                            icon2,master2,degen2 = self._findConIndex(isurf,edge=2) 
-                            
-                            print 'Node 0: degen1,degen2:',degen1,degen2
-                            self._checkCorner(isurf,0)
-                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):
+
+                            master,face,node = self._findNodeIndex(isurf,0)
+                            if master:
                                 counter = add_master(counter)
                             else:
-                                if master1 == False:
-                                    add_slave(icon1,0)
-                                else:
-                                    add_slave(icon2,0)
-                                # end if
-                            # end if
-
+                                add_slave_node(face,node)
                         elif i == Nu-1 and j == 0:       # Node 1
-                            icon1,master1,degen1 = self._findConIndex(isurf,edge=0)
-                            icon2,master2,degen2 = self._findConIndex(isurf,edge=3)
-
-                            print 'node 1: degen1,degen2:',degen1,degen2
-
-                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):                            
+                            master,face,node = self._findNodeIndex(isurf,1)
+                            if master:
                                 counter = add_master(counter)
                             else:
-                                if master1 == False:
-                                    add_slave(icon1,Nu-1)
-                                else:
-                                    add_slave(icon2,0)
-                                # end if 
-                            # end if
-                        
+                                add_slave_node(face,node)
                         elif i == 0 and j == Nv-1:       # Node 2
-                            icon1,master1,degen1 = self._findConIndex(isurf,edge=1)
-                            icon2,master2,degen2 = self._findConIndex(isurf,edge=2)
-
-                            print 'node 2: degen1,degen2:',degen1,degen2
-                            self._checkCorner(isurf,2)
-                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):                                                        
-                                print 'node 2 adding master'
+                            master,face,node = self._findNodeIndex(isurf,2)
+                            if master:
                                 counter = add_master(counter)
                             else:
-                                if master1 == False:
-                                    add_slave(icon1,0)
-                                else:
-                                    add_slave(icon2,Nv-1)
-                                # end if 
-                            # end if
-
+                                add_slave_node(face,node)
                         elif i == Nu-1 and j == Nv-1: # Node 3
-                            icon1,master1,degen1 = self._findConIndex(isurf,edge=1)
-                            icon2,master2,degen2 = self._findConIndex(isurf,edge=3)
-
-                            print 'node 3: degen1,degen2:',degen1,degen2
-                            if (master1 and master2) or (master1 and degen2) or (master2 and degen1):                                                        
+                            master,face,node = self._findNodeIndex(isurf,3)
+                            if master:
                                 counter = add_master(counter)
                             else:
-                                if master1 == False:
-                                    add_slave(icon1,Nu-1)
-                                else:
-                                    add_slave(icon2,Nv-1)
-                                # end if 
-                            # end if
+                                add_slave_node(face,node)
+
                         # end if (edges and nodes)
                     # end if (middle or not)
                 # end for  (j loop - Nv)
             # end for (i loop - Nu)
         # end for (isurf loop)
-     
         return counter,g_index,l_index
 
     def printEdgeConnectivity(self):
 
         '''Print the Edge Connectivity'''
         print ' '
-        print 'Connection | Face    Edge  | Type | Continutiy | Dir? | Side |\
- Driving Group | Nctl | Face    Edge     |'
+        print 'Connection | Face    Edge  | Type | Continutiy | Dir? | Driving Group |\
+ Nctl | Face    Edge     |'
         for i in xrange(len(self.con)):
             self.con[i].write_info(i,sys.stdout)
         # end for
@@ -1408,8 +1293,8 @@ appear in the edge con list'
         '''Write the current edge connectivity to a file'''
 
         f = open(file_name ,'w')
-        f.write('Connection | Face    Edge  | Type | Continutiy | Dir? | Side |\
- Driving Group | Nctl | Face    Edge     |\n')
+        f.write('Connection | Face    Edge  | Type | Continutiy | Dir? | Driving Group |\
+ Nctl | Face    Edge     |\n')
         for i in xrange(len(self.con)):
             self.con[i].write_info(i,f)
         # end for
@@ -1437,52 +1322,29 @@ appear in the edge con list'
         f.close()
         
         for i in range(1,len(file)):
-            # Test for blank lines here'
             self.con.append(edge(file[i]))
         # end for
-
-        #self._sortEdgeConnectivity() # Edge Connections MUST be sorted
+        print 'before:'
+        self.printEdgeConnectivity()
+        self._sortEdgeConnectivity() # Edge Connections MUST be sorted
+        print 'after'
         self.printEdgeConnectivity()
         self._setEdgeConnectivity()
 
         return
     
-
     def _sortEdgeConnectivity(self):
         # Go through edges and give each a unique id (uid). Connectd
         # edges are first and then free ones
-        uid_max = 0
+        offset = [2*self.nSurf*4,0,self.nSurf*4]
         for i in xrange(len(self.con)):
-            if self.con[i].type == 0:
-                pass
-            else:
-                uid = self.con[i].f1*4 + self.con[i].e1
-                if uid>uid_max:
-                    uid_max = uid
-
-                self.con[i].uid = uid
-            # end if
-        # end for
-        uid_max += 1
-        for i in xrange(len(self.con)):
-            if self.con[i].type == 0:
-                self.con[i].uid = uid_max + self.con[i].f1*4 + self.con[i].e1
-            # end if
+            uid = self.con[i].f1*4 + self.con[i].e1 + offset[self.con[i].type]
+            self.con[i].uid = uid
         # end for
 
         # Now sort them in place 
         self.con.sort()
         return
-
-
-    def _getConIndex(self,edges,edge,nJoined,nMirrored):
-
-        i = edges.index(edge)
-        
-        if i < nJoined:
-            return int(floor(i/2.0)), mod(i,2)  #integer division
-        else:
-            return int(floor(nJoined/2.0)) + i-nJoined,0 #integer division
 
     def propagateKnotVectors(self):
 
@@ -1500,7 +1362,7 @@ appear in the edge con list'
                 dg[self.con[i].dg].append(self.con[i])
 
         nGroup =len(dg) 
-        
+
         for i in xrange(nGroup):
             
             # Check to see if ANY of the edges have reversed
@@ -1572,7 +1434,8 @@ appear in the edge con list'
         for isurf in xrange(self.nSurf):
             self.surfs[isurf].recompute()
         # end for
-
+        # Update the coefficients on the local surfaces
+        self.update()
         return
 
     def checkCoef(self):
@@ -1600,7 +1463,7 @@ appear in the edge con list'
         # end for
 
         Npts, g_index,l_index = self.calcGlobalNumbering(sizes)
-
+        
         self._initJacobian(Npts,Nctl)
         
         print '------------- Fitting Surfaces Globally ------------------'
@@ -1616,10 +1479,11 @@ appear in the edge con list'
 
         else:
             pts = zeros(Npts*3)
-            X = zero(Nctl*3)
+            X = zeros(Nctl*3)
         # end if 
 
         # Now Fill up the pt list
+        
         for ii in xrange(len(g_index)):
             isurf = g_index[ii][0][0]
             i = g_index[ii][0][1]
@@ -1631,6 +1495,7 @@ appear in the edge con list'
         for i in xrange(len(self.coef)):
             X[3*i:3*i+3] = self.coef[i].astype('d')
         # end for
+
 
         for ii in xrange(Npts):
             surfID = g_index[ii][0][0]
@@ -1663,11 +1528,16 @@ appear in the edge con list'
 
                     x = self.surfs[surfID].calcPtDeriv(\
                         u,v,u_list[iii],v_list[jjj])
-
                     index = 3*self.l_index[surfID][u_list[iii],v_list[jjj]]
-                    self.J[3*ii  ,index  ] = x
-                    self.J[3*ii+1,index+1] = x
-                    self.J[3*ii+2,index+2] = x
+                    # temp = self.J[3*ii,index]
+#                     self.J[3*ii  ,index  ] = self.J[3*ii  ,index] + x
+#                     self.J[3*ii+1,index+1] = self.J[3*ii+1,index] + x
+#                     self.J[3*ii+2,index+2] = self.J[3*ii+2,index] + x
+                    self.J.setValue(3*ii    ,index    ,x,addv=True)
+                    self.J.setValue(3*ii + 1,index + 1,x,addv=True)
+                    self.J.setValue(3*ii + 2,index + 2,x,addv=True)
+
+
                 # end for
             # end for
         # end for 
@@ -1691,7 +1561,7 @@ appear in the edge con list'
             ksp.create(PETSc.COMM_WORLD)
             ksp.getPC().setType('none')
             ksp.setType('lsqr')
-            ksp.setInitialGuess(True)
+            #ksp.setInitialGuess(True)
             print 'Iteration   Residual'
             def monitor(ksp, its, rnorm):
                 if mod(its,100) == 0:
@@ -1711,7 +1581,6 @@ appear in the edge con list'
             # end for
         else:
             X = lstsq(self.J,rhs)
-            print 'residual norm:',X[1]
             for i in xrange(Nctl): # Copy the coefficient back over
                 self.coef[i] = X[0][3*i:3*i+3].astype('D')
             # end for
@@ -2266,7 +2135,7 @@ a flap hinge line'
         
         # Now, we have the list of the conrol points that we would
         # LIKE to add to this dv group. However, some may already be
-        # specified in other normal of local dv groups. 
+        # specified in other normal or local dv groups. 
 
         if overwrite:
             # Loop over ALL normal and local group and force them to
@@ -2811,10 +2680,10 @@ class edge(object):
 #Example: Two surface wing with pinched tip
 #0          1       2       3      4            5        6      7              8      9      10   
 # EXAMPLE
-#Conection | Face    Edge  | Type | Continutiy| Dir? | Side | Driving Group | Nctl | Face    Edge	|	 
-#0	   | 0	     0	   | 0	  | 1	      | 1    |  0   |     0         | 10   | -       -      	|
-#1	   | 0	     1	   | 1    | 0	      | -1   |  0   |     0         | 10   | 1       1  	|
-#2	   | 0	     2	   | 3    | 0	      | 0    |  1   | 	  1         | 4    | 1       3	        |
+#Conection | Face    Edge  | Type | Continutiy| Dir? | Driving Group | Nctl | Face    Edge	|	 
+#0	   | 0	     0	   | 0	  | 1	      | 1    |     0         | 10   | -       -      	|
+#1	   | 0	     1	   | 1    | 0	      | -1   |     0         | 10   | 1       1  	|
+#2	   | 0	     2	   | 3    | 0	      | 0    |     1         | 4    | 1       3	        |
 
         aux = string.split(init_string)
 
@@ -2823,16 +2692,14 @@ class edge(object):
         self.type = int(aux[3])
         self.cont = int(aux[4])
         self.dir  = int(aux[5])
-        self.side = int(aux[6])
-        self.dg   = int(aux[7])
-        self.Nctl = int(aux[8])
-        self.f2   = int(aux[9])
-        self.e2   = int(aux[10])
+        self.dg   = int(aux[6])
+        self.Nctl = int(aux[7])
+        self.f2   = int(aux[8])
+        self.e2   = int(aux[9])
 
         if self.type == 0: # Free Edge
             self.cont  = -1
             self.dir   = 1
-            self.slide = 0
             self.f2    = -1
             self.e2    = -1
         # end if
@@ -2844,8 +2711,8 @@ class edge(object):
     def write_info(self,i,handle):
 
         handle.write('%3d        |%3d     %3d    |%3d   | %3d        |%3d   \
-| %3d  | %3d           | %3d  | %3d     %3d      |\n'\
-              %(i,self.f1,self.e1,self.type,self.cont,self.dir,self.side,\
+| %3d           | %3d  | %3d     %3d      |\n'\
+              %(i,self.f1,self.e1,self.type,self.cont,self.dir,\
                     self.dg,self.Nctl,self.f2,self.e2))
         
         return
