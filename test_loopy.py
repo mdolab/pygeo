@@ -29,11 +29,16 @@ timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='loopy.xyz')
 #del aircraft.surfs[0]
 #del aircraft.surfs[-1]
-#aircraft.nSurf = 2
+#del aircraft.surfs[1]
+del aircraft.surfs[-1]
+
+
+aircraft.nSurf = 3
 aircraft.calcEdgeConnectivity()
 #aircraft.writeEdgeConnectivity('aircraft.con')
 #aircraft.readEdgeConnectivity('aircraft.con')
-#propagateKnotVectors()
+aircraft.propagateKnotVectors()
+
 #aircraft.fitSurfaces()
 timeA = time.time()
 aircraft.writeTecplot('loopy.dat')

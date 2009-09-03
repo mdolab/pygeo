@@ -29,11 +29,11 @@ timeA = time.time()
 aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 #aircraft = pyGeo.pyGeo('plot3d',file_name='test.xyz')
 #aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
-# el aircraft.surfs[0]
-#del aircraft.surfs[0]
-#del aircraft.surfs[0]
-#del aircraft.surfs[0]
-#del aircraft.surfs[0]
+# del aircraft.surfs[0]
+# del aircraft.surfs[0]
+# del aircraft.surfs[0]
+# del aircraft.surfs[0]
+# del aircraft.surfs[0]
 # del aircraft.surfs[0]
 # del aircraft.surfs[0]
 # del aircraft.surfs[0]
@@ -69,7 +69,7 @@ aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
 # del aircraft.surfs[8]
 # del aircraft.surfs[8]
 
-#aircraft.nSurf = 19
+#ircraft.nSurf = 13
 
 aircraft.calcEdgeConnectivity(1e-2,1e-2)
 #aircraft.writeEdgeConnectivity('aircraft.con')
