@@ -744,7 +744,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
 # Next calculate the NODE connectivity. It should be possible to set
 # this from the edge information but with original data, this is easier.
-
+      
         self.node_con = []
 
         for isurf in xrange(self.nSurf):
@@ -827,7 +827,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                       e_con[i][1][1])
             self.con.append(edge(init_string))
         # end for
-        
+        #self._calcNodeConnectivity()
         design_group = []
         for isurf in xrange(self.nSurf):
             design_group.append([-1,-1]) # -1 means it isn't assigned
@@ -931,7 +931,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         self.printEdgeConnectivity()
        
       #   print 'Going to calculate node connectivity'
-#         self._calcNodeConnectivity()
+        self._calcNodeConnectivity()
 
         print 'Going to set edge connectivity'
         self._setEdgeConnectivity()
@@ -949,58 +949,218 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         
         return False, None
 
- #    def _calcNodeConnectivity(self):
+    def _calcNodeConnectivity(self):
 
-#         '''Calc the global node connections from the edge connections'''
+        '''Calc the global node connections from the edge connections'''
 
-#         # Create the empty numbering list
+        # Create the empty numbering list
+       
+        def edgesFromNode(node):
+            if node == 0:
+                return 0,2,1,1
+            elif node == 1:
+                return 0,3,-1,1
+            elif node == 2:
+                return 1,2,1,-1
+            elif node ==3:
+                return 1,3,-1,-1
+            
+        def nodeFromEdge(edge,side,dir):
+            # There are 8 combinations: (x2 more for dir
+            side = side * dir
 
-#         def edgesFromNode(node):
-#             if node == 0:
-#                 return 0,2
-#             elif node == 1:
-#                 return 0,3
-#             elif node == 2:
-#                 return 1,2
-#             elif node ==3:
-#                 reutrn 1,3
-                
+            if   edge == 0 and side == 1:
+                node = 0
+            elif edge == 0 and side == -1:
+                node = 1
+            elif edge == 1 and side == 1:
+                node = 2
+            elif edge == 1 and side == -1:
+                node = 3
+            elif edge == 2 and side == 1:
+                node = 0
+            elif edge == 2 and side == -1:
+                node = 2
+            elif edge == 3 and side == 1:
+                node = 1
+            elif edge == 3 and side == -1:
+                node = 3
+            
+            return node
+            
+        def getAdajacentEdge(node,edge):
+            '''return the other adajacent edge for node with one edge, edge
+            given'''
 
-#         self.node_con = []
- 
+            if   node == 0 and edge == 0:
+                return 2,1
+            elif node == 0 and edge == 2:
+                return 0,1
+            elif node == 1 and edge == 0:
+                return 3,1
+            elif node == 1 and edge == 3:
+                return 0,-1
+            elif node == 2 and edge == 1:
+                return 2,-1
+            elif node == 2 and edge == 2:
+                return 1,1
+            elif node == 3 and edge == 1:
+                return 3,-1
+            elif node == 3 and edge == 3:
+                return 1,-1
+        def getDegenNode(node,edge):
+            '''Return the other node that is degenerate with node from edge'''
+            if   node == 0 and edge == 0:
+                return 1
+            elif node == 0 and edge == 2:
+                return 2
+            elif node == 1 and edge == 0:
+                return 0
+            elif node == 1 and edge == 3:
+                return 3
+            elif node == 2 and edge == 1:
+                return 3
+            elif node == 2 and edge == 2:
+                return 0
+            elif node == 3 and edge == 1:
+                return 2
+            elif node == 3 and edge == 3:
+                return 1
 
-#         # Loop over all corners
-#         for isurf in xrange(self.nSurf):
-#             for inode in xrange(4): # Loop over the 4 nodes
-                
-#                 in_list,index = self._inNodeList(isurf,inode)
+        self.node_con = []
+         # Loop over all corners
+        for isurf in xrange(self.nSurf):
+            for inode in xrange(4): # Loop over the 4 nodes
+              
+                in_list,index = self._inNodeList(isurf,inode)
+                if in_list: # Its already in the list, don't do anything
+                    pass
+                else: 
+                    self.node_con.append([[isurf,inode]])
 
-#                 if in_list: # Its already in the list, don't do anything
-#                     pass
-#                 else: 
-#                     self.node_con.append([[isurf,inode]])
-
-#                     # Now we need to find the other nodes connected to this one.
-#                     # We do this by looking at the EDGES on either side of the given node
+                    # Now we need to find the other nodes connected to this one.
+                    # We do this by looking at the EDGES on either side of the given node
                     
-#                     e1,e2 = edgesFromNode(inode)
+                    e1,e2,s1,s2 = edgesFromNode(inode)
 
-#                     # Now get the edge index for these edges
-                    
-#                     icon1 = self._findConIndex(isurf,e1)
-#                     icon2 = self._findConIndex(isurf,e2)
+                    # Now get the edge index for these edges
+                    icon1,master1,degen1 = self._findEdgeIndex(isurf,e1)
+                    icon2,master2,degen2 = self._findEdgeIndex(isurf,e2)
+                  
+                    prop1 = True
+                    prop2 = True
+
+                    if self.con[icon1].type  == 0:
+                        prop1 = False
+                    elif self.con[icon1].type == 2:
+                        new_node = getDegenNode(inode,e1)
+                        self.node_con[-1].append([isurf,new_node])
+                       
+                        new_edge,s1 = getAdajacentEdge(new_node,e1)
+                        icon1,master1,degen1 = self._findEdgeIndex(isurf,new_edge)
+                        if self.con[icon1].type == 0:
+                            prop1 = False
+
+                    if self.con[icon2].type  == 0:
+                        prop2 = False
+                    elif self.con[icon2].type == 2:
+                        new_node = getDegenNode(inode,e2)
+                        self.node_con[-1].append([isurf,new_node])
+                       
+                        new_edge,s2 = getAdajacentEdge(new_node,e2)
+                        icon2,master2,degen2 = self._findEdgeIndex(isurf,new_edge)
+                        
+                        if self.con[icon2].type == 0:
+                            prop2 = False
+                      
+                    if prop1:
+                        while True:
+                            if master1:
+                                new_face = self.con[icon1].f2
+                                new_edge = self.con[icon1].e2
+                            else:
+                                new_face = self.con[icon1].f1
+                                new_edge = self.con[icon1].e1
+                            # end if
+                            
+                            # Find the node # on new face
+                            new_node=nodeFromEdge(new_edge,s1,self.con[icon1].dir)
+
+                            in_list,index = self._inNodeList(new_face,new_node)
+                            if not in_list:
+                                self.node_con[-1].append([new_face,new_node])
+                            else:
+                                break
+                            # Now get the OTHER edge on new node, look
+                            # for the icon and keep going
+
+                            new_edge,s1 = getAdajacentEdge(new_node,new_edge)
+                            
+                            icon1,master1,degen1 = self._findEdgeIndex(new_face,new_edge)
+                            
+                            if self.con[icon1].type == 2:
+                                # Add the other degen corner and keep going
+                                new_node = getDegenNode(new_node,new_edge)
+                                self.node_con[-1].append([new_face,new_node])
+                               
+                                new_edge,s1 = getAdajacentEdge(new_node,new_edge)
+                                icon1,master1,degen1 = self._findEdgeIndex(new_face,new_edge)
+                                if self.con[icon1].type == 0:
+                                    break
+
+                            elif self.con[icon1].type == 0:
+                                break 
+
+                        # end while
+                    if prop2:
+                        while True:
+                            if master2:
+                                new_face = self.con[icon2].f2
+                                new_edge = self.con[icon2].e2
+                            else:
+                                new_face = self.con[icon2].f1
+                                new_edge = self.con[icon2].e1
+                            # end if
+                            
+                            # Find the node # on new face
+                            new_node=nodeFromEdge(new_edge,s2,self.con[icon2].dir)
+                                                        
+                            in_list,index = self._inNodeList(new_face,new_node)
+                            if not in_list:
+                                self.node_con[-1].append([new_face,new_node])
+                            else:
+                                break
+                            # Now get the OTHER edge on new node, look
+                            # for the icon and keep going
+
+                            new_edge,s2 = getAdajacentEdge(new_node,new_edge)
+                          
+                            icon2,master2,degen2 = self._findEdgeIndex(new_face,new_edge)
+                            
+                            if self.con[icon2].type == 2:
+                                # Add the degen corner and break
+                                new_node = getDegenNode(new_node,new_edge)
+                                self.node_con[-1].append([new_face,new_node])
+                                
+                                new_edge,s2 = getAdajacentEdge(new_node,new_edge)
+                                icon2,master2,degen2 = self._findEdgeIndex(new_face,new_edge)
+                                
+                                if self.con[icon2].type == 0:
+                                    break
+
+                            elif self.con[icon2].type == 0:
+                                break 
+                                                        
+                        # end while
+                # end if
+            # end for
+        # end for
+
+        print 'node con'
+        for i in xrange(len(self.node_con)):
+            print self.node_con[i]
 
 
-
-#                 # end if
-
-
-
-#         print 'node con'
-#         for i in xrange(len(self.node_con)):
-#             print self.node_con[i]
-
-#         sys.exit(0)
 
 
     def _findEdgeIndex(self,isurf,edge=None):
@@ -1073,8 +1233,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end
         return
 
-
-
     def calcGlobalNumbering(self,sizes,surface_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
         if self.con == None:
@@ -1082,7 +1240,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
  calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
         # end if
-
  
         def add_master(counter):
             '''Add a master control point'''
@@ -1243,7 +1400,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                                 # end if
 
                         elif i == 0 and j == 0:             # Node 0
-
                             master,face,node = self._findNodeIndex(isurf,0)
                             if master:
                                 counter = add_master(counter)
