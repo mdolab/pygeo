@@ -316,3 +316,20 @@ def unique(s):
         if x not in u:
             u.append(x)
     return u
+
+
+
+
+
+def test_node(surf1,surf2,i,j,node_tol):
+
+    '''Test edge i on surf1 with edge j on surf2'''
+    # First get the values at the beginning, middle and end of each segment
+
+    val1 = surf1.getOrigValueCorner(i)
+    val2 = surf2.getOrigValueCorner(j)
+    
+    if e_dist(val1,val2) < node_tol:
+        return True
+    else:
+        return False
