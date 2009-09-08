@@ -2042,7 +2042,6 @@ a flap hinge line'
                 self.surfs[isurf].coef[i,j] = self.coef[ii].astype('d')
             # end for
         # end for
-
         return
 
     def getSizes( self ):
