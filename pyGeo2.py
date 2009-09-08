@@ -195,6 +195,40 @@ file_name=\'filename\' for iges init_type'
         
         print 'Loading plot3D file: %s ...'%(file_name)
 
+
+        def readNValues(handle,N,type):
+
+            '''Read N values of type 'float' or 'int' from file handle'''
+
+            if type == 'int':
+                values = zeros(N,'intc')
+            elif type == 'float':
+                values = zeros(N)
+            else:
+                print 'Error: type is not known. MUST be \'int\' or \'float\''
+            # end if
+
+            counter = 0
+            while counter < N:
+
+                aux = string.split(handle.readline())
+
+                if type == 'int':
+                    for i in xrange(len(aux)):
+                        values[counter] = int(aux[i])
+                        counter += 1
+                    # end for
+                else:
+                    for i in xrange(len(aux)):
+                        values[counter] = float(aux[i])
+                        counter += 1
+                    # end for
+                # end if
+            # end while
+            return values
+                    
+                    
+
         f = open(file_name,'r')
 
         # First load the number of patches
@@ -202,20 +236,7 @@ file_name=\'filename\' for iges init_type'
         
         print 'nSurf = %d'%(nSurf)
 
-        patchSizes = zeros(nSurf*3,'intc')
-
-        # We can do 24 sizes per line 
-        nHeaderLines = 3*nSurf / 24 
-        if 3*nSurf% 24 != 0: nHeaderLines += 1
-
-        counter = 0
-
-        for nline in xrange(nHeaderLines):
-            aux = string.split(f.readline())
-            for i in xrange(len(aux)):
-                patchSizes[counter] = int(aux[i])
-                counter += 1
-
+        patchSizes = readNValues(f,nSurf*3,'int')
         patchSizes = patchSizes.reshape([nSurf,3])
 
         assert patchSizes[:,2].all() == 1, \
@@ -225,23 +246,10 @@ file_name=\'filename\' for iges init_type'
         # Total points
         nPts = 0
         for i in xrange(nSurf):
-            nPts += patchSizes[i,0]*patchSizes[i,1]*patchSizes[i,2]
+            nPts += patchSizes[i,0]*patchSizes[i,1]
 
         print 'Number of Surface Points = %d'%(nPts)
-
-        nDataLines = int(nPts*3/6)
-        if nPts*3%6 !=0:  nDataLines += 1
-
-        dataTemp = zeros([nPts*3])
-        counter = 0
-     
-        for i in xrange(nDataLines):
-            aux = string.split(f.readline())
-            for j in xrange(len(aux)):
-                dataTemp[counter] = float(aux[j])
-                counter += 1
-            # end for
-        # end for
+        dataTemp = readNValues(f,3*nPts,'float')
         
         f.close() # Done with the file
 
@@ -265,7 +273,7 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for isurf in xrange(nSurf):
             surfs.append(pySpline.surf_spline(task='lms',X=patches[isurf],\
-                                                  ku=4,kv=4,Nctlu=13,Nctlv=13))
+                                                  ku=4,kv=4,Nctlu=6,Nctlv=6))
 
         self.surfs = surfs
         self.nSurf = nSurf
@@ -745,53 +753,53 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 # Next calculate the NODE connectivity. It should be possible to set
 # this from the edge information but with original data, this is easier.
       
-        self.node_con = []
+#         self.node_con = []
 
-        for isurf in xrange(self.nSurf):
-            for i in xrange(4): 
-                for jsurf in xrange(self.nSurf):
-                    for j in xrange(4):
+#         for isurf in xrange(self.nSurf):
+#             for i in xrange(4): 
+#                 for jsurf in xrange(self.nSurf):
+#                     for j in xrange(4):
                         
-                        if not [isurf,i] == [jsurf,j]: # Don't compare the same node
+#                         if not [isurf,i] == [jsurf,j]: # Don't compare the same node
                             
-                            coincident = test_node(self.surfs[isurf],self.surfs[jsurf],
-                                                   i,j,node_tol)
-                            if coincident:
+#                             coincident = test_node(self.surfs[isurf],self.surfs[jsurf],
+#                                                    i,j,node_tol)
+#                             if coincident:
                                 
-                                in_list1,index1 = self._inNodeList(isurf,i)
-                                in_list2,index2 = self._inNodeList(jsurf,j)
+#                                 in_list1,index1 = self._inNodeList(isurf,i)
+#                                 in_list2,index2 = self._inNodeList(jsurf,j)
 
-                                if not in_list1 and not in_list2:
-                                    # Add a new entry with both nodes
-                                    self.node_con.append([[isurf,i],[jsurf,j]])
-                                elif in_list1 and not in_list2:
-                                    # Add [jsurf,j] to index1
-                                    self.node_con[index1].append([jsurf,j])
-                                elif not in_list1 and in_list2:
-                                    # Add [isurf,i] to index2
-                                    self.node_con[index2].append([isurf,i])
-                                elif in_list1 and in_list2:
-                                    pass # Nothing to do since both already in list
-                                # end if
+#                                 if not in_list1 and not in_list2:
+#                                     # Add a new entry with both nodes
+#                                     self.node_con.append([[isurf,i],[jsurf,j]])
+#                                 elif in_list1 and not in_list2:
+#                                     # Add [jsurf,j] to index1
+#                                     self.node_con[index1].append([jsurf,j])
+#                                 elif not in_list1 and in_list2:
+#                                     # Add [isurf,i] to index2
+#                                     self.node_con[index2].append([isurf,i])
+#                                 elif in_list1 and in_list2:
+#                                     pass # Nothing to do since both already in list
+#                                 # end if
 
-                            else: # Not coincident Add the FIRST one
-                                  # if its not already in the
-                                  # list... this is because EVERY node
-                                  # will show up as isurf,i exactly once
-                                in_list,index = self._inNodeList(isurf,i)
-                                if not in_list:
-                                    self.node_con.append([[isurf,i]])
-                            # end if
-                        # end if
-                    # end for (j loop)
-                # end for (jsurf)
-            # end for (i loop)
-        # end for (isurf)
+#                             else: # Not coincident Add the FIRST one
+#                                   # if its not already in the
+#                                   # list... this is because EVERY node
+#                                   # will show up as isurf,i exactly once
+#                                 in_list,index = self._inNodeList(isurf,i)
+#                                 if not in_list:
+#                                     self.node_con.append([[isurf,i]])
+#                             # end if
+#                         # end if
+#                     # end for (j loop)
+#                 # end for (jsurf)
+#             # end for (i loop)
+#         # end for (isurf)
 
-        for i in xrange(len(self.node_con)):
-            print self.node_con[i]
-        # end for
-            
+#         for i in xrange(len(self.node_con)):
+#             print self.node_con[i]
+#         # end for
+   
 
         def isEdgeConnected(isurf,edge):
             '''Find if another edge is regurally connected to isurf,edge'''
@@ -827,7 +835,10 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                       e_con[i][1][1])
             self.con.append(edge(init_string))
         # end for
-        #self._calcNodeConnectivity()
+                
+        print 'Going to calculate node connectivity'
+        self._calcNodeConnectivity()
+
         design_group = []
         for isurf in xrange(self.nSurf):
             design_group.append([-1,-1]) # -1 means it isn't assigned
@@ -929,10 +940,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         print 'Edge con'
         self.printEdgeConnectivity()
-       
-      #   print 'Going to calculate node connectivity'
-        self._calcNodeConnectivity()
-
+    
         print 'Going to set edge connectivity'
         self._setEdgeConnectivity()
         print 'Time for Edge Calculation:',time.time()-timeA
@@ -1480,10 +1488,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for i in range(1,len(file)):
             self.con.append(edge(file[i]))
         # end for
-        print 'before:'
-        self.printEdgeConnectivity()
+        self._calcNodeConnectivity()
         self._sortEdgeConnectivity() # Edge Connections MUST be sorted
-        print 'after'
         self.printEdgeConnectivity()
         self._setEdgeConnectivity()
 
@@ -1597,6 +1603,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
     def checkCoef(self):
         '''Check all surface coefficients for consistency'''
         for isurf in xrange(self.nSurf):
+            print 'isurf:',isurf
             counter = self.surfs[isurf].checkCoef()
             if counter > 0:
                 print '%d control points on surface %d'%(counter,isurf)
@@ -1785,7 +1792,9 @@ with LAPACK'''
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
 
+
             if nrefsecs < X.shape[0]:
+
                 # Do the lms fit
                 x = pySpline.linear_spline(task='lms',X=X,\
                                                   Nctl=nrefsecs,k=2)
@@ -1812,6 +1821,10 @@ with LAPACK'''
                 rotnew = rot
 
             else: #nrefsecs > X.shape
+                if spacing == None:
+                    spacing = linspace(0,1,nrefsecs)
+                # end if
+
                 # Do the interpolate fit
                 x = pySpline.linear_spline(task='interpolate',X=X,k=2)
                 s = x.s
