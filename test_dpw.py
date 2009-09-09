@@ -42,9 +42,9 @@ import pyGeo2 as pyGeo
 # aircraft.writeIGES('dpw.igs')
 # sys.exit(0)
 
-aircraft = pyGeo.pyGeo('iges',file_name='dpw.igs',no_print=True)
+aircraft = pyGeo.pyGeo('iges',file_name='dpw.igs',no_print=False)
 aircraft.readEdgeConnectivity('dpw.con')
-sys.exit(0)
+
 # End-Type ref_axis attachments
 naf = 3
 x = [1147,1314,1804]
