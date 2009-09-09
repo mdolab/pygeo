@@ -15,6 +15,7 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 
 # pySpline 
 sys.path.append('../pySpline/python')
+import pySpline
 
 #cfd-csm pre (Optional)
 sys.path.append('../../pyHF/pycfd-csm/python/')
@@ -24,12 +25,11 @@ import pyGeo2 as pyGeo
 
 # This script reads a surfaced-based plot3d file as typically
 # outputted by aerosurf. It then creates a b-spline surfaces for each
-# # surface patch.
+# surface patch.
 # timeA = time.time()
 # aircraft = pyGeo.pyGeo('plot3d',file_name='dpw.xyz')
 # aircraft.calcEdgeConnectivity()
 # aircraft.writeEdgeConnectivity('dpw.con')
-# #aircraft.readEdgeConnectivity('aircraft.con')
 # aircraft.propagateKnotVectors()
 # aircraft.fitSurfaces()
 # timeA = time.time()
@@ -42,12 +42,9 @@ import pyGeo2 as pyGeo
 # aircraft.writeIGES('dpw.igs')
 # sys.exit(0)
 
-aircraft = pyGeo.pyGeo('iges',file_name='dpw.igs')
+aircraft = pyGeo.pyGeo('iges',file_name='dpw.igs',no_print=True)
 aircraft.readEdgeConnectivity('dpw.con')
-#aircraft.writeTecplot('dpw.dat',edges=True)
-
-
-
+sys.exit(0)
 # End-Type ref_axis attachments
 naf = 3
 x = [1147,1314,1804]
@@ -69,14 +66,12 @@ aircraft.addRefAxis([2,3,8,9],X[0:2,:],rot[0:2,:],nrefsecs=6)
 aircraft.addRefAxis([4,5,10,11,16,17],X[1:3,:],rot[1:3,:],nrefsecs=6)
 aircraft.addRefAxisCon(0,1,'end') # Innter Wing and Outer Wing ('Attach ra1 to ra0 with type 'end')
 
-coef0 = copy.deepcopy(aircraft.surfs[12].coef)
+
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
-                       
-#    ref_axis[0].x[:,1] = ref_axis[0].x0[:,1]*1.5
-
-    ref_axis[0].rot[:,1] = val
-    ref_axis[1].rot[:,1] = val
+  #   ref_axis[0].rot[:,1] = val
+#     ref_axis[1].rot[:,1] = val
+    ref_axis[0].scale[:] = 1.0
     return ref_axis
 
 
@@ -86,22 +81,15 @@ aircraft.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
 idg = aircraft.DV_namesGlobal #NOTE: This is constant (idg -> id global
 print 'idg',idg
 
-aircraft.DV_listGlobal[idg['span']].value =5
-
+aircraft.DV_listGlobal[idg['span']].value =-10
+coef0 = copy.deepcopy(aircraft.surfs[12].coef) # Pluck out coef before update
 aircraft.update()
-#aircraft.checkCoef()
-aircraft.writeTecplot('dpw.dat',edges=True,links=True)
-
-
 
 # Start of mesh warping testing
-
-
 
 coef = copy.deepcopy(aircraft.surfs[12].coef)
 Nu = coef.shape[0]
 Nv = coef.shape[1]
-
 
 file_name = 'warp_test.dat'
 f = open(file_name ,'w')
@@ -131,7 +119,6 @@ def delJ(i,j,vals):
                   (vals[i,j,1]-vals[i,j-1,1]) ** 2 + \
                   (vals[i,j,2]-vals[i,j-1,2]) ** 2)
 
-
 for i in xrange(1,Nu):
     for j in xrange(1,Nv):
         S[i,j,0] = S[i-1,j  ,0] + delI(i,j,coef)
@@ -142,28 +129,35 @@ for i in xrange(1,Nu):
 for j in xrange(1,Nv):
     S[0,j,1] = S[0,j-1,1] + delJ(0,j,coef)
 
-
 # Do a no-check normalization
 for i in xrange(Nu):
     for j in xrange(Nv):
         S[i,j,0] /= S[-1,j,0]
         S[i,j,1] /= S[i,-1,1]
 
-dface = zeros((Nu,Nv,3))
+dface = zeros((Nu,Nv,2))
 
 # Set up corner perturbations:
 
-dface[0,0] = coef[0,0]-coef0[0,0]
-dface[0,-1] = coef[0,-1]-coef0[0,-1]
-dface[-1,0] = coef[-1,0]-coef0[-1,0]
-dface[-1,-1] = coef[-1,-1]-coef0[-1,-1]
+dface[0,0] = 0
+dface[0,-1] = 0
+#Hard code this up:
+
+temp = pySpline.linear_spline('interpolate',X=coef0[:,0],k=2)
+u = temp.projectPoint(coef[-1,0])
+
+temp = pySpline.linear_spline('interpolate',X=coef0[-1,:],k=2)
+v = temp.projectPoint(coef[-1,0])
+
+print 'u,v:',u,v
+dface[-1,0] = [u[0]-1,v[0]-0]
+dface[-1,-1] = 0
 
 # Edge 0
 for i in xrange(1,Nu):
     j = 0
     WTK2 = S[i,j,0]
     WTK1 = 1.0-WTK2
-    
     dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
 
 # Edge 1
@@ -189,6 +183,8 @@ for j in xrange(1,Nv):
 
 eps = 1.0e-14
 
+print 'S:',S[:,:,0]
+
 for i in xrange(1,Nu-1):
     for j in xrange(1,Nv-1):
         WTI2 = S[i,j,0]
@@ -207,56 +203,51 @@ for i in xrange(1,Nu-1):
         
         dface[i,j,1] = (abs(deli)*deli + abs(delj)*delj)/ \
             max( ( abs (deli) + abs(delj),eps))
-
-        deli = WTI1 * dface[0,j,2] + WTI2 * dface[-1,j,2]
-        delj = WTJ1 * dface[i,0,2] + WTJ2 * dface[i,-1,2]
-        
-        dface[i,j,2] = (abs(deli)*deli + abs(delj)*delj)/  \
-            max( ( abs (deli) + abs(delj),eps))
     # end for
 # end for
 
-# That was for the corners. Now do it for the edges
+print 'dface check:',dface[:,:,1]
 
-# Now subtract off the edge peturbations:
+# Now we know the 'parametric movements' we can make splines for each 'line' and move 'em accordingly
 
-#Edge 0 adn Edge 1
-for i in xrange(1,Nu-1):
-    dface[i,0] = coef[i,0]-coef0[i,0]-dface[i,0]
-    dface[i,-1] = coef[i,-1]-coef0[i,-1]-dface[i,-1]
-    coef[i,0] -= dface[i,0]
-    coef[i,-1] -= dface[i,-1]
-#Edge 2 adn Edge 3
-for j in xrange(1,Nv-1):
-    dface[0,j] = coef[0,j]-coef0[0,j]-dface[0,j]
-    dface[-1,j] = coef[-1,j]-coef0[-1,j]-dface[-1,j]
-    coef[0,j] -= dface[0,j]
-    coef[-1,j] -= dface[-1,j]
+# Add the displacements in quadrature
 
-# Now do the inside peturbations again
+dtemp = zeros([Nv,Nv,2,3])
 
-for i in xrange(1,Nu-1):
-    for j in range(1,Nv-1):
-        WTI2 = S[i,j,0]
-        WTI1 = 1.0-WTI2
-        WTJ2 = S[i,j,1]
-        WTJ1 = 1.0-WTJ2
+for i in xrange(Nu):
+    for j in xrange(Nv):
+        temp = pySpline.linear_spline('interpolate',X=coef[:,j],k=2)
+        try_val = S[i,j,0]+dface[i,j,0]
+        if try_val > 1:
+            try_val = 1
+        if try_val < 0:
+            try_val = 0
+        
+        dtemp[i,j,0] = temp.getValue(try_val)-coef[i,j]
 
-        deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
-        delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
+for j in xrange(Nv):
+    for i in xrange(Nu):
+        temp = pySpline.linear_spline('interpolate',X=coef[i,:],k=2)
+        try_val = S[i,j,1]+dface[i,j,1]
+        if try_val > 1:
+            try_val = 1
+        if try_val < 0:
+            try_val = 0
 
-        coef[i,j,0] = coef[i,j,0] + (coef[i,j,0] - coef0[i,j,0]) - dface[i,j,0] - deli -delj
 
-        deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
-        delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
+        dtemp[i,j,1] = temp.getValue(try_val)-coef[i,j]
 
-        coef[i,j,1] = coef[i,j,1] + (coef[i,j,1] - coef0[i,j,1]) - dface[i,j,1] - deli - delj
+# Now merge the dtmeps and set back to coef
 
-        deli = WTI1 * dface[0,j,2] + WTI2 * dface[-1,j,2]
-        delj = WTJ1 * dface[i,0,2] + WTJ2 * dface[i,-1,2]
+for i in xrange(Nu):
+    for j in xrange(Nv):
+        coef[i,j] = coef[i,j] + dtemp[i,j,0] + dtemp[i,j,1]
 
-        coef[i,j,2] = coef[i,j,2] + (coef[i,j,2] - coef0[i,j,2]) - dface[i,j,2] - deli - delj
 
+
+
+
+print 'dtemp:',dtemp[-1,0,1]+dtemp[-1,0,0]
 
 
 f.write('Zone T=%s I=%d J=%d\n'%('coef_warp',Nu,Nv))
@@ -269,7 +260,7 @@ for j in xrange(Nv):
 print 'done'
 
 
-# Force set those coef in the global list:
+# # Force set those coef in the global list:
 
 l_list = aircraft.l_index[12]
 for i in xrange(Nu):
@@ -277,4 +268,4 @@ for i in xrange(Nu):
         aircraft.coef[l_list[i,j]] = coef[i,j]
 
 aircraft._updateSurfaceCoef()
-aircraft.writeTecplot('dpw.dat',edges=True,links=True)
+aircraft.writeTecplot('dpw.dat',edges=True,directions=True,labels=True)
