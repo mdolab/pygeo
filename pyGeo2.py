@@ -141,10 +141,20 @@ class pyGeo():
         use the aircraft components to create surfaces.
         '''
         
-        print ' '
-        print '------------------------------------------------'
-        print 'pyGeo Initialization Type is: %s'%(init_type)
-        print '------------------------------------------------'
+        # First thing to do is to check if we want totally silent
+        # operation i.e. no print statments
+
+        if 'no_print' in kwargs:
+            self.NO_PRINT = kwargs['no_print']
+        else:
+            self.NO_PRINT = False
+        # end if
+        
+        if not self.NO_PRINT:
+            print ' '
+            print '------------------------------------------------'
+            print 'pyGeo Initialization Type is: %s'%(init_type)
+            print '------------------------------------------------'
 
         self.ref_axis       = []
         self.ref_axis_con   = []
@@ -193,8 +203,8 @@ file_name=\'filename\' for iges init_type'
 
         '''Load a plot3D file and create the splines to go with each patch'''
         
-        print 'Loading plot3D file: %s ...'%(file_name)
-
+        if not self.NO_PRINT:
+            print 'Loading plot3D file: %s ...'%(file_name)
 
         def readNValues(handle,N,type):
 
@@ -233,8 +243,9 @@ file_name=\'filename\' for iges init_type'
 
         # First load the number of patches
         nSurf = int(f.readline())
-        
-        print 'nSurf = %d'%(nSurf)
+
+        if not self.NO_PRINT:
+            print 'nSurf = %d'%(nSurf)
 
         patchSizes = readNValues(f,nSurf*3,'int')
         patchSizes = patchSizes.reshape([nSurf,3])
@@ -248,7 +259,9 @@ file_name=\'filename\' for iges init_type'
         for i in xrange(nSurf):
             nPts += patchSizes[i,0]*patchSizes[i,1]
 
-        print 'Number of Surface Points = %d'%(nPts)
+        if not self.NO_PRINT:
+            print 'Number of Surface Points = %d'%(nPts)
+
         dataTemp = readNValues(f,3*nPts,'float')
         
         f.close() # Done with the file
@@ -273,7 +286,8 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for isurf in xrange(nSurf):
             surfs.append(pySpline.surf_spline(task='lms',X=patches[isurf],\
-                                                  ku=4,kv=4,Nctlu=15,Nctlv=15))
+                                                  ku=4,kv=4,Nctlu=5,Nctlv=5,\
+                                                  no_print=self.NO_PRINT))
 
         self.surfs = surfs
         self.nSurf = nSurf
@@ -282,7 +296,8 @@ file_name=\'filename\' for iges init_type'
     def _readIges(self,file_name,*args,**kwargs):
 
         '''Load a Iges file and create the splines to go with each patch'''
-        print 'File Name is: %s'%(file_name)
+        if not self.NO_PRINT:
+            print 'File Name is: %s'%(file_name)
         f = open(file_name,'r')
         file = []
         for line in f:
@@ -312,8 +327,9 @@ file_name=\'filename\' for iges init_type'
             # end if
         # end for
         self.nSurf = len(surf_list)
-        
-        print 'Found %d surfaces in Iges File.'%(self.nSurf)
+
+        if not self.NO_PRINT:
+            print 'Found %d surfaces in Iges File.'%(self.nSurf)
 
         self.surfs = [];
         #print surf_list
@@ -367,7 +383,7 @@ file_name=\'filename\' for iges init_type'
 
             self.surfs.append(pySpline.surf_spline(\
                     task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
-                        range=range))
+                        range=range,no_print=self.NO_PRINT))
         # end for
 
         return 
@@ -592,7 +608,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # end for
 
                 # Now we can generate and append the surfaces
-                print 'generating surface'
+
                 self.surfs.append(pySpline.surf_spline(\
                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
                             Nctlv=nsections[i],*args,**kwargs))
@@ -608,10 +624,14 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         else:  #No breaks
             Nctlv = naf
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],\
-                                                       Nctlv=Nctlv,*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],\
-                                                       Nctlv=Nctlv,*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],
+                                                   Nctlv=Nctlv,
+                                                   no_print=self.NO_PRINT,
+                                                   *args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],
+                                                   Nctlv=Nctlv,
+                                                   no_print=self.NO_PRINT,
+                                                   *args,**kwargs))
             self.nSurf = 2
 
 
@@ -688,8 +708,9 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         if not self.con == None:
             print 'Warning edge connectivity will be overwritten.'
         # end if
-        print  ' '
-        print 'Attempting to Determine Edge Connectivity'
+        if not self.NO_PRINT:
+            print  ' '
+            print 'Attempting to Determine Edge Connectivity'
 
         e_con = [] #Temporary storage for edge entities
      
@@ -705,7 +726,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                         cont_flag = 0 # By Default only C0 continuity
                         if coinc:
                             e_con.append([[isurf,i],[jsurf,j],\
-                                              cont_flag,dir_flag,1,-1])
+                                              cont_flag,dir_flag,1,-1,0])
                         # end if
                     # end for
                 # end for
@@ -728,7 +749,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                     # Check if degenerate:
                     degen,values = self.surfs[isurf].checkDegenerateEdge(i)
                     if degen:
-                        e_con.append([[isurf,i],[-1,-1],0,1,2,-1])
+                        e_con.append([[isurf,i],[-1,-1],0,1,2,-1,0])
                     # end if
                 # end if
             # end for
@@ -745,7 +766,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                     # end if
                 # end for
                 if not found_it:
-                    e_con.append([[isurf,i],[-1,-1],0,1,0,-1])
+                    e_con.append([[isurf,i],[-1,-1],0,1,0,-1,0])
                 # end if
             # end for
         # end for
@@ -829,14 +850,15 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         self.con = []
         for i in xrange(len(e_con)):
-            init_string ='%3d %3d %3d %3d %3d %3d %3d %3d %3d %3d\n'\
+            init_string ='%3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d\n'\
                 %(i,e_con[i][0][0],e_con[i][0][1],e_con[i][4],e_con[i][2],
-                  e_con[i][3],e_con[i][5],10,e_con[i][1][0],\
+                  e_con[i][3],e_con[i][6],e_con[i][5],10,e_con[i][1][0],\
                       e_con[i][1][1])
             self.con.append(edge(init_string))
         # end for
-                
-        print 'Going to calculate node connectivity'
+             
+        if not self.NO_PRINT:
+            print 'Going to calculate node connectivity'
         self._calcNodeConnectivity()
 
         design_group = []
@@ -937,13 +959,11 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         for i in xrange(len(self.con)):
             self.con[i].dg = design_group[self.con[i].f1][self.con[i].e1/2]
         # end for
-
-        print 'Edge con'
-        self.printEdgeConnectivity()
+        if not self.NO_PRINT:
+            print 'Edge con'
+            self.printEdgeConnectivity()
     
-        print 'Going to set edge connectivity'
         self._setEdgeConnectivity()
-        print 'Time for Edge Calculation:',time.time()-timeA
         return
 
  
@@ -1163,10 +1183,10 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 # end if
             # end for
         # end for
-
-        print 'node con'
-        for i in xrange(len(self.node_con)):
-            print self.node_con[i]
+        if not self.NO_PRINT:
+            print 'node con'
+            for i in xrange(len(self.node_con)):
+                print self.node_con[i]
 
 
 
@@ -1443,7 +1463,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         '''Print the Edge Connectivity'''
         print ' '
-        print 'Connection | Face    Edge  | Type | Continutiy | Dir? | Driving Group |\
+        print 'Connection | Face    Edge  | Type | Continutiy | Dir? | \
+Intersect? | Driving Group |\
  Nctl | Face    Edge     |'
         for i in xrange(len(self.con)):
             self.con[i].write_info(i,sys.stdout)
@@ -1457,8 +1478,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         '''Write the current edge connectivity to a file'''
 
         f = open(file_name ,'w')
-        f.write('Connection | Face    Edge  | Type | Continutiy | Dir? | Driving Group |\
- Nctl | Face    Edge     |\n')
+        f.write('Connection | Face    Edge  | Type | Continutiy | Dir? | \
+Intersect? | Driving Group | Nctl | Face    Edge     |\n')
         for i in xrange(len(self.con)):
             self.con[i].write_info(i,f)
         # end for
@@ -1490,7 +1511,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
         self._calcNodeConnectivity()
         self._sortEdgeConnectivity() # Edge Connections MUST be sorted
-        self.printEdgeConnectivity()
+        if not self.NO_PRINT:
+            self.printEdgeConnectivity()
         self._setEdgeConnectivity()
 
         return
@@ -1591,8 +1613,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 # end if
             # end for
         # end for
-
-        print 'recomputing surfaces...'
+        if not self.NO_PRINT:
+            print 'recomputing surfaces...'
         for isurf in xrange(self.nSurf):
             self.surfs[isurf].recompute()
         # end for
@@ -1628,10 +1650,10 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         Npts, g_index,l_index = self.calcGlobalNumbering(sizes)
         
         self._initJacobian(Npts,Nctl)
-        
-        print '------------- Fitting Surfaces Globally ------------------'
-        print 'Npts:',Npts
-        print 'Nctl:',Nctl
+        if not self.NO_PRINT:
+            print '------------- Fitting Surfaces Globally ------------------'
+            print 'Npts:',Npts
+            print 'Nctl:',Nctl
 
         if USE_PETSC:
             pts = PETSc.Vec()
@@ -1710,7 +1732,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             self.J.assemblyBegin()
             self.J.assemblyEnd()
         # end if
-        print 'Jacobian Matrix Assembled'
+        if not self.NO_PRINT:
+            print 'Jacobian Matrix Assembled'
         
         # Now Solve
         self._solve(X,pts,Npts,Nctl) # with RHS pts
@@ -1719,7 +1742,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
     def _solve(self,X,rhs,Npts,Nctl):
         '''Solve for the control points'''
-        print 'LMS solving...'
+        if not self.NO_PRINT:
+            print 'LMS solving...'
 
         if USE_PETSC:
             ksp = PETSc.KSP()
@@ -1781,8 +1805,8 @@ with LAPACK'''
                        point_select=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
-
-            print 'Adding ref axis...'
+            if not self.NO_PRINT:
+                print 'Adding ref axis...'
             # A couple of things can happen here: 
             # 1. nsections < len(X)
             #    -> We do a LMS fit on the ref axis
@@ -2080,10 +2104,6 @@ a flap hinge line'
                 
         NdvLocal = N-(NdvNormal+NdvGlobal)
 
-        # print 'NdvGlobal:',NdvGlobal
-        # print 'Ndv:',Ndv
-        # print 'Nctl:',Nctl
-
         return NdvGlobal, NdvNormal, NdvLocal, Nctl
 
 
@@ -2357,7 +2377,8 @@ a flap hinge line'
 # ----------------------------------------------------------------------
 
     def writeTecplot(self,file_name,surfs=True,edges=False,\
-                         ref_axis=True,links=False):
+                         ref_axis=True,links=False,directions=False,\
+                         labels=False):
         '''Write the pyGeo Object to Tecplot'''
 
         # ---------------------------
@@ -2434,6 +2455,29 @@ a flap hinge line'
             # end for
         # end if
               
+        # ---------------------------------
+        #    Write out The Surface Directions
+        # ---------------------------------
+
+        if directions == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf].writeDirections(f,isurf)
+            # end for
+        # end if
+
+        # ---------------------------------
+        #    Write out The Labels
+        # ---------------------------------
+        if labels == True:
+            f2 = open('labels.dat','w')
+            for isurf in xrange(self.nSurf):
+                midu = floor(self.surfs[isurf].Nctlu/2)
+                midv = floor(self.surfs[isurf].Nctlv/2)
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"Surface %d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],2*isurf+1,isurf+1)
+                f2.write('%s'%(text_string))
+            # end for 
+            f2.close()
+
         f.close()
         sys.stdout.write('\n')
         return
@@ -2546,8 +2590,9 @@ a flap hinge line'
         lie on the edges between surfaces. Often, these points must be used
         twice on two different surfaces for load/displacement transfer.        
         '''
-        print ''
-        print 'Attaching a discrete surface to the Geometry Object...'
+        if not self.NO_PRINT:
+            print ''
+            print 'Attaching a discrete surface to the Geometry Object...'
 
         if patch_list == None:
             patch_list = range(self.nSurf)
@@ -2595,10 +2640,11 @@ a flap hinge line'
         # end for
 
         # Now run the csm_pre command 
-        print 'Running CSM_PRE...'
+        if not self.NO_PRINT:
+            print 'Running CSM_PRE...'
         [dist,nearest_elem,uvw,base_coord,weightt,weightr] = \
             csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
-        print 'Done CSM_PRE...'
+
         # All we need from this is the nearest_elem array and the uvw array
 
         # First we back out what patch nearest_elem belongs to:
@@ -2651,7 +2697,8 @@ a flap hinge line'
 
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()
-        print 'Done Surface Attachment'
+        if not self.NO_PRINT:
+            print 'Done Surface Attachment'
 
         return dist,patchID,uv
 
@@ -2681,7 +2728,8 @@ a flap hinge line'
     def calcSurfaceDerivative(self,patchID,uv,indices=None,dPtdCoef=None):
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
-        print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
+        if not self.NO_PRINT:
+            print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
         timeA = time.time()
         
         if USE_PETSC:
@@ -2752,7 +2800,8 @@ a flap hinge line'
 
         self.dPtdCoef = dPtdCoef # Make sure we're dealing with the same matrix
 
-        print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
+        if not self.NO_PRINT:
+            print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
 
         return
 
@@ -2845,6 +2894,10 @@ a flap hinge line'
      
         return global_geo, tacs_surfs
    
+  
+
+
+
 
 class edge(object):
 
@@ -2868,10 +2921,11 @@ class edge(object):
         self.type = int(aux[3])
         self.cont = int(aux[4])
         self.dir  = int(aux[5])
-        self.dg   = int(aux[6])
-        self.Nctl = int(aux[7])
-        self.f2   = int(aux[8])
-        self.e2   = int(aux[9])
+        self.intersect = int(aux[6])
+        self.dg   = int(aux[7])
+        self.Nctl = int(aux[8])
+        self.f2   = int(aux[9])
+        self.e2   = int(aux[10])
 
         if self.type == 0: # Free Edge
             self.cont  = -1
@@ -2886,9 +2940,9 @@ class edge(object):
 
     def write_info(self,i,handle):
 
-        handle.write('%3d        |%3d     %3d    |%3d   | %3d        |%3d   \
-| %3d           | %3d  | %3d     %3d      |\n'\
-              %(i,self.f1,self.e1,self.type,self.cont,self.dir,\
+        handle.write('%3d        |%3d     %3d    |%3d   | %3d        |\
+%3d   | %3d        | %3d           | %3d  | %3d     %3d      |\n'\
+              %(i,self.f1,self.e1,self.type,self.cont,self.dir,self.intersect,\
                     self.dg,self.Nctl,self.f2,self.e2))
         
         return
