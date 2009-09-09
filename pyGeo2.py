@@ -273,7 +273,7 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for isurf in xrange(nSurf):
             surfs.append(pySpline.surf_spline(task='lms',X=patches[isurf],\
-                                                  ku=4,kv=4,Nctlu=6,Nctlv=6))
+                                                  ku=4,kv=4,Nctlu=15,Nctlv=15))
 
         self.surfs = surfs
         self.nSurf = nSurf
