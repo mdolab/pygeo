@@ -69,7 +69,7 @@ aircraft.addRefAxis([2,3,8,9],X[0:2,:],rot[0:2,:],nrefsecs=6)
 aircraft.addRefAxis([4,5,10,11,16,17],X[1:3,:],rot[1:3,:],nrefsecs=6)
 aircraft.addRefAxisCon(0,1,'end') # Innter Wing and Outer Wing ('Attach ra1 to ra0 with type 'end')
 
-coef0 = copy.deepcopy(aircraft.surfs[3].coef)
+coef0 = copy.deepcopy(aircraft.surfs[12].coef)
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
                        
@@ -86,7 +86,7 @@ aircraft.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
 idg = aircraft.DV_namesGlobal #NOTE: This is constant (idg -> id global
 print 'idg',idg
 
-aircraft.DV_listGlobal[idg['span']].value =45
+aircraft.DV_listGlobal[idg['span']].value =5
 
 aircraft.update()
 #aircraft.checkCoef()
@@ -98,7 +98,7 @@ aircraft.writeTecplot('dpw.dat',edges=True,links=True)
 
 
 
-coef = copy.deepcopy(aircraft.surfs[3].coef)
+coef = copy.deepcopy(aircraft.surfs[12].coef)
 Nu = coef.shape[0]
 Nv = coef.shape[1]
 
@@ -218,8 +218,46 @@ for i in xrange(1,Nu-1):
 
 # That was for the corners. Now do it for the edges
 
+# Now subtract off the edge peturbations:
 
-coef += dface
+#Edge 0 adn Edge 1
+for i in xrange(1,Nu-1):
+    dface[i,0] = coef[i,0]-coef0[i,0]-dface[i,0]
+    dface[i,-1] = coef[i,-1]-coef0[i,-1]-dface[i,-1]
+    coef[i,0] -= dface[i,0]
+    coef[i,-1] -= dface[i,-1]
+#Edge 2 adn Edge 3
+for j in xrange(1,Nv-1):
+    dface[0,j] = coef[0,j]-coef0[0,j]-dface[0,j]
+    dface[-1,j] = coef[-1,j]-coef0[-1,j]-dface[-1,j]
+    coef[0,j] -= dface[0,j]
+    coef[-1,j] -= dface[-1,j]
+
+# Now do the inside peturbations again
+
+for i in xrange(1,Nu-1):
+    for j in range(1,Nv-1):
+        WTI2 = S[i,j,0]
+        WTI1 = 1.0-WTI2
+        WTJ2 = S[i,j,1]
+        WTJ1 = 1.0-WTJ2
+
+        deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
+        delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
+
+        coef[i,j,0] = coef[i,j,0] + (coef[i,j,0] - coef0[i,j,0]) - dface[i,j,0] - deli -delj
+
+        deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
+        delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
+
+        coef[i,j,1] = coef[i,j,1] + (coef[i,j,1] - coef0[i,j,1]) - dface[i,j,1] - deli - delj
+
+        deli = WTI1 * dface[0,j,2] + WTI2 * dface[-1,j,2]
+        delj = WTJ1 * dface[i,0,2] + WTJ2 * dface[i,-1,2]
+
+        coef[i,j,2] = coef[i,j,2] + (coef[i,j,2] - coef0[i,j,2]) - dface[i,j,2] - deli - delj
+
+
 
 f.write('Zone T=%s I=%d J=%d\n'%('coef_warp',Nu,Nv))
 f.write('DATAPACKING=POINT\n')
@@ -228,3 +266,15 @@ for j in xrange(Nv):
         f.write('%f %f %f \n'%(coef[i,j,0],coef[i,j,1],coef[i,j,2]))
     # end for
 # end for
+print 'done'
+
+
+# Force set those coef in the global list:
+
+l_list = aircraft.l_index[12]
+for i in xrange(Nu):
+    for j in xrange(Nv):
+        aircraft.coef[l_list[i,j]] = coef[i,j]
+
+aircraft._updateSurfaceCoef()
+aircraft.writeTecplot('dpw.dat',edges=True,links=True)
