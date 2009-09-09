@@ -1640,6 +1640,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             X = PETSc.Vec()
             X.createSeq(Nctl*3)
 
+            PETSC_INSERT_MODE = PETSc.InsertMode.ADD_VALUES
+
         else:
             pts = zeros(Npts*3)
             X = zeros(Nctl*3)
@@ -1696,9 +1698,9 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 #                     self.J[3*ii  ,index  ] = self.J[3*ii  ,index] + x
 #                     self.J[3*ii+1,index+1] = self.J[3*ii+1,index] + x
 #                     self.J[3*ii+2,index+2] = self.J[3*ii+2,index] + x
-                    self.J.setValue(3*ii    ,index    ,x,addv=True)
-                    self.J.setValue(3*ii + 1,index + 1,x,addv=True)
-                    self.J.setValue(3*ii + 2,index + 2,x,addv=True)
+                    self.J.setValue(3*ii    ,index    ,x, PETSC_INSERT_MODE)
+                    self.J.setValue(3*ii + 1,index + 1,x, PETSC_INSERT_MODE)
+                    self.J.setValue(3*ii + 2,index + 2,x, PETSC_INSERT_MODE)
 
 
                 # end for
@@ -2681,7 +2683,10 @@ a flap hinge line'
 
         print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
         timeA = time.time()
-
+        
+        if USE_PETSC:
+            PETSC_INSERT_MODE = PETSc.InsertMode.ADD_VALUES
+        # end if
         # If no matrix is provided, use self.dPtdCoef
         if dPtdCoef == None:
             dPtdCoef = self.dPtdCoef
@@ -2727,11 +2732,14 @@ a flap hinge line'
                         uv[i][0],uv[i][1],u_list[ii],v_list[jj])
 
                     index = 3*self.l_index[patchID[i]][u_list[ii],v_list[jj]]
-                    dPtdCoef[3*indices[i]  ,index  ] = x
-                    dPtdCoef[3*indices[i]+1,index+1] = x
-                    dPtdCoef[3*indices[i]+2,index+2] = x
-                    # for k in xrange(3):
-                    #     dPtdCoef.setValue( 3*indices[i]+k, index+k, x )
+#                    dPtdCoef[3*indices[i]  ,index  ] = x
+#                    dPtdCoef[3*indices[i]+1,index+1] = x
+#                    dPtdCoef[3*indices[i]+2,index+2] = x
+
+                    dPtdCoef.setValue( 3*indices[i]  , index  ,x,PETSC_INSERT_MODE)
+                    dPtdCoef.setValue( 3*indices[i]+1, index+1,x,PETSC_INSERT_MODE)
+                    dPtdCoef.setValue( 3*indices[i]+2, index+2,x,PETSC_INSERT_MODE)
+
                 # end for
             # end for
         # end for 
