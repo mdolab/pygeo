@@ -156,22 +156,40 @@ class pyGeo():
             print 'pyGeo Initialization Type is: %s'%(init_type)
             print '------------------------------------------------'
 
-        self.ref_axis       = []
-        self.ref_axis_con   = []
-        self.DV_listGlobal  = []
-        self.DV_listNormal  = []
-        self.DV_listLocal   = []
-        self.DV_namesGlobal = {}
-        self.DV_namesNormal = {}
-        self.DV_namesLocal  = {}
+        self.ref_axis       = [] # Reference Axis list
+        self.ref_axis_con   = [] # Reference Axis connection list
+        self.DV_listGlobal  = [] # Global Design Variable List
+        self.DV_listNormal  = [] # Normal Design Variable List
+        self.DV_listLocal   = [] # Local Design Variable List
+        self.DV_namesGlobal = {} # Names of Global Design Variables
+        self.DV_namesNormal = {} # Names of Normal Design Variables
+        self.DV_namesLocal  = {} # Names of Local Design Variables
         self.petsc_coef = None # Global vector of PETSc coefficients
-        self.J  = None
-        self.dCoefdx  = None
-        self.dPtdCoef = None
-        self.dPtdx    = None
-        self.con = None
-        self.g_index = None
-        self.l_index = None
+        self.J  = None           # Jacobian for full surface fitting
+        self.dCoefdx  = None     # Derivative of control points wrt
+                                 # design variables
+        self.dPtdCoef = None     # Derivate of surface points wrt
+                                 # control points
+        self.dPtdx    = None     # Multiplication of above matricies,
+                                 # derivative of surface points wrt
+                                 # design variables
+        self.con = None          # List of edge connection objects
+        self.node_con = None     # The node connectivity list
+        self.g_index = None      # Global Index: This is the length of
+                                 # the reduced set of control points
+                                 # and contains a list that points to
+                                 # the surface and index of each point
+                                 # that is logically the same
+        self.l_index = None      # A entry for each surface (Nu,Nv)
+                                 # which points to the the index in
+                                 # the global list that is its master
+                                 # (driving coefficient)
+
+        self.surfs = None        # The list of surface (pySpline surf)
+                                 # objects
+        self.nSurf = None        # The total number of surfaces
+        self.coef  = None        # The global (reduced) set of control
+                                 # points
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as \
@@ -207,9 +225,7 @@ file_name=\'filename\' for iges init_type'
             print 'Loading plot3D file: %s ...'%(file_name)
 
         def readNValues(handle,N,type):
-
             '''Read N values of type 'float' or 'int' from file handle'''
-
             if type == 'int':
                 values = zeros(N,'intc')
             elif type == 'float':
@@ -220,9 +236,7 @@ file_name=\'filename\' for iges init_type'
 
             counter = 0
             while counter < N:
-
                 aux = string.split(handle.readline())
-
                 if type == 'int':
                     for i in xrange(len(aux)):
                         values[counter] = int(aux[i])
@@ -236,8 +250,6 @@ file_name=\'filename\' for iges init_type'
                 # end if
             # end while
             return values
-                    
-                    
 
         f = open(file_name,'r')
 
@@ -1818,7 +1830,6 @@ with LAPACK'''
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
 
-
             if nrefsecs < X.shape[0]:
 
                 # Do the lms fit
@@ -1894,7 +1905,7 @@ with LAPACK'''
             # end if
 
             # Now parse out duplicates and sort
-            coef_list = unique(coef_list)
+            coef_list = unique(coef_list) #unique is in geo_utils
             coef_list.sort()
             N = len(coef_list)
             for i in xrange(len(coef_list)):
@@ -1935,7 +1946,7 @@ is only available for reference axis with 2 points. A typical usage is for \
 a flap hinge line'
             
             s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
-                self.ref_axis[axis2].xs.getValue(1))
+                self.ref_axis[axis2].xs.getValue(1.0))
 
             M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
             D = dot(M,D)

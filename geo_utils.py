@@ -318,13 +318,10 @@ def unique(s):
     return u
 
 
-
-
-
 def test_node(surf1,surf2,i,j,node_tol):
 
     '''Test edge i on surf1 with edge j on surf2'''
-    # First get the values at the beginning, middle and end of each segment
+    # First get the two values
 
     val1 = surf1.getOrigValueCorner(i)
     val2 = surf2.getOrigValueCorner(j)
@@ -335,194 +332,92 @@ def test_node(surf1,surf2,i,j,node_tol):
         return False
 
 
+# ------------ Python Surface Mesh Warping Implementation -----------
 
+def delI(i,j,vals):
+    return sqrt( ( vals[i,j,0]-vals[i-1,j,0]) ** 2 + \
+                  (vals[i,j,1]-vals[i-1,j,1]) ** 2 + \
+                  (vals[i,j,2]-vals[i-1,j,2]) ** 2)
 
+def delJ(i,j,vals):
+    return sqrt( ( vals[i,j,0]-vals[i,j-1,0]) ** 2 + \
+                  (vals[i,j,1]-vals[i,j-1,1]) ** 2 + \
+                  (vals[i,j,2]-vals[i,j-1,2]) ** 2)
 
+def parameterizeFace(Nu,Nv,coef):
 
+    '''Parameterize a pyGeo surface'''
+    S = zeros([Nu,Nv,2])
 
+    for i in xrange(1,Nu):
+        for j in xrange(1,Nv):
+            S[i,j,0] = S[i-1,j  ,0] + delI(i,j,coef)
+            S[i,j,1] = S[i  ,j-1,1] + delJ(i,j,coef)
 
+    for i in xrange(1,Nu):
+        S[i,0,0] = S[i-1,0,0] + delI(i,0,coef)
+    for j in xrange(1,Nv):
+        S[0,j,1] = S[0,j-1,1] + delJ(0,j,coef)
 
+    # Do a no-check normalization
+    for i in xrange(Nu):
+        for j in xrange(Nv):
+            S[i,j,0] /= S[-1,j,0]
+            S[i,j,1] /= S[i,-1,1]
 
+    return S
 
-# # Start of mesh warping testing
+def warp_face(Nu,Nv,S,dface):
+    '''Run the warp face algorithim'''
 
-# coef = copy.deepcopy(aircraft.surfs[12].coef)
-# Nu = coef.shape[0]
-# Nv = coef.shape[1]
+    # Edge 0
+    for i in xrange(1,Nu):
+        j = 0
+        WTK2 = S[i,j,0]
+        WTK1 = 1.0-WTK2
+        dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
 
+    # Edge 1
+    for i in xrange(1,Nu):
+        j = -1
+        WTK2 = S[i,j,0]
+        WTK1 = 1.0-WTK2
+        dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
 
-# file_name = 'warp_test.dat'
-# f = open(file_name ,'w')
-# f.write ('VARIABLES = "X", "Y","Z"\n')
-# f.write('Zone T=%s I=%d J=%d\n'%('coef',Nu,Nv))
-# f.write('DATAPACKING=POINT\n')
-# for j in xrange(Nv):
-#     for i in xrange(Nu):
-#         f.write('%f %f %f \n'%(coef0[i,j,0],coef0[i,j,1],coef0[i,j,2]))
-#     # end for
-# # end for
+    # Edge 1
+    for j in xrange(1,Nv):
+        i=0
+        WTK2 = S[i,j,1]
+        WTK1 = 1.0-WTK2
+        dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
 
-# # Pluck out a section of coefficients
-# # Now parameterize it:
+    # Edge 1
+    for j in xrange(1,Nv):
+        i=-1
+        WTK2 = S[i,j,1]
+        WTK1 = 1.0-WTK2
+        dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
 
-# S = zeros([Nu,Nv,2])
+    eps = 1.0e-14
+   
+    for i in xrange(1,Nu-1):
+        for j in xrange(1,Nv-1):
+            WTI2 = S[i,j,0]
+            WTI1 = 1.0-WTI2
+            WTJ2 = S[i,j,1]
+            WTJ1 = 1.0-WTJ2
+            deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
+            delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
 
-# # The low ends should be set
-# # Find DelI and DelJ
-# def delI(i,j,vals):
-#     return sqrt( ( vals[i,j,0]-vals[i-1,j,0]) ** 2 + \
-#                   (vals[i,j,1]-vals[i-1,j,1]) ** 2 + \
-#                   (vals[i,j,2]-vals[i-1,j,2]) ** 2)
+            dface[i,j,0] = (abs(deli)*deli + abs(delj)*delj)/  \
+                max( ( abs (deli) + abs(delj),eps))
 
-# def delJ(i,j,vals):
-#     return sqrt( ( vals[i,j,0]-vals[i,j-1,0]) ** 2 + \
-#                   (vals[i,j,1]-vals[i,j-1,1]) ** 2 + \
-#                   (vals[i,j,2]-vals[i,j-1,2]) ** 2)
+            deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
+            delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
 
+            dface[i,j,1] = (abs(deli)*deli + abs(delj)*delj)/ \
+                max( ( abs (deli) + abs(delj),eps))
+        # end for
+    # end for
 
-# for i in xrange(1,Nu):
-#     for j in xrange(1,Nv):
-#         S[i,j,0] = S[i-1,j  ,0] + delI(i,j,coef)
-#         S[i,j,1] = S[i  ,j-1,1] + delJ(i,j,coef)
-
-# for i in xrange(1,Nu):
-#     S[i,0,0] = S[i-1,0,0] + delI(i,0,coef)
-# for j in xrange(1,Nv):
-#     S[0,j,1] = S[0,j-1,1] + delJ(0,j,coef)
-
-
-# # Do a no-check normalization
-# for i in xrange(Nu):
-#     for j in xrange(Nv):
-#         S[i,j,0] /= S[-1,j,0]
-#         S[i,j,1] /= S[i,-1,1]
-
-# dface = zeros((Nu,Nv,3))
-
-# # Set up corner perturbations:
-
-# dface[0,0] = coef[0,0]-coef0[0,0]
-# dface[0,-1] = coef[0,-1]-coef0[0,-1]
-# dface[-1,0] = coef[-1,0]-coef0[-1,0]
-# dface[-1,-1] = coef[-1,-1]-coef0[-1,-1]
-
-# # Edge 0
-# for i in xrange(1,Nu):
-#     j = 0
-#     WTK2 = S[i,j,0]
-#     WTK1 = 1.0-WTK2
-    
-#     dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
-
-# # Edge 1
-# for i in xrange(1,Nu):
-#     j = -1
-#     WTK2 = S[i,j,0]
-#     WTK1 = 1.0-WTK2
-#     dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
-
-# # Edge 1
-# for j in xrange(1,Nv):
-#     i=0
-#     WTK2 = S[i,j,1]
-#     WTK1 = 1.0-WTK2
-#     dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
-
-# # Edge 1
-# for j in xrange(1,Nv):
-#     i=-1
-#     WTK2 = S[i,j,1]
-#     WTK1 = 1.0-WTK2
-#     dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
-
-# eps = 1.0e-14
-
-# for i in xrange(1,Nu-1):
-#     for j in xrange(1,Nv-1):
-#         WTI2 = S[i,j,0]
-#         WTI1 = 1.0-WTI2
-#         WTJ2 = S[i,j,1]
-#         WTJ1 = 1.0-WTJ2
-#         deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
-#         delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
-       
-#         dface[i,j,0] = (abs(deli)*deli + abs(delj)*delj)/  \
-#             max( ( abs (deli) + abs(delj),eps))
-            
-
-#         deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
-#         delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
-        
-#         dface[i,j,1] = (abs(deli)*deli + abs(delj)*delj)/ \
-#             max( ( abs (deli) + abs(delj),eps))
-
-#         deli = WTI1 * dface[0,j,2] + WTI2 * dface[-1,j,2]
-#         delj = WTJ1 * dface[i,0,2] + WTJ2 * dface[i,-1,2]
-        
-#         dface[i,j,2] = (abs(deli)*deli + abs(delj)*delj)/  \
-#             max( ( abs (deli) + abs(delj),eps))
-#     # end for
-# # end for
-
-# # That was for the corners. Now do it for the edges
-
-# # Now subtract off the edge peturbations:
-
-# #Edge 0 adn Edge 1
-# for i in xrange(1,Nu-1):
-#     dface[i,0] = coef[i,0]-coef0[i,0]-dface[i,0]
-#     dface[i,-1] = coef[i,-1]-coef0[i,-1]-dface[i,-1]
-#     coef[i,0] -= dface[i,0]
-#     coef[i,-1] -= dface[i,-1]
-# #Edge 2 adn Edge 3
-# for j in xrange(1,Nv-1):
-#     dface[0,j] = coef[0,j]-coef0[0,j]-dface[0,j]
-#     dface[-1,j] = coef[-1,j]-coef0[-1,j]-dface[-1,j]
-#     coef[0,j] -= dface[0,j]
-#     coef[-1,j] -= dface[-1,j]
-
-# # Now do the inside peturbations again
-
-# for i in xrange(1,Nu-1):
-#     for j in range(1,Nv-1):
-#         WTI2 = S[i,j,0]
-#         WTI1 = 1.0-WTI2
-#         WTJ2 = S[i,j,1]
-#         WTJ1 = 1.0-WTJ2
-
-#         deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
-#         delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
-
-#         coef[i,j,0] = coef[i,j,0] + (coef[i,j,0] - coef0[i,j,0]) - dface[i,j,0] - deli -delj
-
-#         deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
-#         delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
-
-#         coef[i,j,1] = coef[i,j,1] + (coef[i,j,1] - coef0[i,j,1]) - dface[i,j,1] - deli - delj
-
-#         deli = WTI1 * dface[0,j,2] + WTI2 * dface[-1,j,2]
-#         delj = WTJ1 * dface[i,0,2] + WTJ2 * dface[i,-1,2]
-
-#         coef[i,j,2] = coef[i,j,2] + (coef[i,j,2] - coef0[i,j,2]) - dface[i,j,2] - deli - delj
-
-
-
-# f.write('Zone T=%s I=%d J=%d\n'%('coef_warp',Nu,Nv))
-# f.write('DATAPACKING=POINT\n')
-# for j in xrange(Nv):
-#     for i in xrange(Nu):
-#         f.write('%f %f %f \n'%(coef[i,j,0],coef[i,j,1],coef[i,j,2]))
-#     # end for
-# # end for
-# print 'done'
-
-
-# # Force set those coef in the global list:
-
-# l_list = aircraft.l_index[12]
-# for i in xrange(Nu):
-#     for j in xrange(Nv):
-#         aircraft.coef[l_list[i,j]] = coef[i,j]
-
-# aircraft._updateSurfaceCoef()
-# aircraft.writeTecplot('dpw.dat',edges=True,links=True)
+    return dface
