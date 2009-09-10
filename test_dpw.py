@@ -30,9 +30,9 @@ import pyGeo2 as pyGeo
 # aircraft = pyGeo.pyGeo('plot3d',file_name='dpw.xyz')
 # aircraft.calcEdgeConnectivity()
 # aircraft.writeEdgeConnectivity('dpw.con')
-# aircraft.propagateKnotVectors()
-# aircraft.fitSurfaces()
-# timeA = time.time()
+#aircraft.propagateKnotVectors()
+#aircraft.fitSurfaces()
+#timeA = time.time()
 
 # aircraft.writeTecplot('dpw.dat',edges=True)
 # timeB =time.time()
