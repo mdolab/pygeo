@@ -477,7 +477,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 for i in xrange(nBreaks):
                     cont.append[0] # Default is c0 contintity
                 # end for
-            # end if 
+                # end if 
 
         else:
             breaks = None
