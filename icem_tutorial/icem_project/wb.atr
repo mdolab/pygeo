@@ -1,0 +1,59 @@
+# Written by ANSYS ICEM CFD/AI*Environment 11.0, user gaetan, Fri Sep 11 12:23:08 PM EDT 2009
+
+begin family PART_1
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family PART_1
+
+begin family PART_2
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family PART_2
+
+begin family PART_3
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family PART_3
+
+begin family PART_4
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family PART_4
+
+begin family PART_5
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family PART_5
+
+begin family GEOM
+    begin solver "Plot3d"
+        begin bctype color
+            active 1
+            color 16663900 1
+        end bctype color
+    end solver "Plot3d"
+end family GEOM
+
+begin family SURF
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family SURF
+
+begin family SOLID
+    begin solver "Plot3d"
+        begin bctype color
+            active 1
+            color 3403390 1
+        end bctype color
+    end solver "Plot3d"
+end family SOLID
+
+begin family DEFAULT_EDGE
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family DEFAULT_EDGE
+
+begin family DEFAULT_VERTEX
+    begin solver "Plot3d"
+    end solver "Plot3d"
+end family DEFAULT_VERTEX

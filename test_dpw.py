@@ -68,9 +68,9 @@ aircraft.addRefAxisCon(0,1,'end') # Innter Wing and Outer Wing ('Attach ra1 to r
 
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
-    ref_axis[0].rot[:,1] = val
-    ref_axis[1].rot[:,1] = val
-    ref_axis[0].scale[:] = .9
+    #ref_axis[0].rot[:,1] = val
+    #ref_axis[1].rot[:,1] = val
+    #ref_axis[0].scale[:] = .9
     #ref_axis[0].x[:,2] += 30
    
     return ref_axis
@@ -201,5 +201,4 @@ aircraft._updateSurfaceCoef()
 
 aircraft.writeTecplot('dpw.dat',edges=True,directions=True,
                       labels=True,links=True)
-print 'coef0[-1,0]',coef0[-1,0]
-print 'coef[-1,0]',coef[-1,0]
+getRefAxisDirection(aircraft.ref_axis[0],aircraft.surfs[0])

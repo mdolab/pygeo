@@ -1,0 +1,79 @@
+11.0 n_subfaces 14 n_families 10
+PART_1
+PART_2
+PART_3
+PART_4
+PART_5
+GEOM
+SURF
+SOLID
+DEFAULT_EDGE
+DEFAULT_VERTEX
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+-1
+# 21 composite curves
+crv.44 1  crv.44 
+crv.03 2  crv.03  tmp001 
+crv.48 1  crv.48 
+E_115 3  E_115  E_97  E_100 
+tmp000 1  tmp000 
+F_155e87.7 1  F_155e87.7 
+F_78e43 1  F_78e43 
+crv.50 1  crv.50 
+E_167 1  E_167 
+crv.51 1  crv.51 
+crv.41 2  crv.41  crv.42 
+crv.45 1  crv.45 
+E_108 3  E_108  E_104  E_270 
+crv.46 1  crv.46 
+E_218 1  E_218 
+F_78e42.3 1  F_78e42.3 
+crv.49 1  crv.49 
+E_345 1  E_345 
+E_393 1  E_393 
+crv.47 1  crv.47 
+crv.43 1  crv.43 
+# 31 edges
+crv.44
+crv.03
+crv.48
+E_115
+tmp000
+F_155e87.7
+F_78e43
+crv.50
+E_167
+crv.51
+crv.41
+E_115
+crv.45
+E_108
+crv.46
+tmp000
+E_218
+F_78e42.3
+<surface>
+E_167
+crv.03
+crv.49
+E_345
+E_108
+E_393
+crv.47
+E_115
+E_393
+E_108
+crv.43
+E_108

@@ -1,0 +1,226 @@
+%%
+% File: cjwresize.sty
+%%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{qresize}
+    [1995/05/09 v0.1  Change Default LaTeX Page Layouts -- CJW]
+
+\newif \if@autocalc
+
+\DeclareOption{auto} {\@autocalctrue}
+\DeclareOption{final}{\@autocalctrue}
+\DeclareOption*{%
+  \PackageWarning{cjwresize}{Unknown option `\CurrentOption'}}
+
+\ProcessOptions
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% DISTRIBUTION NOTICE
+%
+%   This is file |cjwresize.sty| for use with \LaTeX2e.
+%
+%   Copyright (c) 1995 by Colin J. Wynne
+%         cwynne@sage.wlu.edu, cwynne@lorien,princeton.edu,
+%                     ua7o@rz.uni-karlsruhe.de
+%   This file may be freely distributed in any form; electronic,
+%   physical or otherwise; so long as the distributor provides this
+%   file in its entirety (including this message) and the distributor
+%   receives no money (except for a reasonable recompense for the
+%   duplication process).  Fair 'nough?
+%
+%   This file is beer-ware.  If you use it and like it, then you
+%   should buy me a beer if you ever meet me. :-)
+%
+%
+% INTRO
+%
+%   This is a fairly simple file, so I am not going to bother with a
+%   .dtx file.  Here is the whole documentation, right here. :-)  No
+%   \docstrip{} hastle or anything...
+%
+%
+% WHY THIS PACKAGE?
+%
+%   I think the default printable area used by \LaTeX{}, frankly,
+%   sucks.  When I turn in three problem assignments for a math class
+%   and it takes up eight pages, there is just too much blank space.
+%   So, I hacked the relevant parts out of |classes.dtx| which deal
+%   with setting printable area and balancing margins and fiddled with
+%   some of the default values.  Not only that, but it is easily
+%   customisable.
+%
+%
+% HOW TO USE THIS PACKAGE
+%
+%   There are two basic ways to use this package.  Essentially, after
+%   including the package, the macro |\resize| is available to the
+%   user.  After altering any of the relevant page information, one
+%   can invoke |\resize| to recalculate page margins.  |\resize|
+%   should be called after changes to the following:
+%
+%       \textheight        \headheight        \footskip
+%       \textwidth         \headsep
+%
+%   and optionally after changing |\topskip|.  These are the
+%   dimensions on which the \LaTeX{} algorithms below depend.
+%
+%   This only half solves the problem, though.  Having to change the
+%   height and width in every document is also not a particularly
+%   ducky solution, so there is also a package option, namely |auto|.
+%   In commented sections below, you will see where I have altered
+%   some of the default values that \LaTeX{} uses for page layout
+%   calculations.  Invoking the package with the |auto| option will
+%   automatically do a resize with these defaults.  Of course, the
+%   |\resize| command will still be available if further modifications 
+%   are desired.  You should feel perfectly free to change these
+%   defaults to something that will be more appropriate for you.
+%   As the major advantage of \LaTeX's default, \emph{wide} margins is
+%   the availability of |\marginpar| space, for draft annotations, I
+%   also consider the revised margins of this package to be applicable
+%   to final output.  Therefore the option |final| will be grabbed and
+%   interpreted to mean the same thing as |auto|.
+%
+%
+% BUGS
+%
+%   Well, I wouldn't call this a bug, but I haven't accounted for the
+%   slight differences in these calculations specific to the |book|
+%   class's options for size switching.  This package was written in
+%   about twenty minutes, and I couldn't think of a way off the type
+%   of my head to test for the invoked class.  If there is one (and
+%   I'm fairly sure there is), please let me know.
+%
+%
+% COMMENTS?
+%
+%   If you have any, send them to me at one of the e-mail addresses
+%   above.  I hope this will be useful to somebody, somewhere.
+%
+%                                         CJW, 09.05.1995
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\resize{\relax%
+      %
+  \if@twoside
+    \setlength\@tempdima        {\paperwidth}
+    \addtolength\@tempdima      {-\textwidth}
+    \setlength\oddsidemargin    {.4\@tempdima}
+    \addtolength\oddsidemargin  {-1in}
+      %
+    \setlength\marginparwidth   {.6\@tempdima}
+    \addtolength\marginparwidth {-0.4in}
+  \else
+    \setlength\@tempdima        {\paperwidth}
+    \addtolength\@tempdima      {-\textwidth}
+    \setlength\oddsidemargin    {.5\@tempdima}
+    \addtolength\oddsidemargin  {-1in}
+    \setlength\marginparwidth   {.5\@tempdima}
+    \addtolength\marginparwidth {-.4in}
+  \fi
+      %
+  \ifdim \marginparwidth >2in
+    \setlength\marginparwidth{2in}
+  \fi
+      %
+  \@settopoint\oddsidemargin
+  \@settopoint\marginparwidth
+      %
+  \setlength\evensidemargin  {\paperwidth}
+  \addtolength\evensidemargin{-2in}
+  \addtolength\evensidemargin{-\textwidth}
+  \addtolength\evensidemargin{-\oddsidemargin}
+      %
+  \@settopoint\evensidemargin
+      %
+      %
+  \setlength\topmargin{\paperheight}
+    \addtolength\topmargin{-2in}
+    \addtolength\topmargin{-\headheight}
+    \addtolength\topmargin{-\headsep}
+    \addtolength\topmargin{-\textheight}
+    \addtolength\topmargin{-\footskip}
+      %
+  \addtolength\topmargin{-.5\topmargin}
+  \@settopoint\topmargin
+}
+
+%%%%
+%%%%
+%%
+%% CODE for the |auto| option:
+%%
+%%%%
+%%%%
+
+\if@autocalc
+
+%%
+% Compute the |\textwidth|.
+%%
+
+  \setlength\@tempdima{\paperwidth}
+  \addtolength\@tempdima{-2in}
+
+%%
+% This choice of |\@tempdimb| is the `default' page size used by the
+% |auto| option.  The values from |classes.dtx| are 345pt, 360pt and
+% 390pt respectively for 10pt, 11pt and 12pt document sizes.  Feel
+% free to change these to taste.  I find that adding about 40--50pt to
+% the original dimensions works pretty well.
+%%
+  \ifcase \@ptsize
+    \setlength\@tempdimb{385\p@} \or
+    \setlength\@tempdimb{400\p@} \else
+    \setlength\@tempdimb{430\p@}
+  \fi
+
+  \if@twocolumn
+    \ifdim\@tempdima>2\@tempdimb\relax
+      \setlength\textwidth{2\@tempdimb}
+    \else
+      \setlength\textwidth{\@tempdima}
+    \fi
+  \else
+    \ifdim\@tempdima>\@tempdimb\relax
+      \setlength\textwidth{\@tempdimb}
+    \else
+      \setlength\textwidth{\@tempdima}
+    \fi
+  \fi
+
+  \@settopoint\textwidth
+
+%%
+% Compute the |\textheight|.
+%%
+
+  \setlength\@tempdima{\paperheight}
+%%
+% These next two lines govern the `default' |\textheight| used by the
+% |auto| option.  The values from |classes.dtx| are -2in for the
+% margins and -1.5in for headers and footers.  I like reducing the
+% extra space for headers/footers down to -1in.  Feel free, however,
+% to change these values to taste.
+%%                      %%
+    \addtolength\@tempdima{-2in}        % Minimum margins.
+    \addtolength\@tempdima{-1in}        % Room for head/foot stuff.
+                        %     
+  \divide\@tempdima\baselineskip        % Compute size in 
+    \@tempcnta=\@tempdima           % line numbers.
+                        %
+  \setlength\textheight{\@tempcnta\baselineskip}%
+    \addtolength\textheight{\topskip}       % First line of text has
+                        % height |\topskip|.
+%%                      %%
+% Now call resize.
+%%
+  \resize
+
+\fi
+
+\endinput
+%%
+% End of file: cjwresize.sty
+%%

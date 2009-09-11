@@ -421,3 +421,71 @@ def warp_face(Nu,Nv,S,dface):
     # end for
 
     return dface
+
+
+def getRefAxisDirection(ref_axis,surface):
+    '''Determine the primary orientation of a reference axis, ref_axis on
+    surface, surface. The function returns a vector of length Nctlu or
+    Nctlv whcih contains the s-positions where lines of constant u or
+    v should connect to the ref axis'''
+
+    # Note: We pass the coef we want BACK in. This allows for a
+    # section of the coefficients to be used
+    
+    # We need to deduce along which direction (u or v) the
+    # reference axis is directed.  First estimate Over what
+    # portion the surface and ref axis coinside
+
+    # Take N Normal Vectors
+    N = 3
+    sn = linspace(0,1,N)
+    dn = zeros((N,3))
+    for i in xrange(N):
+        dn[i,:] = ref_axis.xs.getDerivative(sn[i])
+    # end if
+
+    # Now Do two tests: Take N points in u and test N groups
+    # against dn and take N points in v and test the N groups
+    # again
+
+    u_dot_tot = 0
+    s = linspace(0,1,N)
+
+    for i in xrange(N):
+        for n in xrange(N):
+            du,dv = surface.getDerivative(s[i],s[n])
+            u_dot_tot += dot(du,dn[n,:])
+        # end for
+    # end for
+
+    v_dot_tot = 0
+    for j in xrange(N):
+        for n in xrange(N):
+            du,dv = surface.getDerivative(s[n],s[j])
+            v_dot_tot += dot(dv,dn[n,:])
+        # end for
+    # end for
+
+    if v_dot_tot > u_dot_tot:
+        # Its along v
+        # Create s array of length u
+        Nctlu = surface.Nctlu
+        s = zeros(Nctlu)
+
+        #for i in xrange(Nctlu):
+
+            
+
+
+    else:
+        # Its along u
+        # Create s array of length v
+        s = zeros(len(surface.Nctlv))
+        Nctlv = surface.Nctlv
+        s = zeros(Nctlv)
+        
+        for j in xrange(Nctlv):
+            pass
+
+    return 
+
