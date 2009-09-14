@@ -156,6 +156,8 @@ class pyGeo():
             print 'pyGeo Initialization Type is: %s'%(init_type)
             print '------------------------------------------------'
 
+        #------------------- pyGeo Class Atributes -----------------
+
         self.ref_axis       = [] # Reference Axis list
         self.ref_axis_con   = [] # Reference Axis connection list
         self.DV_listGlobal  = [] # Global Design Variable List
@@ -190,6 +192,7 @@ class pyGeo():
         self.nSurf = None        # The total number of surfaces
         self.coef  = None        # The global (reduced) set of control
                                  # points
+        # --------------------------------------------------------------
 
         if init_type == 'plot3d':
             assert 'file_name' in kwargs,'file_name must be specified as \
@@ -829,10 +832,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 #             # end for (i loop)
 #         # end for (isurf)
 
-#         for i in xrange(len(self.node_con)):
-#             print self.node_con[i]
-#         # end for
-   
 
         def isEdgeConnected(isurf,edge):
             '''Find if another edge is regurally connected to isurf,edge'''
@@ -854,11 +853,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             return  False,None,None
 
 
-        # Now we must figure out the driving group information.  Lets
-        # do this a little differently. Make a list of length number
-        # of surfaces with elements a list of the design group index
-        # for that direction. Then we can propogate this information
-        # back to the edges trivially. 
+      
 
         self.con = []
         for i in xrange(len(e_con)):
@@ -873,6 +868,12 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             print 'Going to calculate node connectivity'
         self._calcNodeConnectivity()
 
+        # Now we must figure out the driving group information.  Lets
+        # do this a little differently. Make a list of length number
+        # of surfaces with elements a list of the design group index
+        # for that direction. Then we can propogate this information
+        # back to the edges trivially. 
+       
         design_group = []
         for isurf in xrange(self.nSurf):
             design_group.append([-1,-1]) # -1 means it isn't assigned
@@ -881,6 +882,10 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
         # Now loop over the edges ...
             
+        # NOTE:near_side refers to propagating starting with the
+        # opposite edge on the SAME face, ie f1. ar_side referes to
+        # starting on the second surface, f2. 
+
         dg_counter = -1
         for i in xrange(len(e_con)):
 
@@ -975,6 +980,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             print 'Edge con'
             self.printEdgeConnectivity()
     
+        # finally set the actual edge connectivity
         self._setEdgeConnectivity()
         return
 
@@ -1241,16 +1247,13 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             sys.exit(1)
         # end if
 
-        # Call the new function
+        # Call the calcGlobalNumbering function
         sizes = []
         for isurf in xrange(self.nSurf):
             sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
         # end for
 
         self.Ncoef,self.g_index,self.l_index = self.calcGlobalNumbering(sizes)
-
-    #     for i in xrange(len(self.l_index)):
-#             print self.l_index[i]
 
         self.coef = []
         # Now Fill up the self.coef list:
@@ -1728,15 +1731,15 @@ Intersect? | Driving Group | Nctl | Face    Edge     |\n')
                     x = self.surfs[surfID].calcPtDeriv(\
                         u,v,u_list[iii],v_list[jjj])
                     index = 3*self.l_index[surfID][u_list[iii],v_list[jjj]]
-                    # temp = self.J[3*ii,index]
-#                     self.J[3*ii  ,index  ] = self.J[3*ii  ,index] + x
-#                     self.J[3*ii+1,index+1] = self.J[3*ii+1,index] + x
-#                     self.J[3*ii+2,index+2] = self.J[3*ii+2,index] + x
-                    self.J.setValue(3*ii    ,index    ,x, PETSC_INSERT_MODE)
-                    self.J.setValue(3*ii + 1,index + 1,x, PETSC_INSERT_MODE)
-                    self.J.setValue(3*ii + 2,index + 2,x, PETSC_INSERT_MODE)
-
-
+                    if USE_PETSC:
+                        self.J.setValue(3*ii    ,index    ,x, PETSC_INSERT_MODE)
+                        self.J.setValue(3*ii + 1,index + 1,x, PETSC_INSERT_MODE)
+                        self.J.setValue(3*ii + 2,index + 2,x, PETSC_INSERT_MODE)
+                    else:
+                        self.J[3*ii    ,index    ] += x
+                        self.J[3*ii + 1,index + 1] += x
+                        self.J[3*ii + 2,index + 2] += x
+                    # end if
                 # end for
             # end for
         # end for 
@@ -1762,14 +1765,15 @@ Intersect? | Driving Group | Nctl | Face    Edge     |\n')
             ksp.create(PETSc.COMM_WORLD)
             ksp.getPC().setType('none')
             ksp.setType('lsqr')
-            #ksp.setInitialGuess(True)
+            ksp.setInitialGuessNonzero(True)
+
             print 'Iteration   Residual'
             def monitor(ksp, its, rnorm):
-                if mod(its,100) == 0:
+                if mod(its,50) == 0:
                     print '%5d      %20.15g'%(its,rnorm)
 
             ksp.setMonitor(monitor)
-            ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=500)
+            ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=250)
 
             ksp.setOperators(self.J)
             ksp.solve(rhs, X) 
@@ -1821,11 +1825,13 @@ with LAPACK'''
                 print 'Adding ref axis...'
             # A couple of things can happen here: 
             # 1. nsections < len(X)
-            #    -> We do a LMS fit on the ref axis
+            #    -> We do a LMS fit on the ref axis (subsample)
             # 2. nsection == len(X)
             #    -> We can make the ref axis as is
             # 3. nsection < len(X)
-            #    -> We reinterpolate before making the ref axis
+            #    -> We reinterpolate before making the ref axis (supersample)
+                
+
 
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
@@ -1921,7 +1927,7 @@ with LAPACK'''
             # end for
             ra.coef_list = coef_list
             ra.surf_ids  = surf_ids
-            
+            # Add the reference axis to the list
             self.ref_axis.append(ra)
             
     def addRefAxisCon(self,axis1,axis2,con_type):
@@ -1959,7 +1965,6 @@ a flap hinge line'
         self.ref_axis_con.append([axis1,axis2,con_type])
 
         return
-
 
 # ----------------------------------------------------------------------
 #                Update and Derivative Functions
@@ -2039,9 +2044,10 @@ a flap hinge line'
 # ---------------------------------------------------------
         # end for
 
-        # fourth, update the coefficients (from normal DV changes)
+        
         if local:
-            for i in xrange(len(self.DV_listNormal)):
+            # fourth, update the coefficients (from normal DV changes)        
+    for i in xrange(len(self.DV_listNormal)):
                 surface = self.surfs[self.DV_listNormal[i].surface_id]
                 self.coef = self.DV_listNormal[i](surface,self.coef)
             # end for
@@ -2085,6 +2091,7 @@ a flap hinge line'
         '''
         Get the sizes:
         - The number of global design variables
+        - The number of normal design variables
         - The number of local design variables
         - The number of control points
         '''
@@ -2144,7 +2151,6 @@ a flap hinge line'
 
         return dCoefdx
         
-
     def calcCtlDeriv(self):
 
         '''This function runs the complex step method over the design variable
@@ -2214,7 +2220,7 @@ a flap hinge line'
             self.dCoefdx.assemblyEnd()
         # end if 
 
-        # Now Do the Try the matrix multiplication
+        # Now Do the matrix multiplication
         if USE_PETSC:
             if self.dPtdCoef:
                 if self.dPtdx == None:
@@ -2261,7 +2267,7 @@ a flap hinge line'
                 # end for
             # end for
         else:
-            # Use the bounding box to find the appropriate indicies
+            # Use the point select class to get the indicies
             coef_list = point_select.getControlPoints(\
                 self.surfs[surf],isurf,coef_list,l_index)
         # end if
@@ -2306,8 +2312,6 @@ a flap hinge line'
         self.DV_namesNormal[dv_name] = len(self.DV_listLocal)-1
         
         return
-
-
 
     def addGeoDVLocal(self,dv_name,lower,upper,surf=None,point_select=None,\
                           overwrite=False):
@@ -2791,14 +2795,15 @@ a flap hinge line'
                         uv[i][0],uv[i][1],u_list[ii],v_list[jj])
 
                     index = 3*self.l_index[patchID[i]][u_list[ii],v_list[jj]]
-#                    dPtdCoef[3*indices[i]  ,index  ] = x
-#                    dPtdCoef[3*indices[i]+1,index+1] = x
-#                    dPtdCoef[3*indices[i]+2,index+2] = x
-
-                    dPtdCoef.setValue( 3*indices[i]  , index  ,x,PETSC_INSERT_MODE)
-                    dPtdCoef.setValue( 3*indices[i]+1, index+1,x,PETSC_INSERT_MODE)
-                    dPtdCoef.setValue( 3*indices[i]+2, index+2,x,PETSC_INSERT_MODE)
-
+                    if USE_PETSC:
+                        dPtdCoef.setValue( 3*indices[i]  , index  ,x,PETSC_INSERT_MODE)
+                        dPtdCoef.setValue( 3*indices[i]+1, index+1,x,PETSC_INSERT_MODE)
+                        dPtdCoef.setValue( 3*indices[i]+2, index+2,x,PETSC_INSERT_MODE)
+                    else:
+                        dPtdCoef[3*indices[i]    ,index    ] += x
+                        dPtdCoef[3*indices[i] + 1,index + 1] += x
+                        dPtdCoef[3*indices[i] + 2,index + 2] += x
+                    # end if
                 # end for
             # end for
         # end for 
@@ -2904,12 +2909,7 @@ a flap hinge line'
         # end
      
         return global_geo, tacs_surfs
-   
   
-
-
-
-
 class edge(object):
 
     '''A class for working with patch edges'''
@@ -3189,8 +3189,6 @@ class geoDVNormal(object):
         # end for
 
         return
-
-
 
 class geoDVLocal(object):
      
