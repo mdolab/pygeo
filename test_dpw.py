@@ -62,6 +62,10 @@ rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = rot_z
 
+# Add l_surfs:
+aircraft.l_surfs.append([2,3,9,8]) # Inner Wing Panels
+aircraft.l_surfs.append([4,5,10,11]) # Outer Wing Panels
+
 aircraft.addRefAxis([2,3,8,9],X[0:2,:],rot[0:2,:],nrefsecs=6)
 aircraft.addRefAxis([4,5,10,11,16,17],X[1:3,:],rot[1:3,:],nrefsecs=6)
 aircraft.addRefAxisCon(0,1,'end') # Innter Wing and Outer Wing ('Attach ra1 to ra0 with type 'end')
@@ -70,7 +74,7 @@ def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
     #ref_axis[0].rot[:,1] = val
     #ref_axis[1].rot[:,1] = val
-    #ref_axis[0].scale[:] = .9
+    #ref_axis[0].scale[:] = 1.2
     #ref_axis[0].x[:,2] += 30
    
     return ref_axis
@@ -200,5 +204,4 @@ for isurf in surfaces_to_warp:
 aircraft._updateSurfaceCoef()
 
 aircraft.writeTecplot('dpw.dat',edges=True,directions=True,
-                      labels=True,links=True)
-getRefAxisDirection(aircraft.ref_axis[0],aircraft.surfs[0])
+                      labels=True,links=True)#,size=5)
