@@ -4,8 +4,11 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete
-
 import string ,sys
+
+sys.path.append('../pySpline')
+import pySpline
+
 
 def rotxM(theta):
     '''Return x rotation matrix'''
@@ -242,6 +245,7 @@ def test_edge(surf1,surf2,i,j,edge_tol):
         
 
 def flipEdge(edge):
+    '''Return the edge on a surface, opposite to given edge'''
     if edge == 0: return 1
     if edge == 1: return 0
     if edge == 2: return 3
@@ -423,20 +427,19 @@ def warp_face(Nu,Nv,S,dface):
     return dface
 
 
-def getRefAxisDirection(ref_axis,surface):
+def getRefAxisDirection(ref_axis,surface,surfID,NO_PRINT):
     '''Determine the primary orientation of a reference axis, ref_axis on
     surface, surface. The function returns a vector of length Nctlu or
     Nctlv whcih contains the s-positions where lines of constant u or
     v should connect to the ref axis'''
 
-    # Note: We pass the coef we want BACK in. This allows for a
-    # section of the coefficients to be used
     
     # We need to deduce along which direction (u or v) the
     # reference axis is directed.  First estimate Over what
     # portion the surface and ref axis coinside
 
     # Take N Normal Vectors
+
     N = 3
     sn = linspace(0,1,N)
     dn = zeros((N,3))
@@ -468,24 +471,40 @@ def getRefAxisDirection(ref_axis,surface):
 
     if v_dot_tot > u_dot_tot:
         # Its along v
+        # Create s array of length v
+        Nctlv = surface.Nctlv
+        s = zeros(Nctlv)
+        if not NO_PRINT:
+            print 'Reference axis is oriented along v on surface %d'%(surfID)
+        for j in xrange(Nctlv):
+
+            # Create an "averge" line through a section of control
+            # point in v
+            
+            temp = pySpline.linear_spline(task='lms',X=surface.coef[:,j],k=2,Nctl=2)
+            print 'y ceof:',temp.coef
+            # s1 is distance on calling ref axis, in this case xs
+            s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
+            #print 'converged:',converged
+            s[j] = s1
+        # end for
+        return s,1
+            
+    else:
+        # Its along u
         # Create s array of length u
         Nctlu = surface.Nctlu
         s = zeros(Nctlu)
-
-        #for i in xrange(Nctlu):
-
+        print 'Reference axis is oriented along u on surface %d'%(surfID)
+        for i in xrange(Nctlu):
+            # Create an "averge" line through a section of control
+            # point in u
             
+            temp = pySpline.linear_spline(task='lms',X=surface.coef[i,:],k=2,Nctl=2)
+            print 'y ceof:',temp.coef
+            # s1 is distance on calling ref axis, in this case xs
+            s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
+            s[i] = s1
 
-
-    else:
-        # Its along u
-        # Create s array of length v
-        s = zeros(len(surface.Nctlv))
-        Nctlv = surface.Nctlv
-        s = zeros(Nctlv)
-        
-        for j in xrange(Nctlv):
-            pass
-
-    return 
+        return s,0
 

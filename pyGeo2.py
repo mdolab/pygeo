@@ -192,6 +192,10 @@ class pyGeo():
         self.nSurf = None        # The total number of surfaces
         self.coef  = None        # The global (reduced) set of control
                                  # points
+        self.l_surfs = []        # Logical Surfaces: List of list of
+                                 # surfaces that can be thought of as
+                                 # connected.
+
         # --------------------------------------------------------------
 
         if init_type == 'plot3d':
@@ -1831,8 +1835,6 @@ with LAPACK'''
             # 3. nsection < len(X)
             #    -> We reinterpolate before making the ref axis (supersample)
                 
-
-
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
 
@@ -1914,12 +1916,49 @@ with LAPACK'''
             coef_list = unique(coef_list) #unique is in geo_utils
             coef_list.sort()
             N = len(coef_list)
-            for i in xrange(len(coef_list)):
-                isurf = self.g_index[coef_list[i]][0][0]
-                s,D,conv,eps = ra.xs.projectPoint(self.coef[coef_list[i]])
 
-                base_point = ra.xs.getValue(s)
-                D = self.coef[coef_list[i]] - base_point
+            # For each surface affected, produce the s attachment
+            # point list
+
+            attachment_points = []
+            types = []
+            for isurf in xrange(self.nSurf):
+                if isurf in surf_ids: # If this one is in the list
+                    index = self.getL_surfs_index(isurf)
+                    if not index == None:
+                        surface_list = self.l_surfs[index]
+                    else:
+                        surface_list = []
+                    s,type = self.getRefAxisConnection(ra,isurf,surface_list)
+
+                    attachment_points.append(s)
+                    types.append(type)
+                else:
+                    attachment_points.append([])
+                    types.append([])
+                # end if
+            # end for
+    
+            for icoef in xrange(len(coef_list)):
+                for jj in xrange(len(self.g_index[coef_list[icoef]])):
+                    surfID = self.g_index[coef_list[icoef]][jj][0]
+                    i = self.g_index[coef_list[icoef]][jj][1]
+                    j = self.g_index[coef_list[icoef]][jj][2]
+
+                    if surfID in surf_ids:
+                        break
+                    # end if
+                # end for
+
+                type = types[surfID]
+
+                if type == 0: # Along u
+                    s = attachment_points[surfID][i]
+                else:
+                    s = attachment_points[surfID][j]
+                # end if
+            
+                D = self.coef[coef_list[icoef]] - ra.xs.getValue(s)
                 M = ra.getRotMatrixGlobalToLocal(s)
                 D = dot(M,D) #Rotate to local frame
                 ra.links_s.append(s)
@@ -1927,7 +1966,7 @@ with LAPACK'''
             # end for
             ra.coef_list = coef_list
             ra.surf_ids  = surf_ids
-            # Add the reference axis to the list
+            # Add the reference axis to the pyGeo list
             self.ref_axis.append(ra)
             
     def addRefAxisCon(self,axis1,axis2,con_type):
@@ -1965,6 +2004,128 @@ a flap hinge line'
         self.ref_axis_con.append([axis1,axis2,con_type])
 
         return
+
+    def getL_surfs_index(self,isurf):
+        '''Return the index of l_surfs for surface isurf'''
+        for i in xrange(len(self.l_surfs)):
+            for j in xrange(len(self.l_surfs[i])):
+                if isurf == self.l_surfs[i][j]:
+                    return i
+                # end if
+            # end for
+        # end for
+        
+        return None
+
+    def getRefAxisConnection(self,ref_axis,isurf,surface_list):
+        '''Determine the primary orientation of a reference axis, ref_axis on
+        surface, surface. The function returns a vector of length Nctlu or
+        Nctlv whcih contains the s-positions where lines of constant u or
+        v should connect to the ref axis'''
+
+
+        # We need to deduce along which direction (u or v) the
+        # reference axis is directed.  First estimate Over what
+        # portion the surface and ref axis coinside
+
+        # Take N Normal Vectors
+        full_surface_list = [isurf]
+        for extra_surf in surface_list:
+            full_surface_list.append(extra_surf)
+        # end for
+            
+        full_surface_list = unique(full_surface_list)
+        
+        types = []
+        N = 3
+        sn = linspace(0,1,N)
+        dn = zeros((N,3))
+        s = linspace(0,1,N)
+        for i in xrange(N):
+            dn[i,:] = ref_axis.xs.getDerivative(sn[i])
+        # end for
+
+        for surfid in full_surface_list:
+            # Now Do two tests: Take N points in u and test N groups
+            # against dn and take N points in v and test the N groups
+            # again
+
+            u_dot_tot = 0
+            for i in xrange(N):
+                for n in xrange(N):
+                    du,dv = self.surfs[surfid].getDerivative(s[i],s[n])
+                    u_dot_tot += dot(du,dn[n,:])
+                # end for
+            # end for
+
+            v_dot_tot = 0
+            for j in xrange(N):
+                for n in xrange(N):
+                    du,dv = self.surfs[surfid].getDerivative(s[n],s[j])
+                    v_dot_tot += dot(dv,dn[n,:])
+                # end for
+            # end for
+
+            if v_dot_tot > u_dot_tot:
+                dir_type = 1 # Along v
+            else:
+                dir_type = 0 # Along u
+            # end if
+            types.append(dir_type)
+            if surfid == isurf:
+                isurf_dir  = dir_type
+
+        # end for
+      
+        if isurf_dir == 1: #along v of isurf
+            if not self.NO_PRINT:
+                print 'Reference axis is oriented along v on \
+surface %d'%(isurf)
+            Nctlv = self.surfs[isurf].Nctlv
+            s = zeros(Nctlv)
+            for j in xrange(Nctlv):
+                # Get ALL coefficients from surfaces in full_surface_list
+                coef = []
+                for jj in xrange(len(full_surface_list)):
+                    if types[jj] == 0:
+                        coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
+                    else:
+                        coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
+                    # end if
+                # end for
+                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
+             
+                temp = pySpline.linear_spline(
+                    task='lms',X=X,k=2,Nctl=2)
+                print 'coef:',temp.coef
+                
+                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
+                s[j] = s1
+            # end for
+            return s,1
+        else:
+            if not self.NO_PRINT:
+                print 'Reference axis is oriented along u on \
+surface %d'%(isurf)
+            Nctlu = self.surfs[isurf].Nctlu
+            s = zeros(Nctlu)
+            for i in xrange(Nctlu):
+                # Get ALL coefficients from surfaces in full_surface_list
+                coef = []
+                for jj in xrange(len(full_surface_list)):
+                    if types[jj] == 1:
+                        coef.append(self.surfs[full_surface_list[jj]].coef[:,i])
+                    else:
+                        coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
+                    # end if
+                # end for
+                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
+                temp = pySpline.linear_spline(
+                    task='lms',X=X,k=2,Nctl=2)
+                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
+                s[i] = s1
+            # end for
+            return s,0
 
 # ----------------------------------------------------------------------
 #                Update and Derivative Functions
@@ -2047,7 +2208,7 @@ a flap hinge line'
         
         if local:
             # fourth, update the coefficients (from normal DV changes)        
-    for i in xrange(len(self.DV_listNormal)):
+            for i in xrange(len(self.DV_listNormal)):
                 surface = self.surfs[self.DV_listNormal[i].surface_id]
                 self.coef = self.DV_listNormal[i](surface,self.coef)
             # end for
@@ -2393,7 +2554,7 @@ a flap hinge line'
 
     def writeTecplot(self,file_name,surfs=True,edges=False,\
                          ref_axis=True,links=False,directions=False,\
-                         labels=False):
+                         labels=False,size=None):
         '''Write the pyGeo Object to Tecplot'''
 
         # ---------------------------
@@ -2409,7 +2570,7 @@ a flap hinge line'
             
             for isurf in xrange(self.nSurf):
                 sys.stdout.write('%d '%(isurf))
-                self.surfs[isurf].writeTecplotSurface(handle=f,size=0.03)
+                self.surfs[isurf].writeTecplotSurface(handle=f,size=size)
 
         # ---------------------------
         #    Write out the edges
