@@ -1834,7 +1834,9 @@ with LAPACK'''
             #    -> We can make the ref axis as is
             # 3. nsection < len(X)
             #    -> We reinterpolate before making the ref axis (supersample)
-                
+
+
+            print 'surf_ids:',surf_ids
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
 
@@ -1929,6 +1931,9 @@ with LAPACK'''
                         surface_list = self.l_surfs[index]
                     else:
                         surface_list = []
+
+                    print 'calling with isurf,surface_list:',isurf,surface_list
+                        
                     s,type = self.getRefAxisConnection(ra,isurf,surface_list)
 
                     attachment_points.append(s)
@@ -2045,8 +2050,6 @@ a flap hinge line'
             dn[i,:] = ref_axis.xs.getDerivative(sn[i])
         # end for
 
-        print 'fucking full surface_list',full_surface_list
-
         for surfid in full_surface_list:
             # Now Do two tests: Take N points in u and test N groups
             # against dn and take N points in v and test the N groups
@@ -2084,6 +2087,7 @@ a flap hinge line'
                 print 'Reference axis is oriented along v on \
 surface %d'%(isurf)
             Nctlv = self.surfs[isurf].Nctlv
+            Nctlu = self.surfs[isurf].Nctlu
             s = zeros(Nctlv)
             for j in xrange(Nctlv):
                 # Get ALL coefficients from surfaces in full_surface_list
@@ -2095,7 +2099,8 @@ surface %d'%(isurf)
                         coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
                     # end if
                 # end for
-                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
+
+                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
              
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
@@ -2109,6 +2114,7 @@ surface %d'%(isurf)
                 print 'Reference axis is oriented along u on \
 surface %d'%(isurf)
             Nctlu = self.surfs[isurf].Nctlu
+            Nctlv = self.surfs[isurf].Nctlv
             s = zeros(Nctlu)
             for i in xrange(Nctlu):
                 # Get ALL coefficients from surfaces in full_surface_list
@@ -2120,7 +2126,7 @@ surface %d'%(isurf)
                         coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
                     # end if
                 # end for
-                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
+                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
