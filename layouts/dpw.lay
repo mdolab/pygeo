@@ -1,13 +1,7 @@
 #!MC 1120
 # Created by Tecplot 360 build 11.2-0-563
-$!VarSet |LFDSFN1| = '"dpw.dat"'
+$!VarSet |LFDSFN1| = '"../output/dpw.dat"'
 $!VarSet |LFDSVL1| = '"X" "Y" "Z"'
-$!VarSet |LFDSFN2| = '"labels.dat"'
-$!VarSet |LFDSVL2| = ''
-$!VarSet |LFDSFN3| = '"labels.dat"'
-$!VarSet |LFDSVL3| = ''
-$!VarSet |LFDSFN4| = '"labels.dat"'
-$!VarSet |LFDSVL4| = ''
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
   LINKCOLORMAPS = YES
@@ -883,7 +877,7 @@ $!PAGE
       {
       X1 = 1
       Y1 = 0.25
-      X2 = 16
+      X2 = 10
       Y2 = 8.25
       }
     }
@@ -897,39 +891,6 @@ $!READDATASET  '|LFDSFN1|'
   VARNAMELIST = '|LFDSVL1|'
 $!REMOVEVAR |LFDSVL1|
 $!REMOVEVAR |LFDSFN1|
-$!READDATASET  '|LFDSFN2|'
-  INITIALPLOTTYPE = CARTESIAN3D
-  INCLUDETEXT = NO
-  INCLUDEGEOM = NO
-  READDATAOPTION = APPEND
-  RESETSTYLE = NO
-  ASSIGNSTRANDIDS = YES
-  VARLOADMODE = BYNAME
-  VARNAMELIST = '|LFDSVL2|'
-$!REMOVEVAR |LFDSVL2|
-$!REMOVEVAR |LFDSFN2|
-$!READDATASET  '|LFDSFN3|'
-  INITIALPLOTTYPE = CARTESIAN3D
-  INCLUDETEXT = NO
-  INCLUDEGEOM = NO
-  READDATAOPTION = APPEND
-  RESETSTYLE = NO
-  ASSIGNSTRANDIDS = YES
-  VARLOADMODE = BYNAME
-  VARNAMELIST = '|LFDSVL3|'
-$!REMOVEVAR |LFDSVL3|
-$!REMOVEVAR |LFDSFN3|
-$!READDATASET  '|LFDSFN4|'
-  INITIALPLOTTYPE = CARTESIAN3D
-  INCLUDETEXT = NO
-  INCLUDEGEOM = NO
-  READDATAOPTION = APPEND
-  RESETSTYLE = NO
-  ASSIGNSTRANDIDS = YES
-  VARLOADMODE = BYNAME
-  VARNAMELIST = '|LFDSVL4|'
-$!REMOVEVAR |LFDSVL4|
-$!REMOVEVAR |LFDSFN4|
 $!FRAMELAYOUT 
   SHOWHEADER = NO
   HEADERCOLOR = RED
@@ -938,14 +899,14 @@ $!FRAMELAYOUT
     X = 1
     Y = 0.25
     }
-  WIDTH = 15
+  WIDTH = 9
   HEIGHT = 8
 $!THREEDAXIS 
   ASPECTRATIOLIMIT = 25
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [1-36,76-95]
+$!ACTIVEFIELDMAPS  =  [1,3,5-9,11,13,15,17-21,23,25,27,29,31,33,35,76-77]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1092,26 +1053,10 @@ $!GLOBALSCATTER
     COLOR = RED
     FILLCOLOR = RED
     }
-  DATALABELS
-    {
-    COLORBYZONEMAP = YES
-    INCLUDEBOX = NO
-    INDEXSKIP = 2
-    }
-$!BLANKING 
-  VALUE
-    {
-    INCLUDE = YES
-    CONSTRAINT 1
-      {
-      VARA = 1
-      }
-    }
 $!FIELDMAP  [1]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -1131,7 +1076,6 @@ $!FIELDMAP  [1]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1187,7 +1131,7 @@ $!FIELDMAP  [2]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -1211,7 +1155,6 @@ $!FIELDMAP  [3]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -1231,7 +1174,6 @@ $!FIELDMAP  [3]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1287,7 +1229,7 @@ $!FIELDMAP  [4]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -1311,8 +1253,7 @@ $!FIELDMAP  [5]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM7
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -1331,7 +1272,6 @@ $!FIELDMAP  [5]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1360,7 +1300,7 @@ $!FIELDMAP  [6]
   MESH
     {
     SHOW = NO
-    COLOR = BLUE
+    COLOR = PURPLE
     }
   CONTOUR
     {
@@ -1378,7 +1318,7 @@ $!FIELDMAP  [6]
       {
       GEOMSHAPE = CUBE
       }
-    COLOR = BLUE
+    COLOR = PURPLE
     FRAMESIZE = 1
     }
   SHADE
@@ -1387,7 +1327,7 @@ $!FIELDMAP  [6]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = PURPLE
     }
   POINTS
@@ -1411,7 +1351,6 @@ $!FIELDMAP  [7]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -1431,7 +1370,6 @@ $!FIELDMAP  [7]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1460,7 +1398,7 @@ $!FIELDMAP  [8]
   MESH
     {
     SHOW = NO
-    COLOR = CUSTOM40
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -1478,7 +1416,7 @@ $!FIELDMAP  [8]
       {
       GEOMSHAPE = CUBE
       }
-    COLOR = RED
+    COLOR = GREEN
     FRAMESIZE = 1
     }
   SHADE
@@ -1487,7 +1425,7 @@ $!FIELDMAP  [8]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -1511,7 +1449,6 @@ $!FIELDMAP  [9]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -1531,7 +1468,6 @@ $!FIELDMAP  [9]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1587,7 +1523,7 @@ $!FIELDMAP  [10]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -1611,8 +1547,7 @@ $!FIELDMAP  [11]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM7
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -1631,7 +1566,6 @@ $!FIELDMAP  [11]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1687,7 +1621,7 @@ $!FIELDMAP  [12]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = PURPLE
     }
   POINTS
@@ -1711,7 +1645,6 @@ $!FIELDMAP  [13]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -1731,7 +1664,6 @@ $!FIELDMAP  [13]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1787,7 +1719,7 @@ $!FIELDMAP  [14]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -1811,7 +1743,6 @@ $!FIELDMAP  [15]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -1831,7 +1762,6 @@ $!FIELDMAP  [15]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1887,7 +1817,7 @@ $!FIELDMAP  [16]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -1911,8 +1841,7 @@ $!FIELDMAP  [17]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM7
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -1931,7 +1860,6 @@ $!FIELDMAP  [17]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -1987,7 +1915,7 @@ $!FIELDMAP  [18]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = PURPLE
     }
   POINTS
@@ -2011,7 +1939,6 @@ $!FIELDMAP  [19]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -2031,7 +1958,6 @@ $!FIELDMAP  [19]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2087,7 +2013,7 @@ $!FIELDMAP  [20]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -2111,7 +2037,6 @@ $!FIELDMAP  [21]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -2131,7 +2056,6 @@ $!FIELDMAP  [21]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2187,7 +2111,7 @@ $!FIELDMAP  [22]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -2211,8 +2135,7 @@ $!FIELDMAP  [23]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
-    COLOR = CUSTOM7
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -2231,7 +2154,6 @@ $!FIELDMAP  [23]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2287,7 +2209,7 @@ $!FIELDMAP  [24]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = PURPLE
     }
   POINTS
@@ -2311,7 +2233,6 @@ $!FIELDMAP  [25]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -2331,7 +2252,6 @@ $!FIELDMAP  [25]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2378,7 +2298,7 @@ $!FIELDMAP  [26]
       {
       GEOMSHAPE = CUBE
       }
-    COLOR = CUSTOM37
+    COLOR = GREEN
     FRAMESIZE = 1
     }
   SHADE
@@ -2387,7 +2307,7 @@ $!FIELDMAP  [26]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -2411,7 +2331,6 @@ $!FIELDMAP  [27]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -2431,7 +2350,6 @@ $!FIELDMAP  [27]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2487,7 +2405,7 @@ $!FIELDMAP  [28]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -2511,7 +2429,6 @@ $!FIELDMAP  [29]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = YELLOW
     }
   CONTOUR
@@ -2531,7 +2448,6 @@ $!FIELDMAP  [29]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2587,7 +2503,7 @@ $!FIELDMAP  [30]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = PURPLE
     }
   POINTS
@@ -2611,7 +2527,6 @@ $!FIELDMAP  [31]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = RED
     }
   CONTOUR
@@ -2631,7 +2546,6 @@ $!FIELDMAP  [31]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2687,7 +2601,7 @@ $!FIELDMAP  [32]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = GREEN
     }
   POINTS
@@ -2711,7 +2625,6 @@ $!FIELDMAP  [33]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = BLUE
     }
   CONTOUR
@@ -2731,7 +2644,6 @@ $!FIELDMAP  [33]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2787,7 +2699,7 @@ $!FIELDMAP  [34]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = CYAN
     }
   POINTS
@@ -2811,7 +2723,6 @@ $!FIELDMAP  [35]
   MESH
     {
     SHOW = NO
-    MESHTYPE = HIDDENLINE
     COLOR = YELLOW
     }
   CONTOUR
@@ -2831,7 +2742,6 @@ $!FIELDMAP  [35]
     }
   SHADE
     {
-    SHOW = NO
     COLOR = WHITE
     }
   EDGELAYER
@@ -2887,7 +2797,7 @@ $!FIELDMAP  [36]
     }
   EDGELAYER
     {
-    SHOW = NO
+    SHOW = YES
     COLOR = PURPLE
     }
   POINTS
@@ -2910,8 +2820,7 @@ $!FIELDMAP  [36]
 $!FIELDMAP  [37]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -2925,7 +2834,6 @@ $!FIELDMAP  [37]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -2957,8 +2865,7 @@ $!FIELDMAP  [37]
 $!FIELDMAP  [38]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -2972,7 +2879,6 @@ $!FIELDMAP  [38]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -3004,8 +2910,7 @@ $!FIELDMAP  [38]
 $!FIELDMAP  [39]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -3019,7 +2924,6 @@ $!FIELDMAP  [39]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -3051,8 +2955,7 @@ $!FIELDMAP  [39]
 $!FIELDMAP  [40]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -3066,7 +2969,6 @@ $!FIELDMAP  [40]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -3098,8 +3000,7 @@ $!FIELDMAP  [40]
 $!FIELDMAP  [41]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -3113,7 +3014,6 @@ $!FIELDMAP  [41]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -3146,7 +3046,6 @@ $!FIELDMAP  [42]
   MESH
     {
     COLOR = PURPLE
-    LINETHICKNESS = 1.5
     }
   CONTOUR
     {
@@ -3160,7 +3059,6 @@ $!FIELDMAP  [42]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = PURPLE
     }
   SHADE
@@ -3192,8 +3090,7 @@ $!FIELDMAP  [42]
 $!FIELDMAP  [43]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -3207,7 +3104,6 @@ $!FIELDMAP  [43]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -3239,8 +3135,7 @@ $!FIELDMAP  [43]
 $!FIELDMAP  [44]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -3254,7 +3149,6 @@ $!FIELDMAP  [44]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -3286,8 +3180,7 @@ $!FIELDMAP  [44]
 $!FIELDMAP  [45]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -3301,7 +3194,6 @@ $!FIELDMAP  [45]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -3333,8 +3225,7 @@ $!FIELDMAP  [45]
 $!FIELDMAP  [46]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -3348,7 +3239,6 @@ $!FIELDMAP  [46]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -3380,8 +3270,7 @@ $!FIELDMAP  [46]
 $!FIELDMAP  [47]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -3395,7 +3284,6 @@ $!FIELDMAP  [47]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -3428,7 +3316,6 @@ $!FIELDMAP  [48]
   MESH
     {
     COLOR = PURPLE
-    LINETHICKNESS = 1.5
     }
   CONTOUR
     {
@@ -3442,7 +3329,6 @@ $!FIELDMAP  [48]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = PURPLE
     }
   SHADE
@@ -3474,8 +3360,7 @@ $!FIELDMAP  [48]
 $!FIELDMAP  [49]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -3489,7 +3374,6 @@ $!FIELDMAP  [49]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -3521,8 +3405,7 @@ $!FIELDMAP  [49]
 $!FIELDMAP  [50]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -3536,7 +3419,6 @@ $!FIELDMAP  [50]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -3568,8 +3450,7 @@ $!FIELDMAP  [50]
 $!FIELDMAP  [51]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -3583,7 +3464,6 @@ $!FIELDMAP  [51]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -3615,8 +3495,7 @@ $!FIELDMAP  [51]
 $!FIELDMAP  [52]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -3630,7 +3509,6 @@ $!FIELDMAP  [52]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -3662,8 +3540,7 @@ $!FIELDMAP  [52]
 $!FIELDMAP  [53]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -3677,7 +3554,6 @@ $!FIELDMAP  [53]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -3710,7 +3586,6 @@ $!FIELDMAP  [54]
   MESH
     {
     COLOR = PURPLE
-    LINETHICKNESS = 1.5
     }
   CONTOUR
     {
@@ -3724,7 +3599,6 @@ $!FIELDMAP  [54]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = PURPLE
     }
   SHADE
@@ -3756,8 +3630,7 @@ $!FIELDMAP  [54]
 $!FIELDMAP  [55]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -3771,7 +3644,6 @@ $!FIELDMAP  [55]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -3803,8 +3675,7 @@ $!FIELDMAP  [55]
 $!FIELDMAP  [56]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -3818,7 +3689,6 @@ $!FIELDMAP  [56]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -3850,8 +3720,7 @@ $!FIELDMAP  [56]
 $!FIELDMAP  [57]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -3865,7 +3734,6 @@ $!FIELDMAP  [57]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -3897,8 +3765,7 @@ $!FIELDMAP  [57]
 $!FIELDMAP  [58]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -3912,7 +3779,6 @@ $!FIELDMAP  [58]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -3944,8 +3810,7 @@ $!FIELDMAP  [58]
 $!FIELDMAP  [59]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -3959,7 +3824,6 @@ $!FIELDMAP  [59]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -3992,7 +3856,6 @@ $!FIELDMAP  [60]
   MESH
     {
     COLOR = PURPLE
-    LINETHICKNESS = 1.5
     }
   CONTOUR
     {
@@ -4006,7 +3869,6 @@ $!FIELDMAP  [60]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = PURPLE
     }
   SHADE
@@ -4038,8 +3900,7 @@ $!FIELDMAP  [60]
 $!FIELDMAP  [61]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -4053,7 +3914,6 @@ $!FIELDMAP  [61]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -4085,8 +3945,7 @@ $!FIELDMAP  [61]
 $!FIELDMAP  [62]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -4100,7 +3959,6 @@ $!FIELDMAP  [62]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -4132,8 +3990,7 @@ $!FIELDMAP  [62]
 $!FIELDMAP  [63]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -4147,7 +4004,6 @@ $!FIELDMAP  [63]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -4179,8 +4035,7 @@ $!FIELDMAP  [63]
 $!FIELDMAP  [64]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -4194,7 +4049,6 @@ $!FIELDMAP  [64]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -4226,8 +4080,7 @@ $!FIELDMAP  [64]
 $!FIELDMAP  [65]
   MESH
     {
-    COLOR = PURPLE
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -4241,7 +4094,6 @@ $!FIELDMAP  [65]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -4273,8 +4125,7 @@ $!FIELDMAP  [65]
 $!FIELDMAP  [66]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = PURPLE
     }
   CONTOUR
     {
@@ -4288,7 +4139,6 @@ $!FIELDMAP  [66]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = PURPLE
     }
   SHADE
@@ -4320,8 +4170,7 @@ $!FIELDMAP  [66]
 $!FIELDMAP  [67]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -4335,7 +4184,6 @@ $!FIELDMAP  [67]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -4367,8 +4215,7 @@ $!FIELDMAP  [67]
 $!FIELDMAP  [68]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -4382,7 +4229,6 @@ $!FIELDMAP  [68]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -4414,8 +4260,7 @@ $!FIELDMAP  [68]
 $!FIELDMAP  [69]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -4429,7 +4274,6 @@ $!FIELDMAP  [69]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -4461,8 +4305,7 @@ $!FIELDMAP  [69]
 $!FIELDMAP  [70]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
@@ -4476,7 +4319,6 @@ $!FIELDMAP  [70]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = CYAN
     }
   SHADE
@@ -4508,8 +4350,7 @@ $!FIELDMAP  [70]
 $!FIELDMAP  [71]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
@@ -4523,7 +4364,6 @@ $!FIELDMAP  [71]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   SHADE
@@ -4555,8 +4395,7 @@ $!FIELDMAP  [71]
 $!FIELDMAP  [72]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = PURPLE
     }
   CONTOUR
     {
@@ -4570,7 +4409,6 @@ $!FIELDMAP  [72]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = PURPLE
     }
   SHADE
@@ -4602,8 +4440,7 @@ $!FIELDMAP  [72]
 $!FIELDMAP  [73]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
@@ -4617,7 +4454,6 @@ $!FIELDMAP  [73]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = RED
     }
   SHADE
@@ -4649,8 +4485,7 @@ $!FIELDMAP  [73]
 $!FIELDMAP  [74]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
@@ -4664,7 +4499,6 @@ $!FIELDMAP  [74]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = GREEN
     }
   SHADE
@@ -4696,8 +4530,7 @@ $!FIELDMAP  [74]
 $!FIELDMAP  [75]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
@@ -4711,7 +4544,6 @@ $!FIELDMAP  [75]
     }
   SCATTER
     {
-    SHOW = NO
     COLOR = BLUE
     }
   SHADE
@@ -4760,6 +4592,7 @@ $!FIELDMAP  [76]
     {
     SHOW = NO
     COLOR = CYAN
+    LINETHICKNESS = 1.5
     }
   SHADE
     {
@@ -4790,8 +4623,8 @@ $!FIELDMAP  [76]
 $!FIELDMAP  [77]
   MESH
     {
-    COLOR = CUSTOM1
-    LINETHICKNESS = 1.5
+    COLOR = BLACK
+    LINETHICKNESS = 0.02
     }
   CONTOUR
     {
@@ -4807,6 +4640,7 @@ $!FIELDMAP  [77]
     {
     SHOW = NO
     COLOR = YELLOW
+    LINETHICKNESS = 0.02
     }
   SHADE
     {
@@ -4837,7 +4671,7 @@ $!FIELDMAP  [77]
 $!FIELDMAP  [78]
   MESH
     {
-    COLOR = BLACK
+    COLOR = PURPLE
     }
   CONTOUR
     {
@@ -4852,12 +4686,7 @@ $!FIELDMAP  [78]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = PURPLE
     }
   SHADE
     {
@@ -4885,11 +4714,10 @@ $!FIELDMAP  [78]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [79]
   MESH
     {
-    COLOR = BLACK
+    COLOR = RED
     }
   CONTOUR
     {
@@ -4904,12 +4732,7 @@ $!FIELDMAP  [79]
   SCATTER
     {
     SHOW = NO
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = RED
     }
   SHADE
     {
@@ -4937,16 +4760,16 @@ $!FIELDMAP  [79]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [80]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -4954,12 +4777,7 @@ $!FIELDMAP  [80]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = GREEN
     }
   SHADE
     {
@@ -4987,16 +4805,16 @@ $!FIELDMAP  [80]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [81]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5004,12 +4822,7 @@ $!FIELDMAP  [81]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = BLUE
     }
   SHADE
     {
@@ -5037,16 +4850,16 @@ $!FIELDMAP  [81]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [82]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5054,12 +4867,7 @@ $!FIELDMAP  [82]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = CYAN
     }
   SHADE
     {
@@ -5087,16 +4895,16 @@ $!FIELDMAP  [82]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [83]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5104,12 +4912,7 @@ $!FIELDMAP  [83]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = YELLOW
     }
   SHADE
     {
@@ -5137,16 +4940,16 @@ $!FIELDMAP  [83]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [84]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = PURPLE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5154,12 +4957,7 @@ $!FIELDMAP  [84]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = PURPLE
     }
   SHADE
     {
@@ -5187,16 +4985,16 @@ $!FIELDMAP  [84]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [85]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5204,12 +5002,7 @@ $!FIELDMAP  [85]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = RED
     }
   SHADE
     {
@@ -5237,16 +5030,16 @@ $!FIELDMAP  [85]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [86]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5254,12 +5047,7 @@ $!FIELDMAP  [86]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = GREEN
     }
   SHADE
     {
@@ -5287,16 +5075,16 @@ $!FIELDMAP  [86]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [87]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5304,12 +5092,7 @@ $!FIELDMAP  [87]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = BLUE
     }
   SHADE
     {
@@ -5337,16 +5120,16 @@ $!FIELDMAP  [87]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [88]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5354,12 +5137,7 @@ $!FIELDMAP  [88]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = CYAN
     }
   SHADE
     {
@@ -5387,16 +5165,16 @@ $!FIELDMAP  [88]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [89]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5404,12 +5182,7 @@ $!FIELDMAP  [89]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = YELLOW
     }
   SHADE
     {
@@ -5437,16 +5210,16 @@ $!FIELDMAP  [89]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [90]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = PURPLE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5454,12 +5227,7 @@ $!FIELDMAP  [90]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = PURPLE
     }
   SHADE
     {
@@ -5487,16 +5255,16 @@ $!FIELDMAP  [90]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [91]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = RED
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = RED
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5504,12 +5272,7 @@ $!FIELDMAP  [91]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = RED
     }
   SHADE
     {
@@ -5537,16 +5300,16 @@ $!FIELDMAP  [91]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [92]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = GREEN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = GREEN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5554,12 +5317,7 @@ $!FIELDMAP  [92]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = GREEN
     }
   SHADE
     {
@@ -5587,16 +5345,16 @@ $!FIELDMAP  [92]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [93]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = BLUE
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = BLUE
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5604,12 +5362,7 @@ $!FIELDMAP  [93]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = BLUE
     }
   SHADE
     {
@@ -5637,16 +5390,16 @@ $!FIELDMAP  [93]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [94]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = CYAN
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = CYAN
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5654,12 +5407,7 @@ $!FIELDMAP  [94]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = CYAN
     }
   SHADE
     {
@@ -5687,16 +5435,16 @@ $!FIELDMAP  [94]
       SHOWSTREAMTRACES = NO
       }
     }
-  GROUP = 10
 $!FIELDMAP  [95]
   MESH
     {
-    COLOR = BLACK
-    LINETHICKNESS = 1.5
+    COLOR = YELLOW
     }
   CONTOUR
     {
+    CONTOURTYPE = FLOOD
     COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
     }
   VECTOR
     {
@@ -5704,12 +5452,7 @@ $!FIELDMAP  [95]
     }
   SCATTER
     {
-    SYMBOLSHAPE
-      {
-      GEOMSHAPE = CUBE
-      }
-    COLOR = BLACK
-    FRAMESIZE = 1.5
+    COLOR = YELLOW
     }
   SHADE
     {
@@ -5719,93 +5462,6 @@ $!FIELDMAP  [95]
     {
     SHOW = NO
     COLOR = YELLOW
-    }
-  POINTS
-    {
-    POINTSTOPLOT = SURFACENODES
-    }
-  SURFACES
-    {
-    SURFACESTOPLOT = KPLANES
-    }
-  VOLUMEMODE
-    {
-    VOLUMEOBJECTSTOPLOT
-      {
-      SHOWISOSURFACES = NO
-      SHOWSLICES = NO
-      SHOWSTREAMTRACES = NO
-      }
-    }
-  GROUP = 10
-$!FIELDMAP  [96]
-  MESH
-    {
-    COLOR = PURPLE
-    }
-  CONTOUR
-    {
-    COLOR = PURPLE
-    }
-  VECTOR
-    {
-    COLOR = PURPLE
-    }
-  SCATTER
-    {
-    COLOR = PURPLE
-    }
-  SHADE
-    {
-    COLOR = WHITE
-    }
-  EDGELAYER
-    {
-    SHOW = NO
-    COLOR = PURPLE
-    }
-  POINTS
-    {
-    POINTSTOPLOT = SURFACENODES
-    }
-  SURFACES
-    {
-    SURFACESTOPLOT = KPLANES
-    }
-  VOLUMEMODE
-    {
-    VOLUMEOBJECTSTOPLOT
-      {
-      SHOWISOSURFACES = NO
-      SHOWSLICES = NO
-      SHOWSTREAMTRACES = NO
-      }
-    }
-$!FIELDMAP  [97]
-  MESH
-    {
-    COLOR = RED
-    }
-  CONTOUR
-    {
-    COLOR = RED
-    }
-  VECTOR
-    {
-    COLOR = RED
-    }
-  SCATTER
-    {
-    COLOR = RED
-    }
-  SHADE
-    {
-    COLOR = WHITE
-    }
-  EDGELAYER
-    {
-    SHOW = NO
-    COLOR = RED
     }
   POINTS
     {
@@ -5843,20 +5499,12 @@ $!THREEDAXIS
   XYDEPXTOYRATIO = 1
   DEPXTOYRATIO = 1
   DEPXTOZRATIO = 1
-  FRAMEAXIS
-    {
-    XYPOS
-      {
-      X = 85.203
-      Y = 85.115
-      }
-    }
 $!THREEDAXIS 
   XDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -30.820106600000006125
-    RANGEMAX = 2686.4418386000002101
+    RANGEMIN = -34.657524999999999693
+    RANGEMAX = 2688.2170249999999214
     GRSPACING = 500
     AXISLINE
       {
@@ -5867,24 +5515,24 @@ $!THREEDAXIS
   YDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = -59.794335000000003788
-    RANGEMAX = 1251.5139930000000277
+    RANGEMIN = -61.423235300000001757
+    RANGEMAX = 1243.0950412999998207
     GRSPACING = 500
     AXISLINE
       {
-      EDGE = 2
+      EDGE = 1
       }
     }
 $!THREEDAXIS 
   ZDETAIL
     {
     SHOWAXIS = NO
-    RANGEMIN = 78.112725549999993291
-    RANGEMAX = 355.82295944999998483
-    GRSPACING = 100
+    RANGEMIN = 58.038960000000002992
+    RANGEMAX = 371.6542400000000157
+    GRSPACING = 200
     AXISLINE
       {
-      EDGE = 3
+      EDGE = 1
       }
     }
 $!ISOSURFACEATTRIBUTES  1
@@ -6069,15 +5717,15 @@ $!STREAMATTRIBUTES
 $!GLOBALTHREED 
   AXISSCALEFACT
     {
-    X = 0.970903924954943
-    Y = 0.970903924954943
-    Z = 0.970903924954943
+    X = 1
+    Y = 1
+    Z = 1
     }
   ROTATEORIGIN
     {
-    X = 1470.489650811216
-    Y = 702.7040873915468
-    Z = 208.5714870612059
+    X = 1326.77975
+    Y = 590.8359029999999
+    Z = 214.8466
     }
   LIGHTSOURCE
     {
@@ -6088,433 +5736,19 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 180
-  THETAANGLE = -90
+  PSIANGLE = 74.6171
+  THETAANGLE = 105.887
+  ALPHAANGLE = -0.201769
   VIEWERPOSITION
     {
-    X = 1520.953312749894
-    Y = 736.6613507631237
-    Z = -15667.90152535341
+    X = -12064.3488859397
+    Y = 3927.354419564163
+    Z = 4017.909297917074
     }
-  VIEWWIDTH = 739.758
+  VIEWWIDTH = 348.256
 $!FIELDLAYERS 
   SHOWSCATTER = YES
   SHOWEDGE = NO
-  USETRANSLUCENCY = YES
-  USELIGHTINGEFFECT = NO
 $!STREAMTRACELAYERS 
   SHOW = NO
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1346.67
-    Y = 106.01
-    Z = 282.728
-    }
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 1'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1115.11
-    Y = 98.3871
-    Z = 294.072
-    }
-  ZONE = 3
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 2'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1394.560638
-    Y = 266.965316
-    Z = 175.258616
-    }
-  ZONE = 5
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 3'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1196.346424
-    Y = 268.490786
-    Z = 192.41864
-    }
-  ZONE = 7
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 4'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1651.34
-    Y = 788.155
-    Z = 219.297
-    }
-  ZONE = 9
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 5'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1548.25
-    Y = 788.285
-    Z = 218.25
-    }
-  ZONE = 11
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 6'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1097.46
-    Y = 78.1391
-    Z = 91.11969999999999
-    }
-  ZONE = 13
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 7'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1330.45
-    Y = 71.48350000000001
-    Z = 90.7621
-    }
-  ZONE = 15
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 8'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1391.991084
-    Y = 267.282311
-    Z = 154.132624
-    }
-  ZONE = 17
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 9'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1195.746051
-    Y = 268.153725
-    Z = 150.487648
-    }
-  ZONE = 19
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 10'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1549.07
-    Y = 788.193
-    Z = 200.728
-    }
-  ZONE = 21
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 11'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1646.38
-    Y = 788.278
-    Z = 208.553
-    }
-  ZONE = 23
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 12'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2010.401288
-    Y = 94.907641
-    Z = 293.345872
-    }
-  ZONE = 25
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 13'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2004.12
-    Y = 62.6909
-    Z = 138.259
-    }
-  ZONE = 27
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 14'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 539.955
-    Y = 104.498
-    Z = 286.611
-    }
-  ZONE = 29
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 15'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 534.0599999999999
-    Y = 66.8552
-    Z = 118.732
-    }
-  ZONE = 31
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 16'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1806.85
-    Y = 1159.38
-    Z = 264.506
-    }
-  ZONE = 33
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 17'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1860.27
-    Y = 1159.2
-    Z = 268.732
-    }
-  ZONE = 35
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  MACROFUNCTIONCOMMAND = ''
-  TEXT = 'Surface 18'
 $!SETSTYLEBASE CONFIG

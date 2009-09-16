@@ -1932,8 +1932,6 @@ with LAPACK'''
                     else:
                         surface_list = []
 
-                    print 'calling with isurf,surface_list:',isurf,surface_list
-                        
                     s,type = self.getRefAxisConnection(ra,isurf,surface_list)
 
                     attachment_points.append(s)
@@ -2081,7 +2079,9 @@ a flap hinge line'
                 isurf_dir  = dir_type
 
         # end for
-      
+        f = open('../output/lines.dat','w')
+        f.write ('VARIABLES = "X", "Y","Z"\n')
+
         if isurf_dir == 1: #along v of isurf
             if not self.NO_PRINT:
                 print 'Reference axis is oriented along v on \
@@ -2105,9 +2105,12 @@ surface %d'%(isurf)
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
                 
+                temp.writeTecplot(f)
+
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[j] = s1
             # end for
+            f.close()
             return s,1
         else:
             if not self.NO_PRINT:
@@ -2129,9 +2132,12 @@ surface %d'%(isurf)
                 X = array(coef).reshape(Nctlv*len(full_surface_list),3)
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
+
+                temp.writeTecplot(f)
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[i] = s1
             # end for
+            f.close()
             return s,0
 
 # ----------------------------------------------------------------------
