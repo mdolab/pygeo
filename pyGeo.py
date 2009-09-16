@@ -630,10 +630,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 self.surfs.append(pySpline.surf_spline(\
                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
-                            Nctlv=nsections[i],*args,**kwargs))
+                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
                 self.surfs.append(pySpline.surf_spline(\
                         fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
-                            Nctlv=nsections[i],*args,**kwargs))
+                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
 
                 start = end-1
                 start2 = end2-1
@@ -2388,6 +2388,18 @@ surface %d'%(isurf)
             self.dCoefdx.assemblyEnd()
         # end if 
 
+        return
+
+    def compute_dPtdx( self ):
+        '''
+        Compute the product of the derivative of the surface points w.r.t.
+        the control points and the derivative of the control points w.r.t.
+        the design variables. This gives the derivative of the surface points
+        w.r.t. the design variables: a Jacobian matrix.
+        '''
+        
+        # Now Do the Try the matrix multiplication
+        
         # Now Do the matrix multiplication
         if USE_PETSC:
             if self.dPtdCoef:
