@@ -64,8 +64,8 @@ rot[:,1] = rot_y
 rot[:,2] = rot_z
 
 # Add l_surfs:
-#aircraft.l_surfs.append([2,3,9,8]) # Inner Wing Panels
-#aircraft.l_surfs.append([4,5,10,11]) # Outer Wing Panels
+aircraft.l_surfs.append([2,3,9,8]) # Inner Wing Panels
+aircraft.l_surfs.append([4,5,10,11]) # Outer Wing Panels
 
 aircraft.addRefAxis([2,3,8,9],X[0:2,:],rot[0:2,:],nrefsecs=6)
 aircraft.addRefAxis([4,5,10,11,16,17],X[1:3,:],rot[1:3,:],nrefsecs=6)
