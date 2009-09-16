@@ -1,0 +1,6520 @@
+#!MC 1120
+# Created by Tecplot 360 build 11.2-0-563
+$!VarSet |LFDSFN1| = '"dpw.dat"'
+$!VarSet |LFDSVL1| = '"X" "Y" "Z"'
+$!VarSet |LFDSFN2| = '"labels.dat"'
+$!VarSet |LFDSVL2| = ''
+$!VarSet |LFDSFN3| = '"labels.dat"'
+$!VarSet |LFDSVL3| = ''
+$!VarSet |LFDSFN4| = '"labels.dat"'
+$!VarSet |LFDSVL4| = ''
+$!SETSTYLEBASE FACTORY
+$!GLOBALLINKING 
+  LINKCOLORMAPS = YES
+$!GLOBALCOLORMAP  1
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 1 RESETTOFACTORY
+$!GLOBALCOLORMAP  1
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  2
+  CONTOURCOLORMAP = LGRAINBOW
+$!COLORMAPCONTROL 2 RESETTOFACTORY
+$!GLOBALCOLORMAP  2
+  LGRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.1667
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.3333
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 0.6667
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    CONTROLPOINT 6
+      {
+      COLORMAPFRACTION = 0.8333
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 7
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      }
+    }
+$!GLOBALCOLORMAP  3
+  CONTOURCOLORMAP = MODERN
+$!COLORMAPCONTROL 3 RESETTOFACTORY
+$!GLOBALCOLORMAP  3
+  MODERN
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 100
+        G = 35
+        B = 100
+        }
+      TRAILRGB
+        {
+        R = 100
+        G = 35
+        B = 100
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.1429
+      LEADRGB
+        {
+        R = 35
+        G = 35
+        B = 100
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.2857
+      LEADRGB
+        {
+        R = 35
+        G = 100
+        B = 100
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.4286
+      LEADRGB
+        {
+        R = 35
+        G = 100
+        B = 35
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 0.5714
+      LEADRGB
+        {
+        R = 100
+        G = 100
+        B = 35
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 6
+      {
+      COLORMAPFRACTION = 0.7143
+      LEADRGB
+        {
+        R = 85
+        G = 46
+        B = 10
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 7
+      {
+      COLORMAPFRACTION = 0.8571
+      LEADRGB
+        {
+        R = 100
+        G = 35
+        B = 35
+        }
+      TRAILRGB
+        {
+        R = 217
+        G = 117
+        B = 26
+        }
+      }
+    CONTROLPOINT 8
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  4
+  CONTOURCOLORMAP = GRAYSCALE
+$!COLORMAPCONTROL 4 RESETTOFACTORY
+$!GLOBALCOLORMAP  4
+  GRAYSCALE
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 0
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.125
+      LEADRGB
+        {
+        R = 32
+        G = 32
+        B = 32
+        }
+      TRAILRGB
+        {
+        R = 32
+        G = 32
+        B = 32
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 64
+        G = 64
+        B = 64
+        }
+      TRAILRGB
+        {
+        R = 64
+        G = 64
+        B = 64
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.375
+      LEADRGB
+        {
+        R = 96
+        G = 96
+        B = 96
+        }
+      TRAILRGB
+        {
+        R = 96
+        G = 96
+        B = 96
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 128
+        G = 128
+        B = 128
+        }
+      TRAILRGB
+        {
+        R = 128
+        G = 128
+        B = 128
+        }
+      }
+    CONTROLPOINT 6
+      {
+      COLORMAPFRACTION = 0.625
+      LEADRGB
+        {
+        R = 160
+        G = 160
+        B = 160
+        }
+      TRAILRGB
+        {
+        R = 160
+        G = 160
+        B = 160
+        }
+      }
+    CONTROLPOINT 7
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 192
+        G = 192
+        B = 192
+        }
+      TRAILRGB
+        {
+        R = 192
+        G = 192
+        B = 192
+        }
+      }
+    CONTROLPOINT 8
+      {
+      COLORMAPFRACTION = 0.875
+      LEADRGB
+        {
+        R = 224
+        G = 224
+        B = 224
+        }
+      TRAILRGB
+        {
+        R = 224
+        G = 224
+        B = 224
+        }
+      }
+    CONTROLPOINT 9
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      }
+    }
+$!GLOBALCOLORMAP  5
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 5 RESETTOFACTORY
+$!GLOBALCOLORMAP  5
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  6
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 6 RESETTOFACTORY
+$!GLOBALCOLORMAP  6
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  7
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 7 RESETTOFACTORY
+$!GLOBALCOLORMAP  7
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  8
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 8 RESETTOFACTORY
+$!GLOBALCOLORMAP  8
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!PLOTOPTIONS 
+  SUBDIVIDEALLCELLS = NO
+$!GLOBALPAPER 
+  PAPERSIZEINFO
+    {
+    LETTER
+      {
+      WIDTH = 8.5
+      HEIGHT = 11
+      LEFTHARDCLIPOFFSET = 0.125
+      RIGHTHARDCLIPOFFSET = 0.125
+      TOPHARDCLIPOFFSET = 0.125
+      BOTTOMHARDCLIPOFFSET = 0.125
+      }
+    }
+$!PAGE 
+  NAME = ''
+  PAPERATTRIBUTES
+    {
+    BACKGROUNDCOLOR = WHITE
+    ISTRANSPARENT = YES
+    ORIENTPORTRAIT = NO
+    SHOWGRID = YES
+    SHOWRULER = NO
+    SHOWPAPER = NO
+    PAPERSIZE = LETTER
+    RULERSPACING = ONEINCH
+    PAPERGRIDSPACING = HALFINCH
+    REGIONINWORKAREA
+      {
+      X1 = 1
+      Y1 = 0.25
+      X2 = 16
+      Y2 = 8.25
+      }
+    }
+### Frame Number 1 ###
+$!READDATASET  '|LFDSFN1|'
+  INITIALPLOTTYPE = CARTESIAN3D
+  INCLUDETEXT = NO
+  INCLUDEGEOM = NO
+  ASSIGNSTRANDIDS = YES
+  VARLOADMODE = BYNAME
+  VARNAMELIST = '|LFDSVL1|'
+$!REMOVEVAR |LFDSVL1|
+$!REMOVEVAR |LFDSFN1|
+$!READDATASET  '|LFDSFN2|'
+  INITIALPLOTTYPE = CARTESIAN3D
+  INCLUDETEXT = NO
+  INCLUDEGEOM = NO
+  READDATAOPTION = APPEND
+  RESETSTYLE = NO
+  ASSIGNSTRANDIDS = YES
+  VARLOADMODE = BYNAME
+  VARNAMELIST = '|LFDSVL2|'
+$!REMOVEVAR |LFDSVL2|
+$!REMOVEVAR |LFDSFN2|
+$!READDATASET  '|LFDSFN3|'
+  INITIALPLOTTYPE = CARTESIAN3D
+  INCLUDETEXT = NO
+  INCLUDEGEOM = NO
+  READDATAOPTION = APPEND
+  RESETSTYLE = NO
+  ASSIGNSTRANDIDS = YES
+  VARLOADMODE = BYNAME
+  VARNAMELIST = '|LFDSVL3|'
+$!REMOVEVAR |LFDSVL3|
+$!REMOVEVAR |LFDSFN3|
+$!READDATASET  '|LFDSFN4|'
+  INITIALPLOTTYPE = CARTESIAN3D
+  INCLUDETEXT = NO
+  INCLUDEGEOM = NO
+  READDATAOPTION = APPEND
+  RESETSTYLE = NO
+  ASSIGNSTRANDIDS = YES
+  VARLOADMODE = BYNAME
+  VARNAMELIST = '|LFDSVL4|'
+$!REMOVEVAR |LFDSVL4|
+$!REMOVEVAR |LFDSFN4|
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  HEADERCOLOR = RED
+  XYPOS
+    {
+    X = 1
+    Y = 0.25
+    }
+  WIDTH = 15
+  HEIGHT = 8
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!PLOTTYPE  = CARTESIAN3D
+$!FRAMENAME  = 'Frame 001'
+$!ACTIVEFIELDMAPS  =  [1-36,76-95]
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!GLOBALRGB 
+  RANGEMIN = 0
+  RANGEMAX = 1
+$!GLOBALCONTOUR  1
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  2
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  3
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  4
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  5
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  6
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  7
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALCONTOUR  8
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  COLORMAPFILTER
+    {
+    CONTINUOUSCOLOR
+      {
+      CMIN = 0
+      CMAX = 1
+      }
+    }
+$!GLOBALSCATTER 
+  LEGEND
+    {
+    XYPOS
+      {
+      X = 95
+      }
+    }
+  REFSCATSYMBOL
+    {
+    COLOR = RED
+    FILLCOLOR = RED
+    }
+  DATALABELS
+    {
+    COLORBYZONEMAP = YES
+    INCLUDEBOX = NO
+    INDEXSKIP = 2
+    }
+$!BLANKING 
+  VALUE
+    {
+    INCLUDE = YES
+    CONSTRAINT 1
+      {
+      VARA = 1
+      }
+    }
+$!FIELDMAP  [1]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [2]
+  MESH
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = GREEN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [3]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [4]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CYAN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [5]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = CUSTOM7
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [6]
+  MESH
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLUE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [7]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [8]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CUSTOM40
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = RED
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [9]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [10]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CYAN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [11]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = CUSTOM7
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [12]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [13]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [14]
+  MESH
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = GREEN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [15]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [16]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CYAN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [17]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = CUSTOM7
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [18]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [19]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [20]
+  MESH
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = GREEN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [21]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [22]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CYAN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [23]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = CUSTOM7
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [24]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [25]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [26]
+  MESH
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CUSTOM37
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [27]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [28]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CYAN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [29]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [30]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [31]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [32]
+  MESH
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = GREEN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [33]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = BLUE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [34]
+  MESH
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = CYAN
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [35]
+  MESH
+    {
+    SHOW = NO
+    MESHTYPE = HIDDENLINE
+    COLOR = YELLOW
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    SHOW = NO
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = YES
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [36]
+  MESH
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = PURPLE
+    FRAMESIZE = 1
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [37]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [38]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [39]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [40]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [41]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [42]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [43]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [44]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [45]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [46]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [47]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [48]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [49]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [50]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [51]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [52]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [53]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [54]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [55]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [56]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [57]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [58]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [59]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [60]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [61]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [62]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [63]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [64]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [65]
+  MESH
+    {
+    COLOR = PURPLE
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [66]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [67]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [68]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [69]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [70]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [71]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [72]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [73]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [74]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = GREEN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [75]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = BLUE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [76]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = CYAN
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [77]
+  MESH
+    {
+    COLOR = CUSTOM1
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = YELLOW
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [78]
+  MESH
+    {
+    COLOR = BLACK
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = PURPLE
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SHOW = NO
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [79]
+  MESH
+    {
+    COLOR = BLACK
+    }
+  CONTOUR
+    {
+    CONTOURTYPE = FLOOD
+    COLOR = RED
+    USELIGHTINGEFFECT = YES
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SHOW = NO
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [80]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [81]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [82]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [83]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [84]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [85]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [86]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [87]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [88]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [89]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [90]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [91]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [92]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = GREEN
+    }
+  VECTOR
+    {
+    COLOR = GREEN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = GREEN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [93]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = BLUE
+    }
+  VECTOR
+    {
+    COLOR = BLUE
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = BLUE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [94]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = CYAN
+    }
+  VECTOR
+    {
+    COLOR = CYAN
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = CYAN
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [95]
+  MESH
+    {
+    COLOR = BLACK
+    LINETHICKNESS = 1.5
+    }
+  CONTOUR
+    {
+    COLOR = YELLOW
+    }
+  VECTOR
+    {
+    COLOR = YELLOW
+    }
+  SCATTER
+    {
+    SYMBOLSHAPE
+      {
+      GEOMSHAPE = CUBE
+      }
+    COLOR = BLACK
+    FRAMESIZE = 1.5
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = YELLOW
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+  GROUP = 10
+$!FIELDMAP  [96]
+  MESH
+    {
+    COLOR = PURPLE
+    }
+  CONTOUR
+    {
+    COLOR = PURPLE
+    }
+  VECTOR
+    {
+    COLOR = PURPLE
+    }
+  SCATTER
+    {
+    COLOR = PURPLE
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = PURPLE
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!FIELDMAP  [97]
+  MESH
+    {
+    COLOR = RED
+    }
+  CONTOUR
+    {
+    COLOR = RED
+    }
+  VECTOR
+    {
+    COLOR = RED
+    }
+  SCATTER
+    {
+    COLOR = RED
+    }
+  SHADE
+    {
+    COLOR = WHITE
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    COLOR = RED
+    }
+  POINTS
+    {
+    POINTSTOPLOT = SURFACENODES
+    }
+  SURFACES
+    {
+    SURFACESTOPLOT = KPLANES
+    }
+  VOLUMEMODE
+    {
+    VOLUMEOBJECTSTOPLOT
+      {
+      SHOWISOSURFACES = NO
+      SHOWSLICES = NO
+      SHOWSTREAMTRACES = NO
+      }
+    }
+$!THREEDAXIS 
+  XDETAIL
+    {
+    VARNUM = 1
+    }
+  YDETAIL
+    {
+    VARNUM = 2
+    }
+  ZDETAIL
+    {
+    VARNUM = 3
+    }
+$!VIEW FIT
+$!THREEDAXIS 
+  AXISMODE = XYZDEPENDENT
+  XYDEPXTOYRATIO = 1
+  DEPXTOYRATIO = 1
+  DEPXTOZRATIO = 1
+  FRAMEAXIS
+    {
+    XYPOS
+      {
+      X = 85.203
+      Y = 85.115
+      }
+    }
+$!THREEDAXIS 
+  XDETAIL
+    {
+    SHOWAXIS = NO
+    RANGEMIN = -30.820106600000006125
+    RANGEMAX = 2686.4418386000002101
+    GRSPACING = 500
+    AXISLINE
+      {
+      EDGE = 2
+      }
+    }
+$!THREEDAXIS 
+  YDETAIL
+    {
+    SHOWAXIS = NO
+    RANGEMIN = -59.794335000000003788
+    RANGEMAX = 1251.5139930000000277
+    GRSPACING = 500
+    AXISLINE
+      {
+      EDGE = 2
+      }
+    }
+$!THREEDAXIS 
+  ZDETAIL
+    {
+    SHOWAXIS = NO
+    RANGEMIN = 78.112725549999993291
+    RANGEMAX = 355.82295944999998483
+    GRSPACING = 100
+    AXISLINE
+      {
+      EDGE = 3
+      }
+    }
+$!ISOSURFACEATTRIBUTES  1
+  OBEYSOURCEZONEBLANKING = NO
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  2
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 2
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 2
+    FLOODCOLORING = GROUP2
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  3
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 3
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 3
+    FLOODCOLORING = GROUP3
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  4
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 4
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 4
+    FLOODCOLORING = GROUP4
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  5
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 5
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 5
+    FLOODCOLORING = GROUP5
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  6
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 6
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 6
+    FLOODCOLORING = GROUP6
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  7
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 7
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 7
+    FLOODCOLORING = GROUP7
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!ISOSURFACEATTRIBUTES  8
+  OBEYSOURCEZONEBLANKING = NO
+  DEFINITIONCONTOURGROUP = 8
+  ISOSURFACESELECTION = ONESPECIFICVALUE
+  MARCHINGCUBEALGORITHM = CLASSICPLUS
+  CONTOUR
+    {
+    LINECONTOURGROUP = 8
+    FLOODCOLORING = GROUP8
+    }
+  EFFECTS
+    {
+    LIGHTINGEFFECT = GOURAUD
+    }
+$!SLICEATTRIBUTES  1
+  OBEYSOURCEZONEBLANKING = NO
+  PRIMARYPOSITION
+    {
+    X = 0
+    Y = 0
+    Z = 0
+    I = 1
+    J = 1
+    K = 1
+    }
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  2
+  OBEYSOURCEZONEBLANKING = NO
+  SLICESURFACE = YPLANES
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  3
+  OBEYSOURCEZONEBLANKING = NO
+  SLICESURFACE = ZPLANES
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  4
+  OBEYSOURCEZONEBLANKING = NO
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  5
+  OBEYSOURCEZONEBLANKING = NO
+  SLICESURFACE = YPLANES
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  6
+  OBEYSOURCEZONEBLANKING = NO
+  SLICESURFACE = ZPLANES
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  7
+  OBEYSOURCEZONEBLANKING = NO
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!SLICEATTRIBUTES  8
+  OBEYSOURCEZONEBLANKING = NO
+  SLICESURFACE = YPLANES
+  EDGELAYER
+    {
+    SHOW = NO
+    }
+$!STREAMATTRIBUTES 
+  OBEYSOURCEZONEBLANKING = NO
+  STREAMTIMING
+    {
+    MARKSIZE = 1
+    MARKSYMBOL
+      {
+      GEOMSHAPE = SPHERE
+      }
+    }
+  MAXSTEPS = 10000
+$!GLOBALTHREED 
+  AXISSCALEFACT
+    {
+    X = 0.970903924954943
+    Y = 0.970903924954943
+    Z = 0.970903924954943
+    }
+  ROTATEORIGIN
+    {
+    X = 1470.489650811216
+    Y = 702.7040873915468
+    Z = 208.5714870612059
+    }
+  LIGHTSOURCE
+    {
+    INTENSITY = 75
+    BACKGROUNDLIGHT = 30
+    }
+  LINELIFTFRACTION = 0.2
+  SYMBOLLIFTFRACTION = 0.6
+  VECTORLIFTFRACTION = 0.7
+$!THREEDVIEW 
+  PSIANGLE = 180
+  THETAANGLE = -90
+  VIEWERPOSITION
+    {
+    X = 1520.953312749894
+    Y = 736.6613507631237
+    Z = -15667.90152535341
+    }
+  VIEWWIDTH = 739.758
+$!FIELDLAYERS 
+  SHOWSCATTER = YES
+  SHOWEDGE = NO
+  USETRANSLUCENCY = YES
+  USELIGHTINGEFFECT = NO
+$!STREAMTRACELAYERS 
+  SHOW = NO
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1346.67
+    Y = 106.01
+    Z = 282.728
+    }
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 1'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1115.11
+    Y = 98.3871
+    Z = 294.072
+    }
+  ZONE = 3
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 2'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1394.560638
+    Y = 266.965316
+    Z = 175.258616
+    }
+  ZONE = 5
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 3'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1196.346424
+    Y = 268.490786
+    Z = 192.41864
+    }
+  ZONE = 7
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 4'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1651.34
+    Y = 788.155
+    Z = 219.297
+    }
+  ZONE = 9
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 5'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1548.25
+    Y = 788.285
+    Z = 218.25
+    }
+  ZONE = 11
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 6'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1097.46
+    Y = 78.1391
+    Z = 91.11969999999999
+    }
+  ZONE = 13
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 7'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1330.45
+    Y = 71.48350000000001
+    Z = 90.7621
+    }
+  ZONE = 15
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 8'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1391.991084
+    Y = 267.282311
+    Z = 154.132624
+    }
+  ZONE = 17
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 9'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1195.746051
+    Y = 268.153725
+    Z = 150.487648
+    }
+  ZONE = 19
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 10'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1549.07
+    Y = 788.193
+    Z = 200.728
+    }
+  ZONE = 21
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 11'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1646.38
+    Y = 788.278
+    Z = 208.553
+    }
+  ZONE = 23
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 12'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 2010.401288
+    Y = 94.907641
+    Z = 293.345872
+    }
+  ZONE = 25
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 13'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 2004.12
+    Y = 62.6909
+    Z = 138.259
+    }
+  ZONE = 27
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 14'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 539.955
+    Y = 104.498
+    Z = 286.611
+    }
+  ZONE = 29
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 15'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 534.0599999999999
+    Y = 66.8552
+    Z = 118.732
+    }
+  ZONE = 31
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 16'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1806.85
+    Y = 1159.38
+    Z = 264.506
+    }
+  ZONE = 33
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 17'
+$!ATTACHTEXT 
+  POSITIONCOORDSYS = GRID3D
+  ANCHORPOS
+    {
+    X = 1860.27
+    Y = 1159.2
+    Z = 268.732
+    }
+  ZONE = 35
+  ATTACHTOZONE = YES
+  TEXTSHAPE
+    {
+    SIZEUNITS = FRAME
+    HEIGHT = 3
+    }
+  BOX
+    {
+    MARGIN = 10
+    LINETHICKNESS = 0.4
+    }
+  SCOPE = GLOBAL
+  MACROFUNCTIONCOMMAND = ''
+  TEXT = 'Surface 18'
+$!SETSTYLEBASE CONFIG
