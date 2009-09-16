@@ -2045,6 +2045,8 @@ a flap hinge line'
             dn[i,:] = ref_axis.xs.getDerivative(sn[i])
         # end for
 
+        print 'fucking full surface_list',full_surface_list
+
         for surfid in full_surface_list:
             # Now Do two tests: Take N points in u and test N groups
             # against dn and take N points in v and test the N groups
@@ -2097,7 +2099,6 @@ surface %d'%(isurf)
              
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
-                print 'coef:',temp.coef
                 
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[j] = s1

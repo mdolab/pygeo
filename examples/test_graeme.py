@@ -18,16 +18,17 @@ petsc4py.init(sys.argv)
 # =============================================================================
 
 # pySpline 
-sys.path.append('../pySpline/python')
+sys.path.append('../../pySpline/python')
 
 #cfd-csm pre (Optional)
-sys.path.append('../../pyHF/pycfd-csm/python/')
+sys.path.append('../../../pyHF/pycfd-csm/python/')
 
 #pyGeo
-import pyGeo2 as pyGeo
+sys.path.append('../')
+import pyGeo
 
 #pyLayout
-sys.path.append('../pyLayout/')
+sys.path.append('../../pyLayout/')
 import pyLayout
 
 #Design Variable Functions
@@ -40,7 +41,8 @@ from dv_funcs import *
 # Wing Information - Create a Geometry Object from cross sections
 
 naf=3
-airfoil_list = ['naca0012.dat','naca0012.dat','pinch_xfoil.dat']
+airfoil_list = ['../input/naca0012.dat','../input/naca0012.dat',
+                '../input/pinch_xfoil.dat']
 #airfoil_list = ['af15-16.inp','af15-16.inp','pinch.inp']
 chord = [1,1,.50]
 x = [0,0,0]
@@ -89,8 +91,8 @@ wing.calcEdgeConnectivity(1e-6,1e-6)
 wing.writeEdgeConnectivity('wing.con')
 wing.propagateKnotVectors()
 
-wing.writeTecplot('wing.dat',edges=True)
-wing.writeIGES('wing.igs')
+wing.writeTecplot('../output/wing.dat',edges=True)
+wing.writeIGES('../input/wing.igs')
 print 'Done Step 1'
 sys.exit(0)
 # ----------------------------------------------------------------------

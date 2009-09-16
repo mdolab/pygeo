@@ -18,30 +18,30 @@ sys.path.append('../../pySpline/python')
 import pySpline
 
 #cfd-csm pre (Optional)
-sys.path.append('../../../pyHF/pycfd-csm/python/')
+sys.path.append('../../../../pyHF/pycfd-csm/python/')
 
 #pyGeo
 sys.path.append('../')
-import pyGeo2 as pyGeo
+import pyGeo
 from geo_utils import *
 # This script reads a surfaced-based plot3d file as typically
 # outputted by aerosurf. It then creates a b-spline surfaces for each
 # surface patch.
-timeA = time.time()
-aircraft = pyGeo.pyGeo('plot3d',file_name='../input/dpw.xyz')
-aircraft.calcEdgeConnectivity()
-aircraft.writeEdgeConnectivity('dpw.con')
-aircraft.propagateKnotVectors()
-aircraft.fitSurfaces()
-timeA = time.time()
+# timeA = time.time()
+# aircraft = pyGeo.pyGeo('plot3d',file_name='../input/dpw.xyz')
+# aircraft.calcEdgeConnectivity()
+# aircraft.writeEdgeConnectivity('dpw.con')
+# aircraft.propagateKnotVectors()
+# aircraft.fitSurfaces()
+# timeA = time.time()
 
-aircraft.writeTecplot('../output/dpw.dat',edges=True)
-timeB =time.time()
-print 'Write time is:',timeB-timeA
-print 'full time',time.time()-timeA
+# aircraft.writeTecplot('../output/dpw.dat',edges=True)
+# timeB =time.time()
+# print 'Write time is:',timeB-timeA
+# print 'full time',time.time()-timeA
 
-aircraft.writeIGES('../input/dpw.igs')
-sys.exit(0)
+# aircraft.writeIGES('../input/dpw.igs')
+# sys.exit(0)
 
 aircraft = pyGeo.pyGeo('iges',file_name='../input/dpw.igs',no_print=False)
 aircraft.readEdgeConnectivity('dpw.con')
@@ -64,8 +64,8 @@ rot[:,1] = rot_y
 rot[:,2] = rot_z
 
 # Add l_surfs:
-aircraft.l_surfs.append([2,3,9,8]) # Inner Wing Panels
-aircraft.l_surfs.append([4,5,10,11]) # Outer Wing Panels
+#aircraft.l_surfs.append([2,3,9,8]) # Inner Wing Panels
+#aircraft.l_surfs.append([4,5,10,11]) # Outer Wing Panels
 
 aircraft.addRefAxis([2,3,8,9],X[0:2,:],rot[0:2,:],nrefsecs=6)
 aircraft.addRefAxis([4,5,10,11,16,17],X[1:3,:],rot[1:3,:],nrefsecs=6)
@@ -204,5 +204,5 @@ for isurf in surfaces_to_warp:
     # end for
 aircraft._updateSurfaceCoef()
 
-aircraft.writeTecplot('dpw.dat',edges=True,directions=True,
+aircraft.writeTecplot('../output/dpw.dat',edges=True,directions=True,
                       labels=True,links=True)#,size=5)
