@@ -1056,7 +1056,6 @@ $!GLOBALSCATTER
 $!FIELDMAP  [1]
   MESH
     {
-    SHOW = NO
     COLOR = RED
     }
   CONTOUR
@@ -1154,7 +1153,6 @@ $!FIELDMAP  [2]
 $!FIELDMAP  [3]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -1252,7 +1250,6 @@ $!FIELDMAP  [4]
 $!FIELDMAP  [5]
   MESH
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   CONTOUR
@@ -1350,7 +1347,6 @@ $!FIELDMAP  [6]
 $!FIELDMAP  [7]
   MESH
     {
-    SHOW = NO
     COLOR = RED
     }
   CONTOUR
@@ -1448,7 +1444,6 @@ $!FIELDMAP  [8]
 $!FIELDMAP  [9]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -1546,7 +1541,6 @@ $!FIELDMAP  [10]
 $!FIELDMAP  [11]
   MESH
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   CONTOUR
@@ -1644,7 +1638,6 @@ $!FIELDMAP  [12]
 $!FIELDMAP  [13]
   MESH
     {
-    SHOW = NO
     COLOR = RED
     }
   CONTOUR
@@ -1742,7 +1735,6 @@ $!FIELDMAP  [14]
 $!FIELDMAP  [15]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -1840,7 +1832,6 @@ $!FIELDMAP  [16]
 $!FIELDMAP  [17]
   MESH
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   CONTOUR
@@ -1938,7 +1929,6 @@ $!FIELDMAP  [18]
 $!FIELDMAP  [19]
   MESH
     {
-    SHOW = NO
     COLOR = RED
     }
   CONTOUR
@@ -2036,7 +2026,6 @@ $!FIELDMAP  [20]
 $!FIELDMAP  [21]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -2134,7 +2123,6 @@ $!FIELDMAP  [22]
 $!FIELDMAP  [23]
   MESH
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   CONTOUR
@@ -2232,7 +2220,6 @@ $!FIELDMAP  [24]
 $!FIELDMAP  [25]
   MESH
     {
-    SHOW = NO
     COLOR = RED
     }
   CONTOUR
@@ -2330,7 +2317,6 @@ $!FIELDMAP  [26]
 $!FIELDMAP  [27]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -2428,7 +2414,6 @@ $!FIELDMAP  [28]
 $!FIELDMAP  [29]
   MESH
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   CONTOUR
@@ -2526,7 +2511,6 @@ $!FIELDMAP  [30]
 $!FIELDMAP  [31]
   MESH
     {
-    SHOW = NO
     COLOR = RED
     }
   CONTOUR
@@ -2624,7 +2608,6 @@ $!FIELDMAP  [32]
 $!FIELDMAP  [33]
   MESH
     {
-    SHOW = NO
     COLOR = BLUE
     }
   CONTOUR
@@ -2722,7 +2705,6 @@ $!FIELDMAP  [34]
 $!FIELDMAP  [35]
   MESH
     {
-    SHOW = NO
     COLOR = YELLOW
     }
   CONTOUR
@@ -5529,7 +5511,7 @@ $!THREEDAXIS
     SHOWAXIS = NO
     RANGEMIN = 58.038960000000002992
     RANGEMAX = 371.6542400000000157
-    GRSPACING = 200
+    GRSPACING = 100
     AXISLINE
       {
       EDGE = 1
@@ -5736,16 +5718,16 @@ $!GLOBALTHREED
   SYMBOLLIFTFRACTION = 0.6
   VECTORLIFTFRACTION = 0.7
 $!THREEDVIEW 
-  PSIANGLE = 74.6171
-  THETAANGLE = 105.887
-  ALPHAANGLE = -0.201769
+  PSIANGLE = 65.9889
+  THETAANGLE = 168.468
+  ALPHAANGLE = -13.4662
   VIEWERPOSITION
     {
-    X = -12051.83024559239
-    Y = 4035.443184532111
-    Z = 3954.127865898236
+    X = -1156.762824470065
+    Y = 13381.81655072311
+    Z = 6127.318548217993
     }
-  VIEWWIDTH = 527.255
+  VIEWWIDTH = 2217.56
 $!FIELDLAYERS 
   SHOWSCATTER = YES
   SHOWEDGE = NO

@@ -78,15 +78,28 @@ rot[:,1] = rot_y
 rot[:,2] = tw_aero
 # ------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                       file_type='xfoil',scale=chord,offset=offset, \
-                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
-                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
+# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+#                        file_type='xfoil',scale=chord,offset=offset, \
+#                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+#                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.propagateKnotVectors()
-wing.writeTecplot('../output/wing.dat')
+# wing.calcEdgeConnectivity(1e-6,1e-6)
+# wing.propagateKnotVectors()
+# wing.writeTecplot('../output/wing.dat')
+# wing.writeIGES('../input/wing.igs')
 # ------------------------------------------------------------------
+
+# Load in the split plot3d file
+# wing = pyGeo.pyGeo('plot3d',file_name='../input/wing.xyz.fmt')
+# wing.calcEdgeConnectivity(1e-6,1e-6)
+# wing.writeEdgeConnectivity('wing_split.con')
+# wing.propagateKnotVectors()
+# wing.writeIGES('../input/wing_split.igs')
+
+wing = pyGeo.pyGeo('iges',file_name='../input/wing_split.igs')
+wing.readEdgeConnectivity('wing_split.con')
+wing.writeTecplot('../output/wing.dat',
+                  labels=True,ref_axis=True,directions=True)
 
 
 # Create the empty pyLayout Object
@@ -104,20 +117,25 @@ te_list = array([[.60,0,0],[.6,0,3.94]])
 domain = pyLayout.domain(le_list,te_list)
 
 # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
-#rib_pos = zeros((MAX_RIBS,3))
-#spline = pySpline.linear_spline(task='interpolate',k=2,X=X[0:2])
-#rib_pos = spline.getValueV(linspace(0,1,MAX_RIBS))
+rib_pos = zeros((MAX_RIBS,3))
+spline = pySpline.linear_spline(task='interpolate',k=2,X=X[0:2])
+rib_pos = spline.getValueV(linspace(0,1,MAX_RIBS))
 
-#rib_dir = zeros((MAX_RIBS,3))
-#rib_dir[:] = [1,0,0]
+rib_dir = zeros((MAX_RIBS,3))
+rib_dir[:] = [1,0,0]
+rib_dir[6] = [1,.25,0]
 # -----------------------------------------------------------
 
 rib_blank = ones(MAX_RIBS)
 spar_blank = ones(MAX_SPARS)
+rib_blank[5] = 0
+surfs = [1,0,2,3]
+spar_con = [0,-1,1]
 
-def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,
-                           rib_blank=rib_blank,
+def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
+                           rib_blank=rib_blank,rib_pos=rib_pos,rib_dir=rib_dir,
                            spar_blank=spar_blank)
+                           
 
 wing_box.addSection(def1)
 wing_box.finalize()

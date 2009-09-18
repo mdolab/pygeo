@@ -2577,29 +2577,45 @@ surface %d'%(isurf)
 #                   Surface Writing Output Functions
 # ----------------------------------------------------------------------
 
-    def writeTecplot(self,file_name,surfs=True,edges=False,\
-                         ref_axis=True,links=False,directions=False,\
-                         labels=False,size=None):
+    def writeTecplot(self,file_name,orig=False,surfs=True,coef=True,
+                     edges=False,ref_axis=False,links=False,
+                     directions=False,labels=False,size=None):
+
         '''Write the pyGeo Object to Tecplot'''
 
-        # ---------------------------
-        #    Write out the surfaces
-        # ---------------------------
+        # Open File and output header
+        print ' '
+        print 'Writing Tecplot file: %s '%(file_name)
+
+        f = open(file_name,'w')
+        f.write ('VARIABLES = "X", "Y","Z"\n')
+
+        # --------------------------------------
+        #    Write out the Interpolated Surfaces
+        # --------------------------------------
         
         if surfs == True:
-            f = open(file_name,'w')
-            f.write ('VARIABLES = "X", "Y","Z"\n')
-            print ' '
-            print 'Writing Tecplot file: %s '%(file_name)
-            sys.stdout.write('Outputting Surface: ')
-            
             for isurf in xrange(self.nSurf):
-                sys.stdout.write('%d '%(isurf))
-                self.surfs[isurf].writeTecplotSurface(handle=f,size=size)
+                self.surfs[isurf].writeTecplotSurface(f,size=size)
 
-        # ---------------------------
+        # -------------------------------
+        #    Write out the Control Points
+        # -------------------------------
+        
+        if coef == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf].writeTecplotCoef(f)
+
+        # ----------------------------------
+        #    Write out the Original Data
+        # ----------------------------------
+        
+        if orig == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf].writeTecplotOrigData(f)
+        # ----------------------
         #    Write out the edges
-        # ---------------------------
+        # ----------------------
 
         # We also want to output edge continuity for visualization
         if self.con and edges==True:
@@ -2635,9 +2651,9 @@ surface %d'%(isurf)
             # end for
         # end if
 
-        # ---------------------------------
+        # ---------------------
         #    Write out Ref Axis
-        # ---------------------------------
+        # ---------------------
 
         if len(self.ref_axis)>0 and ref_axis==True:
             for r in xrange(len(self.ref_axis)):
@@ -2646,9 +2662,9 @@ surface %d'%(isurf)
             # end for
         # end if
 
-        # ---------------------------------
+        # ------------------
         #    Write out Links
-        # ---------------------------------
+        # ------------------
 
         if len(self.ref_axis)>0 and links==True:
             for r in xrange(len(self.ref_axis)):
@@ -2656,9 +2672,9 @@ surface %d'%(isurf)
             # end for
         # end if
               
-        # ---------------------------------
+        # -----------------------------------
         #    Write out The Surface Directions
-        # ---------------------------------
+        # -----------------------------------
 
         if directions == True:
             for isurf in xrange(self.nSurf):
@@ -2670,7 +2686,11 @@ surface %d'%(isurf)
         #    Write out The Labels
         # ---------------------------------
         if labels == True:
-            f2 = open('labels.dat','w')
+            # Split the filename off
+            (dirName,fileName) = os.path.split(file_name)
+            (fileBaseName, fileExtension)=os.path.splitext(fileName)
+            label_filename = dirName+'/'+fileBaseName+'.labels.dat'
+            f2 = open(label_filename,'w')
             for isurf in xrange(self.nSurf):
                 midu = floor(self.surfs[isurf].Nctlu/2)
                 midv = floor(self.surfs[isurf].Nctlv/2)
