@@ -104,13 +104,13 @@ wing.writeTecplot('../output/wing.dat',
 
 # Create the empty pyLayout Object
 
-MAX_SPARS = 3
+MAX_SPARS = 3  # This is the same for each spanwise section
 Nsection = 1
 wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
 
 # ---------- Create the First Domain -------------
 
-MAX_RIBS = 10
+MAX_RIBS = 4
 le_list = array([[0,0,0],[0,0,3.94]])
 te_list = array([[.60,0,0],[.6,0,3.94]])
 
@@ -123,14 +123,17 @@ rib_pos = spline.getValueV(linspace(0,1,MAX_RIBS))
 
 rib_dir = zeros((MAX_RIBS,3))
 rib_dir[:] = [1,0,0]
-rib_dir[6] = [1,.25,0]
+rib_dir[1] = [1,0,.25]
 # -----------------------------------------------------------
 
-rib_blank = ones(MAX_RIBS)
-spar_blank = ones(MAX_SPARS)
-rib_blank[5] = 0
-surfs = [1,0,2,3]
-spar_con = [0,-1,1]
+rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
+spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
+
+rib_blank[2,1:] = 0
+spar_blank[1,2:] = 0
+
+surfs = [[0,1],[2,3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
+spar_con = [0,1,1]
 
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
                            rib_blank=rib_blank,rib_pos=rib_pos,rib_dir=rib_dir,
@@ -138,4 +141,5 @@ def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
                            
 
 wing_box.addSection(def1)
+wing_box.writeTecplot('../output/layout.dat')
 wing_box.finalize()
