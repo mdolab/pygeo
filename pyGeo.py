@@ -1385,6 +1385,28 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         if surface_list == None:
             surface_list = range(0,self.nSurf)            
 
+        if len(sizes) == self.nSurf:
+            pass # The sizes are the correct size
+        else:
+            if len(sizes) == len(surface_list):
+                # The user has passed in the sizes of the surfaces of interest
+                new_sizes = []
+                for isurf in xrange(self.nSurf):
+                    if isurf in surface_list:
+                        index = surface_list.index(isurf)
+                        new_sizes.append(sizes[index])
+                    else:
+                        new_sizes.append([])
+                    # end if
+                # end for
+                sizes = copy.deepcopy(new_sizes)
+            else:
+                print 'Error: The size parameter passed to calcGlobalNumber must contain the \
+sizes of ALL surfaces or the sizes of the surfaces in surface_list'
+                sys.exit(0)
+            # end if
+        # end if
+
         for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
             Nu = sizes[isurf][0]
