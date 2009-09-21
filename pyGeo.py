@@ -2040,43 +2040,18 @@ a flap hinge line'
         full_surface_list = unique(full_surface_list)
         
         types = []
-        N = 3
-        sn = linspace(0,1,N)
-        dn = zeros((N,3))
-        s = linspace(0,1,N)
-        for i in xrange(N):
-            dn[i,:] = ref_axis.xs.getDerivative(sn[i])
-        # end for
 
         for surfid in full_surface_list:
-            # Now Do two tests: Take N points in u and test N groups
-            # against dn and take N points in v and test the N groups
-            # again
-
-            u_dot_tot = 0
-            for i in xrange(N):
-                for n in xrange(N):
-                    du,dv = self.surfs[surfid].getDerivative(s[i],s[n])
-                    u_dot_tot += dot(du,dn[n,:])
-                # end for
-            # end for
-
-            v_dot_tot = 0
-            for j in xrange(N):
-                for n in xrange(N):
-                    du,dv = self.surfs[surfid].getDerivative(s[n],s[j])
-                    v_dot_tot += dot(dv,dn[n,:])
-                # end for
-            # end for
-
-            if v_dot_tot > u_dot_tot:
-                dir_type = 1 # Along v
+            dir_type = directionAlongSurface(self.surfs[surfid],ref_axis)
+            if dir_type == 0 or dir_type == 1: # u type regarless of direction
+                types.append(0)
             else:
-                dir_type = 0 # Along u
+                types.append(1)
             # end if
-            types.append(dir_type)
+
             if surfid == isurf:
                 isurf_dir  = dir_type
+            # end if
 
         # end for
         f = open('../output/lines.dat','w')

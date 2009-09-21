@@ -336,6 +336,49 @@ def test_node(surf1,surf2,i,j,node_tol):
         return False
 
 
+def directionAlongSurface(surface,line):
+    '''Determine the dominate (u or v) direction of line along surface'''
+    # Now Do two tests: Take N points in u and test N groups
+    # against dn and take N points in v and test the N groups
+    # again
+
+    N = 3
+    sn = linspace(0,1,N)
+    dn = zeros((N,3))
+    s = linspace(0,1,N)
+    for i in xrange(N):
+        dn[i,:] = line.getDerivative(sn[i])
+    # end for
+    u_dot_tot = 0
+    for i in xrange(N):
+        for n in xrange(N):
+            du,dv = surface.getDerivative(s[i],s[n])
+            u_dot_tot += dot(du,dn[n,:])
+        # end for
+    # end for
+
+    v_dot_tot = 0
+    for j in xrange(N):
+        for n in xrange(N):
+            du,dv = surface.getDerivative(s[n],s[j])
+            v_dot_tot += dot(dv,dn[n,:])
+        # end for
+    # end for
+
+    if abs(u_dot_tot) > abs(v_dot_tot):
+        # Its along u now get 
+        if u_dot_tot >= 0: 
+            return 0 # U same direction
+        else:
+            return 1 # U opposite direction
+    else:
+        if v_dot_tot >= 0:
+            return 2 # V same direction
+        else:
+            return 3 # V opposite direction
+        # end if
+    # end if 
+
 # ------------ Python Surface Mesh Warping Implementation -----------
 
 def delI(i,j,vals):
