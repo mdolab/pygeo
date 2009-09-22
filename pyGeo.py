@@ -1094,8 +1094,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                     e1,e2,s1,s2 = edgesFromNode(inode)
 
                     # Now get the edge index for these edges
-                    icon1,master1,degen1 = self._findEdgeIndex(isurf,e1)
-                    icon2,master2,degen2 = self._findEdgeIndex(isurf,e2)
+                    icon1,master1,degen1 = self._findEdgeIndex(isurf,e1,self.con)
+                    icon2,master2,degen2 = self._findEdgeIndex(isurf,e2,self.con)
                   
                     prop1 = True
                     prop2 = True
@@ -1107,7 +1107,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                         self.node_con[-1].append([isurf,new_node])
                        
                         new_edge,s1 = getAdajacentEdge(new_node,e1)
-                        icon1,master1,degen1 = self._findEdgeIndex(isurf,new_edge)
+                        icon1,master1,degen1 = self._findEdgeIndex(isurf,new_edge,self.con)
                         if self.con[icon1].type == 0:
                             prop1 = False
 
@@ -1118,7 +1118,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                         self.node_con[-1].append([isurf,new_node])
                        
                         new_edge,s2 = getAdajacentEdge(new_node,e2)
-                        icon2,master2,degen2 = self._findEdgeIndex(isurf,new_edge)
+                        icon2,master2,degen2 = self._findEdgeIndex(isurf,new_edge,self.con)
                         
                         if self.con[icon2].type == 0:
                             prop2 = False
@@ -1146,7 +1146,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
                             new_edge,s1 = getAdajacentEdge(new_node,new_edge)
                             
-                            icon1,master1,degen1 = self._findEdgeIndex(new_face,new_edge)
+                            icon1,master1,degen1 = self._findEdgeIndex(new_face,new_edge,self.con)
                             
                             if self.con[icon1].type == 2:
                                 # Add the other degen corner and keep going
@@ -1154,7 +1154,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                                 self.node_con[-1].append([new_face,new_node])
                                
                                 new_edge,s1 = getAdajacentEdge(new_node,new_edge)
-                                icon1,master1,degen1 = self._findEdgeIndex(new_face,new_edge)
+                                icon1,master1,degen1 = self._findEdgeIndex(new_face,new_edge,self.con)
                                 if self.con[icon1].type == 0:
                                     break
 
@@ -1185,7 +1185,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
                             new_edge,s2 = getAdajacentEdge(new_node,new_edge)
                           
-                            icon2,master2,degen2 = self._findEdgeIndex(new_face,new_edge)
+                            icon2,master2,degen2 = self._findEdgeIndex(new_face,new_edge,self.con)
                             
                             if self.con[icon2].type == 2:
                                 # Add the degen corner and break
@@ -1193,7 +1193,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                                 self.node_con[-1].append([new_face,new_node])
                                 
                                 new_edge,s2 = getAdajacentEdge(new_node,new_edge)
-                                icon2,master2,degen2 = self._findEdgeIndex(new_face,new_edge)
+                                icon2,master2,degen2 = self._findEdgeIndex(new_face,new_edge,self.con)
                                 
                                 if self.con[icon2].type == 0:
                                     break
@@ -1211,37 +1211,38 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 print self.node_con[i]
 
 
-
-
-    def _findEdgeIndex(self,isurf,edge=None):
+    def _findEdgeIndex(self,isurf,edge,con):
         '''Find the index of the entry in the edge list for isurf and edge'''
         # Search just the master ones first
-        for i in xrange(len(self.con)):
-            if self.con[i].f1 == isurf and self.con[i].e1 == edge:
-                if self.con[i].type in [0,1]:
+        for i in xrange(len(con)):
+            if con[i].f1 == isurf and con[i].e1 == edge:
+                if con[i].type in [0,1]:
                     # Its a free or master connected edge
                     return i,True,False
-                elif self.con[i].type == 2: # Degen to Corner
+                elif con[i].type == 2: # Degen to Corner
                     return i,False,True
                 # end if
             # end if
-            if self.con[i].f2 == isurf and self.con[i].e2 == edge:
+            if con[i].f2 == isurf and con[i].e2 == edge:
                 return i,False,False # Only edge type 1 have second
                                      # connections
             # end if
         # end for
 
-    def _findNodeIndex(self,isurf,node):
-        for i in xrange(len(self.node_con)):
-            if [isurf,node] in self.node_con[i]:
-                if [isurf,node] == self.node_con[i][0]:
+    def _findNodeIndex(self,isurf,node,node_con):
+        for i in xrange(len(node_con)):
+            if [isurf,node] in node_con[i]:
+                if [isurf,node] == node_con[i][0]:
                     return True,None,None
                 else:
                     # Return the face/node of the driving one
-                    return False,self.node_con[i][0][0],self.node_con[i][0][1]
+                    return False,node_con[i][0][0],node_con[i][0][1]
                 # end if
             # end if
         # end for
+        print 'Error:'
+        print 'isurf,node,node_con:',isurf,node,node_con
+        #sys.exit(0)
 
     def _setEdgeConnectivity(self):
         '''Internal function to set the global/local numbering'''
@@ -1280,25 +1281,40 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end
         return
 
-    def calcGlobalNumbering(self,sizes,surface_list=None):
+    def calcGlobalNumbering(self,sizes,surface_list=None,con=None,node_con=None):
         '''Internal function to calculate the global/local numbering for each surface'''
-        if self.con == None:
+        if con == None: # No auxilary con set was passed; use self.con
+            con = self.con
+        # end if
+        
+        if node_con == None: # No auxilary con set was passed; use self.node_con
+            node_con = self.node_con
+        # end if
+
+        if con == None:
             print 'Error: No edge connectivity is set yet. Either run \
  calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
         # end if
- 
+        if surface_list == None:
+            surface_list = range(0,self.nSurf)            
+
+
+# ---------------------- AUXILARY FUNCTIONS ------------------------
+
         def add_master(counter):
             '''Add a master control point'''
-            l_index[isurf][i,j] = counter
+            l_index[ii][i,j] = counter
             counter =counter + 1
-            g_index.append([[isurf,i,j]])
+            g_index.append([[ii,i,j]])
             return counter
 
         def getIndexEdge(isurf,edge,index,dir):
             '''Get the global index value from edge,index,dir information'''
-            cur_Nu = sizes[isurf][0]
-            cur_Nv = sizes[isurf][1]
+            surf_index = surface_list.index(isurf)
+
+            cur_Nu = sizes[surf_index][0]
+            cur_Nv = sizes[surf_index][1]
 
             if index == -1 and (edge == 0 or edge == 1): # We want the end
                 index = cur_Nu-1
@@ -1307,33 +1323,35 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 
             if edge == 0:
                 if dir == 1:
-                    return l_index[isurf][index,0]
+                    return l_index[surf_index][index,0]
                 else:
-                    return l_index[isurf][cur_Nu-1-index,0]
+                    return l_index[surf_index][cur_Nu-1-index,0]
                 # end if
             elif edge == 1:
                 if dir == 1:
-                     return l_index[isurf][index,cur_Nv-1]
+                     return l_index[surf_index][index,cur_Nv-1]
                 else:
-                    return l_index[isurf][cur_Nu-1-index,cur_Nv-1]
+                    return l_index[surf_index][cur_Nu-1-index,cur_Nv-1]
                 # end if
             elif edge == 2:
                 if dir == 1:
-                    return l_index[isurf][0,index]
+                    return l_index[surf_index][0,index]
                 else:
-                    return l_index[isurf][0,cur_Nv-1-index]
+                    return l_index[surf_index][0,cur_Nv-1-index]
                 # end if
             elif edge == 3:
                 if dir == 1:
-                    return l_index[isurf][cur_Nu-1,index]
+                    return l_index[surf_index][cur_Nu-1,index]
                 else:
-                    return l_index[isurf][cur_Nu-1,cur_Nv-1-index]
+                    return l_index[surf_index][cur_Nu-1,cur_Nv-1-index]
                 # end if
             # end if
 
             return
 
         def getIndexNode(face,node):
+            face = surface_list.index(face)
+
             if node == 0:
                 return l_index[face][0,0]
             elif node == 1:
@@ -1345,36 +1363,33 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             
         def add_slave_edge(icon,index):
             '''Add a slave control point'''
-            current_index = getIndexEdge(self.con[icon].f1, self.con[icon].e1, index,\
-                                             self.con[icon].dir)
-            g_index[current_index].append([isurf,i,j])
-            l_index[isurf][i,j] = current_index
+            current_index = getIndexEdge(con[icon].f1, con[icon].e1, index,\
+                                             con[icon].dir)
+            g_index[current_index].append([ii,i,j])
+            l_index[ii][i,j] = current_index
             
         def add_slave_degen(icon,index):
 
             '''Add a degenerate slave point'''
             # Find which side has been set, since once should already be set
-            cur_index1 = getIndexEdge(self.con[icon].f1, self.con[icon].e1, 0,\
-                                          self.con[icon].dir)
-
-            cur_index2 = getIndexEdge(self.con[icon].f1, self.con[icon].e1, -1,\
-                                          self.con[icon].dir)
+            cur_index1 = getIndexEdge(con[icon].f1,con[icon].e1,0,con[icon].dir)
+            cur_index2 = getIndexEdge(con[icon].f1,con[icon].e1,-1,con[icon].dir)
 
             if not cur_index1 == -1: 
-                g_index[cur_index1].append([isurf,i,j])
-                l_index[isurf][i,j] = cur_index1
+                g_index[cur_index1].append([ii,i,j])
+                l_index[ii][i,j] = cur_index1
             elif not cur_index2 == -1: 
-                g_index[cur_index2].append([isurf,i,j])
-                l_index[isurf][i,j] = cur_index2
+                g_index[cur_index2].append([ii,i,j])
+                l_index[ii][i,j] = cur_index2
             return
 
         def add_slave_node(face,node):
-            '''Add a slave control point to the current isurf,i,j from face,node'''
+            '''Add a slave control point to the current ii,i,j from face,node'''
             
             current_index = getIndexNode(face,node)
 
-            g_index[current_index].append([isurf,i,j])
-            l_index[isurf][i,j] = current_index
+            g_index[current_index].append([ii,i,j])
+            l_index[ii][i,j] = current_index
 
 
         # ----------------- Start of Edge Computation ---------------------
@@ -1382,35 +1397,13 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         g_index = []
         l_index = []
 
-        if surface_list == None:
-            surface_list = range(0,self.nSurf)            
-
-        if len(sizes) == self.nSurf:
-            pass # The sizes are the correct size
-        else:
-            if len(sizes) == len(surface_list):
-                # The user has passed in the sizes of the surfaces of interest
-                new_sizes = []
-                for isurf in xrange(self.nSurf):
-                    if isurf in surface_list:
-                        index = surface_list.index(isurf)
-                        new_sizes.append(sizes[index])
-                    else:
-                        new_sizes.append([])
-                    # end if
-                # end for
-                sizes = copy.deepcopy(new_sizes)
-            else:
-                print 'Error: The size parameter passed to calcGlobalNumber must contain the \
-sizes of ALL surfaces or the sizes of the surfaces in surface_list'
-                sys.exit(0)
-            # end if
-        # end if
+        assert len(sizes) == len(surface_list),'Error: The list of sizes and \
+the list of surfaces must be the same length'
 
         for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
-            Nu = sizes[isurf][0]
-            Nv = sizes[isurf][1]
+            Nu = sizes[ii][0]
+            Nv = sizes[ii][1]
             l_index.append(-1*ones((Nu,Nv),'intc'))
             for i in xrange(Nu):
                 for j in xrange(Nv):
@@ -1422,7 +1415,7 @@ sizes of ALL surfaces or the sizes of the surfaces in surface_list'
                     # edges and 4 corners. Do the edges first
                     else:
                         if i > 0 and i < Nu-1 and j == 0:       # Edge 0
-                            icon, master, degen = self._findEdgeIndex(isurf,edge=0)
+                            icon,master,degen = self._findEdgeIndex(isurf,0,con)
                             if master:
                                 counter = add_master(counter)
                             else:
@@ -1434,7 +1427,7 @@ sizes of ALL surfaces or the sizes of the surfaces in surface_list'
                             # end if
                       
                         elif i > 0 and i < Nu-1 and j == Nv-1: # Edge 1
-                            icon, master, degen = self._findEdgeIndex(isurf,edge=1)
+                            icon,master,degen = self._findEdgeIndex(isurf,1,con)
                             if master:
                                 counter = add_master(counter)
                             else:
@@ -1446,7 +1439,7 @@ sizes of ALL surfaces or the sizes of the surfaces in surface_list'
                             # end if
                    
                         elif i == 0 and j > 0 and j < Nv -1:      # Edge 2
-                            icon, master, degen = self._findEdgeIndex(isurf,edge=2)
+                            icon,master,degen = self._findEdgeIndex(isurf,2,con)
                             if master:
                                 counter = add_master(counter)
                             else:
@@ -1458,7 +1451,7 @@ sizes of ALL surfaces or the sizes of the surfaces in surface_list'
                             # end if
 
                         elif i == Nu-1 and j > 0 and j < Nv-1: # Edge 3
-                            icon, master, degen = self._findEdgeIndex(isurf,edge=3)
+                            icon,master,degen = self._findEdgeIndex(isurf,3,con)
                             if master:
                                 counter = add_master(counter)
                             else:
@@ -1469,25 +1462,25 @@ sizes of ALL surfaces or the sizes of the surfaces in surface_list'
                                 # end if
 
                         elif i == 0 and j == 0:             # Node 0
-                            master,face,node = self._findNodeIndex(isurf,0)
+                            master,face,node = self._findNodeIndex(isurf,0,node_con)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 add_slave_node(face,node)
                         elif i == Nu-1 and j == 0:       # Node 1
-                            master,face,node = self._findNodeIndex(isurf,1)
+                            master,face,node = self._findNodeIndex(isurf,1,node_con)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 add_slave_node(face,node)
                         elif i == 0 and j == Nv-1:       # Node 2
-                            master,face,node = self._findNodeIndex(isurf,2)
+                            master,face,node = self._findNodeIndex(isurf,2,node_con)
                             if master:
                                 counter = add_master(counter)
                             else:
                                 add_slave_node(face,node)
                         elif i == Nu-1 and j == Nv-1: # Node 3
-                            master,face,node = self._findNodeIndex(isurf,3)
+                            master,face,node = self._findNodeIndex(isurf,3,node_con)
                             if master:
                                 counter = add_master(counter)
                             else:
@@ -1499,6 +1492,120 @@ sizes of ALL surfaces or the sizes of the surfaces in surface_list'
             # end for (i loop - Nu)
         # end for (isurf loop)
         return counter,g_index,l_index
+
+    def getReducedSetConnectivity(self,surface_list):
+        '''Produce an auxilary edge_con and node_con for the set of surfaces
+        contained in surface_list'''
+
+        # Loop over edge con: Several things can happen:
+        # Type 1's:
+        #   1. If both f1 and f2 are in surface_list keep as is *
+        #   - > if f2 > f1 Flip (f1,e1) with (f2,e2)
+        #   2. If f1 is in list but f2 isn't, turn type into 0
+        #   3. If f2 is in list but f1 isn't, turn type into 0
+        #   4. If f1 and f2 are not in list, delete (don't add)
+        # Type 0's:
+        #   1. If f1 is in list keep as it
+        #   2. If f1 is not in list, delete (don't add)
+        # Type 2's:
+        #   1. If f1 is in list keep as it
+        #   2. If f1 is not in list delete (don't add)
+        edge_con = []
+       
+        for icon in xrange(len(self.con)):
+            f1 = self.con[icon].f1
+            e1 = self.con[icon].e1
+            f2 = self.con[icon].f2
+            e2 = self.con[icon].e2
+            type = self.con[icon].type
+
+            if type == 1:
+                if f1 in surface_list and f2 in surface_list:
+                    edge_con.append(self.con[icon])
+                    if f1 < f2:
+                        pass
+                    else:
+                        edge_con[-1].f1 = f2
+                        edge_con[-1].e1 = e2
+                        edge_con[-1].f2 = f1
+                        edge_con[-1].e2 = e1
+                    # end if
+                elif f1 in surface_list and not f2 in surface_list:
+                    edge_con.append(self.con[icon])
+                    edge_con[-1].type = 0
+                    edge_con[-1].f2 = -1
+                    edge_con[-1].e2 = -1
+                elif not f1 in surface_list and f2 in surface_list:
+                    edge_con.append(self.con[icon])
+                    edge_con[-1].type = 0
+                    edge_con[-1].f1 = f2
+                    edge_con[-1].e1 = e2
+                    edge_con[-1].f2 = -1
+                    edge_con[-1].e2 = -1
+                elif not f1 in surface_list and not f2 in surface_list:
+                    pass
+                # end if
+            elif type in [0,2]:
+                if f1 in surface_list:
+                    edge_con.append(self.con[icon])
+                else:
+                    pass
+                # end if
+            # end if
+        # end for
+
+        # Node Con Algorithim:
+        # This on is similar: Loop over each element in node_con list.
+
+        # 1. If at LEAST one of the nodes is in the list keep the ones
+        # with the the surface in the surface_lsit *
+        #  -> Make sure the one with the LOWEST face number is at the start
+        # 2. Otherwise don't add at all
+        
+        node_con = []
+        for inode in xrange(len(self.node_con)):
+            node_con.append([])
+            number_found = 0
+            for i in xrange(len(self.node_con[inode])):
+                if self.node_con[inode][i][0] in surface_list:
+                    number_found += 1
+                    node_con[-1].append(self.node_con[inode][i])
+                # end if
+            # end for
+            if number_found == 0: # delete the last entry since its empty
+                del node_con[-1]
+            else: # We have new entries, now sort
+                low_index = 0
+                for i in xrange(1,number_found):
+                    if node_con[-1][i][0]<node_con[-1][low_index][0]:
+                        low_index = i
+                    # end if
+                # end for
+                if not low_index == 0: # Do the actual swap
+                    temp = node_con[-1][0]
+                    node_con[-1][0] = node_con[-1][low_index]
+                    node_con[-1][low_index] = temp
+                # end if
+                
+        # end for
+
+        print 'Node Con'
+        for i in xrange(len(node_con)):
+            print node_con[i]
+                
+
+
+        print ' '
+        print 'Connection | Face    Edge  | Type | Continutiy | Dir? | \
+Intersect? | Driving Group |\
+ Nctl | Face    Edge     |'
+        for i in xrange(len(edge_con)):
+            edge_con[i].write_info(i,sys.stdout)
+
+        return edge_con, node_con
+    
+
+
 
     def printEdgeConnectivity(self):
 

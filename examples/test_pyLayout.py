@@ -144,4 +144,12 @@ def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
 wing_box.addSection(def1)
 wing_box.writeTecplot('../output/layout.dat')
 wing_box.finalize()
+
+# ---------- Reduced Edge Set Test---------
+#edge_con,node_con = wing.getReducedSetConnectivity([4,5,6,7])
+#total,l_index,g_index = wing.calcGlobalNumbering([[9,8],[5,8],[6,9],[5,6]],[4,5,6,7],edge_con,node_con)
+# print 'total:',total
+# print 'l_index:',l_index
+# -----------------------------------------
+print 'g_index:',g_index
 print 'Time is:',time.time()-timeA
