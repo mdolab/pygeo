@@ -3,13 +3,15 @@
 # =============================================================================
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,max,min,insert,delete
+    array,max,min,insert,delete,empty
 import string ,sys
 
 sys.path.append('../pySpline')
 import pySpline
 
-
+ # --------------------------------------------------------------
+ #                Rotation Functions
+ # --------------------------------------------------------------
 def rotxM(theta):
     '''Return x rotation matrix'''
     theta = theta*pi/180
@@ -44,10 +46,11 @@ def rotzV(x,theta):
     M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
     return dot(M,x)
 
-def e_dist(x1,x2):
-    '''Get the eculidean distance between two points'''
-    return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
 
+ # --------------------------------------------------------------
+ #                Airfoil Functions
+ # --------------------------------------------------------------
+ 
 def read_af(filename,file_type='xfoil',N=35):
     ''' Load the airfoil file of type file_type'''
 
@@ -196,6 +199,9 @@ and \'precomp\''
 
     return X_u,Y_u,X_l,Y_l
 
+# --------------------------------------------------------------
+#            Working with Edges Function
+# --------------------------------------------------------------
 
 def test_edge(surf1,surf2,i,j,edge_tol):
 
@@ -244,6 +250,23 @@ def test_edge(surf1,surf2,i,j,edge_tol):
     return coinc,dir_flag
         
 
+def test_node(surf1,surf2,i,j,node_tol):
+
+    '''Test edge i on surf1 with edge j on surf2'''
+    # First get the two values
+
+    val1 = surf1.getOrigValueCorner(i)
+    val2 = surf2.getOrigValueCorner(j)
+    
+    if e_dist(val1,val2) < node_tol:
+        return True
+    else:
+        return False
+    
+def e_dist(x1,x2):
+    '''Get the eculidean distance between two points'''
+    return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
+
 def flipEdge(edge):
     '''Return the edge on a surface, opposite to given edge'''
     if edge == 0: return 1
@@ -252,6 +275,10 @@ def flipEdge(edge):
     if edge == 3: return 2
     else:
         return None
+
+# --------------------------------------------------------------
+#             Truly Miscellaneous Functions
+# --------------------------------------------------------------
    
 def unique(s):
     """Return a list of the elements in s, but without duplicates.
@@ -321,21 +348,6 @@ def unique(s):
             u.append(x)
     return u
 
-
-def test_node(surf1,surf2,i,j,node_tol):
-
-    '''Test edge i on surf1 with edge j on surf2'''
-    # First get the two values
-
-    val1 = surf1.getOrigValueCorner(i)
-    val2 = surf2.getOrigValueCorner(j)
-    
-    if e_dist(val1,val2) < node_tol:
-        return True
-    else:
-        return False
-
-
 def directionAlongSurface(surface,line):
     '''Determine the dominate (u or v) direction of line along surface'''
     # Now Do two tests: Take N points in u and test N groups
@@ -379,7 +391,9 @@ def directionAlongSurface(surface,line):
         # end if
     # end if 
 
-# ------------ Python Surface Mesh Warping Implementation -----------
+# --------------------------------------------------------------
+#             Python Surface Mesh Warping Implementation
+# --------------------------------------------------------------
 
 def delI(i,j,vals):
     return sqrt( ( vals[i,j,0]-vals[i-1,j,0]) ** 2 + \
@@ -469,11 +483,77 @@ def warp_face(Nu,Nv,S,dface):
 
     return dface
 
-def flatten(l):
-    out = []
-    for item in l:
-        if isinstance(item, (list, tuple)):
-            out.extend(flatten(item))
-        else:
-            out.append(item)
-    return out
+# --------------------------------------------------------------
+#                Array Rotation and Flipping Functions
+# --------------------------------------------------------------
+
+def rotateCCW(input):
+    '''Rotate the input array 90 degrees CCW'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([cols,rows],input.dtype)
+ 
+    for row in xrange(rows):
+        for col in xrange(cols):
+            output[cols-col-1][row] = input[row][col]
+        # end for
+    # end for
+
+    return output
+
+def rotateCW(input):
+    '''Rotate the input array 90 degrees CW'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([cols,rows],input.dtype)
+ 
+    for row in xrange(rows):
+        for col in xrange(cols):
+            output[col][rows-row-1] = input[row][col]
+        # end for
+    # end for
+
+    return output
+
+def reverseRows(input):
+    '''Flip Rows (horizontally)'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([rows,cols],input.dtype)
+    for row in xrange(rows):
+        output[row] = input[row][::-1].copy()
+    # end for
+
+    return output
+
+def reverseCols(input):
+    '''Flip Cols (vertically)'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([rows,cols],input.dtype)
+    for col in xrange(cols):
+        output[:,col] = input[:,col][::-1].copy()
+    # end for
+
+    return output
+   
+# --------------------------------------------------------------
+#             Rotation and Flipping Functions for Edge Links
+# --------------------------------------------------------------
+
+def rotateCWEdge(input):
+    '''Perform operation of edge_link coorpsonding to CW rotation'''
+    return [input[3],input[2],input[0],input[1]]
+
+def rotateCCWEdge(input):
+    '''Perform operation of edge_link coorpsonding to CCW rotation'''
+    return [input[2],input[3],input[1],input[0]]
+
+def reverseRowsEdge(input):
+    '''Perform operation of edge_link coorpsonding to Row Reversal'''
+    return [input[0],input[1],input[3],input[2]]
+
+def reverseColsEdge(input):
+    '''Perform operation of edge_link coorpsonding to ColRow Reversal'''
+    return  [input[1],input[0],input[2],input[3]]
+       
