@@ -28,6 +28,10 @@ sys.path.append('../../../pyHF/pycfd-csm/python/')
 sys.path.append('../')
 import pyGeo
 
+#geo_utils
+from geo_utils import *
+
+
 #pyLayout
 sys.path.append('../../pyLayout/')
 import pyLayout
@@ -150,6 +154,18 @@ wing_box.finalize()
 #total,l_index,g_index = wing.calcGlobalNumbering([[9,8],[5,8],[6,9],[5,6]],[4,5,6,7],edge_con,node_con)
 # print 'total:',total
 # print 'l_index:',l_index
+# print 'g_index:',g_index
 # -----------------------------------------
-print 'g_index:',g_index
+
+# A = array([[5,6,7],[1,2,3]])
+# B = rotateCCW(A)
+# C = rotateCW(A)
+# #C = reverseRows(A)
+# #D = reverseCols(A)
+# print 'A:',A
+# print 'B:',B
+# print 'C:',C
+# #print 'D:',D
+# # print 'E:',E
+
 print 'Time is:',time.time()-timeA

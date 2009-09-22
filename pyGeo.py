@@ -1588,34 +1588,21 @@ the list of surfaces must be the same length'
                 # end if
                 
         # end for
-
-        print 'Node Con'
-        for i in xrange(len(node_con)):
-            print node_con[i]
-                
-
-
-        print ' '
-        print 'Connection | Face    Edge  | Type | Continutiy | Dir? | \
-Intersect? | Driving Group |\
- Nctl | Face    Edge     |'
-        for i in xrange(len(edge_con)):
-            edge_con[i].write_info(i,sys.stdout)
-
         return edge_con, node_con
     
+    def printEdgeConnectivity(self,con=None):
 
-
-
-    def printEdgeConnectivity(self):
+        if con == None:
+            con = self.con
+        # end if
 
         '''Print the Edge Connectivity'''
         print ' '
         print 'Connection | Face    Edge  | Type | Continutiy | Dir? | \
 Intersect? | Driving Group |\
  Nctl | Face    Edge     |'
-        for i in xrange(len(self.con)):
-            self.con[i].write_info(i,sys.stdout)
+        for i in xrange(len(con)):
+            con[i].write_info(i,sys.stdout)
         # end for
         print ' '
 
