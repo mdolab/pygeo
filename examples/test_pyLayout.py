@@ -108,13 +108,13 @@ wing.writeTecplot('../output/wing.dat',
 
 # Create the empty pyLayout Object
 
-MAX_SPARS = 2  # This is the same for each spanwise section
+MAX_SPARS = 7  # This is the same for each spanwise section
 Nsection = 1
 wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
 
 # ---------- Create the First Domain -------------
 
-MAX_RIBS = 2
+MAX_RIBS = 15
 le_list = array([[0,0,0],[0,0,3.94]])
 te_list = array([[.60,0,0],[.6,0,3.94]])
 
@@ -139,8 +139,8 @@ spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
 #spar_blank[1,2:] = 0
 
 surfs = [[0,1],[2,3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
-#spar_con = [0,-1,1,1]
-spar_con = [1,-1]
+spar_con = [0,0,-1,1,1,1,1]
+
 timeA = time.time()
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
                            rib_blank=rib_blank,rib_pos=rib_pos,rib_dir=rib_dir,
