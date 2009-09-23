@@ -82,15 +82,15 @@ rot[:,1] = rot_y
 rot[:,2] = tw_aero
 # ------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-#                        file_type='xfoil',scale=chord,offset=offset, \
-#                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
-#                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+                       file_type='xfoil',scale=chord,offset=offset, \
+                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-# wing.calcEdgeConnectivity(1e-6,1e-6)
-# wing.propagateKnotVectors()
-# wing.writeTecplot('../output/wing.dat')
-# wing.writeIGES('../input/wing.igs')
+wing.calcEdgeConnectivity(1e-6,1e-6)
+wing.propagateKnotVectors()
+wing.writeTecplot('../output/wing.dat')
+wing.writeIGES('../input/wing.igs')
 # ------------------------------------------------------------------
 
 #Load in the split plot3d file
@@ -105,9 +105,26 @@ wing.readEdgeConnectivity('wing_split.con')
 wing.writeTecplot('../output/wing.dat',
                   labels=True,ref_axis=True,directions=True)
 
+print '---------------------------'
+print 'Attaching Reference Axis...'
+print '---------------------------'
 
-# Create the empty pyLayout Object
+wing.addRefAxis([0,1,2,3],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
+                    spacing=section_spacing[0])
+wing.addRefAxis([4,5,6,7],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
+                    spacing=section_spacing[0]) 
 
+wing.addRefAxisCon(0,1,'end') # Wing and cap ('Attach ra1 to ra0 with type 'end')
+print 'Done Ref Axis Adding!'
+
+print ' ** Adding Global Design Variables **'
+wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
+wing.calcCtlDeriv()
+
+print '---------------------------'
+print '      pyLayout Setup' 
+print '---------------------------'
+ 
 MAX_SPARS = 7  # This is the same for each spanwise section
 Nsection = 1
 wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
@@ -120,54 +137,33 @@ te_list = array([[.60,0,0],[.6,0,3.94]])
 
 domain = pyLayout.domain(le_list,te_list)
 
-# ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
-rib_pos = zeros((MAX_RIBS,3))
-spline = pySpline.linear_spline(task='interpolate',k=2,X=X[0:2])
-rib_pos = spline.getValueV(linspace(0,1,MAX_RIBS))
+# # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
+# rib_pos = zeros((MAX_RIBS,3))
+# spline = pySpline.linear_spline(task='interpolate',k=2,X=X[0:2])
+# rib_pos = spline.getValueV(linspace(0,1,MAX_RIBS))
 
-rib_dir = zeros((MAX_RIBS,3))
-rib_dir[:] = [1,0,0]
-rib_dir[1] = [1,0,.25]
-# -----------------------------------------------------------
+# rib_dir = zeros((MAX_RIBS,3))
+# rib_dir[:] = [1,0,0]
+# rib_dir[1] = [1,0,.25]
+# # -----------------------------------------------------------
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
-
-#sys.exit(0)
-#rib_blank[2] = 0
-#spar_blank[1] = 0
-#spar_blank[1,2:] = 0
+span_space = 1*ones(MAX_RIBS-1)
+rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
+v_space    = 1
 
 surfs = [[0,1],[2,3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0,-1,1,1,1,1]
 
 timeA = time.time()
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
-                           rib_blank=rib_blank,rib_pos=rib_pos,rib_dir=rib_dir,
-                           spar_blank=spar_blank)
+                           rib_blank=rib_blank,#rib_pos=rib_pos,rib_dir=rib_dir,
+                           spar_blank=spar_blank,
+                           span_space = span_space,rib_space=rib_space,v_space=v_space)
                            
-
 wing_box.addSection(def1)
 wing_box.writeTecplot('../output/layout.dat')
 wing_box.finalize()
-
-# ---------- Reduced Edge Set Test---------
-#edge_con,node_con = wing.getReducedSetConnectivity([4,5,6,7])
-#total,l_index,g_index = wing.calcGlobalNumbering([[9,8],[5,8],[6,9],[5,6]],[4,5,6,7],edge_con,node_con)
-# print 'total:',total
-# print 'l_index:',l_index
-# print 'g_index:',g_index
-# -----------------------------------------
-
-# A = array([[5,6,7],[1,2,3]])
-# B = rotateCCW(A)
-# C = rotateCW(A)
-# #C = reverseRows(A)
-# #D = reverseCols(A)
-# print 'A:',A
-# print 'B:',B
-# print 'C:',C
-# #print 'D:',D
-# # print 'E:',E
 
 print 'Time is:',time.time()-timeA

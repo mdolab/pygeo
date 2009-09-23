@@ -2158,7 +2158,7 @@ a flap hinge line'
         types = []
 
         for surfid in full_surface_list:
-            dir_type = directionAlongSurface(self.surfs[surfid],ref_axis)
+            dir_type = directionAlongSurface(self.surfs[surfid],ref_axis.xs)
             if dir_type == 0 or dir_type == 1: # u type regarless of direction
                 types.append(0)
             else:
@@ -3118,7 +3118,7 @@ surface %d'%(isurf)
 
         return
 
-    def createTACSGeo(self):
+    def createTACSGeo(self,surface_list=None):
         '''
         Create the spline classes for use within TACS
         '''
@@ -3134,6 +3134,10 @@ surface %d'%(isurf)
             print 'Must have PETSc to create TACS splines.'
             return
         # end
+
+        if surface_list == None:
+            surface_list = arange(self.nSurf)
+        # end if
 
         # Calculate the Number of global design variables
         N = 0
@@ -3201,7 +3205,7 @@ surface %d'%(isurf)
         # end
 
         tacs_surfs = []
-        for isurf in xrange(self.nSurf):
+        for isurf in surface_list:
             tacs_surfs.append( convert(isurf, surfDVs[isurf] ) )
         # end
      
