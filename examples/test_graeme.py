@@ -56,7 +56,7 @@ offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
 offset[-1,0] = 0
 # Make the break-point vector
-breaks = [1] #zero based (Must NOT contain 0 or index of last value)
+breaks = [1] # Station where surfaces are to be split; zero based (Must NOT contain 0 or index of last value (naf-1))
 cont = [1] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
 nsections = [10,10]# Length breaks + 1
 section_spacing = [linspace(0,1,10),linspace(0,1,10)]
@@ -155,7 +155,7 @@ print '---------------------------'
 wing.addRefAxis([0,1,2,3],X[0:2,:],rot[0:2,:],nrefsecs=nsections[0],\
                     spacing=section_spacing[0])
 wing.addRefAxis([2,3],X[1:3,:],rot[1:3,:],nrefsecs=nsections[1],\
-                    spacing=section_spacing[0])
+                    spacing=section_spacing[0]) 
 
 #Flap-Type (full) ref_axis attachment
 X = array([[.4,0,2],[.4,0,3]]) # hinge Line
@@ -173,7 +173,6 @@ wing.addRefAxisCon(0,2,'full') # flap ('Attach ra2 to ra0 with type 'full')
 
 # Write out the surface
 wing.writeTecplot('wing.dat',ref_axis=True,links=True)
-
 
 
 # ------------------------------------------
