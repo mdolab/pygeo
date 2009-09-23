@@ -93,12 +93,12 @@ rot[:,2] = tw_aero
 # wing.writeIGES('../input/wing.igs')
 # ------------------------------------------------------------------
 
-# Load in the split plot3d file
-# wing = pyGeo.pyGeo('plot3d',file_name='../input/wing.xyz.fmt')
-# wing.calcEdgeConnectivity(1e-6,1e-6)
-# wing.writeEdgeConnectivity('wing_split.con')
-# wing.propagateKnotVectors()
-# wing.writeIGES('../input/wing_split.igs')
+#Load in the split plot3d file
+wing = pyGeo.pyGeo('plot3d',file_name='../input/wing.xyz.fmt')
+wing.calcEdgeConnectivity(1e-6,1e-6)
+wing.writeEdgeConnectivity('wing_split.con')
+wing.propagateKnotVectors()
+wing.writeIGES('../input/wing_split.igs')
 
 wing = pyGeo.pyGeo('iges',file_name='../input/wing_split.igs')
 wing.readEdgeConnectivity('wing_split.con')
@@ -133,9 +133,9 @@ rib_dir[1] = [1,0,.25]
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
 
-rib_blank[2] = 0
-spar_blank[1] = 0
-spar_blank[1,2:] = 0
+#rib_blank[2] = 0
+#spar_blank[1] = 0
+#spar_blank[1,2:] = 0
 
 surfs = [[0,1],[2,3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,-1,1,1]

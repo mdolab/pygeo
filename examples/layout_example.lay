@@ -919,7 +919,7 @@ $!THREEDAXIS
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [3,6,9-10]
+$!ACTIVEFIELDMAPS  =  [1-6,19-22]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1911,6 +1911,7 @@ $!FIELDMAP  [19]
       GEOMSHAPE = CUBE
       }
     COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -1959,6 +1960,7 @@ $!FIELDMAP  [20]
       GEOMSHAPE = CUBE
       }
     COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2007,6 +2009,7 @@ $!FIELDMAP  [21]
       GEOMSHAPE = CUBE
       }
     COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2055,6 +2058,7 @@ $!FIELDMAP  [22]
       GEOMSHAPE = CUBE
       }
     COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2085,7 +2089,7 @@ $!FIELDMAP  [22]
 $!FIELDMAP  [23]
   MESH
     {
-    COLOR = YELLOW
+    COLOR = BLACK
     }
   CONTOUR
     {
@@ -2097,7 +2101,8 @@ $!FIELDMAP  [23]
     }
   SCATTER
     {
-    COLOR = YELLOW
+    COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2128,7 +2133,7 @@ $!FIELDMAP  [23]
 $!FIELDMAP  [24]
   MESH
     {
-    COLOR = PURPLE
+    COLOR = BLACK
     }
   CONTOUR
     {
@@ -2140,7 +2145,8 @@ $!FIELDMAP  [24]
     }
   SCATTER
     {
-    COLOR = PURPLE
+    COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2171,7 +2177,7 @@ $!FIELDMAP  [24]
 $!FIELDMAP  [25]
   MESH
     {
-    COLOR = RED
+    COLOR = BLACK
     }
   CONTOUR
     {
@@ -2183,7 +2189,8 @@ $!FIELDMAP  [25]
     }
   SCATTER
     {
-    COLOR = RED
+    COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2214,7 +2221,7 @@ $!FIELDMAP  [25]
 $!FIELDMAP  [26]
   MESH
     {
-    COLOR = GREEN
+    COLOR = BLACK
     }
   CONTOUR
     {
@@ -2226,7 +2233,8 @@ $!FIELDMAP  [26]
     }
   SCATTER
     {
-    COLOR = GREEN
+    COLOR = BLACK
+    FILLMODE = USELINECOLOR
     }
   SHADE
     {
@@ -2282,7 +2290,7 @@ $!THREEDAXIS
     GRSPACING = 0.2
     AXISLINE
       {
-      EDGE = 3
+      EDGE = 1
       }
     }
 $!THREEDAXIS 
@@ -2294,7 +2302,7 @@ $!THREEDAXIS
     GRSPACING = 0.2
     AXISLINE
       {
-      EDGE = 2
+      EDGE = 1
       }
     }
 $!THREEDAXIS 
@@ -2497,21 +2505,21 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 0.3
-    Y = 0
+    X = 0.2493255
+    Y = 9.499999999999786E-05
     Z = 1.97
     }
 $!THREEDVIEW 
-  PSIANGLE = 6.56731
-  THETAANGLE = -153.646
-  ALPHAANGLE = 147.777
+  PSIANGLE = 140.373
+  THETAANGLE = -135.12
+  ALPHAANGLE = 60.9592
   VIEWERPOSITION
     {
-    X = 1.270050177802964
-    Y = 1.938638885797278
-    Z = 21.48732830276419
+    X = 2.554828798862895
+    Y = 3.009754794793521
+    Z = -3.458946757432391
     }
-  VIEWWIDTH = 1.65797
+  VIEWWIDTH = 6.18311
 $!FIELDLAYERS 
   SHOWSCATTER = YES
   SHOWEDGE = NO
