@@ -2166,7 +2166,7 @@ a flap hinge line'
             # end if
 
             if surfid == isurf:
-                isurf_dir  = dir_type
+                isurf_dir  = types[-1]
             # end if
 
         # end for
@@ -2189,7 +2189,7 @@ surface %d'%(isurf)
                     # end if
                 # end for
 
-                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
+                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
              
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
@@ -2217,7 +2217,7 @@ surface %d'%(isurf)
                     # end if
                 # end for
                 
-                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
+                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
 
