@@ -81,16 +81,16 @@ rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = tw_aero
 # ------------------------------------------------------------------
-#Note: u direction is chordwise, v direction is span-wise
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                       file_type='xfoil',scale=chord,offset=offset, \
-                       Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
-                       nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
+# #Note: u direction is chordwise, v direction is span-wise
+# wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
+#                        file_type='xfoil',scale=chord,offset=offset, \
+#                        Xsec=X,rot=rot,breaks=breaks,cont=cont,end_type=end_type,\
+#                        nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
-wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.propagateKnotVectors()
-wing.writeTecplot('../output/wing.dat')
-wing.writeIGES('../input/wing.igs')
+# wing.calcEdgeConnectivity(1e-6,1e-6)
+# wing.propagateKnotVectors()
+# wing.writeTecplot('../output/wing.dat')
+# wing.writeIGES('../input/wing.igs')
 # ------------------------------------------------------------------
 
 #Load in the split plot3d file
@@ -100,10 +100,10 @@ wing.writeEdgeConnectivity('wing_split.con')
 wing.propagateKnotVectors()
 wing.writeIGES('../input/wing_split.igs')
 
-wing = pyGeo.pyGeo('iges',file_name='../input/wing_split.igs')
-wing.readEdgeConnectivity('wing_split.con')
-wing.writeTecplot('../output/wing.dat',
-                  labels=True,ref_axis=True,directions=True)
+# wing = pyGeo.pyGeo('iges',file_name='../input/wing_split.igs')
+# wing.readEdgeConnectivity('wing_split.con')
+# wing.writeTecplot('../output/wing.dat',
+#                   labels=True,ref_axis=True,directions=True)
 
 print '---------------------------'
 print 'Attaching Reference Axis...'
@@ -125,13 +125,13 @@ print '---------------------------'
 print '      pyLayout Setup' 
 print '---------------------------'
  
-MAX_SPARS = 4  # This is the same for each spanwise section
+MAX_SPARS = 3  # This is the same for each spanwise section
 Nsection = 1
 wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
 
 # ---------- Create the First Domain -------------
 
-MAX_RIBS = 5
+MAX_RIBS = 2
 le_list = array([[0,0,0],[0,0,3.94]])
 te_list = array([[.60,0,0],[.6,0,3.94]])
 
@@ -154,7 +154,7 @@ rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
 v_space    = 1
 
 surfs = [[0,1],[2,3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
-spar_con = [0,-1,1,1]
+spar_con = [0,-1,1]
 
 timeA = time.time()
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
