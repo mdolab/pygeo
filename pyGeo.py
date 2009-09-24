@@ -2156,7 +2156,7 @@ a flap hinge line'
         full_surface_list = unique(full_surface_list)
         
         types = []
-
+     
         for surfid in full_surface_list:
             dir_type = directionAlongSurface(self.surfs[surfid],ref_axis.xs)
             if dir_type == 0 or dir_type == 1: # u type regarless of direction
@@ -2170,9 +2170,7 @@ a flap hinge line'
             # end if
 
         # end for
-        f = open('../output/lines.dat','w')
-        f.write ('VARIABLES = "X", "Y","Z"\n')
-
+        
         if isurf_dir == 1: #along v of isurf
             if not self.NO_PRINT:
                 print 'Reference axis is oriented along v on \
@@ -2191,17 +2189,15 @@ surface %d'%(isurf)
                     # end if
                 # end for
 
-                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
+                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
              
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
                 
-                temp.writeTecplot(f)
-
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[j] = s1
             # end for
-            f.close()
+
             return s,1
         else:
             if not self.NO_PRINT:
@@ -2220,15 +2216,15 @@ surface %d'%(isurf)
                         coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
                     # end if
                 # end for
-                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
+                
+                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
 
-                temp.writeTecplot(f)
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[i] = s1
             # end for
-            f.close()
+           
             return s,0
 
 # ----------------------------------------------------------------------
