@@ -536,44 +536,14 @@ def reverseCols(input):
     # end for
 
     return output
-   
-# --------------------------------------------------------------
-#             Rotation and Flipping Functions for Edge Links
-# --------------------------------------------------------------
-
-def rotateCWEdge(input):
-    '''Perform operation of edge_link coorpsonding to CW rotation'''
-    return [input[3],input[2],input[0],input[1]]
-
-def rotateCCWEdge(input):
-    '''Perform operation of edge_link coorpsonding to CCW rotation'''
-    return [input[2],input[3],input[1],input[0]]
-
-def reverseRowsEdge(input):
-    '''Perform operation of edge_link coorpsonding to Row Reversal'''
-    return [input[0],input[1],input[3],input[2]]
-
-def reverseColsEdge(input):
-    '''Perform operation of edge_link coorpsonding to ColRow Reversal'''
-    return  [input[1],input[0],input[2],input[3]]
-       
-# --------------------------------------------------------------
-#             Rotation and Flipping Functions for Node Links
-# --------------------------------------------------------------
-
-def rotateCWNode(input):
-    '''Perform operation of edge_link coorpsonding to CW rotation'''
-    return [input[1],input[3],input[0],input[2]]
-
-def rotateCCWNode(input):
-    '''Perform operation of edge_link coorpsonding to CCW rotation'''
-    return [input[2],input[0],input[1],input[3]]
-
-def reverseRowsNode(input):
-    '''Perform operation of edge_link coorpsonding to Row Reversal'''
-    return [input[1],input[0],input[3],input[2]]
-
-def reverseColsNode(input):
-    '''Perform operation of edge_link coorpsonding to ColRow Reversal'''
-    return  [input[2],input[3],input[0],input[1]]
-       
+          
+def edgeFromCorners(n1,n2):
+    '''Return the edge coorsponding to nodes n1,n2'''
+    if (n1 == 0 and n2 == 1) or (n1 == 1 and n2 == 0):
+        return 0
+    elif (n1 == 0 and n2 == 2) or (n1 == 2 and n2 == 0):
+        return 2
+    elif (n1 == 3 and n2 == 1) or (n1 == 1 and n2 == 3):
+        return 3
+    elif (n1 == 3 and n2 == 2) or (n1 == 2 and n2 == 3):
+        return 1
