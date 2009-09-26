@@ -131,8 +131,8 @@ wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
 
 # ---------- Create the First Domain -------------
 
-MAX_RIBS = 9
-le_list = array([[0,0,0],[0,0,3.94]])
+MAX_RIBS = 2
+le_list = array([[-.10,0,0],[-.10,0,3.94]])
 te_list = array([[.60,0,0],[.6,0,3.94]])
 
 domain = pyLayout.domain(le_list,te_list)
@@ -144,11 +144,17 @@ rib_pos = spline.getValueV(linspace(0,1,MAX_RIBS))
 
 rib_dir = zeros((MAX_RIBS,3))
 rib_dir[:] = [1,0,0]
-rib_dir[1] = [1,0,.2]
+#rib_dir[1] = [1,0,.2]
+# rib_dir[2] = [1,0,-.2]
+# rib_dir[3] = [1,0,.2]
+# rib_dir[4] = [1,0,-.2]
+# rib_dir[5] = [1,0,.2]
+
 # # -----------------------------------------------------------
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
+#spar_blank[1,5:] = 0
 span_space = 1*ones(MAX_RIBS-1)
 rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
 v_space    = 1
