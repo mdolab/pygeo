@@ -305,7 +305,7 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for isurf in xrange(nSurf):
             surfs.append(pySpline.surf_spline(task='lms',X=patches[isurf],\
-                                                  ku=4,kv=4,Nctlu=5,Nctlv=5,\
+                                                  ku=4,kv=4,Nctlu=10,Nctlv=10,\
                                                   no_print=self.NO_PRINT))
 
         self.surfs = surfs
@@ -1251,7 +1251,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
  calcEdgeConnectivity or load in a .con file'
             sys.exit(1)
         # end if
-
+        
         # Call the calcGlobalNumbering function
         sizes = []
         for isurf in xrange(self.nSurf):
@@ -1282,11 +1282,12 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         return
 
     def calcGlobalNumbering(self,sizes,surface_list=None,con=None,node_con=None):
+
         '''Internal function to calculate the global/local numbering for each surface'''
         if con == None: # No auxilary con set was passed; use self.con
             con = self.con
         # end if
-        
+
         if node_con == None: # No auxilary con set was passed; use self.node_con
             node_con = self.node_con
         # end if
@@ -2677,32 +2678,33 @@ surface %d'%(isurf)
         f = open(file_name,'w')
         f.write ('VARIABLES = "X", "Y","Z"\n')
 
-        # --------------------------------------
+        # -----------------------------------------
         #    Write out the Interpolated Surfaces
-        # --------------------------------------
+        # -----------------------------------------
         
         if surfs == True:
             for isurf in xrange(self.nSurf):
                 self.surfs[isurf].writeTecplotSurface(f,size=size)
 
-        # -------------------------------
+        # ----------------------------------------
         #    Write out the Control Points
-        # -------------------------------
+        # ----------------------------------------
         
         if coef == True:
             for isurf in xrange(self.nSurf):
                 self.surfs[isurf].writeTecplotCoef(f)
 
-        # ----------------------------------
+        # ----------------------------------------
         #    Write out the Original Data
-        # ----------------------------------
+        # ----------------------------------------
         
         if orig == True:
             for isurf in xrange(self.nSurf):
                 self.surfs[isurf].writeTecplotOrigData(f)
-        # ----------------------
+
+        # ----------------------------------------
         #    Write out the edges
-        # ----------------------
+        # ----------------------------------------
 
         # We also want to output edge continuity for visualization
         if self.con and edges==True:
@@ -2737,10 +2739,9 @@ surface %d'%(isurf)
                 # end if
             # end for
         # end if
-
-        # ---------------------
+        # ----------------------------------------
         #    Write out Ref Axis
-        # ---------------------
+        # ----------------------------------------
 
         if len(self.ref_axis)>0 and ref_axis==True:
             for r in xrange(len(self.ref_axis)):
@@ -2749,9 +2750,9 @@ surface %d'%(isurf)
             # end for
         # end if
 
-        # ------------------
+        # ----------------------------------------
         #    Write out Links
-        # ------------------
+        # ----------------------------------------
 
         if len(self.ref_axis)>0 and links==True:
             for r in xrange(len(self.ref_axis)):
@@ -2759,9 +2760,9 @@ surface %d'%(isurf)
             # end for
         # end if
               
-        # -----------------------------------
+        # ----------------------------------------
         #    Write out The Surface Directions
-        # -----------------------------------
+        # ----------------------------------------
 
         if directions == True:
             for isurf in xrange(self.nSurf):

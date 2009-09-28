@@ -48,9 +48,37 @@ def rotzV(x,theta):
 
 
  # --------------------------------------------------------------
- #                Airfoil Functions
+ #                I/O Functions
  # --------------------------------------------------------------
- 
+
+def readNValues(handle,N,type):
+    '''Read N values of type 'float' or 'int' from file handle'''
+    if type == 'int':
+        values = zeros(N,'intc')
+    elif type == 'float':
+        values = zeros(N)
+    else:
+        print 'Error: type is not known. MUST be \'int\' or \'float\''
+# end if
+        
+    counter = 0
+    while counter < N:
+        aux = string.split(handle.readline())
+        if type == 'int':
+            for i in xrange(len(aux)):
+                values[counter] = int(aux[i])
+                counter += 1
+            # end for
+        else:
+            for i in xrange(len(aux)):
+                values[counter] = float(aux[i])
+                counter += 1
+            # end for
+        # end if
+    # end while
+    return values
+
+
 def read_af(filename,file_type='xfoil',N=35):
     ''' Load the airfoil file of type file_type'''
 
@@ -248,7 +276,6 @@ def test_edge(surf1,surf2,i,j,edge_tol):
         return coinc,dir_flag
 
     return coinc,dir_flag
-        
 
 def test_node(surf1,surf2,i,j,node_tol):
 
@@ -267,14 +294,6 @@ def e_dist(x1,x2):
     '''Get the eculidean distance between two points'''
     return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
 
-def flipEdge(edge):
-    '''Return the edge on a surface, opposite to given edge'''
-    if edge == 0: return 1
-    if edge == 1: return 0
-    if edge == 2: return 3
-    if edge == 3: return 2
-    else:
-        return None
 
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions
@@ -537,7 +556,7 @@ def reverseCols(input):
 
     return output
           
-def edgeFromCorners(n1,n2):
+def edgeFromNodes(n1,n2):
     '''Return the edge coorsponding to nodes n1,n2'''
     if (n1 == 0 and n2 == 1) or (n1 == 1 and n2 == 0):
         return 0
@@ -547,3 +566,53 @@ def edgeFromCorners(n1,n2):
         return 3
     elif (n1 == 3 and n2 == 2) or (n1 == 2 and n2 == 3):
         return 1
+
+def nodesFromEdge(edge):
+    '''Return the nodes on either edge of a standard edge'''
+    if edge == 0:
+        return 0,1
+    elif edge == 1:
+        return 2,3
+    elif edge == 2:
+        return 0,2
+    elif edge == 3:
+        return 1,3
+
+def flipEdge(edge):
+    '''Return the edge on a surface, opposite to given edge'''
+    if edge == 0: return 1
+    if edge == 1: return 0
+    if edge == 2: return 3
+    if edge == 3: return 2
+    else:
+        return None
+
+
+def indexPosition(i,j,N,M):
+    '''This function is a generic function which determines if for a grid
+    of data NxM with index i going 0->N-1 and j going 0->M-1, it
+    determines if i,j is on the interior, on an edge or on a corner
+
+    The funtion return three values: 
+    type: this is 0 for interior, 1 for on an edge and 2 for on a corner
+    edge: this is the edge number if type==1
+    node: this is the node number if type==2 '''
+
+    if i > 0 and i < N - 1 and j > 0 and j < M-1: # Interior
+        return 0,None,None                   
+    elif i > 0 and i < N - 1 and j == 0:     # Edge 0
+        return 1,0,None
+    elif i > 0 and i < N - 1 and j == M - 1: # Edge 1
+        return 1,1,None
+    elif i == 0 and j > 0 and j < M - 1:     # Edge 2
+        return 1,2,None
+    elif i == N - 1 and j > 0 and j < M - 1: # Edge 3
+        return 1,3,None
+    elif i == 0 and j == 0:                  # Node 0
+        return 2,None,0
+    elif i == N - 1 and j == 0:              # Node 1
+        return 2,None,1
+    elif i == 0 and j == M -1 :              # Node 2
+        return 2,None,2
+    elif i == N - 1 and j == M - 1:          # Node 3
+        return 2,None,3
