@@ -14,36 +14,17 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # =============================================================================
 
 # pySpline 
-sys.path.append('../pySpline/python')
-
-#cfd-csm pre (Optional)
-sys.path.append('../../pyHF/pycfd-csm/python/')
+sys.path.append('../../pySpline/python')
 
 #pyGeo
-import pyGeo2 as pyGeo
+sys.path.append('../')
+import pyGeo
 
 # This script reads a surfaced-based plot3d file as typically
 # outputted by aerosurf. It then creates a b-spline surfaces for each
 # surface patch.
-timeA = time.time()
-aircraft = pyGeo.pyGeo('plot3d',file_name='loopy.xyz')
-#del aircraft.surfs[0]
-#del aircraft.surfs[-1]
-#del aircraft.surfs[1]
-del aircraft.surfs[-1]
+geo = pyGeo.pyGeo('plot3d',file_name='../input/loopy.xyz')
+geo.calcEdgeConnectivity()
 
-
-aircraft.nSurf = 3
-aircraft.calcEdgeConnectivity()
-#aircraft.writeEdgeConnectivity('aircraft.con')
-#aircraft.readEdgeConnectivity('aircraft.con')
-aircraft.propagateKnotVectors()
-
-#aircraft.fitSurfaces()
-timeA = time.time()
-aircraft.writeTecplot('loopy.dat')
-timeB =time.time()
-print 'Write time is:',timeB-timeA
-print 'full time',time.time()-timeA
-
-
+for i in xrange(len(geo.l_index)):
+    print geo.l_index[i]

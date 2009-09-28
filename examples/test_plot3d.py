@@ -14,66 +14,24 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # =============================================================================
 
 # pySpline 
-sys.path.append('../pySpline/python')
-
-#cfd-csm pre (Optional)
-sys.path.append('../../pyHF/pycfd-csm/python/')
+sys.path.append('../../pySpline/python')
 
 #pyGeo
-import pyGeo2 as pyGeo
+sys.path.append('../')
+import pyGeo
 
 # This script reads a surfaced-based plot3d file as typically
 # outputted by aerosurf. It then creates a b-spline surfaces for each
 # surface patch.
 timeA = time.time()
-aircraft = pyGeo.pyGeo('plot3d',file_name='full_aircraft.xyz')
-#aircraft = pyGeo.pyGeo('plot3d',file_name='test.xyz')
-#aircraft = pyGeo.pyGeo('iges',file_name='sailplane_split.igs')
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[0]
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
+aircraft = pyGeo.pyGeo('plot3d',file_name='../input/full_aircraft.xyz')
 
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
-# del aircraft.surfs[4]
-# del aircraft.surfs[8]
-# del aircraft.surfs[8]
-# del aircraft.surfs[8]
-# #del aircraft.surfs[4]
-# #del aircraft.surfs[4]
-# #del aircraft.surfs[4]
-# #del aircraft.surfs[4]
-# #del aircraft.surfs[4]
-# # del aircraft.surfs[4]
-# # del aircraft.surfs[4]
-# # del aircraft.surfs[5]
-#del aircraft.surfs[1]
-#del aircraft.surfs[2]
-#del aircraft.surfs[4]
-#del aircraft.surfs[0]
-#del aircraft.surfs[0]
-#del aircraft.surfs[0]
-#del aircraft.surfs[0]
-# del aircraft.surfs[8]
-# del aircraft.surfs[8]
-# del aircraft.surfs[8]
-
-#ircraft.nSurf = 13
-
-aircraft.calcEdgeConnectivity(1e-2,1e-2)
+aircraft.calcEdgeConnectivity(1e-6,1e-6)
+timeB = time.time()
+print 'Edge Calc Time:',timeB-timeA
 #aircraft.writeEdgeConnectivity('aircraft.con')
 #aircraft.readEdgeConnectivity('aircraft.con')
+sys.exit(0)
 aircraft.propagateKnotVectors()
 aircraft.update()
 aircraft.fitSurfaces()
