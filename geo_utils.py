@@ -3,7 +3,7 @@
 # =============================================================================
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,max,min,insert,delete,empty
+    array,max,min,insert,delete,empty,mod
 import string ,sys
 
 sys.path.append('../pySpline')
@@ -231,6 +231,7 @@ and \'precomp\''
 #            Working with Edges Function
 # --------------------------------------------------------------
 
+ # ****************** DEPRECATED *************
 def test_edge(surf1,surf2,i,j,edge_tol):
 
     '''Test edge i on surf1 with edge j on surf2'''
@@ -277,6 +278,7 @@ def test_edge(surf1,surf2,i,j,edge_tol):
 
     return coinc,dir_flag
 
+# ****************** DEPRECATED *************
 def test_node(surf1,surf2,i,j,node_tol):
 
     '''Test edge i on surf1 with edge j on surf2'''
@@ -409,6 +411,35 @@ def directionAlongSurface(surface,line):
             return 3 # V opposite direction
         # end if
     # end if 
+
+def indexPosition(i,j,N,M):
+    '''This function is a generic function which determines if for a grid
+    of data NxM with index i going 0->N-1 and j going 0->M-1, it
+    determines if i,j is on the interior, on an edge or on a corner
+
+    The funtion return three values: 
+    type: this is 0 for interior, 1 for on an edge and 2 for on a corner
+    edge: this is the edge number if type==1
+    node: this is the node number if type==2 '''
+
+    if i > 0 and i < N - 1 and j > 0 and j < M-1: # Interior
+        return 0,None,None                   
+    elif i > 0 and i < N - 1 and j == 0:     # Edge 0
+        return 1,0,None
+    elif i > 0 and i < N - 1 and j == M - 1: # Edge 1
+        return 1,1,None
+    elif i == 0 and j > 0 and j < M - 1:     # Edge 2
+        return 1,2,None
+    elif i == N - 1 and j > 0 and j < M - 1: # Edge 3
+        return 1,3,None
+    elif i == 0 and j == 0:                  # Node 0
+        return 2,None,0
+    elif i == N - 1 and j == 0:              # Node 1
+        return 2,None,1
+    elif i == 0 and j == M -1 :              # Node 2
+        return 2,None,2
+    elif i == N - 1 and j == M - 1:          # Node 3
+        return 2,None,3
 
 # --------------------------------------------------------------
 #             Python Surface Mesh Warping Implementation
@@ -556,6 +587,10 @@ def reverseCols(input):
 
     return output
           
+# --------------------------------------------------------------
+#                     Node/Edge Functions
+# --------------------------------------------------------------
+
 def edgeFromNodes(n1,n2):
     '''Return the edge coorsponding to nodes n1,n2'''
     if (n1 == 0 and n2 == 1) or (n1 == 1 and n2 == 0):
@@ -587,32 +622,54 @@ def flipEdge(edge):
     else:
         return None
 
+# --------------------------------------------------------------
+#                  Knot Vector Manipulation Functions
+# --------------------------------------------------------------
+    
+def blendKnotVectors(knot_vectors,sym):
+    '''Take in a list of knot vectors and average them'''
 
-def indexPosition(i,j,N,M):
-    '''This function is a generic function which determines if for a grid
-    of data NxM with index i going 0->N-1 and j going 0->M-1, it
-    determines if i,j is on the interior, on an edge or on a corner
+    nVec = len(knot_vectors)
+   #  print ' '
+#     print 'sym'
+#     print knot_vectors
 
-    The funtion return three values: 
-    type: this is 0 for interior, 1 for on an edge and 2 for on a corner
-    edge: this is the edge number if type==1
-    node: this is the node number if type==2 '''
+    if sym: # Symmetrize each knot vector first
+        for i in xrange(nVec):
+            cur_knot_vec = knot_vectors[i].copy()
+            if mod(len(cur_knot_vec),2) == 1: #its odd
+                mid = (len(cur_knot_vec) -1)/2
+                beg1 = cur_knot_vec[0:mid]
+                beg2 = (1-cur_knot_vec[mid+1:])[::-1]
+                # Average
+                beg = 0.5*(beg1+beg2)
+                cur_knot_vec[0:mid] = beg
+                cur_knot_vec[mid+1:] = (1-beg)[::-1]
+            else: # its even
+                mid = len(cur_knot_vec)/2
+                beg1 = cur_knot_vec[0:mid]
+                beg2 = (1-cur_knot_vec[mid:])[::-1]
+                beg = 0.5*(beg1+beg2)
+                cur_knot_vec[0:mid] = beg
+                cur_knot_vec[mid:] = (1-beg)[::-1]
+            # end if
+            knot_vectors[i] = cur_knot_vec
+        # end for
+    # end if
 
-    if i > 0 and i < N - 1 and j > 0 and j < M-1: # Interior
-        return 0,None,None                   
-    elif i > 0 and i < N - 1 and j == 0:     # Edge 0
-        return 1,0,None
-    elif i > 0 and i < N - 1 and j == M - 1: # Edge 1
-        return 1,1,None
-    elif i == 0 and j > 0 and j < M - 1:     # Edge 2
-        return 1,2,None
-    elif i == N - 1 and j > 0 and j < M - 1: # Edge 3
-        return 1,3,None
-    elif i == 0 and j == 0:                  # Node 0
-        return 2,None,0
-    elif i == N - 1 and j == 0:              # Node 1
-        return 2,None,1
-    elif i == 0 and j == M -1 :              # Node 2
-        return 2,None,2
-    elif i == N - 1 and j == M - 1:          # Node 3
-        return 2,None,3
+    # Now average them all
+   
+    new_knot_vec = zeros(len(knot_vectors[0]))
+    for i in xrange(nVec):
+        new_knot_vec += knot_vectors[i]
+    # end if
+
+    new_knot_vec /= nVec
+
+    return new_knot_vec
+
+    
+    
+
+
+
