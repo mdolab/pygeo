@@ -782,10 +782,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
 
         # Lets save the stuff
-        print 'node_list:'
-        for i in xrange(len(node_list)):
-            print i,node_list[i]
-        self.node_list = node_list
         self.node_link = array(node_link)
         self.edge_list = []
         for i in xrange(len(edge_list)): # Create the edge objects
@@ -800,8 +796,6 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
         self.edge_link = array(edge_link)
         self.edge_dir  = edge_dir
-        print self.edge_dir
-
         self._setEdgeConnectivity()
 
         return
@@ -858,29 +852,28 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         return
 
     def calcGlobalNumbering(self,sizes,surface_list=None,node_link=None,
-                            edge_list=None,edge_link=None):
+                            edge_list=None,edge_link=None,edge_dir=None):
         '''Internal function to calculate the global/local numbering for each surface'''
 #         print 'sizes:',sizes
         if surface_list == None:
             surface_list = range(0,self.nSurf) 
             
 
-        if node_link==None and edge_list==None and edge_link == None:
+        if node_link==None and edge_list==None and edge_link == None and edge_dir == None:
             # None are specified
-            nNode     = max(self.node_link.flatten())+1
             node_link = self.node_link
             edge_list = self.edge_list
             edge_link = self.edge_link
-        elif not node_link==None and not edge_list==None and not edge_link==None:
+            edge_dir  = self.edge_dir
+        elif not node_link==None and not edge_list==None and not edge_link==None and not edge_dir==None:
             pass
         else:
             print 'Error: All of nNode,node_link,edge_list,edge_link must be given or none \
 of them. If they are omited, the stored self. values are used'
             sys.exit(1)
-        # end if
-#         print 'edge_link:'
-#         for i in xrange(len(edge_link)):
-#             print i,edge_link[i]
+
+        nNode = len(unique(node_link.flatten()))
+        
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
         g_index = []
@@ -949,13 +942,13 @@ the list of surfaces must be the same length'
                     elif type == 1:         # Edge
                        
                         if edge in [0,1]:
-                            if self.edge_dir[ii][edge] == -1: # Its a reverse dir
+                            if edge_dir[ii][edge] == -1: # Its a reverse dir
                                 cur_index = edge_index[edge_link[ii][edge]][N-i-2]
                             else:  
                                 cur_index = edge_index[edge_link[ii][edge]][i-1]
                             # end if
                         else: # edge in [2,3]
-                            if self.edge_dir[ii][edge] == -1: # Its a reverse dir
+                            if edge_dir[ii][edge] == -1: # Its a reverse dir
                                 cur_index = edge_index[edge_link[ii][edge]][M-j-2]
                             else:  
                                 cur_index = edge_index[edge_link[ii][edge]][j-1]
@@ -980,24 +973,22 @@ the list of surfaces must be the same length'
         '''Produce an sub-topology consisting of nNode,edge_list,node_link and edge_link for the
         surfaces contained in surface_list'''
 
-        
-        # ----------------- THIS NEEDS TO BE FIXED ------------------
-
-
         # First get the reduced edge_link and node_link
         new_edge_link = zeros((len(surface_list),4),'intc')
+        new_edge_dir  = zeros((len(surface_list),4),'intc')
         new_node_link = zeros((len(surface_list),4),'intc')
 
         for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
             new_edge_link[ii] = self.edge_link[isurf]
+            new_edge_dir [ii] = self.edge_dir [isurf]
             new_node_link[ii] = self.node_link[isurf]
+
         # end for
 
         # Now flatten new_edge_link and new_node_link for easier searching
         new_node_link = new_node_link.flatten()
         new_edge_link = new_edge_link.flatten()
-
         # Now get the unique set of nodes and edges that are left and sort
 
         unique_node_list = sorted(unique(new_node_link))
@@ -1017,8 +1008,6 @@ the list of surfaces must be the same length'
             for j in xrange(len(new_edge_link)):
                 if new_edge_link[j] == unique_edge_list[i]:
                     new_edge_link[j] = i
-                elif new_edge_link[j] == -unique_edge_list[i]:
-                    new_edgee_link[j] = -i
                 # end if
             # end for
         # end for
@@ -1032,8 +1021,8 @@ the list of surfaces must be the same length'
         # Reshape the link arrays back to their proper size
         new_node_link = new_node_link.reshape((len(surface_list),4))
         new_edge_link = new_edge_link.reshape((len(surface_list),4))
-    
-        return new_node_link,new_edge_link,new_edge_list
+
+        return new_node_link,new_edge_list,new_edge_link,new_edge_dir
     
     def printEdgeConnectivity(self,node_link=None,edge_list=None,edge_link=None,edge_dir=None):
         '''Print the Edge Connectivity to the screen'''
@@ -2227,15 +2216,34 @@ surface %d'%(isurf)
         #    Write out the Node Labels
         # ---------------------------------
         if nodes == True:
-            nl = self.node_list
+            # First we need to figure out where the corners actually *are*
+            nodes = zeros((len(self.node_link),3))
+            for i in xrange(len(nodes)):
+                # Try to find node i
+                for isurf in xrange(self.nSurf):
+                    if self.node_link[isurf][0] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(0)
+                        break
+                    elif self.node_link[isurf][1] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(1)
+                        break
+                    elif self.node_link[isurf][2] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(2)
+                        break
+                    elif self.node_link[isurf][3] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(3)
+                        break
+                # end for
+                nodes[i] = coordinate
+            # end for
             # Split the filename off
             (dirName,fileName) = os.path.split(file_name)
             (fileBaseName, fileExtension)=os.path.splitext(fileName)
             label_filename = dirName+'/'+fileBaseName+'.nodes.dat'
             f2 = open(label_filename,'w')
 
-            for i in xrange(len(self.node_list)):
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(nl[i][0],nl[i][1],nl[i][2],i)
+            for i in xrange(len(nodes)):
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(nodes[i][0],nodes[i][1],nodes[i][2],i)
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()

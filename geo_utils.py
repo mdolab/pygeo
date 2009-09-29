@@ -382,6 +382,7 @@ def directionAlongSurface(surface,line):
     for i in xrange(N):
         dn[i,:] = line.getDerivative(sn[i])
     # end for
+
     u_dot_tot = 0
     for i in xrange(N):
         for n in xrange(N):

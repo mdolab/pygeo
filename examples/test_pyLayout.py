@@ -26,15 +26,15 @@ sys.path.append('../../../pyHF/pycfd-csm/python/')
 
 #pyGeo
 sys.path.append('../')
-import pyGeo
-
+import pyGeo_NM as pyGeo
+#import pyGeo as pyGeo
 #geo_utils
 from geo_utils import *
 
 
 #pyLayout
 sys.path.append('../../pyLayout/')
-import pyLayout
+import pyLayout_NM as pyLayout
 
 #Design Variable Functions
 from dv_funcs import *
@@ -96,14 +96,13 @@ rot[:,2] = tw_aero
 #Load in the split plot3d file
 wing = pyGeo.pyGeo('plot3d',file_name='../input/wing.xyz.fmt')
 wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.writeEdgeConnectivity('wing_split.con')
-wing.propagateKnotVectors()
-wing.writeIGES('../input/wing_split.igs')
+#wing.writeEdgeConnectivity('wing_split.con')
+#wing.propagateKnotVectors()
+#wing.writeIGES('../input/wing_split.igs')
 
 # wing = pyGeo.pyGeo('iges',file_name='../input/wing_split.igs')
 # wing.readEdgeConnectivity('wing_split.con')
-# wing.writeTecplot('../output/wing.dat',
-#                   labels=True,ref_axis=True,directions=True)
+wing.writeTecplot('../output/wing.dat',labels=True,ref_axis=True,directions=True,nodes=True)
 
 print '---------------------------'
 print 'Attaching Reference Axis...'
@@ -125,13 +124,13 @@ print '---------------------------'
 print '      pyLayout Setup' 
 print '---------------------------'
  
-MAX_SPARS = 4  # This is the same for each spanwise section
+MAX_SPARS = 5  # This is the same for each spanwise section
 Nsection = 1
 wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
 
 # ---------- Create the First Domain -------------
 
-MAX_RIBS = 2
+MAX_RIBS = 8
 le_list = array([[-.10,0,0],[-.10,0,3.94]])
 te_list = array([[.60,0,0],[.6,0,3.94]])
 
@@ -154,13 +153,15 @@ rib_dir[:] = [1,0,0]
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
-#spar_blank[1,5:] = 0
-span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-v_space    = 1
+spar_blank[1,:] = 0
+spar_blank[2,:] = 0
+spar_blank[3,:] = 0
+span_space = 2*ones(MAX_RIBS-1)
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+v_space    = 2
 
 surfs = [[0,1],[2,3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
-spar_con = [0,-1,1,1]
+spar_con = [0,0,-1,1,1]
 
 timeA = time.time()
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
