@@ -14,8 +14,6 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 import petsc4py
 petsc4py.init(sys.argv)
 
-from matplotlib.pylab import plot,show
-
 # =============================================================================
 # Extension modules
 # =============================================================================
@@ -33,13 +31,12 @@ import pyGeo_NM as pyGeo
 
 
 #pyLayout
-try:
-    sys.path.append('../../../pyLayout/')
-    import pyLayout
-except:
-    print 'pyLayout is not available'
-# end try
+sys.path.append('../../../pyLayout/')
+import pyLayout_NM as pyLayout
 
+#Design Variable Functions
+sys.path.append('../')
+from dv_funcs import *
 # ==============================================================================
 # Start of Script
 # ==============================================================================
@@ -144,6 +141,25 @@ bwb.propagateKnotVectors()
 bwb.writeTecplot('../../output/bwb.dat',orig=True)
 bwb.writeIGES('../../input/bwb.igs')
 
+
+print '---------------------------'
+print 'Attaching Reference Axis...'
+print '---------------------------'
+
+# End-Type ref_axis attachments
+ref_axis_x = X
+rot = zeros(X.shape)
+bwb.addRefAxis([0,1,2,3,4,5,6,7],X,rot)
+print ' ** Adding Global Design Variables **'
+bwb.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
+bwb.calcCtlDeriv()
+print 'Done Ref Axis Adding!'
+
+
+
+
+
+
 print '---------------------------'
 print '      pyLayout Setup' 
 print '---------------------------'
@@ -175,17 +191,19 @@ le_list[:,0] = le_spar_spline.getValueV(span_coord)
 le_list[:,1] = mid_y_spline.getValueV(span_coord)
 
 te_list[:,2] = span_coord
-te_list[:,0] = le_spar_spline.getValueV(span_coord)
+te_list[:,0] = te_spar_spline.getValueV(span_coord)
 te_list[:,1] = mid_y_spline.getValueV(span_coord)
-
 
 domain = pyLayout.domain(le_list,te_list)
 
 # # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
 
 #Comput the physical rib position
-#rib_pos = 
-
+rib_pos = zeros((MAX_RIBS,3))
+rib_basis = rib_list[:,0] # This is the basis
+rib_pos[:,2] = rib_basis
+rib_pos[:,1] = mid_y_spline.getValueV(rib_basis)
+rib_pos[:,0] = rib_list[:,1]
 
 rib_dir = zeros((MAX_RIBS,3))
 rib_dir[:] = [1,0,0]
@@ -196,18 +214,20 @@ rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
 
 # Spacing Parameters for Elements
-span_space = 2*ones(MAX_RIBS-1)
-rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
-v_space    = 2
+span_space = 1*ones(MAX_RIBS-1)
+rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
+v_space    = 1
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0,0,0,0]
 
 timeA = time.time()
+
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain,surfs,spar_con,
                            rib_blank=rib_blank,rib_pos=rib_pos,rib_dir=rib_dir,
                            spar_blank=spar_blank,
                            span_space = span_space,rib_space=rib_space,v_space=v_space)
                            
 wing_box.addSection(def1)
-wing_box.writeTecplot('../../output/layout.dat')
+wing_box.writeTecplot('../../output/bwb_layout.dat')
+wing_box.finalize()

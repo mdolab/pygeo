@@ -420,37 +420,38 @@ offset.shape[0], Xsec, rot, must all have the same size'
         if 'breaks' in kwargs:
             breaks = kwargs['breaks']
             nBreaks = len(breaks)
-            
-            if 'nsections' in kwargs:
-                nsections = kwargs['nsections']
-            else: # Figure out how many sections are in each break
-                nsections = zeros(nBreaks +1,'int' )
-                counter = 0 
-                for i in xrange(nBreaks):
-                    nsections[i] = breaks[i] - counter + 1
-                    counter = breaks[i]
-                # end for
-                nsections[-1] = len(xsections) - counter
-            # end if
-
-            if 'section_spacing' in kwargs:
-                section_spacing = kwargs['section_spacing']
-            else:
-                # Generate the section spacing -> linear default
-                section_spacing = []
-                for i in xrange(len(nsections)):
-                    section_spacing.append(linspace(0,1,nsections[i]))
-                # end for
-            # end if
-
-            if 'cont' in kwargs:
-                cont = kwargs['cont']
-            else:
-                cont = [0]*nBreak # Default is c0 contintity
-            # end if 
         else:
-            breaks = None
+            nBreaks = 0
         # end if
+            
+        if 'nsections' in kwargs:
+            nsections = kwargs['nsections']
+        else: # Figure out how many sections are in each break
+            nsections = zeros(nBreaks +1,'int' )
+            counter = 0 
+            for i in xrange(nBreaks):
+                nsections[i] = breaks[i] - counter + 1
+                counter = breaks[i]
+            # end for
+            nsections[-1] = len(xsections) - counter
+        # end if
+
+        if 'section_spacing' in kwargs:
+            section_spacing = kwargs['section_spacing']
+        else:
+            # Generate the section spacing -> linear default
+            section_spacing = []
+            for i in xrange(len(nsections)):
+                section_spacing.append(linspace(0,1,nsections[i]))
+            # end for
+        # end if
+
+        if 'cont' in kwargs:
+            cont = kwargs['cont']
+        else:
+            cont = [0]*nBreaks # Default is c0 contintity
+        # end if 
+      
        
         naf = len(xsections)
         if 'Nfoil' in kwargs:
@@ -496,7 +497,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         self.surfs = []
 
-        if breaks:
+        if nBreaks>0:
             tot_sec = sum(nsections)-nBreaks
             Xnew    = zeros([2,N,tot_sec,3])
             Xsecnew = zeros((tot_sec,3))
@@ -600,13 +601,22 @@ offset.shape[0], Xsec, rot, must all have the same size'
             # end for
         
         else:  #No breaks
-            Nctlv = naf
-            self.surfs.append(pySpline.surf_spline(
-                    fit_type,ku=4,kv=4,X=X[0],Nctlv=Nctlv,no_print=self.NO_PRINT, *args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(
-                    fit_type,ku=4,kv=4,X=X[1],Nctlv=Nctlv,no_print=self.NO_PRINT, *args,**kwargs))
-        
+            tot_sec = sum(nsections)
+            Xnew    = zeros([2,N,tot_sec,3])
+            Xsecnew = zeros((tot_sec,3))
+            rotnew  = zeros((tot_sec,3))
 
+            for j in xrange(N):
+                temp_spline = pySpline.linear_spline(task='interpolate',X=X[0,j,:,:],k=2)
+                Xnew[0,j,:,:] = temp_spline.getValueV(section_spacing[0])
+                temp_spline = pySpline.linear_spline(task='interpolate',X=X[1,j,:,:],k=2)
+                Xnew[1,j,:,:] = temp_spline.getValueV(section_spacing[0])
+            # end for
+            Nctlv = nsections
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0],Nctlv=nsections[0],
+                                                   no_print=self.NO_PRINT,*args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1],Nctlv=nsections[0],
+                                                   no_print=self.NO_PRINT,*args,**kwargs))
         # end if
 
         if 'end_type' in kwargs: # The user has specified automatic tip completition
