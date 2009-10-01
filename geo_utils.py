@@ -8,7 +8,6 @@ import string ,sys
 
 sys.path.append('../pySpline')
 import pySpline
-from matplotlib.pylab import plot,show
 
  # --------------------------------------------------------------
  #                Rotation Functions
@@ -377,7 +376,7 @@ def unique(s):
             u.append(x)
     return u
 
-def directionAlongSurface(surface,line):
+def directionAlongSurface(surface,line,section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
     # Now Do two tests: Take N points in u and test N groups
     # against dn and take N points in v and test the N groups
@@ -420,6 +419,29 @@ def directionAlongSurface(surface,line):
             return 3 # V opposite direction
         # end if
     # end if 
+
+def curveDirection(curve1,curve2):
+    '''Determine if the direction of curve 1 is basically in the same
+    direction as curve2. Return 1 for same direction, -1 for opposite direction'''
+
+    N = 4
+    s = linspace(0,1,N)
+    tot = 0
+    d_forward = 0
+    d_backward = 0
+    for i in xrange(N):
+        tot += dot(curve1.getDerivative(s[i]),curve2.getDerivative(s[i]))
+        d_forward += e_dist(curve1.getValue(s[i]),curve2.getValue(s[i]))
+        d_backward+= e_dist(curve1.getValue(s[i]),curve2.getValue(s[N-i-1]))
+    # end for
+
+    if tot > 0:
+        return tot,d_forward
+    else:
+        return tot,d_backward
+    
+        
+
 
 def indexPosition(i,j,N,M):
     '''This function is a generic function which determines if for a grid
