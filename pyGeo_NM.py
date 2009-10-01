@@ -37,7 +37,7 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor, size, reshape, arange,alltrue
+    real, imag, dstack, floor, size, reshape, arange,alltrue,cross
 
 from numpy.linalg import lstsq,inv
 #from scipy import io #Only used for debugging
@@ -187,7 +187,7 @@ class pyGeo():
                                  # the global list that is its master
                                  # (driving coefficient)
 
-        self.surfs = None        # The list of surface (pySpline surf)
+        self.surfs = []          # The list of surface (pySpline surf)
                                  # objects
         self.nSurf = None        # The total number of surfaces
         self.coef  = None        # The global (reduced) set of control
@@ -213,6 +213,9 @@ file_name=\'filename\' for iges init_type'
 
         elif init_type == 'acdt_geo':
             self._init_acdt_geo(*args,**kwargs)
+        elif init_type == 'create':
+            # Don't do anything 
+            pass
         else:
             print 'Unknown init type. Valid Init types are \'plot3d\', \
 \'iges\',\'lifting_surface\' and \'acdt\''
@@ -401,7 +404,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
             print 'rot:',rot.shape[0]
             sys.exit(1)
 
-
         if 'fit_type' in kwargs:
             fit_type = kwargs['fit_type']
         else:
@@ -414,14 +416,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
             file_type = 'xfoil'
         # end if
 
-        if 'end_type' in kwargs:
-            end_type = kwargs['end_type']
-        else:
-            end_type = 'flat'
-        # end if
 
         if 'breaks' in kwargs:
-            print 'we have breaks'
             breaks = kwargs['breaks']
             nBreaks = len(breaks)
             
@@ -435,13 +431,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     counter = breaks[i]
                 # end for
                 nsections[-1] = len(xsections) - counter
-                nsections[-1] 
             # end if
 
             if 'section_spacing' in kwargs:
                 section_spacing = kwargs['section_spacing']
             else:
-                # Generate the section spacing
+                # Generate the section spacing -> linear default
                 section_spacing = []
                 for i in xrange(len(nsections)):
                     section_spacing.append(linspace(0,1,nsections[i]))
@@ -451,16 +446,11 @@ offset.shape[0], Xsec, rot, must all have the same size'
             if 'cont' in kwargs:
                 cont = kwargs['cont']
             else:
-                cont = []
-                for i in xrange(nBreaks):
-                    cont.append[0] # Default is c0 contintity
-                # end for
-                # end if 
-
+                cont = [0]*nBreak # Default is c0 contintity
+            # end if 
         else:
             breaks = None
         # end if
-            
        
         naf = len(xsections)
         if 'Nfoil' in kwargs:
@@ -487,15 +477,16 @@ offset.shape[0], Xsec, rot, must all have the same size'
             
             for j in xrange(N):
                 for isurf in xrange(2):
-                    # Twist Rotation
+                    # Twist Rotation (z-Rotation)
                     X[isurf,j,i,:] = rotzV(X[isurf,j,i,:],rot[i,2]*pi/180)
-                    # Dihediral Rotation
+                    # Dihediral Rotation (x-Rotation)
                     X[isurf,j,i,:] = rotxV(X[isurf,j,i,:],rot[i,0]*pi/180)
-                    # Sweep Rotation
+                    # Sweep Rotation (y-Rotation)
                     X[isurf,j,i,:] = rotyV(X[isurf,j,i,:],rot[i,1]*pi/180)
+                # end ofr
+            # end for
 
-
-            # Finally translate according to 
+            # Finally translate according to  positions specified
             X[:,:,i,:] += Xsec[i,:]
         # end for
 
@@ -506,7 +497,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         self.surfs = []
 
         if breaks:
-
             tot_sec = sum(nsections)-nBreaks
             Xnew    = zeros([2,N,tot_sec,3])
             Xsecnew = zeros((tot_sec,3))
@@ -527,7 +517,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # We need to figure out what derivative constraints are
                 # required
                 
-                
                 # Create a chord line representation
 
                 Xchord_line = array([X[0,0,start],X[0,-1,start]])
@@ -535,8 +524,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 for j in xrange(N): # This is for the Data points
 
-                    if i == nBreaks:
-
+                    if i > 0 and cont[i-1] == 1: # Do a continuity join
+                        print 'cont join'
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv and normalize
                         dv = (X[0,j,start] - X[0,j,start-1])
@@ -609,31 +598,30 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 start = end-1
                 start2 = end2-1
             # end for
-            self.nSurf = len(self.surfs)
-
-
+        
         else:  #No breaks
             Nctlv = naf
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[0],
-                                                   Nctlv=Nctlv,
-                                                   no_print=self.NO_PRINT,
-                                                   *args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=X[1],
-                                                   Nctlv=Nctlv,
-                                                   no_print=self.NO_PRINT,
-                                                   *args,**kwargs))
-            self.nSurf = 2
+            self.surfs.append(pySpline.surf_spline(
+                    fit_type,ku=4,kv=4,X=X[0],Nctlv=Nctlv,no_print=self.NO_PRINT, *args,**kwargs))
+            self.surfs.append(pySpline.surf_spline(
+                    fit_type,ku=4,kv=4,X=X[1],Nctlv=Nctlv,no_print=self.NO_PRINT, *args,**kwargs))
+        
+
+        # end if
+
+        if 'end_type' in kwargs: # The user has specified automatic tip completition
+            end_type = kwargs['end_type']
+
+            assert end_type in ['rounded','flat'],'Error: end_type must be one of \'rounded\' or \
+\'flat\'. Rounded will result in a non-degenerate geometry while flat type will result in a single \
+double degenerate patch at the tip'
 
 
-            # Do the surface on the end
             if end_type == 'flat':
-                print 'Doing a flat tip'
-
+            
                 spacing = 6
                 v = linspace(0,1,spacing)
-                print 'v:',v
                 X2 = zeros((N,spacing,3))
-                # X = zeros([2,N,naf,3]) #We will get two surfaces
                 for j in xrange(1,N-1):
                     # Create a linear spline 
                     x1 = X[0,j,-1]
@@ -650,9 +638,84 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,\
                                                            X=X2,Nctlv=spacing,\
                                                            *args,**kwargs))
-                self.nSurf = 3
-        # end if
+            elif end_type == 'rounded':
+                if 'end_scale' in kwargs:
+                    end_scale = kwargs['end_scale']
+                else:
+                    end_scale = 1
+                # This code uses *some* huristic measures but generally works fairly well
+                # Generate a "pinch" airfoil from the last one given
 
+                # First determine the maximum thickness of the airfoil, since this will 
+                # determine how far we need to offset it
+                dist_max = 0
+
+                for j in xrange(N):
+                    dist = e_dist(X[0,j,-1],X[1,N-j-1,-1])
+                    if dist > dist_max:
+                        dist_max = dist
+                    # end if
+                # end for
+
+                # Create a chord line representation and vector
+                Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
+                chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+                chord_vec = X[0,-1,-1]-X[0,0,-1]
+
+                # Foil Center 
+                center = 0.5*(X[1,0,-1] + X[1,-1,-1])
+                # Create the "airfoil" data for the pinch tip
+                tip_line = zeros((N,3))
+                # Create the "Average" normal vector for the section
+                normal = zeros(3)
+                for j in xrange(N):
+                    dv_top    = (X[0,j,-1] - X[0,j,-2]) # Normal along upper surface
+                    dv_bottom = (X[1,N-j-1,-1]-X[1,N-j-1,-2]) # Normal along lower surface
+                    n = 0.5*(dv_top+dv_bottom) # Average
+                    normal += n/sqrt(dot(n,n)) #Normalize
+                # end for
+                normal /= N
+
+                for j in xrange(N):
+                    tip_line[j] = (0.5*(X[0,j,-1]+X[1,N-j-1,-1])-center)*.5+center+\
+                        dist_max*normal*end_scale
+                # end for
+
+                for ii in xrange(2): # up/low side loop
+                    Xnew = zeros((N,4,3))
+                    for j in xrange(N): # This is for the Data points
+                        # Interpolate across each point in the spanwise direction
+                        # Take a finite difference to get dv and normalize
+                        dv = (X[ii,j,-1] - X[ii,j,-2])
+                        dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+
+                        # Now project the vector between sucessive
+                        # airfoil points onto this vector                        
+                        if ii == 0:
+                            V = tip_line[j]-X[ii,j,-1]
+                            s,D,converged,updated =  chord_line.projectPoint(tip_line[j])
+                           
+                            X_input = array([X[ii,j,-1],tip_line[j]])
+                        else:
+                            V = tip_line[N-j-1]-X[ii,j,-1]
+                            s,D,converged,updated =  chord_line.projectPoint(tip_line[N-j-1])
+                            X_input = array([X[ii,j,-1],tip_line[N-j-1]])
+                        # end if
+                        dx1 = dot(dv,V) * dv * end_scale
+                        dx2 = V-D
+                        temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                                                             k=4,dx1=dx1,dx2=dx2)
+
+                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,4))
+                    # end for
+                    self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew,
+                                                           Nctlv=4, *args,**kwargs))
+                # end for (ii side loop)
+            # end if (tip tip if statment)
+        # end if (if statment for tip type)
+
+        self.nSurf = len(self.surfs) # And last but not least
+        return
 
     def _init_acdt_geo(self,*args,**kwargs):
 
@@ -741,7 +804,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
                 beg,mid_point,end = self.surfs[isurf].getOrigValuesEdge(iedge)
 
                 if len(edge_list) == 0:
-                    edge_list.append([n1,n2,mid_point,-1])
+                    edge_list.append([n1,n2,mid_point,-1,0])
                     edge_link[isurf][iedge] = 0
                     edge_dir [isurf][iedge] = 1
                 else:
@@ -764,7 +827,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
                     # We went all the way though the list so add it at end and return index
                     if not found_it:
-                        edge_list.append([n1,n2,mid_point,-1])
+                        edge_list.append([n1,n2,mid_point,-1,0])
                         edge_link[isurf][iedge] = i+1
                         edge_dir [isurf][iedge] = 1
                 # end if
@@ -781,17 +844,20 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             # end if
         # end for
 
+        # Get Default number of ncoef in each design group
+
         # Lets save the stuff
         self.node_link = array(node_link)
         self.edge_list = []
+
         for i in xrange(len(edge_list)): # Create the edge objects
             if edge_list[i][0] == edge_list[i][1] and e_dist(edge_list[i][2],node_list[edge_list[i][0]]) < node_tol:
                 # Its a degenerate edge: both node indicies are the
                 # same and the midpoint is within node_tol of the end poins
-                self.edge_list.append(edge(edge_list[i][0],edge_list[i][1],0,1,0,edge_list[i][3],10))
+                self.edge_list.append(edge(edge_list[i][0],edge_list[i][1],0,1,0,edge_list[i][3],edge_list[i][4]))
             else:
                 # Its not degenerate, but may still have the same endpoints
-                self.edge_list.append(edge(edge_list[i][0],edge_list[i][1],0,0,0,edge_list[i][3],10))
+                self.edge_list.append(edge(edge_list[i][0],edge_list[i][1],0,0,0,edge_list[i][3],edge_list[i][4]))
             # end if
         # end for
         self.edge_link = array(edge_link)
@@ -806,9 +872,16 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             for iedge in xrange(4):
                 edge_num = edge_link[isurf][iedge]
                 if edge_num == i:
+                    if iedge in [0,1]:
+                        edge_list[i][4] = self.surfs[isurf].Nctlu
+                    else:
+                        edge_list[i][4] = self.surfs[isurf].Nctlv
+
                     oppositeEdge = edge_link[isurf][flipEdge(iedge)]
+
                     if edge_list[oppositeEdge][3] == -1:
                         edge_list[oppositeEdge][3] = edge_list[i][3]
+
                         # Check if the "oppositeEdge is degenerate" since DON't recursively add for them
                         if not edge_list[oppositeEdge][0] == edge_list[oppositeEdge][1]:
                             self.addDGEdge(oppositeEdge,edge_list,edge_link)
@@ -1119,6 +1192,7 @@ the list of surfaces must be the same length'
                 ncoef.append(self.edge_list[i].Nctl)
             # end if
         # end for
+        nDG += 1
         for isurf in xrange(self.nSurf):
             dg_u = self.edge_list[self.edge_link[isurf][0]].dg
             dg_v = self.edge_list[self.edge_link[isurf][2]].dg
@@ -1127,7 +1201,7 @@ the list of surfaces must be the same length'
             self.surfs[isurf]._calcKnots()
         # Now loop over the number of design groups, accumulate all
         # the knot vectors that coorspond to this dg, then merge them all
-        print 'nDG:',nDG
+        
         for idg in xrange(nDG):
             sym = False
             knot_vectors = []
