@@ -81,6 +81,7 @@ points0 = loadtxt(n0012)
 airfoil_list = []
 points = zeros(points0.shape)
 points[:,0] = points0[:,0]
+print tc
 for i in xrange(naf-2):
     scale_y = tc/.12
     points[:,1] = points0[:,1]*scale_y[i]
