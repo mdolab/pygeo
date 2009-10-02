@@ -164,8 +164,7 @@ def read_af(filename,file_type='xfoil',N=35):
         xmin = min(x)
         index = where(x == xmin)[0]
 
-        if len(index > 1): # We don't have a clearly defined LE node
-
+        if len(index) > 1: # We don't have a clearly defined LE node
             # Merge the two 
             
             xavg = 0.5*(x[index[0]] + x[index[1]])

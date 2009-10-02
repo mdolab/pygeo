@@ -718,7 +718,7 @@ double degenerate patch at the tip'
 
                         Xnew[j] =  temp_spline.getValueV(linspace(0,1,4))
                     # end for
-                    self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew,
+                    self.surfs.append(pySpline.surfspline(task='lms',ku=4,kv=4,X=Xnew,
                                                            Nctlv=4, *args,**kwargs))
                 # end for (ii side loop)
             # end if (tip tip if statment)
@@ -1391,167 +1391,137 @@ the list of surfaces must be the same length'
             self.J.assemblyEnd()
         # end if
         # --------------------------------------------------------
-        
-        
-        nIter = 5
-        scale_factor = 5000
-        for iter in xrange(nIter):
-            row_counter = nPts
-            # Fill up the non-linear part of the matrix
-            for iedge in xrange(len(self.edge_list)):
-                if self.edge_list[iedge].cont == 1:
-                    # Get the surfaces on this edge
-                    surfaces = self.getSurfaceFromEdge(iedge)
-                    if len(surfaces) != 2:
-                        print 'Error: Continuity Surface Fitting is currently \
-only defined for edges with exactly two surfaces on each side'
-                        sys.eixt(1)
-                    else:
-                        # We now know the surface and the edge # that
-                        # are connected to our continuity edge
-                        for irow in xrange(self.edge_list[iedge].Nctl):
+        nOiter =12
+        nIter = 4
+        scale_factor = .5
+        for oiter in xrange(nOiter):
+            scale_factor *= 10
+            for iter in xrange(nIter):
 
-                            # Get the indicies of the three control
-                            # points we want to have parallel
-                            surf0 = surfaces[0][0]
-                            edge0 = surfaces[0][1]                          
-                            surf1 = surfaces[1][0]
-                            edge1 = surfaces[1][1]
-                            
-                            tindA,tindB = self._getTwoIndiciesOnEdge(
-                                self.l_index[surf0],irow,edge0,self.edge_dir[surf0])
+                print 'scale_factor:',scale_factor
+                row_counter = nPts
+                # Fill up the non-linear part of the matrix
+                for iedge in xrange(len(self.edge_list)):
+                    if self.edge_list[iedge].cont == 1:
+                        # Get the surfaces on this edge
+                        surfaces = self.getSurfaceFromEdge(iedge)
+                        if len(surfaces) != 2:
+                            print 'Error: Continuity Surface Fitting is currently \
+    only defined for edges with exactly two surfaces on each side'
+                            sys.eixt(1)
+                        else:
+                            # We now know the surface and the edge # that
+                            # are connected to our continuity edge
+                            for irow in xrange(self.edge_list[iedge].Nctl):
 
-                            tindA,tindC = self._getTwoIndiciesOnEdge(
-                                self.l_index[surf1],irow,edge1,self.edge_dir[surf1])
+                                # Get the indicies of the three control
+                                # points we want to have parallel
+                                surf0 = surfaces[0][0]
+                                edge0 = surfaces[0][1]                          
+                                surf1 = surfaces[1][0]
+                                edge1 = surfaces[1][1]
 
-                            A = self.coef[tindB].astype('d')
-                            B = self.coef[tindA].astype('d')
-                            C = self.coef[tindC].astype('d')
+                                tindA,tindB = self._getTwoIndiciesOnEdge(
+                                    self.l_index[surf0],irow,edge0,self.edge_dir[surf0])
 
-                            indA = tindB
-                            indB = tindA
-                            indC = tindC
+                                tindA,tindC = self._getTwoIndiciesOnEdge(
+                                    self.l_index[surf1],irow,edge1,self.edge_dir[surf1])
 
-                            #print A,B,C
-                            # Area = 0.5*abs( xA*yC - xAyB + xByA - xByC + xCyB - xCyA )
-                            
-                            X1 = (A[0]*C[1] - A[0]*B[1] + B[0]*A[1] -B[0]*C[1] + C[0]*B[1] - C[0]*A[1])*scale_factor
+                                A = self.coef[tindB].astype('d')
+                                B = self.coef[tindA].astype('d')
+                                C = self.coef[tindC].astype('d')
 
-                            dX1dA0 = C[1] - B[1]
-                            dX1dA1 = B[0] - C[0]
-                            dX1dA2 = 0
-                            
-                            dX1dB0 = A[1] - C[1]
-                            dX1dB1 = C[0] - A[0]
-                            dX1dB2 = 0
+                                indA = tindB
+                                indB = tindA
+                                indC = tindC
 
-                            dX1dC0 = B[1] - A[1]
-                            dX1dC1 = A[0] - B[0]
-                            dX1dC2 = 0
+                                # Area = 0.5*abs( xA*yC - xAyB + xByA - xByC + xCyB - xCyA )
 
-                            X2 = (A[1]*C[2] - A[1]*B[2] + B[1]*A[2] -B[1]*C[2] + C[1]*B[2] - C[1]*A[2])*scale_factor
-                            dX2dA0 = 0
-                            dX2dA1 = C[2]-B[2]
-                            dX2dA2 = B[1]-C[1]
-                            
-                            dX2dB0 = 0
-                            dX2dB1 = A[2]-C[2]
-                            dX2dB2 = C[1]-A[1]
+                                X1 = (A[0]*C[1] - A[0]*B[1] + B[0]*A[1] -B[0]*C[1] + C[0]*B[1] - C[0]*A[1])*scale_factor
 
-                            dX2dC0 = 0
-                            dX2dC1 = B[2]-A[2]
-                            dX2dC2 = A[1]-B[1]
+                                dX1dA0 = C[1] - B[1]
+                                dX1dA1 = B[0] - C[0]
+                                dX1dA2 = 0
 
-                            X3 = (A[0]*C[2] - A[0]*B[2] + B[0]*A[2] -B[0]*C[2] + C[0]*B[2] - C[0]*A[2])*scale_factor
+                                dX1dB0 = A[1] - C[1]
+                                dX1dB1 = C[0] - A[0]
+                                dX1dB2 = 0
 
-                            dX3dA0 = C[2]-B[2]
-                            dX3dA1 = 0
-                            dX3dA2 = B[0]-C[0]
-                            
-                            dX3dB0 = A[2]-C[2]
-                            dX3dB1 = 0
-                            dX3dB2 = C[0]-A[0]
-                            
-                            dX3dC0 = B[2]-A[2]
-                            dX3dC1 = 0
-                            dX3dC2 = A[0]-B[0]
-                            print X1,X2,X3
-                            # Now set them all in the matrix
-                            self.J[3*row_counter + 0, 3*indA + 0    ] = dX1dA0*scale_factor
-                            self.J[3*row_counter + 0, 3*indA + 1    ] = dX1dA1*scale_factor
-                            self.J[3*row_counter + 0, 3*indA + 2    ] = dX1dA2*scale_factor
-                            self.J[3*row_counter + 0, 3*indB + 0    ] = dX1dB0*scale_factor
-                            self.J[3*row_counter + 0, 3*indB + 1    ] = dX1dB1*scale_factor
-                            self.J[3*row_counter + 0, 3*indB + 2    ] = dX1dB2*scale_factor
-                            self.J[3*row_counter + 0, 3*indC + 0    ] = dX1dC0*scale_factor
-                            self.J[3*row_counter + 0, 3*indC + 1    ] = dX1dC1*scale_factor
-                            self.J[3*row_counter + 0, 3*indC + 2    ] = dX1dC2*scale_factor
+                                dX1dC0 = B[1] - A[1]
+                                dX1dC1 = A[0] - B[0]
+                                dX1dC2 = 0
 
-                            self.J[3*row_counter + 1, 3*indA + 0    ] = dX2dA0*scale_factor
-                            self.J[3*row_counter + 1, 3*indA + 1    ] = dX2dA1*scale_factor
-                            self.J[3*row_counter + 1, 3*indA + 2    ] = dX2dA2*scale_factor
-                            self.J[3*row_counter + 1, 3*indB + 0    ] = dX2dB0*scale_factor
-                            self.J[3*row_counter + 1, 3*indB + 1    ] = dX2dB1*scale_factor
-                            self.J[3*row_counter + 1, 3*indB + 2    ] = dX2dB2*scale_factor
-                            self.J[3*row_counter + 1, 3*indC + 0    ] = dX2dC0*scale_factor
-                            self.J[3*row_counter + 1, 3*indC + 1    ] = dX2dC1*scale_factor
-                            self.J[3*row_counter + 1, 3*indC + 2    ] = dX2dC2*scale_factor
+                                X2 = (A[1]*C[2] - A[1]*B[2] + B[1]*A[2] -B[1]*C[2] + C[1]*B[2] - C[1]*A[2])*scale_factor
+                                dX2dA0 = 0
+                                dX2dA1 = C[2]-B[2]
+                                dX2dA2 = B[1]-C[1]
 
-                            self.J[3*row_counter + 2, 3*indA + 0    ] = dX3dA0*scale_factor
-                            self.J[3*row_counter + 2, 3*indA + 1    ] = dX3dA1*scale_factor
-                            self.J[3*row_counter + 2, 3*indA + 2    ] = dX3dA2*scale_factor
-                            self.J[3*row_counter + 2, 3*indB + 0    ] = dX3dB0*scale_factor
-                            self.J[3*row_counter + 2, 3*indB + 1    ] = dX3dB1*scale_factor
-                            self.J[3*row_counter + 2, 3*indB + 2    ] = dX3dB2*scale_factor
-                            self.J[3*row_counter + 2, 3*indC + 0    ] = dX3dC0*scale_factor
-                            self.J[3*row_counter + 2, 3*indC + 1    ] = dX3dC1*scale_factor
-                            self.J[3*row_counter + 2, 3*indC + 2    ] = dX3dC2*scale_factor
+                                dX2dB0 = 0
+                                dX2dB1 = A[2]-C[2]
+                                dX2dB2 = C[1]-A[1]
 
-                            row_counter += 1
+                                dX2dC0 = 0
+                                dX2dC1 = B[2]-A[2]
+                                dX2dC2 = A[1]-B[1]
 
-                        # end for
+                                X3 = (A[0]*C[2] - A[0]*B[2] + B[0]*A[2] -B[0]*C[2] + C[0]*B[2] - C[0]*A[2])*scale_factor
+
+                                dX3dA0 = C[2]-B[2]
+                                dX3dA1 = 0
+                                dX3dA2 = B[0]-C[0]
+
+                                dX3dB0 = A[2]-C[2]
+                                dX3dB1 = 0
+                                dX3dB2 = C[0]-A[0]
+
+                                dX3dC0 = B[2]-A[2]
+                                dX3dC1 = 0
+                                dX3dC2 = A[0]-B[0]
+                                print X1,X2,X3
+                                # Now set them all in the matrix
+                                self.J[3*row_counter + 0, 3*indA + 0    ] = dX1dA0*scale_factor
+                                self.J[3*row_counter + 0, 3*indA + 1    ] = dX1dA1*scale_factor
+                                self.J[3*row_counter + 0, 3*indA + 2    ] = dX1dA2*scale_factor
+                                self.J[3*row_counter + 0, 3*indB + 0    ] = dX1dB0*scale_factor
+                                self.J[3*row_counter + 0, 3*indB + 1    ] = dX1dB1*scale_factor
+                                self.J[3*row_counter + 0, 3*indB + 2    ] = dX1dB2*scale_factor
+                                self.J[3*row_counter + 0, 3*indC + 0    ] = dX1dC0*scale_factor
+                                self.J[3*row_counter + 0, 3*indC + 1    ] = dX1dC1*scale_factor
+                                self.J[3*row_counter + 0, 3*indC + 2    ] = dX1dC2*scale_factor
+
+                                self.J[3*row_counter + 1, 3*indA + 0    ] = dX2dA0*scale_factor
+                                self.J[3*row_counter + 1, 3*indA + 1    ] = dX2dA1*scale_factor
+                                self.J[3*row_counter + 1, 3*indA + 2    ] = dX2dA2*scale_factor
+                                self.J[3*row_counter + 1, 3*indB + 0    ] = dX2dB0*scale_factor
+                                self.J[3*row_counter + 1, 3*indB + 1    ] = dX2dB1*scale_factor
+                                self.J[3*row_counter + 1, 3*indB + 2    ] = dX2dB2*scale_factor
+                                self.J[3*row_counter + 1, 3*indC + 0    ] = dX2dC0*scale_factor
+                                self.J[3*row_counter + 1, 3*indC + 1    ] = dX2dC1*scale_factor
+                                self.J[3*row_counter + 1, 3*indC + 2    ] = dX2dC2*scale_factor
+
+                                self.J[3*row_counter + 2, 3*indA + 0    ] = dX3dA0*scale_factor
+                                self.J[3*row_counter + 2, 3*indA + 1    ] = dX3dA1*scale_factor
+                                self.J[3*row_counter + 2, 3*indA + 2    ] = dX3dA2*scale_factor
+                                self.J[3*row_counter + 2, 3*indB + 0    ] = dX3dB0*scale_factor
+                                self.J[3*row_counter + 2, 3*indB + 1    ] = dX3dB1*scale_factor
+                                self.J[3*row_counter + 2, 3*indB + 2    ] = dX3dB2*scale_factor
+                                self.J[3*row_counter + 2, 3*indC + 0    ] = dX3dC0*scale_factor
+                                self.J[3*row_counter + 2, 3*indC + 1    ] = dX3dC1*scale_factor
+                                self.J[3*row_counter + 2, 3*indC + 2    ] = dX3dC2*scale_factor
+
+                                row_counter += 1
+
+                            # end for
+                        # end if
                     # end if
-                # end if
-              # end for
-            # Now Solve
-           #  if iter == 0:
-#                 self.coef = zeros((len(self.coef),3))
-            rhs = self._solve(X,rhs,nRows,nCtl,iter) # with RHS pts
-            
+                  # end for
+                # Now Solve
+                rhs = self._solve(X,rhs,nRows,nCtl,oiter,iter) # with RHS pts
+            # end for
         # end for
-
-      
-      
         return
 
-    def _getTwoIndiciesOnEdge(self,interpolant,index,edge,edge_dir):
-        '''for a given interpolat matrix, get the two values in interpolant
-        that coorspond to \'index\' along \'edge\'. The direction is
-        accounted for by edge_dir'''
-        N = interpolant.shape[0]
-        M = interpolant.shape[1]
-        if edge == 0:
-            if edge_dir[0] == 1:
-                return interpolant[index,0],interpolant[index,1]
-            else:
-                return interpolant[N-index-1,0],interpolant[N-index-1,1]
-        elif edge == 1:
-            if edge_dir[1] == 1:
-                return interpolant[index,-1],interpolant[index,-2]
-            else:
-                return interpolant[N-index-1,-1],interpolant[N-index-1,-2]
-        elif edge == 2:
-            if edge_dir[2] == 1:
-                return interpolant[0,index],interpolant[1,index]
-            else:
-                return interpolant[0,M-index-1],interpolant[1,M-index-1]
-        elif edge == 3:
-            if edge_dir[3] == 1:
-                return interpolant[-1,index],interpolant[-2,index]
-            else:
-                return interpolant[-1,M-index-1],interpolant[-2,M-index-1]
-
-    def _solve(self,X,rhs,nPts,nCtl,iter):
+    def _solve(self,X,rhs,nPts,nCtl,oiter,iter):
         '''Solve for the control points'''
         if not self.NO_PRINT:
             print 'LMS solving...'
@@ -1581,7 +1551,7 @@ only defined for edges with exactly two surfaces on each side'
             # end for
         else:
             X = lstsq(self.J,rhs)
-            if iter == 0:
+            if oiter == 0 and  iter == 0:
                 for i in xrange(nCtl): # Copy the coefficient back over
                     self.coef[i] = X[0][3*i:3*i+3].astype('D')
             else:
@@ -1590,6 +1560,7 @@ only defined for edges with exactly two surfaces on each side'
 
         # end for
             rhs -= dot(self.J,X[0])
+            print 'rms:',sqrt(dot(rhs,rhs))
             return rhs
 
     def _initJacobian(self,Npt,cont_count,nCtl):
@@ -1616,6 +1587,34 @@ with LAPACK'''
             self.J = zeros((nRows,nCols))
         # end if
         return nRows,nCols
+
+
+    def _getTwoIndiciesOnEdge(self,interpolant,index,edge,edge_dir):
+        '''for a given interpolat matrix, get the two values in interpolant
+        that coorspond to \'index\' along \'edge\'. The direction is
+        accounted for by edge_dir'''
+        N = interpolant.shape[0]
+        M = interpolant.shape[1]
+        if edge == 0:
+            if edge_dir[0] == 1:
+                return interpolant[index,0],interpolant[index,1]
+            else:
+                return interpolant[N-index-1,0],interpolant[N-index-1,1]
+        elif edge == 1:
+            if edge_dir[1] == 1:
+                return interpolant[index,-1],interpolant[index,-2]
+            else:
+                return interpolant[N-index-1,-1],interpolant[N-index-1,-2]
+        elif edge == 2:
+            if edge_dir[2] == 1:
+                return interpolant[0,index],interpolant[1,index]
+            else:
+                return interpolant[0,M-index-1],interpolant[1,M-index-1]
+        elif edge == 3:
+            if edge_dir[3] == 1:
+                return interpolant[-1,index],interpolant[-2,index]
+            else:
+                return interpolant[-1,M-index-1],interpolant[-2,M-index-1]
 # ----------------------------------------------------------------------
 #                Reference Axis Handling
 # ----------------------------------------------------------------------

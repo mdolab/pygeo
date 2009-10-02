@@ -31,14 +31,15 @@ import pyGeo_NM as pyGeo
 
 naf=2
 Nctlu = 13
-airfoil_list = ['../input/naca0012.dat','../input/naca0012.dat']
-chord = [1,.5]
-x = [0,.25]
+airfoil_list = ['../input/naca2412.dat','../input/naca2412.dat']
+airfoil_list = ['../input/af15-16.inp','../input/af15-16.inp']
+chord = [1,1]
+x = [0,0]
 y = [0,0]
 z = [0,4]
 rot_x = [0,0]
-rot_y = [0,30]
-rot_z = [0,-15]
+rot_y = [0,0]
+rot_z = [0,0]
 
 offset = zeros((naf,2))
 nsections = [5]
@@ -79,7 +80,7 @@ rot[:,2] = rot_z
 # ---------------------------------------------------------------------
 
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
-                   file_type='xfoil',scale=chord,offset=offset, 
+                   file_type='precomp',scale=chord,offset=offset, 
                    nsections=nsections, Xsec=X,rot=rot,
                    fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 
@@ -89,6 +90,6 @@ wing.propagateKnotVectors()
 
 wing.fitSurfaces()
 wing.update()
-wing.writeTecplot('../output/wing_fit_test.dat',size=.006,orig=True)
+wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
 
 print 'Done Step 2'
