@@ -47,8 +47,8 @@ try:
     # petsc4py.init(sys.argv)
     from petsc4py import PETSc
     
-    USE_PETSC = True
-    #USE_PETSC = False
+    #USE_PETSC = True
+    USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
 with PETSC'
     version = petsc4py.__version__
@@ -1246,10 +1246,6 @@ the list of surfaces must be the same length'
                 if self.edge_list[self.edge_link[isurf][2]].dg == idg:
                     self.surfs[isurf].tv = new_knot_vec.copy()
                 # end if
-              
-
-
-
             # end for
         # end for
        
@@ -1263,6 +1259,19 @@ the list of surfaces must be the same length'
         self.update()
         return
 
+
+    def getSurfaceFromEdge(self,edge):
+        '''Determine the surfaces and their edge_link index that points to edge iedge'''
+        surfaces = []
+        for isurf in xrange(self.nSurf):
+            for iedge in xrange(4):
+                if self.edge_link[isurf][iedge] == edge:
+                    surfaces.append([isurf,iedge])
+                # end if
+            # end for
+        # end for
+        return surfaces
+    
    
     def checkCoef(self):
         '''Check all surface coefficients for consistency'''
@@ -1282,51 +1291,43 @@ the list of surfaces must be the same length'
         '''This function does a lms fit on all the surfaces respecting
         the stitched edges as well as the continuity constraints'''
 
-        Nctl = len(self.coef)
+        nCtl = len(self.coef)
 
         sizes = []
         for isurf in xrange(self.nSurf):
             sizes.append([self.surfs[isurf].Nu,self.surfs[isurf].Nv])
         # end for
-
-        Npts, g_index,l_index = self.calcGlobalNumbering(sizes)
         
-        self._initJacobian(Npts,Nctl)
+        # Get the Globaling number of the original data
+        nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
+        
+        # Get the number of Derivative Constraints
+        
+        cont_edge_count = 0
+        for i in xrange(len(self.edge_list)):
+            if self.edge_list[i].cont == 1: # We have a continuty edge
+                cont_edge_count += self.edge_list[i].Nctl
+            # end if
+        # end for
+
+        nRows,nCols = self._initJacobian(nPts,cont_edge_count,nCtl)
         if not self.NO_PRINT:
             print '------------- Fitting Surfaces Globally ------------------'
-            print 'Npts:',Npts
-            print 'Nctl:',Nctl
+            print 'nRows:',nRows
+            print 'nCols:',nCols
 
         if USE_PETSC:
-            pts = PETSc.Vec()
-            pts = pts.createSeq(Npts*3)
-
-            X = PETSc.Vec()
-            X.createSeq(Nctl*3)
-
+            pts = PETSc.Vec().createSeq(nRows)
+            X = PETSc.Vec().createSeq(nCols)
             PETSC_INSERT_MODE = PETSc.InsertMode.ADD_VALUES
-
         else:
-            pts = zeros(Npts*3)
-            X = zeros(Nctl*3)
+            pts = zeros(nRows) 
+            X = zeros(nCols)
         # end if 
-
-        # Now Fill up the pt list
-        
-        for ii in xrange(len(g_index)):
-            isurf = g_index[ii][0][0]
-            i = g_index[ii][0][1]
-            j = g_index[ii][0][2]
-            pts[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
-        # end for
-
-        # Fill up the 'X' with the best curent solution guess
-        for i in xrange(len(self.coef)):
-            X[3*i:3*i+3] = self.coef[i].astype('d')
-        # end for
-
-
-        for ii in xrange(Npts):
+      
+        # Assemble the Constant Portion of the Jacobian. This is the
+        # standard LMS fit part of the matrix
+        for ii in xrange(nPts):
             surfID = g_index[ii][0][0]
             i      = g_index[ii][0][1]
             j      = g_index[ii][0][2]
@@ -1370,19 +1371,187 @@ the list of surfaces must be the same length'
                 # end for
             # end for
         # end for 
+
+        # Now Fill up the RHS point list, the remainder are zeros so don't need to set -maybe with petsc
+        for ii in xrange(len(g_index)):
+            isurf = g_index[ii][0][0]
+            i = g_index[ii][0][1]
+            j = g_index[ii][0][2]
+            pts[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+        # end for
+        rhs = pts
+        # Fill up the 'X' with the best curent solution guess
+    #     for i in xrange(len(self.coef)):
+#             X[3*i:3*i+3] = self.coef[i].astype('d')
+#         # end for
+        #self.coef = zeros((len(self.coef),3))
+        # ----------- DOES THIS GO IN THE LOOP ---------------
         if USE_PETSC:
             self.J.assemblyBegin()
             self.J.assemblyEnd()
         # end if
-        if not self.NO_PRINT:
-            print 'Jacobian Matrix Assembled'
+        # --------------------------------------------------------
         
-        # Now Solve
-        self._solve(X,pts,Npts,Nctl) # with RHS pts
+        
+        nIter = 5
+        scale_factor = 5000
+        for iter in xrange(nIter):
+            row_counter = nPts
+            # Fill up the non-linear part of the matrix
+            for iedge in xrange(len(self.edge_list)):
+                if self.edge_list[iedge].cont == 1:
+                    # Get the surfaces on this edge
+                    surfaces = self.getSurfaceFromEdge(iedge)
+                    if len(surfaces) != 2:
+                        print 'Error: Continuity Surface Fitting is currently \
+only defined for edges with exactly two surfaces on each side'
+                        sys.eixt(1)
+                    else:
+                        # We now know the surface and the edge # that
+                        # are connected to our continuity edge
+                        for irow in xrange(self.edge_list[iedge].Nctl):
+
+                            # Get the indicies of the three control
+                            # points we want to have parallel
+                            surf0 = surfaces[0][0]
+                            edge0 = surfaces[0][1]                          
+                            surf1 = surfaces[1][0]
+                            edge1 = surfaces[1][1]
+                            
+                            tindA,tindB = self._getTwoIndiciesOnEdge(
+                                self.l_index[surf0],irow,edge0,self.edge_dir[surf0])
+
+                            tindA,tindC = self._getTwoIndiciesOnEdge(
+                                self.l_index[surf1],irow,edge1,self.edge_dir[surf1])
+
+                            A = self.coef[tindB].astype('d')
+                            B = self.coef[tindA].astype('d')
+                            C = self.coef[tindC].astype('d')
+
+                            indA = tindB
+                            indB = tindA
+                            indC = tindC
+
+                            #print A,B,C
+                            # Area = 0.5*abs( xA*yC - xAyB + xByA - xByC + xCyB - xCyA )
+                            
+                            X1 = (A[0]*C[1] - A[0]*B[1] + B[0]*A[1] -B[0]*C[1] + C[0]*B[1] - C[0]*A[1])*scale_factor
+
+                            dX1dA0 = C[1] - B[1]
+                            dX1dA1 = B[0] - C[0]
+                            dX1dA2 = 0
+                            
+                            dX1dB0 = A[1] - C[1]
+                            dX1dB1 = C[0] - A[0]
+                            dX1dB2 = 0
+
+                            dX1dC0 = B[1] - A[1]
+                            dX1dC1 = A[0] - B[0]
+                            dX1dC2 = 0
+
+                            X2 = (A[1]*C[2] - A[1]*B[2] + B[1]*A[2] -B[1]*C[2] + C[1]*B[2] - C[1]*A[2])*scale_factor
+                            dX2dA0 = 0
+                            dX2dA1 = C[2]-B[2]
+                            dX2dA2 = B[1]-C[1]
+                            
+                            dX2dB0 = 0
+                            dX2dB1 = A[2]-C[2]
+                            dX2dB2 = C[1]-A[1]
+
+                            dX2dC0 = 0
+                            dX2dC1 = B[2]-A[2]
+                            dX2dC2 = A[1]-B[1]
+
+                            X3 = (A[0]*C[2] - A[0]*B[2] + B[0]*A[2] -B[0]*C[2] + C[0]*B[2] - C[0]*A[2])*scale_factor
+
+                            dX3dA0 = C[2]-B[2]
+                            dX3dA1 = 0
+                            dX3dA2 = B[0]-C[0]
+                            
+                            dX3dB0 = A[2]-C[2]
+                            dX3dB1 = 0
+                            dX3dB2 = C[0]-A[0]
+                            
+                            dX3dC0 = B[2]-A[2]
+                            dX3dC1 = 0
+                            dX3dC2 = A[0]-B[0]
+                            print X1,X2,X3
+                            # Now set them all in the matrix
+                            self.J[3*row_counter + 0, 3*indA + 0    ] = dX1dA0*scale_factor
+                            self.J[3*row_counter + 0, 3*indA + 1    ] = dX1dA1*scale_factor
+                            self.J[3*row_counter + 0, 3*indA + 2    ] = dX1dA2*scale_factor
+                            self.J[3*row_counter + 0, 3*indB + 0    ] = dX1dB0*scale_factor
+                            self.J[3*row_counter + 0, 3*indB + 1    ] = dX1dB1*scale_factor
+                            self.J[3*row_counter + 0, 3*indB + 2    ] = dX1dB2*scale_factor
+                            self.J[3*row_counter + 0, 3*indC + 0    ] = dX1dC0*scale_factor
+                            self.J[3*row_counter + 0, 3*indC + 1    ] = dX1dC1*scale_factor
+                            self.J[3*row_counter + 0, 3*indC + 2    ] = dX1dC2*scale_factor
+
+                            self.J[3*row_counter + 1, 3*indA + 0    ] = dX2dA0*scale_factor
+                            self.J[3*row_counter + 1, 3*indA + 1    ] = dX2dA1*scale_factor
+                            self.J[3*row_counter + 1, 3*indA + 2    ] = dX2dA2*scale_factor
+                            self.J[3*row_counter + 1, 3*indB + 0    ] = dX2dB0*scale_factor
+                            self.J[3*row_counter + 1, 3*indB + 1    ] = dX2dB1*scale_factor
+                            self.J[3*row_counter + 1, 3*indB + 2    ] = dX2dB2*scale_factor
+                            self.J[3*row_counter + 1, 3*indC + 0    ] = dX2dC0*scale_factor
+                            self.J[3*row_counter + 1, 3*indC + 1    ] = dX2dC1*scale_factor
+                            self.J[3*row_counter + 1, 3*indC + 2    ] = dX2dC2*scale_factor
+
+                            self.J[3*row_counter + 2, 3*indA + 0    ] = dX3dA0*scale_factor
+                            self.J[3*row_counter + 2, 3*indA + 1    ] = dX3dA1*scale_factor
+                            self.J[3*row_counter + 2, 3*indA + 2    ] = dX3dA2*scale_factor
+                            self.J[3*row_counter + 2, 3*indB + 0    ] = dX3dB0*scale_factor
+                            self.J[3*row_counter + 2, 3*indB + 1    ] = dX3dB1*scale_factor
+                            self.J[3*row_counter + 2, 3*indB + 2    ] = dX3dB2*scale_factor
+                            self.J[3*row_counter + 2, 3*indC + 0    ] = dX3dC0*scale_factor
+                            self.J[3*row_counter + 2, 3*indC + 1    ] = dX3dC1*scale_factor
+                            self.J[3*row_counter + 2, 3*indC + 2    ] = dX3dC2*scale_factor
+
+                            row_counter += 1
+
+                        # end for
+                    # end if
+                # end if
+              # end for
+            # Now Solve
+           #  if iter == 0:
+#                 self.coef = zeros((len(self.coef),3))
+            rhs = self._solve(X,rhs,nRows,nCtl,iter) # with RHS pts
+            
+        # end for
+
+      
       
         return
 
-    def _solve(self,X,rhs,Npts,Nctl):
+    def _getTwoIndiciesOnEdge(self,interpolant,index,edge,edge_dir):
+        '''for a given interpolat matrix, get the two values in interpolant
+        that coorspond to \'index\' along \'edge\'. The direction is
+        accounted for by edge_dir'''
+        N = interpolant.shape[0]
+        M = interpolant.shape[1]
+        if edge == 0:
+            if edge_dir[0] == 1:
+                return interpolant[index,0],interpolant[index,1]
+            else:
+                return interpolant[N-index-1,0],interpolant[N-index-1,1]
+        elif edge == 1:
+            if edge_dir[1] == 1:
+                return interpolant[index,-1],interpolant[index,-2]
+            else:
+                return interpolant[N-index-1,-1],interpolant[N-index-1,-2]
+        elif edge == 2:
+            if edge_dir[2] == 1:
+                return interpolant[0,index],interpolant[1,index]
+            else:
+                return interpolant[0,M-index-1],interpolant[1,M-index-1]
+        elif edge == 3:
+            if edge_dir[3] == 1:
+                return interpolant[-1,index],interpolant[-2,index]
+            else:
+                return interpolant[-1,M-index-1],interpolant[-2,M-index-1]
+
+    def _solve(self,X,rhs,nPts,nCtl,iter):
         '''Solve for the control points'''
         if not self.NO_PRINT:
             print 'LMS solving...'
@@ -1392,7 +1561,7 @@ the list of surfaces must be the same length'
             ksp.create(PETSc.COMM_WORLD)
             ksp.getPC().setType('none')
             ksp.setType('lsqr')
-            ksp.setInitialGuessNonzero(True)
+            #ksp.setInitialGuessNonzero(True)
 
             print 'Iteration   Residual'
             def monitor(ksp, its, rnorm):
@@ -1403,43 +1572,50 @@ the list of surfaces must be the same length'
             ksp.setTolerances(rtol=1e-15, atol=1e-15, divtol=100, max_it=250)
 
             ksp.setOperators(self.J)
-            ksp.solve(rhs, X) 
+            ksp.solve(rhs, X)
 
-            coef_temp = zeros((Nctl,3))
-            for i in xrange(Nctl): # Copy the coefficient back over
+            for i in xrange(nCtl): # Copy the coefficient back over
                 self.coef[i,0] = complex(X.getValue(3*i  ))
                 self.coef[i,1] = complex(X.getValue(3*i+1))
                 self.coef[i,2] = complex(X.getValue(3*i+2))
             # end for
         else:
             X = lstsq(self.J,rhs)
-            for i in xrange(Nctl): # Copy the coefficient back over
-                self.coef[i] = X[0][3*i:3*i+3].astype('D')
-            # end for
-        # end if
+            if iter == 0:
+                for i in xrange(nCtl): # Copy the coefficient back over
+                    self.coef[i] = X[0][3*i:3*i+3].astype('D')
+            else:
+                for i in xrange(nCtl): # Copy the coefficient back over
+                    self.coef[i] += X[0][3*i:3*i+3].astype('D')
 
-        return
+        # end for
+            rhs -= dot(self.J,X[0])
+            return rhs
 
-    def _initJacobian(self,Npt,Nctl):
+    def _initJacobian(self,Npt,cont_count,nCtl):
         
         '''Initialize the Jacobian either with PETSc or with Numpy for use
 with LAPACK'''
-      
+        nRows = (Npt + cont_count)*3
+        #nRows = (Npt +     0     )*3 # Temporary Debugging leave out continuity rows
+        nCols = nCtl*3
+
         if USE_PETSC:
             self.J = PETSc.Mat()
             # We know the row filling factor: 16*3 (4 for ku by 4 for
             # kv and 3 spatial)
             if PETSC_MAJOR_VERSION == 1:
-                self.J.createAIJ([Npt*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
+                self.J.createAIJ([nRows,nCols],nnz=16*3,comm=PETSc.COMM_SELF)
             elif PETSC_MAJOR_VERSION == 0:
-                self.J.createSeqAIJ([Npt*3,Nctl*3],nz=16*3)
+                self.J.createSeqAIJ([nRows,nCols],nz=16*3)
             else:
                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
                 sys.exit(1)
             # end if
         else:
-            self.J = zeros((Npt*3,Nctl*3))
+            self.J = zeros((nRows,nCols))
         # end if
+        return nRows,nCols
 # ----------------------------------------------------------------------
 #                Reference Axis Handling
 # ----------------------------------------------------------------------
@@ -1467,14 +1643,14 @@ with LAPACK'''
 
                 # Do the lms fit
                 x = pySpline.linear_spline(task='lms',X=X,\
-                                                  Nctl=nrefsecs,k=2)
+                                                  nCtl=nrefsecs,k=2)
                 s = x.s
                 rotxs = pySpline.linear_spline(task='lms',s=s,X=rot[:,0],\
-                                                   Nctl=nrefsecs,k=2)
+                                                   nCtl=nrefsecs,k=2)
                 rotys = pySpline.linear_spline(task='lms',s=s,X=rot[:,1],\
-                                                   Nctl=nrefsecs,k=2)
+                                                   nCtl=nrefsecs,k=2)
                 rotzs = pySpline.linear_spline(task='lms',s=s,X=rot[:,2],\
-                                                   Nctl=nrefsecs,k=2)
+                                                   nCtl=nrefsecs,k=2)
 
                 if not spacing == None:
                     spacing = linspace(0,1,nrefsecs)
@@ -1499,11 +1675,11 @@ with LAPACK'''
                 x = pySpline.linear_spline(task='interpolate',X=X,k=2)
                 s = x.s
                 rotxs = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,0],Nctl=nrefsecs,k=2)
+                    task='interpolate',s=s,X=rot[:,0],nCtl=nrefsecs,k=2)
                 rotys = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,1],Nctl=nrefsecs,k=2)
+                    task='interpolate',s=s,X=rot[:,1],nCtl=nrefsecs,k=2)
                 rotzs = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,2],Nctl=nrefsecs,k=2)
+                    task='interpolate',s=s,X=rot[:,2],nCtl=nrefsecs,k=2)
 
                 if not spacing == None:
                     spacing = linspace(0,1,nrefsecs)
