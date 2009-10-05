@@ -25,10 +25,15 @@ import pySpline
 #cfd-csm pre (Optional)
 sys.path.append('../../../../pyHF/pycfd-csm/python/')
 
+# pyOpt
+sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
+
+# pySnopt
+sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
+
 #pyGeo
 sys.path.append('../../')
 import pyGeo_NM as pyGeo
-
 
 #pyLayout
 #sys.path.append('../../../pyLayout/')
@@ -108,9 +113,9 @@ offset = zeros((naf,2))
 Nctlu = 11
                       
 # Make the break-point vector
-breaks = [19,20]
-cont = [0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [40,8,8] # length of breaks +1
+breaks = [10,19,20]
+cont = [0,0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
+nsections = [15,15,8,8] # length of breaks +1
 
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
@@ -140,7 +145,7 @@ bwb.calcEdgeConnectivity(1e-6,1e-6)
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-bwb.fitSurfaces()
+bwb.fitSurfaces2()
 bwb.update()
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
