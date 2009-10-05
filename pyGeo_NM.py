@@ -47,8 +47,8 @@ try:
     # petsc4py.init(sys.argv)
     from petsc4py import PETSc
     
-    #USE_PETSC = True
-    USE_PETSC = False
+    USE_PETSC = True
+    #USE_PETSC = False
     print 'PETSc4py is available. Least Square Solutions will be performed \
 with PETSC'
     version = petsc4py.__version__
@@ -629,7 +629,7 @@ double degenerate patch at the tip'
 
             if end_type == 'flat':
             
-                spacing = 6
+                spacing = 10
                 v = linspace(0,1,spacing)
                 X2 = zeros((N,spacing,3))
                 for j in xrange(1,N-1):
@@ -692,7 +692,7 @@ double degenerate patch at the tip'
                 # end for
 
                 for ii in xrange(2): # up/low side loop
-                    Xnew = zeros((N,4,3))
+                    Xnew = zeros((N,6,3))
                     for j in xrange(N): # This is for the Data points
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv and normalize
@@ -716,9 +716,9 @@ double degenerate patch at the tip'
                         temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
-                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,4))
+                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,6))
                     # end for
-                    self.surfs.append(pySpline.surfspline(task='lms',ku=4,kv=4,X=Xnew,
+                    self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew,
                                                            Nctlv=4, *args,**kwargs))
                 # end for (ii side loop)
             # end if (tip tip if statment)
@@ -801,7 +801,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
         # end for
 
         # Next Calculate the EDGE connectivity. 
-
+                        
         edge_list = []
         edge_link = -1*ones((self.nSurf,4),'intc')
         edge_dir  = zeros((self.nSurf,4),'intc')
@@ -1017,7 +1017,7 @@ the list of surfaces must be the same length'
             for i in xrange(N):
                 for j in xrange(M):
                     
-                    type,edge,node = indexPosition(i,j,N,M)
+                    type,edge,node,index = indexPosition(i,j,N,M)
                     if type == 0:           # Interior
                         l_index[ii][i,j] = counter
                         g_index.append([[isurf,i,j]])
@@ -1208,6 +1208,19 @@ the list of surfaces must be the same length'
             dg_v = self.edge_list[self.edge_link[isurf][2]].dg
             self.surfs[isurf].Nctlu = ncoef[dg_u]
             self.surfs[isurf].Nctlv = ncoef[dg_v]
+            if self.surfs[isurf].ku < self.surfs[isurf].Nctlu:
+                if self.surfs[isurf].Nctlu > 4:
+                    self.surfs[isurf].ku = 4
+                else:
+                    self.surfs[isurf].ku = self.surfs[isurf].Nctlu
+                # endif
+            # end if
+            if self.surfs[isurf].kv < self.surfs[isurf].Nctlv:
+                if self.surfs[isurf].Nctlv > 4:
+                    self.surfs[isurf].kv = 4
+                else:
+                    self.surfs[isurf].kv = self.surfs[isurf].Nctlv
+
             self.surfs[isurf]._calcKnots()
         # Now loop over the number of design groups, accumulate all
         # the knot vectors that coorspond to this dg, then merge them all
@@ -1301,78 +1314,47 @@ the list of surfaces must be the same length'
         # Get the Globaling number of the original data
         nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
         
-        # Get the number of Derivative Constraints
-        
-        cont_edge_count = 0
-        for i in xrange(len(self.edge_list)):
-            if self.edge_list[i].cont == 1: # We have a continuty edge
-                cont_edge_count += self.edge_list[i].Nctl
-            # end if
-        # end for
+        nRows,nCols,dv_link = self._initJacobian(nPts)
 
-        nRows,nCols = self._initJacobian(nPts,cont_edge_count,nCtl)
         if not self.NO_PRINT:
             print '------------- Fitting Surfaces Globally ------------------'
-            print 'nRows:',nRows
-            print 'nCols:',nCols
+            print 'nRows (Surface Points):',nRows
+            print 'nCols (Degrees of Freedom):',nCols
 
         if USE_PETSC:
             pts = PETSc.Vec().createSeq(nRows)
+            temp= PETSc.Vec().createSeq(nRows)
             X = PETSc.Vec().createSeq(nCols)
-            PETSC_INSERT_MODE = PETSc.InsertMode.ADD_VALUES
+            X_cur = PETSc.Vec().createSeq(nCols)
         else:
             pts = zeros(nRows) 
+            temp = None
             X = zeros(nCols)
+            X_cur = zeros(nCols)
         # end if 
       
-        # Assemble the Constant Portion of the Jacobian. This is the
-        # standard LMS fit part of the matrix
-        for ii in xrange(nPts):
-            surfID = g_index[ii][0][0]
-            i      = g_index[ii][0][1]
-            j      = g_index[ii][0][2]
+        # Fill up the 'X' with the best curent solution guess
+        for i in xrange(len(dv_link)):
+            if len(dv_link[i][0]) == 1: # Its regular
+                X[dv_link[i][0][0]:dv_link[i][0][0]+3] = self.coef[i].astype('d')
+            else:
+                X[dv_link[i][0][0]] = 0.5
+                dv_index = dv_link[i][0][0]
+                n1_index = dv_link[i][0][1] # node one side of constrined node
+                n2_index = dv_link[i][0][2] # node other side of constrained node
+                self.coef[i] = self.coef[n1_index]*(1-X[dv_index]) + X[dv_index]*self.coef[n2_index]
+            # end if
+        # end for
+        
+        if USE_PETSC:
+            X.copy(X_cur)
+        else:
+            X_cur = X.copy()
+        # end if
 
-            u = self.surfs[surfID].u[i]
-            v = self.surfs[surfID].v[j]
-            
-            ku = self.surfs[surfID].ku
-            kv = self.surfs[surfID].kv
-                    
-            ileftu, mflagu = self.surfs[surfID].pyspline.intrv(\
-                self.surfs[surfID].tu,u,1)
-            ileftv, mflagv = self.surfs[surfID].pyspline.intrv(\
-                self.surfs[surfID].tv,v,1)
 
-            if mflagu == 0: # Its Inside so everything is ok
-                u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
-            if mflagu == 1: # Its at the right end so just need last one
-                u_list = [ileftu-ku-1]
 
-            if mflagv == 0: # Its Inside so everything is ok
-                v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
-            if mflagv == 1: # Its at the right end so just need last one
-                v_list = [ileftv-kv-1]
-
-            for iii in xrange(len(u_list)):
-                for jjj in xrange(len(v_list)):
-
-                    x = self.surfs[surfID].calcPtDeriv(\
-                        u,v,u_list[iii],v_list[jjj])
-                    index = 3*self.l_index[surfID][u_list[iii],v_list[jjj]]
-                    if USE_PETSC:
-                        self.J.setValue(3*ii    ,index    ,x, PETSC_INSERT_MODE)
-                        self.J.setValue(3*ii + 1,index + 1,x, PETSC_INSERT_MODE)
-                        self.J.setValue(3*ii + 2,index + 2,x, PETSC_INSERT_MODE)
-                    else:
-                        self.J[3*ii    ,index    ] += x
-                        self.J[3*ii + 1,index + 1] += x
-                        self.J[3*ii + 2,index + 2] += x
-                    # end if
-                # end for
-            # end for
-        # end for 
-
-        # Now Fill up the RHS point list, the remainder are zeros so don't need to set -maybe with petsc
+        # Now Fill up the RHS point list
         for ii in xrange(len(g_index)):
             isurf = g_index[ii][0][0]
             i = g_index[ii][0][1]
@@ -1380,153 +1362,114 @@ the list of surfaces must be the same length'
             pts[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
         # end for
         rhs = pts
-        # Fill up the 'X' with the best curent solution guess
-    #     for i in xrange(len(self.coef)):
-#             X[3*i:3*i+3] = self.coef[i].astype('d')
-#         # end for
-        #self.coef = zeros((len(self.coef),3))
-        # ----------- DOES THIS GO IN THE LOOP ---------------
-        if USE_PETSC:
-            self.J.assemblyBegin()
-            self.J.assemblyEnd()
-        # end if
-        # --------------------------------------------------------
-        nOiter =12
-        nIter = 4
-        scale_factor = .5
-        for oiter in xrange(nOiter):
-            scale_factor *= 10
-            for iter in xrange(nIter):
-
-                print 'scale_factor:',scale_factor
-                row_counter = nPts
-                # Fill up the non-linear part of the matrix
-                for iedge in xrange(len(self.edge_list)):
-                    if self.edge_list[iedge].cont == 1:
-                        # Get the surfaces on this edge
-                        surfaces = self.getSurfaceFromEdge(iedge)
-                        if len(surfaces) != 2:
-                            print 'Error: Continuity Surface Fitting is currently \
-    only defined for edges with exactly two surfaces on each side'
-                            sys.eixt(1)
-                        else:
-                            # We now know the surface and the edge # that
-                            # are connected to our continuity edge
-                            for irow in xrange(self.edge_list[iedge].Nctl):
-
-                                # Get the indicies of the three control
-                                # points we want to have parallel
-                                surf0 = surfaces[0][0]
-                                edge0 = surfaces[0][1]                          
-                                surf1 = surfaces[1][0]
-                                edge1 = surfaces[1][1]
-
-                                tindA,tindB = self._getTwoIndiciesOnEdge(
-                                    self.l_index[surf0],irow,edge0,self.edge_dir[surf0])
-
-                                tindA,tindC = self._getTwoIndiciesOnEdge(
-                                    self.l_index[surf1],irow,edge1,self.edge_dir[surf1])
-
-                                A = self.coef[tindB].astype('d')
-                                B = self.coef[tindA].astype('d')
-                                C = self.coef[tindC].astype('d')
-
-                                indA = tindB
-                                indB = tindA
-                                indC = tindC
-
-                                # Area = 0.5*abs( xA*yC - xAyB + xByA - xByC + xCyB - xCyA )
-
-                                X1 = (A[0]*C[1] - A[0]*B[1] + B[0]*A[1] -B[0]*C[1] + C[0]*B[1] - C[0]*A[1])*scale_factor
-
-                                dX1dA0 = C[1] - B[1]
-                                dX1dA1 = B[0] - C[0]
-                                dX1dA2 = 0
-
-                                dX1dB0 = A[1] - C[1]
-                                dX1dB1 = C[0] - A[0]
-                                dX1dB2 = 0
-
-                                dX1dC0 = B[1] - A[1]
-                                dX1dC1 = A[0] - B[0]
-                                dX1dC2 = 0
-
-                                X2 = (A[1]*C[2] - A[1]*B[2] + B[1]*A[2] -B[1]*C[2] + C[1]*B[2] - C[1]*A[2])*scale_factor
-                                dX2dA0 = 0
-                                dX2dA1 = C[2]-B[2]
-                                dX2dA2 = B[1]-C[1]
-
-                                dX2dB0 = 0
-                                dX2dB1 = A[2]-C[2]
-                                dX2dB2 = C[1]-A[1]
-
-                                dX2dC0 = 0
-                                dX2dC1 = B[2]-A[2]
-                                dX2dC2 = A[1]-B[1]
-
-                                X3 = (A[0]*C[2] - A[0]*B[2] + B[0]*A[2] -B[0]*C[2] + C[0]*B[2] - C[0]*A[2])*scale_factor
-
-                                dX3dA0 = C[2]-B[2]
-                                dX3dA1 = 0
-                                dX3dA2 = B[0]-C[0]
-
-                                dX3dB0 = A[2]-C[2]
-                                dX3dB1 = 0
-                                dX3dB2 = C[0]-A[0]
-
-                                dX3dC0 = B[2]-A[2]
-                                dX3dC1 = 0
-                                dX3dC2 = A[0]-B[0]
-                                print X1,X2,X3
-                                # Now set them all in the matrix
-                                self.J[3*row_counter + 0, 3*indA + 0    ] = dX1dA0*scale_factor
-                                self.J[3*row_counter + 0, 3*indA + 1    ] = dX1dA1*scale_factor
-                                self.J[3*row_counter + 0, 3*indA + 2    ] = dX1dA2*scale_factor
-                                self.J[3*row_counter + 0, 3*indB + 0    ] = dX1dB0*scale_factor
-                                self.J[3*row_counter + 0, 3*indB + 1    ] = dX1dB1*scale_factor
-                                self.J[3*row_counter + 0, 3*indB + 2    ] = dX1dB2*scale_factor
-                                self.J[3*row_counter + 0, 3*indC + 0    ] = dX1dC0*scale_factor
-                                self.J[3*row_counter + 0, 3*indC + 1    ] = dX1dC1*scale_factor
-                                self.J[3*row_counter + 0, 3*indC + 2    ] = dX1dC2*scale_factor
-
-                                self.J[3*row_counter + 1, 3*indA + 0    ] = dX2dA0*scale_factor
-                                self.J[3*row_counter + 1, 3*indA + 1    ] = dX2dA1*scale_factor
-                                self.J[3*row_counter + 1, 3*indA + 2    ] = dX2dA2*scale_factor
-                                self.J[3*row_counter + 1, 3*indB + 0    ] = dX2dB0*scale_factor
-                                self.J[3*row_counter + 1, 3*indB + 1    ] = dX2dB1*scale_factor
-                                self.J[3*row_counter + 1, 3*indB + 2    ] = dX2dB2*scale_factor
-                                self.J[3*row_counter + 1, 3*indC + 0    ] = dX2dC0*scale_factor
-                                self.J[3*row_counter + 1, 3*indC + 1    ] = dX2dC1*scale_factor
-                                self.J[3*row_counter + 1, 3*indC + 2    ] = dX2dC2*scale_factor
-
-                                self.J[3*row_counter + 2, 3*indA + 0    ] = dX3dA0*scale_factor
-                                self.J[3*row_counter + 2, 3*indA + 1    ] = dX3dA1*scale_factor
-                                self.J[3*row_counter + 2, 3*indA + 2    ] = dX3dA2*scale_factor
-                                self.J[3*row_counter + 2, 3*indB + 0    ] = dX3dB0*scale_factor
-                                self.J[3*row_counter + 2, 3*indB + 1    ] = dX3dB1*scale_factor
-                                self.J[3*row_counter + 2, 3*indB + 2    ] = dX3dB2*scale_factor
-                                self.J[3*row_counter + 2, 3*indC + 0    ] = dX3dC0*scale_factor
-                                self.J[3*row_counter + 2, 3*indC + 1    ] = dX3dC1*scale_factor
-                                self.J[3*row_counter + 2, 3*indC + 2    ] = dX3dC2*scale_factor
-
-                                row_counter += 1
-
-                            # end for
-                        # end if
-                    # end if
-                  # end for
-                # Now Solve
-                rhs = self._solve(X,rhs,nRows,nCtl,oiter,iter) # with RHS pts
-            # end for
-        # end for
-        return
-
-    def _solve(self,X,rhs,nPts,nCtl,oiter,iter):
-        '''Solve for the control points'''
         if not self.NO_PRINT:
             print 'LMS solving...'
+        nIter = 6
+        for iter in xrange(nIter):
+            # Assemble the Jacobian
+            nRows,nCols,dv_link = self._initJacobian(nPts)
+            for ii in xrange(nPts):
+                surfID = g_index[ii][0][0]
+                i      = g_index[ii][0][1]
+                j      = g_index[ii][0][2]
+
+                u = self.surfs[surfID].u[i]
+                v = self.surfs[surfID].v[j]
+
+                ku = self.surfs[surfID].ku
+                kv = self.surfs[surfID].kv
+
+                ileftu, mflagu = self.surfs[surfID].pyspline.intrv(\
+                    self.surfs[surfID].tu,u,1)
+                ileftv, mflagv = self.surfs[surfID].pyspline.intrv(\
+                    self.surfs[surfID].tv,v,1)
+
+                if mflagu == 0: # Its Inside so everything is ok
+                    u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
+                if mflagu == 1: # Its at the right end so just need last one
+                    u_list = [ileftu-ku-1]
+
+                if mflagv == 0: # Its Inside so everything is ok
+                    v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
+                if mflagv == 1: # Its at the right end so just need last one
+                    v_list = [ileftv-kv-1]
+
+                for iii in xrange(len(u_list)):
+                    for jjj in xrange(len(v_list)):
+                        # Should we need a += here??? I don't think so...
+                        x = self.surfs[surfID].calcPtDeriv(\
+                            u,v,u_list[iii],v_list[jjj])
+
+                        # X is the derivative of the physical point at parametric location u,v
+                        # by control point u_list[iii],v_list[jjj]
+
+                        global_index = self.l_index[surfID][u_list[iii],v_list[jjj]]
+                        if len(dv_link[global_index][0]) == 1:
+                            dv_index = dv_link[global_index][0][0]
+                            self._addJacobianValue(3*ii    ,dv_index    ,x)
+                            self._addJacobianValue(3*ii + 1,dv_index + 1,x)
+                            self._addJacobianValue(3*ii + 2,dv_index + 2,x)
+                        else: # its a constrained one
+                            dv_index = dv_link[global_index][0][0]
+                            n1_index = dv_link[global_index][0][1] # node one side of constrined node
+                            n2_index = dv_link[global_index][0][2] # node other side of constrained node
+                          #   print '1:',dv_index
+                            dv1 = dv_link[n1_index][0][0]
+                            dv2 = dv_link[n2_index][0][0]
+                            
+                            dcoefds = -self.coef[n1_index] + self.coef[n2_index]
+                            self._addJacobianValue(3*ii    ,dv_index,x*dcoefds[0])
+                            self._addJacobianValue(3*ii + 1,dv_index,x*dcoefds[1])
+                            self._addJacobianValue(3*ii + 2,dv_index,x*dcoefds[2])
+
+                            # We also need to add the dependance of the other two nodes as well
+                            #print '1:',global_index
+                            dv_index = dv_link[n1_index][0][0]
+                            #print '2:',n1_index,dv_index
+                            self._addJacobianValue(3*ii    ,dv_index  ,(1-X[dv_index])*x)
+                            self._addJacobianValue(3*ii + 1,dv_index+1,(1-X[dv_index])*x)
+                            self._addJacobianValue(3*ii + 2,dv_index+2,(1-X[dv_index])*x)
+                            
+                            dv_index = dv_link[n2_index][0][0]
+                            #print '3:',n2_index,dv_index
+                            self._addJacobianValue(3*ii    ,dv_index  ,X[dv_index]*x)
+                            self._addJacobianValue(3*ii + 1,dv_index+1,X[dv_index]*x)
+                            self._addJacobianValue(3*ii + 2,dv_index+2,X[dv_index]*x)
+
+                        # end if
+                    # end for
+                # end for
+            # end for 
+            if iter == 0:
+                if USE_PETSC:
+                    self.J.assemblyBegin()
+                    self.J.assemblyEnd()
+                    self.J.mult(X,temp)
+                    rhs = rhs - temp
+                else:
+                    rhs -= dot(self.J,X)
+                # end if
+            # end if
+            rhs,X,X_cur = self._solve(X,X_cur,rhs,temp,dv_link,iter)
+        # end for (iter)
+        return
+
+    def _addJacobianValue(self,i,j,value):
+        if USE_PETSC: 
+            self.J.setValue(i,j,value,PETSc.InsertMode.ADD_VALUES)
+        else:
+            self.J[i,j] += value
+        # end if
+
+    def _solve(self,X,X_cur,rhs,temp,dv_link,iter):
+        '''Solve for the control points'''
+        
 
         if USE_PETSC:
+
+            self.J.assemblyBegin()
+            self.J.assemblyEnd()
+
             ksp = PETSc.KSP()
             ksp.create(PETSc.COMM_WORLD)
             ksp.getPC().setType('none')
@@ -1543,33 +1486,144 @@ the list of surfaces must be the same length'
 
             ksp.setOperators(self.J)
             ksp.solve(rhs, X)
+            self.J.mult(X,temp)
+            rhs = rhs - temp
 
-            for i in xrange(nCtl): # Copy the coefficient back over
-                self.coef[i,0] = complex(X.getValue(3*i  ))
-                self.coef[i,1] = complex(X.getValue(3*i+1))
-                self.coef[i,2] = complex(X.getValue(3*i+2))
-            # end for
         else:
-            X = lstsq(self.J,rhs)
-            if oiter == 0 and  iter == 0:
-                for i in xrange(nCtl): # Copy the coefficient back over
-                    self.coef[i] = X[0][3*i:3*i+3].astype('D')
-            else:
-                for i in xrange(nCtl): # Copy the coefficient back over
-                    self.coef[i] += X[0][3*i:3*i+3].astype('D')
 
-        # end for
-            rhs -= dot(self.J,X[0])
+            X = lstsq(self.J,rhs)[0]
+            rhs -= dot(self.J,X)
             print 'rms:',sqrt(dot(rhs,rhs))
-            return rhs
 
-    def _initJacobian(self,Npt,cont_count,nCtl):
+        # end if
+        scale = 1
+        X_cur = X_cur + X/scale
+
+        for icoef in xrange(len(self.coef)):
+            if len(dv_link[icoef][0]) == 1:
+                dv_index = dv_link[icoef][0][0]
+                self.coef[icoef,0] = (X_cur[dv_index + 0])
+                self.coef[icoef,1] = (X_cur[dv_index + 1])
+                self.coef[icoef,2] = (X_cur[dv_index + 2])
+            # end if
+        for icoef in xrange(len(self.coef)):
+            if len(dv_link[icoef][0]) != 1:
+                dv_index = dv_link[icoef][0][0]
+                n1_index = dv_link[icoef][0][1] # node one side of constrined node
+                n2_index = dv_link[icoef][0][2] # node other side of constrained node
+                dv1 = dv_link[n1_index][0][0]
+                dv2 = dv_link[n2_index][0][0]
+                #print 'Value1:',X_cur[dv_index]
+
+                update0 = X[dv_index]/scale
+                value = update0
+                for i in xrange(25):
+                    if abs(value) > 0.1:
+                        value /= 2
+                    else:
+                        break
+                
+                # end for
+                # We've already added update---but we really want to add value instread
+                #print 'update0,value:',update0,value
+                X_cur[dv_index] = X_cur[dv_index] - update0 +value
+                value = X_cur[dv_index]
+                #value = .5
+                #X_cur[dv_index] = .5
+                print 'Value2:',X_cur[dv_index]
+                
+                self.coef[icoef] = (1-value)*self.coef[n1_index] + value*(self.coef[n2_index])
+              
+            # end if
+        # end for
+
+        return rhs,X,X_cur
+
+    def _initJacobian(self,Npt):
         
         '''Initialize the Jacobian either with PETSc or with Numpy for use
-with LAPACK'''
-        nRows = (Npt + cont_count)*3
-        #nRows = (Npt +     0     )*3 # Temporary Debugging leave out continuity rows
-        nCols = nCtl*3
+        with LAPACK'''
+        
+        dv_link = [-1]*len(self.coef)
+        dv_counter = 0
+        for isurf in xrange(self.nSurf):
+            Nctlu = self.surfs[isurf].Nctlu
+            Nctlv = self.surfs[isurf].Nctlv
+            for i in xrange(Nctlu):
+                for j in xrange(Nctlv):
+                    type,edge,node,index = indexPosition(i,j,Nctlu,Nctlv)
+                    if type == 0: # Interior
+                        dv_link[self.l_index[isurf][i,j]] = [[dv_counter]]
+                        dv_counter += 3
+                    elif type == 1: # Edge
+                        if dv_link[self.l_index[isurf][i,j]] ==-1: # Its isn't set yet
+                            # Now determine if its on a continuity edge
+                            if self.edge_list[self.edge_link[isurf][edge]].cont == 1: #its continuous
+                                iedge = self.edge_link[isurf][edge] # index of edge of interest
+                                surfaces = self.getSurfaceFromEdge(iedge) # Two surfaces we want
+
+                                surf0 = surfaces[0][0] # First surface on this edge
+                                edge0 = surfaces[0][1] # Edge of surface on this edge                           
+                                surf1 = surfaces[1][0] # Second surface on this edge
+                                edge1 = surfaces[1][1] # Edge of second surface on this edge
+
+                                tindA,indB = self._getTwoIndiciesOnEdge(
+                                    self.l_index[surf0],index,edge0,self.edge_dir[surf0])
+
+                                tindA,indC = self._getTwoIndiciesOnEdge(
+                                    self.l_index[surf1],index,edge1,self.edge_dir[surf1])
+
+                                # indB and indC are the global indicies of the two control 
+                                # points on either side of this node on the edge
+
+                                dv_link[self.l_index[isurf][i,j]] = [[dv_counter,indB,indC]]
+                                dv_counter += 1
+                            else: # Just add normally
+                                dv_link[self.l_index[isurf][i,j]] = [[dv_counter]]
+                                dv_counter += 3
+                            # end if
+                        # end if
+                    elif type == 2: # Corner
+                        if dv_link[self.l_index[isurf][i,j]] == -1: # Its not set yet
+                            # Check both possible edges
+                            edge1,edge2,index1,index2 = edgesFromNodeIndex(node,Nctlu,Nctlv)
+                            edges= [edge1,edge2]
+                            indices = [index1,index2]
+                            dv_link[self.l_index[isurf][i,j]] = []
+                            for ii in xrange(2):
+                                if self.edge_list[self.edge_link[isurf][edges[ii]]].cont == 1:
+                                    iedge = self.edge_link[isurf][edges[ii]] # index of edge of interest
+                                    surfaces = self.getSurfaceFromEdge(iedge) # Two surfaces we want
+                                    surf0 = surfaces[0][0] # First surface on this edge
+                                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
+                                    surf1 = surfaces[1][0] # Second surface on this edge
+                                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+                                    
+                                    tindA,indB = self._getTwoIndiciesOnEdge(
+                                        self.l_index[surf0],indices[ii],edge0,self.edge_dir[surf0])
+
+                                    tindA,indC = self._getTwoIndiciesOnEdge(
+                                        self.l_index[surf1],indices[ii],edge1,self.edge_dir[surf1])
+
+                                    # indB and indC are the global indicies of the two control 
+                                    # points on either side of this node on the edge
+                                    dv_link[self.l_index[isurf][i,j]].append([dv_counter,indB,indC])
+                                    dv_counter += 1
+
+                                # end if
+                            # end for
+                            # If its STILL not set there's no continutiy
+                            if dv_link[self.l_index[isurf][i,j]] == []: # Need this check again
+                                dv_link[self.l_index[isurf][i,j]] = [[dv_counter]]
+                                dv_counter += 3
+                            # end if
+                    # end if (pt type)
+                # end for (Nctlv loop)
+            # end for (Nctlu loop)
+        # end for (isurf looop)
+                                
+        nRows = Npt*3
+        nCols = dv_counter
 
         if USE_PETSC:
             self.J = PETSc.Mat()
@@ -1586,7 +1640,7 @@ with LAPACK'''
         else:
             self.J = zeros((nRows,nCols))
         # end if
-        return nRows,nCols
+        return nRows,nCols,dv_link
 
 
     def _getTwoIndiciesOnEdge(self,interpolant,index,edge,edge_dir):
