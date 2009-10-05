@@ -31,8 +31,8 @@ import pyGeo_NM as pyGeo
 
 
 #pyLayout
-sys.path.append('../../../pyLayout/')
-import pyLayout_NM as pyLayout
+#sys.path.append('../../../pyLayout/')
+#import pyLayout_NM as pyLayout
 
 #Design Variable Functions
 sys.path.append('../')
@@ -45,6 +45,7 @@ from dv_funcs import *
 
 naf=22
 n0012 = '../../input/naca0012.dat'
+#n0012 = '../../input/sd7037.dat'
 
 # Use the digitize it data for the planform:
 le = array(loadtxt('bwb_le.out'))
@@ -109,7 +110,7 @@ Nctlu = 11
 # Make the break-point vector
 breaks = [19,20]
 cont = [0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [20,4,4] # length of breaks +1
+nsections = [40,8,8] # length of breaks +1
 
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
@@ -136,11 +137,15 @@ bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
 
 
 bwb.calcEdgeConnectivity(1e-6,1e-6)
-bwb.writeEdgeConnectivity('bwb.con')
+#bwb.writeEdgeConnectivity('bwb.con')
+bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-
-bwb.writeTecplot('../../output/bwb.dat',orig=True)
+bwb.fitSurfaces()
+bwb.update()
+bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
+
+
 
 
 print '---------------------------'
@@ -157,7 +162,7 @@ bwb.calcCtlDeriv()
 print 'Done Ref Axis Adding!'
 
 
-
+sys.exit(0)
 
 
 

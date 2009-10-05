@@ -447,29 +447,30 @@ def indexPosition(i,j,N,M):
     of data NxM with index i going 0->N-1 and j going 0->M-1, it
     determines if i,j is on the interior, on an edge or on a corner
 
-    The funtion return three values: 
+    The funtion return four values: 
     type: this is 0 for interior, 1 for on an edge and 2 for on a corner
     edge: this is the edge number if type==1
-    node: this is the node number if type==2 '''
+    node: this is the node number if type==2 
+    index: this is the value index along the edge of interest -- only defined for edges'''
 
     if i > 0 and i < N - 1 and j > 0 and j < M-1: # Interior
-        return 0,None,None                   
+        return 0,None,None,None
     elif i > 0 and i < N - 1 and j == 0:     # Edge 0
-        return 1,0,None
+        return 1,0,None,i
     elif i > 0 and i < N - 1 and j == M - 1: # Edge 1
-        return 1,1,None
+        return 1,1,None,i
     elif i == 0 and j > 0 and j < M - 1:     # Edge 2
-        return 1,2,None
+        return 1,2,None,j
     elif i == N - 1 and j > 0 and j < M - 1: # Edge 3
-        return 1,3,None
+        return 1,3,None,j
     elif i == 0 and j == 0:                  # Node 0
-        return 2,None,0
+        return 2,None,0,None
     elif i == N - 1 and j == 0:              # Node 1
-        return 2,None,1
+        return 2,None,1,None
     elif i == 0 and j == M -1 :              # Node 2
-        return 2,None,2
+        return 2,None,2,None
     elif i == N - 1 and j == M - 1:          # Node 3
-        return 2,None,3
+        return 2,None,3,None
 
 # --------------------------------------------------------------
 #             Python Surface Mesh Warping Implementation
@@ -631,6 +632,29 @@ def edgeFromNodes(n1,n2):
         return 3
     elif (n1 == 3 and n2 == 2) or (n1 == 2 and n2 == 3):
         return 1
+
+def edgesFromNode(n):
+    ''' Return the two edges coorsponding to node n'''
+    if n == 0:
+        return 0,2
+    if n == 1:
+        return 0,3
+    if n == 2:
+        return 1,2
+    if n == 3:
+        return 1,3
+
+def edgesFromNodeIndex(n,N,M):
+    ''' Return the two edges coorsponding to node n AND return the index
+of the node on the edge according to the size (N,M)'''
+    if n == 0:
+        return 0,2,0,0
+    if n == 1:
+        return 0,3,N-1,0
+    if n == 2:
+        return 1,2,0,M-1
+    if n == 3:
+        return 1,3,N-1,M-1
 
 def nodesFromEdge(edge):
     '''Return the nodes on either edge of a standard edge'''
