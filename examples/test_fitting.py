@@ -19,6 +19,12 @@ petsc4py.init(sys.argv)
 # pySpline 
 sys.path.append('../../pySpline/python')
 
+# pyOpt
+sys.path.append('../../../pyACDT/pyACDT/Optimization/pyOpt')
+
+# pySnopt
+sys.path.append('../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
+
 #pyGeo
 sys.path.append('../')
 import pyGeo_NM as pyGeo
@@ -87,9 +93,11 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()
-
-wing.fitSurfaces()
+timeA = time.time()
+wing.fitSurfaces2()
 wing.update()
+timeB = time.time()
 wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
 
 print 'Done Step 2'
+print 'fit time:',timeB-timeA
