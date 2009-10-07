@@ -89,12 +89,12 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    file_type='precomp',scale=chord,offset=offset, 
                    nsections=nsections, Xsec=X,rot=rot,
                    fit_type='lms',Nctlu=Nctlu,Nfoil=45)
-
+#wing.setSymmetry('xy')
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()
 timeA = time.time()
-wing.fitSurfaces2()
+wing.fitSurfaces()
 wing.update()
 timeB = time.time()
 wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
