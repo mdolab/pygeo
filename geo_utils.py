@@ -472,6 +472,41 @@ def indexPosition(i,j,N,M):
     elif i == N - 1 and j == M - 1:          # Node 3
         return 2,None,3,None
 
+def convertCSRtoCSC_one(nrow,ncol,Ap,Aj,Ax):
+    '''Convert a one-based CSR format to a one-based CSC format'''
+    nnz = Ap[-1]-1
+    Bp = zeros(ncol+1,'int')
+    Bi = zeros(nnz,'int')
+    Bx = zeros(nnz)
+
+    # compute number of non-zero entries per column of A 
+    nnz_per_col = zeros(ncol) # temp array
+
+    for i in xrange(nnz):
+        nnz_per_col[Aj[i]]+=1
+    # end for
+    # cumsum the nnz_per_col to get Bp[]
+    cumsum = 0
+    for i in xrange(ncol):
+        Bp[i] = cumsum+1
+        cumsum += nnz_per_col[i]
+        nnz_per_col[i] = 1
+    # end for
+    Bp[ncol] = nnz+1
+
+    for i in xrange(nrow):
+        row_start = Ap[i]
+        row_end = Ap[i+1]
+        for j  in xrange(row_start,row_end):
+            col = Aj[j-1]
+            k = Bp[col] + nnz_per_col[col] - 1
+            Bi[k-1] = i+1
+            Bx[k-1] = Ax[j-1]
+            nnz_per_col[col]+=1
+        # end for
+    # end for
+    return Bp,Bi,Bx
+
 # --------------------------------------------------------------
 #             Python Surface Mesh Warping Implementation
 # --------------------------------------------------------------

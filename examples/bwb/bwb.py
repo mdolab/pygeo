@@ -87,7 +87,6 @@ points0 = loadtxt(n0012)
 airfoil_list = []
 points = zeros(points0.shape)
 points[:,0] = points0[:,0]
-print tc
 for i in xrange(naf-2):
     scale_y = tc/.12
     points[:,1] = points0[:,1]*scale_y[i]
@@ -115,7 +114,7 @@ Nctlu = 11
 # Make the break-point vector
 breaks = [10,19,20]
 cont = [0,0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [15,15,8,8] # length of breaks +1
+nsections = [30,30,8,8] # length of breaks +1
 
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
@@ -140,18 +139,14 @@ bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                   end_type='rounded',end_scale = 1,
                   Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 
-
+bwb.setSymmetry('xy')
 bwb.calcEdgeConnectivity(1e-6,1e-6)
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-bwb.fitSurfaces2()
-bwb.update()
+bwb.fitSurfaces()
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
-
-
-
 
 print '---------------------------'
 print 'Attaching Reference Axis...'
