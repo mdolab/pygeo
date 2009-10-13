@@ -1314,7 +1314,219 @@ the list of surfaces must be the same length'
         # end for
 
         return surfaces
+# ----------------------------------------------------------------------
+#                        Surface Fitting Functions 2
+# ----------------------------------------------------------------------
 
+    def fitSurfaces2(self,nIter=50,constr_tol=1e-6,opt_tol=1e-4):
+        time0 = time.time()
+                    
+        self.ndv = 3*len(self.coef)
+        sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
+        
+        # Get the Global number of the original data
+        nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
+        self._initJacobian(nPts,self.ndv,g_index)
+
+        if USE_PETSC:
+            self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
+            self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
+            self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
+            self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
+            X = zeros(self.ndv) # X for initial guess
+        else:
+            self.rhs = zeros(nPts*3)
+            X = zeros(self.ndv)
+        # end if 
+
+        # Fill up the 'X' with the the current coefficients (optimization start point)
+        for icoef in xrange(len(self.coef)):
+            X[3*icoef:3*icoef+3] = self.coef[icoef]
+        # end for
+
+        # Now Fill up the RHS point list
+        for ii in xrange(len(g_index)):
+            isurf = g_index[ii][0][0]
+            i = g_index[ii][0][1]
+            j = g_index[ii][0][2]
+            self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+        # end for
+
+        # Now determine the number of constraints
+        self.ncon = 0
+        for iedge in xrange(len(self.edge_list)):
+            if self.edge_list[iedge].cont == 1: # We have continuity
+                self.ncon += self.edge_list[iedge].Nctl
+            # end if
+        # end for
+
+        if not self.NO_PRINT:
+            print '------------- Fitting Surfaces Globally ------------------'
+            print 'nPts (Number of Surface Points):',nPts
+            print 'nDV (Degrees of Freedom):',self.ndv
+            print 'nCon (Constraints):',self.ncon
+        # end if
+
+        # Setup Optimization Probelm
+        opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
+        opt_prob.addVarGroup('x',self.ndv,'c',value=X)
+        opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
+        opt_prob.addObj('RMS Error')
+        opt = SNOPT()
+        opt.setOption('Nonderivative linesearch')
+        opt.setOption('Major step limit',1e-2)
+        opt.setOption('Major optimality tolerance', opt_tol)
+        opt.setOption('Major feasibility tolerance',constr_tol)
+        opt.setOption('Major iterations limit',nIter)
+        opt(opt_prob)#,self._sens,sparse=[indA,locA]) # Run the actual problem
+
+        # Reset the coefficients after the optimization is done
+        for icoef in xrange(len(self.coef)):
+            self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
+            self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
+            self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
+        # end for
+
+        # Update the entire object with new coefficients
+        self.update()
+
+        # Delete the self. values we don't need anymore
+        del self.ndv,self.ncon
+        del self.rhs,self.X_PETSC,self.gobj_PETSC,self.temp
+
+        return
+
+    def _objcon2(self,x,*arg,**kwargs):
+        '''Compute the objective and the constraints'''
+        # ------------ Objective ---------
+        if USE_PETSC:
+            self.X_PETSC.setValues(arange(self.ndv),x)
+            self.J.mult(self.X_PETSC,self.temp)
+            f_obj = 0.5*(self.temp-self.rhs).norm()**2
+        else:
+            f_obj = 0.5*norm(dot(self.J,x)-self.rhs)**2
+
+        # ---------- Constraints ---------
+        for icoef in xrange(len(self.coef)):
+            self.coef[icoef,0] = x[3*icoef+0]
+            self.coef[icoef,1] = x[3*icoef+1]
+            self.coef[icoef,2] = x[3*icoef+2]
+        # end for
+        self.update()
+
+        f_con = []
+        for iedge in xrange(len(self.edge_list)):
+            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+                
+                # Now get the two surfaces for this edge:
+                surfaces = self.getSurfaceFromEdge(iedge)
+                if len(surfaces) == 1: 
+                    print 'Error not implemented' 
+                    sys.exit(1)
+                else:
+                    surf0 = surfaces[0][0] # First surface on this edge
+                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
+                    
+                    surf1 = surfaces[1][0] # Second surface on this edge
+                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+
+                    # Get the greville points for this edge
+                    gpts = self.surfs[surf0].getGrevillePoints(edge0)
+                    for i in xrange(len(gpts)):
+                        # Get the three vectors we need
+                        
+
+                        du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+                        du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+
+                        stp = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[2]) - \
+                            du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
+                            du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
+                        f_con.append(stp) # scalar triple product
+                    # end for (nctl on edge)
+            # end if (continuity edge)
+        # end for (edge list)
+        return f_obj,f_con,0
+
+    def _sens(self,x,f_obj,f_con,*args,**kwargs):
+        '''Sensitivity function for Fitting Optimization'''
+        # ----------- Objective Derivative ----------------
+        if USE_PETSC:
+            self.X_PETSC.setValues(arange(0,self.ndv),x)
+            self.J(self.X_PETSC,self.temp)
+            self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
+            gobj = array(self.gobj_PETSC.getValues(arange(self.ndv)))
+            self.temp = self.temp-self.rhs
+            self.temp.abs()
+            print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
+        else:
+            gobj = dot((dot(self.J,x)-self.rhs),self.J)
+        # end if
+        # ----------- Constraint Derivative ---------------
+
+        gcon = zeros((ncon,ndv))
+        for iedge in xrange(len(self.edge_list)):
+            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+                # Now get the two surfaces for this edge:
+                surfaces = self.getSurfaceFromEdge(iedge)
+                if len(surfaces) == 1: 
+                    surf0 = surfaces[0][0] # First surface on this edge
+                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
+                    print 'error: not implemented'
+                else:
+                    surf0 = surfaces[0][0] # First surface on this edge
+                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
+                    surf1 = surfaces[1][0] # Second surface on this edge
+                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+
+                    # Get the greville points for this edge
+                    gpts = self.surfs[surf0].getGrevillePoints(edge0)
+                    #for i in xrange(self.edge_list[iedge].Nctl):
+                        
+                        
+
+
+                    # end for
+            # end if (cont edge)
+        # end for (edge listloop)Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,gcon)
+
+        return gobj,new_gcon,0
+
+
+
+    def _getDerivativeOnEdge(self,surface,edge,value):
+        '''Get the directional surface derivatives on surface suface and edge edge'''
+        # Note: In this context du is the derivative along the edge,
+        # dv is the derivative normal to the edge
+        if edge == 0:
+            if self.edge_dir[surface,edge] == 1: # Positive Direction
+                du,dv = self.surfs[surface].getDerivative(value,0)
+            else:
+                du,dv = self.surfs[surfcae].getDerivative(1-value,0)
+            # end if
+            return du,dv
+        elif edge == 1:
+            if self.edge_dir[surface,edge] == 1: # Positive Direction
+                du,dv = self.surfs[surface].getDerivative(value,1)
+            else:
+                du,dv = self.surfs[surfcae].getDerivative(1-value,1)
+            # end if
+            return du,dv
+        elif edge == 2:
+            if self.edge_dir[surface,edge] == 1: # Positive Direction
+                du,dv = self.surfs[surface].getDerivative(0,value)
+            else:
+                du,dv = self.surfs[surfcae].getDerivative(0,1-value)
+            # end if
+            return dv,du
+        elif edge == 3:
+            if self.edge_dir[surface,edge] == 1: # Positive Direction
+                du,dv = self.surfs[surface].getDerivative(1,value)
+            else:
+                du,dv = self.surfs[surfcae].getDerivative(1,1-value)
+            # end if
+        # end if
+        return dv,du
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
 # ----------------------------------------------------------------------

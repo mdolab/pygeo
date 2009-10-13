@@ -237,71 +237,9 @@ and \'precomp\''
 #            Working with Edges Function
 # --------------------------------------------------------------
 
- # ****************** DEPRECATED *************
-def test_edge(surf1,surf2,i,j,edge_tol):
-
-    '''Test edge i on surf1 with edge j on surf2'''
-    # First get the values at the beginning, middle and end of each segment
-
-    val1_beg,val1_mid,val1_end = surf1.getOrigValuesEdge(i)
-    val2_beg,val2_mid,val2_end = surf2.getOrigValuesEdge(j)
-
-    # Second we wil check to see if either edge is degenerate:
-
-    degen1,val_degen1 = surf1.checkDegenerateEdge(i)
-    degen2,val_degen2 = surf2.checkDegenerateEdge(j)
-
-    coinc = False # Default return is False
-    dir_flag  = 1
-    side  = 0 
-    type = None
-    if not degen1 and not degen2: # This is the 'regular' case where
-                                  # we have two non degenerate edges
-        #Three things can happen:
-
-        # Beginning and End match (same sense)
-        if e_dist(val1_beg,val2_beg) < edge_tol and \
-               e_dist(val1_end,val2_end) < edge_tol:
-            if e_dist(val1_mid,val2_mid) < edge_tol:
-                coinc = True
-            else:
-                coinc = False
-            dir_flag = 1
-
-        # Beginning and End match (opposite sense)
-        elif e_dist(val1_beg,val2_end) < edge_tol and \
-               e_dist(val1_end,val2_beg) < edge_tol:
-
-            if e_dist(val1_mid,val2_mid) < edge_tol:
-                coinc = True
-            else:
-                coinc = False
-
-            dir_flag = -1
-        # end if
-        type = 1 # Standard edge to edge connection
-        return coinc,dir_flag
-
-    return coinc,dir_flag
-
-# ****************** DEPRECATED *************
-def test_node(surf1,surf2,i,j,node_tol):
-
-    '''Test edge i on surf1 with edge j on surf2'''
-    # First get the two values
-
-    val1 = surf1.getOrigValueCorner(i)
-    val2 = surf2.getOrigValueCorner(j)
-    
-    if e_dist(val1,val2) < node_tol:
-        return True
-    else:
-        return False
-    
 def e_dist(x1,x2):
     '''Get the eculidean distance between two points'''
     return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
-
 
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions
