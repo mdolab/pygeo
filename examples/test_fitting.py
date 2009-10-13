@@ -39,13 +39,13 @@ naf=2
 Nctlu = 13
 airfoil_list = ['../input/naca2412.dat','../input/naca2412.dat']
 airfoil_list = ['../input/af15-16.inp','../input/af15-16.inp']
-chord = [1,1]
+chord = [1,.2]
 x = [0,0]
 y = [0,0]
 z = [0,4]
-rot_x = [0,0]
-rot_y = [0,0]
-rot_z = [0,0]
+rot_x = [0,20]
+rot_y = [0,45]
+rot_z = [0,-15]
 
 offset = zeros((naf,2))
 nsections = [5]
@@ -89,15 +89,34 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    file_type='precomp',scale=chord,offset=offset, 
                    nsections=nsections, Xsec=X,rot=rot,
                    fit_type='lms',Nctlu=Nctlu,Nfoil=45)
-#wing.setSymmetry('xy')
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()
-timeA = time.time()
-wing.fitSurfaces()
-wing.update()
-timeB = time.time()
+#wing.fitSurfaces2()
 wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
 
+Nctlu = wing.surfs[0].Nctlu
+Nctlv = wing.surfs[0].Nctlv
+
+gpts = wing.surfs[0].getGrevillePoints(2)
+print gpts
+
+pt = 2
+du,dv = wing.surfs[0].getDerivative(0,gpts[pt])
+
+
+for i in xrange(Nctlu):
+    temp = zeros((Nctlv,3))
+    temp2 = zeros((Nctlv,3))
+    for j in xrange(Nctlv):
+        for ii in xrange(3):
+            wing.surfs[0].coef[i,j,ii] += 1e-6
+            dupx,dvpx = wing.surfs[0].getDerivative(0,gpts[pt])
+            dudx,dvdx = wing.surfs[0].calcDerivativeDeriv(0,gpts[pt],i,j)
+            temp[j,ii] = (dupx[ii]-du[ii])/1e-6
+            temp2[j,ii] = dudx
+            wing.surfs[0].coef[i,j,ii] -= 1e-6
+    # end for
+    print temp
+    print temp2
 print 'Done Step 2'
-print 'fit time:',timeB-timeA
