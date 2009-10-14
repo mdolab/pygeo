@@ -39,16 +39,16 @@ naf=2
 Nctlu = 13
 airfoil_list = ['../input/naca2412.dat','../input/naca2412.dat']
 airfoil_list = ['../input/af15-16.inp','../input/af15-16.inp']
-chord = [1,.2]
-x = [0,0]
-y = [0,0]
-z = [0,4]
-rot_x = [0,20]
-rot_y = [0,45]
-rot_z = [0,-15]
+chord = [1,.5]
+x = [0.01,0]
+y = [-.02,0]
+z = [.05,4]
+rot_x = [3,8]
+rot_y = [2,3]
+rot_z = [1,4]
 
 offset = zeros((naf,2))
-nsections = [5]
+nsections = [22]
 # Make the break-point vector
 
                                
@@ -92,18 +92,30 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()
-#wing.fitSurfaces2()
+wing.fitSurfaces2()
 wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
+sys.exit(0)
 
 Nctlu = wing.surfs[0].Nctlu
 Nctlv = wing.surfs[0].Nctlv
 
 gpts = wing.surfs[0].getGrevillePoints(2)
-print gpts
+print 'gpts:',gpts
+print 'knots:',wing.surfs[0].tv
 
-pt = 2
+pt = 4
+
 du,dv = wing.surfs[0].getDerivative(0,gpts[pt])
 
+ku = wing.surfs[0].ku
+
+ileftu, mflagu = wing.surfs[0].pyspline.intrv(wing.surfs[0].tv,gpts[pt],1)
+if mflagu == 0: # Its Inside so everything is ok
+    u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
+if mflagu == 1: # Its at the right end so just need last two
+    u_list = [ileftu-ku-2,ileftu-ku-1]
+    
+print 'u_list:',u_list
 
 for i in xrange(Nctlu):
     temp = zeros((Nctlv,3))
@@ -117,6 +129,6 @@ for i in xrange(Nctlu):
             temp2[j,ii] = dudx
             wing.surfs[0].coef[i,j,ii] -= 1e-6
     # end for
-    print temp
-    print temp2
+    print temp[:,0]
+    print temp2[:,0]
 print 'Done Step 2'
