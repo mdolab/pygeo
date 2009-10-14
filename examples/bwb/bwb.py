@@ -114,7 +114,7 @@ Nctlu = 11
 # Make the break-point vector
 breaks = [10,19,20]
 cont = [0,0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [30,30,8,8] # length of breaks +1
+nsections = [25,25,8,8] # length of breaks +1
 
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
@@ -144,7 +144,7 @@ bwb.calcEdgeConnectivity(1e-6,1e-6)
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-bwb.fitSurfaces()
+bwb.fitSurfaces2()
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
 
