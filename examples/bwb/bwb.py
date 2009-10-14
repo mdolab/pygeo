@@ -144,7 +144,7 @@ bwb.calcEdgeConnectivity(1e-6,1e-6)
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-bwb.fitSurfaces2()
+bwb.fitSurfaces3(constr_tol=1e-3,opt_tol=1e-3)
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
 
