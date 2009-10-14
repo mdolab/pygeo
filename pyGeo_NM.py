@@ -711,7 +711,7 @@ double degenerate patch at the tip'
                 # end for
 
                 for ii in xrange(2): # up/low side loop
-                    Xnew = zeros((N,6,3))
+                    Xnew = zeros((N,10,3))
                     for j in xrange(N): # This is for the Data points
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv and normalize
@@ -735,7 +735,7 @@ double degenerate patch at the tip'
                         temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
-                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,6))
+                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,10))
                     # end for
                     self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew,
                                                            Nctlv=4, *args,**kwargs))
@@ -1318,7 +1318,257 @@ the list of surfaces must be the same length'
 #                        Surface Fitting Functions 2
 # ----------------------------------------------------------------------
 
-    def fitSurfaces2(self,nIter=25,constr_tol=1e-4,opt_tol=1e-3):
+    def fitSurfaces3(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
+        time0 = time.time()
+                    
+        self.ndv = 3*len(self.coef)
+        sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
+        
+        # Get the Global number of the original data
+        nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
+        self._initJacobian(nPts,self.ndv,g_index)
+
+        if USE_PETSC:
+            self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
+            self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
+            self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
+            self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
+            X = zeros(self.ndv) # X for initial guess
+        else:
+            self.rhs = zeros(nPts*3)
+            X = zeros(self.ndv)
+        # end if 
+
+        # Fill up the 'X' with the the current coefficients (optimization start point)
+        for icoef in xrange(len(self.coef)):
+            X[3*icoef:3*icoef+3] = self.coef[icoef]
+        # end for
+
+        # Now Fill up the RHS point list
+        for ii in xrange(len(g_index)):
+            isurf = g_index[ii][0][0]
+            i = g_index[ii][0][1]
+            j = g_index[ii][0][2]
+            self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+        # end for
+
+        # Now determine the number of constraints
+        self.ncon = 0
+        for iedge in xrange(len(self.edge_list)):
+            if self.edge_list[iedge].cont == 1: # We have continuity
+                self.ncon += self.edge_list[iedge].Nctl
+            # end if
+        # end for
+
+        if not self.NO_PRINT:
+            print '------------- Fitting Surfaces Globally ------------------'
+            print 'nPts (Number of Surface Points):',nPts
+            print 'nDV (Degrees of Freedom):',self.ndv
+            print 'nCon (Constraints):',self.ncon
+        # end if
+
+        # Setup Optimization Probelm
+        opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
+        opt_prob.addVarGroup('x',self.ndv,'c',value=X)
+        opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
+        opt_prob.addObj('RMS Error')
+        opt = SNOPT()
+
+        #opt.setOption('Verify level',3)
+        opt.setOption('Nonderivative linesearch')
+        opt.setOption('Major step limit',1e-2)
+        opt.setOption('Major optimality tolerance', opt_tol)
+        opt.setOption('Major feasibility tolerance',constr_tol)
+        opt.setOption('Major iterations limit',nIter)
+        opt.setOption('New superbasics limit',300)
+        opt.setOption('Minor iterations limit',500)
+
+        opt(opt_prob,self._sens3)#,sparse=[indA,locA]) # Run the actual problem
+
+        # Reset the coefficients after the optimization is done
+        for icoef in xrange(len(self.coef)):
+            self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
+            self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
+            self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
+        # end for
+
+        # Update the entire object with new coefficients
+        self.update()
+
+        # Delete the self. values we don't need anymore
+        del self.ndv,self.ncon
+        del self.rhs,self.X_PETSC,self.gobj_PETSC,self.temp
+
+        return
+
+    def _sens3(self,x,f_obj,f_con,*args,**kwargs):
+        '''Sensitivity function for Fitting Optimization'''
+        time0 = time.time()
+        # ----------- Objective Derivative ----------------
+        if USE_PETSC:
+            self.X_PETSC.setValues(arange(0,self.ndv),x)
+            self.J(self.X_PETSC,self.temp)
+            self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
+            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv)))
+            self.temp = self.temp-self.rhs
+            self.temp.abs()
+            print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
+        else:
+            g_obj = dot((dot(self.J,x)-self.rhs),self.J)
+        # end if
+        # ----------- Constraint Derivative ---------------
+
+        g_con = []
+        g_con = zeros((self.ncon,self.ndv))
+        counter = 0
+        for iedge in xrange(len(self.edge_list)):
+            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+                # Now get the two surfaces for this edge:
+                surfaces = self.getSurfaceFromEdge(iedge)
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                # Get the greville points for this edge
+                gpts = self.surfs[surf0].getGrevillePoints(edge0)
+                
+                # Get ALL control points that could affect the constraints
+                pt_list = array([],'intc')
+                if   edge0 == 0:
+                    pt_list = append(pt_list,self.l_index[surf0][:,0:2].flatten())
+                elif edge0 == 1:
+                    pt_list = append(pt_list,self.l_index[surf0][:,-2:].flatten())
+                elif edge0 == 2:
+                    pt_list = append( pt_list,self.l_index[surf0][0:2,:].flatten())
+                elif edge0 == 3:
+                    pt_list = append(pt_list,self.l_index[surf0][-2:,:].flatten())
+                # end if
+
+                if len(surfaces) != 1:
+
+                    surf1 = surfaces[1][0] # First surface on this edge
+                    edge1 = surfaces[1][1] # Edge of surface on this edge 
+                 
+                    if   edge1 == 0:
+                        pt_list = append(pt_list,self.l_index[surf1][:,1])
+                    elif edge1 == 1:
+                        pt_list = append(pt_list,self.l_index[surf1][:,-2])
+                    elif edge1 == 2:
+                        pt_list = append(pt_list,self.l_index[surf1][1,:])
+                    elif edge1 == 3:
+                        pt_list = append(pt_list,self.l_index[surf1][-2,:])
+                    # end if
+                  
+                # end if
+
+                # Unique-ify the list
+                pt_list = unique(pt_list)
+                pt_list.sort()
+                for i in xrange(len(gpts)):
+                    S0 = f_con[counter]
+                    
+                    for icoef in xrange(len(pt_list)):
+                        index = pt_list[icoef]
+                        for ii in xrange(3):
+
+                            self.coef[index,ii] += 1e-7
+                      
+                            for jj in xrange(len(self.g_index[index])): # Set the coefficient
+                                isurf = self.g_index[index][jj][0]
+                                iii     = self.g_index[index][jj][1]
+                                jjj     = self.g_index[index][jj][2]
+                                self.surfs[isurf].coef[iii,jjj] = self.coef[index].astype('d')
+                            # end for
+                          
+                            du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+                            if len(surfaces) == 1:
+                                dv2 = self.sym_normal
+                            else:
+                                surf1 = surfaces[1][0] # Second surface on this edge
+                                edge1 = surfaces[1][1] # Edge of second surface on this edge
+                                du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+                            # end if
+                         
+                            S = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[1]) - \
+                                du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
+                                du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
+                            #print S
+                            g_con[counter,3*pt_list[icoef] + ii] = (S-S0)/ 1e-7
+                            self.coef[pt_list[icoef],ii] -= 1e-7
+
+                            for jj in xrange(len(self.g_index[index])): # Reset
+                                isurf = self.g_index[index][jj][0]
+                                iii     = self.g_index[index][jj][1]
+                                jjj     = self.g_index[index][jj][2]
+                                self.surfs[isurf].coef[iii,jjj] = self.coef[index].astype('d')
+                            # end for
+                        # end for (3 loop)
+                    # end for (pt_list loop)
+                    counter += 1
+                # end for (gpts)
+            # end if (cont edge)
+        # end for (edge listloop)
+        #Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
+        print 'Sens Time:',time.time()-time0
+        return g_obj,g_con,0
+
+    def _computeSparsityPattern3(self):
+        '''Compute the sparsity for geometric constraints'''
+        Ai = [] # Index 
+        Ap = [1] # Pointer
+        for iedge in xrange(len(self.edge_list)):
+            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+                # Now get the two surfaces for this edge:
+                surfaces = self.getSurfaceFromEdge(iedge)
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                gpts = self.surfs[surf0].getGrevillePoints(edge0) # Greville Points
+                
+                for i in xrange(len(gpts)):
+                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(surf0,edge0,gpts[i])
+
+                    if len(surfaces) == 1: 
+                        pass
+                    else:
+                        surf1 = surfaces[1][0] # Second surface on this edge
+                        edge1 = surfaces[1][1] # Edge of second surface on this edge
+                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+                    # end if       
+                    for ii in xrange(8): 
+                        if mod(ii,2) == 0:
+                            Ai.append(dd_i0[ii]*3)
+                            Ai.append(dd_i0[ii]*3+1)
+                            Ai.append(dd_i0[ii]*3+2)
+                        else:
+                            Ai.append(dd_i0[ii]*3)
+                            Ai.append(dd_i0[ii]*3+1)
+                            Ai.append(dd_i0[ii]*3+2)
+                            if len(surfaces) != 1:
+                                Ai.append(dd_i1[ii]*3  )
+                                Ai.append(dd_i1[ii]*3+1)
+                                Ai.append(dd_i1[ii]*3+2)
+                            # end if
+                       # end if
+                    # end for
+                    if len(surfaces) == 1:
+                        Ap.append(Ap[-1] + 24)
+                    else:
+                        Ap.append(Ap[-1] + 36)
+                    # end if
+                # end for
+            # end if (cont edge)
+        # end for (edge listloop)
+        Ax = zeros(len(Ai))
+        self.loc = Ap
+        self.index = Ai
+        Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,Ax)
+
+        return Bp,Bi
+
+
+# ----------------------------------------------------------------------
+#                        Surface Fitting Functions 2
+# ----------------------------------------------------------------------
+
+    def fitSurfaces2(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
         time0 = time.time()
                     
         self.ndv = 3*len(self.coef)
@@ -1380,14 +1630,11 @@ the list of surfaces must be the same length'
         opt.setOption('Nonderivative linesearch')
         opt.setOption('Major step limit',1e-2)
         opt.setOption('Major optimality tolerance', opt_tol)
-        #opt.setOption('Minor optimality tolerance', opt_tol)
         opt.setOption('Major feasibility tolerance',constr_tol)
-        #opt.setOption('Minor feasibility tolerance',constr_tol)
         opt.setOption('Major iterations limit',nIter)
-	opt.setOption('Print frequency',200)
         opt.setOption('New superbasics limit',250)
-        opt.setOption('Minor iterations limit',1000)
-        
+        opt.setOption('Minor iterations limit',500)
+
         opt(opt_prob,self._sens2,sparse=[indA,locA]) # Run the actual problem
 
         # Reset the coefficients after the optimization is done
@@ -1427,37 +1674,35 @@ the list of surfaces must be the same length'
         f_con = []
         for iedge in xrange(len(self.edge_list)):
             if self.edge_list[iedge].cont == 1: # We have a continuity edge
-                
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
-                if len(surfaces) == 1: 
-                    print 'Error not implemented' 
-                    sys.exit(1)
-                else:
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    
-                    surf1 = surfaces[1][0] # Second surface on this edge
-                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                # Get the greville points for this edge
+                gpts = self.surfs[surf0].getGrevillePoints(edge0)
 
-                    # Get the greville points for this edge
-                    gpts = self.surfs[surf0].getGrevillePoints(edge0)
-                    for i in xrange(len(gpts)):
-                        # Get the three vectors we need
-                        du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+                for i in xrange(len(gpts)):
+                    du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+                    if len(surfaces) == 1: 
+                        dv2 = self.sym_normal
+                    else:
+                        surf1 = surfaces[1][0] # Second surface on this edge
+                        edge1 = surfaces[1][1] # Edge of second surface on this edge
                         du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+                    # end if
 
-                        S = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[1]) - \
-                            du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
-                            du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
-                        f_con.append(S) # scalar triple product
-                    # end for (nctl on edge)
+                    S = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[1]) - \
+                        du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
+                        du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
+                    f_con.append(S) # scalar triple product
+                # end for (nctl on edge)
             # end if (continuity edge)
         # end for (edge list)
         return f_obj,f_con,0
 
     def _sens2(self,x,f_obj,f_con,*args,**kwargs):
         '''Sensitivity function for Fitting Optimization'''
+        time0 = time.time()
         # ----------- Objective Derivative ----------------
         if USE_PETSC:
             self.X_PETSC.setValues(arange(0,self.ndv),x)
@@ -1471,145 +1716,114 @@ the list of surfaces must be the same length'
             g_obj = dot((dot(self.J,x)-self.rhs),self.J)
         # end if
         # ----------- Constraint Derivative ---------------
-
-        #g_con = zeros((self.ncon,self.ndv))
         g_con = []
         counter = 0
         for iedge in xrange(len(self.edge_list)):
             if self.edge_list[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
-                if len(surfaces) == 1: 
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    print 'error: not implemented'
-                else:
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    surf1 = surfaces[1][0] # Second surface on this edge
-                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                # Get the greville points for this edge
+                gpts = self.surfs[surf0].getGrevillePoints(edge0)
+                
+                for i in xrange(len(gpts)):
+                    du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(
+                        surf0,edge0,gpts[i])
 
-                    # Get the greville points for this edge
-                    gpts = self.surfs[surf0].getGrevillePoints(edge0)
-
-                    for i in xrange(self.edge_list[iedge].Nctl):
-                        dd_i0,ddu1,ddv_v0 = self._getDerivativeDerivativeOnEdge(
-                            surf0,edge0,gpts[i])
-                        dd_i1,ddu2,ddv_v1 = self._getDerivativeDerivativeOnEdge(
-                            surf1,edge1,gpts[i])
-
-                        du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+                    if len(surfaces) == 1: 
+                        dv2 = self.sym_normal
+                        ddv_v1 = zeros(8)
+                    else:
+                        surf1 = surfaces[1][0] # Second surface on this edge
+                        edge1 = surfaces[1][1] # Edge of second surface on this edge
                         du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+                    # end if
 
-                        S = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[1]) - \
-                            du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
-                            du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
-                        dS = zeros(9)
-                        
-                        dS[0] =  (dv1[1]*dv2[2]-dv1[2]*dv2[1]) # dSdu
-                        dS[1] = -(dv1[0]*dv2[2]-dv1[2]*dv2[0])
-                        dS[2] =  (dv1[0]*dv2[1]-dv1[1]*dv2[0])
-                        
-                        dS[3] = -du[1]*dv2[2] + du[2]*dv2[1] # dSdv1
-                        dS[4] =  du[0]*dv2[2] - du[2]*dv2[0]
-                        dS[5] = -du[0]*dv2[1] + du[1]*dv2[0]
-                        
-                        dS[6] =  du[1]*dv1[2] - du[2]*dv1[1] # dSdv2
-                        dS[7] = -du[0]*dv1[2] + du[2]*dv1[0]
-                        dS[8] =  du[0]*dv1[1] - du[1]*dv1[0]
+                    dS = zeros(9)
 
-#                         for ii in xrange(8): # all the return values from the derivative-derivative
-#                                              # function have a length of 8
-#                             if mod(ii,2) == 0:
-#                                 g_con[counter,dd_i0[ii]*3  ] = dS[0]*ddu1[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii]
-#                                 g_con[counter,dd_i0[ii]*3+1] = dS[1]*ddu1[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii]
-#                                 g_con[counter,dd_i0[ii]*3+2] = dS[2]*ddu1[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii]
-#                             else:
-#                                 g_con[counter,dd_i0[ii]*3  ] = dS[0]*ddu1[ii] + dS[3]*ddv_v0[ii]
-#                                 g_con[counter,dd_i0[ii]*3+1] = dS[1]*ddu1[ii] + dS[4]*ddv_v0[ii]
-#                                 g_con[counter,dd_i0[ii]*3+2] = dS[2]*ddu1[ii] + dS[5]*ddv_v0[ii]
+                    dS[0] =  (dv1[1]*dv2[2]-dv1[2]*dv2[1]) # dSdu
+                    dS[1] = -(dv1[0]*dv2[2]-dv1[2]*dv2[0])
+                    dS[2] =  (dv1[0]*dv2[1]-dv1[1]*dv2[0])
 
-#                                 g_con[counter,dd_i1[ii]*3  ] = dS[0]*ddu1[ii] + dS[6]*ddv_v1[ii]
-#                                 g_con[counter,dd_i1[ii]*3+1] = dS[1]*ddu1[ii] + dS[7]*ddv_v1[ii]
-#                                 g_con[counter,dd_i1[ii]*3+2] = dS[2]*ddu1[ii] + dS[8]*ddv_v1[ii]
-#                             # end if
-#                         # end for
-                        for ii in xrange(8): # all the return values from the derivative-derivative
-                                             # function have a length of 8
-                            if mod(ii,2) == 0:
-                                g_con.append(dS[0]*ddu1[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii])
-                                g_con.append(dS[1]*ddu1[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii])
-                                g_con.append(dS[2]*ddu1[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii])
-                            else:
-                                g_con.append(dS[0]*ddu1[ii] + dS[3]*ddv_v0[ii])
-                                g_con.append(dS[1]*ddu1[ii] + dS[4]*ddv_v0[ii])
-                                g_con.append(dS[2]*ddu1[ii] + dS[5]*ddv_v0[ii])
+                    dS[3] = -du[1]*dv2[2] + du[2]*dv2[1] # dSdv1
+                    dS[4] =  du[0]*dv2[2] - du[2]*dv2[0]
+                    dS[5] = -du[0]*dv2[1] + du[1]*dv2[0]
 
-                                g_con.append(dS[0]*ddu1[ii] + dS[6]*ddv_v1[ii])
-                                g_con.append(dS[1]*ddu1[ii] + dS[7]*ddv_v1[ii])
-                                g_con.append(dS[2]*ddu1[ii] + dS[8]*ddv_v1[ii])
+                    dS[6] =  du[1]*dv1[2] - du[2]*dv1[1] # dSdv2
+                    dS[7] = -du[0]*dv1[2] + du[2]*dv1[0]
+                    dS[8] =  du[0]*dv1[1] - du[1]*dv1[0]
+
+                    for ii in xrange(8): # all the return values from the derivative-derivative
+                        # function have a length of 8
+                        if mod(ii,2) == 0:
+                            g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii])
+                            g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii])
+                            g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii])
+                        else:
+                            g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii])
+                            g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii])
+                            g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii])
+                            if len(surfaces) != 1:
+                                g_con.append(dS[0]*ddu[ii] + dS[6]*ddv_v1[ii])
+                                g_con.append(dS[1]*ddu[ii] + dS[7]*ddv_v1[ii])
+                                g_con.append(dS[2]*ddu[ii] + dS[8]*ddv_v1[ii])
                             # end if
-                        # end for
-                        counter += 1
+                        # end if
                     # end for
+                # end for (gpts loop)
             # end if (cont edge)
         # end for (edge listloop)
         Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
-
+        print 'Sens Time:',time.time()-time0
         return g_obj,new_gcon,0
 
     def _computeSparsityPattern2(self):
         '''Compute the sparsity for geometric constraints'''
-
         Ai = [] # Index 
         Ap = [1] # Pointer
-        counter = 0
         for iedge in xrange(len(self.edge_list)):
             if self.edge_list[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
-                if len(surfaces) == 1: 
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    print 'error: not implemented'
-                else:
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    surf1 = surfaces[1][0] # Second surface on this edge
-                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                gpts = self.surfs[surf0].getGrevillePoints(edge0) # Greville Points
+                
+                for i in xrange(len(gpts)):
+                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(surf0,edge0,gpts[i])
 
-                    # Get the greville points for this edge
-                    gpts = self.surfs[surf0].getGrevillePoints(edge0)
-
-                    for i in xrange(self.edge_list[iedge].Nctl):
-                        dd_i0,ddu1,ddv_v0 = self._getDerivativeDerivativeOnEdge(
-                            surf0,edge0,gpts[i])
-                        dd_i1,ddu2,ddv_v1 = self._getDerivativeDerivativeOnEdge(
-                            surf1,edge1,gpts[i])
-                       
-                        temp =0 
-                        for ii in xrange(8): # all the return values from the derivative-derivative
-                                             # function have a length of 8
-                        
-                            if mod(ii,2) == 0:
-                                Ai.append(dd_i0[ii]*3)
-                                Ai.append(dd_i0[ii]*3+1)
-                                Ai.append(dd_i0[ii]*3+2)
-                                temp += 3
-                            else:
-                                Ai.append(dd_i0[ii]*3)
-                                Ai.append(dd_i0[ii]*3+1)
-                                Ai.append(dd_i0[ii]*3+2)
-                                
+                    if len(surfaces) == 1: 
+                        pass
+                    else:
+                        surf1 = surfaces[1][0] # Second surface on this edge
+                        edge1 = surfaces[1][1] # Edge of second surface on this edge
+                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+                    # end if       
+                    for ii in xrange(8): 
+                        if mod(ii,2) == 0:
+                            Ai.append(dd_i0[ii]*3)
+                            Ai.append(dd_i0[ii]*3+1)
+                            Ai.append(dd_i0[ii]*3+2)
+                        else:
+                            Ai.append(dd_i0[ii]*3)
+                            Ai.append(dd_i0[ii]*3+1)
+                            Ai.append(dd_i0[ii]*3+2)
+                            if len(surfaces) != 1:
                                 Ai.append(dd_i1[ii]*3  )
                                 Ai.append(dd_i1[ii]*3+1)
                                 Ai.append(dd_i1[ii]*3+2)
-                                temp += 6
-                        # end for
-                        print 'temp:',temp
-                        Ap.append(Ap[-1] + 36)
-                        counter += 1
+                            # end if
+                       # end if
                     # end for
+                    if len(surfaces) == 1:
+                        Ap.append(Ap[-1] + 24)
+                    else:
+                        Ap.append(Ap[-1] + 36)
+                    # end if
+                # end for
             # end if (cont edge)
         # end for (edge listloop)
         Ax = zeros(len(Ai))
@@ -1629,6 +1843,7 @@ the list of surfaces must be the same length'
         ddu_val = [] # Value
         ddv_val = [] # Value
         if self.edge_dir[surface,edge] == -1: # Direction Check
+            orig_value = value
             value = 1-value
         # end if
             
@@ -1644,8 +1859,13 @@ the list of surfaces must be the same length'
         if mflag == 0: # Its Inside so everything is ok
             pt_list = [ileft-k,ileft-k+1,ileft-k+2,ileft-k+3]
         # end if
-        if mflag == 1: # Its at the right end so just need last two
+        if mflag == 1: # Its at the right end
             pt_list = [ileft-k-4,ileft-k-3,ileft-k-2,ileft-k-1]
+        # end if
+            
+            
+        if self.edge_dir[surface,edge] == -1:
+            pt_list = pt_list[::-1]
         # end if
 
         if edge == 0:
@@ -1700,35 +1920,23 @@ the list of surfaces must be the same length'
         '''Get the directional surface derivatives on surface suface and edge edge'''
         # Note: In this context du is the derivative along the edge,
         # dv is the derivative normal to the edge
+        if self.edge_dir[surface,edge] == -1:
+            value = 1-value
+        # end if
         if edge == 0:
-            if self.edge_dir[surface,edge] == 1: # Positive Direction
-                du,dv = self.surfs[surface].getDerivative(value,0)
-            else:
-                du,dv = self.surfs[surfcae].getDerivative(1-value,0)
-            # end if
+            du,dv = self.surfs[surface].getDerivative(value,0)
             return du,dv
         elif edge == 1:
-            if self.edge_dir[surface,edge] == 1: # Positive Direction
-                du,dv = self.surfs[surface].getDerivative(value,1)
-            else:
-                du,dv = self.surfs[surfcae].getDerivative(1-value,1)
-            # end if
+            du,dv = self.surfs[surface].getDerivative(value,1)
             return du,dv
         elif edge == 2:
-            if self.edge_dir[surface,edge] == 1: # Positive Direction
-                du,dv = self.surfs[surface].getDerivative(0,value)
-            else:
-                du,dv = self.surfs[surfcae].getDerivative(0,1-value)
-            # end if
+            du,dv = self.surfs[surface].getDerivative(0,value)
             return dv,du
         elif edge == 3:
-            if self.edge_dir[surface,edge] == 1: # Positive Direction
-                du,dv = self.surfs[surface].getDerivative(1,value)
-            else:
-                du,dv = self.surfs[surfcae].getDerivative(1,1-value)
-            # end if
+            du,dv = self.surfs[surface].getDerivative(1,value)
+            return dv,du
         # end if
-        return dv,du
+
 # ----------------------------------------------------------------------
 #                        Surface Fitting Functions
 # ----------------------------------------------------------------------
@@ -2577,6 +2785,7 @@ surface %d'%(isurf)
 
     def _updateSurfaceCoef(self):
         '''Copy the pyGeo list of control points back to the surfaces'''
+        
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.g_index[ii])):
                 isurf = self.g_index[ii][jj][0]
