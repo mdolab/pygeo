@@ -37,7 +37,7 @@ import pyGeo_NM as pyGeo
 
 naf=2
 Nctlu = 13
-airfoil_list = ['../input/naca0012.dat','../input/naca0012.dat']
+airfoil_list = ['../input/naca0018.dat','../input/naca0018.dat']
 #airfoil_list = ['../input/af15-16.inp','../input/af15-16.inp']
 chord = [1,.51]
 x = [0,0]
@@ -91,9 +91,9 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    nsections=nsections, Xsec=X,rot=rot,end_type='rounded',
                    fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 wing.setSymmetry('xy')
-#wing.calcEdgeConnectivity(1e-6,1e-6)
-#wing.writeEdgeConnectivity('wing_fit_test.con')
-#sys.exit(0)
+# wing.calcEdgeConnectivity(1e-6,1e-6)
+# wing.writeEdgeConnectivity('wing_fit_test.con')
+# sys.exit(0)
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()

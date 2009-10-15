@@ -47,16 +47,22 @@ from dv_funcs import *
 # ==============================================================================
 
 # Wing Information - Create a Geometry Object from cross sections
+SCALE = 140.0
 
 naf=22
 n0012 = '../../input/naca0012.dat'
-#n0012 = '../../input/sd7037.dat'
+n0012 = '../../input/naca2412.dat'
 
 # Use the digitize it data for the planform:
 le = array(loadtxt('bwb_le.out'))
 te = array(loadtxt('bwb_te.out'))
 front_up = array(loadtxt('bwb_front_up.out'))
 front_low = array(loadtxt('bwb_front_low.out'))
+
+le[0,:] = 0
+te[0,0] = 0
+front_up[0,0] = 0
+front_low[0,0] = 0
 
 # Now make a ONE-DIMENSIONAL spline for each of the le and trailing edes
 le_spline = pySpline.linear_spline(task='lms',k=4,X=le[:,1],s=le[:,0],Nctl=20)
@@ -114,18 +120,19 @@ Nctlu = 11
 # Make the break-point vector
 breaks = [10,19,20]
 cont = [0,0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [25,25,8,8] # length of breaks +1
+nsections = [40,20,8,8] # length of breaks +1
 
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
 rot = zeros((naf,3))
 
-X[:,0] = x
-X[:,1] = y
-X[:,2] = z
+X[:,0] = x/SCALE
+X[:,1] = y/SCALE
+X[:,2] = z/SCALE
 rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = rot_z
+chord/=SCALE
 
 # ------------------------------------------------------------------
 # Procedure for Using pyGEO
@@ -140,11 +147,12 @@ bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                   Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 
 bwb.setSymmetry('xy')
-bwb.calcEdgeConnectivity(1e-6,1e-6)
+#bwb.calcEdgeConnectivity(1e-6,1e-6)
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-bwb.fitSurfaces3(constr_tol=1e-3,opt_tol=1e-3)
+#bwb.fitSurfaces(nIter=100,constr_tol=1e-7,opt_tol=5e-5)
+bwb.fitSurfaces3(nIter=100,constr_tol=1e-9,opt_tol=1e-5)
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
 
