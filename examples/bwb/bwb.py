@@ -51,7 +51,7 @@ SCALE = 140.0
 
 naf=22
 n0012 = '../../input/naca0012.dat'
-n0012 = '../../input/naca2412.dat'
+#n0012 = '../../input/naca2412.dat'
 
 # Use the digitize it data for the planform:
 le = array(loadtxt('bwb_le.out'))
@@ -120,7 +120,7 @@ Nctlu = 11
 # Make the break-point vector
 breaks = [10,19,20]
 cont = [0,0,0] # vector of length breaks: 0 for c0 continuity 1 for c1 continutiy
-nsections = [40,20,8,8] # length of breaks +1
+nsections = [25,20,8,8] # length of breaks +1
 
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
@@ -143,7 +143,7 @@ chord/=SCALE
 bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                   file_type='xfoil',scale=chord,offset=offset, 
                   breaks=breaks,cont=cont,nsections=nsections,
-                  end_type='rounded',end_scale = 1,
+                  end_type='rounded',end_scale = .5,
                   Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 
 bwb.setSymmetry('xy')
@@ -151,8 +151,8 @@ bwb.setSymmetry('xy')
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-#bwb.fitSurfaces(nIter=100,constr_tol=1e-7,opt_tol=5e-5)
-bwb.fitSurfaces3(nIter=100,constr_tol=1e-9,opt_tol=1e-5)
+#bwb.fitSurfaces(nIter=100,constr_tol=5e-7,opt_tol=1e-7)
+bwb.fitSurfaces3(nIter=100,constr_tol=1e-6,opt_tol=1e-6)
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
 

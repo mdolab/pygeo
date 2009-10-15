@@ -38,8 +38,9 @@ import pyGeo_NM as pyGeo
 naf=2
 Nctlu = 13
 airfoil_list = ['../input/naca0018.dat','../input/naca0018.dat']
+airfoil_list = ['../input/naca2412.dat','../input/naca2412.dat']
 #airfoil_list = ['../input/af15-16.inp','../input/af15-16.inp']
-chord = [1,.51]
+chord = [1,.2]
 x = [0,0]
 y = [0,0]
 z = [0,4]
@@ -49,7 +50,7 @@ rot_z = [0,0]
 
 offset = zeros((naf,2))
 offset[:,0] = .25
-nsections = [18]
+nsections = [12]
 # Make the break-point vector
 
                                
@@ -89,7 +90,7 @@ rot[:,2] = rot_z
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    file_type='xfoil',scale=chord,offset=offset, 
                    nsections=nsections, Xsec=X,rot=rot,end_type='rounded',
-                   fit_type='lms',Nctlu=Nctlu,Nfoil=45)
+                   fit_type='lms',Nctlu=Nctlu,Nfoil=45,end_scale=1)
 wing.setSymmetry('xy')
 # wing.calcEdgeConnectivity(1e-6,1e-6)
 # wing.writeEdgeConnectivity('wing_fit_test.con')
@@ -97,7 +98,7 @@ wing.setSymmetry('xy')
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()
-wing.fitSurfaces3()
+#wing.fitSurfaces3()
 wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
 sys.exit(0)
 
