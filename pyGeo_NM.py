@@ -686,32 +686,31 @@ double degenerate patch at the tip'
                     # end if
                 # end for
 
-                # Create a chord line representation and vector
-                Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
+                # Determine the data for the pinch section
+                # Front
+                n =  (X[0,0,-1] - X[0,0,-2])
+                n_front = n/sqrt(dot(n,n)) #Normalize
+
+                # Back
+                n =  (X[0,-1,-1] - X[0,-1,-2])
+                n_back = n/sqrt(dot(n,n))
+                
+            
+                # End section chord line
+                Xchord_line = array([X[0,0,-1], X[0,-1,-1]])
+                end_chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+
+                # Create a chord line representation of the tip line
+                Xchord_line = array([X[0,0,-1] + dist_max*n_front*end_scale,
+                                     X[0,-1,-1] + dist_max*n_back*end_scale])
                 chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
-                chord_vec = X[0,-1,-1]-X[0,0,-1]
 
-                # Foil Center 
-                center = 0.5*(X[1,0,-1] + X[1,-1,-1])
-                # Create the "airfoil" data for the pinch tip
-                tip_line = zeros((N,3))
-                # Create the "Average" normal vector for the section
-                normal = zeros(3)
-                for j in xrange(N):
-                    dv_top    = (X[0,j,-1] - X[0,j,-2]) # Normal along upper surface
-                    dv_bottom = (X[1,N-j-1,-1]-X[1,N-j-1,-2]) # Normal along lower surface
-                    n = 0.5*(dv_top+dv_bottom) # Average
-                    normal += n/sqrt(dot(n,n)) #Normalize
-                # end for
-                normal /= N
-
-                for j in xrange(N):
-                    tip_line[j] = (0.5*(X[0,j,-1]+X[1,N-j-1,-1])-center)*.5+center+\
-                        dist_max*normal*end_scale
-                # end for
-
+                Xchord_line =chord_line.getValueV([0.10,1.0])
+                chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+                tip_line = chord_line.getValueV(linspace(0,1,N))
+                #print 'tip_line:',tip_line
                 for ii in xrange(2): # up/low side loop
-                    Xnew = zeros((N,10,3))
+                    Xnew = zeros((N,15,3))
                     for j in xrange(N): # This is for the Data points
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv and normalize
@@ -722,20 +721,21 @@ double degenerate patch at the tip'
                         # airfoil points onto this vector                        
                         if ii == 0:
                             V = tip_line[j]-X[ii,j,-1]
-                            s,D,converged,updated =  chord_line.projectPoint(tip_line[j])
-                           
+                            D = end_chord_line.getValue(0.1+.9*(j/(N-1.0)))-chord_line.getValue(j/(N-1.0))
                             X_input = array([X[ii,j,-1],tip_line[j]])
                         else:
                             V = tip_line[N-j-1]-X[ii,j,-1]
-                            s,D,converged,updated =  chord_line.projectPoint(tip_line[N-j-1])
+                            D = end_chord_line.getValue(0.1+0.9*(N-j-1)/(N-1.0))-chord_line.getValue((N-j-1)/(N-1.0))
                             X_input = array([X[ii,j,-1],tip_line[N-j-1]])
                         # end if
+
                         dx1 = dot(dv,V) * dv * end_scale
-                        dx2 = V-D
+                        dx2 = V+D
                         temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
-                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,10))
+                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,15))
+                        
                     # end for
                     self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew,
                                                            Nctlv=4, *args,**kwargs))
@@ -1356,7 +1356,7 @@ the list of surfaces must be the same length'
         self.ncon = 0
         for iedge in xrange(len(self.edge_list)):
             if self.edge_list[iedge].cont == 1: # We have continuity
-                self.ncon += self.edge_list[iedge].Nctl
+                self.ncon += 3*self.edge_list[iedge].Nctl-2
             # end if
         # end for
 
