@@ -40,13 +40,13 @@ Nctlu = 13
 airfoil_list = ['../input/naca0018.dat','../input/naca0018.dat']
 airfoil_list = ['../input/naca2412.dat','../input/naca2412.dat']
 #airfoil_list = ['../input/af15-16.inp','../input/af15-16.inp']
-chord = [1,.2]
-x = [0,0]
-y = [0,0]
+chord = [1,.51]
+x = [0,1]
+y = [0,.5]
 z = [0,4]
-rot_x = [0,0]
-rot_y = [0,0]
-rot_z = [0,0]
+rot_x = [0,5]
+rot_y = [0,12]
+rot_z = [0,-10]
 
 offset = zeros((naf,2))
 offset[:,0] = .25
@@ -92,14 +92,14 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    nsections=nsections, Xsec=X,rot=rot,end_type='rounded',
                    fit_type='lms',Nctlu=Nctlu,Nfoil=45,end_scale=1)
 wing.setSymmetry('xy')
-# wing.calcEdgeConnectivity(1e-6,1e-6)
-# wing.writeEdgeConnectivity('wing_fit_test.con')
-# sys.exit(0)
+#wing.calcEdgeConnectivity(1e-6,1e-6)
+#wing.writeEdgeConnectivity('wing_fit_test.con')
 wing.readEdgeConnectivity('wing_fit_test.con')
 wing.printEdgeConnectivity()
 wing.propagateKnotVectors()
-#wing.fitSurfaces3()
+wing.fitSurfaces3(nIter=100,opt_tol=1e-4)
 wing.writeTecplot('../output/wing_fit_test.dat',orig=True)
+wing.writeIGES('../input/wing_fit_test.igs')
 sys.exit(0)
 
 Nctlu = wing.surfs[0].Nctlu

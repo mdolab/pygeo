@@ -544,8 +544,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 for j in xrange(N): # This is for the Data points
 
-                    if i > 0 and cont[i-1] == 1: # Do a continuity join
-                        print 'cont join'
+                    if i > 0 and cont[i-1] == 2: # Do a continuity join (from both sides)
+                        print 'cont join FIX ME'
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv and normalize
                         dv = (X[0,j,start] - X[0,j,start-1])
@@ -609,12 +609,74 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # Now we can generate and append the surfaces
 
                 self.surfs.append(pySpline.surf_spline(\
-                        fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
+                        fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:].copy(),\
                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
                 self.surfs.append(pySpline.surf_spline(\
-                        fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
+                        fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:].copy(),\
                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
 
+                start = end-1
+                start2 = end2-1
+            # end for
+        
+            print 'Starting Second Loop'
+            print cont
+            # Second loop for 1-sided continuity constraints
+            start   = breaks[0]
+            start2  = nsections[0]
+            for i in xrange(1,nBreaks+1): # The first (mirror plane can't happen)
+               
+                # We have to interpolate the sectional data 
+                if i == nBreaks:
+                    end = naf
+                else:
+                    end  = breaks[i]+1
+                #end if
+
+                end2 = start2 + nsections[i]
+        
+                if cont[i-1] == -1 and cont[i] == 1: # We have what we're looking for
+                    print 'modifiying'
+                    for j in xrange(N): # This is for the Data points
+                        dx1 = (X[0,j,start] - X[0,j,start-1])
+                        dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
+
+                        dx2 = (X[0,j,end] - X[0,j,end-1])
+                        dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
+
+                        dx1/= 5e1
+                        dx2/=5e1
+
+                        # Now generate the line and extract the points we want
+                        temp_spline = pySpline.linear_spline(\
+                            task='interpolate',X=X[0,j,start:end,:],k=4,\
+                                dx1=dx1,dx2=dx2)
+                        Xnew[0,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
+
+                        dx1 = (X[1,j,start] - X[1,j,start-1])
+                        dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
+
+                        dx2 = (X[1,j,end] - X[1,j,end-1])
+                        dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
+                        dx1/= 5e1
+                        dx2/=5e1
+
+                        # Now generate the line and extract the points we want
+                        temp_spline = pySpline.linear_spline(\
+                            task='interpolate',X=X[1,j,start:end,:],k=4,\
+                                dx1=dx1,dx2=dx2)
+                        Xnew[1,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
+                    # end if
+        
+                    # Now we need to REPLACE
+                        
+                    self.surfs[2*i] = pySpline.surf_spline(\
+                        fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
+                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
+                    self.surfs[2*i+1] = pySpline.surf_spline(\
+                        fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
+                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
+                # end if
                 start = end-1
                 start2 = end2-1
             # end for
@@ -694,54 +756,127 @@ double degenerate patch at the tip'
                 # Back
                 n =  (X[0,-1,-1] - X[0,-1,-2])
                 n_back = n/sqrt(dot(n,n))
-                
             
-                # End section chord line
-                Xchord_line = array([X[0,0,-1], X[0,-1,-1]])
+                # Create a chord line representation of the end section
+                Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
                 end_chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
 
                 # Create a chord line representation of the tip line
                 Xchord_line = array([X[0,0,-1] + dist_max*n_front*end_scale,
                                      X[0,-1,-1] + dist_max*n_back*end_scale])
+                
                 chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
-
                 Xchord_line =chord_line.getValueV([0.10,1.0])
                 chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
                 tip_line = chord_line.getValueV(linspace(0,1,N))
-                #print 'tip_line:',tip_line
-                for ii in xrange(2): # up/low side loop
-                    Xnew = zeros((N,15,3))
-                    for j in xrange(N): # This is for the Data points
-                        # Interpolate across each point in the spanwise direction
-                        # Take a finite difference to get dv and normalize
-                        dv = (X[ii,j,-1] - X[ii,j,-2])
-                        dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-
-                        # Now project the vector between sucessive
-                        # airfoil points onto this vector                        
-                        if ii == 0:
-                            V = tip_line[j]-X[ii,j,-1]
-                            D = end_chord_line.getValue(0.1+.9*(j/(N-1.0)))-chord_line.getValue(j/(N-1.0))
-                            X_input = array([X[ii,j,-1],tip_line[j]])
-                        else:
-                            V = tip_line[N-j-1]-X[ii,j,-1]
-                            D = end_chord_line.getValue(0.1+0.9*(N-j-1)/(N-1.0))-chord_line.getValue((N-j-1)/(N-1.0))
-                            X_input = array([X[ii,j,-1],tip_line[N-j-1]])
-                        # end if
-
-                        dx1 = dot(dv,V) * dv * end_scale
-                        dx2 = V+D
-                        temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                # Now Get the front, back top and bottom guide curves
+                #-------- Front
+                
+                X_input = array([X[0,0,-1],tip_line[0]])
+                dv = (X[0,0,-1] - X[0,0,-2])
+                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+                V = tip_line[0]-X[0,0,-1]
+                D = end_chord_line.getValue(0.1)-chord_line.getValue(0)
+                dx1 = dot(dv,V) * dv * end_scale
+                dx2 = D+V
+       
+                front_spline = pySpline.linear_spline(task='interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
-                        Xnew[j] =  temp_spline.getValueV(linspace(0,1,15))
+                #-------- Back
+                X_input = array([X[0,-1,-1],tip_line[-1]])
+                dv = (X[0,-1,-1] - X[0,-1,-2])
+                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+                V = tip_line[-1]-X[0,-1,-1]
+                D = end_chord_line.getValue(1)-chord_line.getValue(1)
+                dx1 = dot(dv,V) * dv * end_scale
+                dx2 = D+V
+                end_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                                                    k=4,dx1=dx1,dx2=dx2)
+
+                #-------- Top
+                X_input = array([X[0,N/2,-1],tip_line[N/2]])
+                dv = (X[0,N/2,-1] - X[0,N/2,-2])
+                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+                V = tip_line[N/2]-X[0,N/2,-1]
+                D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
+                dx1 = dot(dv,V) * dv * end_scale
+                dx2 = D+V
+                top_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                                                             k=4,dx1=dx1,dx2=dx2)
+
+                #-------- Bottom
+                X_input = array([X[1,N/2,-1],tip_line[N/2]])
+                dv = (X[1,N/2,-1] - X[1,N/2,-2])
+                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+                V = tip_line[N/2]-X[1,N/2,-1]
+                D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
+                dx1 = dot(dv,V) * dv * end_scale
+                dx2 = D+V
+                bottom_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                                                             k=4,dx1=dx1,dx2=dx2)
+
+                Ndata = 15
+
+                chords = []
+                thicknesses = []
+                chord0 = e_dist(front_spline(0),end_spline(0))
+                thickness0 = e_dist(top_spline(0),bottom_spline(0))
+                for i in xrange(Ndata):
+                    chords.append(e_dist(front_spline(i/(Ndata-1.0)),end_spline(i/(Ndata-1.0)))/chord0)
+                    thicknesses.append(e_dist(top_spline(i/(Ndata-1.0)),bottom_spline(i/(Ndata-1.0)))/thickness0)
+                # end for
+
+                #print 'chords:',chords
+                #print 'thicknesses:',thicknesses
+
+                # Re-read the last airfoil section data
+                X_u,Y_u,X_l,Y_l = read_af(xsections[-1],file_type,N)
+                
+                Xnew = zeros((2,N,Ndata,3))
+        
+                for i in xrange(1,Ndata):
+
+                    if i == Ndata-1:
+                        Xnew[0,:,i,0] = (X_u)*scale[-1]*chords[i]
+                        Xnew[0,:,i,1] = (Y_u*thicknesses[i])*scale[-1]*chords[i]
+                        Xnew[0,:,i,2] = 0
+            
+                        Xnew[1,:,i,0] = (X_u[::-1])*scale[-1]*chords[i]
+                        Xnew[1,:,i,1] = (Y_l*thicknesses[i])*scale[-1]*chords[i]
+                        Xnew[1,:,i,2] = 0
+
+                    else:
+
+                        Xnew[0,:,i,0] = (X_u)*scale[-1]*chords[i]
+                        Xnew[0,:,i,1] = (Y_u*thicknesses[i])*scale[-1]*chords[i]
+                        Xnew[0,:,i,2] = 0
                         
+                        Xnew[1,:,i,0] = (X_l)*scale[-1]*chords[i]
+                        Xnew[1,:,i,1] = (Y_l*thicknesses[i])*scale[-1]*chords[i]
+                        Xnew[1,:,i,2] = 0
+
+                    for j in xrange(N):
+                        for isurf in xrange(2):
+                            # Twist Rotation (z-Rotation)
+                            Xnew[isurf,j,i,:] = rotzV(Xnew[isurf,j,i,:],rot[-1,2]*pi/180)
+                            # Dihediral Rotation (x-Rotation)
+                            Xnew[isurf,j,i,:] = rotxV(Xnew[isurf,j,i,:],rot[-1,0]*pi/180)
+                            # Sweep Rotation (y-Rotation)
+                            Xnew[isurf,j,i,:] = rotyV(Xnew[isurf,j,i,:],rot[-1,1]*pi/180)
+                        # end for
                     # end for
-                    self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew,
-                                                           Nctlv=4, *args,**kwargs))
-                # end for (ii side loop)
-            # end if (tip tip if statment)
-        # end if (if statment for tip type)
+                    Xnew[:,:,i,:] += front_spline(i/(Ndata-1.0))
+                    
+                # end for
+                Xnew[:,:,0,:] = X[:,:,-1,:]
+                # Xnew[:,:,-1,:] = tip_line
+                # print 'xnew',Xnew[0,:,-1,:]
+                self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew[0],
+                                                       Nctlv=4, *args,**kwargs))
+                
+                self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew[1],
+                                                       Nctlv=4, *args,**kwargs))
 
         self.nSurf = len(self.surfs) # And last but not least
         return
@@ -1230,20 +1365,20 @@ the list of surfaces must be the same length'
             # end if
         # end for
         nDG += 1
-        for isurf in xrange(self.nSurf):
+	for isurf in xrange(self.nSurf):
             dg_u = self.edge_list[self.edge_link[isurf][0]].dg
             dg_v = self.edge_list[self.edge_link[isurf][2]].dg
             self.surfs[isurf].Nctlu = ncoef[dg_u]
             self.surfs[isurf].Nctlv = ncoef[dg_v]
             if self.surfs[isurf].ku < self.surfs[isurf].Nctlu:
                 if self.surfs[isurf].Nctlu > 4:
-                    self.surfs[isurf].ku = 4
+	            self.surfs[isurf].ku = 4
                 else:
                     self.surfs[isurf].ku = self.surfs[isurf].Nctlu
-                # endif
+		# endif
             # end if
             if self.surfs[isurf].kv < self.surfs[isurf].Nctlv:
-                if self.surfs[isurf].Nctlv > 4:
+		if self.surfs[isurf].Nctlv > 4:
                     self.surfs[isurf].kv = 4
                 else:
                     self.surfs[isurf].kv = self.surfs[isurf].Nctlv
@@ -1378,7 +1513,7 @@ the list of surfaces must be the same length'
 
         #opt.setOption('Verify level',3)
         opt.setOption('Nonderivative linesearch')
-        opt.setOption('Major step limit',1e-2)
+        opt.setOption('Major step limit',1e-5)
         opt.setOption('Major optimality tolerance', opt_tol)
         opt.setOption('Major feasibility tolerance',constr_tol)
         opt.setOption('Major iterations limit',nIter)
@@ -4634,3 +4769,43 @@ if __name__ == '__main__':
 #         #Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
 #         print 'Sens Time:',time.time()-time0
 #         return g_obj,g_con,0
+
+
+
+# Backup
+
+#                 Xchord_line =chord_line.getValueV([0.10,1.0])
+#                 chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+#                 tip_line = chord_line.getValueV(linspace(0,1,N))
+#                 #print 'tip_line:',tip_line
+#                 for ii in xrange(2): # up/low side loop
+#                     Xnew = zeros((N,25,3))
+#                     for j in xrange(N): # This is for the Data points
+#                         # Interpolate across each point in the spanwise direction
+#                         # Take a finite difference to get dv and normalize
+#                         dv = (X[ii,j,-1] - X[ii,j,-2])
+#                         dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+
+#                         # Now project the vector between sucessive
+#                         # airfoil points onto this vector                        
+#                         if ii == 0:
+#                             V = tip_line[j]-X[ii,j,-1]
+#                             D = end_chord_line.getValue(0.1+.9*(j/(N-1.0)))-chord_line.getValue(j/(N-1.0))
+#                             X_input = array([X[ii,j,-1],tip_line[j]])
+#                         else:
+#                             V = tip_line[N-j-1]-X[ii,j,-1]
+#                             D = end_chord_line.getValue(0.1+0.9*(N-j-1)/(N-1.0))-chord_line.getValue((N-j-1)/(N-1.0))
+#                             X_input = array([X[ii,j,-1],tip_line[N-j-1]])
+#                         # end if
+
+#                         dx1 = dot(dv,V) * dv * end_scale
+                        
+#                         dx2 = D+V
+#                         print 'D,V:',D,V
+#                         print 'dx2:',dx2
+#                         temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+#                                                              k=4,dx1=dx1,dx2=dx2)
+
+#                         Xnew[j] =  temp_spline.getValueV(linspace(0,1,25))
+                        
+#                     # end for
