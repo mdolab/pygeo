@@ -2322,7 +2322,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
         '''Sensitivity function for Fitting Optimization'''
         # ----------- Objective Derivative ----------------
         if USE_PETSC:
-            self.X_PETSC.setValues(arange(0,self.ndv),x)
+            self.X_PETSC.setValues(arange(0,self.ndv).astype('d'),x)
             self.J(self.X_PETSC,self.temp)
             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
             gobj = array(self.gobj_PETSC.getValues(arange(self.ndv)))
