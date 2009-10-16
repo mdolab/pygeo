@@ -47,7 +47,7 @@ from dv_funcs import *
 # ==============================================================================
 
 # Wing Information - Create a Geometry Object from cross sections
-SCALE = 140.0
+
 
 naf=22
 n0012 = '../../input/naca0012.dat'
@@ -126,6 +126,8 @@ nsections = [25,25,10,10] # length of breaks +1
 X = zeros((naf,3))
 rot = zeros((naf,3))
 
+SCALE = chord[0]
+
 X[:,0] = x/SCALE
 X[:,1] = y/SCALE
 X[:,2] = z/SCALE
@@ -151,7 +153,6 @@ bwb.setSymmetry('xy')
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-#bwb.fitSurfaces(nIter=100,constr_tol=5e-7,opt_tol=1e-7)
 bwb.fitSurfaces3(nIter=100,constr_tol=1e-8,opt_tol=1e-6)
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
@@ -169,10 +170,7 @@ bwb.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
 bwb.calcCtlDeriv()
 print 'Done Ref Axis Adding!'
 
-
 sys.exit(0)
-
-
 
 print '---------------------------'
 print '      pyLayout Setup' 

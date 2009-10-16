@@ -3458,7 +3458,7 @@ surface %d'%(isurf)
                 f,Pcount,counter)
 
         # Write the terminate statment
-        f.write('S%7dG%7dD%7dP%7d%40sT%7s\n'%(1,4,Dcount-1,counter-1,' ',' '))
+        f.write('S%7dG%7dD%7dP%7d%40sT%6s1\n'%(1,4,Dcount-1,counter-1,' ',' '))
         f.close()
 
         return
