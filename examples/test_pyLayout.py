@@ -90,16 +90,10 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
 #wing.writeEdgeConnectivity('test_layout.con')
 wing.readEdgeConnectivity('test_layout.con')
 wing.propagateKnotVectors()
-wing.fitSurfaces()
+#wing.fitSurfaces3()
 wing.writeTecplot('../output/wing.dat',labels=True,ref_axis=True,directions=True,nodes=True)
 wing.writeIGES('../input/wing.igs')
 # ------------------------------------------------------------------
-
-#Load in the split plot3d file
-# wing = pyGeo.pyGeo('plot3d',file_name='../input/wing.xyz.fmt')
-# wing.calcEdgeConnectivity(1e-6,1e-6)
-# wing.propagateKnotVectors()
-
 
 print '---------------------------'
 print 'Attaching Reference Axis...'
@@ -140,9 +134,9 @@ rib_dir[:] = [1,0,0] # Note a rib-dir MUST be specified
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
-span_space = 2*ones(MAX_RIBS-1)
-rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
-v_space    = 2
+span_space = 1*ones(MAX_RIBS-1)
+rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
+v_space    = 1
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0,0,0,0]
