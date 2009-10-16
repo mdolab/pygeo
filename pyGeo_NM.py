@@ -85,16 +85,14 @@ except:
 # geo_utils
 from geo_utils import *
 
-# pyOPT
-from pyOpt_optimization import Optimization 
-
-# pySNOPT
+# pyOPT/pySNOPT
 try:
+    from pyOpt_optimization import Optimization
     from pySNOPT import SNOPT
     USE_SNOPT = True
 except:
-    print 'pySnopt is not available. Ensure the path to pySnopt is set in \
-the highest level script'
+    print 'pyOpt_optimization and/or pySnopt are not available. Ensure the path to \
+pyOpt_optimization and pySnopt are set in the highest level script'
     USE_SNOPT = False
 
 # =============================================================================
@@ -1454,6 +1452,12 @@ the list of surfaces must be the same length'
 # ----------------------------------------------------------------------
 
     def fitSurfaces3(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
+        if USE_SNOPT == False:
+            print 'Error: pyOpt_Optimization and/or pySNOPT were not imported correctly \
+These modules must be imported for global surfaces fitting to take place.'
+            sys.exit(1)
+        # end if
+
         time0 = time.time()
                     
         self.ndv = 3*len(self.coef)
@@ -1544,10 +1548,10 @@ the list of surfaces must be the same length'
         time0 = time.time()
         # ----------- Objective Derivative ----------------
         if USE_PETSC:
-            self.X_PETSC.setValues(arange(0,self.ndv),x)
+            self.X_PETSC.setValues(arange(0,self.ndv).astype('intc'),x)
             self.J(self.X_PETSC,self.temp)
             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
-            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv)))
+            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
             self.temp = self.temp-self.rhs
             self.temp.abs()
             print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
@@ -1775,7 +1779,7 @@ the list of surfaces must be the same length'
         '''Compute the objective and the constraints'''
         # ------------ Objective ---------
         if USE_PETSC:
-            self.X_PETSC.setValues(arange(self.ndv),x)
+            self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
             self.J.mult(self.X_PETSC,self.temp)
             f_obj = 0.5*(self.temp-self.rhs).norm()**2
         else:
@@ -1823,10 +1827,10 @@ the list of surfaces must be the same length'
         time0 = time.time()
         # ----------- Objective Derivative ----------------
         if USE_PETSC:
-            self.X_PETSC.setValues(arange(0,self.ndv),x)
+            self.X_PETSC.setValues(arange(0,self.ndv).astype('intc'),x)
             self.J(self.X_PETSC,self.temp)
             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
-            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv)))
+            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
             self.temp = self.temp-self.rhs
             self.temp.abs()
             print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
@@ -2060,6 +2064,12 @@ the list of surfaces must be the same length'
 # ----------------------------------------------------------------------
 
     def fitSurfaces(self,nIter=50,constr_tol=1e-7,opt_tol=1e-4):
+        if USE_SNOPT == False:
+            print 'Error: pyOpt_Optimization and/or pySNOPT were not imported correctly \
+These modules must be imported for global surfaces fitting to take place.'
+            sys.exit(1)
+        # end if
+
         time0 = time.time()
                     
         self.ndv = 3*len(self.coef)
@@ -2238,7 +2248,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
         '''Compute the objective and the constraints'''
         # ------------ Objective ---------
         if USE_PETSC:
-            self.X_PETSC.setValues(arange(self.ndv),x)
+            self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
             self.J.mult(self.X_PETSC,self.temp)
             f_obj = 0.5*(self.temp-self.rhs).norm()**2
           
