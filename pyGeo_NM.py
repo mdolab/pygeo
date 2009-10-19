@@ -84,7 +84,7 @@ except:
 
 # geo_utils
 from geo_utils import *
-
+import pySNOPT
 # pyOPT/pySNOPT
 try:
     from pyOpt_optimization import Optimization
@@ -1515,7 +1515,7 @@ These modules must be imported for global surfaces fitting to take place.'
         opt_prob.addObj('RMS Error')
         opt = SNOPT()
 
-        #opt.setOption('Verify level',3)
+        opt.setOption('Verify level',-1)
         opt.setOption('Nonderivative linesearch')
         opt.setOption('Major step limit',1e-5)
         opt.setOption('Major optimality tolerance', opt_tol)
@@ -1524,8 +1524,10 @@ These modules must be imported for global surfaces fitting to take place.'
         opt.setOption('New superbasics limit',250)
         opt.setOption('Minor iterations limit',500)
 
-        opt(opt_prob,self._sens3,sparse=[indA,locA]) # Run the actual problem
-
+        opt(opt_prob,self._sens3, sparse=[indA,locA],
+            logHistory='SNOPT_history',
+            loadHistory='SNOPT') # Run the actual problem
+        
         # Reset the coefficients after the optimization is done
         for icoef in xrange(len(self.coef)):
             self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
@@ -1626,7 +1628,6 @@ These modules must be imported for global surfaces fitting to take place.'
             # end if (cont edge)
         # end for (edge listloop)
         Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
-        print 'fcon:',f_con
         print 'Sens Time:',time.time()-time0
         return g_obj,new_gcon,0
 
@@ -1748,7 +1749,7 @@ These modules must be imported for global surfaces fitting to take place.'
         opt_prob.addObj('RMS Error')
         opt = SNOPT()
 
-        #opt.setOption('Verify level',3)
+        opt.setOption('Verify level',-1)
         opt.setOption('Nonderivative linesearch')
         opt.setOption('Major step limit',1e-2)
         opt.setOption('Major optimality tolerance', opt_tol)

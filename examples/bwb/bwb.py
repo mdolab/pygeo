@@ -153,7 +153,7 @@ bwb.setSymmetry('xy')
 #bwb.writeEdgeConnectivity('bwb.con')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
-bwb.fitSurfaces3(nIter=100,constr_tol=1e-8,opt_tol=1e-6)
+bwb.fitSurfaces3(nIter=40,constr_tol=1e-8,opt_tol=1e-6)
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 bwb.writeIGES('../../input/bwb.igs')
 
