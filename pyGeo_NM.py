@@ -642,8 +642,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dx2 = (X[0,j,end] - X[0,j,end-1])
                         dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
 
-                        dx1/= 5e1
-                        dx2/=5e1
+                        dx1/= 9
+                        dx2/=9
 
                         # Now generate the line and extract the points we want
                         temp_spline = pySpline.linear_spline(\
@@ -656,8 +656,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                         dx2 = (X[1,j,end] - X[1,j,end-1])
                         dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
-                        dx1/= 5e1
-                        dx2/=5e1
+                        dx1/= 9
+                        dx2/=9
 
                         # Now generate the line and extract the points we want
                         temp_spline = pySpline.linear_spline(\
