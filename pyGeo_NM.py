@@ -1125,9 +1125,11 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
             print 'Error: All of nNode,node_link,edge_list,edge_link must be given or none \
 of them. If they are omited, the stored self. values are used'
             sys.exit(1)
+            
+        print 'node_link',node_link
 
         nNode = len(unique(node_link.flatten()))
-        
+        print nNode        
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
         g_index = []
@@ -1166,6 +1168,8 @@ the list of surfaces must be the same length'
                 # end if
             # end for
         # end for
+        print 'edge_index'
+        print edge_index
 
         g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
         l_index = []
