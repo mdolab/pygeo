@@ -84,7 +84,7 @@ except:
 
 # geo_utils
 from geo_utils import *
-import pySNOPT
+
 # pyOPT/pySNOPT
 try:
     from pyOpt_optimization import Optimization
@@ -1111,8 +1111,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 #         print 'sizes:',sizes
         if surface_list == None:
             surface_list = range(0,self.nSurf) 
-            
-
+        # end if
+        
         if node_link==None and edge_list==None and edge_link == None and edge_dir == None:
             # None are specified
             node_link = self.node_link
@@ -1126,10 +1126,8 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 of them. If they are omited, the stored self. values are used'
             sys.exit(1)
             
-        print 'node_link',node_link
-
         nNode = len(unique(node_link.flatten()))
-        print nNode        
+
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
         g_index = []
@@ -1148,9 +1146,8 @@ the list of surfaces must be the same length'
         for ii in xrange(len(surface_list)):
             cur_size = [sizes[ii][0],sizes[ii][0],sizes[ii][1],sizes[ii][1]]
             isurf = surface_list[ii]
-
             for iedge in xrange(4):
-                edge = edge_link[isurf][iedge]
+                edge = edge_link[ii][iedge]
                     
                 if edge_index[edge] == []:# Not added yet
                     if edge_list[edge].degen == 1:
@@ -1168,18 +1165,18 @@ the list of surfaces must be the same length'
                 # end if
             # end for
         # end for
-        print 'edge_index'
-        print edge_index
 
         g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
         l_index = []
 
         # Now actually fill everything up
+        print 'surface_list:',surface_list
         for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
             l_index.append(-1*ones((N,M),'intc'))
+
             for i in xrange(N):
                 for j in xrange(M):
                     
@@ -1208,7 +1205,7 @@ the list of surfaces must be the same length'
                         g_index[cur_index].append([isurf,i,j])
                             
                     else:                  # Node
-                        cur_node = node_link[isurf][node]
+                        cur_node = node_link[ii][node]
                         l_index[ii][i,j] = node_index[cur_node]
                         g_index[node_index[cur_node]].append([isurf,i,j])
                     # end for
@@ -3373,8 +3370,9 @@ surface %d'%(isurf)
         # ---------------------------------
         if nodes == True:
             # First we need to figure out where the corners actually *are*
-            nodes = zeros((len(self.node_link),3))
-            for i in xrange(len(nodes)):
+            n_nodes = len(unique(self.node_link.flatten()))
+            node_coord = zeros((n_nodes,3))
+            for i in xrange(n_nodes):
                 # Try to find node i
                 for isurf in xrange(self.nSurf):
                     if self.node_link[isurf][0] == i:
@@ -3390,16 +3388,18 @@ surface %d'%(isurf)
                         coordinate = self.surfs[isurf].getValueCorner(3)
                         break
                 # end for
-                nodes[i] = coordinate
+                node_coord[i] = coordinate
             # end for
             # Split the filename off
+
             (dirName,fileName) = os.path.split(file_name)
             (fileBaseName, fileExtension)=os.path.splitext(fileName)
             label_filename = dirName+'/'+fileBaseName+'.nodes.dat'
             f2 = open(label_filename,'w')
 
-            for i in xrange(len(nodes)):
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(nodes[i][0],nodes[i][1],nodes[i][2],i)
+            for i in xrange(n_nodes):
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(
+                    node_coord[i][0],node_coord[i][1],node_coord[i][2],i)
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()
