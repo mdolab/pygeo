@@ -342,7 +342,7 @@ def directionAlongSurface(surface,line,section=None):
             v_dot_tot += dot(dv,dn[n,:])
         # end for
     # end for
-
+    print 'utot,vtot:',u_dot_tot,v_dot_tot
     if abs(u_dot_tot) > abs(v_dot_tot):
         # Its along u now get 
         if u_dot_tot >= 0: 
