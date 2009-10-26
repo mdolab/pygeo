@@ -42,6 +42,14 @@ import pyLayout_NM as pyLayout
 #Design Variable Functions
 sys.path.append('../')
 from dv_funcs import *
+
+#Matplotlib
+try:
+    from matplotlib.pylab import plot,show
+except:
+    print 'Matploptlib could not be imported'
+# end if
+
 # ==============================================================================
 # Start of Script
 # ==============================================================================
@@ -51,7 +59,6 @@ from dv_funcs import *
 
 naf=22
 n0012 = '../../input/naca0012.dat'
-#n0012 = '../../input/naca2412.dat'
 
 # Use the digitize it data for the planform:
 le = array(loadtxt('bwb_le.out'))
@@ -72,10 +79,15 @@ low_spline = pySpline.linear_spline(task='lms',k=4,X=front_low[:,1],s=front_low[
 
 # Generate consistent equally spaced spline data
 span = linspace(0,138,naf-2)
+span = hstack([linspace(0,8,5),linspace(10,138,naf-7)])
 le = le_spline.getValueV(span)
 te = te_spline.getValueV(span)
 up = up_spline.getValueV(span)
 low = low_spline.getValueV(span)
+
+# plot(span,-le,'ko')
+# show()
+# sys.exit(0)
 
 chord = te-le
 x = le
@@ -142,20 +154,20 @@ chord/=SCALE
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-# bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
-#                   file_type='xfoil',scale=chord,offset=offset, 
-#                   breaks=breaks,cont=cont,nsections=nsections,
-#                   end_type='rounded',end_scale =1,
-#                   Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
+bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
+                  file_type='xfoil',scale=chord,offset=offset, 
+                  breaks=breaks,cont=cont,nsections=nsections,
+                  end_type='rounded',end_scale =1,
+                  Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 
-# bwb.setSymmetry('xy')
-# #bwb.calcEdgeConnectivity(1e-6,1e-6)
-# #bwb.writeEdgeConnectivity('bwb.con')
-# bwb.readEdgeConnectivity('bwb.con')
-# bwb.propagateKnotVectors()
-# bwb.fitSurfaces3(nIter=40,constr_tol=1e-8,opt_tol=1e-6)
-# bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
-# bwb.writeIGES('../../input/bwb.igs')
+bwb.setSymmetry('xy')
+##bwb.calcEdgeConnectivity(1e-6,1e-6)
+##bwb.writeEdgeConnectivity('bwb.con')
+bwb.readEdgeConnectivity('bwb.con')
+bwb.propagateKnotVectors()
+bwb.fitSurfaces3(nIter=150,constr_tol=1e-7,opt_tol=1e-6)
+bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
+bwb.writeIGES('../../input/bwb.igs')
 
 # Read the IGES file
 bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb.igs')

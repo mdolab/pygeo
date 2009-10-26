@@ -642,8 +642,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dx2 = (X[0,j,end] - X[0,j,end-1])
                         dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
 
-                        dx1/= 9
-                        dx2/=9
+                        dx1/= 50
+                        dx2/=50
 
                         # Now generate the line and extract the points we want
                         temp_spline = pySpline.linear_spline(\
@@ -656,8 +656,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                         dx2 = (X[1,j,end] - X[1,j,end-1])
                         dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
-                        dx1/= 9
-                        dx2/=9
+                        dx1/= 50
+                        dx2/=50
 
                         # Now generate the line and extract the points we want
                         temp_spline = pySpline.linear_spline(\
@@ -1170,7 +1170,6 @@ the list of surfaces must be the same length'
         l_index = []
 
         # Now actually fill everything up
-        print 'surface_list:',surface_list
         for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
             N = sizes[ii][0]
@@ -1500,6 +1499,51 @@ These modules must be imported for global surfaces fitting to take place.'
             # end if
         # end for
 
+        inf = 1e20 # Define a value for infinity
+        
+        lower_bound = -inf*ones(self.ndv)
+        upper_bound =  inf*ones(self.ndv)
+
+        for iedge in xrange(len(self.edge_list)):
+            surfaces = self.getSurfaceFromEdge(iedge)
+            if len(surfaces) == 1: # Its a mirror edge
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                print 'surfaces:',surfaces
+                for i in xrange(self.edge_list[iedge].Nctl):
+                    if edge0 == 0:
+                        index = self.l_index[surf0][i,0]
+                    elif edge0 == 1:
+                        index = self.l_index[surf0][i,-1]
+                    elif edge0 == 2:
+                        index = self.l_index[surf0][0,i]
+                    elif edge0 == 3:
+                        index = self.l_index[surf0][-1,i]
+                    # end if
+                    print index
+                    if self.sym == 'xy':
+                        lower_bound[3*index+2] = 0
+                        upper_bound[3*index+2] = 0
+                    if self.sym == 'yz':
+                        lower_bound[3*index+0] = 0
+                        upper_bound[3*index+0] = 0
+                    if self.sym == 'xz':
+                        lower_bound[3*index+1] = 0
+                        upper_bound[3*index+1] = 0
+                    # end if
+                # end for
+            # end if
+        # end for
+
+        for i in xrange(self.ndv):
+            if upper_bound[i] == 0:
+                print X[i]
+            # end if
+        # end for
+        #sys.exit(0)
+        
+
+
         locA,indA = self._computeSparsityPattern3()
         
         if not self.NO_PRINT:
@@ -1511,14 +1555,14 @@ These modules must be imported for global surfaces fitting to take place.'
 
         # Setup Optimization Probelm
         opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
-        opt_prob.addVarGroup('x',self.ndv,'c',value=X)
+        opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
         opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
         opt_prob.addObj('RMS Error')
         opt = SNOPT()
 
         opt.setOption('Verify level',-1)
         opt.setOption('Nonderivative linesearch')
-        opt.setOption('Major step limit',1e-5)
+        opt.setOption('Major step limit',5e-5)
         opt.setOption('Major optimality tolerance', opt_tol)
         opt.setOption('Major feasibility tolerance',constr_tol)
         opt.setOption('Major iterations limit',nIter)
@@ -1527,7 +1571,7 @@ These modules must be imported for global surfaces fitting to take place.'
 
         opt(opt_prob,self._sens3, sparse=[indA,locA],
             logHistory='SNOPT_history',
-            loadHistory='SNOPT') # Run the actual problem
+            loadHistory='SNOPT_history') # Run the actual problem
         
         # Reset the coefficients after the optimization is done
         for icoef in xrange(len(self.coef)):
