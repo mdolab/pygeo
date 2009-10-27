@@ -1509,7 +1509,6 @@ These modules must be imported for global surfaces fitting to take place.'
             if len(surfaces) == 1: # Its a mirror edge
                 surf0 = surfaces[0][0] # First surface on this edge
                 edge0 = surfaces[0][1] # Edge of surface on this edge     
-                print 'surfaces:',surfaces
                 for i in xrange(self.edge_list[iedge].Nctl):
                     if edge0 == 0:
                         index = self.l_index[surf0][i,0]
@@ -1535,15 +1534,6 @@ These modules must be imported for global surfaces fitting to take place.'
             # end if
         # end for
 
-        for i in xrange(self.ndv):
-            if upper_bound[i] == 0:
-                print X[i]
-            # end if
-        # end for
-        #sys.exit(0)
-        
-
-
         locA,indA = self._computeSparsityPattern3()
         
         if not self.NO_PRINT:
@@ -1568,7 +1558,7 @@ These modules must be imported for global surfaces fitting to take place.'
         opt.setOption('Major iterations limit',nIter)
         opt.setOption('New superbasics limit',250)
         opt.setOption('Minor iterations limit',500)
-
+        #opt.setOption('QPSolver','CG')
         opt(opt_prob,self._sens3, sparse=[indA,locA],
             logHistory='SNOPT_history',
             loadHistory='SNOPT_history') # Run the actual problem
@@ -2157,6 +2147,42 @@ These modules must be imported for global surfaces fitting to take place.'
             # end if
         # end for
                 
+        inf = 1e20 # Define a value for infinity
+        
+        lower_bound = -inf*ones(self.ndv)
+        upper_bound =  inf*ones(self.ndv)
+
+        for iedge in xrange(len(self.edge_list)):
+            surfaces = self.getSurfaceFromEdge(iedge)
+            if len(surfaces) == 1: # Its a mirror edge
+                surf0 = surfaces[0][0] # First surface on this edge
+                edge0 = surfaces[0][1] # Edge of surface on this edge     
+                print 'surfaces:',surfaces
+                for i in xrange(self.edge_list[iedge].Nctl):
+                    if edge0 == 0:
+                        index = self.l_index[surf0][i,0]
+                    elif edge0 == 1:
+                        index = self.l_index[surf0][i,-1]
+                    elif edge0 == 2:
+                        index = self.l_index[surf0][0,i]
+                    elif edge0 == 3:
+                        index = self.l_index[surf0][-1,i]
+                    # end if
+                    print index
+                    if self.sym == 'xy':
+                        lower_bound[3*index+2] = 0
+                        upper_bound[3*index+2] = 0
+                    if self.sym == 'yz':
+                        lower_bound[3*index+0] = 0
+                        upper_bound[3*index+0] = 0
+                    if self.sym == 'xz':
+                        lower_bound[3*index+1] = 0
+                        upper_bound[3*index+1] = 0
+                    # end if
+                # end for
+            # end if
+        # end for
+
         locA,indA = self._computeSparsityPattern()
 
         if not self.NO_PRINT:
@@ -2168,15 +2194,19 @@ These modules must be imported for global surfaces fitting to take place.'
 
         # Setup Optimization Probelm
         opt_prob = Optimization('Constrained LMS Fitting',self._objcon)
-        opt_prob.addVarGroup('x',self.ndv,'c',value=X)
+        opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
         opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
         opt_prob.addObj('RMS Error')
         opt = SNOPT()
+        opt.setOption('Verify level',-1)
         opt.setOption('Nonderivative linesearch')
         opt.setOption('Major step limit',1e-2)
         opt.setOption('Major optimality tolerance', opt_tol)
         opt.setOption('Major feasibility tolerance',constr_tol)
         opt.setOption('Major iterations limit',nIter)
+        opt.setOption('New superbasics limit',250)
+        opt.setOption('Minor iterations limit',500)
+        opt.setOption('QPSolver','CG')
         opt(opt_prob,self._sens,sparse=[indA,locA]) # Run the actual problem
 
         # Reset the coefficients after the optimization is done
@@ -2198,6 +2228,8 @@ These modules must be imported for global surfaces fitting to take place.'
         del self.temp
         del self.loc
         del self.index
+        del opt_prob
+        del opt
         print 'Fitting Time: %f seconds'%(time.time()-time0)
         return
 
@@ -2368,10 +2400,10 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
         '''Sensitivity function for Fitting Optimization'''
         # ----------- Objective Derivative ----------------
         if USE_PETSC:
-            self.X_PETSC.setValues(arange(0,self.ndv).astype('d'),x)
+            self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
             self.J(self.X_PETSC,self.temp)
             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
-            gobj = array(self.gobj_PETSC.getValues(arange(self.ndv)))
+            gobj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
             self.temp = self.temp-self.rhs
             self.temp.abs()
             print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
@@ -3539,7 +3571,8 @@ surface %d'%(isurf)
         coordinates = transpose(array(coordinates))
 
         return coordinates
-    
+  
+
     def attachSurface(self,coordinates,patch_list=None,Nu=20,Nv=20,force_domain=True):
 
         '''Attach a list of surface points to either all the pyGeo surfaces
@@ -3673,6 +3706,39 @@ surface %d'%(isurf)
             print 'Done Surface Attachment'
 
         return dist,patchID,uv
+  
+    def writeAttachedSurface(self,file_name,patchID,uv):
+        '''Write the patchID and uv coordinates for a set of points to a
+        file. This allows the user to reload the points and (possibly)
+        (slightly) modify the underlying geometry (but NOT topology)'''
+
+        f = open(file_name,'w')
+        for icoord in xrange(len(patchID)):
+            f.write('%d,%20.16g,%20.16g\n'%(patchID[icoord],uv[icoord,0],uv[icoord,0]))
+        # end if
+        f.close()
+
+        return
+
+    def readAttachedSurface(self,file_name,patchID,uv):
+        '''Read the patchID and uv coordinates for a set of points from a
+        file. This allows the user to reload the points and (possibly)
+        (slightly) modify the underlying geometry (but NOT
+        topology)'''
+
+        f = open(file_name,'r')
+        patchID = []
+        uv = []
+        for line in f:
+            aux = string.split(line,',')
+            patchID.append(int(aux[0]))
+            uv.append(float(aux[1]),float(aux[2]))
+        # end if
+        f.close()
+        patchID = array(patchID)
+        uv = array(uv)
+        
+        return patchID,uv
 
     def _initdPtdCoef( self, M, Nctl ):
         
