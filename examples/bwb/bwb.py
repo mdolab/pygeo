@@ -154,25 +154,32 @@ chord/=SCALE
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
-                  file_type='xfoil',scale=chord,offset=offset, 
-                  breaks=breaks,cont=cont,nsections=nsections,
-                  end_type='rounded',end_scale =1,
-                  Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
+# bwb = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
+#                   file_type='xfoil',scale=chord,offset=offset, 
+#                   breaks=breaks,cont=cont,nsections=nsections,
+#                   end_type='rounded',end_scale =1,
+#                   Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 
-bwb.setSymmetry('xy')
-##bwb.calcEdgeConnectivity(1e-6,1e-6)
-##bwb.writeEdgeConnectivity('bwb.con')
-bwb.readEdgeConnectivity('bwb.con')
-bwb.propagateKnotVectors()
-bwb.fitSurfaces3(nIter=150,constr_tol=1e-7,opt_tol=1e-6)
-bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
-bwb.writeIGES('../../input/bwb.igs')
+# bwb.setSymmetry('xy')
+# ##bwb.calcEdgeConnectivity(1e-6,1e-6)
+# ##bwb.writeEdgeConnectivity('bwb.con')
+# bwb.readEdgeConnectivity('bwb.con')
+# bwb.propagateKnotVectors()
+
+# #bwb.fitSurfaces(nIter=100,constr_tol=1e-8,opt_tol=1e-6)
+# #bwb.writeIGES('../../input/bwb_constr1.igs')
+
+# bwb.fitSurfaces3(nIter=150,constr_tol=1e-8,opt_tol=1e-6)
+# bwb.writeIGES('../../input/bwb_constr2.igs')
+# #bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
+
+# sys.exit(0)
 
 # Read the IGES file
-bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb.igs')
+bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr2.igs')
 bwb.readEdgeConnectivity('bwb.con')
-
+bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
+sys.exit(0)
 
 print '---------------------------'
 print 'Attaching Reference Axis...'

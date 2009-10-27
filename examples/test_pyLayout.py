@@ -86,13 +86,15 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
 wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.writeEdgeConnectivity('test_layout.con')
+#wing.writeEdgeConnectivity('test_layout.con')
 #sys.exit(0)
 wing.readEdgeConnectivity('test_layout.con')
 wing.propagateKnotVectors()
-#wing.fitSurfaces3()
+wing.fitSurfaces3()
 wing.writeTecplot('../output/wing.dat')
 wing.writeIGES('../input/wing.igs')
+
+sys.exit(0)
 # ------------------------------------------------------------------
 print '---------------------------'
 print 'Attaching Reference Axis...'
