@@ -2831,17 +2831,25 @@ surface %d'%(isurf)
             s = zeros(Nctlv)
             for j in xrange(Nctlv):
                 # Get ALL coefficients from surfaces in full_surface_list
-                coef = []
+                coef_index = []
                 for jj in xrange(len(full_surface_list)):
                     if types[jj] == 0:
-                        coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
+                        #coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
+                        coef_index.extend(self.l_index[full_surface_list[jj]][j,:])
                     else:
-                        coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
+                        #coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
+                        coef_index.extend(self.l_index[full_surface_list[jj]][:,j])
                     # end if
                 # end for
 
-                X = array(coef).reshape(Nctlu*len(full_surface_list),3)
-             
+                coef_index = unique(coef_index)
+                coef = []
+                for icoef in xrange(len(coef_index)):
+                    coef.append(self.coef[coef_index[icoef]])
+                # end if
+                X = array(coef)
+                #X = array(coef).reshape(Nctlu*len(full_surface_list),3)
+
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
                 
@@ -3720,7 +3728,7 @@ surface %d'%(isurf)
 
         return
 
-    def readAttachedSurface(self,file_name,patchID,uv):
+    def readAttachedSurface(self,file_name):
         '''Read the patchID and uv coordinates for a set of points from a
         file. This allows the user to reload the points and (possibly)
         (slightly) modify the underlying geometry (but NOT
