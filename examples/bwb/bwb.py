@@ -179,7 +179,7 @@ chord/=SCALE
 bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr2.igs')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
-sys.exit(0)
+#sys.exit(0)
 
 print '---------------------------'
 print 'Attaching Reference Axis...'
@@ -218,7 +218,7 @@ te_spar_spline = pySpline.linear_spline(task='interpolate',k=2,X=te_spar_list[:,
 
 # ---------- Create the First Domain -- First 8 ribts
 
-MAX_RIBS1 = 8
+MAX_RIBS1 = 5
 
 le_list = zeros((MAX_RIBS1,3)) # Make them the same as the Rib list...not necessary but should work
 te_list = zeros((MAX_RIBS1,3)) # Make them the same as the Rib list...not necessary but should work
@@ -275,7 +275,7 @@ wing_box.addSection(def1)
 
 # # ---------- Create the Second Domain -- Last First 19 ribs
 
-MAX_RIBS2 = 19
+MAX_RIBS2 = 22
 
 le_list = zeros((MAX_RIBS2,3)) # Make them the same as the Rib list...not necessary but should work
 te_list = zeros((MAX_RIBS2,3)) # Make them the same as the Rib list...not necessary but should work
