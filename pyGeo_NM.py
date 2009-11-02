@@ -84,7 +84,7 @@ except:
 
 # geo_utils
 from geo_utils import *
-
+# import pySNOPT
 # pyOPT/pySNOPT
 try:
     from pyOpt_optimization import Optimization
@@ -1552,12 +1552,12 @@ These modules must be imported for global surfaces fitting to take place.'
 
         opt.setOption('Verify level',-1)
         opt.setOption('Nonderivative linesearch')
-        opt.setOption('Major step limit',5e-5)
+        opt.setOption('Major step limit',1e-4)
         opt.setOption('Major optimality tolerance', opt_tol)
         opt.setOption('Major feasibility tolerance',constr_tol)
         opt.setOption('Major iterations limit',nIter)
         opt.setOption('New superbasics limit',250)
-        opt.setOption('Minor iterations limit',500)
+        opt.setOption('Minor iterations limit',1500)
         #opt.setOption('QPSolver','CG')
         opt(opt_prob,self._sens3, sparse=[indA,locA],
             logHistory='SNOPT_history',
@@ -2620,7 +2620,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                 rotzs = pySpline.linear_spline(task='lms',s=s,X=rot[:,2],\
                                                    nCtl=nrefsecs,k=2)
 
-                if not spacing == None:
+                if spacing != None:
                     spacing = linspace(0,1,nrefsecs)
                     
                 Xnew = x.getValue(spacing)
@@ -3318,8 +3318,44 @@ surface %d'%(isurf)
         self.DV_listGlobal.append(geoDVGlobal(\
                 dv_name,value,lower,upper,function,useit))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
-        return 
+        return
 
+    def addGeoDVs( self, opt_prob, dvNum = 0 ):
+        '''Add the pyGeo variables to pyOpt'''
+        
+        # Add the global, normal and local design variables
+        for dvList in [ self.DV_listGlobal, self.DV_listNormal, self.DV_listLocal ]:
+            for n in dvList:
+                if n.nVal > 1:
+                    opt_prob.addVarGroup( n.name, n.nVal, 'c', value = real(n.value), lower=n.lower, upper = n.upper )
+                else:
+                    opt_prob.addVar( n.name, 'c', value = real(n.value), lower=n.lower, upper = n.upper )
+                # end
+            # end
+        # end
+
+        return        
+
+    def setGeoDVs( self, x, dvNum = 0 ):
+        '''
+        Given the value of x, set all the internal design variables.
+        The surface control points are not updated.
+        '''
+
+        # Set the global, normal and local design variables
+        for dvList in [ self.DV_listGlobal, self.DV_listNormal, self.DV_listLocal ]:
+            for n in dvList:
+                if n.nVal == 1:
+                    n.value = x[dvNum]
+                else:
+                    n.value[:] = x[dvNum:(dvNum+n.nVal)]
+                # end
+                dvNum += n.nVal
+            # end
+        # end
+
+        return
+    
 # ----------------------------------------------------------------------
 #                   Surface Writing Output Functions
 # ----------------------------------------------------------------------
@@ -4091,10 +4127,12 @@ class geoDVGlobal(object):
 
         self.name = dv_name
         self.value = value
-        if isinstance(value, int):
-            self.nVal = 1
-        else:
+        
+        if getattr(self.value,'__iter__',False):
             self.nVal = len(value)
+        else:
+            self.nVal = 1
+        # end
 
         self.lower    = lower
         self.upper    = upper

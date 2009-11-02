@@ -84,7 +84,7 @@ def read_af(filename,file_type='xfoil',N=35):
 
     # Interpolation Format
     s_interp = 0.5*(1-cos(linspace(0,pi,N)))
-   
+
     if file_type == 'precomp':
         f = open(filename,'r')
 

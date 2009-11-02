@@ -630,10 +630,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 self.surfs.append(pySpline.surf_spline(\
                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
-                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
+                        Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
                 self.surfs.append(pySpline.surf_spline(\
                         fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
-                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
+                        Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
 
                 start = end-1
                 start2 = end2-1
@@ -2171,7 +2171,7 @@ a flap hinge line'
             # end if
 
         # end for
-        
+
         if isurf_dir == 1: #along v of isurf
             if not self.NO_PRINT:
                 print 'Reference axis is oriented along v on \
@@ -2217,7 +2217,6 @@ surface %d'%(isurf)
                         coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
                     # end if
                 # end for
-                
                 X = array(coef).reshape(Nctlv*len(full_surface_list),3)
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
@@ -2225,7 +2224,7 @@ surface %d'%(isurf)
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[i] = s1
             # end for
-           
+
             return s,0
 
 # ----------------------------------------------------------------------
