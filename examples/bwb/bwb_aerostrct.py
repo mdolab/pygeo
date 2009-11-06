@@ -18,9 +18,10 @@ petsc4py.init(sys.argv)
 # Extension modules
 # =============================================================================
 
-# pySpline 
-sys.path.append('../../../pySpline/python')
-import pySpline
+#pyPSG:
+sys.path.append(os.path.abspath('../../../pySpline/python'))
+sys.path.append(os.path.abspath('../../')) # pyGeo & geo_utils
+sys.path.append(os.path.abspath('../../../pyLayout/'))
 
 #cfd-csm pre (Optional)
 sys.path.append('../../../../pyHF/pycfd-csm/python/')
@@ -31,12 +32,16 @@ sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
 # pySnopt
 sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 
+# geo_utils
+from geo_utils import *
+
+# pySpline 
+import pySpline
+
 #pyGeo
-sys.path.append('../../')
 import pyGeo_NM as pyGeo
 
 #pyLayout
-sys.path.append('../../../pyLayout/')
 import pyLayout_NM as pyLayout
 
 # TACS
@@ -44,65 +49,83 @@ from pyTACS import TACS
 import tacs_utils
 from tacs_utils import TriPan
 
+try:
+    import mpi4py
+    from mpi4py import MPI
+except:
+    MPI = None
+# end try
+
 # ==============================================================================
 # Start of Script
 # ==============================================================================
+
+# Run the geometry data script
+execfile('bwb_data.py')
 
 # We will assume all the geometry pre-processing has been
 # completed...all we have left for geometry import is .igs file and .con file
 
 # Read the IGES file
-bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr2.igs')
+bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr1.igs')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.setSymmetry('xy')
 
-print '---------------------------'
-print 'Attaching Reference Axis...'
-print '---------------------------'
+mpiPrint('---------------------------')
+mpiPrint('Attaching Reference Axis...')
+mpiPrint('---------------------------')
 
 # Add a single reference axis:
 ref_axis_x = array([[.43,0,0],[.9648,.025,.9525]])
 rot = zeros_like(ref_axis_x)
 bwb.addRefAxis([0,1,2,3,4,5,6,7],ref_axis_x,rot,nrefsecs=5)
-print 'Done Ref Axis Adding!'
+mpiPrint('Done Ref Axis Adding!')
 
-print '------------------------------'
-print 'Adding Design Variables...'
-print '------------------------------'
+mpiPrint('------------------------------')
+mpiPrint('Adding Design Variables...')
+mpiPrint('------------------------------')
 ntwist = 5
 def twist(vals,ref_axis):
     '''Twist'''
     ref_axis[0].rot[:,2] = vals
     return ref_axis
 
-print ' ** Adding Global Design Variables **'
+mpiPrint(' ** Adding Global Design Variables **')
 bwb.addGeoDVGlobal('twist',zeros(ntwist),-10,10,twist)
 bwb.calcCtlDeriv()
 bwb.writeTecplot('bwb.dat',ref_axis=True,links=True)
 
-print '---------------------------'
-print '      TriPan Setup'
-print '---------------------------'
+mpiPrint('---------------------------')
+mpiPrint('      TriPan Setup')
+mpiPrint('---------------------------')
 
-fname = 'bwb_medium.dtx'
-Xtip   = [ 1.13432, 0.128799, 0.993809 ]
-Xbase  = [ 1.03357, 0.0359398, 0.962844 ]
-Xbase2 = [ 1.02939, 0.0256475, 0.949059 ]
-Xroot = [1.0, 0.0, 0.0] # [0.75, 0.0, 0.0 ] # Root position
+fname = 'bwb_extra_fine_no_tip.dtx'
+Xtip   = [ 164.925,18.7373,144.5]
+Xbase  = [ 150.290,5.22604,140]
+Xbase2 = [ 149.686,3.72889,138]
+Xroot = [145.422,0,0]
 
-use_tripan_file = True
+use_tripan_file = False
 if use_tripan_file:
-    fname = 'bwb_medium_no_tip.tripan'
-    wakeFile = 'bwb_medium_no_tip.wake'
-    panel = TriPan.TriPan( fname, 'tripan', wakeFile=wakeFile )
+    fname = 'bwb_fine_no_tip.tripan'
+    wakeFile = 'bwb_fine_no_tip.wake'
+    tp = TriPan.getTriPanDefaults()
+    tp['Nu'] = 50
+    tp['Nv'] = 50
+    panel = TriPan.TriPan( fname, 'tripan', wakeFile=wakeFile,tp_params=tp)
 else:
-    panel = TriPan.TriPan( fname, 'datex', outFile='bwb_medium_no_tip.tripan',
+    tp = TriPan.getTriPanDefaults()
+    tp['Nu'] = 50
+    tp['Nv'] = 50
+    panel = TriPan.TriPan( fname, 'datex', outFile='bwb_extra_fine_no_tip.tripan',
                            wakeInfo = [[Xtip,Xbase],[Xbase,Xbase2],[Xbase2,Xroot]],
-                           reverseNormals=False, wakeOutFile='bwb_medium_no_tip.wake' )
+                           reverseNormals=False, wakeOutFile='bwb_extra_fine_no_tip.wake',
+                           tp_params=tp)
 # end if
 
+mpiPrint(' * * Associating bwb geometry * *')
 panel.associateGeometry( bwb )
-bwb.update()
+mpiPrint(' * * Updating surface points * *')
 panel.updatePoints()
 
 # Set up a forward flight condition
@@ -120,19 +143,17 @@ Rz = 0.0
 panel.triPanel.setVelocity( VInf, OmegaInf, Ry, Rz, C.flatten() )
 
 panel.linearSolve()
-panel.triPanel.writeLiftDistribution( 'lift_distribution.dat', panel.computeLiftDirection(), linspace(0.01, 0.9, 75) )
+# panel.triPanel.writeLiftDistribution( 'lift_distribution.dat', panel.computeLiftDirection(), linspace(0.01, 0.9, 75) )
 
-panel.triPanel.writeSectionalCp( 'cp_distZ=1.dat', 0.25 )
-panel.triPanel.writeSectionalCp( 'cp_distZ=2.dat', 0.5 )
-panel.triPanel.writeSectionalCp( 'cp_distZ=3.dat', 0.75 )
+# panel.triPanel.writeSectionalCp( 'cp_distZ=1.dat', 0.25 )
+# panel.triPanel.writeSectionalCp( 'cp_distZ=2.dat', 0.5 )
+# panel.triPanel.writeSectionalCp( 'cp_distZ=3.dat', 0.75 )
 
-panel.writeSolution(outfile='bwb.dat',wake_outfile='bwb_wake.dat')
+panel.writeSolution(outfile='bwb_tripan_sol.dat',wake_outfile='bwb_wake.dat')
 
-
-sys.exit(0)
-print '---------------------------'
-print '      pyLayout Setup' 
-print '---------------------------'
+mpiPrint('---------------------------')
+mpiPrint('      pyLayout Setup'       )
+mpiPrint('---------------------------')
  
 MAX_SPARS = 2  # This is the same for each spanwise section
 Nsection = 4
@@ -151,10 +172,9 @@ rib_list     = array(loadtxt('bwb_rib_list.out'))
 le_spar_spline = pySpline.linear_spline(task='interpolate',k=2,X=le_spar_list[:,1],s=le_spar_list[:,0])
 te_spar_spline = pySpline.linear_spline(task='interpolate',k=2,X=te_spar_list[:,1],s=te_spar_list[:,0])
 
-
 # ---------- Create the First Domain -- First 8 ribts
 
-MAX_RIBS1 = 8
+MAX_RIBS1 = 5
 
 le_list = zeros((MAX_RIBS1,3)) # Make them the same as the Rib list...not necessary but should work
 te_list = zeros((MAX_RIBS1,3)) # Make them the same as the Rib list...not necessary but should work
@@ -168,10 +188,7 @@ te_list[:,2] = span_coord
 te_list[:,0] = te_spar_spline.getValueV(span_coord)
 te_list[:,1] = mid_y_spline.getValueV(span_coord)
 
-le_list/=SCALE
-te_list/=SCALE
 domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
-
 
 # # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
 
@@ -181,7 +198,7 @@ rib_basis = rib_list[0:MAX_RIBS1,0] # This is the basis
 rib_pos[:,2] = rib_basis
 rib_pos[:,1] = mid_y_spline.getValueV(rib_basis)
 rib_pos[:,0] = rib_list[0:MAX_RIBS1,1]
-rib_pos/=SCALE
+rib_pos
 rib_dir = zeros((MAX_RIBS1,3))
 rib_dir[:] = [1,0,0]
 
@@ -196,8 +213,8 @@ span_space[0] = 2
 span_space[1] = 2
 span_space[2] = 4
 
-rib_space  = 3*ones(MAX_SPARS+1) # Note the +1
-v_space    = 3
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+v_space    = 2
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0]
@@ -211,7 +228,7 @@ wing_box.addSection(def1)
 
 # # ---------- Create the Second Domain -- Last First 19 ribs
 
-MAX_RIBS2 = 19
+MAX_RIBS2 = 22
 
 le_list = zeros((MAX_RIBS2,3)) # Make them the same as the Rib list...not necessary but should work
 te_list = zeros((MAX_RIBS2,3)) # Make them the same as the Rib list...not necessary but should work
@@ -226,9 +243,6 @@ te_list[:,2] = span_coord
 te_list[:,0] = te_spar_spline.getValueV(span_coord)
 te_list[:,1] = mid_y_spline.getValueV(span_coord)
 
-le_list/=SCALE
-te_list/=SCALE
-
 domain2 = pyLayout.domain(le_list,te_list)
 
 # # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
@@ -239,7 +253,7 @@ rib_basis = rib_list[MAX_RIBS1-1:MAX_RIBS1+MAX_RIBS2,0] # This is the basis
 rib_pos[:,2] = rib_basis
 rib_pos[:,1] = mid_y_spline.getValueV(rib_basis)
 rib_pos[:,0] = rib_list[MAX_RIBS1-1:MAX_RIBS1+MAX_RIBS2,1]
-rib_pos/=SCALE
+
 rib_dir = zeros((MAX_RIBS2,3))
 rib_dir[:] = [1,0,0]
 
@@ -250,8 +264,8 @@ spar_blank = ones((MAX_SPARS,MAX_RIBS2-1))
 
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS2-1)
-rib_space  = 3*ones(MAX_SPARS+1) # Note the +1
-v_space    = 3
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+v_space    = 2
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [2,2]
@@ -273,10 +287,10 @@ te_list3 = zeros((MAX_RIBS3,3)) # Make them the same as the Rib list...not neces
 
 le_list3[0] = le_list[-1]
 te_list3[0] = te_list[-1]
-le_list3[1] = bwb.surfs[4].getValue(0,0.5)+[.025,0,0]
-te_list3[1] = bwb.surfs[4].getValue(1,0.5)-[.025,0,0]
-le_list3[2] = bwb.surfs[4].getValue(0,1) + [.025,0,0]
-te_list3[2] = bwb.surfs[4].getValue(1,1) - [.025,0,0]
+le_list3[1] = bwb.surfs[4].getValue(0,0.5)+[2.5,0,0]
+te_list3[1] = bwb.surfs[4].getValue(1,0.5)-[2.5,0,0]
+le_list3[2] = bwb.surfs[4].getValue(0,1) + [2.5,0,0]
+te_list3[2] = bwb.surfs[4].getValue(1,1) - [2.5,0,0]
 
 domain3 = pyLayout.domain(le_list3,te_list3)
 
@@ -287,7 +301,7 @@ rib_pos = zeros((MAX_RIBS3,3))
 rib_pos = 0.5*(le_list3+te_list3)
 rib_dir = zeros((MAX_RIBS3,3))
 rib_dir[:] = [1,0,0]
-print 'rib_pos:',rib_pos
+
 # # -----------------------------------------------------------
 
 rib_blank = ones((MAX_RIBS3,MAX_SPARS-1))
@@ -295,8 +309,8 @@ spar_blank = ones((MAX_SPARS,MAX_RIBS3-1))
 
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS3-1)
-rib_space  = 3*ones(MAX_SPARS+1) # Note the +1
-v_space    = 3
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+v_space    = 2
 
 surfs = [[4],[5]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [4,4]
@@ -316,8 +330,8 @@ MAX_RIBS4 = 8
 le_list4 = zeros((MAX_RIBS4,3)) # Make them the same as the Rib list...not necessary but should work
 te_list4 = zeros((MAX_RIBS4,3)) # Make them the same as the Rib list...not necessary but should work
 
-le_list4[:] = bwb.surfs[6].getValueV(zeros(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) + [.0085,0,0]
-te_list4[:] = bwb.surfs[6].getValueV(ones(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) - [.005,0,0]
+le_list4[:] = bwb.surfs[6].getValueV(zeros(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) + [.85,0,0]
+te_list4[:] = bwb.surfs[6].getValueV(ones(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) - [.5,0,0]
 domain4 = pyLayout.domain(le_list4,te_list4)
 
 # # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
@@ -334,8 +348,8 @@ spar_blank = ones((MAX_SPARS,MAX_RIBS4-1))
 
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS4-1)
-rib_space  = 3*ones(MAX_SPARS+1) # Note the +1
-v_space    = 3
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+v_space    = 2
 
 surfs = [[6],[7]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [6,6]
@@ -347,6 +361,5 @@ def4 = pyLayout.struct_def(MAX_RIBS4,MAX_SPARS,domain4,surfs,spar_con,
                            
 wing_box.addSection(def4)
 
-
-wing_box.writeTecplot('../../output/bwb_layout.dat')
+wing_box.writeTecplot('./bwb_layout.dat')
 wing_box.finalize()

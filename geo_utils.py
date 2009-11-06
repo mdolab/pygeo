@@ -6,8 +6,34 @@ from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan
 import string ,sys
 
-sys.path.append('../pySpline')
-import pySpline
+#Qsys.path.append('../pySpline')
+#import pySpline
+
+try:
+    import mpi4py
+    from mpi4py import MPI
+except:
+    MPI = None
+# end try
+
+# =============================================================================
+# Global Functions
+# =============================================================================
+
+def mpiPrint(string,NO_PRINT=False):
+    if NO_PRINT:
+        return
+    else:
+        if MPI:
+            if MPI.Comm.Get_rank( MPI.WORLD ) == 0:
+                print string
+            # end if
+        else:
+            print string
+        # end if
+    # end if
+
+    return
 
  # --------------------------------------------------------------
  #                Rotation Functions
@@ -695,122 +721,122 @@ def blendKnotVectors(knot_vectors,sym):
 #                     pyACDT Interface
 # --------------------------------------------------------------
 
-def createGeometryFromACDT(ac,LiftingSurface,BodySurface,Airfoil,pyGeo):
-    '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
-    dtor = pi*180
+# def createGeometryFromACDT(ac,LiftingSurface,BodySurface,Airfoil,pyGeo):
+#     '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
+#     dtor = pi*180
 
-    Components = ac['_components']
-    nComp = len(Components)
-    geo_objects = []
+#     Components = ac['_components']
+#     nComp = len(Components)
+#     geo_objects = []
 
-    for icomp in xrange(nComp):
-        print 'Processing Component: %s'%(ac['_components'][icomp].Name)
-        # Determine Type -> Lifting Surface or Body Surface
-        if isinstance(ac['_components'][icomp],BodySurface):
-            print 'Body Surfaces are not yet supported'
+#     for icomp in xrange(nComp):
+#         print 'Processing Component: %s'%(ac['_components'][icomp].Name)
+#         # Determine Type -> Lifting Surface or Body Surface
+#         if isinstance(ac['_components'][icomp],BodySurface):
+#             print 'Body Surfaces are not yet supported'
             
 
-        elif isinstance(ac['_components'][icomp],LiftingSurface):
-            nSubComp = len(Components[icomp])
-            # Get the Key Data for this object
-            xrLE = ac['_components'][icomp].xrLE
-            yrLE = ac['_components'][icomp].yrLE
-            zrLE = ac['_components'][icomp].zrLE
-            xRot = ac['_components'][icomp].xRot
-            yRot = ac['_components'][icomp].yRot
-            zRot = ac['_components'][icomp].zRot
+#         elif isinstance(ac['_components'][icomp],LiftingSurface):
+#             nSubComp = len(Components[icomp])
+#             # Get the Key Data for this object
+#             xrLE = ac['_components'][icomp].xrLE
+#             yrLE = ac['_components'][icomp].yrLE
+#             zrLE = ac['_components'][icomp].zrLE
+#             xRot = ac['_components'][icomp].xRot
+#             yRot = ac['_components'][icomp].yRot
+#             zRot = ac['_components'][icomp].zRot
 
-            for jcomp in xrange(nSubComp):
+#             for jcomp in xrange(nSubComp):
                 
-                # Get the data for this section
-                Area = ac['_components'][icomp][jcomp].Area #used
-                Span = ac['_components'][icomp][jcomp].Span #used
-                Taper= ac['_components'][icomp][jcomp].Taper #used
-                SweepLE = ac['_components'][icomp][jcomp].SweepLE #used
-                Dihedreal = ac['_components'][icomp][jcomp].Dihedral #used
-                xc_offset = ac['_components'][icomp][jcomp].xc_offset  # Not sure how to use this yet
+#                 # Get the data for this section
+#                 Area = ac['_components'][icomp][jcomp].Area #used
+#                 Span = ac['_components'][icomp][jcomp].Span #used
+#                 Taper= ac['_components'][icomp][jcomp].Taper #used
+#                 SweepLE = ac['_components'][icomp][jcomp].SweepLE #used
+#                 Dihedreal = ac['_components'][icomp][jcomp].Dihedral #used
+#                 xc_offset = ac['_components'][icomp][jcomp].xc_offset  # Not sure how to use this yet
 
-                root_Incidence = ac['_components'][icomp][jcomp].root_Incidence
-                root_Thickness = ac['_components'][icomp][jcomp].root_Thickness
-                root_Airfoil_type = ac['_components'][icomp][jcomp].root_Airfoil_type
-                root_Airfoil_ID   = ac['_components'][icomp][jcomp].root_Airfoil_ID
+#                 root_Incidence = ac['_components'][icomp][jcomp].root_Incidence
+#                 root_Thickness = ac['_components'][icomp][jcomp].root_Thickness
+#                 root_Airfoil_type = ac['_components'][icomp][jcomp].root_Airfoil_type
+#                 root_Airfoil_ID   = ac['_components'][icomp][jcomp].root_Airfoil_ID
 
-                tip_Incidence = ac['_components'][icomp][jcomp].tip_Incidence
-                tip_Thickness = ac['_components'][icomp][jcomp].tip_Thickness
-                tip_Airfoil_type = ac['_components'][icomp][jcomp].tip_Airfoil_type
-                tip_Airfoil_ID   = ac['_components'][icomp][jcomp].tip_Airfoil_ID
+#                 tip_Incidence = ac['_components'][icomp][jcomp].tip_Incidence
+#                 tip_Thickness = ac['_components'][icomp][jcomp].tip_Thickness
+#                 tip_Airfoil_type = ac['_components'][icomp][jcomp].tip_Airfoil_type
+#                 tip_Airfoil_ID   = ac['_components'][icomp][jcomp].tip_Airfoil_ID
 
-                # First Deduce the le position of root and tip
+#                 # First Deduce the le position of root and tip
                 
-                Xsec = zeros([2,3])
-                Xsec[0,:] = [xrLE,yrLE,zrLE]
-                Xsec[1,:] = [xrLE + Span*tan(SweepLE*dtor),
-                             yrLE + Span*tan(Dihedreal*dtor),
-                             zrLE + Span]
+#                 Xsec = zeros([2,3])
+#                 Xsec[0,:] = [xrLE,yrLE,zrLE]
+#                 Xsec[1,:] = [xrLE + Span*tan(SweepLE*dtor),
+#                              yrLE + Span*tan(Dihedreal*dtor),
+#                              zrLE + Span]
                 
-                # Next Deduce the chords
-                root_chord = 2*Area/(Span*(1+Taper))
-                tip_chord  = root_chord*Taper
+#                 # Next Deduce the chords
+#                 root_chord = 2*Area/(Span*(1+Taper))
+#                 tip_chord  = root_chord*Taper
 
-                # Next Get the airfoil data
-                # ----------- Root ------------------
-        	xxID_root = string.find(root_Airfoil_ID,'xx')
-                tc_r = int(round(root_Thickness*100))
-                if (tc_r < 10):
-                    tcID_r = str('0') + str(tc_r)
-                else:
-                    tcID_r = str(tc_r)
-                # end if
-                root_Airfoil_ID = root_Airfoil_ID[:xxID_root] + tcID_r + root_Airfoil_ID[xxID_root+2:]    
-                root_points = Airfoil(root_Airfoil_type,root_Airfoil_ID).shapepoints
+#                 # Next Get the airfoil data
+#                 # ----------- Root ------------------
+#         	xxID_root = string.find(root_Airfoil_ID,'xx')
+#                 tc_r = int(round(root_Thickness*100))
+#                 if (tc_r < 10):
+#                     tcID_r = str('0') + str(tc_r)
+#                 else:
+#                     tcID_r = str(tc_r)
+#                 # end if
+#                 root_Airfoil_ID = root_Airfoil_ID[:xxID_root] + tcID_r + root_Airfoil_ID[xxID_root+2:]    
+#                 root_points = Airfoil(root_Airfoil_type,root_Airfoil_ID).shapepoints
 
-                # ----------- Tip -------------------
-        	xxID_tip = string.find(tip_Airfoil_ID,'xx')
-                tc_r = int(round(tip_Thickness*100))
-                if (tc_r < 10):
-                    tcID_r = str('0') + str(tc_r)
-                else:
-                    tcID_r = str(tc_r)
-                # end if
-                tip_Airfoil_ID = tip_Airfoil_ID[:xxID_tip] + tcID_r + tip_Airfoil_ID[xxID_tip+2:]    
-                tip_points = Airfoil(tip_Airfoil_type,tip_Airfoil_ID).shapepoints
+#                 # ----------- Tip -------------------
+#         	xxID_tip = string.find(tip_Airfoil_ID,'xx')
+#                 tc_r = int(round(tip_Thickness*100))
+#                 if (tc_r < 10):
+#                     tcID_r = str('0') + str(tc_r)
+#                 else:
+#                     tcID_r = str(tc_r)
+#                 # end if
+#                 tip_Airfoil_ID = tip_Airfoil_ID[:xxID_tip] + tcID_r + tip_Airfoil_ID[xxID_tip+2:]    
+#                 tip_points = Airfoil(tip_Airfoil_type,tip_Airfoil_ID).shapepoints
 
-                # Post Process the airfoil data to get what we need
+#                 # Post Process the airfoil data to get what we need
 
-                N = (len(root_points)-1)/2
+#                 N = (len(root_points)-1)/2
 
-                root_upper = root_points[0:N+1]
-                root_lower = root_points[N:]
-                tip_upper  = tip_points[0:N+1]
-                tip_lower  = tip_points[N:]
+#                 root_upper = root_points[0:N+1]
+#                 root_lower = root_points[N:]
+#                 tip_upper  = tip_points[0:N+1]
+#                 tip_lower  = tip_points[N:]
 
-                X = zeros((2,N+1,2,3)) # 2 for upper/lower, N for the
-                                     # points on each side, 2 for root
-                                     # and tip, and 3 spatially
+#                 X = zeros((2,N+1,2,3)) # 2 for upper/lower, N for the
+#                                      # points on each side, 2 for root
+#                                      # and tip, and 3 spatially
 
-                X[0,:,0,0:2] = root_upper # Set only the x and y components, z is curently 0
-                X[1,:,1,0:2] = root_lower
-                X[0,:,0,0:2] = tip_upper
-                X[1,:,1,0:2] = tip_lower
+#                 X[0,:,0,0:2] = root_upper # Set only the x and y components, z is curently 0
+#                 X[1,:,1,0:2] = root_lower
+#                 X[0,:,0,0:2] = tip_upper
+#                 X[1,:,1,0:2] = tip_lower
 
-                X[:,:,0] *= root_chord
-                X[:,:,1] *= tip_chord
+#                 X[:,:,0] *= root_chord
+#                 X[:,:,1] *= tip_chord
 
-                X[:,:,0] += Xsec[0]
-                X[:,:,1] += Xsec[1]
+#                 X[:,:,0] += Xsec[0]
+#                 X[:,:,1] += Xsec[1]
                 
-                # Create an empty geo object
-                cur_geo = pyGeo.pyGeo('create')
-                cur_geo.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
-                cur_geo.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
-                cur_geo.nSurf = 2
+#                 # Create an empty geo object
+#                 cur_geo = pyGeo.pyGeo('create')
+#                 cur_geo.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
+#                 cur_geo.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
+#                 cur_geo.nSurf = 2
 
-                # Add the geo object to the list
+#                 # Add the geo object to the list
                 
-                geo_objects.append(cur_geo)
-            # end for (sub Comp)
-        # end if (lifting/body type)
-    # end if (Comp Loop)
+#                 geo_objects.append(cur_geo)
+#             # end for (sub Comp)
+#         # end if (lifting/body type)
+#     # end if (Comp Loop)
 
-    return geo_objects
+#     return geo_objects
                 
