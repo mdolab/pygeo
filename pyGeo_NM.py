@@ -40,7 +40,6 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     real, imag, dstack, floor, size, reshape, arange,alltrue,cross
 
 from numpy.linalg import lstsq,inv,norm
-#from scipy import io #Only used for debugging
 
 # geo_utils
 from geo_utils import *
@@ -48,7 +47,6 @@ from geo_utils import *
 try:
     import petsc4py
     from petsc4py import PETSc
-    
     USE_PETSC = True
     #USE_PETSC = False
     mpiPrint('PETSc4py is available. Least Square Solutions will be performed \
@@ -92,7 +90,6 @@ except:
     mpiPrint('CSM_PRE is not available. Surface associations cannot be performed')
     USE_CSM_PRE = False
 
-# import pySNOPT
 # pyOPT/pySNOPT
 try:
     from pyOpt_optimization import Optimization
@@ -242,7 +239,7 @@ file_name=\'filename\' for iges init_type'
             pass
         else:
             mpiPrint('Unknown init type. Valid Init types are \'plot3d\', \
-\'iges\',\'lifting_surface\' and \'acdt\'')
+\'iges\',\'lifting_surface\' and \'acdt_geo\'')
             sys.exit(0)
 
         return
@@ -875,38 +872,89 @@ double degenerate patch at the tip'
         self.nSurf = len(self.surfs) # And last but not least
         return
 
-    def _init_acdt_geo(self,*args,**kwargs):
+ #    def _init_acdt_geo(self,*args,**kwargs):
 
-        assert 'acdt_geo' in kwargs,\
-            'key word argument \'acdt_geo\' Must be specified for \
-init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
+#         assert 'acdt_geo' in kwargs,\
+#             'key word argument \'acdt_geo\' Must be specified for \
+# init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
 
-        if 'fit_type' in kwargs:
-            fit_type = kwargs['fit_type']
-        else:
-            fit_type = 'interpolate'
+#         if 'fit_type' in kwargs:
+#             fit_type = kwargs['fit_type']
+#         else:
+#             fit_type = 'interpolate'
 
-        acg = kwargs['acdt_geo']
-        Components = acg._components
-        ncomp = len(Components)
-        counter = 0
-        self.surfs = []
-        # Write Aircraft Componentss
-        for comp1 in xrange(ncomp):
-            ncomp2 = len(Components[comp1])
-            for comp2 in xrange(ncomp2):
-                counter += 1
-                [m,n] = Components[comp1]._components[comp2].Surface_x.shape
-                X = zeros((m,n,3))
-                X[:,:,0] = Components[comp1]._components[comp2].Surface_x
-                X[:,:,1] = Components[comp1]._components[comp2].Surface_y
-                X[:,:,2] = Components[comp1]._components[comp2].Surface_z
-                self.surfs.append(pySpline.surf_spline(\
-                        fit_type,ku=4,kv=4,X=X,*args,**kwargs))
-            # end for
-        # end for
+#         acg = kwargs['acdt_geo']
+#         Components = acg._components
+#         ncomp = len(Components)
+#         counter = 0
+#         self.surfs = []
+#         # Write Aircraft Componentss
+#         for comp1 in xrange(ncomp):
+#             ncomp2 = len(Components[comp1])
+#             for comp2 in xrange(ncomp2):
+#                 counter += 1
+#                 [m,n] = Components[comp1]._components[comp2].Surface_x.shape
+#                 X = zeros((m,n,3))
+#                 X[:,:,0] = Components[comp1]._components[comp2].Surface_x
+#                 X[:,:,1] = Components[comp1]._components[comp2].Surface_y
+#                 X[:,:,2] = Components[comp1]._components[comp2].Surface_z
+#                 self.surfs.append(pySpline.surf_spline(\
+#                         fit_type,ku=4,kv=4,X=X,*args,**kwargs))
+#             # end for
+#         # end for
 
-        self.nSurf = len(self.surfs)
+#         self.nSurf = len(self.surfs)
+
+
+    def _init_acdt_geo(self,ac,LiftingSurface,BodySurface,Airfoil,*args,**kwargs):
+        '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
+
+        dtor = pi/180
+        self.nSurf = 0
+        Components = ac['_components']
+        nComp = len(Components)
+        geo_objects = []
+
+        for icomp in xrange(nComp):
+            print 'Processing Component: %s'%(ac['_components'][icomp].Name)
+            # Determine Type -> Lifting Surface or Body Surface
+            if isinstance(ac['_components'][icomp],BodySurface):
+                nSubComp = len(Components[icomp])
+                for jcomp in xrange(nSubComp):
+                    [m,n] = Components[icomp]._components[jcomp].Surface_x.shape
+                    X = zeros((m,n,3))
+                    X[:,:,0] = Components[icomp]._components[jcomp].Surface_x
+                    X[:,:,1] = Components[icomp]._components[jcomp].Surface_y
+                    X[:,:,2] = Components[icomp]._components[jcomp].Surface_z
+
+                    self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X))
+                    self.nSurf += 1
+                # end for (subcomp)
+
+            elif isinstance(ac['_components'][icomp],LiftingSurface):
+                nSubComp = len(Components[icomp])
+
+                for jcomp in xrange(nSubComp):
+                    [m,n] = Components[icomp]._components[jcomp].Surface_x.shape
+                    N=  (n-1)/2
+                    X = zeros((2,m,N+1,3))
+                    X[0,:,:,0] = Components[icomp]._components[jcomp].Surface_x[:,0:N+1]
+                    X[0,:,:,1] = Components[icomp]._components[jcomp].Surface_y[:,0:N+1]
+                    X[0,:,:,2] = Components[icomp]._components[jcomp].Surface_z[:,0:N+1]
+
+                    X[1,:,:,0] = Components[icomp]._components[jcomp].Surface_x[:,N:]
+                    X[1,:,:,1] = Components[icomp]._components[jcomp].Surface_y[:,N:]
+                    X[1,:,:,2] = Components[icomp]._components[jcomp].Surface_z[:,N:]
+
+                    self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
+                    self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
+                    self.nSurf += 2
+
+                # end for (sub Comp)
+            # end if (lifting/body type)
+        # end if (Comp Loop)
+
+
 	
 
     def setSymmetry(self,sym_type):
