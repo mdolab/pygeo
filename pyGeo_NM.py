@@ -42,23 +42,33 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 from numpy.linalg import lstsq,inv,norm
 #from scipy import io #Only used for debugging
 
+# geo_utils
+from geo_utils import *
+
 try:
     import petsc4py
     from petsc4py import PETSc
     
     USE_PETSC = True
     #USE_PETSC = False
-    print 'PETSc4py is available. Least Square Solutions will be performed \
-with PETSC'
+    mpiPrint('PETSc4py is available. Least Square Solutions will be performed \
+with PETSC')
     version = petsc4py.__version__
     vals = string.split(version,'.')
     PETSC_MAJOR_VERSION = int(vals[0])
     PETSC_MINOR_VERSION = int(vals[1])
     PETSC_UPDATE        = int(vals[2])
 except:
-    print 'PETSc4py is not available. Least Square Solutions will be performed\
-with LAPACK (Numpy Least Squares)'
+    mpiPrint('PETSc4py is not available. Least Square Solutions will be performed\
+with LAPACK (Numpy Least Squares)')
     USE_PETSC = False
+
+try:
+    import mpi4py
+    from mpi4py import MPI
+except:
+    MPI = None
+# end try
 
 # =============================================================================
 # Extension modules
@@ -68,8 +78,8 @@ with LAPACK (Numpy Least Squares)'
 try:
     import pySpline
 except:
-    print 'pySpline is not available. Ensure the path to pySpline is set in \
-the highest level script'
+    mpiPrint('pySpline is not available. Ensure the path to pySpline is set in \
+the highest level script')
     sys.exit(0)
 # end try
 
@@ -77,13 +87,11 @@ the highest level script'
 try:
     import csm_pre
     USE_CSM_PRE = True
-    print 'CSM_PRE is available. Surface associations can be performed'
+    mpiPrint('CSM_PRE is available. Surface associations can be performed')
 except:
-    print 'CSM_PRE is not available. Surface associations cannot be performed'
+    mpiPrint('CSM_PRE is not available. Surface associations cannot be performed')
     USE_CSM_PRE = False
 
-# geo_utils
-from geo_utils import *
 # import pySNOPT
 # pyOPT/pySNOPT
 try:
@@ -91,8 +99,8 @@ try:
     from pySNOPT import SNOPT
     USE_SNOPT = True
 except:
-    print 'pyOpt_optimization and/or pySnopt are not available. Ensure the path to \
-pyOpt_optimization and pySnopt are set in the highest level script'
+    mpiPrint('pyOpt_optimization and/or pySnopt are not available. Ensure the path to \
+pyOpt_optimization and pySnopt are set in the highest level script')
     USE_SNOPT = False
 
 # =============================================================================
@@ -165,12 +173,11 @@ class pyGeo():
         else:
             self.NO_PRINT = False
         # end if
-        
-        if not self.NO_PRINT:
-            print ' '
-            print '------------------------------------------------'
-            print 'pyGeo Initialization Type is: %s'%(init_type)
-            print '------------------------------------------------'
+
+        mpiPrint(' ',self.NO_PRINT)
+        mpiPrint('------------------------------------------------',self.NO_PRINT)
+        mpiPrint('pyGeo Initialization Type is: %s'%(init_type),self.NO_PRINT)
+        mpiPrint('------------------------------------------------',self.NO_PRINT)
 
         #------------------- pyGeo Class Atributes -----------------
 
@@ -234,8 +241,8 @@ file_name=\'filename\' for iges init_type'
             # Don't do anything 
             pass
         else:
-            print 'Unknown init type. Valid Init types are \'plot3d\', \
-\'iges\',\'lifting_surface\' and \'acdt\''
+            mpiPrint('Unknown init type. Valid Init types are \'plot3d\', \
+\'iges\',\'lifting_surface\' and \'acdt\'')
             sys.exit(0)
 
         return
@@ -247,15 +254,13 @@ file_name=\'filename\' for iges init_type'
     def _readPlot3D(self,file_name,*args,**kwargs):
 
         '''Load a plot3D file and create the splines to go with each patch'''
-        
-        if not self.NO_PRINT:
-            print 'Loading plot3D file: %s ...'%(file_name)
+
+        mpiPrint('Loading plot3D file: %s ...'%(file_name),self.NO_PRINT)
 
         f = open(file_name,'r')
         nSurf = int(f.readline())         # First load the number of patches
 
-        if not self.NO_PRINT:
-            print 'nSurf = %d'%(nSurf)
+        mpiPrint('nSurf = %d'%(nSurf),self.NO_PRINT)
 
         patchSizes = readNValues(f,nSurf*3,'int')
         patchSizes = patchSizes.reshape([nSurf,3])
@@ -269,8 +274,8 @@ file_name=\'filename\' for iges init_type'
         for i in xrange(nSurf):
             nPts += patchSizes[i,0]*patchSizes[i,1]
 
-        if not self.NO_PRINT:
-            print 'Number of Surface Points = %d'%(nPts)
+            
+        mpiPrint('Number of Surface Points = %d'%(nPts),self.NO_PRINT)
 
         dataTemp = readNValues(f,3*nPts,'float')
         
@@ -306,8 +311,7 @@ file_name=\'filename\' for iges init_type'
     def _readIges(self,file_name,*args,**kwargs):
 
         '''Load a Iges file and create the splines to go with each patch'''
-        if not self.NO_PRINT:
-            print 'File Name is: %s'%(file_name)
+        mpiPrint('File Name is: %s'%(file_name),self.NO_PRINT)
         f = open(file_name,'r')
         file = []
         for line in f:
@@ -338,11 +342,10 @@ file_name=\'filename\' for iges init_type'
         # end for
         self.nSurf = len(surf_list)
 
-        if not self.NO_PRINT:
-            print 'Found %d surfaces in Iges File.'%(self.nSurf)
+        mpiPrint('Found %d surfaces in Iges File.'%(self.nSurf),self.NO_PRINT)
 
         self.surfs = [];
-        #print surf_list
+
         weight = []
         for isurf in xrange(self.nSurf):  # Loop over our patches
             data = []
@@ -543,7 +546,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 for j in xrange(N): # This is for the Data points
 
                     if i > 0 and cont[i-1] == 2: # Do a continuity join (from both sides)
-                        print 'cont join FIX ME'
+                        #print 'cont join FIX ME'
                         # Interpolate across each point in the spanwise direction
                         # Take a finite difference to get dv and normalize
                         dv = (X[0,j,start] - X[0,j,start-1])
@@ -617,8 +620,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 start2 = end2-1
             # end for
         
-            print 'Starting Second Loop'
-            print cont
             # Second loop for 1-sided continuity constraints
             start   = breaks[0]
             start2  = nsections[0]
@@ -634,7 +635,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 end2 = start2 + nsections[i]
         
                 if cont[i-1] == -1 and cont[i] == 1: # We have what we're looking for
-                    print 'modifiying'
                     for j in xrange(N): # This is for the Data points
                         dx1 = (X[0,j,start] - X[0,j,start-1])
                         dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
@@ -825,9 +825,6 @@ double degenerate patch at the tip'
                     thicknesses.append(e_dist(top_spline(i/(Ndata-1.0)),bottom_spline(i/(Ndata-1.0)))/thickness0)
                 # end for
 
-                #print 'chords:',chords
-                #print 'thicknesses:',thicknesses
-
                 # Re-read the last airfoil section data
                 X_u,Y_u,X_l,Y_l = read_af(xsections[-1],file_type,N)
                 
@@ -869,7 +866,6 @@ double degenerate patch at the tip'
                 # end for
                 Xnew[:,:,0,:] = X[:,:,-1,:]
                 # Xnew[:,:,-1,:] = tip_line
-                # print 'xnew',Xnew[0,:,-1,:]
                 self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew[0],
                                                        Nctlv=4, *args,**kwargs))
                 
@@ -1108,7 +1104,7 @@ init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
     def calcGlobalNumbering(self,sizes,surface_list=None,node_link=None,
                             edge_list=None,edge_link=None,edge_dir=None):
         '''Internal function to calculate the global/local numbering for each surface'''
-#         print 'sizes:',sizes
+
         if surface_list == None:
             surface_list = range(0,self.nSurf) 
         # end if
@@ -1277,20 +1273,20 @@ the list of surfaces must be the same length'
             edge_dir  = self.edge_dir
         # end if
 
-        print '------------------------------------------------------------------------'
-        print '%3d   %3d'%(len(self.edge_list),len(node_link))
-        print 'Edge Number    |  n0  |  n1  | Cont | Degen|Intsct|  DG  | Nctl |'
+        mpiPrint('------------------------------------------------------------------------')
+        mpiPrint('%3d   %3d'%(len(self.edge_list),len(node_link)))
+        mpiPrint('Edge Number    |  n0  |  n1  | Cont | Degen|Intsct|  DG  | Nctl |')
         for i in xrange(len(self.edge_list)):
             edge_list[i].write_info(i,sys.stdout)
         # end for
-        print 'Surface Number |  n0  |  n1  |  n2  |  n3  |  e0  |  e1  |  e2  |  e3  | dir0 | dir1 | dir2 | dir3 |'
+        mpiPrint('Surface Number |  n0  |  n1  |  n2  |  n3  |  e0  |  e1  |  e2  |  e3  | dir0 | dir1 | dir2 | dir3 |')
         for i in xrange(len(node_link)):
-            print '    %3d        |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d '\
+            mpiPrint('    %3d        |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d '\
                 %(i,node_link[i][0],node_link[i][1],node_link[i][2],node_link[i][3],
                   edge_link[i][0],edge_link[i][1],edge_link[i][2],edge_link[i][3],
-                  edge_dir[i][0],edge_dir[i][1],edge_dir[i][2],edge_dir[i][3])
+                  edge_dir[i][0],edge_dir[i][1],edge_dir[i][2],edge_dir[i][3]))
         # end for
-        print '------------------------------------------------------------------------'
+        mpiPrint('------------------------------------------------------------------------')
         return
 
     def writeEdgeConnectivity(self,file_name):
@@ -1422,8 +1418,7 @@ the list of surfaces must be the same length'
             # end for
         # end for
        
-        if not self.NO_PRINT:
-            print 'Recomputing surfaces...'
+        mpiPrint('Recomputing surfaces...',self.NO_PRINT)
 
         for isurf in xrange(self.nSurf):
             self.surfs[isurf].recompute()
@@ -1519,7 +1514,7 @@ These modules must be imported for global surfaces fitting to take place.'
                     elif edge0 == 3:
                         index = self.l_index[surf0][-1,i]
                     # end if
-                    print index
+
                     if self.sym == 'xy':
                         lower_bound[3*index+2] = 0
                         upper_bound[3*index+2] = 0
@@ -1535,14 +1530,12 @@ These modules must be imported for global surfaces fitting to take place.'
         # end for
 
         locA,indA = self._computeSparsityPattern3()
-        
-        if not self.NO_PRINT:
-            print '------------- Fitting Surfaces Globally ------------------'
-            print 'nPts (Number of Surface Points):',nPts
-            print 'nDV (Degrees of Freedom):',self.ndv
-            print 'nCon (Constraints):',self.ncon
-        # end if
 
+        mpiPrint('------------- Fitting Surfaces Globally ------------------')
+        mpiPrint('nPts (Number of Surface Points):',nPts)
+        mpiPrint('nDV (Degrees of Freedom):',self.ndv)
+        mpiPrint('nCon (Constraints):',self.ncon)
+        
         # Setup Optimization Probelm
         opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
         opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
@@ -2157,7 +2150,7 @@ These modules must be imported for global surfaces fitting to take place.'
             if len(surfaces) == 1: # Its a mirror edge
                 surf0 = surfaces[0][0] # First surface on this edge
                 edge0 = surfaces[0][1] # Edge of surface on this edge     
-                print 'surfaces:',surfaces
+
                 for i in xrange(self.edge_list[iedge].Nctl):
                     if edge0 == 0:
                         index = self.l_index[surf0][i,0]
@@ -2168,7 +2161,7 @@ These modules must be imported for global surfaces fitting to take place.'
                     elif edge0 == 3:
                         index = self.l_index[surf0][-1,i]
                     # end if
-                    print index
+
                     if self.sym == 'xy':
                         lower_bound[3*index+2] = 0
                         upper_bound[3*index+2] = 0
@@ -2185,12 +2178,10 @@ These modules must be imported for global surfaces fitting to take place.'
 
         locA,indA = self._computeSparsityPattern()
 
-        if not self.NO_PRINT:
-            print '------------- Fitting Surfaces Globally ------------------'
-            print 'nPts (Number of Surface Points):',nPts
-            print 'nDV (Degrees of Freedom):',self.ndv
-            print 'nCon (Constraints):',self.ncon
-        # end if
+        print '------------- Fitting Surfaces Globally ------------------'
+        print 'nPts (Number of Surface Points):',nPts
+        print 'nDV (Degrees of Freedom):',self.ndv
+        print 'nCon (Constraints):',self.ncon
 
         # Setup Optimization Probelm
         opt_prob = Optimization('Constrained LMS Fitting',self._objcon)
@@ -2592,8 +2583,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                        point_select=None):
             '''Add surf_ids surfacs to a new reference axis defined by X and
              rot with nsection values'''
-            if not self.NO_PRINT:
-                print 'Adding ref axis...'
+            mpiPrint('Adding ref axis...',self.NO_PRINT)
             # A couple of things can happen here: 
             # 1. nsections < len(X)
             #    -> We do a LMS fit on the ref axis (subsample)
@@ -2603,7 +2593,6 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
             #    -> We reinterpolate before making the ref axis (supersample)
 
 
-            print 'surf_ids:',surf_ids
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
 
@@ -2823,9 +2812,7 @@ a flap hinge line'
         # end for
         
         if isurf_dir == 1: #along v of isurf
-            if not self.NO_PRINT:
-                print 'Reference axis is oriented along v on \
-surface %d'%(isurf)
+            mpiPrint('Reference axis is oriented along v on surface %d'%(isurf),self.NO_PRINT)
             Nctlv = self.surfs[isurf].Nctlv
             Nctlu = self.surfs[isurf].Nctlu
             s = zeros(Nctlv)
@@ -2859,9 +2846,7 @@ surface %d'%(isurf)
 
             return s,1
         else:
-            if not self.NO_PRINT:
-                print 'Reference axis is oriented along u on \
-surface %d'%(isurf)
+            mpiPrint('Reference axis is oriented along u on surface %d'%(isurf),self.NO_PRINT)
             Nctlu = self.surfs[isurf].Nctlu
             Nctlv = self.surfs[isurf].Nctlv
             s = zeros(Nctlu)
@@ -3367,8 +3352,11 @@ surface %d'%(isurf)
         '''Write the pyGeo Object to Tecplot'''
 
         # Open File and output header
-        print ' '
-        print 'Writing Tecplot file: %s '%(file_name)
+        if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
+            return
+        # end if
+        
+        mpiPrint('Writing Tecplot file: %s '%(file_name),self.NO_PRINT)
 
         f = open(file_name,'w')
         f.write ('VARIABLES = "X", "Y","Z"\n')
@@ -3639,9 +3627,8 @@ surface %d'%(isurf)
         lie on the edges between surfaces. Often, these points must be used
         twice on two different surfaces for load/displacement transfer.        
         '''
-        if not self.NO_PRINT:
-            print ''
-            print 'Attaching a discrete surface to the Geometry Object...'
+        
+        mpiPrint('Attaching a discrete surface to the Geometry Object...',self.NO_PRINT)
 
         if patch_list == None:
             patch_list = range(self.nSurf)
@@ -3689,8 +3676,7 @@ surface %d'%(isurf)
         # end for
 
         # Now run the csm_pre command 
-        if not self.NO_PRINT:
-            print 'Running CSM_PRE...'
+        mpiPrint('Running CSM_PRE...',self.NO_PRINT)
         [dist,nearest_elem,uvw,base_coord,weightt,weightr] = \
             csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
 
@@ -3746,8 +3732,7 @@ surface %d'%(isurf)
 
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()
-        if not self.NO_PRINT:
-            print 'Done Surface Attachment'
+        mpiPrint('Done Surface Attachment',self.NO_PRINT)
 
         return dist,patchID,uv
   
@@ -3810,8 +3795,7 @@ surface %d'%(isurf)
     def calcSurfaceDerivative(self,patchID,uv,indices=None,dPtdCoef=None):
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
-        if not self.NO_PRINT:
-            print 'Calculating Surface Derivative for %d Points...'%(len(patchID))
+        mpiPrint('Calculating Surface Derivative for %d Points...'%(len(patchID)),self.NO_PRINT)
         timeA = time.time()
         
         if USE_PETSC:
@@ -3883,8 +3867,7 @@ surface %d'%(isurf)
 
         self.dPtdCoef = dPtdCoef # Make sure we're dealing with the same matrix
 
-        if not self.NO_PRINT:
-            print 'Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA)
+        mpiPrint('Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA),self.NO_PRINT)
 
         return
 
