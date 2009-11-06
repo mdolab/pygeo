@@ -13,13 +13,13 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # =============================================================================
 # Extension modules
 # =============================================================================
-from matplotlib.pylab import *
 
 # pySpline
 sys.path.append('../../pySpline/python')
 
 #pyGeo
 sys.path.append('../')
+
 import pyGeo_NM as pyGeo
 from geo_utils import *
 
@@ -36,76 +36,42 @@ from pyGeometry_airfoil import Airfoil
 # ------------------------------------------
 
 input = {
-    'Name':'B737',
+    'Name':'Rutan Long Ez',
     '_components':{
         0:BodySurface({
-                'Name':'Fuselage',
-                'Type':'Closed',
-                'xLoc':0.0,'yLoc':0.0,'zLoc':0.0,
-                'xRot':0.0,'yRot':0.0,'zRot':0.0,
-                '_components':{
-                    0:{'Name':'Cockpit','Length':20.0,'fwd_Radius':0.0,'fwd_lShape':1.0,'aft_Radius':6.0,'aft_lShape':1.0,'_components':{0:{'BodyCockpit':{'a1':0.7,'c1':0.8,'a2':1.0,'b2':0.8}}}},
-                    1:{'Name':'Cabin'  ,'Length':55.0,'fwd_Radius':6.0,'fwd_lShape':2.0,'aft_Radius':6.0,'aft_lShape':2.0,'_components':{0:{'BodyFairing':{'rad_Loc':'Low','fwd_Loc':0.3,'aft_Loc':0.7,'hRatio':1.0,'vRatio':1.2,'rShape':0.7,'lShape':2.0,'alpha':10.0}}}},
-                    2:{'Name':'Tail'   ,'Length':30.0,'fwd_Radius':6.0,'fwd_lShape':1.0,'aft_Radius':1.0,'aft_Ratio':5.0,'aft_rShape':0.2,'aft_lShape':1.0,'aft_vOffset':3.5,'dySlope':0.5,'dzSlope':0.5,},
-                    }
-                }),
+            'Name':'Body',
+            'Type':'Closed',
+            'xLoc':-0.333,'yLoc':0.0,'zLoc':0.0,
+            'xRot':0.0,'yRot':0.0,'zRot':0.0,
+            '_components':{
+                0:{'Name':'Section 0','Length':04.33,'fwd_Radius':0.00,'fwd_Ratio':1.000,'fwd_rShape':0.5,'fwd_lShape':1.6,'fwd_vOffset':0.0,'aft_Radius':0.986,'aft_Ratio':1.000,'aft_rShape':0.5,'aft_lShape':1.0,'aft_vOffset':0.5,'dySlope':1.0,'dzSlope':0.70},
+                1:{'Name':'Section 1','Length':06.5,'fwd_Radius':0.986,'fwd_Ratio':1.000,'fwd_rShape':0.5,'fwd_lShape':1.0,'fwd_vOffset': 0.0,'aft_Radius':0.986,'aft_Ratio':1.0,'aft_rShape':0.5,'aft_lShape':0.5,'aft_vOffset': 0.0},
+                2:{'Name':'Section 2','Length':3.0,'fwd_Radius':0.986,'fwd_Ratio':1.000,'fwd_rShape':0.5,'fwd_lShape':1.0,'fwd_vOffset': 0.00,'aft_Radius':0.020,'aft_Ratio':1.0,'aft_rShape':0.50,'aft_lShape':1.0,'aft_vOffset': 0.30,'dySlope':0.5,'dzSlope':0.35},
+            }
+        }),
         1:LiftingSurface({
-                'Name':'Wing',
-                'Symmetry':True,
-                'xrLE':35.00,'yrLE':0.0,'zrLE':-5.0,
-                'xRot':0.0,'yRot':0.0,'zRot':0.0,
-                '_components':{
-                    0:{'Name':'Internal Segment','Type':'internal','Area':100.0,'Span':02.5,'Taper':0.7,'SweepLE':25.0,'Dihedral':0.0 ,'xc_offset':0.0,'root_Incidence': 1.0,'root_Thickness':0.14,'root_Airfoil_type':'naca5','root_Airfoil_ID':'230xx','tip_Incidence': 1.0,'tip_Thickness':0.14,'tip_Airfoil_type':'naca5','tip_Airfoil_ID':'230xx'},
-                    1:{'Name':'Inner Segment'   ,'Type':'external','Area':220.0,'Span':15.0,'Taper':0.6,'SweepLE':25.0,'Dihedral':3.0 ,'xc_offset':0.0,'root_Incidence': 1.0,'root_Thickness':0.14,'root_Airfoil_type':'naca5','root_Airfoil_ID':'230xx','tip_Incidence':-2.0,'tip_Thickness':0.12,'tip_Airfoil_type':'naca5','tip_Airfoil_ID':'230xx'},
-                    2:{'Name':'Outer Segment'   ,'Type':'external','Area':220.0,'Span':30.0,'Taper':0.4,'SweepLE':30.0,'Dihedral':6.0 ,'xc_offset':0.0,'root_Incidence':-2.0,'root_Thickness':0.12,'root_Airfoil_type':'naca5','root_Airfoil_ID':'230xx','tip_Incidence':-3.0,'tip_Thickness':0.11,'tip_Airfoil_type':'naca5','tip_Airfoil_ID':'230xx'},
-                    3:{'Name':'Wingtip Segment' ,'Type':'wingtip' ,'Area':006.0,'Span':01.0,'Taper':0.7,'SweepLE':60.0,'Dihedral':6.0 ,'xc_offset':0.0,'root_Incidence':-3.0,'root_Thickness':0.11,'root_Airfoil_type':'naca5','root_Airfoil_ID':'230xx','tip_Incidence': 0.0,'tip_Thickness':0.10,'tip_Airfoil_type':'naca5','tip_Airfoil_ID':'230xx'},
-                    4:{'Name':'Winglet Segment' ,'Type':'winglet' ,'Area':025.0,'Span':05.0,'Taper':0.5,'SweepLE':45.0,'Dihedral':90.0,'xc_offset':0.0,'root_Incidence': 0.0,'root_Thickness':0.10,'root_Airfoil_type':'naca5','root_Airfoil_ID':'230xx','tip_Incidence': 0.0,'tip_Thickness':0.00,'tip_Airfoil_type':'naca5','tip_Airfoil_ID':'230xx'},
-                    },
-                }),
+            'Name':'Wing',
+            'Symmetry':True,
+            'xrLE':2.23,'yrLE':0.0,'zrLE':0.8166,
+            'xRot':0.0,'yRot':0.0,'zRot':0.0,
+            '_components':{
+                0:{'Name':'Segment 1','Type':'external','Area':17.5,'Span':2,'Taper':0.57,'SweepLE':65.0,'Dihedral':-1.5,'xc_offset':0.0,'root_Incidence':0.5,'root_Thickness':0.07,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence':0.50,'tip_Thickness':0.10,'tip_Airfoil_type':'datafile','tip_Airfoil_ID':'e1230.dat'},
+                1:{'Name':'Segment 1','Type':'external','Area':14.8779,'Span':3.0,'Taper':0.5454,'SweepLE':50.0,'Dihedral':-1.5,'xc_offset':0.0,'root_Incidence':0.5,'root_Thickness':0.10,'root_Airfoil_type':'datafile','root_Airfoil_ID':'e1230.dat','tip_Incidence':0.50,'tip_Thickness':0.16,'tip_Airfoil_type':'datafile','tip_Airfoil_ID':'e1230.dat'},
+                2:{'Name':'Segment 1','Type':'external','Area':22.84,'Span':8.579,'Taper':0.5,'SweepLE':25.0,'Dihedral':-1.5,'xc_offset':0.0,'root_Incidence':0.5,'root_Thickness':0.16,'root_Airfoil_type':'datafile','root_Airfoil_ID':'e1230.dat','tip_Incidence':0.50,'tip_Thickness':0.16,'tip_Airfoil_type':'datafile','tip_Airfoil_ID':'e1230.dat'},
+                3:{'Name':'Segment 1','Type':'winglet','Area':6.5,'Span':4.14,'Taper':0.45,'SweepLE':25.0,'Dihedral':89,'xc_offset':0.0,'root_Incidence':0.5,'root_Thickness':0.16,'root_Airfoil_type':'datafile','root_Airfoil_ID':'e1230.dat','tip_Incidence':0.50,'tip_Thickness':0.0,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'},
+            },
+        }),
         2:LiftingSurface({
-                'Name':'Horizontal Tail',
-                'Symmetry':True,
-                'xrLE':93.45,'yrLE':0.0,'zrLE':3.50,
-                'xRot':0.0,'yRot':0.0,'zRot':0.0,
-                '_components':{
-					0:{'Name':'External Segment','Type':'external','Area':168.5,'Span':20.8306,'Taper':0.26,'SweepLE':35.0,'Dihedral':7.0 ,'xc_offset':0.0,'root_Incidence':0.0,'root_Thickness':0.12,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence':0.0,'tip_Thickness':0.00,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'},
-                                        },
-                }),
-        3:LiftingSurface({
-                'Name':'Vertical Tail',
-                'Symmetry':False,
-                'xrLE':84.85,'yrLE':0.0,'zrLE':3.45,
-                'xRot':0.0,'yRot':0.0,'zRot':0.0,
-                '_components':{
-                    0:{'Name':'External Segment','Type':'external','Area':248.97,'Span':19.70,'Taper':0.31,'SweepLE':40.0,'Dihedral':90.0 ,'xc_offset':0.0,'root_Incidence':0.0,'root_Thickness':0.12,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence':0.0,'tip_Thickness':0.00,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'},
-                    }
-                }),
-        },
-   }
-
-# # ------------------------------------------
-# #             MDA Wing Example
-# # ------------------------------------------
-
-# input = {
-#     'Name':'MDA_Wing',
-#     '_components':{
-#     0:LiftingSurface({
-#     'Name':'Wing',
-#     'Symmetry':False,
-#     'xrLE':0.00,'yrLE':0.0,'zrLE':0.0,
-#     'xRot':0.0,'yRot':0.0,'zRot':0.0,
-#     '_components':{
-#     0:{'Name':'External Segment','Type':'internal','Area':3.9825,'Span':4.5,'Taper':0.77,'SweepLE':10.0,'Dihedral':0.0 ,'xc_offset':0.0,'root_Incidence': 0.0,'root_Thickness':0.12,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence': 0.0,'tip_Thickness':0.12,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'},
-#     1:{'Name':'External Segment','Type':'external','Area':0.38,'Span':0.5,'Taper':0.974,'SweepLE':10.0,'Dihedral':0.0 ,'xc_offset':0.0,'root_Incidence': 0.0,'root_Thickness':0.12,'root_Airfoil_type':'naca4','root_Airfoil_ID':'00xx','tip_Incidence': 0.0,'tip_Thickness':0.00,'tip_Airfoil_type':'naca4','tip_Airfoil_ID':'00xx'}}}),
-#     }
-#     }
-
-geo_objects = createGeometryFromACDT(input,LiftingSurface,BodySurface,Airfoil,pyGeo)
-
-print 'We have %d geo objects'%(len(geo_objects))
-
-for i in xrange(len(geo_objects)):
-
-    geo_objects[i].writeTecplot('../output/ACDT_output/%d.dat'%(i))
-
+            'Name':'Canard',
+            'Symmetry':True,
+            'xrLE':1.525,'yrLE':0.0,'zrLE':0.94,
+            'xRot':0.0,'yRot':0.0,'zRot':0.0,
+            '_components':{
+                0:{'Name':'Segment 1','Type':'external','Area':7.0,'Span':5.91,'Taper':1.0,'SweepLE':0.0,'Dihedral':-0.15,'xc_offset':0.0,'root_Incidence':1.0,'root_Thickness':0.19,'root_Airfoil_type':'datafile','root_Airfoil_ID':'gu255118.dat','tip_Incidence':1.0,'tip_Thickness':0.19,'tip_Airfoil_type':'datafile','tip_Airfoil_ID':'gu255118.dat'},
+            },
+        }),
+    },
+}
+full_aircraft = pyGeo.pyGeo('acdt_geo',input,LiftingSurface,BodySurface,Airfoil)
+full_aircraft.writeTecplot('acdt_aircraft.dat',orig=True)
+full_aircraft.writeIGES('../input/acdt_aircraft.igs')

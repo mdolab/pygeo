@@ -6,9 +6,6 @@ from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan
 import string ,sys
 
-#Qsys.path.append('../pySpline')
-#import pySpline
-
 try:
     import mpi4py
     from mpi4py import MPI
