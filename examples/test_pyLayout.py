@@ -19,7 +19,6 @@ petsc4py.init(sys.argv)
 
 # pySpline 
 sys.path.append('../../pySpline/python')
-import pySpline
 
 #cfd-csm pre (Optional)
 sys.path.append('../../../pyHF/pycfd-csm/python/')
@@ -32,10 +31,12 @@ sys.path.append('../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 
 #pyGeo
 sys.path.append('../')
+import pySpline
 import pyGeo_NM as pyGeo
 
 #geo_utils
 from geo_utils import *
+
 
 #pyLayout
 sys.path.append('../../pyLayout/')
@@ -94,7 +95,7 @@ wing.fitSurfaces3()
 wing.writeTecplot('../output/wing.dat')
 wing.writeIGES('../input/wing.igs')
 
-sys.exit(0)
+#sys.exit(0)
 # ------------------------------------------------------------------
 print '---------------------------'
 print 'Attaching Reference Axis...'
