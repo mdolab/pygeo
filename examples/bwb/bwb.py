@@ -76,7 +76,7 @@ bwb.setSymmetry('xy')
 bwb.readEdgeConnectivity('bwb.con')
 bwb.propagateKnotVectors()
 
-bwb.fitSurfaces(nIter=100,constr_tol=1e-8,opt_tol=1e-6)
+#bwb.fitSurfaces(nIter=100,constr_tol=1e-8,opt_tol=1e-6)
 bwb.coef*=SCALE
 bwb.update()
 bwb.writeIGES('../../input/bwb_constr1.igs')
@@ -85,7 +85,7 @@ bwb.writeIGES('../../input/bwb_constr1.igs')
 # bwb.writeIGES('../../input/bwb_constr2.igs')
 # #bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
 
-sys.exit(0)
+#sys.exit(0)
 
 # Read the IGES file
 bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr2.igs')

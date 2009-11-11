@@ -128,7 +128,7 @@ panel.associateGeometry( bwb )
 mpiPrint(' * * Updating surface points * *')
 panel.updatePoints()
 
-# Set up a forward flight condition
+# Set up a forward flight condition (Steady)
 alpha = 3.0
 beta = 0.0
 Cwb = TriPan.getWindFrame( alpha, beta )
@@ -139,8 +139,46 @@ VInf = 100.0
 OmegaInf = 0.0
 Ry = 0.0
 Rz = 0.0
-
 panel.triPanel.setVelocity( VInf, OmegaInf, Ry, Rz, C.flatten() )
+
+
+# Set up the trajectory for an unsteady simualtion
+Vinf = 10
+omega = .1
+def PosRot(t):
+    '''Calulate the position and rotation of the body as a function of time'''
+    X = zeros(3)
+    Rot = zeros(3)
+    X[0] = -Vinf*t
+    X[1] = 0.0
+    X[2] = 0.0
+
+    Rot[0] = 0.0
+    Rot[1] = sin(omega*t)
+    Rot[2] = 0.0
+
+    return X,Rot
+
+def PosRot_dot(t):
+    '''Caclualte the time derivative of the position and rotation of
+    the body as a function of time'''
+    Xdot = zeros(3)
+    Rotdot = zeros(3)
+
+    Xdot[0] = =Vinf
+    Xdot[1] = 0.0
+    Xdot[2] = 0.0
+
+    Rotdot[0] = 0.0
+    Rotdot[1] = omega*cos(omega*t)
+    Rotdot[2] = 0.0
+
+    return Xdot,Rotdot
+
+panel.setTrajectory(PosRot,PosRot_dot)
+
+
+
 
 panel.linearSolve()
 # panel.triPanel.writeLiftDistribution( 'lift_distribution.dat', panel.computeLiftDirection(), linspace(0.01, 0.9, 75) )
