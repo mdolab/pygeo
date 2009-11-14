@@ -60,25 +60,23 @@ except:
 # Start of Script
 # ==============================================================================
 
-# Run the geometry data script
-execfile('bwb_data.py')
-
 # We will assume all the geometry pre-processing has been
 # completed...all we have left for geometry import is .igs file and .con file
 
 # Read the IGES file
-bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr1.igs')
-bwb.readEdgeConnectivity('bwb.con')
-bwb.setSymmetry('xy')
+as_wing = pyGeo.pyGeo('iges',file_name='./as_wing.igs')
+as_wing.readEdgeConnectivity('as_wing.con')
+as_wing.setSymmetry('xy')
 
 mpiPrint('---------------------------')
 mpiPrint('Attaching Reference Axis...')
 mpiPrint('---------------------------')
 
 # Add a single reference axis:
-ref_axis_x = array([[.43,0,0],[.9648,.025,.9525]])
+
+ref_axis_x = array([[0,0,0],[0,0,4]])
 rot = zeros_like(ref_axis_x)
-bwb.addRefAxis([0,1,2,3,4,5,6,7],ref_axis_x,rot,nrefsecs=5)
+as_wing.addRefAxis([0,1,2,3],ref_axis_x,rot,nrefsecs=5)
 mpiPrint('Done Ref Axis Adding!')
 
 mpiPrint('------------------------------')
@@ -91,43 +89,35 @@ def twist(vals,ref_axis):
     return ref_axis
 
 mpiPrint(' ** Adding Global Design Variables **')
-bwb.addGeoDVGlobal('twist',zeros(ntwist),-10,10,twist)
-bwb.calcCtlDeriv()
-bwb.writeTecplot('bwb.dat',ref_axis=True,links=True)
+as_wing.addGeoDVGlobal('twist',zeros(ntwist),-10,10,twist)
+as_wing.calcCtlDeriv()
 
 mpiPrint('---------------------------')
 mpiPrint('      TriPan Setup')
 mpiPrint('---------------------------')
 
-fname = 'bwb_coarse_no_tip.dtx'
-Xtip   = [ 164.925,18.7373,144.5]
-Xbase  = [ 150.290,5.22604,140]
-Xbase2 = [ 149.686,3.72889,138]
-Xroot = [145.422,0,0]
+fname = 'as_wing_coarse.dtx'
+Xtip   = [ .558,0,4.09]
+Xroot = [1,0,0]
 
 use_tripan_file = False
 if use_tripan_file:
-    fname = 'bwb_coarse_no_tip.tripan'
-    wakeFile = 'bwb_coarse_no_tip.wake'
-    tp = TriPan.getTriPanDefaults()
-    tp['Nu'] = 50
-    tp['Nv'] = 50
-    panel = TriPan.TriPan( fname, 'tripan', wakeFile=wakeFile,tp_params=tp)
+   pass
 else:
     tp = TriPan.getTriPanDefaults()
     tp['Nu'] = 50
     tp['Nv'] = 50
-    panel = TriPan.TriPan( fname, 'datex', outFile='bwb_coarse_no_tip.tripan',
-                           wakeInfo = [[Xtip,Xbase],[Xbase,Xbase2],[Xbase2,Xroot]],
-                           reverseNormals=False, wakeOutFile='bwb_coarse_no_tip.wake',
+    tp['time_dependent'] = 1
+    panel = TriPan.TriPan( fname, 'datex', outFile='as_wing_coarse.tripan',
+                           wakeInfo = [[Xtip,Xroot]],reverseNormals=False,
+                           wakeOutFile='as_wing_coarse.wake',
                            tp_params=tp)
 # end if
 
-mpiPrint(' * * Associating bwb geometry * *')
-panel.associateGeometry( bwb )
+mpiPrint(' * * Associating as_wing geometry * *')
+panel.associateGeometry( as_wing )
 mpiPrint(' * * Updating surface points * *')
 panel.updatePoints()
-
 
 # Set up the trajectory for an unsteady simualtion Note for the
 # pyGeo-Aerosurf coordinate system...+x free strem, +y up, +z out left
@@ -136,133 +126,55 @@ panel.updatePoints()
 # Rot[1] = Yaw Angle
 # Rot[2] = Pitch Angle
 #
-# The rotations are applied in the usualy yaw-pitch-roll sequence
+def getBodyRotation(rot):
+    '''
+    Return the tranformation to rotate the body coordinates based on
+    the roll-pitch-roll angles given in rot. Note: rot is the rotations
+    about x-y-z as given in the pyGeo/Aerosurf z-out-the-wing
+    orientation. However, the are applied in the roll-pitch-yaw fashion:
+    i.e. x-z-y
+    '''
+    Cyaw = array( [ [ cos(rot[1]), 0.0, sin(rot[1]) ],
+                          [ 0.0, 1.0, 0.0 ],
+                          [ -sin(rot[1]), 0.0, cos(rot[1]) ] ] )
 
-Vinf = 10
-omega = .1
-def PosRot(t):
-    '''Calulate the position and rotation of the body as a function of time'''
-    X = zeros(3)
-    Rot = zeros(3)
-    X[0] = -Vinf*t
-    X[1] = 0.0
-    X[2] = 0.0
+    Cpitch = array( [ [ cos(rot[2]), - sin(rot[2]), 0.0 ],
+                          [ sin(rot[2]),   cos(rot[2]), 0.0 ],
+                          [ 0.0, 0.0, 1.0 ] ] )
 
-    Rot[0] = 0.0 # Roll Angle
-    Rot[1] = 0.0 # Yaw Angle
-    Rot[2] = 0.0 # Pitch Angle
+    Croll = array( [ [ 1.0, 0.0, 0.0], 
+                           [ 0.0, cos(rot[0]),  -sin(rot[0]) ],
+                           [ 0.0, sin(rot[0]),  cos(rot[0])] ] )
 
-    return X,Rot
-
-def PosRot_dot(t):
-    '''Caclualte the time derivative of the position and rotation of
-    the body as a function of time'''
-    Xdot = zeros(3)
-    Rotdot = zeros(3)
-
-    Xdot[0] = -Vinf
-    Xdot[1] = 0.0
-    Xdot[2] = 0.0
-
-    Rotdot[0] = 0.0
-    Rotdot[1] = 0.0
-    Rotdot[2] = 0.0
-
-    return Xdot,Rotdot
-
-a0 = 0 # Constant angle of attack
-omega = .1 # rad/sec
-R     = 10 # meters
-# Vinf = 1 = omega*R
-
-# def PosRot(t):
-#     '''Calulate the position and rotation of the body as a function of time'''
-#     X = zeros(3)
-#     Rot = zeros(3)
-#     X[0] = -R*cos(-omega*t + pi/2)
-#     X[1] = -R*sin(-omega*t + pi/2)
-#     X[2] = 0.0
-
-#     Rot[0] = 0.0 
-#     Rot[1] = 0.0
-#     Rot[2] = omega*t
-
-#     return X,Rot
-
-# def PosRot_dot(t):
-#     '''Caclualte the time derivative of the position and rotation of
-#     the body as a function of time'''
-#     Xdot = zeros(3)
-#     Rotdot = zeros(3)
-
-#     Xdot[0] = -omega*R*sin(-omega*t + pi/2)
-#     Xdot[1] = omega*R*cos(-omega*t + pi/2)
-#     Xdot[2] = 0.0
-
-#     Rotdot[0] = 0.0
-#     Rotdot[1] = 0.0
-#     Rotdot[2] = omega
-
-#     return Xdot,Rotdot
+    return dot(Cyaw,dot(Cpitch,Croll))
 
 U = 10
-def PosRot(t):
-    '''Calulate the position and rotation of the body as a function of time'''
-    X = zeros(3)
-    Rot = zeros(3)
-    X[0] = -U*t
-    X[1] = 0.0
-    X[2] = 0.0
+omega = 10
+def getPoint( t ):
+    '''Return the positon, velocity, angular velocity and rotation matrix for the given time'''
+    
+    R = zeros(3)
+    R[0] = -U*t
 
-    Rot[0] = 0.0 
-    Rot[1] = 0.0
-    Rot[2] = -(5*pi/180)*sin(omega*t)
+    V = zeros(3)
+    V[0] = -U
 
-    return X,Rot
+    rot = zeros(3)
+    rot[2]  =  -(5*pi/180)*sin(omega*t)
+    Cbe = getBodyRotation(rot)
 
-def PosRot_dot(t):
-    '''Caclualte the time derivative of the position and rotation of
-    the body as a function of time'''
-    Xdot = zeros(3)
-    Rotdot = zeros(3)
+    Omega = zeros(3)
+    Omega[2] = -(5*pi/180)*cos(omega*t)*omega # Pitch Angle
+    
+    return R, V, Omega, Cbe.flatten()
 
-    Xdot[0] = -U
-    Xdot[1] = 0.0
-    Xdot[2] = 0.0
+steps = 144
+time_max = 24*pi/omega
+dt = time_max/(steps-1)
 
-    Rotdot[0] = 0.0 # Roll Angle
-    Rotdot[1] = 0.0 # Yaw Angle
-    Rotdot[2] = -(5*pi/180)*cos(omega*t)*omega # Pitch Angle
+panel.timeSolve( getPoint, steps=steps, dt=dt, init_dist=0.05 )
 
-    return Xdot,Rotdot
-
-
-
-panel.setTrajectory(PosRot,PosRot_dot)
-
-# Set up a forward flight condition (Steady)
-# alpha = 0.0
-# beta = 0.0
-# Cwb = TriPan.getWindFrame( alpha, beta )
-# Cbe = TriPan.getForwardFrame()
-# C = dot( Cwb, Cbe )
-
-# VInf = 100.0
-# OmegaInf = 0.0
-# Ry = 0.0
-# Rz = 0.0
-# panel.triPanel.setVelocity( VInf, OmegaInf, Ry, Rz, C.flatten() )
-
-#panel.linearSolve()
-panel.unsteadySim(2*pi*10,36)
-
-# panel.triPanel.writeLiftDistribution( 'lift_distribution.dat', panel.computeLiftDirection(), linspace(0.01, 0.9, 75) )
-
-# panel.triPanel.writeSectionalCp( 'cp_distZ=1.dat', 0.25 )
-# panel.triPanel.writeSectionalCp( 'cp_distZ=2.dat', 0.5 )
-# panel.triPanel.writeSectionalCp( 'cp_distZ=3.dat', 0.75 )
-
-panel.writeSolution(outfile='bwb_tripan_sol.dat',wake_outfile='bwb_wake.dat')
+sys.exit(0)
 
 mpiPrint('---------------------------')
 mpiPrint('      pyLayout Setup'       )
@@ -270,16 +182,16 @@ mpiPrint('---------------------------')
  
 MAX_SPARS = 2  # This is the same for each spanwise section
 Nsection = 4
-wing_box = pyLayout.Layout(bwb,Nsection,MAX_SPARS)
+wing_box = pyLayout.Layout(as_wing,Nsection,MAX_SPARS)
 
 # Create the full set of rib data for the main body/wing section (out
 # as far as winglet blend)
 
 # Load in the digitized data
 # Use the digitize it data for the planform:
-le_spar_list = array(loadtxt('bwb_le_spar.out'))
-te_spar_list = array(loadtxt('bwb_te_spar.out'))
-rib_list     = array(loadtxt('bwb_rib_list.out'))
+le_spar_list = array(loadtxt('as_wing_le_spar.out'))
+te_spar_list = array(loadtxt('as_wing_te_spar.out'))
+rib_list     = array(loadtxt('as_wing_rib_list.out'))
 
 # Now make a ONE-DIMENSIONAL spline for each of the le and trailing edes
 le_spar_spline = pySpline.linear_spline(task='interpolate',k=2,X=le_spar_list[:,1],s=le_spar_list[:,0])
@@ -400,10 +312,10 @@ te_list3 = zeros((MAX_RIBS3,3)) # Make them the same as the Rib list...not neces
 
 le_list3[0] = le_list[-1]
 te_list3[0] = te_list[-1]
-le_list3[1] = bwb.surfs[4].getValue(0,0.5)+[2.5,0,0]
-te_list3[1] = bwb.surfs[4].getValue(1,0.5)-[2.5,0,0]
-le_list3[2] = bwb.surfs[4].getValue(0,1) + [2.5,0,0]
-te_list3[2] = bwb.surfs[4].getValue(1,1) - [2.5,0,0]
+le_list3[1] = as_wing.surfs[4].getValue(0,0.5)+[2.5,0,0]
+te_list3[1] = as_wing.surfs[4].getValue(1,0.5)-[2.5,0,0]
+le_list3[2] = as_wing.surfs[4].getValue(0,1) + [2.5,0,0]
+te_list3[2] = as_wing.surfs[4].getValue(1,1) - [2.5,0,0]
 
 domain3 = pyLayout.domain(le_list3,te_list3)
 
@@ -443,8 +355,8 @@ MAX_RIBS4 = 8
 le_list4 = zeros((MAX_RIBS4,3)) # Make them the same as the Rib list...not necessary but should work
 te_list4 = zeros((MAX_RIBS4,3)) # Make them the same as the Rib list...not necessary but should work
 
-le_list4[:] = bwb.surfs[6].getValueV(zeros(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) + [.85,0,0]
-te_list4[:] = bwb.surfs[6].getValueV(ones(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) - [.5,0,0]
+le_list4[:] = as_wing.surfs[6].getValueV(zeros(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) + [.85,0,0]
+te_list4[:] = as_wing.surfs[6].getValueV(ones(MAX_RIBS4),linspace(0,1,MAX_RIBS4)) - [.5,0,0]
 domain4 = pyLayout.domain(le_list4,te_list4)
 
 # # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
@@ -474,5 +386,5 @@ def4 = pyLayout.struct_def(MAX_RIBS4,MAX_SPARS,domain4,surfs,spar_con,
                            
 wing_box.addSection(def4)
 
-wing_box.writeTecplot('./bwb_layout.dat')
+wing_box.writeTecplot('./as_wing_layout.dat')
 wing_box.finalize()
