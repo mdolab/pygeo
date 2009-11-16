@@ -108,6 +108,7 @@ else:
     tp['Nu'] = 50
     tp['Nv'] = 50
     tp['time_dependent'] = 1
+    tp['n_downstream'] = 144
     panel = TriPan.TriPan( fname, 'datex', outFile='as_wing_coarse.tripan',
                            wakeInfo = [[Xtip,Xroot]],reverseNormals=False,
                            wakeOutFile='as_wing_coarse.wake',
@@ -148,29 +149,57 @@ def getBodyRotation(rot):
 
     return dot(Cyaw,dot(Cpitch,Croll))
 
-U = 10
-omega = 10
+# ----- Pitching Motion ---------
+# U = 10
+# omega = 10
+# def getPoint( t ):
+#     '''Return the positon, velocity, angular velocity and rotation matrix for the given time'''
+    
+#     R = zeros(3)
+#     R[0] = -U*t
+
+#     V = zeros(3)
+#     V[0] = -U
+
+#     rot = zeros(3)
+#     rot[2]  =  -(5*pi/180)*sin(omega*t)
+#     Cbe = getBodyRotation(rot)
+
+#     Omega = zeros(3)
+#     Omega[2] = -(5*pi/180)*cos(omega*t)*omega # Pitch Angle
+    
+#     return R, V, Omega, Cbe.flatten()
+
+#----- Plunging Motion --------
+U = 1.56
+h0 = .019
+omega = 4.26*2*pi
+c = 1
+mpiPrint('Reduced Frequency: %f'%(omega*c/(2*U)))
+
 def getPoint( t ):
     '''Return the positon, velocity, angular velocity and rotation matrix for the given time'''
     
     R = zeros(3)
     R[0] = -U*t
+    R[1] = h0*sin(omega*t)
 
     V = zeros(3)
     V[0] = -U
+    V[1] = omega*h0*cos(omega*t)
 
     rot = zeros(3)
-    rot[2]  =  -(5*pi/180)*sin(omega*t)
     Cbe = getBodyRotation(rot)
 
     Omega = zeros(3)
-    Omega[2] = -(5*pi/180)*cos(omega*t)*omega # Pitch Angle
     
     return R, V, Omega, Cbe.flatten()
 
 steps = 144
-time_max = 24*pi/omega
-dt = time_max/(steps-1)
+#time_max = 24*pi/omega
+#dt = time_max/(steps-1)
+dt = (2/U)/steps
+mpiPrint('Max Sim Time: %f'%(dt*steps))
 
 panel.timeSolve( getPoint, steps=steps, dt=dt, init_dist=0.05 )
 
