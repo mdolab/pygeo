@@ -33,11 +33,11 @@ sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 
 #pyGeo
 sys.path.append('../../')
-import pyGeo_NM as pyGeo
+import pyGeo
 
 #pyLayout
 sys.path.append('../../../pyLayout/')
-import pyLayout_NM as pyLayout
+import pyLayout
 
 #Matplotlib
 try:

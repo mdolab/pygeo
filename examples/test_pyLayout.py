@@ -32,7 +32,7 @@ sys.path.append('../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 #pyGeo
 sys.path.append('../')
 import pySpline
-import pyGeo_NM as pyGeo
+import pyGeo
 
 #geo_utils
 from geo_utils import *
@@ -40,7 +40,7 @@ from geo_utils import *
 
 #pyLayout
 sys.path.append('../../pyLayout/')
-import pyLayout_NM as pyLayout
+import pyLayout
 
 #Design Variable Functions
 from dv_funcs import *

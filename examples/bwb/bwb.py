@@ -35,10 +35,10 @@ sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 import pySpline
 
 #pyGeo
-import pyGeo_NM as pyGeo
+import pyGeo
 
 #pyLayout
-import pyLayout_NM as pyLayout
+import pyLayout
 
 #Design Variable Functions
 sys.path.append('../')

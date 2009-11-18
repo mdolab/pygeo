@@ -39,10 +39,10 @@ from geo_utils import *
 import pySpline
 
 #pyGeo
-import pyGeo_NM as pyGeo
+import pyGeo
 
 #pyLayout
-import pyLayout_NM as pyLayout
+import pyLayout
 
 # TACS
 from pyTACS import TACS
@@ -104,6 +104,7 @@ wing_box = pyLayout.Layout(c172,Nsection,MAX_SPARS)
 # ---------- Create the First Domain -- First 7 ribs
 
 MAX_RIBS = 7
+
 
 le_list = array([[.2*1.67,0,0],[.2*1.67,0,2.5]])
 te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])

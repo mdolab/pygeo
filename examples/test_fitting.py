@@ -27,7 +27,7 @@ sys.path.append('../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 
 #pyGeo
 sys.path.append('../')
-import pyGeo_NM as pyGeo
+import pyGeo
 
 # ==============================================================================
 # Start of Script
