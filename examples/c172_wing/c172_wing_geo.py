@@ -35,7 +35,7 @@ sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
 # pySnopt
 sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 
-import pyGeo_NM as pyGeo
+import pyGeo
 import pyLayout
 
 # ==============================================================================

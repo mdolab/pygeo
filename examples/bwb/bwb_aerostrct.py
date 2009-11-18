@@ -39,10 +39,10 @@ from geo_utils import *
 import pySpline
 
 #pyGeo
-import pyGeo_NM as pyGeo
+import pyGeo
 
 #pyLayout
-import pyLayout_NM as pyLayout
+import pyLayout
 
 # TACS
 from pyTACS import TACS

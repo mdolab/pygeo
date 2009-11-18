@@ -20,7 +20,7 @@ sys.path.append('../../pySpline/python')
 #pyGeo
 sys.path.append('../')
 
-import pyGeo_NM as pyGeo
+import pyGeo
 from geo_utils import *
 
 #ACDT Geometry

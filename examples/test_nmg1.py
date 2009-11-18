@@ -23,7 +23,7 @@ import pySpline
 
 #pyGeo
 sys.path.append('../')
-import pyGeo_NM as pyGeo
+import pyGeo
 
 #geo_utils
 from geo_utils import *
