@@ -3,7 +3,8 @@
 # =============================================================================
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,max,min,insert,delete,empty,mod,tan
+    array,max,min,insert,delete,empty,mod,tan,ones,argsort,lexsort,mod,sort,\
+    arange
 import string ,sys
 
 try:
@@ -288,7 +289,7 @@ def unique(s):
     equality-testing.  Then unique() will usually work in quadratic
     time.
     """
-
+    print 'Uniuqe'
     n = len(s)
     if n == 0:
         return []
@@ -313,6 +314,7 @@ def unique(s):
     # presence of many duplicate elements.  This isn't true of all
     # sort functions in all languages or libraries, so this approach
     # is more effective in Python than it may be elsewhere.
+
     try:
         t = list(s)
         t.sort()
@@ -330,11 +332,48 @@ def unique(s):
         return t[:lasti]
 
     # Brute force is all that's left.
+
     u = []
     for x in s:
         if x not in u:
             u.append(x)
     return u
+
+
+def unique_edges(s,ind):
+    """Return a list of the elements in s, but without duplicates.
+    See unique for full description 
+    Specific for edge reduction
+    """
+    #print 's:',s
+    n = len(s)
+    t = list(s)
+    t.sort()
+    #print 't:',t
+        
+    diff = zeros(n,'bool')
+
+    last = t[0]
+    lasti = i = 1
+    while i < n:
+        if t[i] != last:
+            t[lasti] = last = t[i]
+            lasti += 1
+        else:
+            diff[i] = True
+            pass
+        # end if
+        i += 1
+    # end while
+    #print 'd:',diff
+    b = where(diff == True)[0]
+    #print 'b:',b
+    #print 'i, ind, search'
+    for i in xrange(n):
+        ind[i] -= b.searchsorted(ind[i],side='right')
+    # end for
+    return t[:lasti],ind
+
 
 def directionAlongSurface(surface,line,section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
@@ -714,6 +753,242 @@ def blendKnotVectors(knot_vectors,sym):
     new_knot_vec /= nVec
     return new_knot_vec
 
+
+class Topology(object):
+    '''
+    The topology class contains the data and functions assocatied with
+    at set of connected quadrilaterials. The quadraliterals may be
+    edgenerate or may have edges beginning and ending at the same
+    node. Non-manifold topologies (3 or more surfaces sharing an edge
+    are fully supported
+    '''
+
+
+    def __init__(self, face_con,edges=None):
+        '''Initialize the class with data required to compute the topology'''
+
+        # First Get the edge list and unique-ify
+
+        self.nFace = len(face_con)
+
+        if edges == None:
+            edges = []
+
+            edge_hash = []
+            for iface in xrange(self.nFace):
+                #             n1                ,n2               ,dg,n,degen
+                edges.append([face_con[iface][0],face_con[iface][1],-1,0,0])
+                edges.append([face_con[iface][2],face_con[iface][3],-1,0,0])
+                edges.append([face_con[iface][0],face_con[iface][2],-1,0,0])
+                edges.append([face_con[iface][1],face_con[iface][3],-1,0,0])
+            # end for
+        # end if
+        
+        edge_dir = ones(len(edges),'intc')
+        nEdge = len(edges)
+        for iedge in xrange(nEdge):
+            if edges[iedge][0] > edges[iedge][1]:
+                temp = edges[iedge][0]
+                edges[iedge][0] = edges[iedge][1]
+                edges[iedge][1] = temp
+                edge_dir[iedge] = -1
+            # end if
+            edge_hash.append(edges[iedge][0]*nEdge + edges[iedge][1])
+        # end for
+
+        indices = argsort(argsort(edge_hash))
+        u_edges,edge_link = unique_edges(edges,indices.copy())
+
+        self.edges = u_edges
+        nEdge = len(u_edges)
+        self.edge_dir = array(edge_dir).reshape((self.nFace,4))
+        self.edge_link = array(edge_link).reshape((self.nFace,4))
+        self.flat_edge_link = edge_link
+        self.flat_edge_link_sorted = sort(edge_link)
+        self.flat_edge_link_ind    = (argsort(edge_link))
+        self.node_link = face_con
+        self.node_link_flat = array(face_con).flatten()
+      
+     
+        # Next Calculate the Design Group Information
+        print 'Calculating the Design Groups'
+        dg_counter = -1
+        for i in xrange(nEdge):
+            if self.edges[i][2] == -1: # Not set yet
+                dg_counter += 1
+                self.edges[i][2] = dg_counter
+                self.addDGEdge(i)
+            # end if
+        # end for
+        self.nDG = dg_counter + 1
+        
+        return
+
+    def addDGEdge(self,i):
+
+        left  = self.flat_edge_link_sorted.searchsorted(i,side='left')
+        right = self.flat_edge_link_sorted.searchsorted(i,side='right')
+        res   = self.flat_edge_link_ind[slice(left,right)]
+
+        for j in xrange(len(res)):
+            iface = res[j]/4 #Integer Division
+            iedge = mod(res[j],4)
+            if iedge in [0,1]:
+                self.edges[i][3] = 0# self.surfs[iface].Nctlu
+            else:
+                self.edges[i][3] = 0# self.surfs[iface].Nctlv
+            # end if
+            
+            oppositeEdge = self.edge_link[iface][flipEdge(iedge)]
+
+            if self.edges[oppositeEdge][2] == -1:
+                self.edges[oppositeEdge][2] = self.edges[i][2]
+                if not self.edges[oppositeEdge][0] == self.edges[oppositeEdge][1]:
+                    self.addDGEdge(oppositeEdge)
+                # end if
+            # end if
+        # end for
+
+    def calcGlobalNumbering(self,sizes,surface_list=None):
+        '''Internal function to calculate the global/local numbering for each surface'''
+
+        if surface_list == None:
+            surface_list = range(0,self.nFace)
+        # end if
+        
+        nNode = len(unique(self.node_link_flat))
+      
+        # ----------------- Start of Edge Computation ---------------------
+        counter = 0
+        g_index = []
+        l_index = []
+
+        assert len(sizes) == len(surface_list),'Error: The list of sizes and \
+the list of surfaces must be the same length'
+
+        # Assign unique numbers to the corners -> Corners are indexed sequentially
+        node_index = arange(nNode)
+        counter = len(node_index)
+        edge_index = [ [] for i in xrange(len(self.edges))]
+
+        # Assign unique numbers to the edges
+
+        for ii in xrange(len(surface_list)):
+            cur_size = [sizes[ii][0],sizes[ii][0],sizes[ii][1],sizes[ii][1]]
+            isurf = surface_list[ii]
+            for iedge in xrange(4):
+                edge = self.edge_link[ii][iedge]
+                    
+                if edge_index[edge] == []:# Not added yet
+                    if self.edges[edge][4] == 1:
+                        # Get the counter value for this "node"
+                        index = node_index[self.edges[edge][0]]
+                        for jj in xrange(cur_size[iedge]-2):
+                            edge_index[edge].append(index)
+                        # end for
+                    else:
+                        for jj in xrange(cur_size[iedge]-2):
+                            edge_index[edge].append(counter)
+                            counter += 1
+                        # end for
+                    # end if
+                # end if
+            # end for
+        # end for
+     
+        g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
+        l_index = []
+
+        # Now actually fill everything up
+        for ii in xrange(len(surface_list)):
+            isurf = surface_list[ii]
+            N = sizes[ii][0]
+            M = sizes[ii][1]
+            l_index.append(-1*ones((N,M),'intc'))
+
+            for i in xrange(N):
+                for j in xrange(M):
+                    
+                    type,edge,node,index = indexPosition(i,j,N,M)
+
+                    if type == 0:           # Interior
+                        l_index[ii][i,j] = counter
+                        g_index.append([[isurf,i,j]])
+                        counter += 1
+                    elif type == 1:         # Edge
+                       
+                        if edge in [0,1]:
+                            if self.edge_dir[ii][edge] == -1: # Its a reverse dir
+                                cur_index = edge_index[self.edge_link[ii][edge]][N-i-2]
+                            else:  
+                                cur_index = edge_index[self.edge_link[ii][edge]][i-1]
+                            # end if
+                        else: # edge in [2,3]
+                            if self.edge_dir[ii][edge] == -1: # Its a reverse dir
+                                cur_index = edge_index[self.edge_link[ii][edge]][M-j-2]
+                            else:  
+                                cur_index = edge_index[self.edge_link[ii][edge]][j-1]
+                            # end if
+                        # end if
+                        l_index[ii][i,j] = cur_index
+                        g_index[cur_index].append([isurf,i,j])
+                            
+                    else:                  # Node
+                        cur_node = self.node_link[ii][node]
+                        l_index[ii][i,j] = node_index[cur_node]
+                        g_index[node_index[cur_node]].append([isurf,i,j])
+                    # end for
+                # end for (j)
+            # end for (i)
+        # end for (ii)
+
+        return counter,g_index,l_index
+
+
+    def makeSizesConsistent(self,sizes,order):
+        '''Take a given list of [Nu x Nv] for each surface and return
+        the sizes list such that all sizes are consistent
+
+        prescedence is given according to the order list: 0 is highest
+        prescedence, 1 is next highest ect.
+
+        '''
+        # First determine how many "order" loops we have
+        nloops = max(order)+1
+        edge_number = -1*ones(self.nDG)
+
+        for iloop in xrange(nloops):
+            for iface in xrange(self.nFace):
+                for iedge in xrange(4):
+                    if order[iface] == iloop: # Set this edge
+                        if edge_number[self.edge_list[self.edge_link[iface][iedge]][2]] == -1:
+                            if iedge in [0,1]:
+                                edge_number[self.edge_list[self.edge_link[iface][iedge]][2]] = sizes[iface][0]
+                            else:
+                                edge_number[self.edge_list[self.edge_link[iface][iedge]][2]] = sizes[iface][1]
+                            # end if
+                        # end if
+                    # end if
+                # end for
+            # end for
+        # end for
+
+        # Now repoluative the sizes:
+
+        for iface in xrange(self.nFace):
+            for i in [0,1]:
+                sizes[iface][i] = edge_number[edge_list[edge_link[iface][i*2]][2]]
+            # end for
+        # end for
+
+        return sizes
+
+
+
+
+
+
+
 # --------------------------------------------------------------
 #                     pyACDT Interface
 # --------------------------------------------------------------
@@ -837,3 +1112,28 @@ def blendKnotVectors(knot_vectors,sym):
 
 #     return geo_objects
                 
+#   def addDGEdge(self,i):
+#         # Find surfs with edges of 'i'
+#         for iface in xrange(self.nFace):
+#             for iedge in xrange(4):
+#                 edge_num = self.edge_link[iface][iedge]
+#                 if edge_num == i:
+#                     if iedge in [0,1]:
+#                         self.edges[i][3] = 0# self.surfs[iface].Nctlu
+#                     else:
+#                         self.edges[i][3] = 0# self.surfs[iface].Nctlv
+
+#                     oppositeEdge = self.edge_link[iface][flipEdge(iedge)]
+
+#                     if self.edges[oppositeEdge][2] == -1:
+#                         self.edges[oppositeEdge][2] = self.edges[i][2]
+
+#                         # Check if the "oppositeEdge is degenerate" since DON't recursively add for them
+#                         #if not self.edges[oppositeEdge][0] == self.edges[oppositeEdge][1]:
+#                         self.addDGEdge(oppositeEdge)
+#                         # end if
+#                     # end if
+#                 # end if
+#             # end for
+#         # end for
+#         return 

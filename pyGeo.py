@@ -1088,6 +1088,7 @@ double degenerate patch at the tip'
         self.edge_link = array(edge_link)
         self.edge_dir  = edge_dir
         self._setEdgeConnectivity()
+        self.nDG = dg_counter
 
         return
     
@@ -1310,6 +1311,46 @@ the list of surfaces must be the same length'
         new_edge_link = new_edge_link.reshape((len(surface_list),4))
 
         return new_node_link,new_edge_list,new_edge_link,new_edge_dir
+
+    def makeSizesConsistent(self,sizes,order,surfs,edge_list,edge_link):
+        '''Take a given list of [Nu x Nv] for each surface in the
+        surfs list, along with a (possibly reduced)
+        node_link,edge_list,edge_link and edge_dir result and return
+        the sizes list such that all sizes are consistent
+
+        prescedence is given according to the order list: 0 is highest
+        prescedence, 1 is next highest ect.
+
+        '''
+        # First determine how many "order" loops we have
+        nloops = max(order)+1
+        edge_number = -1*ones(self.nDG)
+
+        for iloop in xrange(nloops):
+            for isurf in xrange(len(surfs)):
+                for iedge in xrange(4):
+                    if order[isurf] == iloop: # Set this edge
+                        if edge_number[edge_list[edge_link[isurf][iedge]].dg] == -1:
+                            if iedge in [0,1]:
+                                edge_number[edge_list[edge_link[isurf][iedge]].dg] = sizes[isurf][0]
+                            else:
+                                edge_number[edge_list[edge_link[isurf][iedge]].dg] = sizes[isurf][1]
+                            # end if
+                        # end if
+                    # end if
+                # end for
+            # end for
+        # end for
+
+        # Now repoluative the sizes:
+
+        for isurf in xrange(len(surfs)):
+            for i in [0,1]:
+                sizes[isurf][i] = edge_number[edge_list[edge_link[isurf][i*2]].dg]
+            # end for
+        # end for
+
+        return sizes
     
     def printEdgeConnectivity(self,node_link=None,edge_list=None,edge_link=None,edge_dir=None):
         '''Print the Edge Connectivity to the screen'''
@@ -1392,9 +1433,20 @@ the list of surfaces must be the same length'
                 
         self.nNode = len(unique(self.node_link.flatten()))
         self._setEdgeConnectivity()
-
+        self._calcnDG()
         return
-    
+
+    def _calcnDG(self):
+        '''Calculate the number of design groups'''
+        nDG = -1
+        for i in xrange(len(self.edge_list)):
+            if self.edge_list[i].dg > nDG:
+                nDG = self.edge_list[i].dg
+            # end if
+        # end for
+        nDG += 1
+        self.nDG = nDG
+        
     def propagateKnotVectors(self):
 
         # First get the number of design groups
