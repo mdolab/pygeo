@@ -238,7 +238,7 @@ def PosRot_dot(t):
 
 
 
-panel.setTrajectory(PosRot,PosRot_dot)
+#panel.setTrajectory(PosRot,PosRot_dot)
 
 # Set up a forward flight condition (Steady)
 # alpha = 0.0
@@ -254,7 +254,7 @@ panel.setTrajectory(PosRot,PosRot_dot)
 # panel.triPanel.setVelocity( VInf, OmegaInf, Ry, Rz, C.flatten() )
 
 #panel.linearSolve()
-panel.unsteadySim(2*pi*10,36)
+#panel.unsteadySim(2*pi*10,36)
 
 # panel.triPanel.writeLiftDistribution( 'lift_distribution.dat', panel.computeLiftDirection(), linspace(0.01, 0.9, 75) )
 
@@ -262,7 +262,7 @@ panel.unsteadySim(2*pi*10,36)
 # panel.triPanel.writeSectionalCp( 'cp_distZ=2.dat', 0.5 )
 # panel.triPanel.writeSectionalCp( 'cp_distZ=3.dat', 0.75 )
 
-panel.writeSolution(outfile='bwb_tripan_sol.dat',wake_outfile='bwb_wake.dat')
+#panel.writeSolution(outfile='bwb_tripan_sol.dat',wake_outfile='bwb_wake.dat')
 
 mpiPrint('---------------------------')
 mpiPrint('      pyLayout Setup'       )

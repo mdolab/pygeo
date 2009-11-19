@@ -42,7 +42,7 @@ import pySpline
 import pyGeo
 
 #pyLayout
-import pyLayout
+import pyLayout_freesurf as pyLayout
 
 # TACS
 from pyTACS import TACS
@@ -101,7 +101,7 @@ MAX_SPARS = 2  # This is the same for each spanwise section
 Nsection = 2
 wing_box = pyLayout.Layout(c172,Nsection,MAX_SPARS)
 
-# ---------- Create the First Domain -- First 7 ribs
+# # ---------- Create the First Domain -- First 7 ribs
 
 MAX_RIBS = 7
 
@@ -114,7 +114,7 @@ domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS-1)
 rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 2
+#rib_space[0] = 2
 v_space    = 1
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
@@ -138,7 +138,7 @@ domain2 = pyLayout.domain(le_list,te_list)
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS-1)
 rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 2
+#rib_space[0] = 2
 v_space    = 1
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
@@ -151,6 +151,14 @@ def2 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain2,surfs,spar_con,
                            span_space = span_space,rib_space=rib_space,v_space=v_space)
                            
 wing_box.addSection(def2)
+
+# Create the surfaces shell objects that are not part of a struct domain:
+#wing_box.addSurface(surfID=0,Nu=10,Nv=11)
+#wing_box.addSurface(surfID=1,Nu=12,Nv=13)
+
+wing_box.addSurface(surfID=4,Nu=14,Nv=19)
+wing_box.addSurface(surfID=5,Nu=16,Nv=17)
+
 wing_box.writeTecplot('./c172_layout.dat')
 wing_box.finalize()
 sys.exit(0)
