@@ -67,7 +67,6 @@ except:
 c172 = pyGeo.pyGeo('iges',file_name='./c172.igs')
 c172.readEdgeConnectivity('c172.con')
 c172.setSymmetry('xy')
-
 mpiPrint('---------------------------')
 mpiPrint('Attaching Reference Axis...')
 mpiPrint('---------------------------')
@@ -97,14 +96,13 @@ mpiPrint('---------------------------')
 mpiPrint('      pyLayout Setup'       )
 mpiPrint('---------------------------')
  
-MAX_SPARS = 2  # This is the same for each spanwise section
+MAX_SPARS =2  # This is the same for each spanwise section
 Nsection = 2
 wing_box = pyLayout.Layout(c172,Nsection,MAX_SPARS)
 
 # # ---------- Create the First Domain -- First 7 ribs
 
 MAX_RIBS = 7
-
 
 le_list = array([[.2*1.67,0,0],[.2*1.67,0,2.5]])
 te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])
@@ -113,9 +111,10 @@ domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-#rib_space[0] = 2
-v_space    = 1
+rib_space  = 4*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 2
+rib_space[2] = 2
+v_space    = 2
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0]
@@ -137,14 +136,15 @@ domain2 = pyLayout.domain(le_list,te_list)
 
 # Spacing Parameters for Elements
 span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-#rib_space[0] = 2
-v_space    = 1
+rib_space  = 4*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 2
+rib_space[2] = 2
+v_space    = 2
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [2,2]
 spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
-spar_blank[1,-3:] = 0
+#spar_blank[1,-3:] = 0
 def2 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain2,surfs,spar_con,
                            rib_pos_para=linspace(0,1,MAX_RIBS),spar_pos_para=linspace(0,1,MAX_SPARS),
                            spar_blank = spar_blank,
@@ -153,11 +153,13 @@ def2 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain2,surfs,spar_con,
 wing_box.addSection(def2)
 
 # Create the surfaces shell objects that are not part of a struct domain:
-#wing_box.addSurface(surfID=0,Nu=10,Nv=11)
-#wing_box.addSurface(surfID=1,Nu=12,Nv=13)
 
-wing_box.addSurface(surfID=4,Nu=14,Nv=19)
-wing_box.addSurface(surfID=5,Nu=16,Nv=17)
+#wing_box.addSurface(surfID=1,Nu=4,Nv=3)
+#wing_box.addSurface(surfID=0,Nu=4,Nv=3)
+#wing_box.addSurface(surfID=2,Nu=4,Nv=3)
+#wing_box.addSurface(surfID=3,Nu=4,Nv=3)
+wing_box.addSurface(surfID=4,Nu=2,Nv=2)
+wing_box.addSurface(surfID=5,Nu=2,Nv=2)
 
 wing_box.writeTecplot('./c172_layout.dat')
 wing_box.finalize()

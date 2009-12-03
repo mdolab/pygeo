@@ -194,18 +194,7 @@ class pyGeo():
         self.dPtdx    = None     # Multiplication of above matricies,
                                  # derivative of surface points wrt
                                  # design variables
-        self.con = None          # List of edge connection objects
-        self.node_con = None     # The node connectivity list
-        self.g_index = None      # Global Index: This is the length of
-                                 # the reduced set of control points
-                                 # and contains a list that points to
-                                 # the surface and index of each point
-                                 # that is logically the same
-        self.l_index = None      # A entry for each surface (Nu,Nv)
-                                 # which points to the the index in
-                                 # the global list that is its master
-                                 # (driving coefficient)
-
+        self.topo = None         # The topology of the surfaces
         self.surfs = []          # The list of surface (pySpline surf)
                                  # objects
         self.nSurf = None        # The total number of surfaces
@@ -872,79 +861,46 @@ double degenerate patch at the tip'
         self.nSurf = len(self.surfs) # And last but not least
         return
 
- #    def _init_acdt_geo(self,*args,**kwargs):
-
-#         assert 'acdt_geo' in kwargs,\
-#             'key word argument \'acdt_geo\' Must be specified for \
-# init_acdt_geo type. The user must pass an instance of a pyGeometry aircraft'
-
-#         if 'fit_type' in kwargs:
-#             fit_type = kwargs['fit_type']
-#         else:
-#             fit_type = 'interpolate'
-
-#         acg = kwargs['acdt_geo']
-#         Components = acg._components
-#         ncomp = len(Components)
-#         counter = 0
-#         self.surfs = []
-#         # Write Aircraft Componentss
-#         for comp1 in xrange(ncomp):
-#             ncomp2 = len(Components[comp1])
-#             for comp2 in xrange(ncomp2):
-#                 counter += 1
-#                 [m,n] = Components[comp1]._components[comp2].Surface_x.shape
-#                 X = zeros((m,n,3))
-#                 X[:,:,0] = Components[comp1]._components[comp2].Surface_x
-#                 X[:,:,1] = Components[comp1]._components[comp2].Surface_y
-#                 X[:,:,2] = Components[comp1]._components[comp2].Surface_z
-#                 self.surfs.append(pySpline.surf_spline(\
-#                         fit_type,ku=4,kv=4,X=X,*args,**kwargs))
-#             # end for
-#         # end for
-
-#         self.nSurf = len(self.surfs)
-
-
-    def _init_acdt_geo(self,ac,LiftingSurface,BodySurface,Airfoil,*args,**kwargs):
+    def _init_acdt_geo(self,ac,LiftingSurface,BodySurface,*args,**kwargs):
         '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
 
         dtor = pi/180
         self.nSurf = 0
-        Components = ac['_components']
-        nComp = len(Components)
         geo_objects = []
 
-        for icomp in xrange(nComp):
-            print 'Processing Component: %s'%(ac['_components'][icomp].Name)
+        for i in xrange(len(ac)):
+            print 'Processing Component: %s'%(ac[i].Name)
             # Determine Type -> Lifting Surface or Body Surface
-            if isinstance(ac['_components'][icomp],BodySurface):
-                nSubComp = len(Components[icomp])
-                for jcomp in xrange(nSubComp):
-                    [m,n] = Components[icomp]._components[jcomp].Surface_x.shape
-                    X = zeros((m,n,3))
-                    X[:,:,0] = Components[icomp]._components[jcomp].Surface_x
-                    X[:,:,1] = Components[icomp]._components[jcomp].Surface_y
-                    X[:,:,2] = Components[icomp]._components[jcomp].Surface_z
+            if isinstance(ac[i],BodySurface):
+                nSubComp = len(ac[i])
+                for j in xrange(nSubComp):
+                    [m,n] = ac[i][j].Surface_x.shape
+                    print 'm,n:',m,n
+                    N = (n+1)/2
+                    X = zeros((m,N,3))
+                    print N
+                    X[:,:,0] = ac[i][j].Surface_x[:,N-1:]
+                    X[:,:,1] = ac[i][j].Surface_y[:,N-1:]
+                    X[:,:,2] = ac[i][j].Surface_z[:,N-1:]
 
                     self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X))
                     self.nSurf += 1
                 # end for (subcomp)
 
-            elif isinstance(ac['_components'][icomp],LiftingSurface):
-                nSubComp = len(Components[icomp])
+            elif isinstance(ac[i],LiftingSurface):
+                nSubComp = len(ac[i])
 
-                for jcomp in xrange(nSubComp):
-                    [m,n] = Components[icomp]._components[jcomp].Surface_x.shape
+                for j in xrange(nSubComp):
+                    [m,n] = ac[i][j].Surface_x.shape
                     N=  (n-1)/2
                     X = zeros((2,m,N+1,3))
-                    X[0,:,:,0] = Components[icomp]._components[jcomp].Surface_x[:,0:N+1]
-                    X[0,:,:,1] = Components[icomp]._components[jcomp].Surface_y[:,0:N+1]
-                    X[0,:,:,2] = Components[icomp]._components[jcomp].Surface_z[:,0:N+1]
+                    X[0,:,:,0] = ac[i][j].Surface_x[:,0:N+1]
+                    X[0,:,:,1] = ac[i][j].Surface_y[:,0:N+1]
+                    X[0,:,:,2] = ac[i][j].Surface_z[:,0:N+1]
 
-                    X[1,:,:,0] = Components[icomp]._components[jcomp].Surface_x[:,N:]
-                    X[1,:,:,1] = Components[icomp]._components[jcomp].Surface_y[:,N:]
-                    X[1,:,:,2] = Components[icomp]._components[jcomp].Surface_z[:,N:]
+                    X[1,:,:,0] = ac[i][j].Surface_x[:,N:]
+                    X[1,:,:,1] = ac[i][j].Surface_y[:,N:]
+                    X[1,:,:,2] = ac[i][j].Surface_z[:,N:]
 
                     self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
                     self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
@@ -953,9 +909,6 @@ double degenerate patch at the tip'
                 # end for (sub Comp)
             # end if (lifting/body type)
         # end if (Comp Loop)
-
-
-	
 
     def setSymmetry(self,sym_type):
         '''Set the symmetry flag and symmetry normal for this geometry object'''
@@ -976,7 +929,7 @@ double degenerate patch at the tip'
         return
 	
 # ----------------------------------------------------------------------
-#                      Edge Connection Information Functions
+#                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
     def calcEdgeConnectivity(self,node_tol=1e-4,edge_tol=1e-4):
@@ -984,140 +937,28 @@ double degenerate patch at the tip'
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
         
-        # Calculate the NODE connectivity.
-      
-        node_list = [] # Physical Coordinates of the Nodes
-        node_link = [] # Index in node_list for each node on surface
+        # Calculate the 4 corners and 4 midpoints for each surface
 
+        coords = zeros((self.nSurf,8,3))
         for isurf in xrange(self.nSurf):
-            node_link.append([])
-            for inode in xrange(4): 
-
-                node = self.surfs[isurf].getOrigValueCorner(inode)
-                
-                if len(node_list) == 0:
-                    node_list.append(node)
-                    node_link[isurf].append(inode)
-                else:
-                    found_it = False
-                    for i in xrange(len(node_list)):
-                        if e_dist(node,node_list[i]) < node_tol:
-                            node_link[isurf].append(i)
-                            found_it = True
-                            break
-                        # end if
-                    # end for
-                    if not found_it:
-                        node_list.append(node)
-                        node_link[isurf].append(i+1)
-                    # end if
-                # end if
-            # end for
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(0)
+            coords[isurf][0] = beg
+            coords[isurf][1] = end
+            coords[isurf][4] = mid
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(1)
+            coords[isurf][2] = beg
+            coords[isurf][3] = end
+            coords[isurf][5] = mid
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(2)
+            coords[isurf][6] = mid
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(3)
+            coords[isurf][7] = mid
         # end for
 
-        # Next Calculate the EDGE connectivity. 
-                        
-        edge_list = []
-        edge_link = -1*ones((self.nSurf,4),'intc')
-        edge_dir  = zeros((self.nSurf,4),'intc')
-        
-        for isurf in xrange(self.nSurf):
-            for iedge in xrange(4):
-                n1,n2 = nodesFromEdge(iedge) # nodesFromEdge in geo_utils
-                n1 = node_link[isurf][n1]
-                n2 = node_link[isurf][n2] 
-                beg,mid_point,end = self.surfs[isurf].getOrigValuesEdge(iedge)
-
-                if len(edge_list) == 0:
-                    edge_list.append([n1,n2,mid_point,-1,0])
-                    edge_link[isurf][iedge] = 0
-                    edge_dir [isurf][iedge] = 1
-                else:
-                    found_it = False
-                    for i in xrange(len(edge_list)):
-                        if [n1,n2] == edge_list[i][0:2] and n1 != n2:
-                            if e_dist(mid_point,edge_list[i][2]) < edge_tol:
-                                edge_link[isurf][iedge] = i
-                                edge_dir [isurf][iedge] = 1
-                                found_it = True
-                            # end if
-                        elif [n2,n1] == edge_list[i][0:2] and n1 != n2:
-                            if e_dist(mid_point,edge_list[i][2]) < edge_tol: # check mid_point
-                                edge_link[isurf][iedge] = i
-                                edge_dir[isurf][iedge] = -1
-                                found_it = True
-                            # end if
-                        # end if
-                    # end for
-
-                    # We went all the way though the list so add it at end and return index
-                    if not found_it:
-                        edge_list.append([n1,n2,mid_point,-1,0])
-                        edge_link[isurf][iedge] = i+1
-                        edge_dir [isurf][iedge] = 1
-                # end if
-            # end for
-        # end for
-    
-        # Next Calculate the Design Group Information
-        dg_counter = -1
-        for i in xrange(len(edge_list)):
-            if edge_list[i][3] == -1: # Not set yet
-                dg_counter += 1
-                edge_list[i][3] = dg_counter
-                self.addDGEdge(i,edge_list,edge_link)
-            # end if
-        # end for
-
-        # Get Default number of ncoef in each design group
-
-        # Lets save the stuff
-        self.node_link = array(node_link)
-        self.edge_list = []
-
-        for i in xrange(len(edge_list)): # Create the edge objects
-            if edge_list[i][0] == edge_list[i][1] and e_dist(edge_list[i][2],node_list[edge_list[i][0]]) < node_tol:
-                # Its a degenerate edge: both node indicies are the
-                # same and the midpoint is within node_tol of the end poins
-                self.edge_list.append(edge(edge_list[i][0],edge_list[i][1],0,1,0,edge_list[i][3],edge_list[i][4]))
-            else:
-                # Its not degenerate, but may still have the same endpoints
-                self.edge_list.append(edge(edge_list[i][0],edge_list[i][1],0,0,0,edge_list[i][3],edge_list[i][4]))
-            # end if
-        # end for
-        self.edge_link = array(edge_link)
-        self.edge_dir  = edge_dir
+        self.topo = Topology(coords=coords,node_tol=node_tol,edge_tol=edge_tol)
         self._setEdgeConnectivity()
-        self.nDG = dg_counter
-
         return
-    
-    def addDGEdge(self,i,edge_list,edge_link):
-        # Find surfs with edges of 'i'
-        for isurf in xrange(self.nSurf):
-            for iedge in xrange(4):
-                edge_num = edge_link[isurf][iedge]
-                if edge_num == i:
-                    if iedge in [0,1]:
-                        edge_list[i][4] = self.surfs[isurf].Nctlu
-                    else:
-                        edge_list[i][4] = self.surfs[isurf].Nctlv
-
-                    oppositeEdge = edge_link[isurf][flipEdge(iedge)]
-
-                    if edge_list[oppositeEdge][3] == -1:
-                        edge_list[oppositeEdge][3] = edge_list[i][3]
-
-                        # Check if the "oppositeEdge is degenerate" since DON't recursively add for them
-                        if not edge_list[oppositeEdge][0] == edge_list[oppositeEdge][1]:
-                            self.addDGEdge(oppositeEdge,edge_list,edge_link)
-                        # end if
-                    # end if
-                # end if
-            # end for
-        # end for
-        return 
-
+   
     def _setEdgeConnectivity(self):
         '''Internal function to set the global/local numbering'''
      
@@ -1127,14 +968,15 @@ double degenerate patch at the tip'
             sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
         # end for
 
-        self.Ncoef,self.g_index,self.l_index = self.calcGlobalNumbering(sizes)
-
+        self.topo.calcGlobalNumbering(sizes)
+        self.Ncoef = self.topo.counter
+        
         self.coef = []
         # Now Fill up the self.coef list:
-        for ii in xrange(len(self.g_index)):
-            isurf = self.g_index[ii][0][0]
-            i = self.g_index[ii][0][1]
-            j = self.g_index[ii][0][2]
+        for ii in xrange(len(self.topo.g_index)):
+            isurf = self.topo.g_index[ii][0][0]
+            i = self.topo.g_index[ii][0][1]
+            j = self.topo.g_index[ii][0][2]
             self.coef.append( self.surfs[isurf].coef[i,j])
         # end for
             
@@ -1150,290 +992,17 @@ double degenerate patch at the tip'
         # end
         return
 
-    def calcGlobalNumbering(self,sizes,surface_list=None,node_link=None,
-                            edge_list=None,edge_link=None,edge_dir=None):
-        '''Internal function to calculate the global/local numbering for each surface'''
-
-        if surface_list == None:
-            surface_list = range(0,self.nSurf) 
-        # end if
-        
-        if node_link==None and edge_list==None and edge_link == None and edge_dir == None:
-            # None are specified
-            node_link = self.node_link
-            edge_list = self.edge_list
-            edge_link = self.edge_link
-            edge_dir  = self.edge_dir
-        elif not node_link==None and not edge_list==None and not edge_link==None and not edge_dir==None:
-            pass
-        else:
-            print 'Error: All of nNode,node_link,edge_list,edge_link must be given or none \
-of them. If they are omited, the stored self. values are used'
-            sys.exit(1)
-            
-        nNode = len(unique(node_link.flatten()))
-
-        # ----------------- Start of Edge Computation ---------------------
-        counter = 0
-        g_index = []
-        l_index = []
-
-        assert len(sizes) == len(surface_list),'Error: The list of sizes and \
-the list of surfaces must be the same length'
-
-        # Assign unique numbers to the corners -> Corners are indexed sequentially
-        node_index = arange(nNode)
-        counter = len(node_index)
-        edge_index = [ [] for i in xrange(len(edge_list))]
-
-        # Assign unique numbers to the edges
-
-        for ii in xrange(len(surface_list)):
-            cur_size = [sizes[ii][0],sizes[ii][0],sizes[ii][1],sizes[ii][1]]
-            isurf = surface_list[ii]
-            for iedge in xrange(4):
-                edge = edge_link[ii][iedge]
-                    
-                if edge_index[edge] == []:# Not added yet
-                    if edge_list[edge].degen == 1:
-                        # Get the counter value for this "node"
-                        index = node_index[edge_list[edge].n1]
-                        for jj in xrange(cur_size[iedge]-2):
-                            edge_index[edge].append(index)
-                        # end for
-                    else:
-                        for jj in xrange(cur_size[iedge]-2):
-                            edge_index[edge].append(counter)
-                            counter += 1
-                        # end for
-                    # end if
-                # end if
-            # end for
-        # end for
-
-        g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
-        l_index = []
-
-        # Now actually fill everything up
-        for ii in xrange(len(surface_list)):
-            isurf = surface_list[ii]
-            N = sizes[ii][0]
-            M = sizes[ii][1]
-            l_index.append(-1*ones((N,M),'intc'))
-
-            for i in xrange(N):
-                for j in xrange(M):
-                    
-                    type,edge,node,index = indexPosition(i,j,N,M)
-
-                    if type == 0:           # Interior
-                        l_index[ii][i,j] = counter
-                        g_index.append([[isurf,i,j]])
-                        counter += 1
-                    elif type == 1:         # Edge
-                       
-                        if edge in [0,1]:
-                            if edge_dir[ii][edge] == -1: # Its a reverse dir
-                                cur_index = edge_index[edge_link[ii][edge]][N-i-2]
-                            else:  
-                                cur_index = edge_index[edge_link[ii][edge]][i-1]
-                            # end if
-                        else: # edge in [2,3]
-                            if edge_dir[ii][edge] == -1: # Its a reverse dir
-                                cur_index = edge_index[edge_link[ii][edge]][M-j-2]
-                            else:  
-                                cur_index = edge_index[edge_link[ii][edge]][j-1]
-                            # end if
-                        # end if
-                        l_index[ii][i,j] = cur_index
-                        g_index[cur_index].append([isurf,i,j])
-                            
-                    else:                  # Node
-                        cur_node = node_link[ii][node]
-                        l_index[ii][i,j] = node_index[cur_node]
-                        g_index[node_index[cur_node]].append([isurf,i,j])
-                    # end for
-                # end for (j)
-            # end for (i)
-        # end for (ii)
-
-        return counter,g_index,l_index
-
-    def getReducedSetConnectivity(self,surface_list):
-        '''Produce an sub-topology consisting of nNode,edge_list,node_link and edge_link for the
-        surfaces contained in surface_list'''
-
-        # First get the reduced edge_link and node_link
-        new_edge_link = zeros((len(surface_list),4),'intc')
-        new_edge_dir  = zeros((len(surface_list),4),'intc')
-        new_node_link = zeros((len(surface_list),4),'intc')
-
-        for ii in xrange(len(surface_list)):
-            isurf = surface_list[ii]
-            new_edge_link[ii] = self.edge_link[isurf]
-            new_edge_dir [ii] = self.edge_dir [isurf]
-            new_node_link[ii] = self.node_link[isurf]
-        # end for
-
-        # Now flatten new_edge_link and new_node_link for easier searching
-        new_node_link = new_node_link.flatten()
-        new_edge_link = new_edge_link.flatten()
-
-        # Now get the unique set of nodes and edges that are left and sort
-        unique_node_list = sorted(unique(new_node_link))
-        unique_edge_list = sorted(unique(new_edge_link))
-
-        # Now Re-order the nodes and edges
-        for i in xrange(len(unique_node_list)):
-            for j in xrange(len(new_node_link)):
-                if new_node_link[j] == unique_node_list[i]:
-                    new_node_link[j] = i
-                # end if
-            # end for
-        # end for
-
-        for i in xrange(len(unique_edge_list)):
-            for j in xrange(len(new_edge_link)):
-                if new_edge_link[j] == unique_edge_list[i]:
-                    new_edge_link[j] = i
-                # end if
-            # end for
-        # end for
-
-        # Finally, extract the edges we need from the edge_list
-        new_edge_list = []
-        for i in unique_edge_list:
-            new_edge_list.append(self.edge_list[i])
-        # end for
-
-        # Reshape the link arrays back to their proper size
-        new_node_link = new_node_link.reshape((len(surface_list),4))
-        new_edge_link = new_edge_link.reshape((len(surface_list),4))
-
-        return new_node_link,new_edge_list,new_edge_link,new_edge_dir
-
-    def makeSizesConsistent(self,sizes,order,surfs,edge_list,edge_link):
-        '''Take a given list of [Nu x Nv] for each surface in the
-        surfs list, along with a (possibly reduced)
-        node_link,edge_list,edge_link and edge_dir result and return
-        the sizes list such that all sizes are consistent
-
-        prescedence is given according to the order list: 0 is highest
-        prescedence, 1 is next highest ect.
-
-        '''
-        # First determine how many "order" loops we have
-        nloops = max(order)+1
-        edge_number = -1*ones(self.nDG)
-
-        for iloop in xrange(nloops):
-            for isurf in xrange(len(surfs)):
-                for iedge in xrange(4):
-                    if order[isurf] == iloop: # Set this edge
-                        if edge_number[edge_list[edge_link[isurf][iedge]].dg] == -1:
-                            if iedge in [0,1]:
-                                edge_number[edge_list[edge_link[isurf][iedge]].dg] = sizes[isurf][0]
-                            else:
-                                edge_number[edge_list[edge_link[isurf][iedge]].dg] = sizes[isurf][1]
-                            # end if
-                        # end if
-                    # end if
-                # end for
-            # end for
-        # end for
-
-        # Now repoluative the sizes:
-
-        for isurf in xrange(len(surfs)):
-            for i in [0,1]:
-                sizes[isurf][i] = edge_number[edge_list[edge_link[isurf][i*2]].dg]
-            # end for
-        # end for
-
-        return sizes
-    
     def printEdgeConnectivity(self,node_link=None,edge_list=None,edge_link=None,edge_dir=None):
-        '''Print the Edge Connectivity to the screen'''
-
-        if node_link == None and edge_list == None and edge_list==None and edge_dir==None:
-            node_link = self.node_link
-            edge_list = self.edge_list
-            edge_link = self.edge_link
-            edge_dir  = self.edge_dir
-        # end if
-
-        mpiPrint('------------------------------------------------------------------------')
-        mpiPrint('%3d   %3d'%(len(self.edge_list),len(node_link)))
-        mpiPrint('Edge Number    |  n0  |  n1  | Cont | Degen|Intsct|  DG  | Nctl |')
-        for i in xrange(len(self.edge_list)):
-            edge_list[i].write_info(i,sys.stdout)
-        # end for
-        mpiPrint('Surface Number |  n0  |  n1  |  n2  |  n3  |  e0  |  e1  |  e2  |  e3  | dir0 | dir1 | dir2 | dir3 |')
-        for i in xrange(len(node_link)):
-            mpiPrint('    %3d        |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d '\
-                %(i,node_link[i][0],node_link[i][1],node_link[i][2],node_link[i][3],
-                  edge_link[i][0],edge_link[i][1],edge_link[i][2],edge_link[i][3],
-                  edge_dir[i][0],edge_dir[i][1],edge_dir[i][2],edge_dir[i][3]))
-        # end for
-        mpiPrint('------------------------------------------------------------------------')
+        self.topo.printEdgeConnectivity()
         return
 
     def writeEdgeConnectivity(self,file_name):
-        '''Write the full edge connectivity to a file file_name'''
-        node_link = self.node_link
-        edge_link = self.edge_link
-        edge_list = self.edge_list
-        edge_dir  = self.edge_dir
-        f = open(file_name,'w')
-        f.write('%3d\n'%(len(self.edge_list)))
-        f.write('Edge Number    |  n0  |  n1  | Cont | Degen|Intsct|  DG  | Nctl |\n')
-        for i in xrange(len(self.edge_list)):
-            edge_list[i].write_info(i,f)
-        # end for
-        f.write('Surface Number |  n0  |  n1  |  n2  |  n3  |  e0  |  e1  |  e2  |  e3  | dir0 | dir1 | dir2 | dir3 | \n')
-        for i in xrange(len(node_link)):
-            f.write('    %3d        |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d \n'\
-                %(i,node_link[i][0],node_link[i][1],node_link[i][2],node_link[i][3],
-                  edge_link[i][0],edge_link[i][1],edge_link[i][2],edge_link[i][3],
-                  edge_dir[i][0],edge_dir[i][1],edge_dir[i][2],edge_dir[i][3]))
-        # end for
-        f.close()
-        
+        self.topo.writeEdgeConnectivity(file_name)
         return
 
     def readEdgeConnectivity(self,file_name):
-        '''Read the full edge connectivity from a file file_name'''
-        f = open(file_name,'r')
-
-        nEdge = int(f.readline())
-        self.edge_list = []
-        
-        f.readline() # This is the header line so ignore
-        
-        for i in xrange(nEdge):
-            aux = string.split(f.readline(),'|')
-            self.edge_list.append(edge(int(aux[1]),int(aux[2]),int(aux[3]),
-                                       int(aux[4]),int(aux[5]),int(aux[6]),int(aux[7])))
-        # end for
-
-        f.readline() # This the second header line so ignore
-
-        self.edge_link = zeros((self.nSurf,4),'intc')
-        self.node_link = zeros((self.nSurf,4),'intc')
-        self.edge_dir  = zeros((self.nSurf,4),'intc')
-        for i in xrange(self.nSurf):
-            aux = string.split(f.readline(),'|')
-            
-            for j in xrange(4):
-                self.node_link[i][j] = int(aux[j+1])
-                self.edge_link[i][j] = int(aux[j+1+4])
-                self.edge_dir[i][j]  = int(aux[j+1+8])
-            # end for
-        # end for
-                
-        self.nNode = len(unique(self.node_link.flatten()))
+        self.topo = Topology(file=file_name)
         self._setEdgeConnectivity()
-        self._calcnDG()
         return
 
     def _calcnDG(self):
@@ -1452,16 +1021,17 @@ the list of surfaces must be the same length'
         # First get the number of design groups
         nDG = -1
         ncoef = []
-        for i in xrange(len(self.edge_list)):
-            if self.edge_list[i].dg > nDG:
-                nDG = self.edge_list[i].dg
-                ncoef.append(self.edge_list[i].Nctl)
+        for i in xrange(self.topo.nEdge):
+            if self.topo.edges[i].dg > nDG:
+                nDG = self.topo.edges[i].dg
+                ncoef.append(self.topo.edges[i].Nctl)
             # end if
         # end for
+
         nDG += 1
 	for isurf in xrange(self.nSurf):
-            dg_u = self.edge_list[self.edge_link[isurf][0]].dg
-            dg_v = self.edge_list[self.edge_link[isurf][2]].dg
+            dg_u = self.topo.edges[self.topo.edge_link[isurf][0]].dg
+            dg_v = self.topo.edges[self.topo.edge_link[isurf][2]].dg
             self.surfs[isurf].Nctlu = ncoef[dg_u]
             self.surfs[isurf].Nctlv = ncoef[dg_v]
             if self.surfs[isurf].ku < self.surfs[isurf].Nctlu:
@@ -1489,14 +1059,14 @@ the list of surfaces must be the same length'
             knot_vectors = []
             for isurf in xrange(self.nSurf):
                 # Check edge 0 and edge 2
-                if self.edge_list[self.edge_link[isurf][0]].dg == idg:
-                    if self.edge_dir[isurf][0] == -1 or self.edge_dir[isurf][1] == -1:
+                if self.topo.edges[self.topo.edge_link[isurf][0]].dg == idg:
+                    if self.topo.edge_dir[isurf][0] == -1 or self.topo.edge_dir[isurf][1] == -1:
                         sym = True
                     # end if
                     knot_vectors.append(self.surfs[isurf].tu)
                 # end if
-                if self.edge_list[self.edge_link[isurf][2]].dg == idg:
-                    if self.edge_dir[isurf][2] == -1 or self.edge_dir[isurf][3] == -1:
+                if self.topo.edges[self.topo.edge_link[isurf][2]].dg == idg:
+                    if self.topo.edge_dir[isurf][2] == -1 or self.topo.edge_dir[isurf][3] == -1:
                         sym = True
                     # end if
                     knot_vectors.append(self.surfs[isurf].tv)
@@ -1509,10 +1079,10 @@ the list of surfaces must be the same length'
             # And reset them all
             for isurf in xrange(self.nSurf):
                 # Check edge 0 and edge 2
-                if self.edge_list[self.edge_link[isurf][0]].dg == idg:
+                if self.topo.edges[self.topo.edge_link[isurf][0]].dg == idg:
                     self.surfs[isurf].tu = new_knot_vec.copy()
                 # end if
-                if self.edge_list[self.edge_link[isurf][2]].dg == idg:
+                if self.topo.edges[self.topo.edge_link[isurf][2]].dg == idg:
                     self.surfs[isurf].tv = new_knot_vec.copy()
                 # end if
             # end for
@@ -1535,7 +1105,7 @@ the list of surfaces must be the same length'
         surfaces = []
         for isurf in xrange(self.nSurf):
             for iedge in xrange(4):
-                if self.edge_link[isurf][iedge] == edge:
+                if self.topo.edge_link[isurf][iedge] == edge:
                     surfaces.append([isurf,iedge])
                 # end if
             # end for
@@ -1588,9 +1158,9 @@ These modules must be imported for global surfaces fitting to take place.'
 
         # Now determine the number of constraints
         self.ncon = 0
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have continuity
-                self.ncon += 3*self.edge_list[iedge].Nctl-2
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have continuity
+                self.ncon += 3*self.topo.edges[iedge].Nctl-2
             # end if
         # end for
 
@@ -1599,12 +1169,12 @@ These modules must be imported for global surfaces fitting to take place.'
         lower_bound = -inf*ones(self.ndv)
         upper_bound =  inf*ones(self.ndv)
 
-        for iedge in xrange(len(self.edge_list)):
+        for iedge in xrange(len(self.topo.edges)):
             surfaces = self.getSurfaceFromEdge(iedge)
             if len(surfaces) == 1: # Its a mirror edge
                 surf0 = surfaces[0][0] # First surface on this edge
                 edge0 = surfaces[0][1] # Edge of surface on this edge     
-                for i in xrange(self.edge_list[iedge].Nctl):
+                for i in xrange(self.topo.edges[iedge].Nctl):
                     if edge0 == 0:
                         index = self.l_index[surf0][i,0]
                     elif edge0 == 1:
@@ -1691,8 +1261,8 @@ These modules must be imported for global surfaces fitting to take place.'
         # ----------- Constraint Derivative ---------------
         g_con = []
         counter = 0
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
                 surf0 = surfaces[0][0] # First surface on this edge
@@ -1763,8 +1333,8 @@ These modules must be imported for global surfaces fitting to take place.'
         '''Compute the sparsity for geometric constraints'''
         Ai = [] # Index 
         Ap = [1] # Pointer
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
                 surf0 = surfaces[0][0] # First surface on this edge
@@ -1855,9 +1425,9 @@ These modules must be imported for global surfaces fitting to take place.'
 
         # Now determine the number of constraints
         self.ncon = 0
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have continuity
-                self.ncon += self.edge_list[iedge].Nctl
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have continuity
+                self.ncon += self.topo.edges[iedge].Nctl
             # end if
         # end for
 
@@ -1923,8 +1493,8 @@ These modules must be imported for global surfaces fitting to take place.'
         self.update()
 
         f_con = []
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
                 surf0 = surfaces[0][0] # First surface on this edge
@@ -1969,8 +1539,8 @@ These modules must be imported for global surfaces fitting to take place.'
         # ----------- Constraint Derivative ---------------
         g_con = []
         counter = 0
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
                 surf0 = surfaces[0][0] # First surface on this edge
@@ -2035,8 +1605,8 @@ These modules must be imported for global surfaces fitting to take place.'
         '''Compute the sparsity for geometric constraints'''
         Ai = [] # Index 
         Ap = [1] # Pointer
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
                 surf0 = surfaces[0][0] # First surface on this edge
@@ -2234,9 +1804,9 @@ These modules must be imported for global surfaces fitting to take place.'
 
         # Now determine the number of constraints
         self.ncon = 0
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have continuity
-                self.ncon += self.edge_list[iedge].Nctl*3
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have continuity
+                self.ncon += self.topo.edges[iedge].Nctl*3
             # end if
         # end for
                 
@@ -2245,13 +1815,13 @@ These modules must be imported for global surfaces fitting to take place.'
         lower_bound = -inf*ones(self.ndv)
         upper_bound =  inf*ones(self.ndv)
 
-        for iedge in xrange(len(self.edge_list)):
+        for iedge in xrange(len(self.topo.edges)):
             surfaces = self.getSurfaceFromEdge(iedge)
             if len(surfaces) == 1: # Its a mirror edge
                 surf0 = surfaces[0][0] # First surface on this edge
                 edge0 = surfaces[0][1] # Edge of surface on this edge     
 
-                for i in xrange(self.edge_list[iedge].Nctl):
+                for i in xrange(self.topo.edges[iedge].Nctl):
                     if edge0 == 0:
                         index = self.l_index[surf0][i,0]
                     elif edge0 == 1:
@@ -2330,8 +1900,8 @@ These modules must be imported for global surfaces fitting to take place.'
 
         Ai = [] # Index 
         Ap = [1] # Pointer
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 surfaces = self.getSurfaceFromEdge(iedge)
                 if len(surfaces) > 2: 
                     print 'Continuity is not defined for more than 2 surfaces'
@@ -2346,7 +1916,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
 
                     surf0 = surfaces[0][0] # First surface on this edge
                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    for i in xrange(self.edge_list[iedge].Nctl):
+                    for i in xrange(self.topo.edges[iedge].Nctl):
                         indA,indB = self._getTwoIndiciesOnEdge(
                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
                         Ai.append(3*indB+1)
@@ -2373,7 +1943,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                     surf1 = surfaces[1][0] # Second surface on this edge
                     edge1 = surfaces[1][1] # Edge of second surface on this edge
 
-                    for i in xrange(self.edge_list[iedge].Nctl):
+                    for i in xrange(self.topo.edges[iedge].Nctl):
                         indA,indB = self._getTwoIndiciesOnEdge(
                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
                         indA,indC = self._getTwoIndiciesOnEdge(
@@ -2427,8 +1997,8 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
 
         f_con = []
         sym = self.sym_normal
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
@@ -2436,7 +2006,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
 
                     surf0 = surfaces[0][0] # First surface on this edge
                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    for i in xrange(self.edge_list[iedge].Nctl):
+                    for i in xrange(self.topo.edges[iedge].Nctl):
                         indA,indB = self._getTwoIndiciesOnEdge(
                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
 
@@ -2459,7 +2029,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                     surf1 = surfaces[1][0] # Second surface on this edge
                     edge1 = surfaces[1][1] # Edge of second surface on this edge
 
-                    for i in xrange(self.edge_list[iedge].Nctl):
+                    for i in xrange(self.topo.edges[iedge].Nctl):
 
                         indA,indB = self._getTwoIndiciesOnEdge(
                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
@@ -2505,14 +2075,14 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
 
         sym = self.sym_normal
         gcon = []
-        for iedge in xrange(len(self.edge_list)):
-            if self.edge_list[iedge].cont == 1: # We have a continuity edge
+        for iedge in xrange(len(self.topo.edges)):
+            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 # Now get the two surfaces for this edge:
                 surfaces = self.getSurfaceFromEdge(iedge)
                 if len(surfaces) == 1: 
                     surf0 = surfaces[0][0] # First surface on this edge
                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    for i in xrange(self.edge_list[iedge].Nctl):
+                    for i in xrange(self.topo.edges[iedge].Nctl):
                         indA,indB = self._getTwoIndiciesOnEdge(
                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
                    
@@ -2536,7 +2106,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                     surf1 = surfaces[1][0] # Second surface on this edge
                     edge1 = surfaces[1][1] # Edge of second surface on this edge
 
-                    for i in xrange(self.edge_list[iedge].Nctl):
+                    for i in xrange(self.topo.edges[iedge].Nctl):
 
                         indA,indB = self._getTwoIndiciesOnEdge(
                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
@@ -2692,7 +2262,8 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
             # 3. nsection < len(X)
             #    -> We reinterpolate before making the ref axis (supersample)
 
-
+            X = array(X)
+            rot = array(rot)
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
 
@@ -2757,7 +2328,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                 for isurf in surf_ids:
                     for i in xrange(self.surfs[isurf].Nctlu):
                         for j in xrange(self.surfs[isurf].Nctlv):
-                            coef_list.append(self.l_index[isurf][i,j])
+                            coef_list.append(self.topo.l_index[isurf][i,j])
                         # end for
                     # end for
                 # end for
@@ -2766,7 +2337,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
             else:   # We have a point selection class passed in
                 for isurf in surf_ids:
                     coef_list = point_select.getControlPoints(\
-                        self.surfs[isurf],isurf,coef_list,self.l_index)
+                        self.surfs[isurf],isurf,coef_list,self.topo.l_index)
                 # end for
             # end if
 
@@ -2799,10 +2370,10 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
             # end for
     
             for icoef in xrange(len(coef_list)):
-                for jj in xrange(len(self.g_index[coef_list[icoef]])):
-                    surfID = self.g_index[coef_list[icoef]][jj][0]
-                    i = self.g_index[coef_list[icoef]][jj][1]
-                    j = self.g_index[coef_list[icoef]][jj][2]
+                for jj in xrange(len(self.topo.g_index[coef_list[icoef]])):
+                    surfID = self.topo.g_index[coef_list[icoef]][jj][0]
+                    i = self.topo.g_index[coef_list[icoef]][jj][1]
+                    j = self.topo.g_index[coef_list[icoef]][jj][2]
 
                     if surfID in surf_ids:
                         break
@@ -2922,10 +2493,10 @@ a flap hinge line'
                 for jj in xrange(len(full_surface_list)):
                     if types[jj] == 0:
                         #coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
-                        coef_index.extend(self.l_index[full_surface_list[jj]][j,:])
+                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][j,:])
                     else:
                         #coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
-                        coef_index.extend(self.l_index[full_surface_list[jj]][:,j])
+                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][:,j])
                     # end if
                 # end for
 
@@ -3084,10 +2655,10 @@ a flap hinge line'
         '''Copy the pyGeo list of control points back to the surfaces'''
         
         for ii in xrange(len(self.coef)):
-            for jj in xrange(len(self.g_index[ii])):
-                isurf = self.g_index[ii][jj][0]
-                i     = self.g_index[ii][jj][1]
-                j     = self.g_index[ii][jj][2]
+            for jj in xrange(len(self.topo.g_index[ii])):
+                isurf = self.topo.g_index[ii][jj][0]
+                i     = self.topo.g_index[ii][jj][1]
+                j     = self.topo.g_index[ii][jj][2]
                 self.surfs[isurf].coef[i,j] = self.coef[ii].astype('d')
             # end for
         # end for
@@ -3281,7 +2852,7 @@ a flap hinge line'
             # Assume all control points on surface are to be used
             for i in xrange(self.surfs[surf].Nctlu):
                 for j in xrange(self.surfs[surf].Nctlv):
-                    coef_list.append(self.l_index[surf][i,j])
+                    coef_list.append(self.topo.l_index[surf][i,j])
                 # end for
             # end for
         else:
@@ -3326,7 +2897,7 @@ a flap hinge line'
         # end if
 
         self.DV_listNormal.append(geoDVNormal(\
-                dv_name,lower,upper,surf,coef_list,self.g_index))
+                dv_name,lower,upper,surf,coef_list,self.topo.g_index))
         self.DV_namesNormal[dv_name] = len(self.DV_listLocal)-1
         
         return
@@ -3347,7 +2918,7 @@ a flap hinge line'
             # Assume all control points on surface are to be used
             for i in xrange(self.surfs[surf].Nctlu):
                 for j in xrange(self.surfs[surf].Nctlv):
-                    coef_list.append(self.l_index[surf][i,j])
+                    coef_list.append(self.topo.l_index[surf][i,j])
                 # end for
             # end for
         else:
@@ -3392,7 +2963,7 @@ a flap hinge line'
         # end if
 
         self.DV_listLocal.append(geoDVLocal(\
-                dv_name,lower,upper,surf,coef_list,self.g_index))
+                dv_name,lower,upper,surf,coef_list,self.topo.g_index))
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
         
         return
@@ -3614,8 +3185,6 @@ a flap hinge line'
 
         f.close()
         sys.stdout.write('\n')
-
-
         return
 
 
@@ -3945,7 +3514,7 @@ a flap hinge line'
                     x = self.surfs[patchID[i]].calcPtDeriv(\
                         uv[i][0],uv[i][1],u_list[ii],v_list[jj])
 
-                    index = 3*self.l_index[patchID[i]][u_list[ii],v_list[jj]]
+                    index = 3*self.topo.l_index[patchID[i]][u_list[ii],v_list[jj]]
                     if USE_PETSC:
                         dPtdCoef.setValue( 3*indices[i]  , index  ,x,PETSC_INSERT_MODE)
                         dPtdCoef.setValue( 3*indices[i]+1, index+1,x,PETSC_INSERT_MODE)
@@ -4054,7 +3623,7 @@ a flap hinge line'
                                     self.surfs[isurf].coef[:,:,0], 
                                     self.surfs[isurf].coef[:,:,1], 
                                     self.surfs[isurf].coef[:,:,2], 
-                                    global_geo, ldvs, self.l_index[isurf].astype('intc') )
+                                    global_geo, ldvs, self.topo.l_index[isurf].astype('intc') )
         # end
 
         tacs_surfs = []
@@ -4064,23 +3633,6 @@ a flap hinge line'
      
         return global_geo, tacs_surfs
 
-
-class edge(object):
-    '''A class for edge objects'''
-
-    def __init__(self,n1,n2,cont,degen,intersect,dg,Nctl):
-        self.n1        = n1        # Integer for node 1
-        self.n2        = n2        # Integer for node 2
-        self.cont      = cont      # Integer: 0 for c0 continuity, 1 for c1 continuity
-        self.degen     = degen     # Integer: 1 for degenerate, 0 otherwise
-        self.intersect = intersect # Integer: 1 for an intersected edge, 0 otherwise
-        self.dg        = dg        # Design Group index
-        self.Nctl      = Nctl      # Number of control points for this edge
-
-    def write_info(self,i,handle):
-        handle.write('  %3d          |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |\n'\
-                         %(i,self.n1,self.n2,self.cont,self.degen,self.intersect,self.dg,self.Nctl))
-                                                                          
 class ref_axis(object):
 
     def __init__(self,X,rot,*args,**kwargs):
@@ -4232,7 +3784,7 @@ class geoDVGlobal(object):
 
 class geoDVNormal(object):
      
-    def __init__(self,dv_name,lower,upper,surface_id,coef_list,g_index,l_index):
+    def __init__(self,dv_name,lower,upper,surface_id,coef_list,topo):
         
         '''Create a set of gemoetric design variables which change the shape
         of surface, surface_id
@@ -4251,7 +3803,7 @@ class geoDVNormal(object):
 
         coef_list: The list of (global) indicies for thes design variables
 
-        global_coef: The g_index list from pyGeo
+        topo: The topology for the geometry object
 
         Note: Value is NOT specified, value will ALWAYS be initialized to 0
 
@@ -4264,7 +3816,7 @@ class geoDVNormal(object):
         self.upper = upper
         self.surface_id = surface_id
         self.coef_list = coef_list
-        self.l_index   = l_index[surface_id]
+        self.l_index   = topo.l_index[surface_id]
         # We also need to know what local surface i,j index is for
         # each point in the coef_list since we need to know the
         # position on the surface to get the normal. That's why we
@@ -4277,7 +3829,7 @@ class geoDVNormal(object):
             # Since the local DV only have driving control points, the
             # i,j index coorsponding to the first entryin the
             # global_coef list is the one we want
-            self.local_coef_index[icoef,:] = g_index[coef_list[icoef]][0][1:3]
+            self.local_coef_index[icoef,:] = topo.g_index[coef_list[icoef]][0][1:3]
         # end for
         return
 

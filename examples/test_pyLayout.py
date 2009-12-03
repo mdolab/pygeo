@@ -91,7 +91,7 @@ wing.calcEdgeConnectivity(1e-6,1e-6)
 #sys.exit(0)
 wing.readEdgeConnectivity('test_layout.con')
 wing.propagateKnotVectors()
-wing.fitSurfaces3()
+#wing.fitSurfaces3()
 wing.writeTecplot('../output/wing.dat')
 wing.writeIGES('../input/wing.igs')
 
@@ -114,7 +114,7 @@ print '      pyLayout Setup'
 print '---------------------------'
  
 MAX_SPARS = 3  # This is the same for each spanwise section
-Nsection = 2
+Nsection = 1
 wing_box = pyLayout.Layout(wing,Nsection,MAX_SPARS)
 
 # ---------- Create the First Domain -------------
@@ -149,7 +149,7 @@ def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain1,surfs,spar_con,
                            spar_blank=spar_blank,
                            span_space = span_space,rib_space=rib_space,v_space=v_space)
                            
-wing_box.addSection(def1)
+#wing_box.addSection(def1)
 
 # ---------- Create the Second Domain -------------
 
