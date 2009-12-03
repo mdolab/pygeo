@@ -42,12 +42,13 @@ import pySpline
 import pyGeo
 
 #pyLayout
-import pyLayout_freesurf as pyLayout
+import pyLayout
 
 # TACS
 from pyTACS import TACS
 import tacs_utils
 from tacs_utils import TriPan
+from tacs_utils import TACSAnalysis 
 
 try:
     import mpi4py
@@ -110,17 +111,21 @@ te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])
 domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 
 # Spacing Parameters for Elements
-span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 4*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 2
-rib_space[2] = 2
-v_space    = 2
+span_space = 4*ones(MAX_RIBS-1)
+rib_space  = 6*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 4
+rib_space[2] = 4
+v_space    = 4
+
+rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
+rib_blank[0,:] = 0
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0]
 
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain1,surfs,spar_con,
                            rib_pos_para=linspace(0,1,MAX_RIBS),spar_pos_para=linspace(0,1,MAX_SPARS),
+                           rib_blank = rib_blank,
                            span_space = span_space,rib_space=rib_space,v_space=v_space)
                            
 wing_box.addSection(def1)
@@ -135,11 +140,11 @@ te_list = array([[.75*1.67,0,2.5],[.75*1.67,0,10.58/2]])
 domain2 = pyLayout.domain(le_list,te_list)
 
 # Spacing Parameters for Elements
-span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 4*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 2
-rib_space[2] = 2
-v_space    = 2
+span_space = 4*ones(MAX_RIBS-1)
+rib_space  = 6*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 4
+rib_space[2] = 4
+v_space    = 4
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [2,2]
@@ -158,12 +163,44 @@ wing_box.addSection(def2)
 #wing_box.addSurface(surfID=0,Nu=4,Nv=3)
 #wing_box.addSurface(surfID=2,Nu=4,Nv=3)
 #wing_box.addSurface(surfID=3,Nu=4,Nv=3)
-wing_box.addSurface(surfID=4,Nu=2,Nv=2)
-wing_box.addSurface(surfID=5,Nu=2,Nv=2)
+# wing_box.addSurface(surfID=4,Nu=2,Nv=2)
+# wing_box.addSurface(surfID=5,Nu=2,Nv=2)
 
 wing_box.writeTecplot('./c172_layout.dat')
-wing_box.finalize()
-sys.exit(0)
+tacs = wing_box.finalize()
+
+paramSet = TACSAnalysis.ParameterSet()
+    
+if MPI.COMM_WORLD.size > 1:
+    # Global preconditioner options
+    # -----------------------------
+    restart = 120
+    paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+    paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
+    paramSet.asmOverlap = 1 ## Adjust this parameter
+    
+    paramSet.kspRestart  = restart
+    paramSet.kspMaxIters = 3 * restart
+    paramSet.kspTol      = 1e-8 
+    
+    paramSet.usePETScRCM  = 0
+    paramSet.pcLevFill    = 5 ## and this one too
+    paramSet.pcFillFactor = 8.0
+    paramSet.pcShift      = 1.0e-3        
+    
+    # Set the options for the sub-preconditioner
+    # ------------------------------------------       
+    paramSet.subKspTol      = 0.01 # Sub tolerance
+    paramSet.subKspType     = TACS.TACS_PETScAssembler_Real.PCONLY
+    paramSet.subPcType      = TACS.TACS_PETScAssembler_Real.ILU
+    paramSet.subKspMaxIters = 1
+# end
+
+tacsAnalysis = TACSAnalysis.TACSAnalysis( tacs, paramSet, './layout' )
+tacsAnalysis.solve( tf = 0.1 )
+
+tacsAnalysis.writeFile()
+
 
 
 
