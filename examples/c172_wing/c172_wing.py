@@ -111,11 +111,11 @@ te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])
 domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 
 # Spacing Parameters for Elements
-span_space = 4*ones(MAX_RIBS-1)
-rib_space  = 6*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 4
-rib_space[2] = 4
-v_space    = 4
+span_space = 2*ones(MAX_RIBS-1)
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 2
+rib_space[2] = 2
+v_space    = 2
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 rib_blank[0,:] = 0
@@ -140,11 +140,11 @@ te_list = array([[.75*1.67,0,2.5],[.75*1.67,0,10.58/2]])
 domain2 = pyLayout.domain(le_list,te_list)
 
 # Spacing Parameters for Elements
-span_space = 4*ones(MAX_RIBS-1)
-rib_space  = 6*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 4
-rib_space[2] = 4
-v_space    = 4
+span_space = 2*ones(MAX_RIBS-1)
+rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 2
+rib_space[2] = 2
+v_space    = 2
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [2,2]
@@ -167,11 +167,11 @@ wing_box.addSection(def2)
 # wing_box.addSurface(surfID=5,Nu=2,Nv=2)
 
 wing_box.writeTecplot('./c172_layout.dat')
-tacs = wing_box.finalize()
+tacs = wing_box.finalize( nlevels = 2 )
 
 paramSet = TACSAnalysis.ParameterSet()
     
-if MPI.COMM_WORLD.size > 1:
+if MPI != None and MPI.COMM_WORLD.size > 1:
     # Global preconditioner options
     # -----------------------------
     restart = 120
@@ -196,7 +196,7 @@ if MPI.COMM_WORLD.size > 1:
     paramSet.subKspMaxIters = 1
 # end
 
-tacsAnalysis = TACSAnalysis.TACSAnalysis( tacs, paramSet, './layout' )
+tacsAnalysis = TACSAnalysis.TACSAnalysis( tacs[1], paramSet, './layout' )
 tacsAnalysis.solve( tf = 0.1 )
 
 tacsAnalysis.writeFile()
