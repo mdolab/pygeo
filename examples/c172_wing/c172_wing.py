@@ -111,11 +111,11 @@ te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])
 domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 
 # Spacing Parameters for Elements
-span_space = 2*ones(MAX_RIBS-1)
-rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 2
-rib_space[2] = 2
-v_space    = 2
+span_space = 1*ones(MAX_RIBS-1)
+rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 1
+rib_space[2] = 1
+v_space    = 1
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 rib_blank[0,:] = 0
@@ -140,11 +140,11 @@ te_list = array([[.75*1.67,0,2.5],[.75*1.67,0,10.58/2]])
 domain2 = pyLayout.domain(le_list,te_list)
 
 # Spacing Parameters for Elements
-span_space = 2*ones(MAX_RIBS-1)
-rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 2
-rib_space[2] = 2
-v_space    = 2
+span_space = 1*ones(MAX_RIBS-1)
+rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 1
+rib_space[2] = 1
+v_space    = 1
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [2,2]
@@ -197,6 +197,7 @@ if MPI != None and MPI.COMM_WORLD.size > 1:
 # end
 
 tacsAnalysis = TACSAnalysis.TACSAnalysis( tacs[1], paramSet, './layout' )
+#tacsAnalysis.writeBCFile()
 tacsAnalysis.solve( tf = 0.1 )
 
 tacsAnalysis.writeFile()

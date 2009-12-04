@@ -1775,7 +1775,10 @@ These modules must be imported for global surfaces fitting to take place.'
         sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
         
         # Get the Global number of the original data
-        nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
+        self.topo.calcGlobalNumbering(sizes)
+        nPts=self.topo.counter
+        g_index=self.topo.g_index
+        l_index=self.topo.l_index
         self._initJacobian(nPts,self.ndv,g_index)
 
         if USE_PETSC:
@@ -2203,7 +2206,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                 for jjj in xrange(len(v_list)):
                     x = self.surfs[surfID].calcPtDeriv(\
                         u,v,u_list[iii],v_list[jjj])
-                    global_index = self.l_index[surfID][u_list[iii],v_list[jjj]]
+                    global_index = self.topo.l_index[surfID][u_list[iii],v_list[jjj]]
                     self._addJacobianValue(3*ii    ,global_index*3    ,x)
                     self._addJacobianValue(3*ii + 1,global_index*3 + 1,x)
                     self._addJacobianValue(3*ii + 2,global_index*3 + 2,x)
@@ -3018,7 +3021,8 @@ a flap hinge line'
 
     def writeTecplot(self,file_name,orig=False,surfs=True,coef=True,
                      edges=False,ref_axis=False,links=False,
-                     directions=False,labels=False,size=None,nodes=False):
+                     directions=False,surf_labels=False,edge_labels=False,size=None,
+                     node_labels=False):
 
         '''Write the pyGeo Object to Tecplot'''
 
@@ -3124,30 +3128,40 @@ a flap hinge line'
             # end for
         # end if
 
-        # ---------------------------------
-        #    Write out The Labels
-        # ---------------------------------
-        if labels == True:
+        # ---------------------------------------------
+        #    Write out The Surface,Edge and Node Labels
+        # ---------------------------------------------
+        if surf_labels == True:
             # Split the filename off
             (dirName,fileName) = os.path.split(file_name)
             (fileBaseName, fileExtension)=os.path.splitext(fileName)
-            label_filename = dirName+'/'+fileBaseName+'.labels.dat'
+            label_filename = dirName+'/'+fileBaseName+'.surf_labels.dat'
             f2 = open(label_filename,'w')
             for isurf in xrange(self.nSurf):
                 midu = floor(self.surfs[isurf].Nctlu/2)
                 midv = floor(self.surfs[isurf].Nctlv/2)
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"Surface %d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],2*isurf+1,isurf+1)
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"Surface %d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],isurf+1,isurf)
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()
+        # end if 
 
-        f.close()
-        sys.stdout.write('\n')
-
-        # ---------------------------------
-        #    Write out the Node Labels
-        # ---------------------------------
-        if nodes == True:
+        if edge_labels == True:
+            # Split the filename off
+            (dirName,fileName) = os.path.split(file_name)
+            (fileBaseName, fileExtension)=os.path.splitext(fileName)
+            label_filename = dirName+'/'+fileBaseName+'edge_labels.dat'
+            f2 = open(label_filename,'w')
+            for iedge in xrange(self.topo.nEdge):
+                surfaces =  self.topo.getSurfaceFromEdge(iedge)
+                pt = self.surfs[surfaces[0][0]].getValueEdge(surfaces[0][1],0.5)
+                text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,T=\"E%d\"\n'%(pt[0],pt[1],pt[2],iedge)
+                f2.write('%s'%(text_string))
+            # end for
+            f2.close()
+        # end if
+        
+        if node_labels == True:
             # First we need to figure out where the corners actually *are*
             n_nodes = len(unique(self.node_link.flatten()))
             node_coord = zeros((n_nodes,3))
@@ -3173,7 +3187,7 @@ a flap hinge line'
 
             (dirName,fileName) = os.path.split(file_name)
             (fileBaseName, fileExtension)=os.path.splitext(fileName)
-            label_filename = dirName+'/'+fileBaseName+'.nodes.dat'
+            label_filename = dirName+'/'+fileBaseName+'.node_labels.dat'
             f2 = open(label_filename,'w')
 
             for i in xrange(n_nodes):
