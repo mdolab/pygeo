@@ -26,9 +26,6 @@ sys.path.append('../../../../pyHF/pycfd-csm/python/')
 #pyGeo
 sys.path.append('../../')
 
-#pyLayout
-sys.path.append('../../../pyLayout/')
-
 # pyOpt
 sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
 
@@ -36,7 +33,6 @@ sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
 sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
 
 import pyGeo
-import pyLayout
 
 # ==============================================================================
 # Start of Script
@@ -53,7 +49,7 @@ y = [0,0,0]
 z = [0,2.5,10.58/2]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
-tw_aero = [0,0,0] # ie rot_z
+rot_z = [0,0,0] 
 
 offset = zeros((naf,2))
 
@@ -72,7 +68,7 @@ X[:,1] = y
 X[:,2] = z
 rot[:,0] = rot_x
 rot[:,1] = rot_y
-rot[:,2] = tw_aero
+rot[:,2] = rot_z
 
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
                    file_type='xfoil',scale=chord,offset=offset, \
@@ -80,10 +76,11 @@ wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
                    nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 wing.setSymmetry('xy')
 wing.calcEdgeConnectivity(1e-6,1e-6)
-#wing.writeEdgeConnectivity('c172.con')
-wing.readEdgeConnectivity('c172.con')
+#wing.writeEdgeConnectivity('./geo_input/c172.con')
+wing.readEdgeConnectivity('./geo_input/c172.con')
 wing.propagateKnotVectors()
-wing.fitSurfaces(nIter=2000,constr_tol=1e-8,opt_tol=1e-6)
-wing.writeTecplot('./c172_geo.dat')
-wing.writeIGES('./c172.igs')
+#wing.fitSurfaces(nIter=2000,constr_tol=1e-8,opt_tol=1e-6)
+wing.writeTecplot('./geo_output/c172_geo.dat')
+wing.writeIGES('./geo_input/c172.igs')
+
 

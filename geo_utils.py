@@ -4,8 +4,8 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,lexsort,mod,sort,\
-    arange,copy
-import string ,sys, copy, pdb
+    arange,copy,floor
+import string ,sys, copy, pdb, os
 
 try:
     import mpi4py
@@ -653,9 +653,12 @@ class Topology(object):
         face_index:A list which points to which the original faces
                    on a higher level topology. It is None for the highest level
                    topology.
-        simple    : A flat to determine of this is a "simple" topology which means
+        simple    : A flag to determine of this is a "simple" topology which means
                    there are NO degernate Edges, NO multiple edges sharing the same
                    nodes and NO edges which loop back and have the same nodes
+        sub_topo  : A flag to determine if this topology is a sub-topology of another
+                    If so, face, edge and node references are available to faciliate
+                    the use of both topologies
     '''
     def __init__(self,coords=None,face_con=None,file=None,node_tol=1e-4,edge_tol=1e-4):
         '''Initialize the class with data required to compute the topology'''
@@ -673,13 +676,31 @@ class Topology(object):
         self.edges = None
         self.face_index = None
         self.simple = False
-        
-        if not face_con == None: # We assume the nodes are sequential 
-            self.simple = True
+
+        self.sub_topo = False
+
+        # Thse are only set if a topology is a sub topology
+        self.sub_to_master_nodes = None
+        self.master_to_sub_nodes = None
+
+        self.sub_to_master_edges = None
+        self.master_to_sub_edges = None
+
+        self.sub_to_master_faces = None
+        self.master_to_sub_faces = None
+
+        if not face_con == None: 
             face_con = array(face_con)
             midpoints = None
             self.nFace = len(face_con)
+            self.simple = True
+            # Check to make sure nodes are sequential
             self.nNode = len(unique(face_con.flatten()))
+            if self.nNode != max(face_con.flatten())+1:
+                print 'Error: The Node numbering in faceCon is not sequential. There are \
+missing nodes'
+                sys.exit(1)
+            # end if
             
             edges = []
             edge_hash = []
@@ -796,8 +817,7 @@ class Topology(object):
             return
         else:
             mpiPrint('Empty Topology Class Creation')
-            self.l_index = None
-            self.g_index = None
+           
             return
         # end if
 
@@ -958,7 +978,6 @@ the list of surfaces must be the same length'
         
         return 
 
-
     def makeSizesConsistent(self,sizes,order):
         '''Take a given list of [Nu x Nv] for each surface and return
         the sizes list such that all sizes are consistent
@@ -976,7 +995,6 @@ the list of surfaces must be the same length'
         # end for
     
         for iloop in xrange(nloops):
-
             for iface in xrange(self.nFace):
                 if order[iface] == iloop: # Set this edge
                     for iedge in xrange(4):
@@ -1080,17 +1098,26 @@ the list of surfaces must be the same length'
         # end for
                 
         self.nNode = len(unique(self.node_link.flatten()))
-        
+        # Get the number of design groups
+        dgs = []
+        for iedge in xrange(self.nEdge):
+            dgs.append(self.edges[iedge].dg)
+        # end for
+        self.nDG = max(dgs)+ 1
         return
 
     def createSubTopology(self,face_list):
         '''Produce another insistance of the topology class which
         contains a subset of the faces on this topology class'''
 
-        #if the topology we are creating a subset from is simple, its
-        #easy; we just pull out the faces we want and create the class
+        # Empty Topology Class
+        sub_topo = Topology()
 
-        # We will have to do this for either case
+        # Also create the master-to-sub index lists
+        sub_topo.master_to_sub_nodes = -1*ones(self.nNode,'intc')
+        sub_topo.master_to_sub_edges = -1*ones(self.nEdge,'intc')
+        sub_topo.master_to_sub_faces = -1*ones(self.nFace,'intc')
+
         face_con = zeros(4*len(face_list),'intc')
         edge_link = zeros(4*len(face_list),'intc') 
         edge_dir  = zeros((len(face_list),4),'intc')
@@ -1101,72 +1128,121 @@ the list of surfaces must be the same length'
             edge_dir[i] = self.edge_dir[face_list[i]]
         # end for
 
-        # We do have to make the nodes sequential, however
+        # We have to make the nodes sequential
         nodes,face_con = unique_index(face_con)
-        face_con = array(face_con).reshape((len(face_list),4))
+        sub_topo.node_link = array(face_con).reshape((len(face_list),4))
+
+        sub_topo.nFace = len(sub_topo.node_link)
+        sub_topo.nNode = len(nodes)
+
+        sub_topo.sub_to_master_nodes = array(nodes)
+        sub_topo.sub_to_master_faces = array(face_list)
         
-        if self.simple:
-            sub_topo = Topology(face_con=face_con)
-            sub_topo.face_index = face_list
-        else:
-            # if it isn't simple, we need to reproduce edge_dir,
-            # edge_link, node_link,nNode,nEdge, nFace, and edges so
-            # that we can run calcDGs and setEdgeObjects
-            midpoints = None
-            sub_topo = Topology()
-            sub_topo.nFace = len(face_con)
-            sub_topo.nNode = len(nodes)
-            sub_topo.node_link = face_con
-            sub_topo.face_index = face_list
+        # Now set the correct entries in face and node master-to-sub arrays
+        counter = 0
+        for inode in xrange(sub_topo.nNode):
+            sub_topo.master_to_sub_nodes[sub_topo.sub_to_master_nodes[inode]] = counter
+            counter += 1
+        # end for
 
-            # Now for the edges...
+        counter = 0
+        for iface in xrange(sub_topo.nFace):
+            sub_topo.master_to_sub_faces[sub_topo.sub_to_master_faces[iface]] = counter
+            counter += 1
+        # end for
+     
+        # Now for the edges...
 
-            old_to_new_edge = []
-            counter = -1
-            edges = []
+        old_to_new_edge = []
+        new_to_old_edge = []
+        counter = -1
+        edges = []
 
-            nodes = array(nodes)
-            for iedge in xrange(self.nEdge):
-                # Check to see if both nodes are in our nodes
-                
-                loc1 = where(nodes == self.edges[iedge].n1)[0]
-                loc2 = where(nodes == self.edges[iedge].n2)[0]
+        nodes = array(nodes)
+        for iedge in xrange(self.nEdge):
+            # Check to see if both nodes are in our nodes
 
-                if len(loc1)>0 and len(loc2)>0: # They are both in the list
-                    # This edge is still around
-                    counter += 1
-                    old_to_new_edge.append(counter)
-                    edges.append([loc1[0],loc2[0],-1])
+            loc1 = where(nodes == self.edges[iedge].n1)[0]
+            loc2 = where(nodes == self.edges[iedge].n2)[0]
+            surfaces = self.getSurfaceFromEdge(iedge)
 
-                    #edges.append([self.edges[iedge].n1,self.edges[iedge].n2,-1])
-                else:
-                    old_to_new_edge.append(-1)
+            # Determine if ANY surfaces are still around
+            found_surf = False
+            for i in xrange(len(surfaces)):
+                if surfaces[i][0] in sub_topo.sub_to_master_faces:
+                    found_surf = True
                 # end if
             # end for
+            
+            if len(loc1)>0 and len(loc2)>0  and found_surf: 
+                counter += 1
+                old_to_new_edge.append(counter)
 
-            sub_topo.nEdge = len(edges)
-            # Now we can do edge_link:
-            for iface in xrange(sub_topo.nFace):
-                for iedge in xrange(4):
-                    edge_link[4*iface + iedge] = old_to_new_edge[edge_link[4*iface + iedge]]
-                # end for
+                edges.append([loc1[0],loc2[0],-1])
+
+                #edges.append([self.edges[iedge].n1,self.edges[iedge].n2,-1])
+            else:
+                old_to_new_edge.append(-1)
+            # end if
+        # end for
+
+        sub_topo.nEdge = len(edges)
+        # Now we can do edge_link:
+        for iface in xrange(sub_topo.nFace):
+            for iedge in xrange(4):
+                edge_link[4*iface + iedge] = old_to_new_edge[edge_link[4*iface + iedge]]
             # end for
+        # end for
 
-            sub_topo.edge_link = array(edge_link).reshape((sub_topo.nFace,4))
-            sub_topo.edge_dir = edge_dir
+        sub_topo.edge_link = array(edge_link).reshape((sub_topo.nFace,4))
+        sub_topo.edge_dir = edge_dir
 
-            edge_link_sorted = sort(edge_link.flatten())
-            edge_link_ind    = argsort(edge_link.flatten())
-            sub_topo._calcDGs(edges,edge_link,edge_link_sorted,edge_link_ind)
-       
-            # Now actually set all the edge objects
-            sub_topo.edges = []
-            for iedge in xrange(sub_topo.nEdge):
-                sub_topo.edges.append(edge(edges[iedge][0],edges[iedge][1],0,0,0,edges[iedge][2],0))
-            # end for
-        # end if
-        
+        edge_link_sorted = sort(edge_link.flatten())
+        edge_link_ind    = argsort(edge_link.flatten())
+        sub_topo._calcDGs(edges,edge_link,edge_link_sorted,edge_link_ind)
+
+        # Now actually set all the edge objects
+        sub_topo.edges = []
+        for iedge in xrange(sub_topo.nEdge):
+            sub_topo.edges.append(edge(edges[iedge][0],edges[iedge][1],0,0,0,edges[iedge][2],0))
+        # end for
+
+        sub_topo.master_to_sub_edges = array(old_to_new_edge)
+        sub_topo.sub_to_master_edges = zeros(sub_topo.nEdge,'intc')
+        # Lastly we need sub_to_master_edges 
+
+        counter = 0
+
+        for iedge in  xrange(len(sub_topo.master_to_sub_edges)):
+            if sub_topo.master_to_sub_edges[iedge] != -1:
+                sub_topo.sub_to_master_edges[counter] = iedge
+                counter += 1
+            # end if
+        # end for
+#         print 'sub_to_master_nodes:',sub_topo.sub_to_master_nodes
+#         print 'master_to_sub_nodes:',sub_topo.master_to_sub_nodes
+#         print 'sub_to_master_faces:',sub_topo.sub_to_master_faces
+#         print 'master_to_sub_faces:',sub_topo.master_to_sub_faces
+#         print 'sub_to_master_edges:',sub_topo.sub_to_master_edges
+#         print 'master_to_sub_edges:',sub_topo.master_to_sub_edges
+     
         return sub_topo
+
+    def getSurfaceFromEdge(self,edge):
+        '''Determine the surfaces and their edge_link index that points to edge iedge'''
+        # Its not efficient but it works
+        surfaces = []
+        for isurf in xrange(self.nFace):
+            for iedge in xrange(4):
+                if self.edge_link[isurf][iedge] == edge:
+                    surfaces.append([isurf,iedge])
+                # end if
+            # end for
+        # end for
+
+        return surfaces
+
+
         
 class edge(object):
     '''A class for edge objects'''
@@ -1414,3 +1490,198 @@ def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
 #             # end for
 #         # end for
 #         return 
+
+
+# ----------------------- Auto TRI-Pan Mesh Creation --------------------
+
+def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,default_size = 0.1):
+
+    '''Create a TriPanMesh from a pyGeo Object'''
+    
+    if MPI: # Only run this on Root Prosessor if MPI
+        if MPI.Comm.Get_rank( MPI.WORLD ) == 0:
+            pass
+            # end if
+        else:
+            return
+        # end if
+    # end if
+
+    if surfaces == None:
+        surfaces = arange(geo.topo.nFace)
+    # end if
+
+    # Create a sub_topology, which MAY be the same as the original one
+    topo = geo.topo.createSubTopology(surfaces)
+
+    nEdge = topo.nEdge
+    nFace = topo.nFace
+    
+    Edge_Number = -1*ones(nEdge,'intc')
+    Edge_Type = [ '' for i in xrange(nEdge)]
+    wakeEdges = []
+    if specs_file:
+        f = open(specs_file,'r')
+        f.readline()
+        for iedge in xrange(nEdge):
+            aux = string.split(f.readline())
+            Edge_Number[iedge] = int(aux[1])
+            Edge_Type[iedge]   = aux[2]
+            if int(aux[5]) == 1:
+                wakeEdges.append(iedge)
+            # end if
+        # end for
+        f.close()
+    else:
+        default_size = float(default_size)
+        # First Get the default number on each edge
+    
+        for iface in xrange(nFace):
+            for iedge in xrange(4):
+                # First check if we even have to do it
+                if Edge_Number[topo.edge_link[iface][iedge]] == -1:
+                    edge_length = geo.surfs[topo.sub_to_master_faces[iface]].getEdgeLength(iedge)
+                    Edge_Number[topo.edge_link[iface][iedge]] = int(floor(edge_length/default_size))+2
+                    Edge_Type[topo.edge_link[iface][iedge]] = 'linear'
+                # end if
+            # end for
+        # end for
+    # end if
+    
+    # Create the sizes Geo for the make consistent function
+    sizes = []
+    order = []
+    for iface in xrange(nFace):
+        sizes.append([Edge_Number[topo.edge_link[iface][0]],Edge_Number[topo.edge_link[iface][2]]])
+        order.append(0)
+    # end for
+    sizes,Edge_Number = topo.makeSizesConsistent(sizes,order)
+
+    # Now create the global numbering scheme
+    
+    # Now we need to get the edge parameter spacing for each edge
+    topo.calcGlobalNumbering(sizes) # This gets g_index,l_index and counter
+
+    # Now calculate the intrinsic spacing for each edge:
+    edge_para = []
+    for iedge in xrange(nEdge):
+        if Edge_Type[iedge] == 'linear':
+            edge_para.append(linspace(0,1,Edge_Number[iedge]))
+        elif Edge_Type[iedge] == 'full_cos':
+            edge_para.append(0.5*(1-cos(linspace(0,pi,Edge_Number[iedge]))))
+        else:
+            mpiPrint('Warning: Edge type not understood. Using a linear type')
+            edge_para.append(0,1,Edge_Number[iedge])
+        # end if
+    # end for
+
+    # Get the number of panels
+    nPanels = 0
+    for iface in xrange(nFace):
+        nPanels += (sizes[iface][0]-1)*(sizes[iface][1]-1)
+    # end for
+
+    # Open the outputfile
+    fp = open(tripan_name,'w')
+
+    # Write he number of points and panels
+    fp.write( '%5d %5d \n'%(topo.counter,nPanels))
+   
+    # Output the Points First
+    UV = []
+    for iface in xrange(nFace):
+        
+        uv= getBiLinearMap(edge_para[topo.edge_link[iface][0]],
+                           edge_para[topo.edge_link[iface][1]],
+                           edge_para[topo.edge_link[iface][2]],
+                           edge_para[topo.edge_link[iface][3]])
+        UV.append(uv)
+
+    # end for
+    
+    for ipt in xrange(len(topo.g_index)):
+        iface = topo.g_index[ipt][0][0]
+        i     = topo.g_index[ipt][0][1]
+        j     = topo.g_index[ipt][0][2]
+        pt = geo.surfs[topo.sub_to_master_faces[iface]].getValue(UV[iface][i,j][0],UV[iface][i,j][1])
+        fp.write( '%12.10e %12.10e %12.10e \n'%(pt[0],pt[1],pt[2]))
+    # end for
+
+    # Output the connectivity Next
+    count = 0
+    for iface in xrange(nFace):
+        for i in xrange(sizes[iface][0]-1):
+            for j in xrange(sizes[iface][1]-1):
+                count += 1
+                fp.write('%d %d %d %d \n'%(topo.l_index[iface][i  ,j],
+                                           topo.l_index[iface][i,j+1],
+                                           topo.l_index[iface][i+1,j+1],
+                                           topo.l_index[iface][i+1  ,j]))
+            # end for
+        # end for
+    # end for
+    fp.write('\n')
+    fp.close()
+
+    # Output the wake file
+
+    fp = open(wake_name,'w')
+    fp.write('%d\n'%(len(wakeEdges)))
+    print 'wakeEdges:',wakeEdges
+    for edge in wakeEdges:
+        # Get a surface/edge for this edge
+        surfaces = topo.getSurfaceFromEdge(edge)
+        iface = surfaces[0][0]
+        iedge = surfaces[0][1]
+        print 'iface,iedge:',iface,iedge
+        if iedge == 0:
+            indices = topo.l_index[iface][:,0]
+        elif iedge == 1:
+            indices = topo.l_index[iface][:,-1]
+        elif iedge == 2:
+            indices = topo.l_index[iface][0,:]
+        elif iedge == 3:
+            indices = topo.l_index[iface][-1,:]
+        # end if
+        
+        fp.write('%d\n'%(len(indices)))
+
+        for i in xrange(len(indices)):
+            fp.write('%d %d\n'%(indices[len(indices)-1-i],3))
+        # end for
+    # end for
+
+    fp.close()
+
+    # Write out the default specFile
+    (dirName,fileName) = os.path.split(tripan_name)
+    (fileBaseName, fileExtension)=os.path.splitext(fileName)
+    if dirName != '':
+        new_specs_file = dirName+'/'+fileBaseName+'.specs'
+    else:
+        new_specs_file = fileBaseName+'.specs'
+    # end if
+    if specs_file == None:
+        if os.path.isfile(new_specs_file):
+            mpiPrint('Error: Attempting to write the specs file %s, but it already exists. Please\
+            delete this file and re-run'%(new_specs_file))
+            sys.exit(1)
+        # end if
+    # end if
+    specs_file = new_specs_file
+    f = open(specs_file,'w')
+    f.write('Edge Number #Node Type     Start Space   End Space   WakeEdge\n') 
+    for iedge in xrange(nEdge):
+        if iedge in wakeEdges:
+            f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
+                topo.sub_to_master_edges[iedge],Edge_Number[iedge],Edge_Type[iedge],.1,.1,1))
+        else:
+            f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
+            topo.sub_to_master_edges[iedge],Edge_Number[iedge],Edge_Type[iedge],.1,.1,0))
+        # end if
+
+        # end for
+    # end for
+    f.close()
+
+    return
