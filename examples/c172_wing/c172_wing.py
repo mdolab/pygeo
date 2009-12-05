@@ -46,9 +46,13 @@ import pyLayout
 
 # TACS
 from pyTACS import TACS
+from pyTACS import elements
+
 import tacs_utils
 from tacs_utils import TriPan
 from tacs_utils import TACSAnalysis 
+
+from petsc4py import PETSc
 
 try:
     import mpi4py
@@ -111,11 +115,11 @@ te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])
 domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 
 # Spacing Parameters for Elements
-span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 1
-rib_space[2] = 1
-v_space    = 1
+span_space = 4*ones(MAX_RIBS-1)
+rib_space  = 4*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 4
+rib_space[2] = 4
+v_space    = 4
 
 rib_blank = ones((MAX_RIBS,MAX_SPARS-1))
 rib_blank[0,:] = 0
@@ -126,7 +130,7 @@ spar_con = [0,0]
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain1,surfs,spar_con,
                            rib_pos_para=linspace(0,1,MAX_RIBS),spar_pos_para=linspace(0,1,MAX_SPARS),
                            rib_blank = rib_blank,
-                           span_space = span_space,rib_space=rib_space,v_space=v_space)
+                           span_space = span_space,rib_space=rib_space,v_space=v_space, t = 0.1)
                            
 wing_box.addSection(def1)
 
@@ -140,11 +144,11 @@ te_list = array([[.75*1.67,0,2.5],[.75*1.67,0,10.58/2]])
 domain2 = pyLayout.domain(le_list,te_list)
 
 # Spacing Parameters for Elements
-span_space = 1*ones(MAX_RIBS-1)
-rib_space  = 1*ones(MAX_SPARS+1) # Note the +1
-rib_space[0] = 1
-rib_space[2] = 1
-v_space    = 1
+span_space = 4*ones(MAX_RIBS-1)
+rib_space  = 4*ones(MAX_SPARS+1) # Note the +1
+rib_space[0] = 4
+rib_space[2] = 4
+v_space    = 4
 
 surfs = [[2],[3]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [2,2]
@@ -153,7 +157,7 @@ spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
 def2 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain2,surfs,spar_con,
                            rib_pos_para=linspace(0,1,MAX_RIBS),spar_pos_para=linspace(0,1,MAX_SPARS),
                            spar_blank = spar_blank,
-                           span_space = span_space,rib_space=rib_space,v_space=v_space)
+                           span_space = span_space,rib_space=rib_space,v_space=v_space, t = 0.01)
                            
 wing_box.addSection(def2)
 
@@ -167,41 +171,192 @@ wing_box.addSection(def2)
 # wing_box.addSurface(surfID=5,Nu=2,Nv=2)
 
 wing_box.writeTecplot('./c172_layout.dat')
-tacs = wing_box.finalize( nlevels = 2 )
 
-paramSet = TACSAnalysis.ParameterSet()
+pre_con = 'mg'
+
+if pre_con == 'asm':
+    nmesh = 1
+    structure, tacs = wing_box.finalize( nlevels = nmesh )
+    mesh = structure.getMesh()
+
+    tacs_assembler = TACS.TACS_PETScAssembler_Real( tacs[0] )
+
+    mat   = PETSc.Mat()
+    pcmat = PETSc.Mat()
+    res = PETSc.Vec()
+    vec = PETSc.Vec()
+
+    tacs_assembler.createMat( mat )
+    tacs_assembler.createMat( pcmat )
+    tacs_assembler.createVec( vec )
+    tacs_assembler.createVec( res )
+
+    loadCase =0
+    res.zeroEntries()        
+    tacs_assembler.addDirectLoads( loadCase, res )
+    res.scale(-1.0)
+    tacs_assembler.assembleRes( loadCase, res )
+
+    paramSet = TACSAnalysis.ParameterSet()
     
-if MPI != None and MPI.COMM_WORLD.size > 1:
-    # Global preconditioner options
-    # -----------------------------
-    restart = 120
-    paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
-    paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
-    paramSet.asmOverlap = 1 ## Adjust this parameter
+    if MPI != None and MPI.COMM_WORLD.size > 1:
+        # Global preconditioner options
+        # -----------------------------
+        paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+        paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
+        paramSet.asmOverlap = 0 ## Adjust this parameter
+        
+        paramSet.kspRestart  = 80
+        paramSet.kspMaxIters = 240
+        paramSet.kspTol      = 1e-8 
+        
+        paramSet.usePETScRCM  = 0
+        paramSet.pcLevFill    = 2 ## and this one too
+        paramSet.pcFillFactor = 6.0
+        paramSet.pcShift      = 1.0e-3        
+        
+        # Set the options for the sub-preconditioner
+        # ------------------------------------------       
+        paramSet.subKspTol      = 0.01 # Sub tolerance
+        paramSet.subKspType     = TACS.TACS_PETScAssembler_Real.PCONLY
+        paramSet.subPcType      = TACS.TACS_PETScAssembler_Real.ILU
+        paramSet.subRichardsonScale = 1.0
+        paramSet.subKspMaxIters = 1
+    # end
+
+    paramSet.setFromOptions( tacs_assembler )
+
+    ksp = PETSc.KSP()
+    ksp.create()
+
+    tf = 0.01
+    tacs_assembler.assemblePCMat( loadCase, mat, tf, pcmat )
     
-    paramSet.kspRestart  = restart
-    paramSet.kspMaxIters = 3 * restart
-    paramSet.kspTol      = 1e-8 
+    ksp.setOperators( mat, pcmat, PETSc.Mat.Structure.SAME_NONZERO_PATTERN )
+    tacs_assembler.setKSPFromOptions( ksp )
+
+    ksp.view()
+    ksp.setMonitor( PETSc.KSP.Monitor() )
+    ksp.solve( res, vec )
+    vec.scale( -1.0 )
     
-    paramSet.usePETScRCM  = 0
-    paramSet.pcLevFill    = 5 ## and this one too
-    paramSet.pcFillFactor = 8.0
-    paramSet.pcShift      = 1.0e-3        
+    loadCase = 0
+    tacs_assembler.setVariables( loadCase, vec )
+    tacs_assembler.writeTecplotFile( loadCase, 'asm_p' + str(PETSc.COMM_WORLD.rank) )
     
-    # Set the options for the sub-preconditioner
-    # ------------------------------------------       
-    paramSet.subKspTol      = 0.01 # Sub tolerance
-    paramSet.subKspType     = TACS.TACS_PETScAssembler_Real.PCONLY
-    paramSet.subPcType      = TACS.TACS_PETScAssembler_Real.ILU
-    paramSet.subKspMaxIters = 1
-# end
+elif pre_con == 'mg':
 
-tacsAnalysis = TACSAnalysis.TACSAnalysis( tacs[1], paramSet, './layout' )
-#tacsAnalysis.writeBCFile()
-tacsAnalysis.solve( tf = 0.1 )
+    nmesh = 3
+    structure, tacs = wing_box.finalize( nlevels = nmesh )
+    mesh = structure.getMesh()
 
-tacsAnalysis.writeFile()
+    # Build the TACS models
+    tacs_assembler = []
+    for k in xrange(nmesh):
+        tacs_assembler.append( TACS.TACS_PETScAssembler_Real( tacs[k] ) )
+    # end
+
+    # Set up for multi-grid
+    paramSet = TACSAnalysis.ParameterSet()
 
 
+    asmOver = [ 0, 1, 2 ]
+    pcFill = [ 1, 2, 3 ]
 
+    for k in xrange(nmesh):
+        if MPI != None and MPI.COMM_WORLD.size > 1:
+            # Global preconditioner options
+            # -----------------------------
+            paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+            paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
+            paramSet.richardsonScale = 0.1
+            paramSet.asmOverlap = asmOver[k] ## Adjust this parameter
 
+            paramSet.kspRestart  = 10
+            paramSet.kspMaxIters = 10
+            paramSet.kspTol      = 1e-8 
+
+            paramSet.usePETScRCM  = 0
+            paramSet.pcLevFill    = pcFill[k] ## and this one too
+            paramSet.pcFillFactor = 5.0
+            paramSet.pcShift      = 1.0e-3        
+
+            # Set the options for the sub-preconditioner
+            # ------------------------------------------       
+            paramSet.subKspTol      = 0.01 # Sub tolerance
+            paramSet.subKspType     = TACS.TACS_PETScAssembler_Real.RICHARDSON
+            paramSet.subPcType      = TACS.TACS_PETScAssembler_Real.ILU
+            paramSet.subRichardsonScale = 1.0
+            paramSet.subKspMaxIters = 1
+
+            if k == nmesh-1:
+                paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+                paramSet.kspRestart = 20
+                paramSet.kspMaxIters = 20
+            # end
+        # end
+
+        paramSet.setFromOptions( tacs_assembler[k] )
+    # end
+
+    # Create the vectors
+    res = PETSc.Vec()
+    vec = PETSc.Vec()
+
+    tacs_assembler[0].createVec( vec )
+    tacs_assembler[0].createVec( res )
+
+    loadCase =0
+    res.zeroEntries()        
+    tacs_assembler[0].addDirectLoads( loadCase, res )
+    res.scale(-1.0)
+    tacs_assembler[0].assembleRes( loadCase, res )
+
+    # Construct the interpolation/restriction operators
+    # -------------------------------------------------
+    Interp = []
+    Restrict = []
+
+    for k in xrange(nmesh-1):
+        Interp.append( PETSc.Mat() )
+        Restrict.append( PETSc.Mat() )
+
+        mesh.setUpInterpolant( Interp[k], Restrict[k], tacs[k], k, tacs[k+1], k+1 )
+    # end
+
+    # Create the TACS_MG object
+    mg = TACS.TACS_MG_Real( nmesh, TACS.TACS_MG_Real.W_CYCLE )
+    tf = [ 0.1, 0.1, 0.1 ]
+
+    for k in xrange(nmesh):
+        if k == 0:
+            mg.setLevel( tacs[k], tacs_assembler[k], tf[k], Interp[k], Restrict[k] ) #, mat )
+        elif k == nmesh-1:
+            mg.setLevel( tacs[k], tacs_assembler[k], tf[k], Interp[0], Restrict[0] )
+        else:
+            mg.setLevel( tacs[k], tacs_assembler[k], tf[k], Interp[k], Restrict[k] )
+        # end
+    # end
+
+    ksp = PETSc.KSP()
+    ksp.create()
+    mg.setUpKSP( loadCase, ksp )
+    ksp.setType( PETSc.KSP.Type.FGMRES )
+    ksp.setPCSide( PETSc.PC.Side.RIGHT )
+    ksp.setFromOptions()
+
+    ksp.view()
+
+    norm = res.norm()
+    mpiPrint( 'The norm of the residual ' + str(norm) )
+
+    ksp.setMonitor( PETSc.KSP.Monitor() )
+    ksp.solve( res, vec )
+    vec.scale( -1.0 )
+
+    mg.setVariables( loadCase, vec )
+
+    for k in xrange(nmesh):
+        loadCase = 0
+        tacs_assembler[k].writeTecplotFile( loadCase, 'level' + str(k) + '_p' + str(PETSc.COMM_WORLD.rank) )
+    # end
