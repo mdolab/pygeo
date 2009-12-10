@@ -111,7 +111,8 @@ reduced_example = True
 
 MAX_RIBS = 7
 if reduced_example:
-    MAX_RIBS = 2
+    # MAX_RIBS = 2
+    MAX_RIBS = 5
 
 le_list = array([[.2*1.67,0,0],[.2*1.67,0,2.5]])
 te_list = array([[.75*1.67,0,0],[.75*1.67,0,2.5]])
@@ -134,7 +135,7 @@ spar_con = [0,0]
 def1 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain1,surfs,spar_con,
                            rib_pos_para=linspace(0,1,MAX_RIBS),spar_pos_para=linspace(0,1,MAX_SPARS),
                            rib_blank = rib_blank,
-                           span_space = span_space,rib_space=rib_space,v_space=v_space, t = 0.05 )
+                           span_space = span_space,rib_space=rib_space,v_space=v_space, t = 0.01 )
                            
 wing_box.addSection(def1)
 
@@ -142,7 +143,8 @@ wing_box.addSection(def1)
 
 MAX_RIBS = 7
 if reduced_example:
-    MAX_RIBS = 2
+    # MAX_RIBS = 2
+    MAX_RIBS = 5
 
 le_list = array([[.2*1.67,0,2.5],[.2*1.67,0,10.58/2]])
 te_list = array([[.75*1.67,0,2.5],[.75*1.67,0,10.58/2]])
@@ -163,7 +165,7 @@ spar_blank = ones((MAX_SPARS,MAX_RIBS-1))
 def2 = pyLayout.struct_def(MAX_RIBS,MAX_SPARS,domain2,surfs,spar_con,
                            rib_pos_para=linspace(0,1,MAX_RIBS),spar_pos_para=linspace(0,1,MAX_SPARS),
                            spar_blank = spar_blank,
-                           span_space = span_space,rib_space=rib_space,v_space=v_space, t = 0.05 )
+                           span_space = span_space,rib_space=rib_space,v_space=v_space, t = 0.01 )
                            
 wing_box.addSection(def2)
 
@@ -208,17 +210,17 @@ if pre_con == 'asm':
     if MPI != None and MPI.COMM_WORLD.size > 1:
         # Global preconditioner options
         # -----------------------------
-        paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+        paramSet.kspType = TACS.TACS_PETScAssembler_Real.BCGSL
         paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
-        paramSet.asmOverlap = 0 ## Adjust this parameter
+        paramSet.asmOverlap = 1 ## Adjust this parameter
         
-        paramSet.kspRestart  = 80
-        paramSet.kspMaxIters = 240
+        paramSet.kspRestart  = 150
+        paramSet.kspMaxIters = 750
         paramSet.kspTol      = 1e-8 
         
-        paramSet.usePETScRCM  = 0
-        paramSet.pcLevFill    = 2 ## and this one too
-        paramSet.pcFillFactor = 6.0
+        paramSet.usePETScRCM  = 1
+        paramSet.pcLevFill    = 4 ## and this one too
+        paramSet.pcFillFactor = 9.0
         paramSet.pcShift      = 1.0e-3        
         
         # Set the options for the sub-preconditioner
@@ -229,7 +231,7 @@ if pre_con == 'asm':
         paramSet.subRichardsonScale = 1.0
         paramSet.subKspMaxIters = 1
     else:
-        paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+        paramSet.kspType = TACS.TACS_PETScAssembler_Real.BCGSL
         paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ILU
 
         paramSet.kspRestart  = 80
@@ -245,7 +247,7 @@ if pre_con == 'asm':
     ksp = PETSc.KSP()
     ksp.create()
 
-    tf = 0.1
+    tf = 0.01
     tacs_assembler.assemblePCMat( loadCase, mat, tf, pcmat )
     
     ksp.setOperators( mat, pcmat, PETSc.Mat.Structure.SAME_NONZERO_PATTERN )
@@ -272,70 +274,75 @@ elif pre_con == 'mg':
         tacs_assembler.append( TACS.TACS_PETScAssembler_Real( tacs[k] ) )
     # end
 
-    # Set up for multi-grid
+    # These are a fairly good set of parameters for multi--grid
+    # Try -pc_mg_monitor to see what the different levels in the
+    # preconditioner are doing. Check if lowest level is converging.
+    # --------------------------------------------------------------
     paramSet = TACSAnalysis.ParameterSet()
-
-    asmOver = [ 0, 1, 2 ]
-    pcFill = [ 1, 2, 3 ]
-
+    
     for k in xrange(nmesh):
         if MPI != None and MPI.COMM_WORLD.size > 1:
-            # Global preconditioner options
-            # -----------------------------
-            paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
-            paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
-            paramSet.richardsonScale = 0.1
-            paramSet.asmOverlap = asmOver[k] ## Adjust this parameter
-
-            paramSet.kspRestart  = 10
-            paramSet.kspMaxIters = 10
-            paramSet.kspTol      = 1e-8 
-
-            paramSet.usePETScRCM  = 0
-            paramSet.pcLevFill    = pcFill[k] ## and this one too
-            paramSet.pcFillFactor = 5.0
-            paramSet.pcShift      = 1.0e-3        
-
-            # Set the options for the sub-preconditioner
-            # ------------------------------------------       
-            paramSet.subKspTol      = 0.01 # Sub tolerance
-            paramSet.subKspType     = TACS.TACS_PETScAssembler_Real.RICHARDSON
-            paramSet.subPcType      = TACS.TACS_PETScAssembler_Real.ILU
-            paramSet.subRichardsonScale = 1.0
-            paramSet.subKspMaxIters = 1
-
+            # Parameters for parallel computations
+            # ------------------------------------
             if k == nmesh-1:
+                # Set the options on the coarsest level
+                # Global preconditioner options
+                # -----------------------------
                 paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
-                paramSet.kspRestart = 20
-                paramSet.kspMaxIters = 20
-            # end
-        else:
-            paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
-            paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ILU
-            
-            if k == 0:
-                paramSet.pcLevFill = 1
-                paramSet.pcFillFactor = 3.0
-            elif k == 1:
-                paramSet.pcLevFill = 2
-                paramSet.pcFillFactor = 4.0
-            elif k == 2:
-                paramSet.pcLevFill = 3
-                paramSet.pcFillFactor = 4.0                
-            # end
+                paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ASM
+                paramSet.asmOverlap = 1 ## Adjust this parameter
 
-            paramSet.kspRestart  = 5
-            paramSet.kspMaxIters = 5
-            paramSet.kspTol      = 1e-8             
-
-            if k == nmesh-1:
-                paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+                # Set the options for the sub-preconditioner
+                paramSet.subPcType = TACS.TACS_PETScAssembler_Real.ILU
+                paramSet.subKspType = TACS.TACS_PETScAssembler_Real.PCONLY
+                paramSet.pcLevFill = 3 ## and this one too
+                
                 paramSet.kspRestart = 15
                 paramSet.kspMaxIters = 15
-            # end
+                paramSet.kspTol = 1e-5
+            else:
+                # Global preconditioner options
+                # -----------------------------
+                paramSet.kspType = TACS.TACS_PETScAssembler_Real.RICHARDSON
+                paramSet.pcType  = TACS.TACS_PETScAssembler_Real.BJACOBI
+                paramSet.richardsonScale = 1.0
 
-            paramSet.usePETScRCM  = 0
-            paramSet.pcShift      = 1.0e-3                    
+                paramSet.kspMaxIters = 5
+                paramSet.sorIters = 3
+                paramSet.sorOmega = 1.2
+                
+                paramSet.usePETScRCM  = 0 # The reordering might not have an effect
+
+                # Set the options for the sub-preconditioner
+                # ------------------------------------------       
+                paramSet.subKspTol      = 0.01 # Sub tolerance
+                paramSet.subKspType     = TACS.TACS_PETScAssembler_Real.PCONLY # RICHARDSON
+                paramSet.subPcType      = TACS.TACS_PETScAssembler_Real.SOR
+                paramSet.subRichardsonScale = 1.0
+                paramSet.subKspMaxIters = 1   # Maximum number of iterations at the sub-ksp level             
+            # end
+        else:
+            # Parameters for the serial case
+            # ------------------------------
+            if k == nmesh-1:
+                paramSet.kspType = TACS.TACS_PETScAssembler_Real.GMRES
+                paramSet.pcType  = TACS.TACS_PETScAssembler_Real.ILU
+
+                paramSet.kspRestart = 15
+                paramSet.kspMaxIters = 15
+                paramSet.kspTol = 1e-5            
+
+            else:
+                paramSet.kspType = TACS.TACS_PETScAssembler_Real.RICHARDSON
+                paramSet.pcType  = TACS.TACS_PETScAssembler_Real.SOR
+            
+                paramSet.kspMaxIters = 5
+                paramSet.sorIters = 3
+                paramSet.sorOmega = 1.2
+
+                paramSet.pcLevFill = 3 ## and this one too
+                paramSet.pcFillFactor = 5.0
+            # end
          # end
 
         paramSet.setFromOptions( tacs_assembler[k] )
@@ -354,6 +361,8 @@ elif pre_con == 'mg':
     res.scale(-1.0)
     tacs_assembler[0].assembleRes( loadCase, res )
 
+    mpiPrint('Setting up interpolation/restriction operators')
+
     # Construct the interpolation/restriction operators
     # -------------------------------------------------
     Interp = []
@@ -364,24 +373,28 @@ elif pre_con == 'mg':
         Restrict.append( PETSc.Mat() )
 
         mesh.setUpInterpolant( Interp[k], Restrict[k], tacs[k], k, tacs[k+1], k+1 )
+        # Restrict[k].copy( Interp[k] )
+        # Restrict[k] = Interp[k].copy()
+        # Restrict[k].scale(0.5)
     # end
 
     # Create the TACS_MG object
     mg = TACS.TACS_MG_Real( nmesh, TACS.TACS_MG_Real.W_CYCLE )
-    tf = [ 0.001, 0.001, 0.001 ]
+    tf = [ 0.0, 0.0, 0.0 ]
 
-    mat   = PETSc.Mat()
-    pcmat = PETSc.Mat()
+    mat   = PETSc.Mat()    
     tacs_assembler[0].createMat( mat )
-    tacs_assembler[0].createMat( pcmat )  
+    pcmat = mat
 
-    tacs_assembler[0].assemblePCMat( loadCase, mat, tf[0], pcmat )
-
-    #
+    mpiPrint('Setting up matrices')
+    
+    tacs_assembler[0].assembleMatType( loadCase, mat, 0.0, elements.STIFFNESS_MAT )
     
     for k in xrange(nmesh):
+        mpiPrint('Setting up level ' + str(k) )
+        
         if k == 0:
-            mg.setLevel( tacs[k], tacs_assembler[k], tf[k], Interp[k], Restrict[k], mat, pcmat )
+            mg.setLevel( tacs[k], tacs_assembler[k], tf[k], Interp[k], Restrict[k], mat )
         elif k == nmesh-1:
             mg.setLevel( tacs[k], tacs_assembler[k], tf[k], Interp[0], Restrict[0] )
         else:
@@ -407,6 +420,7 @@ elif pre_con == 'mg':
     vec.scale( -1.0 )
 
     # tacs_assembler[0].setVariables( loadCase, vec )
+    mpiPrint( 'Set variables' )
     mg.setVariables( loadCase, vec )
 
     # res.zeroEntries()        
@@ -416,6 +430,7 @@ elif pre_con == 'mg':
     # mg.setVariables( loadCase, res )
 
     for k in xrange(nmesh):
+        mpiPrint( 'Write tecplot file ' + str(k) )
         loadCase = 0
         tacs_assembler[k].writeTecplotFile( loadCase, 'level' + str(k) + '_p' + str(PETSc.COMM_WORLD.rank) )
     # end
