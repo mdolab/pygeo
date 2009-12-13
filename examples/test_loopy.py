@@ -25,6 +25,4 @@ import pyGeo
 # surface patch.
 geo = pyGeo.pyGeo('plot3d',file_name='../input/loopy.xyz')
 geo.calcEdgeConnectivity()
-
-for i in xrange(len(geo.l_index)):
-    print geo.l_index[i]
+geo.writeTecplot('../output/loopy.dat',node_labels=True,edge_labels=True,surf_labels=True)

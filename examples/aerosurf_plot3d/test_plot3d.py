@@ -38,49 +38,11 @@ import pyGeo
 # Start of Script
 # ==============================================================================
 
-# Script to Generate a Wing Geometry
-
-naf=3
-airfoil_list = ['../../input/naca2412.dat','../../input/naca2412.dat','../../input/naca2412.dat']
-
-chord = [1.67,1.67,1.18]
-x = [0,0,.125*1.18]
-y = [0,0,0]
-z = [0,2.5,10.58/2]
-rot_x = [0,0,0]
-rot_y = [0,0,0]
-rot_z = [0,0,0] 
-
-offset = zeros((naf,2))
-
-# Make the break-point vector
-breaks = [1]
-nsections = [4,4]# Length breaks + 1
-Nctlu = 13
-end_type = 'rounded'
-                               
-# Put spatial and rotations into two arrays (always the same)-------
-X = zeros((naf,3))
-rot = zeros((naf,3))
-
-X[:,0] = x
-X[:,1] = y
-X[:,2] = z
-rot[:,0] = rot_x
-rot[:,1] = rot_y
-rot[:,2] = rot_z
-
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                   file_type='xfoil',scale=chord,offset=offset, \
-                   Xsec=X,rot=rot,end_type=end_type, breaks=breaks,end_scale=1.05,
-                   nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
-wing.setSymmetry('xy')
-wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.writeEdgeConnectivity('./geo_input/c172.con')
-wing.readEdgeConnectivity('./geo_input/c172.con')
-wing.propagateKnotVectors()
-#wing.fitSurfaces(nIter=2000,constr_tol=1e-8,opt_tol=1e-6)
-wing.writeTecplot('./geo_output/c172_geo.dat')
-wing.writeIGES('./geo_input/c172.igs')
-
-
+# This script reads a surfaced-based plot3d file as typically
+# outputted by aerosurf. It then creates a b-spline surfaces for each
+# surface patch.
+aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/full_aircraft.xyz')
+aircraft.calcEdgeConnectivity(1e-6,1e-6)
+aircraft.writeEdgeConnectivity('./geo_input/aircraft.con')
+aircraft.propagateKnotVectors()
+aircraft.writeTecplot('./geo_output/full_aircraft.dat',orig=True)
