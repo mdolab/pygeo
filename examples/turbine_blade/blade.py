@@ -39,12 +39,15 @@ import pyGeo
 sys.path.append('../../../pyLayout/')
 import pyLayout
 
-#Matplotlib
-try:
-    from matplotlib.pylab import plot,show
-except:
-    print 'Matploptlib could not be imported'
-# end if
+#pyTacs
+from pyTACS import TACS
+from pyTACS import elements
+
+import tacs_utils
+from tacs_utils import TriPan
+from tacs_utils import TACSAnalysis 
+
+from petsc4py import PETSc
 
 # ==============================================================================
 # Start of Script
@@ -63,9 +66,12 @@ le_loc = array([0.5000,0.5000,0.5000,0.5000,0.5000,0.5000,0.3300,\
                 0.2500,0.2500,0.2500,0.2500,0.2500,0.2500,0.2500,0.2500,0.2500])
 tw_aero = array([0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,20.3900,16.0200,11.6500,\
            6.9600,1.9800,-1.8800,-3.3700,-3.4100,-3.4500,-3.4700])
-airfoil_list = ['af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp','af1-6.inp',\
-                    'af-07.inp','af8-9.inp','af8-9.inp','af-10.inp','af-11.inp','af-12.inp','af-13.inp',\
-                    'af-14.inp','af15-16.inp','af15-16.inp']
+airfoil_list = ['geo_input/af1-6.inp','geo_input/af1-6.inp','geo_input/af1-6.inp',
+                'geo_input/af1-6.inp','geo_input/af1-6.inp','geo_input/af1-6.inp',
+                'geo_input/af-07.inp','geo_input/af8-9.inp','geo_input/af8-9.inp',
+                'geo_input/af-10.inp','geo_input/af-11.inp','geo_input/af-12.inp',
+                'geo_input/af-13.inp','geo_input/af-14.inp','geo_input/af15-16.inp',
+                'geo_input/af15-16.inp']
 # -------------------------------------------------------------------
 
 offset = zeros((naf,2))
@@ -89,25 +95,25 @@ Nctlu = 15
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
 # blade = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
-#                     file_type='precomp',scale=chord,offset=offset, 
-#                     end_type='rounded',end_scale =1,
-#                     Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
+#                      file_type='precomp',scale=chord,offset=offset, 
+#                      end_type='rounded',end_scale =1,
+#                      Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
 # blade.setSymmetry('xy')
-# #blade.calcEdgeConnectivity(1e-6,1e-6)
-# #blade.writeEdgeConnectivity('blade.con')
-# #sys.exit(0)
-# blade.readEdgeConnectivity('blade.con')
+# blade.calcEdgeConnectivity(1e-6,1e-6)
+# blade.writeEdgeConnectivity('./geo_input/blade.con')
+
+# blade.readEdgeConnectivity('./geo_input/blade.con')
 # blade.propagateKnotVectors()
 
-# blade.fitSurfaces(nIter=100,constr_tol=1e-7,opt_tol=1e-6)
-# blade.writeIGES('./blade.igs')
-# blade.writeTecplot('./blade.dat',orig=True,nodes=True)
-
+# #blade.fitSurfaces(nIter=100,constr_tol=1e-7,opt_tol=1e-6)
+# blade.writeIGES('./geo_output/blade.igs')
+# blade.writeTecplot('./geo_output/blade.dat')
+# sys.exit(0)
 
 # Read the IGES file
-blade = pyGeo.pyGeo('iges',file_name='blade.igs')
-blade.readEdgeConnectivity('blade.con')
-blade.writeTecplot('./blade.dat',orig=True,nodes=True)
+blade = pyGeo.pyGeo('iges',file_name='./geo_input/blade.igs')
+blade.readEdgeConnectivity('./geo_input/blade.con')
+blade.writeTecplot('./geo_output/blade.dat')
 
 print '---------------------------'
 print 'Attaching Reference Axis...'
@@ -134,7 +140,7 @@ blade.calcCtlDeriv()
 print '---------------------------'
 print '      pyLayout Setup' 
 print '---------------------------'
- 
+timeA = time.time()
 MAX_SPARS = 2  # This is the same for each spanwise section
 Nsection = 1
 wing_box = pyLayout.Layout(blade,Nsection,MAX_SPARS)
@@ -143,8 +149,8 @@ wing_box = pyLayout.Layout(blade,Nsection,MAX_SPARS)
 
 MAX_RIBS_1 = naf
 
-le_list = array([[0.06,0,0],[-.24,0,5.5],[-.3,0,21.15]])
-te_list = array([[.54,0,0],[.45,0,5.5],[-.14,0,21.15]])
+le_list = array([[0.16,0,0],[-.24,0,5.5],[-.3,0,21.15]])
+te_list = array([[.44,0,0],[.45,0,5.5],[-.14,0,21.15]])
 domain1 = pyLayout.domain(le_list.copy(),te_list.copy())
 
 # # ---------- OPTIONAL SPECIFIC RIB DISTIRBUTION -----------
@@ -156,13 +162,13 @@ rib_dir[:] = [1,0,0]
 
 # # -----------------------------------------------------------
 
-rib_blank = zeros((MAX_RIBS_1,MAX_SPARS-1))
+rib_blank = ones((MAX_RIBS_1,MAX_SPARS-1))
 spar_blank = ones((MAX_SPARS,MAX_RIBS_1-1))
 
 # Spacing Parameters for Elements
-span_space = 3*ones(MAX_RIBS_1-1)
-rib_space  = 2*ones(MAX_SPARS+1) # Note the +1
-v_space    = 2
+span_space = 8*ones(MAX_RIBS_1-1)
+rib_space  = 10*ones(MAX_SPARS+1) # Note the +1
+v_space    = 8
 
 surfs = [[0],[1]] #Upper surfs for LE to TE then Lower Surfs from LE to TE
 spar_con = [0,0]
@@ -170,8 +176,39 @@ spar_con = [0,0]
 def1 = pyLayout.struct_def(MAX_RIBS_1,MAX_SPARS,domain1,surfs,spar_con,
                            rib_blank=rib_blank,rib_pos=rib_pos,rib_dir=rib_dir,
                            spar_blank=spar_blank,
-                           span_space = span_space,rib_space=rib_space,v_space=v_space)
+                           span_space = span_space,rib_space=rib_space,v_space=v_space,t=.04)
                            
 wing_box.addSection(def1)
-wing_box.writeTecplot('./blade_layout.dat')
-wing_box.finalize()
+#wing_box.writeTecplot('./tacs_output/blade_layout.dat')
+
+# # -----------------------------------------------------------
+
+structure, tacs = wing_box.finalize( nlevels = 1)
+timeB=time.time()
+print 'TIme is:',timeB-timeA
+sys.exit(0)
+mesh = structure.getMesh()
+
+paramSet = TACSAnalysis.ParameterSet()
+paramSet.monitor = True
+paramSet.nSubspace = 10
+paramSet.eigenTol = 1e-8
+
+paramSet.epsProblemType = TACS.TACS_PETScAssembler_Real.POS_DEF_HERMITIAN
+paramSet.epsSolver = TACS.TACS_PETScAssembler_Real.ARNOLDI
+
+t = TACSAnalysis.TACSAnalysis( tacs[0], paramSet, 'blade' ) 
+freq = t.naturalFreq()
+
+t.eps.getEigenpair( 0, t.vecs[0], t.vecs[1] )
+t.tacs_assembler.writeTecplotFile( t.vecs[0], './tacs_output/blade_mode0')
+
+t.eps.getEigenpair( 1, t.vecs[0], t.vecs[1] )
+t.tacs_assembler.writeTecplotFile( t.vecs[0], './tacs_output/blade_mode1')
+
+t.eps.getEigenpair( 2, t.vecs[0], t.vecs[2] )
+t.tacs_assembler.writeTecplotFile( t.vecs[0], './tacs_output/blade_mode2')
+
+t.eps.getEigenpair( 3, t.vecs[0], t.vecs[3] )
+t.tacs_assembler.writeTecplotFile( t.vecs[0], './tacs_output/blade_mode3')
+sys.exit(0)
