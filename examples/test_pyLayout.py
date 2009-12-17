@@ -51,23 +51,23 @@ from dv_funcs import *
 
 # Wing Information - Create a Geometry Object from cross sections
 
-naf=3
-airfoil_list = ['../input/naca0012.dat','../input/naca0012.dat','../input/naca0012.dat']
-chord = [1,1,.5]
-x = [0,0,.25]
-y = [0,0,0]
-z = [0,2,4]
-rot_x = [0,0,0]
-rot_y = [0,0,0]
-tw_aero = [0,0,0]
+naf=2
+airfoil_list = ['../input/naca0012.dat','../input/naca0012.dat']#,'../input/naca0012.dat']
+chord = [1,1]#,.5]
+x = [0,0]#,.25]
+y = [0,0]#,0]
+z = [0,2]#,4]
+rot_x = [0,0]#,0]
+rot_y = [0,0]#,0]
+tw_aero = [0,0]#,0]
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
-nsections = [6,6]
+nsections = [6]
 # Make the break-point vector
 Nctlu = 13
 end_type = 'rounded'
-breaks = [1]                               
+#breaks = [1]                               
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
 rot = zeros((naf,3))
@@ -83,12 +83,11 @@ rot[:,2] = tw_aero
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    file_type='xfoil',scale=chord,offset=offset, 
                    Xsec=X,rot=rot,end_type=end_type,nsections=nsections,
-                   breaks=breaks,
                    fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 
 wing.calcEdgeConnectivity(1e-6,1e-6)
-#wing.writeEdgeConnectivity('test_layout.con')
-#sys.exit(0)
+wing.writeEdgeConnectivity('test_layout.con')
+sys.exit(0)
 wing.readEdgeConnectivity('test_layout.con')
 wing.propagateKnotVectors()
 #wing.fitSurfaces3()

@@ -23,9 +23,12 @@ def mpiPrint(string,NO_PRINT=False):
         return
     else:
         if MPI:
-            if MPI.Comm.Get_rank( MPI.WORLD ) == 0:
+            try:
+                if MPI.Comm.Get_rank( MPI.WORLD ) == 0:
+                    print string
+                # end if
+            except:
                 print string
-            # end if
         else:
             print string
         # end if
@@ -458,7 +461,6 @@ def curveDirection(curve1,curve2):
         return tot,d_forward
     else:
         return tot,d_backward
-    # end if
 
 def indexPosition(i,j,N,M):
     '''This function is a generic function which determines if for a grid
