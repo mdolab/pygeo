@@ -18,7 +18,7 @@ petsc4py.init(sys.argv)
 # =============================================================================
 
 # pySpline 
-sys.path.append('../../../pySpline/python')
+sys.path.append('../../../../pySpline/python')
 
 #cfd-csm pre (Optional)
 sys.path.append('../../../../pyHF/pycfd-csm/python/')

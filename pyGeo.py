@@ -452,15 +452,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
             # end for
         # end if
 
-            if 'cont' in kwargs:
-                cont = kwargs['cont']
-            else:
-                cont = []
-                for i in xrange(nBreaks):
-                    cont.append(0) # Default is c0 contintity
-                # end for
-                # end if 
-
+        if 'cont' in kwargs:
+            cont = kwargs['cont']
         else:
             cont = [0]*nBreaks # Default is c0 contintity
         # end if 
