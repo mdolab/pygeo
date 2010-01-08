@@ -11,45 +11,18 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
     array, real, reshape, meshgrid, dot, cross, vstack, arctan2, tan, loadtxt,\
     lexsort,savetxt,append
 
-import petsc4py
-petsc4py.init(sys.argv)
+#import petsc4py
+#petsc4py.init(sys.argv)
 
 # =============================================================================
 # Extension modules
 # =============================================================================
-#pyPSG:
-sys.path.append(os.path.abspath('../../../pySpline/python'))
-sys.path.append(os.path.abspath('../../')) # pyGeo & geo_utils
-sys.path.append(os.path.abspath('../../../pyLayout/'))
-
-#cfd-csm pre (Optional)
-sys.path.append('../../../../pyHF/pycfd-csm/python/')
-
-# pyOpt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
-
-# pySnopt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
-
-# pySpline 
-import pySpline
-
-#pyGeo
-import pyGeo
-
-#pyLayout
-import pyLayout
+from mdo_import_helper import *
+exec(import_modules('pySpline','pyGeo','pyLayout'))
 
 #Design Variable Functions
 sys.path.append('../')
 from dv_funcs import *
-
-#Matplotlib
-try:
-    from matplotlib.pylab import plot,show
-except:
-    print 'Matploptlib could not be imported'
-# end if
 
 # ==============================================================================
 # Start of Script

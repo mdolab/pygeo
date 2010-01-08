@@ -11,43 +11,15 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
     array, real, reshape, meshgrid, dot, cross, vstack, arctan2, tan, loadtxt,\
     lexsort,savetxt,append
 
-import petsc4py
-petsc4py.init(sys.argv)
+#import petsc4py
+#petsc4py.init(sys.argv)
 
 # =============================================================================
 # Extension modules
 # =============================================================================
 
-# pySpline 
-sys.path.append('../../../pySpline/python')
-import pySpline
-
-#cfd-csm pre (Optional)
-sys.path.append('../../../../pyHF/pycfd-csm/python/')
-
-# pyOpt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
-
-# pySnopt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
-
-#pyGeo
-sys.path.append('../../')
-import pyGeo
-
-#pyLayout
-sys.path.append('../../../pyLayout/')
-import pyLayout
-
-#pyTacs
-from pyTACS import TACS
-from pyTACS import elements
-
-import tacs_utils
-from tacs_utils import TriPan
-from tacs_utils import TACSAnalysis 
-
-from petsc4py import PETSc
+from mdo_import_helper import *
+exec(import_modules('pyGeo','pyLayout'))
 
 # ==============================================================================
 # Start of Script
@@ -94,21 +66,21 @@ Nctlu = 15
 # Step 1: Run the folloiwng Commands: (Uncomment between -------)
 # ---------------------------------------------------------------------
 #Note: u direction is chordwise, v direction is span-wise
-# blade = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
-#                      file_type='precomp',scale=chord,offset=offset, 
-#                      end_type='rounded',end_scale =1,
-#                      Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
-# blade.setSymmetry('xy')
-# blade.calcEdgeConnectivity(1e-6,1e-6)
-# blade.writeEdgeConnectivity('./geo_input/blade.con')
+blade = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
+                     file_type='precomp',scale=chord,offset=offset, 
+                     end_type='rounded',end_scale =1,
+                     Xsec=X,rot=rot,fit_type='lms',Nctlu=Nctlu,Nfoil=45)
+blade.setSymmetry('xy')
+blade.calcEdgeConnectivity(1e-6,1e-6)
+blade.writeEdgeConnectivity('./geo_input/blade.con')
 
-# blade.readEdgeConnectivity('./geo_input/blade.con')
-# blade.propagateKnotVectors()
+blade.readEdgeConnectivity('./geo_input/blade.con')
+blade.propagateKnotVectors()
 
-# #blade.fitSurfaces(nIter=100,constr_tol=1e-7,opt_tol=1e-6)
-# blade.writeIGES('./geo_output/blade.igs')
-# blade.writeTecplot('./geo_output/blade.dat')
-# sys.exit(0)
+#blade.fitSurfaces(nIter=100,constr_tol=1e-7,opt_tol=1e-6)
+blade.writeIGES('./geo_output/blade.igs')
+blade.writeTecplot('./geo_output/blade.dat')
+sys.exit(0)
 
 # Read the IGES file
 blade = pyGeo.pyGeo('iges',file_name='./geo_input/blade.igs')
