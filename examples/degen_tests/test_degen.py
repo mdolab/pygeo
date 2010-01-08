@@ -10,25 +10,12 @@ import os, sys, string, pdb, copy, time
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
     array, real, reshape, meshgrid, dot, cross, vstack, arctan2, tan
 
-import petsc4py
-petsc4py.init(sys.argv)
-
 # =============================================================================
 # Extension modules
 # =============================================================================
 
-# pySpline 
-sys.path.append('../pySpline/python')
-
-#cfd-csm pre (Optional)
-sys.path.append('../../pyHF/pycfd-csm/python/')
-
-#pyGeo
-import pyGeo2 as pyGeo
-
-#pyLayout
-sys.path.append('../pyLayout/')
-import pyLayout
+from mdo_import_helper import *
+exec(import_modules('pyGeo'))
 
 #Design Variable Functions
 from dv_funcs import *

@@ -41,64 +41,20 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 
 from numpy.linalg import lstsq,inv,norm
 
-# geo_utils
-from geo_utils import *
+# =============================================================================
+# Extension modules
+# =============================================================================
 
-try:
-    import petsc4py
-    from petsc4py import PETSc
-    USE_PETSC = True
-    #USE_PETSC = False
-    mpiPrint('PETSc4py is available. Least Square Solutions will be performed \
-with PETSC')
+from mdo_import_helper import *
+exec(import_modules('geo_utils','pySpline','csm_pre','pyOpt_optimization','pySNOPT','mpi4py','petsc4py'))
+
+if petsc4py != None:
     version = petsc4py.__version__
     vals = string.split(version,'.')
     PETSC_MAJOR_VERSION = int(vals[0])
     PETSC_MINOR_VERSION = int(vals[1])
     PETSC_UPDATE        = int(vals[2])
-except:
-    mpiPrint('PETSc4py is not available. Least Square Solutions will be performed\
-with LAPACK (Numpy Least Squares)')
-    USE_PETSC = False
-
-try:
-    import mpi4py
-    from mpi4py import MPI
-except:
-    MPI = None
-# end try
-
-# =============================================================================
-# Extension modules
-# =============================================================================
-
-# pySpline 
-try:
-    import pySpline
-except:
-    mpiPrint('pySpline is not available. Ensure the path to pySpline is set in \
-the highest level script')
-    sys.exit(0)
-# end try
-
-# pyCFD-CSM
-try:
-    import csm_pre
-    USE_CSM_PRE = True
-    mpiPrint('CSM_PRE is available. Surface associations can be performed')
-except:
-    mpiPrint('CSM_PRE is not available. Surface associations cannot be performed')
-    USE_CSM_PRE = False
-
-# pyOPT/pySNOPT
-try:
-    from pyOpt_optimization import Optimization
-    from pySNOPT import SNOPT
-    USE_SNOPT = True
-except:
-    mpiPrint('pyOpt_optimization and/or pySnopt are not available. Ensure the path to \
-pyOpt_optimization and pySnopt are set in the highest level script')
-    USE_SNOPT = False
+# end if
 
 # =============================================================================
 # pyGeo class
@@ -932,7 +888,7 @@ double degenerate patch at the tip'
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
-    def calcEdgeConnectivity(self,node_tol=1e-4,edge_tol=1e-4):
+    def _calcEdgeConnectivity(self,node_tol,edge_tol):
 
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
@@ -956,7 +912,6 @@ double degenerate patch at the tip'
         # end for
 
         self.topo = Topology(coords=coords,node_tol=node_tol,edge_tol=edge_tol)
-        self._setEdgeConnectivity()
         return
    
     def _setEdgeConnectivity(self):
@@ -996,14 +951,20 @@ double degenerate patch at the tip'
         self.topo.printEdgeConnectivity()
         return
 
-    def writeEdgeConnectivity(self,file_name):
-        self.topo.writeEdgeConnectivity(file_name)
-        return
+    def doEdgeConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
+        '''This is the ONLY function that is available to the user for
+        edge connectivity functionality pyGeo automatically creates
+        the con file from scratch if the specified con file doesn't
+        exists, and if it does, read it.'''
 
-    def readEdgeConnectivity(self,file_name):
-        self.topo = Topology(file=file_name)
+        if os.path.isfile(file_name):
+            mpiPrint('Reading Edge Connectivity File: %s'%(file_name))
+            self.topo = Topology(file=file_name)
+        else:
+            self._calcEdgeConnectivity(node_tol,edge_tol)
+            self.topo.writeEdgeConnectivity(file_name)
+        # end if
         self._setEdgeConnectivity()
-        return
 
     def _calcnDG(self):
         '''Calculate the number of design groups'''
@@ -2269,6 +2230,7 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
             rot = array(rot)
             if nrefsecs == None:
                 nrefsecs = X.shape[0]
+            # end if
 
             if nrefsecs < X.shape[0]:
 
@@ -2283,19 +2245,19 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                 rotzs = pySpline.linear_spline(task='lms',s=s,X=rot[:,2],\
                                                    nCtl=nrefsecs,k=2)
 
-                if spacing != None:
+                if spacing == None:
                     spacing = linspace(0,1,nrefsecs)
-                    
+                # end if
+
                 Xnew = x.getValue(spacing)
                 rotnew = zeros((nrefsecs,3))
                 rotnew[:,0] = rotxs.getValueV(spacing)
                 rotnew[:,1] = rotys.getValueV(spacing)
                 rotnew[:,2] = rotzs.getValueV(spacing)
-
                 
             elif nrefsecs == X.shape[0]:
-                Xnew = X
-                rotnew = rot
+                Xnew = X.copy()
+                rotnew = rot.copy()
 
             else: #nrefsecs > X.shape
                 if spacing == None:
@@ -2312,9 +2274,6 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
                 rotzs = pySpline.linear_spline(\
                     task='interpolate',s=s,X=rot[:,2],nCtl=nrefsecs,k=2)
 
-                if not spacing == None:
-                    spacing = linspace(0,1,nrefsecs)
-                    
                 Xnew = x.getValueV(spacing)
                 rotnew = zeros((nrefsecs,3))
                 rotnew[:,0] = rotxs.getValueV(spacing)
@@ -2339,8 +2298,8 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
 
             else:   # We have a point selection class passed in
                 for isurf in surf_ids:
-                    coef_list = point_select.getControlPoints(\
-                        self.surfs[isurf],isurf,coef_list,self.topo.l_index)
+                    coef_list.extend(point_select.getControlPoints(\
+                            self.surfs[isurf],isurf,coef_list,self.topo.l_index))
                 # end for
             # end if
 
@@ -2451,11 +2410,10 @@ a flap hinge line'
         return None
 
     def getRefAxisConnection(self,ref_axis,isurf,surface_list):
-        '''Determine the primary orientation of a reference axis, ref_axis on
-        surface, surface. The function returns a vector of length Nctlu or
-        Nctlv whcih contains the s-positions where lines of constant u or
-        v should connect to the ref axis'''
-
+        '''Determine the primary orientation of a reference axis,
+        ref_axis on surface, surface. The function returns a vector of
+        length Nctlu or Nctlv whcih contains the s-positions where
+        lines of constant u or v should connect to the ref axis'''
 
         # We need to deduce along which direction (u or v) the
         # reference axis is directed.  First estimate Over what
@@ -2470,7 +2428,6 @@ a flap hinge line'
         full_surface_list = unique(full_surface_list)
         
         types = []
-     
         for surfid in full_surface_list:
             dir_type = directionAlongSurface(self.surfs[surfid],ref_axis.xs)
             if dir_type == 0 or dir_type == 1: # u type regarless of direction
@@ -2508,12 +2465,13 @@ a flap hinge line'
                 for icoef in xrange(len(coef_index)):
                     coef.append(self.coef[coef_index[icoef]])
                 # end if
+                
                 X = array(coef)
                 #X = array(coef).reshape(Nctlu*len(full_surface_list),3)
-
+                
                 temp = pySpline.linear_spline(
                     task='lms',X=X,k=2,Nctl=2)
-                
+
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[j] = s1
             # end for
@@ -2536,13 +2494,12 @@ a flap hinge line'
                 # end for
                 
                 X = array(coef).reshape(Nctlv*len(full_surface_list),3)
-                temp = pySpline.linear_spline(
-                    task='lms',X=X,k=2,Nctl=2)
+                temp = pySpline.linear_spline(task='lms',X=X,k=2,Nctl=2)
 
                 s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
                 s[i] = s1
             # end for
-           
+
             return s,0
 
 # ----------------------------------------------------------------------
@@ -2550,7 +2507,7 @@ a flap hinge line'
 # ----------------------------------------------------------------------
 
     def _updateCoef(self,local=True):
-        '''update the entire pyGeo Object'''
+        '''update the coefficents on the pyGeo update'''
         
         # First, update the reference axis info from the design variables
         for i in xrange(len(self.DV_listGlobal)):
@@ -2622,8 +2579,7 @@ a flap hinge line'
 #             # end for
 # ---------------------------------------------------------
         # end for
-
-        
+       
         if local:
             # fourth, update the coefficients (from normal DV changes)        
             for i in xrange(len(self.DV_listNormal)):
@@ -3012,7 +2968,6 @@ a flap hinge line'
                 dvNum += n.nVal
             # end
         # end
-
         return
     
 # ----------------------------------------------------------------------
@@ -3027,7 +2982,8 @@ a flap hinge line'
         '''Write the pyGeo Object to Tecplot'''
 
         # Open File and output header
-        if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
+        #if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
+        if MPI.Comm.Get_rank(MPI.COMM_WORLD) != 0: 
             return
         # end if
         
@@ -3140,7 +3096,7 @@ a flap hinge line'
             for isurf in xrange(self.nSurf):
                 midu = floor(self.surfs[isurf].Nctlu/2)
                 midv = floor(self.surfs[isurf].Nctlv/2)
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"Surface %d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],isurf+1,isurf)
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"S%d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],isurf+1,isurf)
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()
@@ -3201,7 +3157,6 @@ a flap hinge line'
         sys.stdout.write('\n')
         return
 
-
     def writeTecplotLinks(self,handle,ref_axis):
         '''Write out the surface links. '''
 
@@ -3236,7 +3191,6 @@ a flap hinge line'
         # end for
 
         return
-
 
     def writeIGES(self,file_name):
         '''write the surfaces to IGES format'''
@@ -3287,7 +3241,6 @@ a flap hinge line'
 
         return coordinates
   
-
     def attachSurface(self,coordinates,patch_list=None,Nu=20,Nv=20,force_domain=True):
 
         '''Attach a list of surface points to either all the pyGeo surfaces
@@ -3353,7 +3306,6 @@ a flap hinge line'
                     conn[2,counter] = Nu*Nv*n + (j+1)*Nu + i + 1 + 1
                     conn[3,counter] = Nu*Nv*n + (j+1)*Nu + i     + 1
                     counter += 1
-
                 # end for
             # end for
         # end for
@@ -3473,7 +3425,6 @@ a flap hinge line'
         # end if
 
         return dPtdCoef
-        
 
     def calcSurfaceDerivative(self,patchID,uv,indices=None,dPtdCoef=None):
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''

@@ -7,38 +7,12 @@ from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     arange,copy,floor
 import string ,sys, copy, pdb, os
 
-try:
-    import mpi4py
-    from mpi4py import MPI
-except:
-    MPI = None
-# end try
+from mdo_import_helper import *
+exec(import_modules('mpi4py'))
+# --------------------------------------------------------------
+#                Rotation Functions
+# --------------------------------------------------------------
 
-# =============================================================================
-# Global Functions
-# =============================================================================
-
-def mpiPrint(string,NO_PRINT=False):
-    if NO_PRINT:
-        return
-    else:
-        if MPI:
-            try:
-                if MPI.Comm.Get_rank( MPI.WORLD ) == 0:
-                    print string
-                # end if
-            except:
-                print string
-        else:
-            print string
-        # end if
-    # end if
-
-    return
-
- # --------------------------------------------------------------
- #                Rotation Functions
- # --------------------------------------------------------------
 def rotxM(theta):
     '''Return x rotation matrix'''
     theta = theta*pi/180
@@ -73,7 +47,6 @@ def rotzV(x,theta):
     M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
     return dot(M,x)
 
-
  # --------------------------------------------------------------
  #                I/O Functions
  # --------------------------------------------------------------
@@ -104,7 +77,6 @@ def readNValues(handle,N,type):
         # end if
     # end while
     return values
-
 
 def read_af(filename,file_type='xfoil',N=35):
     ''' Load the airfoil file of type file_type'''
@@ -282,7 +254,6 @@ def flatten(x):
     else:
         return [x[0]] + flatten(x[1:])
 
-
 def unique(s):
     """Return a list of the elements in s, but without duplicates.
 
@@ -396,7 +367,6 @@ def unique_index(s,s_hash=None):
     # end for
 
     return t[:lasti],ind
-
 
 def directionAlongSurface(surface,line,section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
@@ -626,7 +596,6 @@ def blendKnotVectors(knot_vectors,sym):
     new_knot_vec /= nVec
     return new_knot_vec
 
-
 class Topology(object):
     '''
     The topology class contains the data and functions assocatied with
@@ -827,8 +796,20 @@ missing nodes'
         self._calcDGs(edges,edge_link,edge_link_sorted,edge_link_ind)
 
         # Set the edge ojects
-        self._setEdgeObjects(edges,midpoints)
-        
+        self.edges = []
+        for i in xrange(self.nEdge): # Create the edge objects
+            if midpoints: # If they exist
+                if edges[i][0] == edges[i][1] and \
+                        e_dist(midpoints[i],node_list[edges[i][0]]) < node_tol:
+                    self.edges.append(edge(edges[i][0],edges[i][1],0,1,0,edges[i][2],edges[i][3]))
+                else:
+                    self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
+                # end if
+            else:
+                self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
+            # end if
+        # end for
+
         return
 
     def _calcDGs(self,edges,edge_link,edge_link_sorted,edge_link_ind):
@@ -841,22 +822,6 @@ missing nodes'
             # end if
         # end for
         self.nDG = dg_counter + 1
-
-    def _setEdgeObjects(self,edges,midpoints):
-        self.edges = []
-        for i in xrange(self.nEdge): # Create the edge objects
-            if midpoints: # If they exist
-                if edges[i][0] == edges[i][1] and \
-                       e_dist(edges[i][2],edges[edges[i][0]]) < node_tol:
-                    self.edges.append(edge(edges[i][0],edges[i][1],0,1,0,edges[i][2],edges[i][3]))
-                else:
-                    self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
-                # end if
-            else:
-                self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
-            # end if
-        # end for
-        return
     
     def addDGEdge(self,i,edges,edge_link,edge_link_sorted,edge_link_ind):
 
@@ -915,7 +880,7 @@ the list of surfaces must be the same length'
                 if edge_index[edge] == []:# Not added yet
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
-                        index = node_index[self.edges[edge][0]]
+                        index = node_index[self.edges[edge].n1]
                         for jj in xrange(cur_size[iedge]-2):
                             edge_index[edge].append(index)
                         # end for
@@ -1466,33 +1431,6 @@ def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
     yi = y1 + ua*(y2-y1);
 
     return xi,yi
- 
-#   def addDGEdge(self,i):
-#         # Find surfs with edges of 'i'
-#         for iface in xrange(self.nFace):
-#             for iedge in xrange(4):
-#                 edge_num = self.edge_link[iface][iedge]
-#                 if edge_num == i:
-#                     if iedge in [0,1]:
-#                         self.edges[i][3] = 0# self.surfs[iface].Nctlu
-#                     else:
-#                         self.edges[i][3] = 0# self.surfs[iface].Nctlv
-
-#                     oppositeEdge = self.edge_link[iface][flipEdge(iedge)]
-
-#                     if self.edges[oppositeEdge][2] == -1:
-#                         self.edges[oppositeEdge][2] = self.edges[i][2]
-
-#                         # Check if the "oppositeEdge is degenerate" since DON't recursively add for them
-#                         #if not self.edges[oppositeEdge][0] == self.edges[oppositeEdge][1]:
-#                         self.addDGEdge(oppositeEdge)
-#                         # end if
-#                     # end if
-#                 # end if
-#             # end for
-#         # end for
-#         return 
-
 
 # ----------------------- Auto TRI-Pan Mesh Creation --------------------
 
