@@ -5,7 +5,7 @@ pyGeo is a (fairly) complete geometry surfacing engine. It performs
 multiple functions including producing surfaces from cross sections,
 fitting groups of surfaces with continutity constraints and has
 built-in design variable handling. The actual b-spline surfaces are of
-the pySpline surf_spline type. See the individual functions for
+the pySpline surface type. See the individual functions for
 additional information
 
 Copyright (c) 2009 by G. Kenway
@@ -46,15 +46,7 @@ from numpy.linalg import lstsq,inv,norm
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('geo_utils','pySpline','csm_pre','pyOpt_optimization','pySNOPT','mpi4py','petsc4py'))
-
-if petsc4py != None:
-    version = petsc4py.__version__
-    vals = string.split(version,'.')
-    PETSC_MAJOR_VERSION = int(vals[0])
-    PETSC_MINOR_VERSION = int(vals[1])
-    PETSC_UPDATE        = int(vals[2])
-# end if
+exec(import_modules('geo_utils','pySpline','csm_pre','mpi4py'))
 
 # =============================================================================
 # pyGeo class
@@ -120,13 +112,12 @@ class pyGeo():
         
         # First thing to do is to check if we want totally silent
         # operation i.e. no print statments
-
         if 'no_print' in kwargs:
             self.NO_PRINT = kwargs['no_print']
         else:
             self.NO_PRINT = False
         # end if
-
+        self.init_type = init_type
         mpiPrint(' ',self.NO_PRINT)
         mpiPrint('------------------------------------------------',self.NO_PRINT)
         mpiPrint('pyGeo Initialization Type is: %s'%(init_type),self.NO_PRINT)
@@ -165,14 +156,12 @@ class pyGeo():
         # --------------------------------------------------------------
 
         if init_type == 'plot3d':
-            assert 'file_name' in kwargs,'file_name must be specified as \
-file_name=\'filename\' for plot3d init_type'
-            self._readPlot3D(kwargs['file_name'],args,kwargs)
+            self._readPlot3D(*args,**kwargs)
 
         elif init_type == 'iges':
             assert 'file_name' in kwargs,'file_name must be specified as \
 file_name=\'filename\' for iges init_type'
-            self._readIges(kwargs['file_name'],args,kwargs)
+            self._readIges(kwargs['file_name'])
 
         elif init_type == 'lifting_surface':
             self._init_lifting_surface(*args,**kwargs)
@@ -193,10 +182,11 @@ file_name=\'filename\' for iges init_type'
 #               Initialization Type Functions
 # ----------------------------------------------------------------------------
 
-    def _readPlot3D(self,file_name,*args,**kwargs):
+    def _readPlot3D(self,*args,**kwargs):
 
         '''Load a plot3D file and create the splines to go with each patch'''
-
+        assert 'file_name' in kwargs,'file_name must be specified for plot3d'
+        file_name = kwargs['file_name']
         mpiPrint('Loading plot3D file: %s ...'%(file_name),self.NO_PRINT)
 
         f = open(file_name,'r')
@@ -242,10 +232,10 @@ file_name=\'filename\' for iges init_type'
         # Now create a list of spline objects:
         surfs = []
         for isurf in xrange(nSurf):
-            surfs.append(pySpline.surf_spline(task='lms',X=patches[isurf],\
-                                                  ku=4,kv=4,Nctlu=8,Nctlv=8,\
-                                                  no_print=self.NO_PRINT))
-
+            surfs.append(pySpline.surface('lms',X=patches[isurf],\
+                                              ku=4,kv=4,Nctlu=8,Nctlv=8,\
+                                              no_print=self.NO_PRINT))
+            
         self.surfs = surfs
         self.nSurf = nSurf
         return
@@ -336,8 +326,8 @@ file_name=\'filename\' for iges init_type'
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            self.surfs.append(pySpline.surf_spline(\
-                    task='create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
+            self.surfs.append(pySpline.surface(\
+                    'create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
                         range=range,no_print=self.NO_PRINT))
         # end for
 
@@ -483,7 +473,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # Create a chord line representation
 
                 Xchord_line = array([X[0,0,start],X[0,-1,start]])
-                chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+                chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
 
                 for j in xrange(N): # This is for the Data points
 
@@ -508,8 +498,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dx2 = V-D
  
                         # Now generate the line and extract the points we want
-                        temp_spline = pySpline.linear_spline(\
-                            task='interpolate',X=X[0,j,start:end,:],k=4,\
+                        temp_spline = pySpline.curve(\
+                            'interpolate',X=X[0,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
                    
                         Xnew[0,j,start2:end2,:] = \
@@ -529,21 +519,21 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         V = X[1,j,end-1]-X[1,j,start]
                         dx2 = V-D
 
-                        temp_spline = pySpline.linear_spline(\
-                            task='interpolate',X=X[1,j,start:end,:],k=4,\
+                        temp_spline = pySpline.curve(\
+                            'interpolate',X=X[1,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
                         Xnew[1,j,start2:end2,:] = \
                             temp_spline.getValueV(section_spacing[i])
 
                     else:
                             
-                        temp_spline = pySpline.linear_spline(\
-                            task='interpolate',X=X[0,j,start:end,:],k=2)
+                        temp_spline = pySpline.curve(\
+                            'interpolate',X=X[0,j,start:end,:],k=2)
                         Xnew[0,j,start2:end2,:] = \
                             temp_spline.getValueV(section_spacing[i])
 
-                        temp_spline = pySpline.linear_spline(\
-                            task='interpolate',X=X[1,j,start:end,:],k=2)
+                        temp_spline = pySpline.curve(\
+                            'interpolate',X=X[1,j,start:end,:],k=2)
                         Xnew[1,j,start2:end2,:] = \
                             temp_spline.getValueV(section_spacing[i])
                     # end if
@@ -551,10 +541,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 # Now we can generate and append the surfaces
 
-                self.surfs.append(pySpline.surf_spline(\
+                self.surfs.append(pySpline.surface(\
                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:].copy(),\
                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
-                self.surfs.append(pySpline.surf_spline(\
+                self.surfs.append(pySpline.surface(\
                         fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:].copy(),\
                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
 
@@ -588,8 +578,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dx2/=50
 
                         # Now generate the line and extract the points we want
-                        temp_spline = pySpline.linear_spline(\
-                            task='interpolate',X=X[0,j,start:end,:],k=4,\
+                        temp_spline = pySpline.curve(\
+                            'interpolate',X=X[0,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
                         Xnew[0,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
 
@@ -602,18 +592,18 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         dx2/=50
 
                         # Now generate the line and extract the points we want
-                        temp_spline = pySpline.linear_spline(\
-                            task='interpolate',X=X[1,j,start:end,:],k=4,\
+                        temp_spline = pySpline.curve(\
+                            'interpolate',X=X[1,j,start:end,:],k=4,\
                                 dx1=dx1,dx2=dx2)
                         Xnew[1,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
                     # end if
         
                     # Now we need to REPLACE
                         
-                    self.surfs[2*i] = pySpline.surf_spline(\
+                    self.surfs[2*i] = pySpline.surface(\
                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
-                    self.surfs[2*i+1] = pySpline.surf_spline(\
+                    self.surfs[2*i+1] = pySpline.surface(\
                         fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
                 # end if
@@ -628,15 +618,15 @@ offset.shape[0], Xsec, rot, must all have the same size'
             rotnew  = zeros((tot_sec,3))
 
             for j in xrange(N):
-                temp_spline = pySpline.linear_spline(task='interpolate',X=X[0,j,:,:],k=2)
+                temp_spline = pySpline.curve('interpolate',X=X[0,j,:,:],k=2)
                 Xnew[0,j,:,:] = temp_spline.getValueV(section_spacing[0])
-                temp_spline = pySpline.linear_spline(task='interpolate',X=X[1,j,:,:],k=2)
+                temp_spline = pySpline.curve('interpolate',X=X[1,j,:,:],k=2)
                 Xnew[1,j,:,:] = temp_spline.getValueV(section_spacing[0])
             # end for
             Nctlv = nsections
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[0],Nctlv=nsections[0],
+            self.surfs.append(pySpline.surface(fit_type,ku=4,kv=4,X=Xnew[0],Nctlv=nsections[0],
                                                    no_print=self.NO_PRINT,*args,**kwargs))
-            self.surfs.append(pySpline.surf_spline(fit_type,ku=4,kv=4,X=Xnew[1],Nctlv=nsections[0],
+            self.surfs.append(pySpline.surface(fit_type,ku=4,kv=4,X=Xnew[1],Nctlv=nsections[0],
                                                    no_print=self.NO_PRINT,*args,**kwargs))
         # end if
 
@@ -658,7 +648,7 @@ double degenerate patch at the tip'
                     x1 = X[0,j,-1]
                     x2 = X[1,N-j-1,-1]
 
-                    temp = pySpline.linear_spline(task='interpolate',\
+                    temp = pySpline.curve('interpolate',\
                                                       k=2,X=array([x1,x2]))
                     X2[j,:,:] = temp.getValueV(v)
 
@@ -666,7 +656,7 @@ double degenerate patch at the tip'
                 X2[0,:] = X[0,0,-1]
                 X2[-1,:] = X[1,0,-1]
                 
-                self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,\
+                self.surfs.append(pySpline.surface('lms',ku=4,kv=4,\
                                                            X=X2,Nctlv=spacing,\
                                                            *args,**kwargs))
             elif end_type == 'rounded':
@@ -699,15 +689,15 @@ double degenerate patch at the tip'
             
                 # Create a chord line representation of the end section
                 Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
-                end_chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+                end_chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
 
                 # Create a chord line representation of the tip line
                 Xchord_line = array([X[0,0,-1] + dist_max*n_front*end_scale,
                                      X[0,-1,-1] + dist_max*n_back*end_scale])
                 
-                chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+                chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
                 Xchord_line =chord_line.getValueV([0.10,1.0])
-                chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
+                chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
                 tip_line = chord_line.getValueV(linspace(0,1,N))
                 # Now Get the front, back top and bottom guide curves
                 #-------- Front
@@ -720,7 +710,7 @@ double degenerate patch at the tip'
                 dx1 = dot(dv,V) * dv * end_scale
                 dx2 = D+V
        
-                front_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                front_spline = pySpline.curve('interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
                 #-------- Back
@@ -731,7 +721,7 @@ double degenerate patch at the tip'
                 D = end_chord_line.getValue(1)-chord_line.getValue(1)
                 dx1 = dot(dv,V) * dv * end_scale
                 dx2 = D+V
-                end_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                end_spline = pySpline.curve('interpolate',X=X_input,
                                                     k=4,dx1=dx1,dx2=dx2)
 
                 #-------- Top
@@ -742,7 +732,7 @@ double degenerate patch at the tip'
                 D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
                 dx1 = dot(dv,V) * dv * end_scale
                 dx2 = D+V
-                top_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                top_spline = pySpline.curve('interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
                 #-------- Bottom
@@ -753,7 +743,7 @@ double degenerate patch at the tip'
                 D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
                 dx1 = dot(dv,V) * dv * end_scale
                 dx2 = D+V
-                bottom_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+                bottom_spline = pySpline.curve('interpolate',X=X_input,
                                                              k=4,dx1=dx1,dx2=dx2)
 
                 Ndata = 15
@@ -808,10 +798,10 @@ double degenerate patch at the tip'
                 # end for
                 Xnew[:,:,0,:] = X[:,:,-1,:]
                 # Xnew[:,:,-1,:] = tip_line
-                self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew[0],
+                self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[0],
                                                        Nctlv=4, *args,**kwargs))
                 
-                self.surfs.append(pySpline.surf_spline(task='lms',ku=4,kv=4,X=Xnew[1],
+                self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[1],
                                                        Nctlv=4, *args,**kwargs))
 
         self.nSurf = len(self.surfs) # And last but not least
@@ -839,7 +829,7 @@ double degenerate patch at the tip'
                     X[:,:,1] = ac[i][j].Surface_y[:,N-1:]
                     X[:,:,2] = ac[i][j].Surface_z[:,N-1:]
 
-                    self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X))
+                    self.surfs.append(pySpline.surface('interpolate',ku=4,kv=4,X=X))
                     self.nSurf += 1
                 # end for (subcomp)
 
@@ -858,8 +848,8 @@ double degenerate patch at the tip'
                     X[1,:,:,1] = ac[i][j].Surface_y[:,N:]
                     X[1,:,:,2] = ac[i][j].Surface_z[:,N:]
 
-                    self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[0]))
-                    self.surfs.append(pySpline.surf_spline('interpolate',ku=4,kv=4,X=X[1]))
+                    self.surfs.append(pySpline.surface('interpolate',ku=4,kv=4,X=X[0]))
+                    self.surfs.append(pySpline.surface('interpolate',ku=4,kv=4,X=X[1]))
                     self.nSurf += 2
 
                 # end for (sub Comp)
@@ -935,17 +925,8 @@ double degenerate patch at the tip'
             self.coef.append( self.surfs[isurf].coef[i,j])
         # end for
             
-        # Finally turn self.coef into a complex array
-        self.coef = array(self.coef,'D')
-
-        # Create a PETSc vector of the global coefficients
-        if USE_PETSC:
-            self.petsc_coef = PETSc.Vec()
-            self.petsc_coef.createSeq(3*self.Ncoef)
-            self.petsc_coef[:] = self.coef.flatten().astype('d')
-            self.petsc_coef.assemble()
-        # end
-        return
+#         # Finally turn self.coef into a complex array
+#         self.coef = array(self.coef,'D')
 
     def printEdgeConnectivity(self,node_link=None,edge_list=None,edge_link=None,edge_dir=None):
         self.topo.printEdgeConnectivity()
@@ -958,13 +939,20 @@ double degenerate patch at the tip'
         exists, and if it does, read it.'''
 
         if os.path.isfile(file_name):
-            mpiPrint('Reading Edge Connectivity File: %s'%(file_name))
+            mpiPrint('Reading Edge Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo = Topology(file=file_name)
+            self._setEdgeConnectivity()
+            if not self.init_type == 'iges':
+                self.propagateKnotVectors()
+            # end if
         else:
             self._calcEdgeConnectivity(node_tol,edge_tol)
             self.topo.writeEdgeConnectivity(file_name)
+            self._setEdgeConnectivity()
+            if not self.init_type == 'iges':
+                self.propagateKnotVectors()
+            # end if
         # end if
-        self._setEdgeConnectivity()
 
     def _calcnDG(self):
         '''Calculate the number of design groups'''
@@ -1073,1113 +1061,1113 @@ double degenerate patch at the tip'
         # end for
 
         return surfaces
-# ----------------------------------------------------------------------
-#                        Surface Fitting Functions 2
-# ----------------------------------------------------------------------
+# # ----------------------------------------------------------------------
+# #                        Surface Fitting Functions 2
+# # ----------------------------------------------------------------------
 
-    def fitSurfaces3(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
-        if USE_SNOPT == False:
-            print 'Error: pyOpt_Optimization and/or pySNOPT were not imported correctly \
-These modules must be imported for global surfaces fitting to take place.'
-            sys.exit(1)
-        # end if
+#     def fitSurfaces3(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
+#         if USE_SNOPT == False:
+#             print 'Error: pyOpt_Optimization and/or pySNOPT were not imported correctly \
+# These modules must be imported for global surfaces fitting to take place.'
+#             sys.exit(1)
+#         # end if
 
-        time0 = time.time()
+#         time0 = time.time()
                     
-        self.ndv = 3*len(self.coef)
-        sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
+#         self.ndv = 3*len(self.coef)
+#         sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
         
-        # Get the Global number of the original data
-        nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
-        self._initJacobian(nPts,self.ndv,g_index)
+#         # Get the Global number of the original data
+#         nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
+#         self._initJacobian(nPts,self.ndv,g_index)
 
-        if USE_PETSC:
-            self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
-            self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
-            self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
-            self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
-            X = zeros(self.ndv) # X for initial guess
-        else:
-            self.rhs = zeros(nPts*3)
-            X = zeros(self.ndv)
-        # end if 
+#         if USE_PETSC:
+#             self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
+#             self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
+#             self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
+#             self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
+#             X = zeros(self.ndv) # X for initial guess
+#         else:
+#             self.rhs = zeros(nPts*3)
+#             X = zeros(self.ndv)
+#         # end if 
 
-        # Fill up the 'X' with the the current coefficients (optimization start point)
-        for icoef in xrange(len(self.coef)):
-            X[3*icoef:3*icoef+3] = self.coef[icoef]
-        # end for
+#         # Fill up the 'X' with the the current coefficients (optimization start point)
+#         for icoef in xrange(len(self.coef)):
+#             X[3*icoef:3*icoef+3] = self.coef[icoef]
+#         # end for
 
-        # Now Fill up the RHS point list
-        for ii in xrange(len(g_index)):
-            isurf = g_index[ii][0][0]
-            i = g_index[ii][0][1]
-            j = g_index[ii][0][2]
-            self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
-        # end for
+#         # Now Fill up the RHS point list
+#         for ii in xrange(len(g_index)):
+#             isurf = g_index[ii][0][0]
+#             i = g_index[ii][0][1]
+#             j = g_index[ii][0][2]
+#             self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+#         # end for
 
-        # Now determine the number of constraints
-        self.ncon = 0
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have continuity
-                self.ncon += 3*self.topo.edges[iedge].Nctl-2
-            # end if
-        # end for
+#         # Now determine the number of constraints
+#         self.ncon = 0
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have continuity
+#                 self.ncon += 3*self.topo.edges[iedge].Nctl-2
+#             # end if
+#         # end for
 
-        inf = 1e20 # Define a value for infinity
+#         inf = 1e20 # Define a value for infinity
         
-        lower_bound = -inf*ones(self.ndv)
-        upper_bound =  inf*ones(self.ndv)
+#         lower_bound = -inf*ones(self.ndv)
+#         upper_bound =  inf*ones(self.ndv)
 
-        for iedge in xrange(len(self.topo.edges)):
-            surfaces = self.getSurfaceFromEdge(iedge)
-            if len(surfaces) == 1: # Its a mirror edge
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
-                for i in xrange(self.topo.edges[iedge].Nctl):
-                    if edge0 == 0:
-                        index = self.l_index[surf0][i,0]
-                    elif edge0 == 1:
-                        index = self.l_index[surf0][i,-1]
-                    elif edge0 == 2:
-                        index = self.l_index[surf0][0,i]
-                    elif edge0 == 3:
-                        index = self.l_index[surf0][-1,i]
-                    # end if
+#         for iedge in xrange(len(self.topo.edges)):
+#             surfaces = self.getSurfaceFromEdge(iedge)
+#             if len(surfaces) == 1: # Its a mirror edge
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
+#                 for i in xrange(self.topo.edges[iedge].Nctl):
+#                     if edge0 == 0:
+#                         index = self.l_index[surf0][i,0]
+#                     elif edge0 == 1:
+#                         index = self.l_index[surf0][i,-1]
+#                     elif edge0 == 2:
+#                         index = self.l_index[surf0][0,i]
+#                     elif edge0 == 3:
+#                         index = self.l_index[surf0][-1,i]
+#                     # end if
 
-                    if self.sym == 'xy':
-                        lower_bound[3*index+2] = 0
-                        upper_bound[3*index+2] = 0
-                    if self.sym == 'yz':
-                        lower_bound[3*index+0] = 0
-                        upper_bound[3*index+0] = 0
-                    if self.sym == 'xz':
-                        lower_bound[3*index+1] = 0
-                        upper_bound[3*index+1] = 0
-                    # end if
-                # end for
-            # end if
-        # end for
+#                     if self.sym == 'xy':
+#                         lower_bound[3*index+2] = 0
+#                         upper_bound[3*index+2] = 0
+#                     if self.sym == 'yz':
+#                         lower_bound[3*index+0] = 0
+#                         upper_bound[3*index+0] = 0
+#                     if self.sym == 'xz':
+#                         lower_bound[3*index+1] = 0
+#                         upper_bound[3*index+1] = 0
+#                     # end if
+#                 # end for
+#             # end if
+#         # end for
 
-        locA,indA = self._computeSparsityPattern3()
+#         locA,indA = self._computeSparsityPattern3()
 
-        mpiPrint('------------- Fitting Surfaces Globally ------------------')
-        mpiPrint('nPts (Number of Surface Points):',nPts)
-        mpiPrint('nDV (Degrees of Freedom):',self.ndv)
-        mpiPrint('nCon (Constraints):',self.ncon)
+#         mpiPrint('------------- Fitting Surfaces Globally ------------------')
+#         mpiPrint('nPts (Number of Surface Points):',nPts)
+#         mpiPrint('nDV (Degrees of Freedom):',self.ndv)
+#         mpiPrint('nCon (Constraints):',self.ncon)
         
-        # Setup Optimization Probelm
-        opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
-        opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
-        opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
-        opt_prob.addObj('RMS Error')
-        opt = SNOPT()
+#         # Setup Optimization Probelm
+#         opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
+#         opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
+#         opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
+#         opt_prob.addObj('RMS Error')
+#         opt = SNOPT()
 
-        opt.setOption('Verify level',-1)
-        opt.setOption('Nonderivative linesearch')
-        opt.setOption('Major step limit',1e-4)
-        opt.setOption('Major optimality tolerance', opt_tol)
-        opt.setOption('Major feasibility tolerance',constr_tol)
-        opt.setOption('Major iterations limit',nIter)
-        opt.setOption('New superbasics limit',250)
-        opt.setOption('Minor iterations limit',1500)
-        #opt.setOption('QPSolver','CG')
-        opt(opt_prob,self._sens3, sparse=[indA,locA],
-            logHistory='SNOPT_history',
-            loadHistory='SNOPT_history') # Run the actual problem
+#         opt.setOption('Verify level',-1)
+#         opt.setOption('Nonderivative linesearch')
+#         opt.setOption('Major step limit',1e-4)
+#         opt.setOption('Major optimality tolerance', opt_tol)
+#         opt.setOption('Major feasibility tolerance',constr_tol)
+#         opt.setOption('Major iterations limit',nIter)
+#         opt.setOption('New superbasics limit',250)
+#         opt.setOption('Minor iterations limit',1500)
+#         #opt.setOption('QPSolver','CG')
+#         opt(opt_prob,self._sens3, sparse=[indA,locA],
+#             logHistory='SNOPT_history',
+#             loadHistory='SNOPT_history') # Run the actual problem
         
-        # Reset the coefficients after the optimization is done
-        for icoef in xrange(len(self.coef)):
-            self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
-            self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
-            self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
-        # end for
+#         # Reset the coefficients after the optimization is done
+#         for icoef in xrange(len(self.coef)):
+#             self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
+#             self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
+#             self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
+#         # end for
 
-        # Update the entire object with new coefficients
-        self.update()
+#         # Update the entire object with new coefficients
+#         self.update()
 
-        # Delete the self. values we don't need anymore
-        del self.ndv,self.ncon
-        del self.rhs,self.X_PETSC,self.gobj_PETSC,self.temp
+#         # Delete the self. values we don't need anymore
+#         del self.ndv,self.ncon
+#         del self.rhs,self.X_PETSC,self.gobj_PETSC,self.temp
 
-        return
+#         return
 
 
-    def _sens3(self,x,f_obj,f_con,*args,**kwargs):
-        '''Sensitivity function for Fitting Optimization'''
-        time0 = time.time()
-        # ----------- Objective Derivative ----------------
-        if USE_PETSC:
-            self.X_PETSC.setValues(arange(0,self.ndv).astype('intc'),x)
-            self.J(self.X_PETSC,self.temp)
-            self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
-            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
-            self.temp = self.temp-self.rhs
-            self.temp.abs()
-            print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
-        else:
-            g_obj = dot((dot(self.J,x)-self.rhs),self.J)
-        # end if
-        # ----------- Constraint Derivative ---------------
-        g_con = []
-        counter = 0
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
-                # Get the greville points for this edge
-                gpts = self.surfs[surf0].getGrevillePoints(edge0)
+#     def _sens3(self,x,f_obj,f_con,*args,**kwargs):
+#         '''Sensitivity function for Fitting Optimization'''
+#         time0 = time.time()
+#         # ----------- Objective Derivative ----------------
+#         if USE_PETSC:
+#             self.X_PETSC.setValues(arange(0,self.ndv).astype('intc'),x)
+#             self.J(self.X_PETSC,self.temp)
+#             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
+#             g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
+#             self.temp = self.temp-self.rhs
+#             self.temp.abs()
+#             print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
+#         else:
+#             g_obj = dot((dot(self.J,x)-self.rhs),self.J)
+#         # end if
+#         # ----------- Constraint Derivative ---------------
+#         g_con = []
+#         counter = 0
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
+#                 # Get the greville points for this edge
+#                 gpts = self.surfs[surf0].getGrevillePoints(edge0)
                 
-                for i in xrange(len(gpts)):
-                    du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
-                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(
-                        surf0,edge0,gpts[i])
+#                 for i in xrange(len(gpts)):
+#                     du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+#                     dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(
+#                         surf0,edge0,gpts[i])
 
-                    if len(surfaces) == 1: 
-                        dv2 = self.sym_normal
-                        ddv_v1 = zeros(8)
-                    else:
-                        surf1 = surfaces[1][0] # Second surface on this edge
-                        edge1 = surfaces[1][1] # Edge of second surface on this edge
-                        du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
-                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
-                    # end if
+#                     if len(surfaces) == 1: 
+#                         dv2 = self.sym_normal
+#                         ddv_v1 = zeros(8)
+#                     else:
+#                         surf1 = surfaces[1][0] # Second surface on this edge
+#                         edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+#                         dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+#                     # end if
 
-                    dS = zeros(9)
+#                     dS = zeros(9)
 
-                    dS[0] =  (dv1[1]*dv2[2]-dv1[2]*dv2[1]) # dSdu
-                    dS[1] = -(dv1[0]*dv2[2]-dv1[2]*dv2[0])
-                    dS[2] =  (dv1[0]*dv2[1]-dv1[1]*dv2[0])
+#                     dS[0] =  (dv1[1]*dv2[2]-dv1[2]*dv2[1]) # dSdu
+#                     dS[1] = -(dv1[0]*dv2[2]-dv1[2]*dv2[0])
+#                     dS[2] =  (dv1[0]*dv2[1]-dv1[1]*dv2[0])
 
-                    dS[3] = -du[1]*dv2[2] + du[2]*dv2[1] # dSdv1
-                    dS[4] =  du[0]*dv2[2] - du[2]*dv2[0]
-                    dS[5] = -du[0]*dv2[1] + du[1]*dv2[0]
+#                     dS[3] = -du[1]*dv2[2] + du[2]*dv2[1] # dSdv1
+#                     dS[4] =  du[0]*dv2[2] - du[2]*dv2[0]
+#                     dS[5] = -du[0]*dv2[1] + du[1]*dv2[0]
 
-                    dS[6] =  du[1]*dv1[2] - du[2]*dv1[1] # dSdv2
-                    dS[7] = -du[0]*dv1[2] + du[2]*dv1[0]
-                    dS[8] =  du[0]*dv1[1] - du[1]*dv1[0]
+#                     dS[6] =  du[1]*dv1[2] - du[2]*dv1[1] # dSdv2
+#                     dS[7] = -du[0]*dv1[2] + du[2]*dv1[0]
+#                     dS[8] =  du[0]*dv1[1] - du[1]*dv1[0]
 
-                    for ii in xrange(8): # all the return values from the derivative-derivative
-                        # function have a length of 8
-                        if mod(ii,2) == 0:
-                            g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii])
-                            g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii])
-                            g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii])
-                        else:
-                            g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii])
-                            g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii])
-                            g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii])
-                            if len(surfaces) != 1:
-                                if dd_i1[ii]  == dd_i0[ii]:
-                                    g_con[-3] += dS[0]*ddu[ii] + dS[6]*ddv_v1[ii]
-                                    g_con[-2] += dS[1]*ddu[ii] + dS[7]*ddv_v1[ii]
-                                    g_con[-1] += dS[2]*ddu[ii] + dS[8]*ddv_v1[ii]
-                                else:
-                                    g_con.append(dS[0]*ddu[ii] + dS[6]*ddv_v1[ii])
-                                    g_con.append(dS[1]*ddu[ii] + dS[7]*ddv_v1[ii])
-                                    g_con.append(dS[2]*ddu[ii] + dS[8]*ddv_v1[ii])
-                                # end if
-                            # end if
-                        # end if
-                    # end for
-                # end for (gpts loop)
-            # end if (cont edge)
-        # end for (edge listloop)
-        Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
-        print 'Sens Time:',time.time()-time0
-        return g_obj,new_gcon,0
+#                     for ii in xrange(8): # all the return values from the derivative-derivative
+#                         # function have a length of 8
+#                         if mod(ii,2) == 0:
+#                             g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii])
+#                             g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii])
+#                             g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii])
+#                         else:
+#                             g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii])
+#                             g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii])
+#                             g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii])
+#                             if len(surfaces) != 1:
+#                                 if dd_i1[ii]  == dd_i0[ii]:
+#                                     g_con[-3] += dS[0]*ddu[ii] + dS[6]*ddv_v1[ii]
+#                                     g_con[-2] += dS[1]*ddu[ii] + dS[7]*ddv_v1[ii]
+#                                     g_con[-1] += dS[2]*ddu[ii] + dS[8]*ddv_v1[ii]
+#                                 else:
+#                                     g_con.append(dS[0]*ddu[ii] + dS[6]*ddv_v1[ii])
+#                                     g_con.append(dS[1]*ddu[ii] + dS[7]*ddv_v1[ii])
+#                                     g_con.append(dS[2]*ddu[ii] + dS[8]*ddv_v1[ii])
+#                                 # end if
+#                             # end if
+#                         # end if
+#                     # end for
+#                 # end for (gpts loop)
+#             # end if (cont edge)
+#         # end for (edge listloop)
+#         Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
+#         print 'Sens Time:',time.time()-time0
+#         return g_obj,new_gcon,0
 
-    def _computeSparsityPattern3(self):
-        '''Compute the sparsity for geometric constraints'''
-        Ai = [] # Index 
-        Ap = [1] # Pointer
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
-                gpts = self.surfs[surf0].getGrevillePoints(edge0) # Greville Points
+#     def _computeSparsityPattern3(self):
+#         '''Compute the sparsity for geometric constraints'''
+#         Ai = [] # Index 
+#         Ap = [1] # Pointer
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
+#                 gpts = self.surfs[surf0].getGrevillePoints(edge0) # Greville Points
                 
-                for i in xrange(len(gpts)):
-                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(surf0,edge0,gpts[i])
+#                 for i in xrange(len(gpts)):
+#                     dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(surf0,edge0,gpts[i])
 
-                    if len(surfaces) == 1: 
-                        pass
-                    else:
-                        surf1 = surfaces[1][0] # Second surface on this edge
-                        edge1 = surfaces[1][1] # Edge of second surface on this edge
-                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
-                    # end if       
-                    temp = []
-                    for ii in xrange(8): 
-                        if mod(ii,2) == 0:
-                            temp.append(dd_i0[ii]*3  )
-                            temp.append(dd_i0[ii]*3+1)
-                            temp.append(dd_i0[ii]*3+2)
-                        else:
-                            temp.append(dd_i0[ii]*3)
-                            temp.append(dd_i0[ii]*3+1)
-                            temp.append(dd_i0[ii]*3+2)
-                            if len(surfaces) != 1:
-                                # This is where we have to check if its already in
-                                if dd_i1[ii] != dd_i0[ii]:
-                                    temp.append(dd_i1[ii]*3  )
-                                    temp.append(dd_i1[ii]*3+1)
-                                    temp.append(dd_i1[ii]*3+2)
-                                # end if
-                            # end if
-                       # end if
-                    # end for
-                    Ai.extend(temp)
-                    Ap.append(Ap[-1]+len(temp))
-                    # end if
-                # end for
-            # end if (cont edge)
-        # end for (edge listloop)
+#                     if len(surfaces) == 1: 
+#                         pass
+#                     else:
+#                         surf1 = surfaces[1][0] # Second surface on this edge
+#                         edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+#                     # end if       
+#                     temp = []
+#                     for ii in xrange(8): 
+#                         if mod(ii,2) == 0:
+#                             temp.append(dd_i0[ii]*3  )
+#                             temp.append(dd_i0[ii]*3+1)
+#                             temp.append(dd_i0[ii]*3+2)
+#                         else:
+#                             temp.append(dd_i0[ii]*3)
+#                             temp.append(dd_i0[ii]*3+1)
+#                             temp.append(dd_i0[ii]*3+2)
+#                             if len(surfaces) != 1:
+#                                 # This is where we have to check if its already in
+#                                 if dd_i1[ii] != dd_i0[ii]:
+#                                     temp.append(dd_i1[ii]*3  )
+#                                     temp.append(dd_i1[ii]*3+1)
+#                                     temp.append(dd_i1[ii]*3+2)
+#                                 # end if
+#                             # end if
+#                        # end if
+#                     # end for
+#                     Ai.extend(temp)
+#                     Ap.append(Ap[-1]+len(temp))
+#                     # end if
+#                 # end for
+#             # end if (cont edge)
+#         # end for (edge listloop)
                     
-        self.loc = Ap
-        self.index = Ai
-        Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,zeros(len(Ai)))
+#         self.loc = Ap
+#         self.index = Ai
+#         Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,zeros(len(Ai)))
 
-        return Bp,Bi
+#         return Bp,Bi
 
 
-# ----------------------------------------------------------------------
-#                        Surface Fitting Functions 2
-# ----------------------------------------------------------------------
+# # ----------------------------------------------------------------------
+# #                        Surface Fitting Functions 2
+# # ----------------------------------------------------------------------
 
-    def fitSurfaces2(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
-        time0 = time.time()
+#     def fitSurfaces2(self,nIter=40,constr_tol=1e-6,opt_tol=1e-3):
+#         time0 = time.time()
                     
-        self.ndv = 3*len(self.coef)
-        sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
+#         self.ndv = 3*len(self.coef)
+#         sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
         
-        # Get the Global number of the original data
-        nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
-        self._initJacobian(nPts,self.ndv,g_index)
+#         # Get the Global number of the original data
+#         nPts, g_index,l_index = self.calcGlobalNumbering(sizes)
+#         self._initJacobian(nPts,self.ndv,g_index)
 
-        if USE_PETSC:
-            self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
-            self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
-            self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
-            self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
-            X = zeros(self.ndv) # X for initial guess
-        else:
-            self.rhs = zeros(nPts*3)
-            X = zeros(self.ndv)
-        # end if 
+#         if USE_PETSC:
+#             self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
+#             self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
+#             self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
+#             self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
+#             X = zeros(self.ndv) # X for initial guess
+#         else:
+#             self.rhs = zeros(nPts*3)
+#             X = zeros(self.ndv)
+#         # end if 
 
-        # Fill up the 'X' with the the current coefficients (optimization start point)
-        for icoef in xrange(len(self.coef)):
-            X[3*icoef:3*icoef+3] = self.coef[icoef]
-        # end for
+#         # Fill up the 'X' with the the current coefficients (optimization start point)
+#         for icoef in xrange(len(self.coef)):
+#             X[3*icoef:3*icoef+3] = self.coef[icoef]
+#         # end for
 
-        # Now Fill up the RHS point list
-        for ii in xrange(len(g_index)):
-            isurf = g_index[ii][0][0]
-            i = g_index[ii][0][1]
-            j = g_index[ii][0][2]
-            self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
-        # end for
+#         # Now Fill up the RHS point list
+#         for ii in xrange(len(g_index)):
+#             isurf = g_index[ii][0][0]
+#             i = g_index[ii][0][1]
+#             j = g_index[ii][0][2]
+#             self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+#         # end for
 
-        # Now determine the number of constraints
-        self.ncon = 0
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have continuity
-                self.ncon += self.topo.edges[iedge].Nctl
-            # end if
-        # end for
+#         # Now determine the number of constraints
+#         self.ncon = 0
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have continuity
+#                 self.ncon += self.topo.edges[iedge].Nctl
+#             # end if
+#         # end for
 
-        locA,indA = self._computeSparsityPattern2()
+#         locA,indA = self._computeSparsityPattern2()
 
-        if not self.NO_PRINT:
-            print '------------- Fitting Surfaces Globally ------------------'
-            print 'nPts (Number of Surface Points):',nPts
-            print 'nDV (Degrees of Freedom):',self.ndv
-            print 'nCon (Constraints):',self.ncon
-        # end if
+#         if not self.NO_PRINT:
+#             print '------------- Fitting Surfaces Globally ------------------'
+#             print 'nPts (Number of Surface Points):',nPts
+#             print 'nDV (Degrees of Freedom):',self.ndv
+#             print 'nCon (Constraints):',self.ncon
+#         # end if
 
-        # Setup Optimization Probelm
-        opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
-        opt_prob.addVarGroup('x',self.ndv,'c',value=X)
-        opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
-        opt_prob.addObj('RMS Error')
-        opt = SNOPT()
+#         # Setup Optimization Probelm
+#         opt_prob = Optimization('Constrained LMS Fitting',self._objcon2)
+#         opt_prob.addVarGroup('x',self.ndv,'c',value=X)
+#         opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
+#         opt_prob.addObj('RMS Error')
+#         opt = SNOPT()
 
-        opt.setOption('Verify level',-1)
-        opt.setOption('Nonderivative linesearch')
-        opt.setOption('Major step limit',1e-2)
-        opt.setOption('Major optimality tolerance', opt_tol)
-        opt.setOption('Major feasibility tolerance',constr_tol)
-        opt.setOption('Major iterations limit',nIter)
-        opt.setOption('New superbasics limit',250)
-        opt.setOption('Minor iterations limit',500)
+#         opt.setOption('Verify level',-1)
+#         opt.setOption('Nonderivative linesearch')
+#         opt.setOption('Major step limit',1e-2)
+#         opt.setOption('Major optimality tolerance', opt_tol)
+#         opt.setOption('Major feasibility tolerance',constr_tol)
+#         opt.setOption('Major iterations limit',nIter)
+#         opt.setOption('New superbasics limit',250)
+#         opt.setOption('Minor iterations limit',500)
 
-        opt(opt_prob,self._sens2,sparse=[indA,locA]) # Run the actual problem
+#         opt(opt_prob,self._sens2,sparse=[indA,locA]) # Run the actual problem
 
-        # Reset the coefficients after the optimization is done
-        for icoef in xrange(len(self.coef)):
-            self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
-            self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
-            self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
-        # end for
+#         # Reset the coefficients after the optimization is done
+#         for icoef in xrange(len(self.coef)):
+#             self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
+#             self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
+#             self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
+#         # end for
 
-        # Update the entire object with new coefficients
-        self.update()
+#         # Update the entire object with new coefficients
+#         self.update()
 
-        # Delete the self. values we don't need anymore
-        del self.ndv,self.ncon
-        del self.rhs,self.X_PETSC,self.gobj_PETSC,self.temp
+#         # Delete the self. values we don't need anymore
+#         del self.ndv,self.ncon
+#         del self.rhs,self.X_PETSC,self.gobj_PETSC,self.temp
 
-        return
+#         return
 
-    def _objcon2(self,x,*arg,**kwargs):
-        '''Compute the objective and the constraints'''
-        # ------------ Objective ---------
-        if USE_PETSC:
-            self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
-            self.J.mult(self.X_PETSC,self.temp)
-            f_obj = 0.5*(self.temp-self.rhs).norm()**2
-        else:
-            f_obj = 0.5*norm(dot(self.J,x)-self.rhs)**2
+#     def _objcon2(self,x,*arg,**kwargs):
+#         '''Compute the objective and the constraints'''
+#         # ------------ Objective ---------
+#         if USE_PETSC:
+#             self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
+#             self.J.mult(self.X_PETSC,self.temp)
+#             f_obj = 0.5*(self.temp-self.rhs).norm()**2
+#         else:
+#             f_obj = 0.5*norm(dot(self.J,x)-self.rhs)**2
 
-        # ---------- Constraints ---------
-        for icoef in xrange(len(self.coef)):
-            self.coef[icoef,0] = x[3*icoef+0]
-            self.coef[icoef,1] = x[3*icoef+1]
-            self.coef[icoef,2] = x[3*icoef+2]
-        # end for
-        self.update()
+#         # ---------- Constraints ---------
+#         for icoef in xrange(len(self.coef)):
+#             self.coef[icoef,0] = x[3*icoef+0]
+#             self.coef[icoef,1] = x[3*icoef+1]
+#             self.coef[icoef,2] = x[3*icoef+2]
+#         # end for
+#         self.update()
 
-        f_con = []
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
-                # Get the greville points for this edge
-                gpts = self.surfs[surf0].getGrevillePoints(edge0)
+#         f_con = []
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
+#                 # Get the greville points for this edge
+#                 gpts = self.surfs[surf0].getGrevillePoints(edge0)
 
-                for i in xrange(len(gpts)):
-                    du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
-                    if len(surfaces) == 1: 
-                        dv2 = self.sym_normal
-                    else:
-                        surf1 = surfaces[1][0] # Second surface on this edge
-                        edge1 = surfaces[1][1] # Edge of second surface on this edge
-                        du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
-                    # end if
+#                 for i in xrange(len(gpts)):
+#                     du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+#                     if len(surfaces) == 1: 
+#                         dv2 = self.sym_normal
+#                     else:
+#                         surf1 = surfaces[1][0] # Second surface on this edge
+#                         edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+#                     # end if
 
-                    S = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[1]) - \
-                        du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
-                        du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
-                    f_con.append(S) # scalar triple product
-                # end for (nctl on edge)
-            # end if (continuity edge)
-        # end for (edge list)
-        return f_obj,f_con,0
+#                     S = du[0]*(dv1[1]*dv2[2]-dv1[2]*dv2[1]) - \
+#                         du[1]*(dv1[0]*dv2[2]-dv1[2]*dv2[0]) + \
+#                         du[2]*(dv1[0]*dv2[1]-dv1[1]*dv2[0])
+#                     f_con.append(S) # scalar triple product
+#                 # end for (nctl on edge)
+#             # end if (continuity edge)
+#         # end for (edge list)
+#         return f_obj,f_con,0
 
-    def _sens2(self,x,f_obj,f_con,*args,**kwargs):
-        '''Sensitivity function for Fitting Optimization'''
-        time0 = time.time()
-        # ----------- Objective Derivative ----------------
-        if USE_PETSC:
-            self.X_PETSC.setValues(arange(0,self.ndv).astype('intc'),x)
-            self.J(self.X_PETSC,self.temp)
-            self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
-            g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
-            self.temp = self.temp-self.rhs
-            self.temp.abs()
-            print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
-        else:
-            g_obj = dot((dot(self.J,x)-self.rhs),self.J)
-        # end if
-        # ----------- Constraint Derivative ---------------
-        g_con = []
-        counter = 0
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
-                # Get the greville points for this edge
-                gpts = self.surfs[surf0].getGrevillePoints(edge0)
+#     def _sens2(self,x,f_obj,f_con,*args,**kwargs):
+#         '''Sensitivity function for Fitting Optimization'''
+#         time0 = time.time()
+#         # ----------- Objective Derivative ----------------
+#         if USE_PETSC:
+#             self.X_PETSC.setValues(arange(0,self.ndv).astype('intc'),x)
+#             self.J(self.X_PETSC,self.temp)
+#             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
+#             g_obj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
+#             self.temp = self.temp-self.rhs
+#             self.temp.abs()
+#             print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
+#         else:
+#             g_obj = dot((dot(self.J,x)-self.rhs),self.J)
+#         # end if
+#         # ----------- Constraint Derivative ---------------
+#         g_con = []
+#         counter = 0
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
+#                 # Get the greville points for this edge
+#                 gpts = self.surfs[surf0].getGrevillePoints(edge0)
                 
-                for i in xrange(len(gpts)):
-                    du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
-                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(
-                        surf0,edge0,gpts[i])
+#                 for i in xrange(len(gpts)):
+#                     du,dv1 = self._getDerivativeOnEdge(surf0,edge0,gpts[i])
+#                     dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(
+#                         surf0,edge0,gpts[i])
 
-                    if len(surfaces) == 1: 
-                        dv2 = self.sym_normal
-                        ddv_v1 = zeros(8)
-                    else:
-                        surf1 = surfaces[1][0] # Second surface on this edge
-                        edge1 = surfaces[1][1] # Edge of second surface on this edge
-                        du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
-                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
-                    # end if
+#                     if len(surfaces) == 1: 
+#                         dv2 = self.sym_normal
+#                         ddv_v1 = zeros(8)
+#                     else:
+#                         surf1 = surfaces[1][0] # Second surface on this edge
+#                         edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         du,dv2 = self._getDerivativeOnEdge(surf1,edge1,gpts[i])
+#                         dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+#                     # end if
 
-                    dS = zeros(9)
+#                     dS = zeros(9)
 
-                    dS[0] =  (dv1[1]*dv2[2]-dv1[2]*dv2[1]) # dSdu
-                    dS[1] = -(dv1[0]*dv2[2]-dv1[2]*dv2[0])
-                    dS[2] =  (dv1[0]*dv2[1]-dv1[1]*dv2[0])
+#                     dS[0] =  (dv1[1]*dv2[2]-dv1[2]*dv2[1]) # dSdu
+#                     dS[1] = -(dv1[0]*dv2[2]-dv1[2]*dv2[0])
+#                     dS[2] =  (dv1[0]*dv2[1]-dv1[1]*dv2[0])
 
-                    dS[3] = -du[1]*dv2[2] + du[2]*dv2[1] # dSdv1
-                    dS[4] =  du[0]*dv2[2] - du[2]*dv2[0]
-                    dS[5] = -du[0]*dv2[1] + du[1]*dv2[0]
+#                     dS[3] = -du[1]*dv2[2] + du[2]*dv2[1] # dSdv1
+#                     dS[4] =  du[0]*dv2[2] - du[2]*dv2[0]
+#                     dS[5] = -du[0]*dv2[1] + du[1]*dv2[0]
 
-                    dS[6] =  du[1]*dv1[2] - du[2]*dv1[1] # dSdv2
-                    dS[7] = -du[0]*dv1[2] + du[2]*dv1[0]
-                    dS[8] =  du[0]*dv1[1] - du[1]*dv1[0]
+#                     dS[6] =  du[1]*dv1[2] - du[2]*dv1[1] # dSdv2
+#                     dS[7] = -du[0]*dv1[2] + du[2]*dv1[0]
+#                     dS[8] =  du[0]*dv1[1] - du[1]*dv1[0]
 
-                    for ii in xrange(8): # all the return values from the derivative-derivative
-                        # function have a length of 8
-                        if mod(ii,2) == 0:
-                            g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii])
-                            g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii])
-                            g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii])
-                        else:
-                            g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii])
-                            g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii])
-                            g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii])
-                            if len(surfaces) != 1:
-                                g_con.append(dS[0]*ddu[ii] + dS[6]*ddv_v1[ii])
-                                g_con.append(dS[1]*ddu[ii] + dS[7]*ddv_v1[ii])
-                                g_con.append(dS[2]*ddu[ii] + dS[8]*ddv_v1[ii])
-                            # end if
-                        # end if
-                    # end for
-                # end for (gpts loop)
-            # end if (cont edge)
-        # end for (edge listloop)
-        Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
-        print 'Sens Time:',time.time()-time0
-        return g_obj,new_gcon,0
+#                     for ii in xrange(8): # all the return values from the derivative-derivative
+#                         # function have a length of 8
+#                         if mod(ii,2) == 0:
+#                             g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii] + dS[6]*ddv_v1[ii])
+#                             g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii] + dS[7]*ddv_v1[ii])
+#                             g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii] + dS[8]*ddv_v1[ii])
+#                         else:
+#                             g_con.append(dS[0]*ddu[ii] + dS[3]*ddv_v0[ii])
+#                             g_con.append(dS[1]*ddu[ii] + dS[4]*ddv_v0[ii])
+#                             g_con.append(dS[2]*ddu[ii] + dS[5]*ddv_v0[ii])
+#                             if len(surfaces) != 1:
+#                                 g_con.append(dS[0]*ddu[ii] + dS[6]*ddv_v1[ii])
+#                                 g_con.append(dS[1]*ddu[ii] + dS[7]*ddv_v1[ii])
+#                                 g_con.append(dS[2]*ddu[ii] + dS[8]*ddv_v1[ii])
+#                             # end if
+#                         # end if
+#                     # end for
+#                 # end for (gpts loop)
+#             # end if (cont edge)
+#         # end for (edge listloop)
+#         Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,g_con)
+#         print 'Sens Time:',time.time()-time0
+#         return g_obj,new_gcon,0
 
-    def _computeSparsityPattern2(self):
-        '''Compute the sparsity for geometric constraints'''
-        Ai = [] # Index 
-        Ap = [1] # Pointer
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
-                gpts = self.surfs[surf0].getGrevillePoints(edge0) # Greville Points
+#     def _computeSparsityPattern2(self):
+#         '''Compute the sparsity for geometric constraints'''
+#         Ai = [] # Index 
+#         Ap = [1] # Pointer
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
+#                 gpts = self.surfs[surf0].getGrevillePoints(edge0) # Greville Points
                 
-                for i in xrange(len(gpts)):
-                    dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(surf0,edge0,gpts[i])
+#                 for i in xrange(len(gpts)):
+#                     dd_i0,ddu,ddv_v0 = self._getDerivativeDerivativeOnEdge(surf0,edge0,gpts[i])
 
-                    if len(surfaces) == 1: 
-                        pass
-                    else:
-                        surf1 = surfaces[1][0] # Second surface on this edge
-                        edge1 = surfaces[1][1] # Edge of second surface on this edge
-                        dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
-                    # end if       
-                    for ii in xrange(8): 
-                        if mod(ii,2) == 0:
-                            Ai.append(dd_i0[ii]*3)
-                            Ai.append(dd_i0[ii]*3+1)
-                            Ai.append(dd_i0[ii]*3+2)
-                        else:
-                            Ai.append(dd_i0[ii]*3)
-                            Ai.append(dd_i0[ii]*3+1)
-                            Ai.append(dd_i0[ii]*3+2)
-                            if len(surfaces) != 1:
-                                Ai.append(dd_i1[ii]*3  )
-                                Ai.append(dd_i1[ii]*3+1)
-                                Ai.append(dd_i1[ii]*3+2)
-                            # end if
-                       # end if
-                    # end for
-                    if len(surfaces) == 1:
-                        Ap.append(Ap[-1] + 24)
-                    else:
-                        Ap.append(Ap[-1] + 36)
-                    # end if
-                # end for
-            # end if (cont edge)
-        # end for (edge listloop)
-        Ax = zeros(len(Ai))
-        self.loc = Ap
-        self.index = Ai
-        Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,Ax)
+#                     if len(surfaces) == 1: 
+#                         pass
+#                     else:
+#                         surf1 = surfaces[1][0] # Second surface on this edge
+#                         edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         dd_i1,ddu,ddv_v1 = self._getDerivativeDerivativeOnEdge(surf1,edge1,gpts[i])
+#                     # end if       
+#                     for ii in xrange(8): 
+#                         if mod(ii,2) == 0:
+#                             Ai.append(dd_i0[ii]*3)
+#                             Ai.append(dd_i0[ii]*3+1)
+#                             Ai.append(dd_i0[ii]*3+2)
+#                         else:
+#                             Ai.append(dd_i0[ii]*3)
+#                             Ai.append(dd_i0[ii]*3+1)
+#                             Ai.append(dd_i0[ii]*3+2)
+#                             if len(surfaces) != 1:
+#                                 Ai.append(dd_i1[ii]*3  )
+#                                 Ai.append(dd_i1[ii]*3+1)
+#                                 Ai.append(dd_i1[ii]*3+2)
+#                             # end if
+#                        # end if
+#                     # end for
+#                     if len(surfaces) == 1:
+#                         Ap.append(Ap[-1] + 24)
+#                     else:
+#                         Ap.append(Ap[-1] + 36)
+#                     # end if
+#                 # end for
+#             # end if (cont edge)
+#         # end for (edge listloop)
+#         Ax = zeros(len(Ai))
+#         self.loc = Ap
+#         self.index = Ai
+#         Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,Ax)
 
-        return Bp,Bi
+#         return Bp,Bi
 
-    def _getDerivativeDerivativeOnEdge(self,surface,edge,value):
-        '''Get the derivative of du and dv wrt all applicable control points
-        for surface surface, edge edge and at position value'''
-        # Note: In this context du is the derivative along the edge,
-        # dv is the derivative normal to the edge
+#     def _getDerivativeDerivativeOnEdge(self,surface,edge,value):
+#         '''Get the derivative of du and dv wrt all applicable control points
+#         for surface surface, edge edge and at position value'''
+#         # Note: In this context du is the derivative along the edge,
+#         # dv is the derivative normal to the edge
         
-        dd_i = [] # Index
-        ddu_val = [] # Value
-        ddv_val = [] # Value
-        if self.edge_dir[surface,edge] == -1: # Direction Check
-            orig_value = value
-            value = 1-value
-        # end if
+#         dd_i = [] # Index
+#         ddu_val = [] # Value
+#         ddv_val = [] # Value
+#         if self.edge_dir[surface,edge] == -1: # Direction Check
+#             orig_value = value
+#             value = 1-value
+#         # end if
             
-        if edge in [0,1]:
-            t = self.surfs[surface].tu
-            k = self.surfs[surface].ku
-        else:
-            t = self.surfs[surface].tv
-            k = self.surfs[surface].kv
-        # end if
+#         if edge in [0,1]:
+#             t = self.surfs[surface].tu
+#             k = self.surfs[surface].ku
+#         else:
+#             t = self.surfs[surface].tv
+#             k = self.surfs[surface].kv
+#         # end if
 
-        ileft, mflag = self.surfs[surface].pyspline.intrv(t,value,1)
-        if mflag == 0: # Its Inside so everything is ok
-            pt_list = [ileft-k,ileft-k+1,ileft-k+2,ileft-k+3]
-        # end if
-        if mflag == 1: # Its at the right end
-            pt_list = [ileft-k-4,ileft-k-3,ileft-k-2,ileft-k-1]
-        # end if
+#         ileft, mflag = self.surfs[surface].pyspline.intrv(t,value,1)
+#         if mflag == 0: # Its Inside so everything is ok
+#             pt_list = [ileft-k,ileft-k+1,ileft-k+2,ileft-k+3]
+#         # end if
+#         if mflag == 1: # Its at the right end
+#             pt_list = [ileft-k-4,ileft-k-3,ileft-k-2,ileft-k-1]
+#         # end if
             
             
-        if self.edge_dir[surface,edge] == -1:
-            pt_list = pt_list[::-1]
-        # end if
+#         if self.edge_dir[surface,edge] == -1:
+#             pt_list = pt_list[::-1]
+#         # end if
 
-        if edge == 0:
-            for i in xrange(4):
-                dd_i.append(self.l_index[surface][pt_list[i],0])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,0,pt_list[i],0)
-                ddu_val.append(ddu)
-                ddv_val.append(ddv)
-                dd_i.append(self.l_index[surface][pt_list[i],1])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,0,pt_list[i],1)
-                ddu_val.append(ddu)
-                ddv_val.append(ddv)
-            # end for
-        elif edge == 1:
-            for i in xrange(4):
-                dd_i.append(self.l_index[surface][pt_list[i],-1])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,1,pt_list[i],-1)
-                ddu_val.append(ddu)
-                ddv_val.append(ddv)
-                dd_i.append(self.l_index[surface][pt_list[i],-2])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,1,pt_list[i],-2)
-                ddu_val.append(ddu)
-                ddv_val.append(ddv)
-            # end for
-        elif edge == 2:
-            for i in xrange(4):
-                dd_i.append(self.l_index[surface][0,pt_list[i]])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(0,value,0,pt_list[i])
-                ddu_val.append(ddv)
-                ddv_val.append(ddu)
-                dd_i.append(self.l_index[surface][1,pt_list[i]])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(0,value,1,pt_list[i])
-                ddu_val.append(ddv)
-                ddv_val.append(ddu)
-            # end for
-        elif edge == 3:
-            for i in xrange(4):
-                dd_i.append(self.l_index[surface][-1,pt_list[i]])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(1,value,-1,pt_list[i])
-                ddu_val.append(ddv)
-                ddv_val.append(ddu)
-                dd_i.append(self.l_index[surface][-2,pt_list[i]])
-                ddu,ddv = self.surfs[surface].calcDerivativeDeriv(1,value,-2,pt_list[i])
-                ddu_val.append(ddv)
-                ddv_val.append(ddu)
-            # end for
-        # end if
-        return dd_i,ddu_val,ddv_val
+#         if edge == 0:
+#             for i in xrange(4):
+#                 dd_i.append(self.l_index[surface][pt_list[i],0])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,0,pt_list[i],0)
+#                 ddu_val.append(ddu)
+#                 ddv_val.append(ddv)
+#                 dd_i.append(self.l_index[surface][pt_list[i],1])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,0,pt_list[i],1)
+#                 ddu_val.append(ddu)
+#                 ddv_val.append(ddv)
+#             # end for
+#         elif edge == 1:
+#             for i in xrange(4):
+#                 dd_i.append(self.l_index[surface][pt_list[i],-1])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,1,pt_list[i],-1)
+#                 ddu_val.append(ddu)
+#                 ddv_val.append(ddv)
+#                 dd_i.append(self.l_index[surface][pt_list[i],-2])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(value,1,pt_list[i],-2)
+#                 ddu_val.append(ddu)
+#                 ddv_val.append(ddv)
+#             # end for
+#         elif edge == 2:
+#             for i in xrange(4):
+#                 dd_i.append(self.l_index[surface][0,pt_list[i]])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(0,value,0,pt_list[i])
+#                 ddu_val.append(ddv)
+#                 ddv_val.append(ddu)
+#                 dd_i.append(self.l_index[surface][1,pt_list[i]])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(0,value,1,pt_list[i])
+#                 ddu_val.append(ddv)
+#                 ddv_val.append(ddu)
+#             # end for
+#         elif edge == 3:
+#             for i in xrange(4):
+#                 dd_i.append(self.l_index[surface][-1,pt_list[i]])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(1,value,-1,pt_list[i])
+#                 ddu_val.append(ddv)
+#                 ddv_val.append(ddu)
+#                 dd_i.append(self.l_index[surface][-2,pt_list[i]])
+#                 ddu,ddv = self.surfs[surface].calcDerivativeDeriv(1,value,-2,pt_list[i])
+#                 ddu_val.append(ddv)
+#                 ddv_val.append(ddu)
+#             # end for
+#         # end if
+#         return dd_i,ddu_val,ddv_val
 
 
-    def _getDerivativeOnEdge(self,surface,edge,value):
-        '''Get the directional surface derivatives on surface suface and edge edge'''
-        # Note: In this context du is the derivative along the edge,
-        # dv is the derivative normal to the edge
-        if self.edge_dir[surface,edge] == -1:
-            value = 1-value
-        # end if
-        if edge == 0:
-            du,dv = self.surfs[surface].getDerivative(value,0)
-            return du,dv
-        elif edge == 1:
-            du,dv = self.surfs[surface].getDerivative(value,1)
-            return du,dv
-        elif edge == 2:
-            du,dv = self.surfs[surface].getDerivative(0,value)
-            return dv,du
-        elif edge == 3:
-            du,dv = self.surfs[surface].getDerivative(1,value)
-            return dv,du
-        # end if
+#     def _getDerivativeOnEdge(self,surface,edge,value):
+#         '''Get the directional surface derivatives on surface suface and edge edge'''
+#         # Note: In this context du is the derivative along the edge,
+#         # dv is the derivative normal to the edge
+#         if self.edge_dir[surface,edge] == -1:
+#             value = 1-value
+#         # end if
+#         if edge == 0:
+#             du,dv = self.surfs[surface].getDerivative(value,0)
+#             return du,dv
+#         elif edge == 1:
+#             du,dv = self.surfs[surface].getDerivative(value,1)
+#             return du,dv
+#         elif edge == 2:
+#             du,dv = self.surfs[surface].getDerivative(0,value)
+#             return dv,du
+#         elif edge == 3:
+#             du,dv = self.surfs[surface].getDerivative(1,value)
+#             return dv,du
+#         # end if
 
-# ----------------------------------------------------------------------
-#                        Surface Fitting Functions
-# ----------------------------------------------------------------------
+# # ----------------------------------------------------------------------
+# #                        Surface Fitting Functions
+# # ----------------------------------------------------------------------
 
-    def fitSurfaces(self,nIter=50,constr_tol=1e-7,opt_tol=1e-4):
-        if USE_SNOPT == False:
-            print 'Error: pyOpt_Optimization and/or pySNOPT were not imported correctly \
-These modules must be imported for global surfaces fitting to take place.'
-            sys.exit(1)
-        # end if
+#     def fitSurfaces(self,nIter=50,constr_tol=1e-7,opt_tol=1e-4):
+#         if USE_SNOPT == False:
+#             print 'Error: pyOpt_Optimization and/or pySNOPT were not imported correctly \
+# These modules must be imported for global surfaces fitting to take place.'
+#             sys.exit(1)
+#         # end if
 
-        time0 = time.time()
+#         time0 = time.time()
                     
-        self.ndv = 3*len(self.coef)
-        sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
+#         self.ndv = 3*len(self.coef)
+#         sizes = [ [self.surfs[isurf].Nu,self.surfs[isurf].Nv] for isurf in xrange(self.nSurf)]
         
-        # Get the Global number of the original data
-        self.topo.calcGlobalNumbering(sizes)
-        nPts=self.topo.counter
-        g_index=self.topo.g_index
-        l_index=self.topo.l_index
-        self._initJacobian(nPts,self.ndv,g_index)
+#         # Get the Global number of the original data
+#         self.topo.calcGlobalNumbering(sizes)
+#         nPts=self.topo.counter
+#         g_index=self.topo.g_index
+#         l_index=self.topo.l_index
+#         self._initJacobian(nPts,self.ndv,g_index)
 
-        if USE_PETSC:
-            self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
-            self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
-            self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
-            self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
-            X = zeros(self.ndv) # X for initial guess
-        else:
-            self.rhs = zeros(nPts*3)
-            X = zeros(self.ndv)
-        # end if 
+#         if USE_PETSC:
+#             self.rhs = PETSc.Vec().createSeq(nPts*3) # surface points
+#             self.temp = PETSc.Vec().createSeq(nPts*3) # A temporary vector for residual calc
+#             self.X_PETSC = PETSc.Vec().createSeq(self.ndv) # PETSc version of X
+#             self.gobj_PETSC =  PETSc.Vec().createSeq(self.ndv) # PETSc version of objective derivative
+#             X = zeros(self.ndv) # X for initial guess
+#         else:
+#             self.rhs = zeros(nPts*3)
+#             X = zeros(self.ndv)
+#         # end if 
 
-        # Fill up the 'X' with the the current coefficients (optimization start point)
-        for icoef in xrange(len(self.coef)):
-            X[3*icoef:3*icoef+3] = self.coef[icoef]
-        # end for
+#         # Fill up the 'X' with the the current coefficients (optimization start point)
+#         for icoef in xrange(len(self.coef)):
+#             X[3*icoef:3*icoef+3] = self.coef[icoef]
+#         # end for
 
-        # Now Fill up the RHS point list
-        for ii in xrange(len(g_index)):
-            isurf = g_index[ii][0][0]
-            i = g_index[ii][0][1]
-            j = g_index[ii][0][2]
-            self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
-        # end for
+#         # Now Fill up the RHS point list
+#         for ii in xrange(len(g_index)):
+#             isurf = g_index[ii][0][0]
+#             i = g_index[ii][0][1]
+#             j = g_index[ii][0][2]
+#             self.rhs[3*ii:3*ii+3] = self.surfs[isurf].X[i,j]
+#         # end for
 
-        # Now determine the number of constraints
-        self.ncon = 0
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have continuity
-                self.ncon += self.topo.edges[iedge].Nctl*3
-            # end if
-        # end for
+#         # Now determine the number of constraints
+#         self.ncon = 0
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have continuity
+#                 self.ncon += self.topo.edges[iedge].Nctl*3
+#             # end if
+#         # end for
                 
-        inf = 1e20 # Define a value for infinity
+#         inf = 1e20 # Define a value for infinity
         
-        lower_bound = -inf*ones(self.ndv)
-        upper_bound =  inf*ones(self.ndv)
+#         lower_bound = -inf*ones(self.ndv)
+#         upper_bound =  inf*ones(self.ndv)
 
-        for iedge in xrange(len(self.topo.edges)):
-            surfaces = self.getSurfaceFromEdge(iedge)
-            if len(surfaces) == 1: # Its a mirror edge
-                surf0 = surfaces[0][0] # First surface on this edge
-                edge0 = surfaces[0][1] # Edge of surface on this edge     
+#         for iedge in xrange(len(self.topo.edges)):
+#             surfaces = self.getSurfaceFromEdge(iedge)
+#             if len(surfaces) == 1: # Its a mirror edge
+#                 surf0 = surfaces[0][0] # First surface on this edge
+#                 edge0 = surfaces[0][1] # Edge of surface on this edge     
 
-                for i in xrange(self.topo.edges[iedge].Nctl):
-                    if edge0 == 0:
-                        index = self.l_index[surf0][i,0]
-                    elif edge0 == 1:
-                        index = self.l_index[surf0][i,-1]
-                    elif edge0 == 2:
-                        index = self.l_index[surf0][0,i]
-                    elif edge0 == 3:
-                        index = self.l_index[surf0][-1,i]
-                    # end if
+#                 for i in xrange(self.topo.edges[iedge].Nctl):
+#                     if edge0 == 0:
+#                         index = self.l_index[surf0][i,0]
+#                     elif edge0 == 1:
+#                         index = self.l_index[surf0][i,-1]
+#                     elif edge0 == 2:
+#                         index = self.l_index[surf0][0,i]
+#                     elif edge0 == 3:
+#                         index = self.l_index[surf0][-1,i]
+#                     # end if
 
-                    if self.sym == 'xy':
-                        lower_bound[3*index+2] = 0
-                        upper_bound[3*index+2] = 0
-                    if self.sym == 'yz':
-                        lower_bound[3*index+0] = 0
-                        upper_bound[3*index+0] = 0
-                    if self.sym == 'xz':
-                        lower_bound[3*index+1] = 0
-                        upper_bound[3*index+1] = 0
-                    # end if
-                # end for
-            # end if
-        # end for
+#                     if self.sym == 'xy':
+#                         lower_bound[3*index+2] = 0
+#                         upper_bound[3*index+2] = 0
+#                     if self.sym == 'yz':
+#                         lower_bound[3*index+0] = 0
+#                         upper_bound[3*index+0] = 0
+#                     if self.sym == 'xz':
+#                         lower_bound[3*index+1] = 0
+#                         upper_bound[3*index+1] = 0
+#                     # end if
+#                 # end for
+#             # end if
+#         # end for
 
-        locA,indA = self._computeSparsityPattern()
+#         locA,indA = self._computeSparsityPattern()
 
-        print '------------- Fitting Surfaces Globally ------------------'
-        print 'nPts (Number of Surface Points):',nPts
-        print 'nDV (Degrees of Freedom):',self.ndv
-        print 'nCon (Constraints):',self.ncon
+#         print '------------- Fitting Surfaces Globally ------------------'
+#         print 'nPts (Number of Surface Points):',nPts
+#         print 'nDV (Degrees of Freedom):',self.ndv
+#         print 'nCon (Constraints):',self.ncon
 
-        # Setup Optimization Probelm
-        opt_prob = Optimization('Constrained LMS Fitting',self._objcon)
-        opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
-        opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
-        opt_prob.addObj('RMS Error')
-        opt = SNOPT()
-        opt.setOption('Verify level',-1)
-        opt.setOption('Nonderivative linesearch')
-        opt.setOption('Major step limit',1e-2)
-        opt.setOption('Major optimality tolerance', opt_tol)
-        opt.setOption('Major feasibility tolerance',constr_tol)
-        opt.setOption('Major iterations limit',nIter)
-        opt.setOption('New superbasics limit',250)
-        opt.setOption('Minor iterations limit',500)
-        opt.setOption('QPSolver','CG')
-        opt(opt_prob,self._sens,sparse=[indA,locA]) # Run the actual problem
+#         # Setup Optimization Probelm
+#         opt_prob = Optimization('Constrained LMS Fitting',self._objcon)
+#         opt_prob.addVarGroup('x',self.ndv,'c',value=X,lower=lower_bound,upper=upper_bound)
+#         opt_prob.addConGroup('cont_constr',self.ncon,'i',lower=0.0,upper=0.0)
+#         opt_prob.addObj('RMS Error')
+#         opt = SNOPT()
+#         opt.setOption('Verify level',-1)
+#         opt.setOption('Nonderivative linesearch')
+#         opt.setOption('Major step limit',1e-2)
+#         opt.setOption('Major optimality tolerance', opt_tol)
+#         opt.setOption('Major feasibility tolerance',constr_tol)
+#         opt.setOption('Major iterations limit',nIter)
+#         opt.setOption('New superbasics limit',250)
+#         opt.setOption('Minor iterations limit',500)
+#         opt.setOption('QPSolver','CG')
+#         opt(opt_prob,self._sens,sparse=[indA,locA]) # Run the actual problem
 
-        # Reset the coefficients after the optimization is done
-        for icoef in xrange(len(self.coef)):
-            self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
-            self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
-            self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
-        # end for
+#         # Reset the coefficients after the optimization is done
+#         for icoef in xrange(len(self.coef)):
+#             self.coef[icoef][0] = opt_prob._solutions[0]._variables[3*icoef + 0].value
+#             self.coef[icoef][1] = opt_prob._solutions[0]._variables[3*icoef + 1].value
+#             self.coef[icoef][2] = opt_prob._solutions[0]._variables[3*icoef + 2].value
+#         # end for
 
-        # Update the entire object with new coefficients
-        self.update()
+#         # Update the entire object with new coefficients
+#         self.update()
 
-        # Delete the self. values we don't need anymore
-        del self.ndv
-        del self.ncon
-        del self.rhs
-        del self.X_PETSC
-        del self.gobj_PETSC
-        del self.temp
-        del self.loc
-        del self.index
-        del opt_prob
-        del opt
-        print 'Fitting Time: %f seconds'%(time.time()-time0)
-        return
+#         # Delete the self. values we don't need anymore
+#         del self.ndv
+#         del self.ncon
+#         del self.rhs
+#         del self.X_PETSC
+#         del self.gobj_PETSC
+#         del self.temp
+#         del self.loc
+#         del self.index
+#         del opt_prob
+#         del opt
+#         print 'Fitting Time: %f seconds'%(time.time()-time0)
+#         return
 
-    def _computeSparsityPattern(self):
-        '''Compute the sparsity pattern for the constraints. Return the SNOPT
-        defined indA,locA to be passed into the optimizer.'''
+#     def _computeSparsityPattern(self):
+#         '''Compute the sparsity pattern for the constraints. Return the SNOPT
+#         defined indA,locA to be passed into the optimizer.'''
 
-        Ai = [] # Index 
-        Ap = [1] # Pointer
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                surfaces = self.getSurfaceFromEdge(iedge)
-                if len(surfaces) > 2: 
-                    print 'Continuity is not defined for more than 2 surfaces'
-                    sys.exit(1)
-                # end if
-                if len(surfaces) == 1:
-                    if self.sym == None:
-                        print 'Error: A symmetry plane must be speficied using .setSymmetry( ) \
-command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
-                        sys.exit(1)
-                    # end if
+#         Ai = [] # Index 
+#         Ap = [1] # Pointer
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 if len(surfaces) > 2: 
+#                     print 'Continuity is not defined for more than 2 surfaces'
+#                     sys.exit(1)
+#                 # end if
+#                 if len(surfaces) == 1:
+#                     if self.sym == None:
+#                         print 'Error: A symmetry plane must be speficied using .setSymmetry( ) \
+# command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
+#                         sys.exit(1)
+#                     # end if
 
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    for i in xrange(self.topo.edges[iedge].Nctl):
-                        indA,indB = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf0],i,edge0,self.edge_dir[surf0])
-                        Ai.append(3*indB+1)
-                        Ai.append(3*indB+2)
-                        Ai.append(3*indA+1)
-                        Ai.append(3*indA+2)
-                        Ap.append(Ap[-1] + 4)
+#                     surf0 = surfaces[0][0] # First surface on this edge
+#                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
+#                     for i in xrange(self.topo.edges[iedge].Nctl):
+#                         indA,indB = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
+#                         Ai.append(3*indB+1)
+#                         Ai.append(3*indB+2)
+#                         Ai.append(3*indA+1)
+#                         Ai.append(3*indA+2)
+#                         Ap.append(Ap[-1] + 4)
 
-                        Ai.append(3*indB+2)
-                        Ai.append(3*indB+0)
-                        Ai.append(3*indA+2)
-                        Ai.append(3*indA+0)
-                        Ap.append(Ap[-1] + 4)
+#                         Ai.append(3*indB+2)
+#                         Ai.append(3*indB+0)
+#                         Ai.append(3*indA+2)
+#                         Ai.append(3*indA+0)
+#                         Ap.append(Ap[-1] + 4)
 
-                        Ai.append(3*indB+0)
-                        Ai.append(3*indB+1)
-                        Ai.append(3*indA+0)
-                        Ai.append(3*indA+1)
-                        Ap.append(Ap[-1] + 4)
-                     # end for
-                else:
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    surf1 = surfaces[1][0] # Second surface on this edge
-                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         Ai.append(3*indB+0)
+#                         Ai.append(3*indB+1)
+#                         Ai.append(3*indA+0)
+#                         Ai.append(3*indA+1)
+#                         Ap.append(Ap[-1] + 4)
+#                      # end for
+#                 else:
+#                     surf0 = surfaces[0][0] # First surface on this edge
+#                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
+#                     surf1 = surfaces[1][0] # Second surface on this edge
+#                     edge1 = surfaces[1][1] # Edge of second surface on this edge
 
-                    for i in xrange(self.topo.edges[iedge].Nctl):
-                        indA,indB = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf0],i,edge0,self.edge_dir[surf0])
-                        indA,indC = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf1],i,edge1,self.edge_dir[surf1])
+#                     for i in xrange(self.topo.edges[iedge].Nctl):
+#                         indA,indB = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
+#                         indA,indC = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf1],i,edge1,self.edge_dir[surf1])
 
-                        Ai.append(3*indB+1)
-                        Ai.append(3*indB+2)
-                        Ai.append(3*indC+2)
-                        Ai.append(3*indC+1)
-                        Ai.append(3*indA+1)
-                        Ai.append(3*indA+2)
-                        Ap.append(Ap[-1] + 6)
+#                         Ai.append(3*indB+1)
+#                         Ai.append(3*indB+2)
+#                         Ai.append(3*indC+2)
+#                         Ai.append(3*indC+1)
+#                         Ai.append(3*indA+1)
+#                         Ai.append(3*indA+2)
+#                         Ap.append(Ap[-1] + 6)
 
-                        Ai.append(3*indB+2)
-                        Ai.append(3*indB+0)
-                        Ai.append(3*indC+0)
-                        Ai.append(3*indC+2)
-                        Ai.append(3*indA+2)
-                        Ai.append(3*indA+0)
-                        Ap.append(Ap[-1] + 6)
+#                         Ai.append(3*indB+2)
+#                         Ai.append(3*indB+0)
+#                         Ai.append(3*indC+0)
+#                         Ai.append(3*indC+2)
+#                         Ai.append(3*indA+2)
+#                         Ai.append(3*indA+0)
+#                         Ap.append(Ap[-1] + 6)
 
-                        Ai.append(3*indB+0)
-                        Ai.append(3*indB+1)
-                        Ai.append(3*indC+1)
-                        Ai.append(3*indC+0)
-                        Ai.append(3*indA+0)
-                        Ai.append(3*indA+1)
-                        Ap.append(Ap[-1] + 6)
-                    # end for (nctl on edge)
-                # end if
-            # end if (continuity edge)
-        # end for (edge list)
-        Ax = zeros(len(Ai)) # Dummy Ax data
-        self.loc = Ap
-        self.index = Ai
-        Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,Ax)
+#                         Ai.append(3*indB+0)
+#                         Ai.append(3*indB+1)
+#                         Ai.append(3*indC+1)
+#                         Ai.append(3*indC+0)
+#                         Ai.append(3*indA+0)
+#                         Ai.append(3*indA+1)
+#                         Ap.append(Ap[-1] + 6)
+#                     # end for (nctl on edge)
+#                 # end if
+#             # end if (continuity edge)
+#         # end for (edge list)
+#         Ax = zeros(len(Ai)) # Dummy Ax data
+#         self.loc = Ap
+#         self.index = Ai
+#         Bp,Bi,Bx = convertCSRtoCSC_one(self.ncon,self.ndv,Ap,Ai,Ax)
 
-        return Bp,Bi
+#         return Bp,Bi
 
-    def _objcon(self,x,*arg,**kwargs):
-        '''Compute the objective and the constraints'''
-        # ------------ Objective ---------
-        if USE_PETSC:
-            self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
-            self.J.mult(self.X_PETSC,self.temp)
-            f_obj = 0.5*(self.temp-self.rhs).norm()**2
+#     def _objcon(self,x,*arg,**kwargs):
+#         '''Compute the objective and the constraints'''
+#         # ------------ Objective ---------
+#         if USE_PETSC:
+#             self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
+#             self.J.mult(self.X_PETSC,self.temp)
+#             f_obj = 0.5*(self.temp-self.rhs).norm()**2
           
-        else:
-            f_obj = 0.5*norm(dot(self.J,x)-self.rhs)**2
-        # ---------- Constraints ---------
+#         else:
+#             f_obj = 0.5*norm(dot(self.J,x)-self.rhs)**2
+#         # ---------- Constraints ---------
 
-        f_con = []
-        sym = self.sym_normal
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#         f_con = []
+#         sym = self.sym_normal
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
                 
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                if len(surfaces) == 1: 
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 if len(surfaces) == 1: 
 
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    for i in xrange(self.topo.edges[iedge].Nctl):
-                        indA,indB = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf0],i,edge0,self.edge_dir[surf0])
+#                     surf0 = surfaces[0][0] # First surface on this edge
+#                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
+#                     for i in xrange(self.topo.edges[iedge].Nctl):
+#                         indA,indB = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
 
-                        f_con.append(
-                            (x[3*indB + 1] - x[3*indA + 1])*sym[2]- 
-                            (x[3*indB + 2] - x[3*indA + 2])*sym[1])
+#                         f_con.append(
+#                             (x[3*indB + 1] - x[3*indA + 1])*sym[2]- 
+#                             (x[3*indB + 2] - x[3*indA + 2])*sym[1])
                         
-                        f_con.append(
-                            (x[3*indB + 2] - x[3*indA + 2])*sym[0]-
-                            (x[3*indB + 0] - x[3*indA + 0])*sym[2])
+#                         f_con.append(
+#                             (x[3*indB + 2] - x[3*indA + 2])*sym[0]-
+#                             (x[3*indB + 0] - x[3*indA + 0])*sym[2])
                         
-                        f_con.append(
-                            (x[3*indB + 0] - x[3*indA + 0])*sym[1]-
-                            (x[3*indB + 1] - x[3*indA + 1])*sym[0])
-                    # end for
-                else:
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
+#                         f_con.append(
+#                             (x[3*indB + 0] - x[3*indA + 0])*sym[1]-
+#                             (x[3*indB + 1] - x[3*indA + 1])*sym[0])
+#                     # end for
+#                 else:
+#                     surf0 = surfaces[0][0] # First surface on this edge
+#                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
                     
-                    surf1 = surfaces[1][0] # Second surface on this edge
-                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                     surf1 = surfaces[1][0] # Second surface on this edge
+#                     edge1 = surfaces[1][1] # Edge of second surface on this edge
 
-                    for i in xrange(self.topo.edges[iedge].Nctl):
+#                     for i in xrange(self.topo.edges[iedge].Nctl):
 
-                        indA,indB = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf0],i,edge0,self.edge_dir[surf0])
+#                         indA,indB = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
 
-                        indA,indC = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf1],i,edge1,self.edge_dir[surf1])
+#                         indA,indC = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf1],i,edge1,self.edge_dir[surf1])
 
-                        # indB and indC are the global indicies of the two control 
-                        # points on either side of this node on the edge (indA)
+#                         # indB and indC are the global indicies of the two control 
+#                         # points on either side of this node on the edge (indA)
 
-                        f_con.append(
-                            (x[3*indB + 1] - x[3*indA + 1])*(x[3*indC + 2]-x[3*indA + 2])- 
-                            (x[3*indB + 2] - x[3*indA + 2])*(x[3*indC + 1]-x[3*indA + 1]))
+#                         f_con.append(
+#                             (x[3*indB + 1] - x[3*indA + 1])*(x[3*indC + 2]-x[3*indA + 2])- 
+#                             (x[3*indB + 2] - x[3*indA + 2])*(x[3*indC + 1]-x[3*indA + 1]))
 
-                        f_con.append(
-                            (x[3*indB + 2] - x[3*indA + 2])*(x[3*indC + 0]-x[3*indA + 0])- 
-                            (x[3*indB + 0] - x[3*indA + 0])*(x[3*indC + 2]-x[3*indA + 2]))
+#                         f_con.append(
+#                             (x[3*indB + 2] - x[3*indA + 2])*(x[3*indC + 0]-x[3*indA + 0])- 
+#                             (x[3*indB + 0] - x[3*indA + 0])*(x[3*indC + 2]-x[3*indA + 2]))
 
-                        f_con.append(
-                            (x[3*indB + 0] - x[3*indA + 0])*(x[3*indC + 1]-x[3*indA + 1])- 
-                            (x[3*indB + 1] - x[3*indA + 1])*(x[3*indC + 0]-x[3*indA + 0]))
-                    # end for (nctl on edge)
-            # end if (continuity edge)
-        # end for (edge list)
+#                         f_con.append(
+#                             (x[3*indB + 0] - x[3*indA + 0])*(x[3*indC + 1]-x[3*indA + 1])- 
+#                             (x[3*indB + 1] - x[3*indA + 1])*(x[3*indC + 0]-x[3*indA + 0]))
+#                     # end for (nctl on edge)
+#             # end if (continuity edge)
+#         # end for (edge list)
 
-        return f_obj,f_con,0
+#         return f_obj,f_con,0
 
-    def _sens(self,x,f_obj,f_con,*args,**kwargs):
-        '''Sensitivity function for Fitting Optimization'''
-        # ----------- Objective Derivative ----------------
-        if USE_PETSC:
-            self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
-            self.J(self.X_PETSC,self.temp)
-            self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
-            gobj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
-            self.temp = self.temp-self.rhs
-            self.temp.abs()
-            print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
-        else:
-            gobj = dot((dot(self.J,x)-self.rhs),self.J)
-        # end if
-        # ----------- Constraint Derivative ---------------
+#     def _sens(self,x,f_obj,f_con,*args,**kwargs):
+#         '''Sensitivity function for Fitting Optimization'''
+#         # ----------- Objective Derivative ----------------
+#         if USE_PETSC:
+#             self.X_PETSC.setValues(arange(self.ndv).astype('intc'),x)
+#             self.J(self.X_PETSC,self.temp)
+#             self.J.multTranspose(self.temp-self.rhs,self.gobj_PETSC)
+#             gobj = array(self.gobj_PETSC.getValues(arange(self.ndv).astype('intc')))
+#             self.temp = self.temp-self.rhs
+#             self.temp.abs()
+#             print 'Objective: %f, Max Error %f:'%(f_obj,self.temp.max()[1])
+#         else:
+#             gobj = dot((dot(self.J,x)-self.rhs),self.J)
+#         # end if
+#         # ----------- Constraint Derivative ---------------
 
-        sym = self.sym_normal
-        gcon = []
-        for iedge in xrange(len(self.topo.edges)):
-            if self.topo.edges[iedge].cont == 1: # We have a continuity edge
-                # Now get the two surfaces for this edge:
-                surfaces = self.getSurfaceFromEdge(iedge)
-                if len(surfaces) == 1: 
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    for i in xrange(self.topo.edges[iedge].Nctl):
-                        indA,indB = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf0],i,edge0,self.edge_dir[surf0])
+#         sym = self.sym_normal
+#         gcon = []
+#         for iedge in xrange(len(self.topo.edges)):
+#             if self.topo.edges[iedge].cont == 1: # We have a continuity edge
+#                 # Now get the two surfaces for this edge:
+#                 surfaces = self.getSurfaceFromEdge(iedge)
+#                 if len(surfaces) == 1: 
+#                     surf0 = surfaces[0][0] # First surface on this edge
+#                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
+#                     for i in xrange(self.topo.edges[iedge].Nctl):
+#                         indA,indB = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
                    
-                        gcon.append(  sym[2] )
-                        gcon.append( -sym[1] )
-                        gcon.append( -sym[2] )
-                        gcon.append(  sym[1] )
+#                         gcon.append(  sym[2] )
+#                         gcon.append( -sym[1] )
+#                         gcon.append( -sym[2] )
+#                         gcon.append(  sym[1] )
 
-                        gcon.append(  sym[0] )
-                        gcon.append( -sym[2] )
-                        gcon.append( -sym[0] )
-                        gcon.append(  sym[2] )
+#                         gcon.append(  sym[0] )
+#                         gcon.append( -sym[2] )
+#                         gcon.append( -sym[0] )
+#                         gcon.append(  sym[2] )
 
-                        gcon.append(  sym[1] )
-                        gcon.append( -sym[0] )
-                        gcon.append( -sym[1] )
-                        gcon.append(  sym[0] )
-                else:
-                    surf0 = surfaces[0][0] # First surface on this edge
-                    edge0 = surfaces[0][1] # Edge of surface on this edge                           
-                    surf1 = surfaces[1][0] # Second surface on this edge
-                    edge1 = surfaces[1][1] # Edge of second surface on this edge
+#                         gcon.append(  sym[1] )
+#                         gcon.append( -sym[0] )
+#                         gcon.append( -sym[1] )
+#                         gcon.append(  sym[0] )
+#                 else:
+#                     surf0 = surfaces[0][0] # First surface on this edge
+#                     edge0 = surfaces[0][1] # Edge of surface on this edge                           
+#                     surf1 = surfaces[1][0] # Second surface on this edge
+#                     edge1 = surfaces[1][1] # Edge of second surface on this edge
 
-                    for i in xrange(self.topo.edges[iedge].Nctl):
+#                     for i in xrange(self.topo.edges[iedge].Nctl):
 
-                        indA,indB = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf0],i,edge0,self.edge_dir[surf0])
+#                         indA,indB = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf0],i,edge0,self.edge_dir[surf0])
 
-                        indA,indC = self._getTwoIndiciesOnEdge(
-                            self.l_index[surf1],i,edge1,self.edge_dir[surf1])
+#                         indA,indC = self._getTwoIndiciesOnEdge(
+#                             self.l_index[surf1],i,edge1,self.edge_dir[surf1])
 
-                        # indB and indC are the global indicies of the two control 
-                        # points on either side of this node on the edge (indA)
+#                         # indB and indC are the global indicies of the two control 
+#                         # points on either side of this node on the edge (indA)
 
-                        gcon.append( x[3*indC + 2]-x[3*indA + 2] )
-                        gcon.append( -x[3*indC + 1]+x[3*indA + 1] )
-                        gcon.append( x[3*indB + 1]-x[3*indA + 1] )
-                        gcon.append (-x[3*indB + 2]+x[3*indA + 2] )
-                        gcon.append( -x[3*indC + 2]+x[3*indA + 2] + x[3*indB+2] - x[3*indA + 2] )
-                        gcon.append( -x[3*indB + 1]+x[3*indA + 1] + x[3*indC+1] - x[3*indA + 1] )
+#                         gcon.append( x[3*indC + 2]-x[3*indA + 2] )
+#                         gcon.append( -x[3*indC + 1]+x[3*indA + 1] )
+#                         gcon.append( x[3*indB + 1]-x[3*indA + 1] )
+#                         gcon.append (-x[3*indB + 2]+x[3*indA + 2] )
+#                         gcon.append( -x[3*indC + 2]+x[3*indA + 2] + x[3*indB+2] - x[3*indA + 2] )
+#                         gcon.append( -x[3*indB + 1]+x[3*indA + 1] + x[3*indC+1] - x[3*indA + 1] )
 
-                        gcon.append(  x[3*indC + 0]-x[3*indA + 0] )
-                        gcon.append( -x[3*indC + 2]+x[3*indA + 2] )
-                        gcon.append(  x[3*indB + 2]-x[3*indA + 2] )
-                        gcon.append( -x[3*indB + 0]+x[3*indA + 0] ) 
-                        gcon.append( -x[3*indC + 0]+x[3*indA + 0] + x[3*indB+0] - x[3*indA + 0] )
-                        gcon.append(-x[3*indB + 2]+x[3*indA + 2] + x[3*indC+2] - x[3*indA + 2] )
+#                         gcon.append(  x[3*indC + 0]-x[3*indA + 0] )
+#                         gcon.append( -x[3*indC + 2]+x[3*indA + 2] )
+#                         gcon.append(  x[3*indB + 2]-x[3*indA + 2] )
+#                         gcon.append( -x[3*indB + 0]+x[3*indA + 0] ) 
+#                         gcon.append( -x[3*indC + 0]+x[3*indA + 0] + x[3*indB+0] - x[3*indA + 0] )
+#                         gcon.append(-x[3*indB + 2]+x[3*indA + 2] + x[3*indC+2] - x[3*indA + 2] )
 
-                        gcon.append(  x[3*indC + 1]-x[3*indA + 1] )
-                        gcon.append( -x[3*indC + 0]+x[3*indA + 0] )
-                        gcon.append(  x[3*indB + 0]-x[3*indA + 0] )
-                        gcon.append( -x[3*indB + 1]+x[3*indA + 1] )
-                        gcon.append(-x[3*indC + 1]+x[3*indA + 1] + x[3*indB+1] - x[3*indA + 1] )
-                        gcon.append( -x[3*indB + 0]+x[3*indA + 0] + x[3*indC+0] - x[3*indA + 0] )
+#                         gcon.append(  x[3*indC + 1]-x[3*indA + 1] )
+#                         gcon.append( -x[3*indC + 0]+x[3*indA + 0] )
+#                         gcon.append(  x[3*indB + 0]-x[3*indA + 0] )
+#                         gcon.append( -x[3*indB + 1]+x[3*indA + 1] )
+#                         gcon.append(-x[3*indC + 1]+x[3*indA + 1] + x[3*indB+1] - x[3*indA + 1] )
+#                         gcon.append( -x[3*indB + 0]+x[3*indA + 0] + x[3*indC+0] - x[3*indA + 0] )
 
-                    # end for
-            # end if (cont edge)
-        # end for (edge listloop)
-        Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,gcon)
+#                     # end for
+#             # end if (cont edge)
+#         # end for (edge listloop)
+#         Bp,Bi,new_gcon = convertCSRtoCSC_one(self.ncon,self.ndv,self.loc,self.index,gcon)
 
-        return gobj,new_gcon,0
+#         return gobj,new_gcon,0
 
-    def _addJacobianValue(self,i,j,value):
-        if USE_PETSC: 
-            self.J.setValue(i,j,value,PETSc.InsertMode.ADD_VALUES)
-        else:
-            self.J[i,j] += value
-        # end if
+#     def _addJacobianValue(self,i,j,value):
+#         if USE_PETSC: 
+#             self.J.setValue(i,j,value,PETSc.InsertMode.ADD_VALUES)
+#         else:
+#             self.J[i,j] += value
+#         # end if
 
-    def _initJacobian(self,nPts,ndv,g_index):
-        '''Initialize the Jacobian either with PETSc or with Numpy for use
-        with LAPACK and fill it up'''
-        nRows = nPts*3
-        nCols = ndv
-        if USE_PETSC:
-            self.J = PETSc.Mat()
-            # We know the row filling factor: 16*3 (4 for ku by 4 for
-            # kv and 3 spatial)
-            if PETSC_MAJOR_VERSION == 1:
-                self.J.createAIJ([nRows,nCols],nnz=16*3,comm=PETSc.COMM_SELF)
-            elif PETSC_MAJOR_VERSION == 0:
-                self.J.createSeqAIJ([nRows,nCols],nz=16*3)
-            else:
-                print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
-                sys.exit(1)
-            # end if
-        else:
-            self.J = zeros((nRows,nCols))
-        # end if
+#     def _initJacobian(self,nPts,ndv,g_index):
+#         '''Initialize the Jacobian either with PETSc or with Numpy for use
+#         with LAPACK and fill it up'''
+#         nRows = nPts*3
+#         nCols = ndv
+#         if USE_PETSC:
+#             self.J = PETSc.Mat()
+#             # We know the row filling factor: 16*3 (4 for ku by 4 for
+#             # kv and 3 spatial)
+#             if PETSC_MAJOR_VERSION == 1:
+#                 self.J.createAIJ([nRows,nCols],nnz=16*3,comm=PETSc.COMM_SELF)
+#             elif PETSC_MAJOR_VERSION == 0:
+#                 self.J.createSeqAIJ([nRows,nCols],nz=16*3)
+#             else:
+#                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+#                 sys.exit(1)
+#             # end if
+#         else:
+#             self.J = zeros((nRows,nCols))
+#         # end if
 
-        # Assemble the Jacobian
-        for ii in xrange(nPts):
-            #  -------- Short Version of some data for cleaner code ---------
-            surfID = g_index[ii][0][0]
-            i      = g_index[ii][0][1]
-            j      = g_index[ii][0][2]
+#         # Assemble the Jacobian
+#         for ii in xrange(nPts):
+#             #  -------- Short Version of some data for cleaner code ---------
+#             surfID = g_index[ii][0][0]
+#             i      = g_index[ii][0][1]
+#             j      = g_index[ii][0][2]
             
-            u = self.surfs[surfID].u[i]
-            v = self.surfs[surfID].v[j]
+#             u = self.surfs[surfID].u[i]
+#             v = self.surfs[surfID].v[j]
 
-            ku = self.surfs[surfID].ku
-            kv = self.surfs[surfID].kv
-            # ---------------------------------------------------------------
-            ileftu, mflagu = self.surfs[surfID].pyspline.intrv(self.surfs[surfID].tu,u,1)
-            ileftv, mflagv = self.surfs[surfID].pyspline.intrv(self.surfs[surfID].tv,v,1)
+#             ku = self.surfs[surfID].ku
+#             kv = self.surfs[surfID].kv
+#             # ---------------------------------------------------------------
+#             ileftu, mflagu = self.surfs[surfID].pyspline.intrv(self.surfs[surfID].tu,u,1)
+#             ileftv, mflagv = self.surfs[surfID].pyspline.intrv(self.surfs[surfID].tv,v,1)
 
-            if mflagu == 0: # Its Inside so everything is ok
-                u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
-            if mflagu == 1: # Its at the right end so just need last one
-                u_list = [ileftu-ku-1]
+#             if mflagu == 0: # Its Inside so everything is ok
+#                 u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
+#             if mflagu == 1: # Its at the right end so just need last one
+#                 u_list = [ileftu-ku-1]
 
-            if mflagv == 0: # Its Inside so everything is ok
-                v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
-            if mflagv == 1: # Its at the right end so just need last one
-                v_list = [ileftv-kv-1]
+#             if mflagv == 0: # Its Inside so everything is ok
+#                 v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
+#             if mflagv == 1: # Its at the right end so just need last one
+#                 v_list = [ileftv-kv-1]
 
-            for iii in xrange(len(u_list)):
-                for jjj in xrange(len(v_list)):
-                    x = self.surfs[surfID].calcPtDeriv(\
-                        u,v,u_list[iii],v_list[jjj])
-                    global_index = self.topo.l_index[surfID][u_list[iii],v_list[jjj]]
-                    self._addJacobianValue(3*ii    ,global_index*3    ,x)
-                    self._addJacobianValue(3*ii + 1,global_index*3 + 1,x)
-                    self._addJacobianValue(3*ii + 2,global_index*3 + 2,x)
-                # end for (jjj)
-            # end for  (iii)
-        # end for (ii pt loop)
-        if USE_PETSC:
-            self.J.assemblyBegin()
-            self.J.assemblyEnd()
-        # end if
+#             for iii in xrange(len(u_list)):
+#                 for jjj in xrange(len(v_list)):
+#                     x = self.surfs[surfID].calcPtDeriv(\
+#                         u,v,u_list[iii],v_list[jjj])
+#                     global_index = self.topo.l_index[surfID][u_list[iii],v_list[jjj]]
+#                     self._addJacobianValue(3*ii    ,global_index*3    ,x)
+#                     self._addJacobianValue(3*ii + 1,global_index*3 + 1,x)
+#                     self._addJacobianValue(3*ii + 2,global_index*3 + 2,x)
+#                 # end for (jjj)
+#             # end for  (iii)
+#         # end for (ii pt loop)
+#         if USE_PETSC:
+#             self.J.assemblyBegin()
+#             self.J.assemblyEnd()
+#         # end if
 
-        return 
+#         return 
 
     def _getTwoIndiciesOnEdge(self,interpolant,index,edge,edge_dir):
         '''for a given interpolat matrix, get the two values in interpolant
@@ -2212,296 +2200,30 @@ command in pyGeo in order to use continuity of free (i.e. mirrored) surfaces)'
 # ----------------------------------------------------------------------
 #                Reference Axis Handling
 # ----------------------------------------------------------------------
-
-    def addRefAxis(self,surf_ids,X,rot,nrefsecs=None,spacing=None,\
-                       point_select=None):
-            '''Add surf_ids surfacs to a new reference axis defined by X and
-             rot with nsection values'''
-            mpiPrint('Adding ref axis...',self.NO_PRINT)
-            # A couple of things can happen here: 
-            # 1. nsections < len(X)
-            #    -> We do a LMS fit on the ref axis (subsample)
-            # 2. nsection == len(X)
-            #    -> We can make the ref axis as is
-            # 3. nsection < len(X)
-            #    -> We reinterpolate before making the ref axis (supersample)
-
-            X = array(X)
-            rot = array(rot)
-            if nrefsecs == None:
-                nrefsecs = X.shape[0]
-            # end if
-
-            if nrefsecs < X.shape[0]:
-
-                # Do the lms fit
-                x = pySpline.linear_spline(task='lms',X=X,\
-                                                  nCtl=nrefsecs,k=2)
-                s = x.s
-                rotxs = pySpline.linear_spline(task='lms',s=s,X=rot[:,0],\
-                                                   nCtl=nrefsecs,k=2)
-                rotys = pySpline.linear_spline(task='lms',s=s,X=rot[:,1],\
-                                                   nCtl=nrefsecs,k=2)
-                rotzs = pySpline.linear_spline(task='lms',s=s,X=rot[:,2],\
-                                                   nCtl=nrefsecs,k=2)
-
-                if spacing == None:
-                    spacing = linspace(0,1,nrefsecs)
-                # end if
-
-                Xnew = x.getValue(spacing)
-                rotnew = zeros((nrefsecs,3))
-                rotnew[:,0] = rotxs.getValueV(spacing)
-                rotnew[:,1] = rotys.getValueV(spacing)
-                rotnew[:,2] = rotzs.getValueV(spacing)
-                
-            elif nrefsecs == X.shape[0]:
-                Xnew = X.copy()
-                rotnew = rot.copy()
-
-            else: #nrefsecs > X.shape
-                if spacing == None:
-                    spacing = linspace(0,1,nrefsecs)
-                # end if
-
-                # Do the interpolate fit
-                x = pySpline.linear_spline(task='interpolate',X=X,k=2)
-                s = x.s
-                rotxs = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,0],nCtl=nrefsecs,k=2)
-                rotys = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,1],nCtl=nrefsecs,k=2)
-                rotzs = pySpline.linear_spline(\
-                    task='interpolate',s=s,X=rot[:,2],nCtl=nrefsecs,k=2)
-
-                Xnew = x.getValueV(spacing)
-                rotnew = zeros((nrefsecs,3))
-                rotnew[:,0] = rotxs.getValueV(spacing)
-                rotnew[:,1] = rotys.getValueV(spacing)
-                rotnew[:,2] = rotzs.getValueV(spacing)
-                
-            # end if
-
-            # create the ref axis:
-            ra = ref_axis(Xnew,rotnew)
-
-            coef_list = []
-            if point_select == None: # It is was not defined -> Assume full surface
-                for isurf in surf_ids:
-                    for i in xrange(self.surfs[isurf].Nctlu):
-                        for j in xrange(self.surfs[isurf].Nctlv):
-                            coef_list.append(self.topo.l_index[isurf][i,j])
-                        # end for
-                    # end for
-                # end for
-            # end if
-
-            else:   # We have a point selection class passed in
-                for isurf in surf_ids:
-                    coef_list.extend(point_select.getControlPoints(\
-                            self.surfs[isurf],isurf,coef_list,self.topo.l_index))
-                # end for
-            # end if
-
-            # Now parse out duplicates and sort
-            coef_list = unique(coef_list) #unique is in geo_utils
-            coef_list.sort()
-            N = len(coef_list)
-
-            # For each surface affected, produce the s attachment
-            # point list
-
-            attachment_points = []
-            types = []
-            for isurf in xrange(self.nSurf):
-                if isurf in surf_ids: # If this one is in the list
-                    index = self.getL_surfs_index(isurf)
-                    if not index == None:
-                        surface_list = self.l_surfs[index]
-                    else:
-                        surface_list = []
-
-                    s,type = self.getRefAxisConnection(ra,isurf,surface_list)
-
-                    attachment_points.append(s)
-                    types.append(type)
-                else:
-                    attachment_points.append([])
-                    types.append([])
-                # end if
-            # end for
-    
-            for icoef in xrange(len(coef_list)):
-                for jj in xrange(len(self.topo.g_index[coef_list[icoef]])):
-                    surfID = self.topo.g_index[coef_list[icoef]][jj][0]
-                    i = self.topo.g_index[coef_list[icoef]][jj][1]
-                    j = self.topo.g_index[coef_list[icoef]][jj][2]
-
-                    if surfID in surf_ids:
-                        break
-                    # end if
-                # end for
-
-                type = types[surfID]
-
-                if type == 0: # Along u
-                    s = attachment_points[surfID][i]
-                else:
-                    s = attachment_points[surfID][j]
-                # end if
             
-                D = self.coef[coef_list[icoef]] - ra.xs.getValue(s)
-                M = ra.getRotMatrixGlobalToLocal(s)
-                D = dot(M,D) #Rotate to local frame
-                ra.links_s.append(s)
-                ra.links_x.append(D)
-            # end for
-            ra.coef_list = coef_list
-            ra.surf_ids  = surf_ids
-            # Add the reference axis to the pyGeo list
-            self.ref_axis.append(ra)
+    def addRefAxis(self,surf_ids,*args,**kwargs):
+        '''Add surf_ids surfacs to a new reference axis defined by X and
+        rot with nsection values'''
+        mpiPrint('Adding ref axis...',self.NO_PRINT)
+        ra = ref_axis(surf_ids,*args,**kwargs)
+
+        self.ref_axis.append(ra)
             
-    def addRefAxisCon(self,axis1,axis2,con_type):
-        '''Add a reference axis connection to the connection list'''
+   
+
+ #    def getL_surfs_index(self,isurf):
+#         '''Return the index of l_surfs for surface isurf'''
+#         for i in xrange(len(self.l_surfs)):
+#             for j in xrange(len(self.l_surfs[i])):
+#                 if isurf == self.l_surfs[i][j]:
+#                     return i
+#                 # end if
+#             # end for
+#         # end for
         
-        # Attach axis2 to axis1 
-        # Find out the POSITION and DISTANCE on
-        # axis1 that axis2 will be attached
-        
-        s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
-            self.ref_axis[axis2].xs.getValue(0))
+#         return None
 
-        M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
-        D = dot(M,D)
-
-        self.ref_axis[axis2].base_point_s = s
-        self.ref_axis[axis2].base_point_D = D
-        self.ref_axis[axis2].con_type = con_type
-        if con_type == 'full':
-            assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
-is only available for reference axis with 2 points. A typical usage is for \
-a flap hinge line'
-            
-            s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
-                self.ref_axis[axis2].xs.getValue(1.0))
-
-            M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
-            D = dot(M,D)
-
-            self.ref_axis[axis2].end_point_s = s
-            self.ref_axis[axis2].end_point_D = D
-            
-        # end if
-            
-        self.ref_axis_con.append([axis1,axis2,con_type])
-
-        return
-
-    def getL_surfs_index(self,isurf):
-        '''Return the index of l_surfs for surface isurf'''
-        for i in xrange(len(self.l_surfs)):
-            for j in xrange(len(self.l_surfs[i])):
-                if isurf == self.l_surfs[i][j]:
-                    return i
-                # end if
-            # end for
-        # end for
-        
-        return None
-
-    def getRefAxisConnection(self,ref_axis,isurf,surface_list):
-        '''Determine the primary orientation of a reference axis,
-        ref_axis on surface, surface. The function returns a vector of
-        length Nctlu or Nctlv whcih contains the s-positions where
-        lines of constant u or v should connect to the ref axis'''
-
-        # We need to deduce along which direction (u or v) the
-        # reference axis is directed.  First estimate Over what
-        # portion the surface and ref axis coinside
-
-        # Take N Normal Vectors
-        full_surface_list = [isurf]
-        for extra_surf in surface_list:
-            full_surface_list.append(extra_surf)
-        # end for
-            
-        full_surface_list = unique(full_surface_list)
-        
-        types = []
-        for surfid in full_surface_list:
-            dir_type = directionAlongSurface(self.surfs[surfid],ref_axis.xs)
-            if dir_type == 0 or dir_type == 1: # u type regarless of direction
-                types.append(0)
-            else:
-                types.append(1)
-            # end if
-
-            if surfid == isurf:
-                isurf_dir  = types[-1]
-            # end if
-
-        # end for
-        
-        if isurf_dir == 1: #along v of isurf
-            mpiPrint('Reference axis is oriented along v on surface %d'%(isurf),self.NO_PRINT)
-            Nctlv = self.surfs[isurf].Nctlv
-            Nctlu = self.surfs[isurf].Nctlu
-            s = zeros(Nctlv)
-            for j in xrange(Nctlv):
-                # Get ALL coefficients from surfaces in full_surface_list
-                coef_index = []
-                for jj in xrange(len(full_surface_list)):
-                    if types[jj] == 0:
-                        #coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
-                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][j,:])
-                    else:
-                        #coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
-                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][:,j])
-                    # end if
-                # end for
-
-                coef_index = unique(coef_index)
-                coef = []
-                for icoef in xrange(len(coef_index)):
-                    coef.append(self.coef[coef_index[icoef]])
-                # end if
-                
-                X = array(coef)
-                #X = array(coef).reshape(Nctlu*len(full_surface_list),3)
-                
-                temp = pySpline.linear_spline(
-                    task='lms',X=X,k=2,Nctl=2)
-
-                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
-                s[j] = s1
-            # end for
-
-            return s,1
-        else:
-            mpiPrint('Reference axis is oriented along u on surface %d'%(isurf),self.NO_PRINT)
-            Nctlu = self.surfs[isurf].Nctlu
-            Nctlv = self.surfs[isurf].Nctlv
-            s = zeros(Nctlu)
-            for i in xrange(Nctlu):
-                # Get ALL coefficients from surfaces in full_surface_list
-                coef = []
-                for jj in xrange(len(full_surface_list)):
-                    if types[jj] == 1:
-                        coef.append(self.surfs[full_surface_list[jj]].coef[:,i])
-                    else:
-                        coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
-                    # end if
-                # end for
-                
-                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
-                temp = pySpline.linear_spline(task='lms',X=X,k=2,Nctl=2)
-
-                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
-                s[i] = s1
-            # end for
-
-            return s,0
-
+  
 # ----------------------------------------------------------------------
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
@@ -2600,13 +2322,6 @@ a flap hinge line'
         '''Run the update coefficients command and then set the control
         points'''
         self._updateCoef(local=True)
-
-        # Update the values in PETSc
-        if USE_PETSC:
-            self.petsc_coef[:] = self.coef.flatten().astype('d')
-            self.petsc_coef.assemble()
-        # end
-            
         self._updateSurfaceCoef()
         return
 
@@ -2998,7 +2713,7 @@ a flap hinge line'
         
         if surfs == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf].writeTecplotSurface(f,size=size)
+                self.surfs[isurf]._writeTecplotSurface(f,size=size)
 
         # -------------------------------
         #    Write out the Control Points
@@ -3006,7 +2721,7 @@ a flap hinge line'
         
         if coef == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf].writeTecplotCoef(f)
+                self.surfs[isurf]._writeTecplotCoef(f)
 
         # ----------------------------------
         #    Write out the Original Data
@@ -3014,7 +2729,7 @@ a flap hinge line'
         
         if orig == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf].writeTecplotOrigData(f)
+                self.surfs[isurf]._writeTecplotOrigData(f)
         # ----------------------
         #    Write out the edges
         # ----------------------
@@ -3080,7 +2795,7 @@ a flap hinge line'
 
         if directions == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf].writeDirections(f,isurf)
+                self.surfs[isurf]._writeDirections(f,isurf)
             # end for
         # end if
 
@@ -3110,7 +2825,7 @@ a flap hinge line'
             f2 = open(label_filename,'w')
             for iedge in xrange(self.topo.nEdge):
                 surfaces =  self.topo.getSurfaceFromEdge(iedge)
-                pt = self.surfs[surfaces[0][0]].getValueEdge(surfaces[0][1],0.5)
+                pt = self.surfs[surfaces[0][0]].edge_curves[surfaces[0][1]](0.5)
                 text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,T=\"E%d\"\n'%(pt[0],pt[1],pt[2],iedge)
                 f2.write('%s'%(text_string))
             # end for
@@ -3119,21 +2834,21 @@ a flap hinge line'
         
         if node_labels == True:
             # First we need to figure out where the corners actually *are*
-            n_nodes = len(unique(self.node_link.flatten()))
+            n_nodes = len(unique(self.topo.node_link.flatten()))
             node_coord = zeros((n_nodes,3))
             for i in xrange(n_nodes):
                 # Try to find node i
                 for isurf in xrange(self.nSurf):
-                    if self.node_link[isurf][0] == i:
+                    if self.topo.node_link[isurf][0] == i:
                         coordinate = self.surfs[isurf].getValueCorner(0)
                         break
-                    elif self.node_link[isurf][1] == i:
+                    elif self.topo.node_link[isurf][1] == i:
                         coordinate = self.surfs[isurf].getValueCorner(1)
                         break
-                    elif self.node_link[isurf][2] == i:
+                    elif self.topo.node_link[isurf][2] == i:
                         coordinate = self.surfs[isurf].getValueCorner(2)
                         break
-                    elif self.node_link[isurf][3] == i:
+                    elif self.topo.node_link[isurf][3] == i:
                         coordinate = self.surfs[isurf].getValueCorner(3)
                         break
                 # end for
@@ -3154,7 +2869,7 @@ a flap hinge line'
             f2.close()
 
         f.close()
-        sys.stdout.write('\n')
+        
         return
 
     def writeTecplotLinks(self,handle,ref_axis):
@@ -3285,16 +3000,13 @@ a flap hinge line'
         for n in xrange(patches):
             isurf = patch_list[n]
             
-            u = linspace(self.surfs[isurf].range[0],\
-                             self.surfs[isurf].range[1],Nu)
-            v = linspace(self.surfs[isurf].range[0],\
-                             self.surfs[isurf].range[1],Nv)
+            u = linspace(self.surfs[isurf].umin,self.surfs[isurf].umax,Nu)
+            v = linspace(self.surfs[isurf].vmin,self.surfs[isurf].vmax,Nv)
             [U,V] = meshgrid(u,v)
 
-            temp = self.surfs[isurf].getValueM(U,V)
+            temp = self.surfs[isurf].getValue(U,V)
             for idim in xrange(self.surfs[isurf].nDim):
-                xyz[idim,n*Nu*Nv:(n+1)*Nu*Nv]= \
-                    temp[:,:,idim].flatten()
+                xyz[idim,n*Nu*Nv:(n+1)*Nu*Nv]= temp[:,:,idim].flatten()
             # end for
 
             # Now do connectivity info
@@ -3311,7 +3023,7 @@ a flap hinge line'
         # end for
 
         # Now run the csm_pre command 
-        mpiPrint('Running CSM_PRE...',self.NO_PRINT)
+        mpiPrint('  -> Running CSM_PRE...',self.NO_PRINT)
         [dist,nearest_elem,uvw,base_coord,weightt,weightr] = \
             csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
 
@@ -3365,9 +3077,16 @@ a flap hinge line'
             patchID[i] = patch_list[patchID[i]]
         # end
 
+        # Now we can do a secondary newton search
+        diff = zeros(nPts)
+        for i in xrange(nPts):
+            uv[i,0],uv[i,1],D = self.surfs[patchID[i]].projectPoint(coordinates[:,i],u=uv[i,0],v=uv[i,1])
+            diff[i] = D[0]**2 + D[1]**2 + D[2] **2
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()
-        mpiPrint('Done Surface Attachment',self.NO_PRINT)
+        mpiPrint('  -> Done Surface Attachment',self.NO_PRINT)
+        mpiPrint('  -> RMS Error : %f'%(sqrt(sum(diff)/nPts)),self.NO_PRINT)
+        mpiPrint('  -> Max Error : %f'%(sqrt(max(diff))),self.NO_PRINT)
 
         return dist,patchID,uv
   
@@ -3375,7 +3094,7 @@ a flap hinge line'
         '''Write the patchID and uv coordinates for a set of points to a
         file. This allows the user to reload the points and (possibly)
         (slightly) modify the underlying geometry (but NOT topology)'''
-
+        mpiPrint('Writing Attached Surface...',self.NO_PRINT)
         f = open(file_name,'w')
         for icoord in xrange(len(patchID)):
             f.write('%d,%20.16g,%20.16g\n'%(patchID[icoord],uv[icoord,0],uv[icoord,0]))
@@ -3389,14 +3108,14 @@ a flap hinge line'
         file. This allows the user to reload the points and (possibly)
         (slightly) modify the underlying geometry (but NOT
         topology)'''
-
+        mpiPrint('Reading Attached Surface...',self.NO_PRINT)
         f = open(file_name,'r')
         patchID = []
         uv = []
         for line in f:
             aux = string.split(line,',')
             patchID.append(int(aux[0]))
-            uv.append(float(aux[1]),float(aux[2]))
+            uv.append([float(aux[1]),float(aux[2])])
         # end if
         f.close()
         patchID = array(patchID)
@@ -3600,7 +3319,7 @@ a flap hinge line'
 
 class ref_axis(object):
 
-    def __init__(self,X,rot,*args,**kwargs):
+    def __init__(self,surf_ids,surfs,topo,*args,**kwargs):
 
         ''' Create a generic reference axis. This object bascally defines a
         set of points in space (x,y,z) each with three rotations
@@ -3610,63 +3329,150 @@ class ref_axis(object):
         variables
         
         Input:
+        
+        The only non-keyword input is surf_ids: a list of surfaces for 
+        This ref axis
+        
+        # The spatial data supplied as 
+        x = x_coordiantes
+        y = y_coordiantes
+        z = z_coordiantes  OR
+        X = array((N,3)) with all x-y-z coordinates
 
-        X: array of size N,3: Contains the x-y-z coodinates of the axis
-        rot: array of size N,3: Contains the rotations of the axis
-
+        # Rotation data is supplied as
+        rot_x = rot_x
+        rot_y = rot_y
+        rot_z = rot_z
+        
         Note: Rotations are performed in the order: Z-Y-X
         '''
+
+        # Extract Some information from kwargs:
+        if 'X' in kwargs:
+            X = kwargs['X']
+        else:
+            X = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T
+        # end if
+
+        if 'rot' in kwags:
+            rot_x = kwrags['rot'][:,0]
+            rot_y = kwargs['rot'][:,1]
+            rot_z = kwargs['rot'][:,2]
+        else:
+            rot_x = kwargs['rot_x']
+            rot_y = kwargs['rot_y']
+            rot_z = kwrags['rot_z']
+        # end if
+
+        # Create the splines for the axis
+        self.xs    = pySpline.curve('interpolate',X=X,k=2)
+        self.rotxs = pySpline.curve('interpolate',x=rot_x,s=xs.s,k=2)
+        self.rotys = pySpline.curve('interpolate',x=rot_x,s=xs.s,k=2)
+        self.rotzs = pySpline.curve('interpolate',x=rot_x,s=xs.s,k=2)
+
+        self.scale = ones(self.N,'D')
 
         self.links_s = []
         self.links_x = []
         self.con_type = None
-        if not  X.shape == rot.shape:
-            print 'The shape of X and rot must be the same'
-            print 'X:',X.shape
-            print 'rot:',rot.shape
-            sys.exit(1)
 
-        # Note: Ref_axis data is ALWAYS Complex. 
-        X = X.astype('D')
-        rot = rot.astype('D')
-        self.N = X.shape[0]
-
-        self.base_point = X[0,:]
+        self.base_point = xs(0)
         
         self.base_point_s = None
         self.base_point_D = None
 
-        self.end_point   = X[-1,:]
+        self.end_point   = xs(1)
         self.end_point_s = None
         self.end_point_D = None
 
         # Values are stored wrt the base point
         self.x = X-self.base_point
         self.rot = rot
-        self.scale = ones(self.N,'D')
 
         # Deep copy the x,rot and scale for design variable reference
         self.x0 = copy.deepcopy(self.x)
         self.rot0 = copy.deepcopy(self.rot)
         self.scale0 = copy.deepcopy(self.scale)
 
-        # Create an interpolating spline for the spatial part and use
-        # its  basis for the rotatinoal part
+
+
+
+        # Now determine what control points will be associated with this axis
+        coef_list = []
+        if not 'point_select' in kwargs: # No point_select->Assume full surface
+            for isurf in surf_ids:
+                coef_list.extend(topo.l_index[isurf].flatten())
+            # end for
+        # end if
+
+        else:   # We have a point selection class passed in
+            for isurf in surf_ids:
+                coef_list.extend(kwargs['point_select'].getControlPoints(\
+                        surfs[isurf],isurf,coef_list,topo.l_index))
+            # end for
+        # end if
+
+        # Now parse out duplicates and sort
+        coef_list = unique(coef_list) #unique is in geo_utils
+        coef_list.sort()
+        N = len(coef_list)
+
+        # For each surface, produce the s attachment
+        # point list
+
+        attachment_points = []
+        types = []
+
+
+        for isurf in xrange(self.nSurf):
+            if isurf in surf_ids: # If this one is in the list
+                index = self.getL_surfs_index(isurf)
+                if not index == None:
+                    surface_list = self.l_surfs[index]
+                else:
+                    surface_list = []
+
+                s,type = self.getRefAxisConnection(ra,isurf,surface_list)
+
+                attachment_points.append(s)
+                types.append(type)
+            else:
+                attachment_points.append([])
+                types.append([])
+            # end if
+        # end for
+
+        for icoef in xrange(len(coef_list)):
+            for jj in xrange(len(self.topo.g_index[coef_list[icoef]])):
+                surfID = self.topo.g_index[coef_list[icoef]][jj][0]
+                i = self.topo.g_index[coef_list[icoef]][jj][1]
+                j = self.topo.g_index[coef_list[icoef]][jj][2]
+
+                if surfID in surf_ids:
+                    break
+                # end if
+            # end for
+
+            type = types[surfID]
+
+            if type == 0: # Along u
+                s = attachment_points[surfID][i]
+            else:
+                s = attachment_points[surfID][j]
+            # end if
+
+            D = self.coef[coef_list[icoef]] - ra.xs.getValue(s)
+            M = ra.getRotMatrixGlobalToLocal(s)
+            D = dot(M,D) #Rotate to local frame
+            ra.links_s.append(s)
+            ra.links_x.append(D)
+        # end for
+        ra.coef_list = coef_list
+        ra.surf_ids  = surf_ids
+        # Add the reference axis to the pyGeo list
+
+
         
-        self.xs = pySpline.linear_spline(\
-            task='interpolate',X=self.base_point+self.x,k=2,complex=True)
-        self.s = self.xs.s
-
-        self.rotxs = pySpline.linear_spline(\
-            task='interpolate',X=self.rot[:,0],k=2,s=self.s,complex=True)
-        self.rotys = pySpline.linear_spline(\
-            task='interpolate',X=self.rot[:,1],k=2,s=self.s,complex=True)
-        self.rotzs = pySpline.linear_spline(\
-            task='interpolate',X=self.rot[:,2],k=2,s=self.s,complex=True)
-
-        self.scales = pySpline.linear_spline(\
-            task='interpolate',X=self.scale,k=2,s=self.s,complex=True)
-
     def update(self):
         
         self.xs.coef = self.base_point+self.x
@@ -3686,7 +3492,7 @@ class ref_axis(object):
         '''Write the ref axis to the open file handle'''
         N = len(self.s)
         handle.write('Zone T=%s I=%d\n'%(axis_name,N))
-        values = self.xs.getValueV(self.s)
+        values = self.xs.getValue(self.s)
         for i in xrange(N):
             handle.write('%f %f %f \n'%(values[i,0],values[i,1],values[i,2]))
         # end for
@@ -3706,10 +3512,145 @@ class ref_axis(object):
         local frames'''
         return inv(dot(rotyM(self.rotys(s)),dot(rotxM(self.rotxs(s)),\
                                                     rotzM(self.rotzs(s)))))
+
+
+    def addRefAxisCon(self,axis1,axis2,con_type):
+        '''Add a reference axis connection to the connection list'''
+        
+        # Attach axis2 to axis1 
+        # Find out the POSITION and DISTANCE on
+        # axis1 that axis2 will be attached
+        
+        s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
+            self.ref_axis[axis2].xs.getValue(0))
+
+        M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
+        D = dot(M,D)
+
+        self.ref_axis[axis2].base_point_s = s
+        self.ref_axis[axis2].base_point_D = D
+        self.ref_axis[axis2].con_type = con_type
+        if con_type == 'full':
+            assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
+is only available for reference axis with 2 points. A typical usage is for \
+a flap hinge line'
+            
+            s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
+                self.ref_axis[axis2].xs.getValue(1.0))
+
+            M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
+            D = dot(M,D)
+
+            self.ref_axis[axis2].end_point_s = s
+            self.ref_axis[axis2].end_point_D = D
+            
+        # end if
+            
+        self.ref_axis_con.append([axis1,axis2,con_type])
+
+        return
+
+
+  def getRefAxisConnection(self,ref_axis,isurf,surface_list):
+        '''Determine the primary orientation of a reference axis,
+        ref_axis on surface, surface. The function returns a vector of
+        length Nctlu or Nctlv whcih contains the s-positions where
+        lines of constant u or v should connect to the ref axis'''
+
+        # We need to deduce along which direction (u or v) the
+        # reference axis is directed.  First estimate Over what
+        # portion the surface and ref axis coinside
+
+        # Take N Normal Vectors
+        full_surface_list = [isurf]
+        for extra_surf in surface_list:
+            full_surface_list.append(extra_surf)
+        # end for
+            
+        full_surface_list = unique(full_surface_list)
+        
+        types = []
+        for surfid in full_surface_list:
+            dir_type = directionAlongSurface(self.surfs[surfid],ref_axis.xs)
+            if dir_type == 0 or dir_type == 1: # u type regarless of direction
+                types.append(0)
+            else:
+                types.append(1)
+            # end if
+
+            if surfid == isurf:
+                isurf_dir  = types[-1]
+            # end if
+
+        # end for
+        
+        if isurf_dir == 1: #along v of isurf
+            mpiPrint('Reference axis is oriented along v on surface %d'%(isurf),self.NO_PRINT)
+            Nctlv = self.surfs[isurf].Nctlv
+            Nctlu = self.surfs[isurf].Nctlu
+            s = zeros(Nctlv)
+            for j in xrange(Nctlv):
+                # Get ALL coefficients from surfaces in full_surface_list
+                coef_index = []
+                for jj in xrange(len(full_surface_list)):
+                    if types[jj] == 0:
+                        #coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
+                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][j,:])
+                    else:
+                        #coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
+                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][:,j])
+                    # end if
+                # end for
+
+                coef_index = unique(coef_index)
+                coef = []
+                for icoef in xrange(len(coef_index)):
+                    coef.append(self.coef[coef_index[icoef]])
+                # end if
+                
+                X = array(coef)
+                #X = array(coef).reshape(Nctlu*len(full_surface_list),3)
+                
+                temp = pySpline.curve(
+                    'lms',X=X,k=2,Nctl=2)
+
+                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
+                s[j] = s1
+            # end for
+
+            return s,1
+        else:
+            mpiPrint('Reference axis is oriented along u on surface %d'%(isurf),self.NO_PRINT)
+            Nctlu = self.surfs[isurf].Nctlu
+            Nctlv = self.surfs[isurf].Nctlv
+            s = zeros(Nctlu)
+            for i in xrange(Nctlu):
+                # Get ALL coefficients from surfaces in full_surface_list
+                coef = []
+                for jj in xrange(len(full_surface_list)):
+                    if types[jj] == 1:
+                        coef.append(self.surfs[full_surface_list[jj]].coef[:,i])
+                    else:
+                        coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
+                    # end if
+                # end for
+                
+                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
+                temp = pySpline.curve('lms',X=X,k=2,Nctl=2)
+
+                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
+                s[i] = s1
+            # end for
+
+            return s,0
+
+
+
+
     
 class geoDVGlobal(object):
      
-    def __init__(self,dv_name,value,lower,upper,function,useit):
+    def __init__(self,dv_name,value,lower,upper,function,useit=True):
         
         '''Create a geometric design variable (or design variable group)
 
@@ -3901,156 +3842,6 @@ class geoDVLocal(object):
             # end if
         # end for
    
-class point_select(object):
-
-    def __init__(self,type,*args,**kwargs):
-
-        '''Initialize a control point selection class. There are several ways
-        to initialize this class depending on the 'type' qualifier:
-
-        Inputs:
-        
-        type: string which inidicates the initialization type:
-        
-        'x': Define two corners (pt1=,pt2=) on a plane parallel to the
-        x=0 plane
-
-        'y': Define two corners (pt1=,pt2=) on a plane parallel to the
-        y=0 plane
-
-        'z': Define two corners (pt1=,pt2=) on a plane parallel to the
-        z=0 plane
-
-        'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
-        COUNTER-CLOCKWISE orientation 
-
-        'slice': Define a grided region using two slice parameters:
-        slice_u= and slice_v are used as inputs
-
-        'list': Simply use a list of control point indidicies to
-        use. Use coef = [[i1,j1],[i2,j2],[i3,j3]] format
-
-        '''
-        
-        if type == 'x' or type == 'y' or type == 'z':
-            assert 'pt1' in kwargs and 'pt2' in kwargs,'Error:, two points \
-must be specified with initialization type x,y, or z. Points are specified \
-with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
-
-        elif type == 'quad':
-            assert 'pt1' in kwargs and 'pt2' in kwargs and 'pt3' in kwargs \
-                and 'pt4' in kwargs,'Error:, four points \
-must be specified with initialization type quad. Points are specified \
-with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
-            
-        elif type == 'slice':
-            assert 'slice_u'  in kwargs and 'slice_v' in kwargs,'Error: two \
-python slice objects must be specified with slice_u=slice1, slice_v=slice_2 \
-for slice type initialization'
-
-        elif type == 'list':
-            assert 'coef' in kwargs,'Error: a coefficient list must be \
-speficied in the following format: coef = [[i1,j1],[i2,j2],[i3,j3]]'
-        else:
-            print 'Error: type must be one of: x,y,z,quad,slice or list'
-            sys.exit(1)
-        # end if
-
-        if type == 'x' or type == 'y' or type =='z' or type == 'quad':
-            corners = zeros([4,3])
-            if type == 'x':
-                corners[0] = kwargs['pt1']
-
-                corners[1][1] = kwargs['pt2'][1]
-                corners[1][2] = kwargs['pt1'][2]
-
-                corners[2][1] = kwargs['pt1'][1]
-                corners[2][2] = kwargs['pt2'][2]
-
-                corners[3] = kwargs['pt2']
-
-                corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
-
-            elif type == 'y':
-                corners[0] = kwargs['pt1']
-
-                corners[1][0] = kwargs['pt2'][0]
-                corners[1][2] = kwargs['pt1'][2]
-
-                corners[2][0] = kwargs['pt1'][0]
-                corners[2][2] = kwargs['pt2'][2]
-
-                corners[3] = kwargs['pt2']
-
-                corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
-
-            elif type == 'z':
-                corners[0] = kwargs['pt1']
-
-                corners[1][0] = kwargs['pt2'][0]
-                corners[1][1] = kwargs['pt1'][1]
-
-                corners[2][0] = kwargs['pt1'][0]
-                corners[2][1] = kwargs['pt2'][1]
-
-                corners[3] = kwargs['pt2']
-
-                corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
-
-            elif type == 'quad':
-                corners[0] = kwargs['pt1']
-                corners[1] = kwargs['pt2']
-                corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
-                corners[3] = kwargs['pt3']
-            # end if
-
-            X = reshape(corners,[2,2,3])
-
-            self.box=pySpline.surf_spline(task='lms',ku=2,kv=2,\
-                                              Nctlu=2,Nctlv=2,X=X)
-
-        elif type == 'slice':
-            self.slice_u = kwargs['slice_u']
-            self.slice_v = kwargs['slice_v']
-        elif type == 'list':
-            self.coef_list = kwargs['coef']
-        # end if
-
-        self.type = type
-
-        return
-
-
-    def getControlPoints(self,surface,surface_id,coef_list,l_index):
-
-        '''Take is a pySpline surface, and a (possibly non-empty) coef_list
-        and add to the coef_list the global index of the control point
-        on the surface that can be projected onto the box'''
-        
-        if self.type=='x'or self.type=='y' or self.type=='z' or self.type=='quad':
-
-            for i in xrange(surface.Nctlu):
-                for j in xrange(surface.Nctlv):
-                    u0,v0,D,converged = self.box.projectPoint(surface.coef[i,j])
-                    if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
-                        coef_list.append(l_index[surface_id][i,j])
-                    #end if
-                # end for
-            # end for
-        elif self.type == 'slice':
-            for i in self.slice_u:
-                for j in self.slice_v:
-                    coef_list.append(l_index[surface_id][i,j])
-                # end for
-            # end for
-        elif self.type == 'list':
-            for i in xrange(len(self.coef_list)):
-                coef_list.append(l_index[surface_id][self.coef_list[i][0],
-                                                     self.coef_list[i][1]])
-            # end for
-        # end if
-
-        return coef_list
 
 #==============================================================================
 # Class Test
@@ -4545,9 +4336,9 @@ if __name__ == '__main__':
 
 # Backup
 
-#                 Xchord_line =chord_line.getValueV([0.10,1.0])
-#                 chord_line = pySpline.linear_spline(task='interpolate',X=Xchord_line,k=2)
-#                 tip_line = chord_line.getValueV(linspace(0,1,N))
+#                 Xchord_line =chord_line.getValue([0.10,1.0])
+#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 tip_line = chord_line.getValue(linspace(0,1,N))
 #                 #print 'tip_line:',tip_line
 #                 for ii in xrange(2): # up/low side loop
 #                     Xnew = zeros((N,25,3))
@@ -4574,9 +4365,9 @@ if __name__ == '__main__':
 #                         dx2 = D+V
 #                         print 'D,V:',D,V
 #                         print 'dx2:',dx2
-#                         temp_spline = pySpline.linear_spline(task='interpolate',X=X_input,
+#                         temp_spline = pySpline.curve('interpolate',X=X_input,
 #                                                              k=4,dx1=dx1,dx2=dx2)
 
-#                         Xnew[j] =  temp_spline.getValueV(linspace(0,1,25))
+#                         Xnew[j] =  temp_spline.getValue(linspace(0,1,25))
                         
 #                     # end for

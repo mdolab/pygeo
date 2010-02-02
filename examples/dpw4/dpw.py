@@ -14,37 +14,58 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('pySpline','pyGeo'))
+exec(import_modules('pyGeo'))
 
-aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/dpw.xyz')
+# Load the plot3d xyz file
+aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/dpw.xyz',no_print=False)
+#Compute and save the connectivity
 aircraft.doEdgeConnectivity('./geo_input/dpw.con')
-aircraft.propagateKnotVectors()
-aircraft.writeTecplot('./geo_output/dpw.dat')
+
+# Write A tecplot file
+aircraft.writeTecplot('./geo_output/dpw.dat',orig=True,directions=True,
+                      surf_labels=True,edge_labels=True,node_labels=True)
+# Write an iges file for reload 
 aircraft.writeIGES('./geo_input/dpw.igs')
+
+# #Re-load the above saved iges file
+# aircraft = pyGeo.pyGeo('iges',file_name='./geo_input/dpw.igs',no_print=False)
+# #Load the edge connectivity
+# aircraft.doEdgeConnectivity('./geo_input/dpw.con')
 # sys.exit(0)
 
-# aircraft = pyGeo.pyGeo('iges',file_name='./geo_input/dpw.igs',no_print=False)
-# aircraft.doEdgeConnectivity('./geo_input/dpw.con')
-# aircraft.writeTecplot('./geo_output/dpw.dat',surf_labels=True,orig=True)
+# ------- Now We will attach a set of surface points ---------
 
+# We have a file with a set of surface points from a triangular surface
+# mesh from icem
+
+coordinates = aircraft.getCoordinatesFromFile('./geo_input/points')
+
+# Now we can attach the surface -- Only available with cfd-csm-pre
+dist,patchID,uv = aircraft.attachSurface(coordinates)
+# We can also save these points to a file for future reference
+aircraft.writeAttachedSurface('./geo_input/attached_surface',patchID,uv)
+
+# And we can read them back in
+patchID,uv = aircraft.readAttachedSurface('./geo_input/attached_surface')
+
+
+
+# ------- Now we will add a reference axis --------
 # End-Type ref_axis attachments
-naf = 3
+nsec = 3
 x = [1147,1314,1804]
 y = [119,427,1156]
 z = [176,181,264]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
 rot_z = [0,0,0] 
-X = array([x,y,z])
-rot = array([rot_x,rot_y,rot_z])
 
-# Add l_surfs:
-aircraft.l_surfs.append([2,3,9,8]) # Inner Wing Panels
-aircraft.l_surfs.append([4,5,10,11]) # Outer Wing Panels
+# Add a single reference axis
+aircraft.addRefAxis([2,3,4,5,8,9,10,11],x=x,y=y,z=z,
+                    rot_x=rot_x,rot_y=rot_y,rot_z=rot_z)
 
-aircraft.addRefAxis([2,3,8,9],X[0:2,:],rot[0:2,:],nrefsecs=3)
-aircraft.addRefAxis([4,5,10,11],X[1:3,:],rot[1:3,:],nrefsecs=3)
-aircraft.addRefAxisCon(0,1,'end') # Innter Wing and Outer Wing ('Attach ra1 to ra0 with type 'end')
+
+# --------- Define Design Variable Functions Here -----------
 
 def span_extension(val,ref_axis):
     '''Single design variable for span extension'''
@@ -58,6 +79,12 @@ idg = aircraft.DV_namesGlobal #NOTE: This is constant (idg -> id global
 aircraft.DV_listGlobal[idg['span']].value = 1
 aircraft.update()
 aircraft.writeTecplot('./geo_output/dpw.dat',surf_labels=True,orig=True)
+
+
+
+
+
+
 
 # # Create a coef0 list for all surfaces:aircraft.writeTecplot('./geo_output/dpw.dat',surf_labels=True)
 # init_coef = []

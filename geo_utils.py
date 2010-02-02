@@ -151,8 +151,8 @@ def read_af(filename,file_type='xfoil',N=35):
 
         # Check for blunt TE:
         if y[0] != y[-1]:
-            print 'Blunt Trailing Edge on airfoil: %s'%(filename)
-            print 'Merging to a point...'
+            mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
+            mpiPrint('Merging to a point...')
             yavg = 0.5*(y[0] + y[-1])
             y[0]  = yavg
             y[-1] = yavg
@@ -596,6 +596,158 @@ def blendKnotVectors(knot_vectors,sym):
     new_knot_vec /= nVec
     return new_knot_vec
 
+class point_select(object):
+
+    def __init__(self,type,*args,**kwargs):
+
+        '''Initialize a control point selection class. There are several ways
+        to initialize this class depending on the 'type' qualifier:
+
+        Inputs:
+        
+        type: string which inidicates the initialization type:
+        
+        'x': Define two corners (pt1=,pt2=) on a plane parallel to the
+        x=0 plane
+
+        'y': Define two corners (pt1=,pt2=) on a plane parallel to the
+        y=0 plane
+
+        'z': Define two corners (pt1=,pt2=) on a plane parallel to the
+        z=0 plane
+
+        'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
+        COUNTER-CLOCKWISE orientation 
+
+        'slice': Define a grided region using two slice parameters:
+        slice_u= and slice_v are used as inputs
+
+        'list': Simply use a list of control point indidicies to
+        use. Use coef = [[i1,j1],[i2,j2],[i3,j3]] format
+
+        '''
+        
+        if type == 'x' or type == 'y' or type == 'z':
+            assert 'pt1' in kwargs and 'pt2' in kwargs,'Error:, two points \
+must be specified with initialization type x,y, or z. Points are specified \
+with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
+
+        elif type == 'quad':
+            assert 'pt1' in kwargs and 'pt2' in kwargs and 'pt3' in kwargs \
+                and 'pt4' in kwargs,'Error:, four points \
+must be specified with initialization type quad. Points are specified \
+with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
+            
+        elif type == 'slice':
+            assert 'slice_u'  in kwargs and 'slice_v' in kwargs,'Error: two \
+python slice objects must be specified with slice_u=slice1, slice_v=slice_2 \
+for slice type initialization'
+
+        elif type == 'list':
+            assert 'coef' in kwargs,'Error: a coefficient list must be \
+speficied in the following format: coef = [[i1,j1],[i2,j2],[i3,j3]]'
+        else:
+            print 'Error: type must be one of: x,y,z,quad,slice or list'
+            sys.exit(1)
+        # end if
+
+        if type == 'x' or type == 'y' or type =='z' or type == 'quad':
+            corners = zeros([4,3])
+            if type == 'x':
+                corners[0] = kwargs['pt1']
+
+                corners[1][1] = kwargs['pt2'][1]
+                corners[1][2] = kwargs['pt1'][2]
+
+                corners[2][1] = kwargs['pt1'][1]
+                corners[2][2] = kwargs['pt2'][2]
+
+                corners[3] = kwargs['pt2']
+
+                corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
+
+            elif type == 'y':
+                corners[0] = kwargs['pt1']
+
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][2] = kwargs['pt1'][2]
+
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][2] = kwargs['pt2'][2]
+
+                corners[3] = kwargs['pt2']
+
+                corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
+
+            elif type == 'z':
+                corners[0] = kwargs['pt1']
+
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][1] = kwargs['pt1'][1]
+
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][1] = kwargs['pt2'][1]
+
+                corners[3] = kwargs['pt2']
+
+                corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
+
+            elif type == 'quad':
+                corners[0] = kwargs['pt1']
+                corners[1] = kwargs['pt2']
+                corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
+                corners[3] = kwargs['pt3']
+            # end if
+
+            X = reshape(corners,[2,2,3])
+
+            self.box=pySpline.surface('lms',ku=2,kv=2,\
+                                              Nctlu=2,Nctlv=2,X=X)
+
+        elif type == 'slice':
+            self.slice_u = kwargs['slice_u']
+            self.slice_v = kwargs['slice_v']
+        elif type == 'list':
+            self.coef_list = kwargs['coef']
+        # end if
+
+        self.type = type
+
+        return
+
+
+    def getControlPoints(self,surface,surface_id,coef_list,l_index):
+
+        '''Take is a pySpline surface, and a (possibly non-empty) coef_list
+        and add to the coef_list the global index of the control point
+        on the surface that can be projected onto the box'''
+        
+        if self.type=='x'or self.type=='y' or self.type=='z' or self.type=='quad':
+
+            for i in xrange(surface.Nctlu):
+                for j in xrange(surface.Nctlv):
+                    u0,v0,D,converged = self.box.projectPoint(surface.coef[i,j])
+                    if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: # Its Inside
+                        coef_list.append(l_index[surface_id][i,j])
+                    #end if
+                # end for
+            # end for
+        elif self.type == 'slice':
+            for i in self.slice_u:
+                for j in self.slice_v:
+                    coef_list.append(l_index[surface_id][i,j])
+                # end for
+            # end for
+        elif self.type == 'list':
+            for i in xrange(len(self.coef_list)):
+                coef_list.append(l_index[surface_id][self.coef_list[i][0],
+                                                     self.coef_list[i][1]])
+            # end for
+        # end if
+
+        return coef_list
+
+
 class Topology(object):
     '''
     The topology class contains the data and functions assocatied with
@@ -668,8 +820,8 @@ class Topology(object):
             # Check to make sure nodes are sequential
             self.nNode = len(unique(face_con.flatten()))
             if self.nNode != max(face_con.flatten())+1:
-                print 'Error: The Node numbering in faceCon is not sequential. There are \
-missing nodes'
+                mpiPrint('Error: The Node numbering in faceCon is not sequential. There are \
+missing nodes')
                 sys.exit(1)
             # end if
             
@@ -994,7 +1146,6 @@ the list of surfaces must be the same length'
 
     def printEdgeConnectivity(self):
         '''Print the Edge Connectivity to the screen'''
-
 
         mpiPrint('------------------------------------------------------------------------')
         mpiPrint('%3d   %3d'%(self.nEdge,self.nFace))
