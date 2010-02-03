@@ -54,14 +54,14 @@ patchID,uv = aircraft.readAttachedSurface('./geo_input/attached_surface')
 # End-Type ref_axis attachments
 nsec = 3
 x = [1147,1314,1804]
-y = [119,427,1156]
+y = [119,427,1256]#1156
 z = [176,181,264]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
 rot_z = [0,0,0] 
 
 # Add a single reference axis
-aircraft.addRefAxis([2,3,4,5,8,9,10,11],x=x,y=y,z=z,
+aircraft.addRefAxis([2,3,4,5,8,9,10,11,16,17],x=x,y=y,z=z,
                     rot_x=rot_x,rot_y=rot_y,rot_z=rot_z)
 
 

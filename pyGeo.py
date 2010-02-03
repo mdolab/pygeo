@@ -2205,7 +2205,7 @@ double degenerate patch at the tip'
         '''Add surf_ids surfacs to a new reference axis defined by X and
         rot with nsection values'''
         mpiPrint('Adding ref axis...',self.NO_PRINT)
-        ra = ref_axis(surf_ids,*args,**kwargs)
+        ra = ref_axis(surf_ids,self.surfs,self.topo,*args,**kwargs)
 
         self.ref_axis.append(ra)
             
@@ -3354,44 +3354,46 @@ class ref_axis(object):
             X = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T
         # end if
 
-        if 'rot' in kwags:
-            rot_x = kwrags['rot'][:,0]
-            rot_y = kwargs['rot'][:,1]
-            rot_z = kwargs['rot'][:,2]
+        if 'rot' in kwargs:
+            self.rot_x = kwargs['rot'][:,0]
+            self.rot_y = kwargs['rot'][:,1]
+            self.rot_z = kwargs['rot'][:,2]
         else:
-            rot_x = kwargs['rot_x']
-            rot_y = kwargs['rot_y']
-            rot_z = kwrags['rot_z']
+            self.rot_x = kwargs['rot_x']
+            self.rot_y = kwargs['rot_y']
+            self.rot_z = kwargs['rot_z']
         # end if
 
         # Create the splines for the axis
-        self.xs    = pySpline.curve('interpolate',X=X,k=2)
-        self.rotxs = pySpline.curve('interpolate',x=rot_x,s=xs.s,k=2)
-        self.rotys = pySpline.curve('interpolate',x=rot_x,s=xs.s,k=2)
-        self.rotzs = pySpline.curve('interpolate',x=rot_x,s=xs.s,k=2)
+        self.xs    = pySpline.curve('interpolate',X=X,k=2,no_print=True)
+        self.rotxs = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
+        self.rotys = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
+        self.rotzs = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
 
-        self.scale = ones(self.N,'D')
+        self.scale = ones(self.xs.Nctl)
 
         self.links_s = []
         self.links_x = []
         self.con_type = None
 
-        self.base_point = xs(0)
+        self.base_point = self.xs(0)
         
         self.base_point_s = None
         self.base_point_D = None
 
-        self.end_point   = xs(1)
+        self.end_point   = self.xs(1)
         self.end_point_s = None
         self.end_point_D = None
 
         # Values are stored wrt the base point
-        self.x = X-self.base_point
-        self.rot = rot
+        self.x = self.xs.coef-self.base_point
 
         # Deep copy the x,rot and scale for design variable reference
         self.x0 = copy.deepcopy(self.x)
-        self.rot0 = copy.deepcopy(self.rot)
+        self.rotx0 = copy.deepcopy(self.rotxs.coef)
+        self.roty0 = copy.deepcopy(self.rotys.coef)
+        self.rotz0 = copy.deepcopy(self.rotzs.coef)
+        
         self.scale0 = copy.deepcopy(self.scale)
 
 
@@ -3416,6 +3418,68 @@ class ref_axis(object):
         coef_list = unique(coef_list) #unique is in geo_utils
         coef_list.sort()
         N = len(coef_list)
+
+        # Now we must determine how the surfaces are oriented wrt the axis
+        # We also must determine (based on the design groups) how to attach the axis
+
+        # First pull out all the design groups associated with these surface
+        dgs = []
+        for isurf in surf_ids:
+            dgs.append(topo.edges[topo.edge_link[isurf][0]].dg) # 0 and 1 edge
+            dgs.append(topo.edges[topo.edge_link[isurf][2]].dg) # 2 and 3 edge
+        # end if
+        print 'dgs:',dgs
+        # Algorithim Description:
+        # 1. Do until all surfaces accounted for:
+        # 2.    -> Take the first surface and determine its orientation wrt the axis
+        # 3.    -> The the perpendicualar design group attach in the same manner
+        surf_ids_copy = copy.copy(surf_ids)
+        while len(surf_ids_copy) > 0:
+            isurf = surf_ids_copy.pop(0)
+            dir_type = directionAlongSurface(surfs[isurf],self.xs)
+
+            if isurf == 16:
+                dir_type = 0
+            
+            surf_list = []
+            dir_list = []
+            surf_list.append(isurf)
+            if dir_type in [0,1]:
+                dir_list.append(0) 
+                dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
+                #dg_normal   = topo.edges[topo.edge_link[isurf][0]].dg
+            else:
+                dir_list.append(1)
+                dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
+                #dg_normal   = topo.edges[topo.edge_link[isurf][2]].dg
+            #print 'key isurf:',isurf
+            #print 'dg_parallel:',dg_parallel
+            #print 'dir_type:',dir_type
+            # Find all other surfaces/edges with this design group
+            for isurf in set(surf_ids_copy).difference(set(surf_list)):
+                #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
+                if topo.edges[topo.edge_link[isurf][0]].dg == dg_parallel:
+                    surf_ids_copy.remove(isurf)
+                    surf_list.append(isurf)
+                    dir_list.append(0)
+                elif topo.edges[topo.edge_link[isurf][2]].dg == dg_parallel:
+                    surf_ids_copy.remove(isurf)
+                    surf_list.append(isurf)
+                    dir_list.append(1)
+            # end for
+        # end for
+            # Now we can simply attach all the surfaces in surf list according to the directions 
+            #s = zeros
+
+
+            print 'surf_list:',surf_list
+            print 'dir_list:',dir_list
+            print ' '
+        # end for
+
+        sys.exit(0)
+
+
 
         # For each surface, produce the s attachment
         # point list
@@ -3551,7 +3615,7 @@ a flap hinge line'
         return
 
 
-  def getRefAxisConnection(self,ref_axis,isurf,surface_list):
+    def getRefAxisConnection(self,ref_axis,isurf,surface_list):
         '''Determine the primary orientation of a reference axis,
         ref_axis on surface, surface. The function returns a vector of
         length Nctlu or Nctlv whcih contains the s-positions where
