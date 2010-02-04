@@ -53,17 +53,20 @@ patchID,uv = aircraft.readAttachedSurface('./geo_input/attached_surface')
 # ------- Now we will add a reference axis --------
 # End-Type ref_axis attachments
 nsec = 3
-x = [1147,1314,1804]
-y = [119,427,1256]#1156
-z = [176,181,264]
-rot_x = [0,0,0]
-rot_y = [0,0,0]
-rot_z = [0,0,0] 
+x = array([1147+75,1314+50,1804.+25])
+y = [119,427,1156.]
+z = [150,176,264.]
+rot_x = [0,0,0.]
+rot_y = [0,0,0.]
+rot_z = [0,0,0.] 
 
 # Add a single reference axis
 aircraft.addRefAxis([2,3,4,5,8,9,10,11,16,17],x=x,y=y,z=z,
                     rot_x=rot_x,rot_y=rot_y,rot_z=rot_z)
 
+aircraft.writeTecplot('./geo_output/dpw.dat',orig=True,directions=True,
+                      surf_labels=True,edge_labels=True,node_labels=True,
+                      ref_axis=True,links=True)
 
 # --------- Define Design Variable Functions Here -----------
 

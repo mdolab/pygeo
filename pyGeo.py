@@ -37,7 +37,7 @@ import os, sys, string, copy, pdb, time
 
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor, size, reshape, arange,alltrue,cross
+    real, imag, dstack, floor, size, reshape, arange,alltrue,cross,average
 
 from numpy.linalg import lstsq,inv,norm
 
@@ -2774,8 +2774,9 @@ double degenerate patch at the tip'
 
         if len(self.ref_axis)>0 and ref_axis==True:
             for r in xrange(len(self.ref_axis)):
-                axis_name = 'ref_axis%d'%(r)
-                self.ref_axis[r].writeTecplotAxis(f,axis_name)
+                #axis_name = 'ref_axis%d'%(r)
+                axis_name = 'axis_copy.dat'
+                self.ref_axis[r].writeTecplot(f,axis_name)
             # end for
         # end if
 
@@ -3365,13 +3366,14 @@ class ref_axis(object):
         # end if
 
         # Create the splines for the axis
+ 
         self.xs    = pySpline.curve('interpolate',X=X,k=2,no_print=True)
         self.rotxs = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
         self.rotys = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
         self.rotzs = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
 
         self.scale = ones(self.xs.Nctl)
-
+        self.scales = pySpline.curve('interpolate',x=self.scale,s=self.xs.s,k=2,no_print=True)
         self.links_s = []
         self.links_x = []
         self.con_type = None
@@ -3396,9 +3398,6 @@ class ref_axis(object):
         
         self.scale0 = copy.deepcopy(self.scale)
 
-
-
-
         # Now determine what control points will be associated with this axis
         coef_list = []
         if not 'point_select' in kwargs: # No point_select->Assume full surface
@@ -3417,23 +3416,17 @@ class ref_axis(object):
         # Now parse out duplicates and sort
         coef_list = unique(coef_list) #unique is in geo_utils
         coef_list.sort()
-        N = len(coef_list)
 
         # Now we must determine how the surfaces are oriented wrt the axis
         # We also must determine (based on the design groups) how to attach the axis
 
-        # First pull out all the design groups associated with these surface
-        dgs = []
-        for isurf in surf_ids:
-            dgs.append(topo.edges[topo.edge_link[isurf][0]].dg) # 0 and 1 edge
-            dgs.append(topo.edges[topo.edge_link[isurf][2]].dg) # 2 and 3 edge
-        # end if
-        print 'dgs:',dgs
         # Algorithim Description:
         # 1. Do until all surfaces accounted for:
         # 2.    -> Take the first surface and determine its orientation wrt the axis
         # 3.    -> The the perpendicualar design group attach in the same manner
-        surf_ids_copy = copy.copy(surf_ids)
+        surf_ids_copy =copy.copy(surf_ids)
+        reordered_coef_list = []
+        global_counter = 0 
         while len(surf_ids_copy) > 0:
             isurf = surf_ids_copy.pop(0)
             dir_type = directionAlongSurface(surfs[isurf],self.xs)
@@ -3447,14 +3440,9 @@ class ref_axis(object):
             if dir_type in [0,1]:
                 dir_list.append(0) 
                 dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
-                #dg_normal   = topo.edges[topo.edge_link[isurf][0]].dg
             else:
                 dir_list.append(1)
                 dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
-                #dg_normal   = topo.edges[topo.edge_link[isurf][2]].dg
-            #print 'key isurf:',isurf
-            #print 'dg_parallel:',dg_parallel
-            #print 'dir_type:',dir_type
             # Find all other surfaces/edges with this design group
             for isurf in set(surf_ids_copy).difference(set(surf_list)):
                 #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
@@ -3469,80 +3457,73 @@ class ref_axis(object):
             # end for
         # end for
             # Now we can simply attach all the surfaces in surf list according to the directions 
-            #s = zeros
-
-
-            print 'surf_list:',surf_list
-            print 'dir_list:',dir_list
-            print ' '
-        # end for
-
-        sys.exit(0)
-
-
-
-        # For each surface, produce the s attachment
-        # point list
-
-        attachment_points = []
-        types = []
-
-
-        for isurf in xrange(self.nSurf):
-            if isurf in surf_ids: # If this one is in the list
-                index = self.getL_surfs_index(isurf)
-                if not index == None:
-                    surface_list = self.l_surfs[index]
-                else:
-                    surface_list = []
-
-                s,type = self.getRefAxisConnection(ra,isurf,surface_list)
-
-                attachment_points.append(s)
-                types.append(type)
+            
+            # N is the number of parallel control points
+            if dir_list[0] == 0:
+                N = surfs[surf_list[0]].Nctlu
             else:
-                attachment_points.append([])
-                types.append([])
+                N = surfs[surf_list[0]].Nctlv
             # end if
-        # end for
+                
+            s = zeros(N)
 
-        for icoef in xrange(len(coef_list)):
-            for jj in xrange(len(self.topo.g_index[coef_list[icoef]])):
-                surfID = self.topo.g_index[coef_list[icoef]][jj][0]
-                i = self.topo.g_index[coef_list[icoef]][jj][1]
-                j = self.topo.g_index[coef_list[icoef]][jj][2]
-
-                if surfID in surf_ids:
-                    break
+            for i in xrange(N):
+                section_coef_list = []
+                for j in xrange(len(surf_list)):
+                    isurf = surf_list[j]
+                    if dir_list[j] == 0:
+                        section_coef_list.extend(surfs[isurf].coef[i,:])
+                    else:
+                        section_coef_list.extend(surfs[isurf].coef[:,i])
+                    # end if
                 # end if
-            # end for
-
-            type = types[surfID]
-
-            if type == 0: # Along u
-                s = attachment_points[surfID][i]
-            else:
-                s = attachment_points[surfID][j]
+                # Average coefficients
+                pt = average(section_coef_list,axis=0)
+                # This effectively averages the coefficients
+                s[i],D = self.xs.projectPoint(pt)
             # end if
 
-            D = self.coef[coef_list[icoef]] - ra.xs.getValue(s)
-            M = ra.getRotMatrixGlobalToLocal(s)
-            D = dot(M,D) #Rotate to local frame
-            ra.links_s.append(s)
-            ra.links_x.append(D)
+            # Now we can attach these with links if they are in coef_list
+            for i in xrange(N):
+                for j in xrange(len(surf_list)):
+                    isurf = surf_list[j]
+                    if dir_list[j] == 0:
+                        for k in xrange(surfs[isurf].Nctlv):
+                            global_index = topo.l_index[isurf][i,k]
+                            if global_index in coef_list:
+                                D = surfs[isurf].coef[i,k] - self.xs(s[i])
+                                M = self.getRotMatrixGlobalToLocal(s[i])
+                                D = dot(M,D) #Rotate to local frame
+                                self.links_s.append(s[i])
+                                self.links_x.append(D)
+                                reordered_coef_list.append(global_index)
+                            # end if
+                        # end for
+                    elif dir_list[j] == 1:
+                        for k in xrange(surfs[isurf].Nctlu):
+                            global_index = topo.l_index[isurf][k,i]
+                            if global_index in coef_list:
+                                D = surfs[isurf].coef[k,i] - self.xs(s[i])
+                                M = self.getRotMatrixGlobalToLocal(s[i])
+                                D = dot(M,D) #Rotate to local frame
+                                self.links_s.append(s[i])
+                                self.links_x.append(D)
+                                reordered_coef_list.append(global_index)
+                            # end if
+                        # end for
+                    # end if
+                # end for
+            # end for
         # end for
-        ra.coef_list = coef_list
-        ra.surf_ids  = surf_ids
-        # Add the reference axis to the pyGeo list
-
-
+        self.coef_list = reordered_coef_list
+        self.surf_ids  = surf_ids
         
     def update(self):
         
         self.xs.coef = self.base_point+self.x
-        self.rotxs.coef = self.rot[:,0]
-        self.rotys.coef = self.rot[:,1]
-        self.rotzs.coef = self.rot[:,2]
+        self.rotxs.coef = self.rot_x
+        self.rotys.coef = self.rot_y
+        self.rotzs.coef = self.rot_z
 
         self.scales.coef = self.scale
 
@@ -3552,11 +3533,11 @@ class ref_axis(object):
         
         return
        
-    def writeTecplotAxis(self,handle,axis_name):
+    def writeTecplot(self,handle,axis_name):
         '''Write the ref axis to the open file handle'''
-        N = len(self.s)
+        N = len(self.xs.s)
         handle.write('Zone T=%s I=%d\n'%(axis_name,N))
-        values = self.xs.getValue(self.s)
+        values = self.xs.getValue(self.xs.s)
         for i in xrange(N):
             handle.write('%f %f %f \n'%(values[i,0],values[i,1],values[i,2]))
         # end for
@@ -3567,15 +3548,15 @@ class ref_axis(object):
         
         '''Return the rotation matrix to convert vector from global to
         local frames'''
-        return     dot(rotyM(self.rotys(s)),dot(rotxM(self.rotxs(s)),\
-                                                    rotzM(self.rotzs(s))))
+        return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
+                                                    rotzM(self.rotzs(s)[0])))
     
     def getRotMatrixLocalToGlobal(self,s):
         
         '''Return the rotation matrix to convert vector from global to
         local frames'''
-        return inv(dot(rotyM(self.rotys(s)),dot(rotxM(self.rotxs(s)),\
-                                                    rotzM(self.rotzs(s)))))
+        return inv(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
+                                                    rotzM(self.rotzs(s)[0]))))
 
 
     def addRefAxisCon(self,axis1,axis2,con_type):
@@ -3614,104 +3595,6 @@ a flap hinge line'
 
         return
 
-
-    def getRefAxisConnection(self,ref_axis,isurf,surface_list):
-        '''Determine the primary orientation of a reference axis,
-        ref_axis on surface, surface. The function returns a vector of
-        length Nctlu or Nctlv whcih contains the s-positions where
-        lines of constant u or v should connect to the ref axis'''
-
-        # We need to deduce along which direction (u or v) the
-        # reference axis is directed.  First estimate Over what
-        # portion the surface and ref axis coinside
-
-        # Take N Normal Vectors
-        full_surface_list = [isurf]
-        for extra_surf in surface_list:
-            full_surface_list.append(extra_surf)
-        # end for
-            
-        full_surface_list = unique(full_surface_list)
-        
-        types = []
-        for surfid in full_surface_list:
-            dir_type = directionAlongSurface(self.surfs[surfid],ref_axis.xs)
-            if dir_type == 0 or dir_type == 1: # u type regarless of direction
-                types.append(0)
-            else:
-                types.append(1)
-            # end if
-
-            if surfid == isurf:
-                isurf_dir  = types[-1]
-            # end if
-
-        # end for
-        
-        if isurf_dir == 1: #along v of isurf
-            mpiPrint('Reference axis is oriented along v on surface %d'%(isurf),self.NO_PRINT)
-            Nctlv = self.surfs[isurf].Nctlv
-            Nctlu = self.surfs[isurf].Nctlu
-            s = zeros(Nctlv)
-            for j in xrange(Nctlv):
-                # Get ALL coefficients from surfaces in full_surface_list
-                coef_index = []
-                for jj in xrange(len(full_surface_list)):
-                    if types[jj] == 0:
-                        #coef.append(self.surfs[full_surface_list[jj]].coef[j,:])
-                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][j,:])
-                    else:
-                        #coef.append(self.surfs[full_surface_list[jj]].coef[:,j])
-                        coef_index.extend(self.topo.l_index[full_surface_list[jj]][:,j])
-                    # end if
-                # end for
-
-                coef_index = unique(coef_index)
-                coef = []
-                for icoef in xrange(len(coef_index)):
-                    coef.append(self.coef[coef_index[icoef]])
-                # end if
-                
-                X = array(coef)
-                #X = array(coef).reshape(Nctlu*len(full_surface_list),3)
-                
-                temp = pySpline.curve(
-                    'lms',X=X,k=2,Nctl=2)
-
-                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
-                s[j] = s1
-            # end for
-
-            return s,1
-        else:
-            mpiPrint('Reference axis is oriented along u on surface %d'%(isurf),self.NO_PRINT)
-            Nctlu = self.surfs[isurf].Nctlu
-            Nctlv = self.surfs[isurf].Nctlv
-            s = zeros(Nctlu)
-            for i in xrange(Nctlu):
-                # Get ALL coefficients from surfaces in full_surface_list
-                coef = []
-                for jj in xrange(len(full_surface_list)):
-                    if types[jj] == 1:
-                        coef.append(self.surfs[full_surface_list[jj]].coef[:,i])
-                    else:
-                        coef.append(self.surfs[full_surface_list[jj]].coef[i,:])
-                    # end if
-                # end for
-                
-                X = array(coef).reshape(Nctlv*len(full_surface_list),3)
-                temp = pySpline.curve('lms',X=X,k=2,Nctl=2)
-
-                s1,s2,d,converged  = ref_axis.xs.minDistance(temp)
-                s[i] = s1
-            # end for
-
-            return s,0
-
-
-
-
-    
 class geoDVGlobal(object):
      
     def __init__(self,dv_name,value,lower,upper,function,useit=True):
