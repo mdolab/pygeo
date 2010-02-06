@@ -41,6 +41,8 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 
 from numpy.linalg import lstsq,inv,norm
 
+from scipy import sparse
+
 # =============================================================================
 # Extension modules
 # =============================================================================
@@ -925,10 +927,7 @@ double degenerate patch at the tip'
             self.coef.append( self.surfs[isurf].coef[i,j])
         # end for
             
-#         # Finally turn self.coef into a complex array
-#         self.coef = array(self.coef,'D')
-
-    def printEdgeConnectivity(self,node_link=None,edge_list=None,edge_link=None,edge_dir=None):
+    def printEdgeConnectivity(self):
         self.topo.printEdgeConnectivity()
         return
 
@@ -2276,21 +2275,21 @@ double degenerate patch at the tip'
         for r in xrange(len(self.ref_axis)):
             # Call the fortran function
             ra = self.ref_axis[r]
-            rot = zeros((len(ra.xs.s),3),'D')
-            rot[:,0] = ra.rotxs.coef
-            rot[:,1] = ra.rotys.coef
-            rot[:,2] = ra.rotzs.coef
-                        
+                                  
             #coef = getcoef(type,s_pos,links,coef,indicies,s,t,x,rot,scale)
             if ra.con_type == 'full':
-                self.coef = pySpline.pyspline_cs.getcomplexcoef(\
-                1,ra.links_s,ra.links_x,self.coef,ra.coef_list,\
-                        ra.xs.s,ra.xs.t,ra.xs.coef,rot,ra.scales.coef)
+                self.coef = pySpline.pyspline.updatecoefficients(\
+                    1,ra.links_s,ra.links_x,self.coef,ra.coef_list,\
+                        ra.xs.s,ra.xs.t,ra.xs.coef,ra.rot_x.coef,\
+                        ra.rot_y.coef,ra.rot_z.coef,ra.scales.coef)
             else:
-                self.coef = pySpline.pyspline_cs.getcomplexcoef(\
+                self.coef = pySpline.pyspline.updatecoefficients(\
                     0,ra.links_s,ra.links_x,self.coef,ra.coef_list,\
-                        ra.xs.s,ra.xs.t,ra.xs.coef,rot,ra.scales.coef)
-            # end if
+                        ra.xs.s,ra.xs.t,ra.xs.coef,ra.rotxs.coef,\
+                        ra.rotys.coef,ra.rotzs.coef,ra.scales.coef)
+
+
+                # end if
 #---------------- PYTHON IMPLEMENTATION  ------------------
            #  for i in xrange(len(ra.links_s)):
 #                 base_point = ra.xs.getValue(ra.links_s[i])
@@ -2376,31 +2375,33 @@ double degenerate patch at the tip'
         return NdvGlobal, NdvNormal, NdvLocal, Nctl
 
 
-    def _initdCoefdx( self ):
-        '''
-        Allocate the space for dCoefdx and perform some setup        
-        '''
+#     def _initdCoefdx( self ):
+#         '''
+#         Allocate the space for dCoefdx and perform some setup        
+#         '''
 
-        NdvGlobal, NdvNormal, NdvLocal, Nctl = self.getSizes()
-        Ndv = NdvGlobal + NdvNormal + NdvLocal
+#         NdvGlobal, NdvNormal, NdvLocal, Nctl = self.getSizes()
+#         Ndv = NdvGlobal + NdvNormal + NdvLocal
         
-        if USE_PETSC:
-            dCoefdx = PETSc.Mat()
-            
-            # We know the row filling factor: Its (exactly) nGlobal + 3            
-            if PETSC_MAJOR_VERSION == 1:
-                dCoefdx.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
-            elif PETSC_MAJOR_VERSION == 0:
-                dCoefdx.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
-            else:
-                print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
-                sys.exit(1)
-            # end if
-        else:
-            dCoefdx = zeros((Nctl*3,Ndv))
-        # end if
+        
 
-        return dCoefdx
+#         if USE_PETSC:
+#             dCoefdx = PETSc.Mat()
+            
+#             # We know the row filling factor: Its (exactly) nGlobal + 3            
+#             if PETSC_MAJOR_VERSION == 1:
+#                 dCoefdx.createAIJ([Nctl*3,Ndv],nnz=NdvGlobal+3,comm=PETSc.COMM_SELF)
+#             elif PETSC_MAJOR_VERSION == 0:
+#                 dCoefdx.createSeqAIJ([Nctl*3,Ndv],nz=NdvGlobal+3)
+#             else:
+#                 print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
+#                 sys.exit(1)
+#             # end if
+#         else:
+#             dCoefdx = zeros((Nctl*3,Ndv))
+#         # end if
+
+#         return dCoefdx
         
     def calcCtlDeriv(self):
 
@@ -2408,10 +2409,7 @@ double degenerate patch at the tip'
         and generates a (sparse) jacobian of the control pt
         derivatives wrt to the design variables'''
 
-        if self.dCoefdx == None:
-            self.dCoefdx = self._initdCoefdx()
-        # end
-   
+         
         h = 1.0e-40j
         col_counter = 0
         for idv in xrange(len(self.DV_listGlobal)): # This is the Master CS Loop
@@ -2473,7 +2471,7 @@ double degenerate patch at the tip'
 
         return
 
-    def compute_dPtdx( self ):
+    def computeSurfaceDerivative(self):
         '''
         Compute the product of the derivative of the surface points w.r.t.
         the control points and the derivative of the control points w.r.t.
@@ -2481,6 +2479,11 @@ double degenerate patch at the tip'
         w.r.t. the design variables: a Jacobian matrix.
         '''
         
+        # Make sure dpt/dcoef is calculated
+        if not self.dPtdCoef:
+            self._computedPtdCoef()
+        # end if
+
         # Now Do the Try the matrix multiplication
         
         # Now Do the matrix multiplication
@@ -2730,44 +2733,7 @@ double degenerate patch at the tip'
         if orig == True:
             for isurf in xrange(self.nSurf):
                 self.surfs[isurf]._writeTecplotOrigData(f)
-        # ----------------------
-        #    Write out the edges
-        # ----------------------
-
-        # We also want to output edge continuity for visualization
-#         if self.con and edges==True:
-#             counter = 1
-#             for i in xrange(len(self.con)): #Output Simple Edges (no continuity)
-#                 if self.con[i].cont == 0 and self.con[i].type == 1:
-#                     surf = self.con[i].f1
-#                     edge = self.con[i].e1
-#                     zone_name = 'simple_edge%d'%(counter)
-#                     counter += 1
-#                     self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
-#                 # end if
-#             # end for
-
-#             for i in xrange(len(self.con)): #Output Continuity edges
-#                 if self.con[i].cont == 1 and self.con[i].type == 1:
-#                     surf = self.con[i].f1
-#                     edge = self.con[i].e1
-#                     zone_name = 'continuity_edge%d'%(counter)
-#                     counter += 1
-#                     self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
-#                 # end if
-#             # end for
-
-#             for i in xrange(len(self.con)): #Output Mirror (free) edges
-#                 if self.con[i].type == 0: #output the edge
-#                     surf = self.con[i].f1
-#                     edge = self.con[i].e1
-#                     zone_name = 'mirror_edge%d'%(counter)
-#                     counter += 1
-#                     self.surfs[surf].writeTecplotEdge(f,edge,name=zone_name)
-#                 # end if
-#             # end for
-#         # end if
-
+                
         # ---------------------
         #    Write out Ref Axis
         # ---------------------
@@ -3124,104 +3090,45 @@ double degenerate patch at the tip'
         
         return patchID,uv
 
-    def _initdPtdCoef( self, M, Nctl ):
-        
-        # We know the row filling factor: Its (no more) than ku*kv
-        # control points for each control point. Since we don't
-        # use more than k=4 we will set at 16
-        
-        if USE_PETSC:
-            dPtdCoef = PETSc.Mat()
-            if PETSC_MAJOR_VERSION == 1:
-                dPtdCoef.createAIJ([M*3,Nctl*3],nnz=16*3,comm=PETSc.COMM_SELF)
-            elif PETSC_MAJOR_VERSION == 0:
-                dPtdCoef.createSeqAIJ([M*3,Nctl*3],nz=16*3)
-            else:
-                print 'Error: PETSC_MAJOR_VERSION = %d is not supported'%(PETSC_MAJOR_VERSION)
-                sys.exit(1)
-            # end if
-        else:
-            dPtdCoef = zeros((M*3,Nctl*3))
-        # end if
-
-        return dPtdCoef
-
-    def calcSurfaceDerivative(self,patchID,uv,indices=None,dPtdCoef=None):
+    def _calcdPtdCoef(self,patchID,uv,indices=None):
         '''Calculate the (fixed) surface derivative of a discrete set of ponits'''
 
         mpiPrint('Calculating Surface Derivative for %d Points...'%(len(patchID)),self.NO_PRINT)
-        timeA = time.time()
+        N = len(patchID)
+        # Get the maximum k (ku or kv for each surface)
+        kmax = 2
+        for isurf in xrange(self.nSurf):
+            if self.surfs[isurf].ku > kmax:
+                kmax = self.surfs[isurf].ku
+            if self.surfs[isurf].kv > kmax:
+                kmax = self.surfs[isurf].kv
+            # end if
+        # end for
+        nnz = 3*N*kmax*kmax
+        vals = zeros(nnz)
+        row_ptr = zeros((3*N+1),'intc')
+        col_ind = zeros(nnz,'intc')
         
-        if USE_PETSC:
-            PETSC_INSERT_MODE = PETSc.InsertMode.ADD_VALUES
-        # end if
-        # If no matrix is provided, use self.dPtdCoef
-        if dPtdCoef == None:
-            dPtdCoef = self.dPtdCoef
-        # end
-
         if indices == None:
-            indices = arange(len(patchID),'intc')
+            indices = arange(len(patchID),dtype='intc')
         # end
+        row_ptr[0] = -1
+        for i in xrange(N):
+            kinc = self.surfs[patchID[i]].ku*self.surfs[patchID[i]].kv
+            row_ptr[3*i+1] = row_ptr[3*i  ] + kinc
+            row_ptr[3*i+2] = row_ptr[3*i+1] + kinc
+            row_ptr[3*i+3] = row_ptr[3*i+2] + kinc
+            row_ptr[0] = 0
+            vals,col_ind = self.surfs[patchID[i]]._getBasisPt(\
+                uv[i,0],uv[i,1],vals,row_ptr[i],col_ind,self.topo.l_index[patchID[i]])
+        # end for
 
-        if dPtdCoef == None:
-            # Calculate the size Ncoef_free x Ndesign Variables            
-            M = len(patchID)
-            Nctl = self.Ncoef
-
-            dPtdCoef = self._initdPtdCoef( M, Nctl )
-        # end                     
-                
-        for i in xrange(len(patchID)):
-            ku = self.surfs[patchID[i]].ku
-            kv = self.surfs[patchID[i]].kv
-            Nctlu = self.surfs[patchID[i]].Nctlu
-            Nctlv = self.surfs[patchID[i]].Nctlv
-
-            ileftu, mflagu = self.surfs[patchID[i]].pyspline.intrv(\
-                self.surfs[patchID[i]].tu,uv[i][0],1)
-            ileftv, mflagv = self.surfs[patchID[i]].pyspline.intrv(\
-                self.surfs[patchID[i]].tv,uv[i][1],1)
-
-            if mflagu == 0: # Its Inside so everything is ok
-                u_list = [ileftu-ku,ileftu-ku+1,ileftu-ku+2,ileftu-ku+3]
-            if mflagu == 1: # Its at the right end so just need last one
-                u_list = [ileftu-ku-1]
-
-            if mflagv == 0: # Its Inside so everything is ok
-                v_list = [ileftv-kv,ileftv-kv+1,ileftv-kv+2,ileftv-kv+3]
-            if mflagv == 1: # Its at the right end so just need last one
-                v_list = [ileftv-kv-1]
-
-            for ii in xrange(len(u_list)):
-                for jj in xrange(len(v_list)):
-
-                    x = self.surfs[patchID[i]].calcPtDeriv(\
-                        uv[i][0],uv[i][1],u_list[ii],v_list[jj])
-
-                    index = 3*self.topo.l_index[patchID[i]][u_list[ii],v_list[jj]]
-                    if USE_PETSC:
-                        dPtdCoef.setValue( 3*indices[i]  , index  ,x,PETSC_INSERT_MODE)
-                        dPtdCoef.setValue( 3*indices[i]+1, index+1,x,PETSC_INSERT_MODE)
-                        dPtdCoef.setValue( 3*indices[i]+2, index+2,x,PETSC_INSERT_MODE)
-                    else:
-                        dPtdCoef[3*indices[i]    ,index    ] += x
-                        dPtdCoef[3*indices[i] + 1,index + 1] += x
-                        dPtdCoef[3*indices[i] + 2,index + 2] += x
-                    # end if
-                # end for
-            # end for
-        # end for 
-        
-        # Assemble the (Constant) dPtdCoef
-        if USE_PETSC:
-            dPtdCoef.assemblyBegin()
-            dPtdCoef.assemblyEnd()
-        # end if
-
-        self.dPtdCoef = dPtdCoef # Make sure we're dealing with the same matrix
-
-        mpiPrint('Finished Surface Derivative in %5.3f seconds'%(time.time()-timeA),self.NO_PRINT)
+        # Now we can crop out any additional values in col_ptr and vals
+        vals    = vals[:row_ptr[-1]]
+        col_ind = col_ind[:row_ptr[-1]]
+        # Now make a sparse matrix
+        self.dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr))
+        mpiPrint('  -> Finished Surface Derivative',self.NO_PRINT)
 
         return
 
