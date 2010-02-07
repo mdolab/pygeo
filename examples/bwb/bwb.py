@@ -63,7 +63,7 @@ bwb.writeIGES('../../input/bwb_constr1.igs')
 # Read the IGES file
 bwb = pyGeo.pyGeo('iges',file_name='../../input/bwb_constr2.igs')
 bwb.readEdgeConnectivity('bwb.con')
-bwb.writeTecplot('../../output/bwb.dat',orig=True,nodes=True)
+bwb.writeTecplot('../../output/bwb.dat')
 #sys.exit(0)
 
 print '---------------------------'

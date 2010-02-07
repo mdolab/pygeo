@@ -26,7 +26,10 @@ exec(import_modules('pyGeo'))
 # outputted by aerosurf. It then creates a b-spline surfaces for each
 # surface patch.
 aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/full_aircraft.xyz')
-aircraft.calcEdgeConnectivity(1e-6,1e-6)
-aircraft.writeEdgeConnectivity('./geo_input/aircraft.con')
-aircraft.propagateKnotVectors()
+aircraft.doEdgeConnectivity('aircraft.con')
 aircraft.writeTecplot('./geo_output/full_aircraft.dat',orig=True)
+
+for i in xrange(aircraft.nSurf):
+    print '----------- %d ----------'%(i)
+    print aircraft.surfs[i].tu
+    print aircraft.surfs[i].tv
