@@ -41,7 +41,7 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 
 from numpy.linalg import lstsq,inv,norm
 
-from scipy import sparse
+from scipy import sparse, linsolve
 
 # =============================================================================
 # Extension modules
@@ -235,7 +235,7 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for isurf in xrange(nSurf):
             surfs.append(pySpline.surface('lms',X=patches[isurf],\
-                                              ku=4,kv=4,Nctlu=8,Nctlv=8,\
+                                              ku=4,kv=4,Nctlu=12,Nctlv=12,\
                                               no_print=self.NO_PRINT))
             
         self.surfs = surfs
