@@ -386,7 +386,7 @@ def directionAlongSurface(surface,line,section=None):
     for i in xrange(N):
         for n in xrange(N):
             du,dv = surface.getDerivative(s[i],s[n])
-            u_dot_tot += abs(dot(du,dn[n,:]))
+            u_dot_tot += dot(du,dn[n,:])
         # end for
     # end for
 
@@ -394,7 +394,7 @@ def directionAlongSurface(surface,line,section=None):
     for j in xrange(N):
         for n in xrange(N):
             du,dv = surface.getDerivative(s[n],s[j])
-            v_dot_tot += abs(dot(dv,dn[n,:]))
+            v_dot_tot += dot(dv,dn[n,:])
         # end for
     # end for
 
