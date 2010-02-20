@@ -194,18 +194,23 @@ file_name=\'filename\' for iges init_type'
         patchSizes = readNValues(f,nSurf*3,'int')
         patchSizes = patchSizes.reshape([nSurf,3])
 
-        assert patchSizes[:,2].all() == 1, \
-            'Error: Plot 3d does not contain only surface patches.\
- The third index (k) MUST be 1.'
-
-        # Total points
+        # ONE of Patch Sizes index must be one
         nPts = 0
         for i in xrange(nSurf):
+            if patchSizes[i,0] == 1: # Compress back to indices 0 and 1
+                patchSizes[i,0] = patchSizes[i,1]
+                patchSizes[i,1] = patchSizes[i,2] 
+            elif patchSizes[i,1] == 1:
+                patchSizes[i,1] = patchSizes[i,2]
+            elif patchSizes[i,2] == 1:
+                pass
+            else:
+                mpiPrint('Error: One of the plot3d indices must be 1')
+            # end if
             nPts += patchSizes[i,0]*patchSizes[i,1]
-
+        # end for
             
         mpiPrint('Number of Surface Points = %d'%(nPts),self.NO_PRINT)
-
         dataTemp = readNValues(f,3*nPts,'float')
         
         f.close() # Done with the file
@@ -230,9 +235,8 @@ file_name=\'filename\' for iges init_type'
         surfs = []
         for isurf in xrange(nSurf):
             surfs.append(pySpline.surface('lms',X=patches[isurf],\
-                                              ku=4,kv=4,Nctlu=8,Nctlv=8,\
+                                              ku=4,kv=4,Nctlu=6,Nctlv=6,\
                                               no_print=self.NO_PRINT))
-            
         self.surfs = surfs
         self.nSurf = nSurf
         return
