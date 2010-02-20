@@ -232,6 +232,38 @@ and \'precomp\''
 
     return X_u,Y_u,X_l,Y_l
 
+
+def read_af2(filename):
+    ''' Load the airfoil file of type file_type'''
+    f = open(filename,'r')
+    line  = f.readline() # Read (and ignore) the first line
+    r = []
+    try:
+        r.append([float(s) for s in line.split()])
+    except:
+        r = []
+    # end if
+
+    while 1:
+        line = f.readline()
+        if not line: break # end of file
+        if line.isspace(): break # blank line
+        r.append([float(s) for s in line.split()])
+    # end while
+    r = array(r)
+    x = r[:,0]
+    y = r[:,1]
+    # Check for blunt TE:
+    if y[0] != y[-1]:
+        mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
+        mpiPrint('Merging to a point...')
+        yavg = 0.5*(y[0] + y[-1])
+        y[0]  = yavg
+        y[-1] = yavg
+    # end if
+    ntotal = len(x)
+    return x,y
+
 # --------------------------------------------------------------
 #            Working with Edges Function
 # --------------------------------------------------------------
