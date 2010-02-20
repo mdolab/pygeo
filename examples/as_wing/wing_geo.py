@@ -10,59 +10,33 @@ import os, sys, string, pdb, copy, time
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
     array, real, reshape, meshgrid, dot, cross, vstack, arctan2, tan
 
-import petsc4py
-petsc4py.init(sys.argv)
-
 # =============================================================================
 # Extension modules
 # =============================================================================
-
-# pySpline 
-sys.path.append('../../../pySpline/python')
-
-#cfd-csm pre (Optional)
-sys.path.append('../../../../pyHF/pycfd-csm/python/')
-
-#pyGeo
-sys.path.append('../../')
-
-#pyLayout
-sys.path.append('../../../pyLayout/')
-
-# pyOpt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
-
-# pySnopt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
-
-import pyGeo
-import pyLayout
+from mdo_import_helper import *
+exec(import_modules('pyGeo'))
 
 # ==============================================================================
 # Start of Script
 # ==============================================================================
 
 # Script to Generate a Wing Geometry
+naf=3
+airfoil_list = ['../../input/naca2412.dat','../../input/sd7062.dat','../../input/naca0012.dat']
 
-naf=2
-airfoil_list = ['../../input/naca0012.dat','../../input/naca0012.dat']
-
-chord = [1,.75]
-x = [0,0]
-y = [0,0]
-z = [0,4]
-rot_x = [0,0]
-rot_y = [0,0]
-tw_aero = [0,0] # ie rot_z
+chord = [1,.75,.25]
+x = [0,0,0]
+y = [0,0,.75]
+z = [0,4,4.75]
+rot_x = [0,0,-90]
+rot_y = [0,0,0]
+tw_aero = [0,4,0] # ie rot_z
 
 offset = zeros((naf,2))
 offset[:,0] = .25 # Offset sections by 0.25 in x
 
 # Make the break-point vector
-nsections = [4]# Length breaks + 1
-Nctlu = 13
-end_type = 'rounded'
-                               
+Nctl = 13
 # Put spatial and rotations into two arrays (always the same)-------
 X = zeros((naf,3))
 rot = zeros((naf,3))
@@ -74,16 +48,19 @@ rot[:,0] = rot_x
 rot[:,1] = rot_y
 rot[:,2] = tw_aero
 
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                   file_type='xfoil',scale=chord,offset=offset, \
-                   Xsec=X,rot=rot,end_type=end_type,\
-                   nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
-wing.setSymmetry('xy')
-wing.calcEdgeConnectivity(1e-6,1e-6)
-#wing.writeEdgeConnectivity('as_wing.con')
-wing.readEdgeConnectivity('as_wing.con')
-wing.propagateKnotVectors()
-wing.fitSurfaces(nIter=2000,constr_tol=1e-8,opt_tol=1e-6)
-wing.writeTecplot('./as_wing.dat')
-wing.writeIGES('./as_wing.igs')
+# Create the directix spline
+#curve = pySpline.curve('lms',
+
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
+                   scale=chord,offset=offset,Xsec=X,rot=rot,
+                   Nctl=Nctl)
+wing.writeTecplot('./as_wing.dat',size=0.001)
+#wing.setSymmetry('xy')
+#wing.calcEdgeConnectivity(1e-6,1e-6)
+# #wing.writeEdgeConnectivity('as_wing.con')
+# wing.readEdgeConnectivity('as_wing.con')
+# wing.propagateKnotVectors()
+# wing.fitSurfaces(nIter=2000,constr_tol=1e-8,opt_tol=1e-6)
+# wing.writeTecplot('./as_wing.dat')
+# wing.writeIGES('./as_wing.igs')
 

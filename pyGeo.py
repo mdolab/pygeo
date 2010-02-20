@@ -49,6 +49,7 @@ from scipy import sparse, linsolve
 
 from mdo_import_helper import *
 exec(import_modules('geo_utils','pySpline','csm_pre','mpi4py'))
+exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
 
 # =============================================================================
 # pyGeo class
@@ -333,7 +334,6 @@ file_name=\'filename\' for iges init_type'
         # end for
 
         return 
-  
     def _init_lifting_surface(self,*args,**kwargs):
 
         assert 'xsections' in kwargs and 'scale' in kwargs \
@@ -356,459 +356,86 @@ offset.shape[0], Xsec, rot, must all have the same size'
             print 'Xsec:',Xsec.shape[0]
             print 'rot:',rot.shape[0]
             sys.exit(1)
-
-        if 'fit_type' in kwargs:
-            fit_type = kwargs['fit_type']
+        # end if
+        if 'Nctl' in kwargs:
+            Nctl = kwargs['Nctl']
+            if mod(Nctl,2) == 0:
+                Nctl += 1 # Make it odd
+            # end if
         else:
-            fit_type = 'interpolate'
+            Nctl = 27
         # end if
 
-        if 'file_type' in kwargs:
-            file_type = kwargs['file_type']
-        else:
-            file_type = 'xfoil'
-        # end if
+        # Load in and fit them all 
+        curves = []
+        knots = []
+        for i in xrange(len(xsections)):
+            x,y = read_af2(xsections[i])
+            c = pySpline.curve('lms',x=x,y=y,Nctl=Nctl,k=4)
+            curves.append(c)
+            knots.append(c.t)
+        # end for
 
+        # Now blend the knot vectors
+        new_knots = blendKnotVectors(knots,True)
 
-        if 'breaks' in kwargs:
-            breaks = kwargs['breaks']
-            nBreaks = len(breaks)
-        else:
-            nBreaks = 0
-        # end if
+        # Set the new knots in the cruve and recompute
+        for i in xrange(len(xsections)):
+            curves[i].t = new_knots.copy()
+            curves[i].runParameterCorrection(1000,1e-5)
+        # end for
             
-        if 'nsections' in kwargs:
-            nsections = kwargs['nsections']
-        else: # Figure out how many sections are in each break
-            nsections = zeros(nBreaks +1,'int' )
-            counter = 0 
-            for i in xrange(nBreaks):
-                nsections[i] = breaks[i] - counter + 1
-                counter = breaks[i]
-            # end for
-            nsections[-1] = len(xsections) - counter
-        # end if
-
-        if 'section_spacing' in kwargs:
-            section_spacing = kwargs['section_spacing']
-        else:
-            # Generate the section spacing -> linear default
-            section_spacing = []
-            for i in xrange(len(nsections)):
-                section_spacing.append(linspace(0,1,nsections[i]))
-            # end for
-        # end if
-
-        if 'cont' in kwargs:
-            cont = kwargs['cont']
-        else:
-            cont = [0]*nBreaks # Default is c0 contintity
-        # end if 
-      
-       
-        naf = len(xsections)
-        if 'Nfoil' in kwargs:
-            N = kwargs['Nfoil']
-        else:
-            N = 35
-        # end if
+        # Now split each curve at u_split which roughly coorsponds to LE
+        u_split = new_knots[(Nctl+4-1)/2]
+        top_curves = []
+        bot_curves = []
+        for i in xrange(len(xsections)):
+            c1,c2 = curves[i].splitCurve(u_split)
+            top_curves.append(c1)
+            bot_curves.append(c2)
+        # end for
         
-        # ------------------------------------------------------
-        # Generate the coordinates for the sections we are given 
-        # ------------------------------------------------------
-        X = zeros([2,N,naf,3]) #We will get two surfaces
-        for i in xrange(naf):
+        # Now we can set the surfaces
+        ncoef = top_curves[0].Nctl
+        coef_top = zeros((ncoef,len(xsections),3))
+        coef_bot = zeros((ncoef,len(xsections),3))
+        
+        for i in xrange(len(xsections)):
+            # Scale, rotate and translate the coefficients
+            coef_top[:,i,0] = (top_curves[i].coef[:,0] - offset[i,0])*scale[i]
+            coef_top[:,i,1] = (top_curves[i].coef[:,1] - offset[i,1])*scale[i]
+            coef_top[:,i,2] = 0
 
-            X_u,Y_u,X_l,Y_l = read_af(xsections[i],file_type,N)
+            coef_bot[:,i,0] = (bot_curves[i].coef[:,0] - offset[i,0])*scale[i]
+            coef_bot[:,i,1] = (bot_curves[i].coef[:,1] - offset[i,1])*scale[i]
+            coef_bot[:,i,2] = 0
+            
+            for j in xrange(ncoef):
+                coef_top[j,i,:] = rotzV(coef_top[j,i,:],rot[i,2]*pi/180)
+                coef_top[j,i,:] = rotxV(coef_top[j,i,:],rot[i,0]*pi/180)
+                coef_top[j,i,:] = rotyV(coef_top[j,i,:],rot[i,1]*pi/180)
 
-            X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
-            X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
-            X[0,:,i,2] = 0
-            
-            X[1,:,i,0] = (X_l-offset[i,0])*scale[i]
-            X[1,:,i,1] = (Y_l-offset[i,1])*scale[i]
-            X[1,:,i,2] = 0
-            
-            for j in xrange(N):
-                for isurf in xrange(2):
-                    # Twist Rotation (z-Rotation)
-                    X[isurf,j,i,:] = rotzV(X[isurf,j,i,:],rot[i,2]*pi/180)
-                    # Dihediral Rotation (x-Rotation)
-                    X[isurf,j,i,:] = rotxV(X[isurf,j,i,:],rot[i,0]*pi/180)
-                    # Sweep Rotation (y-Rotation)
-                    X[isurf,j,i,:] = rotyV(X[isurf,j,i,:],rot[i,1]*pi/180)
-                # end ofr
+                coef_bot[j,i,:] = rotzV(coef_bot[j,i,:],rot[i,2]*pi/180)
+                coef_bot[j,i,:] = rotxV(coef_bot[j,i,:],rot[i,0]*pi/180)
+                coef_bot[j,i,:] = rotyV(coef_bot[j,i,:],rot[i,1]*pi/180)
             # end for
 
             # Finally translate according to  positions specified
-            X[:,:,i,:] += Xsec[i,:]
+            coef_top[:,i,:] += Xsec[i,:]
+            coef_bot[:,i,:] += Xsec[i,:]
         # end for
 
-        # ---------------------------------------------------------------------
-        # Now, we interpolate them IF we have breaks 
-        # ---------------------------------------------------------------------
-
-        self.surfs = []
-
-        if nBreaks>0:
-            tot_sec = sum(nsections)-nBreaks
-            Xnew    = zeros([2,N,tot_sec,3])
-            Xsecnew = zeros((tot_sec,3))
-            rotnew  = zeros((tot_sec,3))
-            start   = 0
-            start2  = 0
-
-            for i in xrange(nBreaks+1):
-                # We have to interpolate the sectional data 
-                if i == nBreaks:
-                    end = naf
-                else:
-                    end  = breaks[i]+1
-                #end if
-
-                end2 = start2 + nsections[i]
-
-                # We need to figure out what derivative constraints are
-                # required
-                
-                # Create a chord line representation
-
-                Xchord_line = array([X[0,0,start],X[0,-1,start]])
-                chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
-
-                for j in xrange(N): # This is for the Data points
-
-                    if i > 0 and cont[i-1] == 2: # Do a continuity join (from both sides)
-                        #print 'cont join FIX ME'
-                        # Interpolate across each point in the spanwise direction
-                        # Take a finite difference to get dv and normalize
-                        dv = (X[0,j,start] - X[0,j,start-1])
-                        dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-
-                        # Now project the vector between sucessive
-                        # airfoil points onto this vector                        
-                        V = X[0,j,end-1]-X[0,j,start]
-                        dx1 = dot(dv,V) * dv
-
-                        # For the second vector, project the point
-                        # onto the chord line of the previous section
-
-                        # D is the vector we want
-                        s,D,converged,updated = \
-                            chord_line.projectPoint(X[0,j,end-1])
-                        dx2 = V-D
- 
-                        # Now generate the line and extract the points we want
-                        temp_spline = pySpline.curve(\
-                            'interpolate',X=X[0,j,start:end,:],k=4,\
-                                dx1=dx1,dx2=dx2)
-                   
-                        Xnew[0,j,start2:end2,:] = \
-                            temp_spline.getValueV(section_spacing[i])
-
-                        # Interpolate across each point in the spanwise direction
-                        
-                        dv = (X[1,j,start]-X[1,j,start-1])
-                        dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-                        V = X[0,j,end-1]-X[0,j,start]
-                        dist = dv * dot(dv,V)
-
-                        # D is the vector we want
-                        s,D,converged,updated = \
-                            chord_line.projectPoint(X[1,j,end-1])
-                        # We already have the 'V' vector
-                        V = X[1,j,end-1]-X[1,j,start]
-                        dx2 = V-D
-
-                        temp_spline = pySpline.curve(\
-                            'interpolate',X=X[1,j,start:end,:],k=4,\
-                                dx1=dx1,dx2=dx2)
-                        Xnew[1,j,start2:end2,:] = \
-                            temp_spline.getValueV(section_spacing[i])
-
-                    else:
-                            
-                        temp_spline = pySpline.curve(\
-                            'interpolate',X=X[0,j,start:end,:],k=2)
-                        Xnew[0,j,start2:end2,:] = \
-                            temp_spline.getValueV(section_spacing[i])
-
-                        temp_spline = pySpline.curve(\
-                            'interpolate',X=X[1,j,start:end,:],k=2)
-                        Xnew[1,j,start2:end2,:] = \
-                            temp_spline.getValueV(section_spacing[i])
-                    # end if
-                # end for
-
-                # Now we can generate and append the surfaces
-
-                self.surfs.append(pySpline.surface(\
-                        fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:].copy(),\
-                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
-                self.surfs.append(pySpline.surface(\
-                        fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:].copy(),\
-                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
-
-                start = end-1
-                start2 = end2-1
-            # end for
+        # Now we can add the two surfaces
         
-            # Second loop for 1-sided continuity constraints
-            start   = breaks[0]
-            start2  = nsections[0]
-            for i in xrange(1,nBreaks+1): # The first (mirror plane can't happen)
-               
-                # We have to interpolate the sectional data 
-                if i == nBreaks:
-                    end = naf
-                else:
-                    end  = breaks[i]+1
-                #end if
+        self.surfs.append(pySpline.surface('create',coef=coef_top,ku=4,kv=3,tu=top_curves[0].t,
+                                  tv=[0,0,0,1,1,1]))
+        self.surfs.append(pySpline.surface('create',coef=coef_bot,ku=4,kv=3,tu=bot_curves[0].t,
+                                  tv=[0,0,0,1,1,1]))
+        self.nSurf =  2
 
-                end2 = start2 + nsections[i]
-        
-                if cont[i-1] == -1 and cont[i] == 1: # We have what we're looking for
-                    for j in xrange(N): # This is for the Data points
-                        dx1 = (X[0,j,start] - X[0,j,start-1])
-                        dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
-
-                        dx2 = (X[0,j,end] - X[0,j,end-1])
-                        dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
-
-                        dx1/= 50
-                        dx2/=50
-
-                        # Now generate the line and extract the points we want
-                        temp_spline = pySpline.curve(\
-                            'interpolate',X=X[0,j,start:end,:],k=4,\
-                                dx1=dx1,dx2=dx2)
-                        Xnew[0,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
-
-                        dx1 = (X[1,j,start] - X[1,j,start-1])
-                        dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
-
-                        dx2 = (X[1,j,end] - X[1,j,end-1])
-                        dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
-                        dx1/= 50
-                        dx2/=50
-
-                        # Now generate the line and extract the points we want
-                        temp_spline = pySpline.curve(\
-                            'interpolate',X=X[1,j,start:end,:],k=4,\
-                                dx1=dx1,dx2=dx2)
-                        Xnew[1,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
-                    # end if
-        
-                    # Now we need to REPLACE
-                        
-                    self.surfs[2*i] = pySpline.surface(\
-                        fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
-                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
-                    self.surfs[2*i+1] = pySpline.surface(\
-                        fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
-                            Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
-                # end if
-                start = end-1
-                start2 = end2-1
-            # end for
-        
-        else:  #No breaks
-            tot_sec = sum(nsections)
-            Xnew    = zeros([2,N,tot_sec,3])
-            Xsecnew = zeros((tot_sec,3))
-            rotnew  = zeros((tot_sec,3))
-
-            for j in xrange(N):
-                temp_spline = pySpline.curve('interpolate',X=X[0,j,:,:],k=2)
-                Xnew[0,j,:,:] = temp_spline.getValueV(section_spacing[0])
-                temp_spline = pySpline.curve('interpolate',X=X[1,j,:,:],k=2)
-                Xnew[1,j,:,:] = temp_spline.getValueV(section_spacing[0])
-            # end for
-            Nctlv = nsections
-            self.surfs.append(pySpline.surface(fit_type,ku=4,kv=4,X=Xnew[0],Nctlv=nsections[0],
-                                                   no_print=self.NO_PRINT,*args,**kwargs))
-            self.surfs.append(pySpline.surface(fit_type,ku=4,kv=4,X=Xnew[1],Nctlv=nsections[0],
-                                                   no_print=self.NO_PRINT,*args,**kwargs))
-        # end if
-
-        if 'end_type' in kwargs: # The user has specified automatic tip completition
-            end_type = kwargs['end_type']
-
-            assert end_type in ['rounded','flat'],'Error: end_type must be one of \'rounded\' or \
-\'flat\'. Rounded will result in a non-degenerate geometry while flat type will result in a single \
-double degenerate patch at the tip'
-
-
-            if end_type == 'flat':
-            
-                spacing = 10
-                v = linspace(0,1,spacing)
-                X2 = zeros((N,spacing,3))
-                for j in xrange(1,N-1):
-                    # Create a linear spline 
-                    x1 = X[0,j,-1]
-                    x2 = X[1,N-j-1,-1]
-
-                    temp = pySpline.curve('interpolate',\
-                                                      k=2,X=array([x1,x2]))
-                    X2[j,:,:] = temp.getValueV(v)
-
-                # end for
-                X2[0,:] = X[0,0,-1]
-                X2[-1,:] = X[1,0,-1]
-                
-                self.surfs.append(pySpline.surface('lms',ku=4,kv=4,\
-                                                           X=X2,Nctlv=spacing,\
-                                                           *args,**kwargs))
-            elif end_type == 'rounded':
-                if 'end_scale' in kwargs:
-                    end_scale = kwargs['end_scale']
-                else:
-                    end_scale = 1
-                # This code uses *some* huristic measures but generally works fairly well
-                # Generate a "pinch" airfoil from the last one given
-
-                # First determine the maximum thickness of the airfoil, since this will 
-                # determine how far we need to offset it
-                dist_max = 0
-
-                for j in xrange(N):
-                    dist = e_dist(X[0,j,-1],X[1,N-j-1,-1])
-                    if dist > dist_max:
-                        dist_max = dist
-                    # end if
-                # end for
-
-                # Determine the data for the pinch section
-                # Front
-                n =  (X[0,0,-1] - X[0,0,-2])
-                n_front = n/sqrt(dot(n,n)) #Normalize
-
-                # Back
-                n =  (X[0,-1,-1] - X[0,-1,-2])
-                n_back = n/sqrt(dot(n,n))
-            
-                # Create a chord line representation of the end section
-                Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
-                end_chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
-
-                # Create a chord line representation of the tip line
-                Xchord_line = array([X[0,0,-1] + dist_max*n_front*end_scale,
-                                     X[0,-1,-1] + dist_max*n_back*end_scale])
-                
-                chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
-                Xchord_line =chord_line.getValueV([0.10,1.0])
-                chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
-                tip_line = chord_line.getValueV(linspace(0,1,N))
-                # Now Get the front, back top and bottom guide curves
-                #-------- Front
-                
-                X_input = array([X[0,0,-1],tip_line[0]])
-                dv = (X[0,0,-1] - X[0,0,-2])
-                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-                V = tip_line[0]-X[0,0,-1]
-                D = end_chord_line.getValue(0.1)-chord_line.getValue(0)
-                dx1 = dot(dv,V) * dv * end_scale
-                dx2 = D+V
-       
-                front_spline = pySpline.curve('interpolate',X=X_input,
-                                                             k=4,dx1=dx1,dx2=dx2)
-
-                #-------- Back
-                X_input = array([X[0,-1,-1],tip_line[-1]])
-                dv = (X[0,-1,-1] - X[0,-1,-2])
-                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-                V = tip_line[-1]-X[0,-1,-1]
-                D = end_chord_line.getValue(1)-chord_line.getValue(1)
-                dx1 = dot(dv,V) * dv * end_scale
-                dx2 = D+V
-                end_spline = pySpline.curve('interpolate',X=X_input,
-                                                    k=4,dx1=dx1,dx2=dx2)
-
-                #-------- Top
-                X_input = array([X[0,N/2,-1],tip_line[N/2]])
-                dv = (X[0,N/2,-1] - X[0,N/2,-2])
-                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-                V = tip_line[N/2]-X[0,N/2,-1]
-                D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
-                dx1 = dot(dv,V) * dv * end_scale
-                dx2 = D+V
-                top_spline = pySpline.curve('interpolate',X=X_input,
-                                                             k=4,dx1=dx1,dx2=dx2)
-
-                #-------- Bottom
-                X_input = array([X[1,N/2,-1],tip_line[N/2]])
-                dv = (X[1,N/2,-1] - X[1,N/2,-2])
-                dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
-                V = tip_line[N/2]-X[1,N/2,-1]
-                D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
-                dx1 = dot(dv,V) * dv * end_scale
-                dx2 = D+V
-                bottom_spline = pySpline.curve('interpolate',X=X_input,
-                                                             k=4,dx1=dx1,dx2=dx2)
-
-                Ndata = 15
-
-                chords = []
-                thicknesses = []
-                chord0 = e_dist(front_spline(0),end_spline(0))
-                thickness0 = e_dist(top_spline(0),bottom_spline(0))
-                for i in xrange(Ndata):
-                    chords.append(e_dist(front_spline(i/(Ndata-1.0)),end_spline(i/(Ndata-1.0)))/chord0)
-                    thicknesses.append(e_dist(top_spline(i/(Ndata-1.0)),bottom_spline(i/(Ndata-1.0)))/thickness0)
-                # end for
-
-                # Re-read the last airfoil section data
-                X_u,Y_u,X_l,Y_l = read_af(xsections[-1],file_type,N)
-                
-                Xnew = zeros((2,N,Ndata,3))
-        
-                for i in xrange(1,Ndata):
-
-                    if i == Ndata-1:
-                        Xnew[0,:,i,0] = (X_u)*scale[-1]*chords[i]
-                        Xnew[0,:,i,1] = (Y_u*thicknesses[i])*scale[-1]*chords[i]
-                        Xnew[0,:,i,2] = 0
-            
-                        Xnew[1,:,i,0] = (X_u[::-1])*scale[-1]*chords[i]
-                        Xnew[1,:,i,1] = (Y_l*thicknesses[i])*scale[-1]*chords[i]
-                        Xnew[1,:,i,2] = 0
-
-                    else:
-
-                        Xnew[0,:,i,0] = (X_u)*scale[-1]*chords[i]
-                        Xnew[0,:,i,1] = (Y_u*thicknesses[i])*scale[-1]*chords[i]
-                        Xnew[0,:,i,2] = 0
-                        
-                        Xnew[1,:,i,0] = (X_l)*scale[-1]*chords[i]
-                        Xnew[1,:,i,1] = (Y_l*thicknesses[i])*scale[-1]*chords[i]
-                        Xnew[1,:,i,2] = 0
-
-                    for j in xrange(N):
-                        for isurf in xrange(2):
-                            # Twist Rotation (z-Rotation)
-                            Xnew[isurf,j,i,:] = rotzV(Xnew[isurf,j,i,:],rot[-1,2]*pi/180)
-                            # Dihediral Rotation (x-Rotation)
-                            Xnew[isurf,j,i,:] = rotxV(Xnew[isurf,j,i,:],rot[-1,0]*pi/180)
-                            # Sweep Rotation (y-Rotation)
-                            Xnew[isurf,j,i,:] = rotyV(Xnew[isurf,j,i,:],rot[-1,1]*pi/180)
-                        # end for
-                    # end for
-                    Xnew[:,:,i,:] += front_spline(i/(Ndata-1.0))
-                    
-                # end for
-                Xnew[:,:,0,:] = X[:,:,-1,:]
-                # Xnew[:,:,-1,:] = tip_line
-                self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[0],
-                                                       Nctlv=4, *args,**kwargs))
-                
-                self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[1],
-                                                       Nctlv=4, *args,**kwargs))
-
-        self.nSurf = len(self.surfs) # And last but not least
         return
 
-    def _init_acdt_geo(self,ac,LiftingSurface,BodySurface,*args,**kwargs):
+    def _init_acdt_geo(self,ac,*args,**kwargs):
         '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
 
         dtor = pi/180
@@ -836,24 +463,38 @@ double degenerate patch at the tip'
 
             elif isinstance(ac[i],LiftingSurface):
                 nSubComp = len(ac[i])
-
+                [m,n] = ac[i][0].Surface_x.shape
+                X = zeros((nSubComp+1,n,3))
                 for j in xrange(nSubComp):
                     [m,n] = ac[i][j].Surface_x.shape
                     N=  (n-1)/2
-                    X = zeros((2,m,N+1,3))
-                    X[0,:,:,0] = ac[i][j].Surface_x[:,0:N+1]
-                    X[0,:,:,1] = ac[i][j].Surface_y[:,0:N+1]
-                    X[0,:,:,2] = ac[i][j].Surface_z[:,0:N+1]
-
-                    X[1,:,:,0] = ac[i][j].Surface_x[:,N:]
-                    X[1,:,:,1] = ac[i][j].Surface_y[:,N:]
-                    X[1,:,:,2] = ac[i][j].Surface_z[:,N:]
-
-                    self.surfs.append(pySpline.surface('interpolate',ku=4,kv=4,X=X[0]))
-                    self.surfs.append(pySpline.surface('interpolate',ku=4,kv=4,X=X[1]))
-                    self.nSurf += 2
-
+                    if j == 0:
+                        X[j,0:N+1,0] = ac[i][j].Surface_x[0,0:N+1][::-1]
+                        X[j,0:N+1,1] = ac[i][j].Surface_y[0,0:N+1][::-1]
+                        X[j,0:N+1,2] = ac[i][j].Surface_z[0,0:N+1][::-1]
+                        X[j,N:,0] = ac[i][j].Surface_x[0,N:][::-1]
+                        X[j,N:,1] = ac[i][j].Surface_y[0,N:][::-1]
+                        X[j,N:,2] = ac[i][j].Surface_z[0,N:][::-1]
+                    else:
+                        X[j,0:N+1,0] = 0.5*(ac[i][j-1].Surface_x[1,0:N+1][::-1]+ac[i][j].Surface_x[0,0:N+1][::-1])
+                        X[j,0:N+1,1] = 0.5*(ac[i][j-1].Surface_y[1,0:N+1][::-1]+ac[i][j].Surface_y[0,0:N+1][::-1])
+                        X[j,0:N+1,2] = 0.5*(ac[i][j-1].Surface_z[1,0:N+1][::-1]+ac[i][j].Surface_z[0,0:N+1][::-1])
+                        X[j,N:,0] = 0.5*(ac[i][j-1].Surface_x[1,N:][::-1]+ac[i][j].Surface_x[0,N:][::-1])
+                        X[j,N:,1] = 0.5*(ac[i][j-1].Surface_y[1,N:][::-1]+ac[i][j].Surface_y[0,N:][::-1])
+                        X[j,N:,2] = 0.5*(ac[i][j-1].Surface_z[1,N:][::-1]+ac[i][j].Surface_z[0,N:][::-1])
+                    # end if
+                    if  j == nSubComp-1:
+                        X[j+1,0:N+1,0] = ac[i][j].Surface_x[1,0:N+1][::-1]
+                        X[j+1,0:N+1,1] = ac[i][j].Surface_y[1,0:N+1][::-1]
+                        X[j+1,0:N+1,2] = ac[i][j].Surface_z[1,0:N+1][::-1]
+                        X[j+1,N:,0] = ac[i][j].Surface_x[1,N:][::-1]
+                        X[j+1,N:,1] = ac[i][j].Surface_y[1,N:][::-1]
+                        X[j+1,N:,2] = ac[i][j].Surface_z[1,N:][::-1]
+                    # end if
                 # end for (sub Comp)
+                self.surfs.append(pySpline.surface(\
+                        'lms',ku=2,kv=4,X=X,Nctlu=nSubComp+1,Nctlv=17))
+                self.nSurf += 1
             # end if (lifting/body type)
         # end if (Comp Loop)
 
@@ -1832,14 +1473,14 @@ double degenerate patch at the tip'
         Pcount = 1;
 
         for isurf in xrange(self.nSurf):
-            Pcount,Dcount =self.surfs[isurf].writeIGES_directory(\
+            Pcount,Dcount =self.surfs[isurf]._writeIGES_directory(\
                 f,Dcount,Pcount)
 
         Pcount  = 1
         counter = 1
 
         for isurf in xrange(self.nSurf):
-            Pcount,counter = self.surfs[isurf].writeIGES_parameters(\
+            Pcount,counter = self.surfs[isurf]._writeIGES_parameters(\
                 f,Pcount,counter)
 
         # Write the terminate statment
@@ -4280,3 +3921,476 @@ if __name__ == '__main__':
 #         # end if
 
 #         return 
+#     def _init_lifting_surface(self,*args,**kwargs):
+
+#         assert 'xsections' in kwargs and 'scale' in kwargs \
+#                and 'offset' in kwargs and 'Xsec' in kwargs and 'rot' in kwargs,\
+#                '\'xsections\', \'offset\',\'scale\' and \'X\'  and \'rot\'\
+#  must be specified as kwargs'
+
+#         xsections = kwargs['xsections']
+#         scale     = kwargs['scale']
+#         offset    = kwargs['offset']
+#         Xsec      = kwargs['Xsec']
+#         rot       = kwargs['rot']
+
+#         if not len(xsections)==len(scale)==offset.shape[0]:
+#             print 'The length of input data is inconsistent. xsections,scale,\
+# offset.shape[0], Xsec, rot, must all have the same size'
+#             print 'xsections:',len(xsections)
+#             print 'scale:',len(scale)
+#             print 'offset:',offset.shape[0]
+#             print 'Xsec:',Xsec.shape[0]
+#             print 'rot:',rot.shape[0]
+#             sys.exit(1)
+
+#         if 'fit_type' in kwargs:
+#             fit_type = kwargs['fit_type']
+#         else:
+#             fit_type = 'interpolate'
+#         # end if
+
+#         if 'file_type' in kwargs:
+#             file_type = kwargs['file_type']
+#         else:
+#             file_type = 'xfoil'
+#         # end if
+
+
+#         if 'breaks' in kwargs:
+#             breaks = kwargs['breaks']
+#             nBreaks = len(breaks)
+#         else:
+#             nBreaks = 0
+#         # end if
+            
+#         if 'nsections' in kwargs:
+#             nsections = kwargs['nsections']
+#         else: # Figure out how many sections are in each break
+#             nsections = zeros(nBreaks +1,'int' )
+#             counter = 0 
+#             for i in xrange(nBreaks):
+#                 nsections[i] = breaks[i] - counter + 1
+#                 counter = breaks[i]
+#             # end for
+#             nsections[-1] = len(xsections) - counter
+#         # end if
+
+#         if 'section_spacing' in kwargs:
+#             section_spacing = kwargs['section_spacing']
+#         else:
+#             # Generate the section spacing -> linear default
+#             section_spacing = []
+#             for i in xrange(len(nsections)):
+#                 section_spacing.append(linspace(0,1,nsections[i]))
+#             # end for
+#         # end if
+
+#         if 'cont' in kwargs:
+#             cont = kwargs['cont']
+#         else:
+#             cont = [0]*nBreaks # Default is c0 contintity
+#         # end if 
+      
+       
+#         naf = len(xsections)
+#         if 'Nfoil' in kwargs:
+#             N = kwargs['Nfoil']
+#         else:
+#             N = 35
+#         # end if
+        
+#         # ------------------------------------------------------
+#         # Generate the coordinates for the sections we are given 
+#         # ------------------------------------------------------
+#         X = zeros([2,N,naf,3]) #We will get two surfaces
+#         for i in xrange(naf):
+
+#             X_u,Y_u,X_l,Y_l = read_af(xsections[i],file_type,N)
+
+#             X[0,:,i,0] = (X_u-offset[i,0])*scale[i]
+#             X[0,:,i,1] = (Y_u-offset[i,1])*scale[i]
+#             X[0,:,i,2] = 0
+            
+#             X[1,:,i,0] = (X_l-offset[i,0])*scale[i]
+#             X[1,:,i,1] = (Y_l-offset[i,1])*scale[i]
+#             X[1,:,i,2] = 0
+            
+#             for j in xrange(N):
+#                 for isurf in xrange(2):
+#                     # Twist Rotation (z-Rotation)
+#                     X[isurf,j,i,:] = rotzV(X[isurf,j,i,:],rot[i,2]*pi/180)
+#                     # Dihediral Rotation (x-Rotation)
+#                     X[isurf,j,i,:] = rotxV(X[isurf,j,i,:],rot[i,0]*pi/180)
+#                     # Sweep Rotation (y-Rotation)
+#                     X[isurf,j,i,:] = rotyV(X[isurf,j,i,:],rot[i,1]*pi/180)
+#                 # end ofr
+#             # end for
+
+#             # Finally translate according to  positions specified
+#             X[:,:,i,:] += Xsec[i,:]
+#         # end for
+
+#         # ---------------------------------------------------------------------
+#         # Now, we interpolate them IF we have breaks 
+#         # ---------------------------------------------------------------------
+
+#         self.surfs = []
+
+#         if nBreaks>0:
+#             tot_sec = sum(nsections)-nBreaks
+#             Xnew    = zeros([2,N,tot_sec,3])
+#             Xsecnew = zeros((tot_sec,3))
+#             rotnew  = zeros((tot_sec,3))
+#             start   = 0
+#             start2  = 0
+
+#             for i in xrange(nBreaks+1):
+#                 # We have to interpolate the sectional data 
+#                 if i == nBreaks:
+#                     end = naf
+#                 else:
+#                     end  = breaks[i]+1
+#                 #end if
+
+#                 end2 = start2 + nsections[i]
+
+#                 # We need to figure out what derivative constraints are
+#                 # required
+                
+#                 # Create a chord line representation
+
+#                 Xchord_line = array([X[0,0,start],X[0,-1,start]])
+#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+
+#                 for j in xrange(N): # This is for the Data points
+
+#                     if i > 0 and cont[i-1] == 2: # Do a continuity join (from both sides)
+#                         #print 'cont join FIX ME'
+#                         # Interpolate across each point in the spanwise direction
+#                         # Take a finite difference to get dv and normalize
+#                         dv = (X[0,j,start] - X[0,j,start-1])
+#                         dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+
+#                         # Now project the vector between sucessive
+#                         # airfoil points onto this vector                        
+#                         V = X[0,j,end-1]-X[0,j,start]
+#                         dx1 = dot(dv,V) * dv
+
+#                         # For the second vector, project the point
+#                         # onto the chord line of the previous section
+
+#                         # D is the vector we want
+#                         s,D,converged,updated = \
+#                             chord_line.projectPoint(X[0,j,end-1])
+#                         dx2 = V-D
+ 
+#                         # Now generate the line and extract the points we want
+#                         temp_spline = pySpline.curve(\
+#                             'interpolate',X=X[0,j,start:end,:],k=4,\
+#                                 dx1=dx1,dx2=dx2)
+                   
+#                         Xnew[0,j,start2:end2,:] = \
+#                             temp_spline.getValueV(section_spacing[i])
+
+#                         # Interpolate across each point in the spanwise direction
+                        
+#                         dv = (X[1,j,start]-X[1,j,start-1])
+#                         dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+#                         V = X[0,j,end-1]-X[0,j,start]
+#                         dist = dv * dot(dv,V)
+
+#                         # D is the vector we want
+#                         s,D,converged,updated = \
+#                             chord_line.projectPoint(X[1,j,end-1])
+#                         # We already have the 'V' vector
+#                         V = X[1,j,end-1]-X[1,j,start]
+#                         dx2 = V-D
+
+#                         temp_spline = pySpline.curve(\
+#                             'interpolate',X=X[1,j,start:end,:],k=4,\
+#                                 dx1=dx1,dx2=dx2)
+#                         Xnew[1,j,start2:end2,:] = \
+#                             temp_spline.getValueV(section_spacing[i])
+
+#                     else:
+                            
+#                         temp_spline = pySpline.curve(\
+#                             'interpolate',X=X[0,j,start:end,:],k=2)
+#                         Xnew[0,j,start2:end2,:] = \
+#                             temp_spline.getValueV(section_spacing[i])
+
+#                         temp_spline = pySpline.curve(\
+#                             'interpolate',X=X[1,j,start:end,:],k=2)
+#                         Xnew[1,j,start2:end2,:] = \
+#                             temp_spline.getValueV(section_spacing[i])
+#                     # end if
+#                 # end for
+
+#                 # Now we can generate and append the surfaces
+
+#                 self.surfs.append(pySpline.surface(\
+#                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:].copy(),\
+#                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
+#                 self.surfs.append(pySpline.surface(\
+#                         fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:].copy(),\
+#                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs))
+
+#                 start = end-1
+#                 start2 = end2-1
+#             # end for
+        
+#             # Second loop for 1-sided continuity constraints
+#             start   = breaks[0]
+#             start2  = nsections[0]
+#             for i in xrange(1,nBreaks+1): # The first (mirror plane can't happen)
+               
+#                 # We have to interpolate the sectional data 
+#                 if i == nBreaks:
+#                     end = naf
+#                 else:
+#                     end  = breaks[i]+1
+#                 #end if
+
+#                 end2 = start2 + nsections[i]
+        
+#                 if cont[i-1] == -1 and cont[i] == 1: # We have what we're looking for
+#                     for j in xrange(N): # This is for the Data points
+#                         dx1 = (X[0,j,start] - X[0,j,start-1])
+#                         dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
+
+#                         dx2 = (X[0,j,end] - X[0,j,end-1])
+#                         dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
+
+#                         dx1/= 50
+#                         dx2/=50
+
+#                         # Now generate the line and extract the points we want
+#                         temp_spline = pySpline.curve(\
+#                             'interpolate',X=X[0,j,start:end,:],k=4,\
+#                                 dx1=dx1,dx2=dx2)
+#                         Xnew[0,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
+
+#                         dx1 = (X[1,j,start] - X[1,j,start-1])
+#                         dx1 /= sqrt(dx1[0]*dx1[0] + dx1[1]*dx1[1] + dx1[2]*dx1[2])
+
+#                         dx2 = (X[1,j,end] - X[1,j,end-1])
+#                         dx2 /= sqrt(dx2[0]*dx2[0] + dx2[1]*dx2[1] + dx2[2]*dx2[2])
+#                         dx1/= 50
+#                         dx2/=50
+
+#                         # Now generate the line and extract the points we want
+#                         temp_spline = pySpline.curve(\
+#                             'interpolate',X=X[1,j,start:end,:],k=4,\
+#                                 dx1=dx1,dx2=dx2)
+#                         Xnew[1,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
+#                     # end if
+        
+#                     # Now we need to REPLACE
+                        
+#                     self.surfs[2*i] = pySpline.surface(\
+#                         fit_type,ku=4,kv=4,X=Xnew[0,:,start2:end2,:],\
+#                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
+#                     self.surfs[2*i+1] = pySpline.surface(\
+#                         fit_type,ku=4,kv=4,X=Xnew[1,:,start2:end2,:],\
+#                             Nctlv=nsections[i],no_print=self.NO_PRINT,*args,**kwargs)
+#                 # end if
+#                 start = end-1
+#                 start2 = end2-1
+#             # end for
+        
+#         else:  #No breaks
+#             tot_sec = sum(nsections)
+#             Xnew    = zeros([2,N,tot_sec,3])
+#             Xsecnew = zeros((tot_sec,3))
+#             rotnew  = zeros((tot_sec,3))
+
+#             for j in xrange(N):
+#                 temp_spline = pySpline.curve('interpolate',X=X[0,j,:,:],k=2)
+#                 Xnew[0,j,:,:] = temp_spline.getValueV(section_spacing[0])
+#                 temp_spline = pySpline.curve('interpolate',X=X[1,j,:,:],k=2)
+#                 Xnew[1,j,:,:] = temp_spline.getValueV(section_spacing[0])
+#             # end for
+#             Nctlv = nsections
+#             self.surfs.append(pySpline.surface(fit_type,ku=4,kv=4,X=Xnew[0],Nctlv=nsections[0],
+#                                                    no_print=self.NO_PRINT,*args,**kwargs))
+#             self.surfs.append(pySpline.surface(fit_type,ku=4,kv=4,X=Xnew[1],Nctlv=nsections[0],
+#                                                    no_print=self.NO_PRINT,*args,**kwargs))
+#         # end if
+
+#         if 'end_type' in kwargs: # The user has specified automatic tip completition
+#             end_type = kwargs['end_type']
+
+#             assert end_type in ['rounded','flat'],'Error: end_type must be one of \'rounded\' or \
+# \'flat\'. Rounded will result in a non-degenerate geometry while flat type will result in a single \
+# double degenerate patch at the tip'
+
+
+#             if end_type == 'flat':
+            
+#                 spacing = 10
+#                 v = linspace(0,1,spacing)
+#                 X2 = zeros((N,spacing,3))
+#                 for j in xrange(1,N-1):
+#                     # Create a linear spline 
+#                     x1 = X[0,j,-1]
+#                     x2 = X[1,N-j-1,-1]
+
+#                     temp = pySpline.curve('interpolate',\
+#                                                       k=2,X=array([x1,x2]))
+#                     X2[j,:,:] = temp.getValueV(v)
+
+#                 # end for
+#                 X2[0,:] = X[0,0,-1]
+#                 X2[-1,:] = X[1,0,-1]
+                
+#                 self.surfs.append(pySpline.surface('lms',ku=4,kv=4,\
+#                                                            X=X2,Nctlv=spacing,\
+#                                                            *args,**kwargs))
+#             elif end_type == 'rounded':
+#                 if 'end_scale' in kwargs:
+#                     end_scale = kwargs['end_scale']
+#                 else:
+#                     end_scale = 1
+#                 # This code uses *some* huristic measures but generally works fairly well
+#                 # Generate a "pinch" airfoil from the last one given
+
+#                 # First determine the maximum thickness of the airfoil, since this will 
+#                 # determine how far we need to offset it
+#                 dist_max = 0
+
+#                 for j in xrange(N):
+#                     dist = e_dist(X[0,j,-1],X[1,N-j-1,-1])
+#                     if dist > dist_max:
+#                         dist_max = dist
+#                     # end if
+#                 # end for
+
+#                 # Determine the data for the pinch section
+#                 # Front
+#                 n =  (X[0,0,-1] - X[0,0,-2])
+#                 n_front = n/sqrt(dot(n,n)) #Normalize
+
+#                 # Back
+#                 n =  (X[0,-1,-1] - X[0,-1,-2])
+#                 n_back = n/sqrt(dot(n,n))
+            
+#                 # Create a chord line representation of the end section
+#                 Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
+#                 end_chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+
+#                 # Create a chord line representation of the tip line
+#                 Xchord_line = array([X[0,0,-1] + dist_max*n_front*end_scale,
+#                                      X[0,-1,-1] + dist_max*n_back*end_scale])
+                
+#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 Xchord_line =chord_line.getValueV([0.10,1.0])
+#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 tip_line = chord_line.getValueV(linspace(0,1,N))
+#                 # Now Get the front, back top and bottom guide curves
+#                 #-------- Front
+                
+#                 X_input = array([X[0,0,-1],tip_line[0]])
+#                 dv = (X[0,0,-1] - X[0,0,-2])
+#                 dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+#                 V = tip_line[0]-X[0,0,-1]
+#                 D = end_chord_line.getValue(0.1)-chord_line.getValue(0)
+#                 dx1 = dot(dv,V) * dv * end_scale
+#                 dx2 = D+V
+       
+#                 front_spline = pySpline.curve('interpolate',X=X_input,
+#                                                              k=4,dx1=dx1,dx2=dx2)
+
+#                 #-------- Back
+#                 X_input = array([X[0,-1,-1],tip_line[-1]])
+#                 dv = (X[0,-1,-1] - X[0,-1,-2])
+#                 dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+#                 V = tip_line[-1]-X[0,-1,-1]
+#                 D = end_chord_line.getValue(1)-chord_line.getValue(1)
+#                 dx1 = dot(dv,V) * dv * end_scale
+#                 dx2 = D+V
+#                 end_spline = pySpline.curve('interpolate',X=X_input,
+#                                                     k=4,dx1=dx1,dx2=dx2)
+
+#                 #-------- Top
+#                 X_input = array([X[0,N/2,-1],tip_line[N/2]])
+#                 dv = (X[0,N/2,-1] - X[0,N/2,-2])
+#                 dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+#                 V = tip_line[N/2]-X[0,N/2,-1]
+#                 D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
+#                 dx1 = dot(dv,V) * dv * end_scale
+#                 dx2 = D+V
+#                 top_spline = pySpline.curve('interpolate',X=X_input,
+#                                                              k=4,dx1=dx1,dx2=dx2)
+
+#                 #-------- Bottom
+#                 X_input = array([X[1,N/2,-1],tip_line[N/2]])
+#                 dv = (X[1,N/2,-1] - X[1,N/2,-2])
+#                 dv /= sqrt(dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2])
+#                 V = tip_line[N/2]-X[1,N/2,-1]
+#                 D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
+#                 dx1 = dot(dv,V) * dv * end_scale
+#                 dx2 = D+V
+#                 bottom_spline = pySpline.curve('interpolate',X=X_input,
+#                                                              k=4,dx1=dx1,dx2=dx2)
+
+#                 Ndata = 15
+
+#                 chords = []
+#                 thicknesses = []
+#                 chord0 = e_dist(front_spline(0),end_spline(0))
+#                 thickness0 = e_dist(top_spline(0),bottom_spline(0))
+#                 for i in xrange(Ndata):
+#                     chords.append(e_dist(front_spline(i/(Ndata-1.0)),end_spline(i/(Ndata-1.0)))/chord0)
+#                     thicknesses.append(e_dist(top_spline(i/(Ndata-1.0)),bottom_spline(i/(Ndata-1.0)))/thickness0)
+#                 # end for
+
+#                 # Re-read the last airfoil section data
+#                 X_u,Y_u,X_l,Y_l = read_af(xsections[-1],file_type,N)
+                
+#                 Xnew = zeros((2,N,Ndata,3))
+        
+#                 for i in xrange(1,Ndata):
+
+#                     if i == Ndata-1:
+#                         Xnew[0,:,i,0] = (X_u)*scale[-1]*chords[i]
+#                         Xnew[0,:,i,1] = (Y_u*thicknesses[i])*scale[-1]*chords[i]
+#                         Xnew[0,:,i,2] = 0
+            
+#                         Xnew[1,:,i,0] = (X_u[::-1])*scale[-1]*chords[i]
+#                         Xnew[1,:,i,1] = (Y_l*thicknesses[i])*scale[-1]*chords[i]
+#                         Xnew[1,:,i,2] = 0
+
+#                     else:
+
+#                         Xnew[0,:,i,0] = (X_u)*scale[-1]*chords[i]
+#                         Xnew[0,:,i,1] = (Y_u*thicknesses[i])*scale[-1]*chords[i]
+#                         Xnew[0,:,i,2] = 0
+                        
+#                         Xnew[1,:,i,0] = (X_l)*scale[-1]*chords[i]
+#                         Xnew[1,:,i,1] = (Y_l*thicknesses[i])*scale[-1]*chords[i]
+#                         Xnew[1,:,i,2] = 0
+
+#                     for j in xrange(N):
+#                         for isurf in xrange(2):
+#                             # Twist Rotation (z-Rotation)
+#                             Xnew[isurf,j,i,:] = rotzV(Xnew[isurf,j,i,:],rot[-1,2]*pi/180)
+#                             # Dihediral Rotation (x-Rotation)
+#                             Xnew[isurf,j,i,:] = rotxV(Xnew[isurf,j,i,:],rot[-1,0]*pi/180)
+#                             # Sweep Rotation (y-Rotation)
+#                             Xnew[isurf,j,i,:] = rotyV(Xnew[isurf,j,i,:],rot[-1,1]*pi/180)
+#                         # end for
+#                     # end for
+#                     Xnew[:,:,i,:] += front_spline(i/(Ndata-1.0))
+                    
+#                 # end for
+#                 Xnew[:,:,0,:] = X[:,:,-1,:]
+#                 # Xnew[:,:,-1,:] = tip_line
+#                 self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[0],
+#                                                        Nctlv=4, *args,**kwargs))
+                
+#                 self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[1],
+#                                                        Nctlv=4, *args,**kwargs))
+
+#         self.nSurf = len(self.surfs) # And last but not least
+#         return
