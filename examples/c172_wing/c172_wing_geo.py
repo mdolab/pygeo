@@ -10,29 +10,11 @@ import os, sys, string, pdb, copy, time
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
     array, real, reshape, meshgrid, dot, cross, vstack, arctan2, tan
 
-import petsc4py
-petsc4py.init(sys.argv)
-
 # =============================================================================
 # Extension modules
 # =============================================================================
-
-# pySpline 
-sys.path.append('../../../pySpline/python')
-
-#cfd-csm pre (Optional)
-sys.path.append('../../../../pyHF/pycfd-csm/python/')
-
-#pyGeo
-sys.path.append('../../')
-
-# pyOpt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt')
-
-# pySnopt
-sys.path.append('../../../../pyACDT/pyACDT/Optimization/pyOpt/pySNOPT')
-
-import pyGeo
+from mdo_import_helper import *
+exec(import_modules('pyGeo'))
 
 # ==============================================================================
 # Start of Script
@@ -41,8 +23,8 @@ import pyGeo
 # Script to Generate a Wing Geometry
 
 naf=3
-airfoil_list = ['../../input/naca2412.dat','../../input/naca2412.dat','../../input/naca2412.dat']
-
+airfoil_list = ['./geo_input/naca2412.dat','./geo_input/naca2412.dat','./geo_input/naca2412.dat']
+Nctl = 13
 chord = [1.67,1.67,1.18]
 x = [0,0,.125*1.18]
 y = [0,0,0]
@@ -53,34 +35,62 @@ rot_z = [0,0,0]
 
 offset = zeros((naf,2))
 
-# Make the break-point vector
-breaks = [1]
-nsections = [4,4]# Length breaks + 1
-Nctlu = 13
-end_type = 'rounded'
-                               
-# Put spatial and rotations into two arrays (always the same)-------
-X = zeros((naf,3))
-rot = zeros((naf,3))
+wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
+                   scale=chord,offset=offset,x=x,y=y,z=z,
+                   rot_x=rot_x,rot_y=rot_y,rot_z=rot_z,Nctl=Nctl,
+                   k_span=2,con_file='./geo_input/c172.con')
 
-X[:,0] = x
-X[:,1] = y
-X[:,2] = z
-rot[:,0] = rot_x
-rot[:,1] = rot_y
-rot[:,2] = rot_z
-
-wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,\
-                   file_type='xfoil',scale=chord,offset=offset, \
-                   Xsec=X,rot=rot,end_type=end_type, breaks=breaks,end_scale=1.05,
-                   nsections=nsections,fit_type='lms', Nctlu=Nctlu,Nfoil=45)
 wing.setSymmetry('xy')
-wing.calcEdgeConnectivity(1e-6,1e-6)
-wing.writeEdgeConnectivity('./geo_input/c172.con')
-wing.readEdgeConnectivity('./geo_input/c172.con')
-wing.propagateKnotVectors()
-#wing.fitSurfaces(nIter=2000,constr_tol=1e-8,opt_tol=1e-6)
 wing.writeTecplot('./geo_output/c172_geo.dat')
 wing.writeIGES('./geo_input/c172.igs')
 
+# Add the reference axis
+nsec = 3
+x = x + 0.25*array(chord)
 
+# Add reference axis
+wing.addRefAxis([0,1],x=x,y=y,z=z,rot_type=3) #Surface list then x,y,z
+wing.writeTecplot('./geo_output/c172_geo.dat',orig=True,directions=True,
+                      surf_labels=True,edge_labels=False,node_labels=False,
+                      links=True,ref_axis=True)
+
+
+def span_extension(val,ref_axis):
+    '''Single design variable for span extension'''
+    ref_axis[0].x[:,1] = ref_axis[0].x0[:,1] * val
+    return ref_axis
+
+def outer_sweep(val,ref_axis):
+    '''Single design variable for outer section sweep'''
+    ref_axis[0].x[2,0] = ref_axis[0].x0[2,0] + val
+    return ref_axis
+
+def outer_twist(val,ref_axis):
+    ref_axis[0].rot_y[2] = val
+    return ref_axis
+
+def outer_dihedral(val,ref_axis):
+    ref_axis[0].x[2,2] = ref_axis[0].x0[2,2] + val
+    return ref_axis
+
+def tip_chord(val,ref_axis):
+    ref_axis[0].scale[2] = ref_axis[0].scale0[2]*val
+    return ref_axis
+
+mpiPrint(' ** Adding Global Design Variables **')
+wing.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
+wing.addGeoDVGlobal('outer_sweep',0,-1,1.0,outer_sweep)
+wing.addGeoDVGlobal('outer_twist',0,-10,10.0,outer_twist)
+wing.addGeoDVGlobal('outer_dihedral',0,-5,5.0,outer_dihedral)
+wing.addGeoDVGlobal('tip_chord',1,.75,1.25,tip_chord)
+idg = wing.DV_namesGlobal #NOTE: This is constant (idg -> id global
+wing.DV_listGlobal[idg['span']].value = 1.2
+wing.DV_listGlobal[idg['outer_sweep']].value = .2
+wing.DV_listGlobal[idg['outer_twist']].value = -2
+wing.DV_listGlobal[idg['outer_dihedral']].value = .3
+wing.DV_listGlobal[idg['tip_chord']].value = .9
+wing.update()
+
+wing.writeTecplot('./geo_output/c172_geo_mod.dat',orig=True,directions=True,
+                      surf_labels=True,edge_labels=True,node_labels=True,
+                      links=True,ref_axis=True)
