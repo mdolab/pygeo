@@ -235,8 +235,7 @@ file_name=\'filename\' for iges init_type'
         # Now create a list of spline objects:
         surfs = []
         for isurf in xrange(nSurf):
-            surfs.append(pySpline.surface('lms',X=patches[isurf],\
-                                              ku=4,kv=4,Nctlu=6,Nctlv=6,\
+            surfs.append(pySpline.surface(X=patches[isurf],ku=4,kv=4,Nctlu=6,Nctlv=6,\
                                               no_print=self.NO_PRINT))
         self.surfs = surfs
         self.nSurf = nSurf
@@ -337,15 +336,26 @@ file_name=\'filename\' for iges init_type'
     def _init_lifting_surface(self,*args,**kwargs):
 
         assert 'xsections' in kwargs and 'scale' in kwargs \
-               and 'offset' in kwargs and 'Xsec' in kwargs and 'rot' in kwargs,\
-               '\'xsections\', \'offset\',\'scale\' and \'X\'  and \'rot\'\
- must be specified as kwargs'
-
+            and 'offset' in kwargs,\
+               '\'xsections\', \'offset\' and \'scale\' must be specified as kwargs'
         xsections = kwargs['xsections']
         scale     = kwargs['scale']
         offset    = kwargs['offset']
-        Xsec      = kwargs['Xsec']
-        rot       = kwargs['rot']
+
+        assert 'X' in kwargs or ('x' in kwargs and 'y' in kwargs and 'z' in kwargs),\
+'X must be specified (coordinates of positions) or x,y,z must be specified'
+
+        if 'X' in kwargs:
+            Xsec = aray(kwargs['Xsec'])
+        else:
+            Xsec = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T          
+        # end if
+        
+        if 'rot' in kwargs:
+            rot = array(kwargs['rot'])
+        else:
+            rot = vstack([kwargs['rot_x'],kwargs['rot_y'],kwargs['rot_z']]).T          
+        # end if
 
         if not len(xsections)==len(scale)==offset.shape[0]:
             print 'The length of input data is inconsistent. xsections,scale,\
@@ -358,20 +368,35 @@ offset.shape[0], Xsec, rot, must all have the same size'
             sys.exit(1)
         # end if
         if 'Nctl' in kwargs:
-            Nctl = kwargs['Nctl']
+            Nctl = kwargs['Nctl']*2
             if mod(Nctl,2) == 0:
                 Nctl += 1 # Make it odd
             # end if
         else:
             Nctl = 27
         # end if
+        if 'k_span' in kwargs:
+            k_span = kwargs['k_span']
+        else:
+            k_span = 3
+
+        if 'con_file' in kwargs:
+            con_file = kwargs['con_file']
+        else:
+            mpiPrint('con_file not specified. Using default.con')
+            con_file = 'default.con'
+        # end if
+
 
         # Load in and fit them all 
         curves = []
         knots = []
         for i in xrange(len(xsections)):
             x,y = read_af2(xsections[i])
-            c = pySpline.curve('lms',x=x,y=y,Nctl=Nctl,k=4)
+            weights = ones(len(x))
+            weights[0] = -1
+            weights[-1] = -1
+            c = pySpline.curve(x=x,y=y,Nctl=Nctl,k=4,weights=weights)
             curves.append(c)
             knots.append(c.t)
         # end for
@@ -382,9 +407,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # Set the new knots in the cruve and recompute
         for i in xrange(len(xsections)):
             curves[i].t = new_knots.copy()
-            curves[i].runParameterCorrection(1000,1e-5)
+            curves[i].recompute(500)
+            # Pinch the trailing edge point
+            mid = 0.5*(curves[i].coef[0] + curves[i].coef[-1])
+            curves[i].coef[0,:] = mid
+            curves[i].coef[-1,:] = mid
         # end for
-            
+                    
         # Now split each curve at u_split which roughly coorsponds to LE
         u_split = new_knots[(Nctl+4-1)/2]
         top_curves = []
@@ -426,12 +455,25 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         # Now we can add the two surfaces
-        
-        self.surfs.append(pySpline.surface('create',coef=coef_top,ku=4,kv=3,tu=top_curves[0].t,
-                                  tv=[0,0,0,1,1,1]))
-        self.surfs.append(pySpline.surface('create',coef=coef_bot,ku=4,kv=3,tu=bot_curves[0].t,
-                                  tv=[0,0,0,1,1,1]))
+        temp = pySpline.curve(X=Xsec,k=k_span)
+        self.surfs.append(pySpline.surface('create',coef=coef_top,ku=4,kv=k_span,tu=top_curves[0].t,
+                                  tv=temp.t))
+        self.surfs.append(pySpline.surface('create',coef=coef_bot,ku=4,kv=k_span,tu=bot_curves[0].t,
+                                  tv=temp.t))
         self.nSurf =  2
+        # Cheat and make "original data" so that the edge connectivity works
+        u = linspace(0,1,3)
+        v = linspace(0,1,3)
+        [V,U] = meshgrid(u,v)
+        for i in xrange(2):
+            self.surfs[i].orig_data = True
+            self.surfs[i].X = self.surfs[i](U,V)
+            self.surfs[i].Nu = 3
+            self.surfs[i].Nv = 3
+        # end for
+        self._calcEdgeConnectivity(1e-6,1e-6)
+        self._setEdgeConnectivity()
+        self.topo.writeEdgeConnectivity(con_file)
 
         return
 
@@ -457,7 +499,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     X[:,:,1] = ac[i][j].Surface_y[:,N-1:]
                     X[:,:,2] = ac[i][j].Surface_z[:,N-1:]
 
-                    self.surfs.append(pySpline.surface('interpolate',ku=4,kv=4,X=X))
+                    self.surfs.append(pySpline.surface(ku=4,kv=4,X=X))
                     self.nSurf += 1
                 # end for (subcomp)
 
@@ -492,8 +534,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         X[j+1,N:,2] = ac[i][j].Surface_z[1,N:][::-1]
                     # end if
                 # end for (sub Comp)
-                self.surfs.append(pySpline.surface(\
-                        'lms',ku=2,kv=4,X=X,Nctlu=nSubComp+1,Nctlv=17))
+                self.surfs.append(pySpline.surface(ku=2,kv=4,X=X,
+                                                   Nctlu=nSubComp+1,Nctlv=17))
                 self.nSurf += 1
             # end if (lifting/body type)
         # end if (Comp Loop)
@@ -1324,8 +1366,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         if len(self.ref_axis)>0 and ref_axis==True:
             for r in xrange(len(self.ref_axis)):
-                #axis_name = 'ref_axis%d'%(r)
-                axis_name = 'axis_copy.dat'
+                axis_name = 'ref_axis%d'%(r)
                 self.ref_axis[r].writeTecplot(f,axis_name)
             # end for
         # end if
@@ -1443,7 +1484,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             icoord += 2
         # end for
 
-        handle.write('Zone N= %d ,E= %d\n'%(2*num_vectors, num_vectors) )
+        handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
         handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
 
         for n in xrange(3):
@@ -1826,14 +1867,14 @@ class ref_axis(object):
         # end if
 
         # Create the splines for the axis
- 
-        self.xs    = pySpline.curve('interpolate',X=X,k=2,no_print=True)
-        self.rotxs = pySpline.curve('interpolate',x=self.rot_x,s=self.xs.s,k=2,no_print=True)
-        self.rotys = pySpline.curve('interpolate',x=self.rot_y,s=self.xs.s,k=2,no_print=True)
-        self.rotzs = pySpline.curve('interpolate',x=self.rot_z,s=self.xs.s,k=2,no_print=True)
+            
+        self.xs    = pySpline.curve(X=X,k=2,no_print=True)
+        self.rotxs = pySpline.curve(x=self.rot_x,s=self.xs.s,k=2,no_print=True)
+        self.rotys = pySpline.curve(x=self.rot_y,s=self.xs.s,k=2,no_print=True)
+        self.rotzs = pySpline.curve(x=self.rot_z,s=self.xs.s,k=2,no_print=True)
 
         self.scale = ones(self.xs.Nctl,'D')
-        self.scales = pySpline.curve('interpolate',x=self.scale,s=self.xs.s,k=2,no_print=True)
+        self.scales = pySpline.curve(x=self.scale,s=self.xs.s,k=2,no_print=True)
         self.links_s = []
         self.links_x = []
         self.con_type = None
@@ -1873,6 +1914,23 @@ class ref_axis(object):
         coef_list = unique(coef_list) #unique is in geo_utils
         coef_list.sort()
 
+        # More straight forward algorihtim
+        self.coef_list = coef_list
+        self.surf_ids  = surf_ids
+        vec = [1000,0,0]
+        for icoef in coef_list: 
+            isurf = topo.g_index[icoef][0][0]
+            u     = topo.g_index[icoef][0][1]
+            v     = topo.g_index[icoef][0][2]
+            pt = surfs[isurf].coef[u,v]
+            ray = pySpline.curve(k=2,t=[0,0,0.5,1,1],coef=[pt-vec,pt,pt+vec])
+            res = self.xs.projectCurve(ray)
+            s = res[0]
+            D = pt - self.xs(s)
+            self.links_s.append(s)
+            self.links_x.append(D)
+        # end for
+
         # Now we must determine how the surfaces are oriented wrt the axis
         # We also must determine (based on the design groups) how to attach the axis
 
@@ -1880,128 +1938,128 @@ class ref_axis(object):
         # 1. Do until all surfaces accounted for:
         # 2.    -> Take the first surface and determine its orientation wrt the axis
         # 3.    -> The the perpendicualar design group attach in the same manner
-        surf_ids_copy =copy.copy(surf_ids)
-        reordered_coef_list = []
-        global_counter = 0 
+  #       surf_ids_copy =copy.copy(surf_ids)
+#         reordered_coef_list = []
+#         global_counter = 0 
         
-        while len(surf_ids_copy) > 0:
-            isurf = surf_ids_copy.pop(0)
-            dir_type = directionAlongSurface(surfs[isurf],self.xs)
+#         while len(surf_ids_copy) > 0:
+#             isurf = surf_ids_copy.pop(0)
+#             dir_type = directionAlongSurface(surfs[isurf],self.xs)
           
-            surf_list = []
-            dir_list = []
-            surf_list.append(isurf)
-            dir_list.append(dir_type)
-            if dir_type in [0,1]:
-                dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
-            else:
+#             surf_list = []
+#             dir_list = []
+#             surf_list.append(isurf)
+#             dir_list.append(dir_type)
+#             if dir_type in [0,1]:
+#                 dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
+#             else:
 
-                dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
-            # Find all other surfaces/edges with this design group
-            for isurf in set(surf_ids_copy).difference(set(surf_list)):
-                #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
-                if topo.edges[topo.edge_link[isurf][0]].dg == dg_parallel:
-                    dir_type = directionAlongSurface(surfs[isurf],self.xs)
-                    surf_ids_copy.remove(isurf)
-                    surf_list.append(isurf)
-                    dir_list.append(dir_type)
-                elif topo.edges[topo.edge_link[isurf][2]].dg == dg_parallel:
-                    dir_type = directionAlongSurface(surfs[isurf],self.xs)
-                    surf_ids_copy.remove(isurf)
-                    surf_list.append(isurf)
-                    dir_list.append(dir_type)
-#             # end for
+#                 dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
+#             # Find all other surfaces/edges with this design group
+#             for isurf in set(surf_ids_copy).difference(set(surf_list)):
+#                 #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
+#                 if topo.edges[topo.edge_link[isurf][0]].dg == dg_parallel:
+#                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
+#                     surf_ids_copy.remove(isurf)
+#                     surf_list.append(isurf)
+#                     dir_list.append(dir_type)
+#                 elif topo.edges[topo.edge_link[isurf][2]].dg == dg_parallel:
+#                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
+#                     surf_ids_copy.remove(isurf)
+#                     surf_list.append(isurf)
+#                     dir_list.append(dir_type)
+# #             # end for
       
-            # Now we can simply attach all the surfaces in surf list according to the directions 
+#             # Now we can simply attach all the surfaces in surf list according to the directions 
             
-            # N is the number of parallel control points
-            if dir_list[0] == 0:
-                N = surfs[surf_list[0]].Nctlu
-            else:
-                N = surfs[surf_list[0]].Nctlv
-            # end if
+#             # N is the number of parallel control points
+#             if dir_list[0] == 0:
+#                 N = surfs[surf_list[0]].Nctlu
+#             else:
+#                 N = surfs[surf_list[0]].Nctlv
+#             # end if
                 
-            s = zeros(N)
+#             s = zeros(N)
        
-            for i in xrange(N):
-                section_coef_list = []
-                for j in xrange(len(surf_list)):
-                    isurf = surf_list[j]
-                    if dir_list[j] == 0:
-                        section_coef_list.extend(surfs[isurf].coef[i,:])
-                    elif dir_list[j] == 1:
-                        section_coef_list.extend(surfs[isurf].coef[-1-i,:])
-                    elif dir_list[j] == 2:
-                        section_coef_list.extend(surfs[isurf].coef[:,i])
-                    else:
-                        section_coef_list.extend(surfs[isurf].coef[:,-1-i])
-                    # end if
-                # end if
-                # Average coefficients
-                pt = average(section_coef_list,axis=0)
-                # This effectively averages the coefficients
-                s[i],D = self.xs.projectPoint(pt)
-            # end if
+#             for i in xrange(N):
+#                 section_coef_list = []
+#                 for j in xrange(len(surf_list)):
+#                     isurf = surf_list[j]
+#                     if dir_list[j] == 0:
+#                         section_coef_list.extend(surfs[isurf].coef[i,:])
+#                     elif dir_list[j] == 1:
+#                         section_coef_list.extend(surfs[isurf].coef[-1-i,:])
+#                     elif dir_list[j] == 2:
+#                         section_coef_list.extend(surfs[isurf].coef[:,i])
+#                     else:
+#                         section_coef_list.extend(surfs[isurf].coef[:,-1-i])
+#                     # end if
+#                 # end if
+#                 # Average coefficients
+#                 pt = average(section_coef_list,axis=0)
+#                 # This effectively averages the coefficients
+#                 s[i],D = self.xs.projectPoint(pt)
+#             # end if
 
-            # Now we can attach these with links if they are in coef_list
-            for i in xrange(N):
-                for j in xrange(len(surf_list)):
-                    isurf = surf_list[j]
-                    if dir_list[j] == 0:
-                        for k in xrange(surfs[isurf].Nctlv):
-                            global_index = topo.l_index[isurf][i,k]
-                            if global_index in coef_list:
-                                D = surfs[isurf].coef[i,k] - self.xs(s[i])
-                                #M = self.getRotMatrixGlobalToLocal(s[i])
-                                #D = dot(M,D) #Rotate to local frame
-                                self.links_s.append(s[i])
-                                self.links_x.append(D)
-                                reordered_coef_list.append(global_index)
-                            # end if
-                        # end for
-                    elif dir_list[j] == 1:
-                        for k in xrange(surfs[isurf].Nctlv):
-                            global_index = topo.l_index[isurf][-1-i,k]
-                            if global_index in coef_list:
-                                D = surfs[isurf].coef[-1-i,k] - self.xs(s[i])
-                                #M = self.getRotMatrixGlobalToLocal(s[i])
-                                #D = dot(M,D) #Rotate to local frame
-                                self.links_s.append(s[i])
-                                self.links_x.append(D)
-                                reordered_coef_list.append(global_index)
-                            # end if
-                        # end for
-                    # end if
-                    elif dir_list[j] == 2:
-                        for k in xrange(surfs[isurf].Nctlu):
-                            global_index = topo.l_index[isurf][k,i]
-                            if global_index in coef_list:
-                                D = surfs[isurf].coef[k,i] - self.xs(s[i])
-                                #M = self.getRotMatrixGlobalToLocal(s[i])
-                                #D = dot(M,D) #Rotate to local frame
-                                self.links_s.append(s[i])
-                                self.links_x.append(D)
-                                reordered_coef_list.append(global_index)
-                            # end if
-                        # end for
-                    elif dir_list[j] == 3:
-                        for k in xrange(surfs[isurf].Nctlu):
-                            global_index = topo.l_index[isurf][k,-1-i]
-                            if global_index in coef_list:
-                                D = surfs[isurf].coef[k,-1-i] - self.xs(s[i])
-                                #M = self.getRotMatrixGlobalToLocal(s[i])
-                                #D = dot(M,D) #Rotate to local frame
-                                self.links_s.append(s[i])
-                                self.links_x.append(D)
-                                reordered_coef_list.append(global_index)
-                            # end if
+#             # Now we can attach these with links if they are in coef_list
+#             for i in xrange(N):
+#                 for j in xrange(len(surf_list)):
+#                     isurf = surf_list[j]
+#                     if dir_list[j] == 0:
+#                         for k in xrange(surfs[isurf].Nctlv):
+#                             global_index = topo.l_index[isurf][i,k]
+#                             if global_index in coef_list:
+#                                 D = surfs[isurf].coef[i,k] - self.xs(s[i])
+#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+#                                 #D = dot(M,D) #Rotate to local frame
+#                                 self.links_s.append(s[i])
+#                                 self.links_x.append(D)
+#                                 reordered_coef_list.append(global_index)
+#                             # end if
+#                         # end for
+#                     elif dir_list[j] == 1:
+#                         for k in xrange(surfs[isurf].Nctlv):
+#                             global_index = topo.l_index[isurf][-1-i,k]
+#                             if global_index in coef_list:
+#                                 D = surfs[isurf].coef[-1-i,k] - self.xs(s[i])
+#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+#                                 #D = dot(M,D) #Rotate to local frame
+#                                 self.links_s.append(s[i])
+#                                 self.links_x.append(D)
+#                                 reordered_coef_list.append(global_index)
+#                             # end if
+#                         # end for
+#                     # end if
+#                     elif dir_list[j] == 2:
+#                         for k in xrange(surfs[isurf].Nctlu):
+#                             global_index = topo.l_index[isurf][k,i]
+#                             if global_index in coef_list:
+#                                 D = surfs[isurf].coef[k,i] - self.xs(s[i])
+#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+#                                 #D = dot(M,D) #Rotate to local frame
+#                                 self.links_s.append(s[i])
+#                                 self.links_x.append(D)
+#                                 reordered_coef_list.append(global_index)
+#                             # end if
+#                         # end for
+#                     elif dir_list[j] == 3:
+#                         for k in xrange(surfs[isurf].Nctlu):
+#                             global_index = topo.l_index[isurf][k,-1-i]
+#                             if global_index in coef_list:
+#                                 D = surfs[isurf].coef[k,-1-i] - self.xs(s[i])
+#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+#                                 #D = dot(M,D) #Rotate to local frame
+#                                 self.links_s.append(s[i])
+#                                 self.links_x.append(D)
+#                                 reordered_coef_list.append(global_index)
+#                             # end if
 
 
-                # end for
-            # end for
-        # end for
-        self.coef_list = reordered_coef_list
-        self.surf_ids  = surf_ids
+#                 # end for
+#             # end for
+#         # end for
+#         self.coef_list = reordered_coef_list
+#         self.surf_ids  = surf_ids
         
     def update(self):
         
@@ -2779,7 +2837,7 @@ if __name__ == '__main__':
 # Backup
 
 #                 Xchord_line =chord_line.getValue([0.10,1.0])
-#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 chord_line = pySpline.curve(X=Xchord_line,k=2)
 #                 tip_line = chord_line.getValue(linspace(0,1,N))
 #                 #print 'tip_line:',tip_line
 #                 for ii in xrange(2): # up/low side loop
@@ -2807,7 +2865,7 @@ if __name__ == '__main__':
 #                         dx2 = D+V
 #                         print 'D,V:',D,V
 #                         print 'dx2:',dx2
-#                         temp_spline = pySpline.curve('interpolate',X=X_input,
+#                         temp_spline = pySpline.curve(X=X_input,
 #                                                              k=4,dx1=dx1,dx2=dx2)
 
 #                         Xnew[j] =  temp_spline.getValue(linspace(0,1,25))
@@ -4061,7 +4119,7 @@ if __name__ == '__main__':
 #                 # Create a chord line representation
 
 #                 Xchord_line = array([X[0,0,start],X[0,-1,start]])
-#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 chord_line = pySpline.curve(X=Xchord_line,k=2)
 
 #                 for j in xrange(N): # This is for the Data points
 
@@ -4087,7 +4145,7 @@ if __name__ == '__main__':
  
 #                         # Now generate the line and extract the points we want
 #                         temp_spline = pySpline.curve(\
-#                             'interpolate',X=X[0,j,start:end,:],k=4,\
+#                             X=X[0,j,start:end,:],k=4,\
 #                                 dx1=dx1,dx2=dx2)
                    
 #                         Xnew[0,j,start2:end2,:] = \
@@ -4108,7 +4166,7 @@ if __name__ == '__main__':
 #                         dx2 = V-D
 
 #                         temp_spline = pySpline.curve(\
-#                             'interpolate',X=X[1,j,start:end,:],k=4,\
+#                             X=X[1,j,start:end,:],k=4,\
 #                                 dx1=dx1,dx2=dx2)
 #                         Xnew[1,j,start2:end2,:] = \
 #                             temp_spline.getValueV(section_spacing[i])
@@ -4116,12 +4174,12 @@ if __name__ == '__main__':
 #                     else:
                             
 #                         temp_spline = pySpline.curve(\
-#                             'interpolate',X=X[0,j,start:end,:],k=2)
+#                             X=X[0,j,start:end,:],k=2)
 #                         Xnew[0,j,start2:end2,:] = \
 #                             temp_spline.getValueV(section_spacing[i])
 
 #                         temp_spline = pySpline.curve(\
-#                             'interpolate',X=X[1,j,start:end,:],k=2)
+#                             X=X[1,j,start:end,:],k=2)
 #                         Xnew[1,j,start2:end2,:] = \
 #                             temp_spline.getValueV(section_spacing[i])
 #                     # end if
@@ -4167,7 +4225,7 @@ if __name__ == '__main__':
 
 #                         # Now generate the line and extract the points we want
 #                         temp_spline = pySpline.curve(\
-#                             'interpolate',X=X[0,j,start:end,:],k=4,\
+#                             X=X[0,j,start:end,:],k=4,\
 #                                 dx1=dx1,dx2=dx2)
 #                         Xnew[0,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
 
@@ -4181,7 +4239,7 @@ if __name__ == '__main__':
 
 #                         # Now generate the line and extract the points we want
 #                         temp_spline = pySpline.curve(\
-#                             'interpolate',X=X[1,j,start:end,:],k=4,\
+#                             X=X[1,j,start:end,:],k=4,\
 #                                 dx1=dx1,dx2=dx2)
 #                         Xnew[1,j,start2:end2,:] =  temp_spline.getValueV(section_spacing[i])
 #                     # end if
@@ -4206,9 +4264,9 @@ if __name__ == '__main__':
 #             rotnew  = zeros((tot_sec,3))
 
 #             for j in xrange(N):
-#                 temp_spline = pySpline.curve('interpolate',X=X[0,j,:,:],k=2)
+#                 temp_spline = pySpline.curve(X=X[0,j,:,:],k=2)
 #                 Xnew[0,j,:,:] = temp_spline.getValueV(section_spacing[0])
-#                 temp_spline = pySpline.curve('interpolate',X=X[1,j,:,:],k=2)
+#                 temp_spline = pySpline.curve(X=X[1,j,:,:],k=2)
 #                 Xnew[1,j,:,:] = temp_spline.getValueV(section_spacing[0])
 #             # end for
 #             Nctlv = nsections
@@ -4236,7 +4294,7 @@ if __name__ == '__main__':
 #                     x1 = X[0,j,-1]
 #                     x2 = X[1,N-j-1,-1]
 
-#                     temp = pySpline.curve('interpolate',\
+#                     temp = pySpline.curve(\
 #                                                       k=2,X=array([x1,x2]))
 #                     X2[j,:,:] = temp.getValueV(v)
 
@@ -4244,7 +4302,7 @@ if __name__ == '__main__':
 #                 X2[0,:] = X[0,0,-1]
 #                 X2[-1,:] = X[1,0,-1]
                 
-#                 self.surfs.append(pySpline.surface('lms',ku=4,kv=4,\
+#                 self.surfs.append(pySpline.surface(,ku=4,kv=4,\
 #                                                            X=X2,Nctlv=spacing,\
 #                                                            *args,**kwargs))
 #             elif end_type == 'rounded':
@@ -4277,15 +4335,15 @@ if __name__ == '__main__':
             
 #                 # Create a chord line representation of the end section
 #                 Xchord_line = array([X[0,0,-1],X[0,-1,-1]])
-#                 end_chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 end_chord_line = pySpline.curve(X=Xchord_line,k=2)
 
 #                 # Create a chord line representation of the tip line
 #                 Xchord_line = array([X[0,0,-1] + dist_max*n_front*end_scale,
 #                                      X[0,-1,-1] + dist_max*n_back*end_scale])
                 
-#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 chord_line = pySpline.curve(X=Xchord_line,k=2)
 #                 Xchord_line =chord_line.getValueV([0.10,1.0])
-#                 chord_line = pySpline.curve('interpolate',X=Xchord_line,k=2)
+#                 chord_line = pySpline.curve(X=Xchord_line,k=2)
 #                 tip_line = chord_line.getValueV(linspace(0,1,N))
 #                 # Now Get the front, back top and bottom guide curves
 #                 #-------- Front
@@ -4298,7 +4356,7 @@ if __name__ == '__main__':
 #                 dx1 = dot(dv,V) * dv * end_scale
 #                 dx2 = D+V
        
-#                 front_spline = pySpline.curve('interpolate',X=X_input,
+#                 front_spline = pySpline.curve(X=X_input,
 #                                                              k=4,dx1=dx1,dx2=dx2)
 
 #                 #-------- Back
@@ -4309,7 +4367,7 @@ if __name__ == '__main__':
 #                 D = end_chord_line.getValue(1)-chord_line.getValue(1)
 #                 dx1 = dot(dv,V) * dv * end_scale
 #                 dx2 = D+V
-#                 end_spline = pySpline.curve('interpolate',X=X_input,
+#                 end_spline = pySpline.curve(X=X_input,
 #                                                     k=4,dx1=dx1,dx2=dx2)
 
 #                 #-------- Top
@@ -4320,7 +4378,7 @@ if __name__ == '__main__':
 #                 D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
 #                 dx1 = dot(dv,V) * dv * end_scale
 #                 dx2 = D+V
-#                 top_spline = pySpline.curve('interpolate',X=X_input,
+#                 top_spline = pySpline.curve(X=X_input,
 #                                                              k=4,dx1=dx1,dx2=dx2)
 
 #                 #-------- Bottom
@@ -4331,7 +4389,7 @@ if __name__ == '__main__':
 #                 D = end_chord_line.getValue(.5)-chord_line.getValue(.5)
 #                 dx1 = dot(dv,V) * dv * end_scale
 #                 dx2 = D+V
-#                 bottom_spline = pySpline.curve('interpolate',X=X_input,
+#                 bottom_spline = pySpline.curve(X=X_input,
 #                                                              k=4,dx1=dx1,dx2=dx2)
 
 #                 Ndata = 15
@@ -4386,10 +4444,10 @@ if __name__ == '__main__':
 #                 # end for
 #                 Xnew[:,:,0,:] = X[:,:,-1,:]
 #                 # Xnew[:,:,-1,:] = tip_line
-#                 self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[0],
-#                                                        Nctlv=4, *args,**kwargs))
+#                 self.surfs.append(pySpline.surface(ku=4,kv=4,X=Xnew[0],
+#                                                       Nctlv=4, *args,**kwargs))
                 
-#                 self.surfs.append(pySpline.surface('lms',ku=4,kv=4,X=Xnew[1],
+#                 self.surfs.append(pySpline.surface(ku=4,kv=4,X=Xnew[1],
 #                                                        Nctlv=4, *args,**kwargs))
 
 #         self.nSurf = len(self.surfs) # And last but not least
