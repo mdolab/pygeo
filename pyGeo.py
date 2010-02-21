@@ -3,15 +3,14 @@ pyGeo
 
 pyGeo is a (fairly) complete geometry surfacing engine. It performs
 multiple functions including producing surfaces from cross sections,
-fitting groups of surfaces with continutity constraints and has
-built-in design variable handling. The actual b-spline surfaces are of
-the pySpline surface type. See the individual functions for
-additional information
+fitting surfaces and has built-in design variable handling. The actual
+b-spline surfaces are of the pySpline surface type. See the individual
+functions for additional information
 
 Copyright (c) 2009 by G. Kenway
 All rights reserved. Not to be used for commercial purposes.
 Revision: 1.0   $Date: 26/05/2009$
-s
+
 
 Developers:
 -----------
@@ -22,8 +21,6 @@ History
 -------
 	v. 1.0 - Initial Class Creation (GKK, 2009)
 '''
-
-__version__ = '$Revision: $'
 
 # =============================================================================
 # Standard Python modules
@@ -56,10 +53,6 @@ exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
 # =============================================================================
 class pyGeo():
 	
-    '''
-    Geo object class
-    '''
-
     def __init__(self,init_type,*args, **kwargs):
         
         '''Create an instance of the geometry object. The initialization type,
@@ -81,33 +74,21 @@ class pyGeo():
         from an iges file to create splined surfaes.
 
         
-        'lifting_surface',xsections=airfoil_list,scale=chord,offset=offset 
-         Xsec=X,rot=rot
+        'lifting_surface',<arguments listed below>
 
          Mandatory Arguments:
               
               xsections: List of the cross section coordinate files
-              scsale   : List of the scaling factor for cross sections
+              scale    : List of the scaling factor for cross sections
               offset   : List of x-y offset to apply BEFORE scaling
               Xsec     : List of spatial coordinates as to the placement of 
                          cross sections
+                        OR x=x,y=y and z=z -> coordinates individually
               rot      : List of x-y-z rotations to apply to cross sections
-
-        Optional Arguments:
-
-              breaks   : List of ZERO-BASED index locations where to break 
-                         the wing into separate surfaces
-              nsections: List of length breaks+1 which specifies the number
-                         of control points in that section
-              section_spacing : List of lenght breaks + 1 containing lists of
-                         length nections which specifiy the spanwise spacing 
-                         of control points
-              fit_type : strig of either 'lms' or 'interpolate'. Used to 
-                         initialize the surface patches
-              Nctlu    : Number of control points in the chord-wise direction
-              Nfoil    : Common number of data points extracted from cross
-                         section file. Points are linearly interpolated to 
-                         match this value
+                        OR rot_x=rot_x,rot_y=rot_y or rot_z=rot_z
+              Nctl     : Number of control points on each side, chord-wise
+              k_span   : The spline order in span-wise direction
+              con_file : The file name for the con file
         
         'acdt_geo',acdt_geo=object : Load in a pyGeometry object and
         use the aircraft components to create surfaces.
@@ -541,7 +522,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end if (Comp Loop)
 
     def setSymmetry(self,sym_type):
-        '''Set the symmetry flag and symmetry normal for this geometry object'''
+        '''
+        Set the symmetry flag and symmetry normal for this geometry object
+        Required:
+           sym_type: string, \'xy\' or \'yz\' or \'xz\'
+        Returns
+           None
+        '''
         if sym_type == 'xy':
             self.sym = 'xy'
             self.sym_normal = [0,0,1]
@@ -563,7 +550,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
 # ----------------------------------------------------------------------    
 
     def _calcEdgeConnectivity(self,node_tol,edge_tol):
-
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
         
@@ -610,28 +596,42 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
             
     def printEdgeConnectivity(self):
+        '''
+        Print the Edge connectivity to the screen
+        Required:
+            None
+        Returns:
+            None
+            '''
         self.topo.printEdgeConnectivity()
         return
 
     def doEdgeConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
-        '''This is the ONLY function that is available to the user for
-        edge connectivity functionality pyGeo automatically creates
-        the con file from scratch if the specified con file doesn't
-        exists, and if it does, read it.'''
-
+        '''
+        This is the only public edge connectivity function. 
+        If file_name exists it loads the file OR it calculates the connectivity
+        and saves to that file.
+        Required:
+            file_name: filename for con file
+        Optional:
+            node_tol: The tolerance for identical nodes
+            edge_tol: The tolerance for midpoints of edge being identical
+        Returns:
+            None
+            '''
         if os.path.isfile(file_name):
             mpiPrint('Reading Edge Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo = Topology(file=file_name)
             self._setEdgeConnectivity()
             if not self.init_type == 'iges':
-                self.propagateKnotVectors()
+                self._propagateKnotVectors()
             # end if
         else:
             self._calcEdgeConnectivity(node_tol,edge_tol)
             self.topo.writeEdgeConnectivity(file_name)
             self._setEdgeConnectivity()
             if not self.init_type == 'iges':
-                self.propagateKnotVectors()
+                self._propagateKnotVectors()
             # end if
         # end if
 
@@ -646,8 +646,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
         nDG += 1
         self.nDG = nDG
         
-    def propagateKnotVectors(self):
-
+    def _propagateKnotVectors(self):
+        ''' Propage the knot vectors to make consistent'''
         # First get the number of design groups
         nDG = -1
         ncoef = []
@@ -730,7 +730,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         return
 
-    def getSurfaceFromEdge(self,edge):
+    def _getSurfaceFromEdge(self,edge):
         '''Determine the surfaces and their edge_link index that points to edge iedge'''
         surfaces = []
         for isurf in xrange(self.nSurf):
@@ -776,8 +776,11 @@ offset.shape[0], Xsec, rot, must all have the same size'
 # ----------------------------------------------------------------------
             
     def addRefAxis(self,surf_ids,*args,**kwargs):
-        '''Add surf_ids surfacs to a new reference axis defined by X and
-        rot with nsection values'''
+        '''Add a reference axis to the Geometry Object
+        Required:
+            surf_ids: List of surfaces to use for this ref axis
+            See the ref_axis class for required kwargs
+        '''
         mpiPrint('Adding ref axis...',self.NO_PRINT)
         ra = ref_axis(surf_ids,self.surfs,self.topo,*args,**kwargs)
         self.ref_axis.append(ra)
@@ -804,7 +807,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 axis1 = self.ref_axis_con[i][0]
                 axis2 = self.ref_axis_con[i][1]
 
-                self.ref_axis[axis1].update()
+                self.ref_axis[axis1]._update()
                 s = self.ref_axis[axis2].base_point_s
                 D = self.ref_axis[axis2].base_point_D
                 M = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
@@ -826,10 +829,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     self.ref_axis[axis2].end_point = X0 +\
                         D*self.ref_axis[axis1].scales(s)
                 # end if
-                self.ref_axis[axis2].update()
+                self.ref_axis[axis2]._update()
         else:
             for r in xrange(len(self.ref_axis)):
-                self.ref_axis[r].update()
+                self.ref_axis[r]._update()
             # end for
        
         # Third, update the coefficients (from global DV changes)
@@ -878,7 +881,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 axis1 = self.ref_axis_con[i][0]
                 axis2 = self.ref_axis_con[i][1]
 
-                self.ref_axis[axis1].update()
+                self.ref_axis[axis1]._update()
                 s = self.ref_axis[axis2].base_point_s
                 D = self.ref_axis[axis2].base_point_D
                 M = self.ref_axis[axis1].getRotMatrixLocalToGlobal(s)
@@ -900,10 +903,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     self.ref_axis[axis2].end_point = X0 +\
                         D*self.ref_axis[axis1].scales(s)
                 # end if
-                self.ref_axis[axis2].update()
+                self.ref_axis[axis2]._update()
         else:
             for r in xrange(len(self.ref_axis)):
-                self.ref_axis[r].update()
+                self.ref_axis[r]._update()
             # end for
        
         # Third, update the coefficients (from global DV changes)
@@ -928,8 +931,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
          
     def update(self):
-        '''Run the update coefficients command and then set the control
-        points'''
+        '''
+        Update the coefficients after a design variable change
+        Required:
+            None
+        Returns:
+            None
+            '''
         self._updateCoef()
         self._updateSurfaceCoef()
         return
@@ -948,11 +956,14 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def getSizes( self ):
         '''
-        Get the sizes:
-        - The number of global design variables
-        - The number of normal design variables
-        - The number of local design variables
-        - The number of control points
+        Get the design variable sizes:
+        Requires: 
+            None
+        Returns:
+            The number of global design variables
+            The number of normal design variables
+            The number of local design variables
+            The number of control points
         '''
         
         # Initialize the jacobian
@@ -987,10 +998,16 @@ offset.shape[0], Xsec, rot, must all have the same size'
     def computeSurfaceDerivative(self,index=None):
         ''' Compute the product of the derivative of the surface
         points w.r.t.  the control points and the derivative of the
-        control points w.r.t.  the design variables for atached
+        control points w.r.t. the design variables for atached
         surface index. This gives the derivative of the surface points
         w.r.t. the design variables: a Jacobian matrix.
-        '''
+
+        Required: 
+            None
+        Optional:
+            index: is a list of the attached surfaces to compute 
+                   the derivative for
+                   '''
         
         if index == None:
             indices = range(len(self.attached_surfaces))
@@ -1126,8 +1143,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
         return
 
     def getSurfacePoints(self,index):
-
-        '''Function to return ALL surface points for attached surface index'''
+        '''
+        Return all the surface points for attached surface with index index
+        Required:
+            index: the index for attached surface
+        Returns:
+            coordinates: an aray of the surface points
+            '''
 
         patchID = self.attached_surfaces[index].patchID
         u       = self.attached_surfaces[index].u
@@ -1142,7 +1164,19 @@ offset.shape[0], Xsec, rot, must all have the same size'
     def addGeoDVNormal(self,dv_name,lower,upper,surf=None,point_select=None,\
                            overwrite=False):
 
-        '''Add a normal local design variable group.'''
+        '''Add a normal local design variable group.
+        Required:
+            dv_name: a unquie name for this design variable (group)
+            lower: the lower bound for this design variable
+            upper: The upper bound for this design variable
+            surf: The surface to apply the design variables
+        Optional:
+            point_select: A point_select class to select control points
+            overwrite: A boolean flag as to whether this design variable
+                       overwrites other local variables already set
+        Returns:
+            None
+            '''
 
         if surf == None:
             print 'Error: A surface must be specified with surf = <surf_id>'
@@ -1207,9 +1241,19 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def addGeoDVLocal(self,dv_name,lower,upper,surf=None,point_select=None,\
                           overwrite=False):
-
-        '''Add a general local design variable group.'''
-
+        '''Add a local local design variable group.
+        Required:
+            dv_name: a unquie name for this design variable (group)
+            lower: the lower bound for this design variable
+            upper: The upper bound for this design variable
+            surf: The surface to apply the design variables
+        Optional:
+            point_select: A point_select class to select control points
+            overwrite: A boolean flag as to whether this design variable
+                       overwrites other local or normal variables already set
+        Returns:
+            None
+            '''
         if surf == None:
             print 'Error: A surface must be specified with surf = <surf_id>'
             sys.exit(1)
@@ -1273,14 +1317,30 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
 
     def addGeoDVGlobal(self,dv_name,value,lower,upper,function,useit=True):
-        '''Add a global design variable'''
+        '''Add a global design variable
+        Required:
+            dv_name: a unquie name for this design variable (group)
+            lower: the lower bound for this design variable
+            upper: The upper bound for this design variable
+            function: the python function for this design variable
+        Optional:
+            use_it: Boolean flag as to weather to ignore this design variable
+        Returns:
+            None
+            '''
         self.DV_listGlobal.append(geoDVGlobal(\
                 dv_name,value,lower,upper,function,useit))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
         return
 
-    def addGeoDVs_pyOpt( self, opt_prob, dvNum = 0 ):
-        '''Add the pyGeo variables to pyOpt'''
+    def addGeoDVs_pyOpt( self, opt_prob ):
+        '''
+        Add the pyGeo variables to pyOpt
+        Required:
+            opt_prob: The optimization problem class
+        Returns:
+            None
+            '''
         
         # Add the global, normal and local design variables
         for dvList in [ self.DV_listGlobal, self.DV_listNormal, self.DV_listLocal ]:
@@ -1299,6 +1359,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
         '''
         Given the value of x, set all the internal design variables.
         The surface control points are not updated.
+        Required:
+            x: Snopt design variables
+        Optional:
+            dvNum: Starting integer offset for x
+        Returns:
+            None
         '''
 
         # Set the global, normal and local design variables
@@ -1319,11 +1385,25 @@ offset.shape[0], Xsec, rot, must all have the same size'
 # ----------------------------------------------------------------------
 
     def writeTecplot(self,file_name,orig=False,surfs=True,coef=True,
-                     edges=False,ref_axis=False,links=False,
+                     ref_axis=False,links=False,
                      directions=False,surf_labels=False,edge_labels=False,size=None,
                      node_labels=False):
 
-        '''Write the pyGeo Object to Tecplot'''
+        '''Write the pyGeo Object to Tecplot dat file
+        Required:
+            file_name: The filename for the output file
+        Optional:
+            orig: boolean, write the original data
+            surfs: boolean, write the interpolated surfaces 
+            coef: boolean, write the control points
+            ref_axis: boolean, write the reference axis
+            links: boolean, write the coefficient links
+            directions: boolean, write the surface direction indicators
+            surf_labels: boolean, write the surface labels
+            edge_labels: boolean, write the edge labels
+            node_lables: boolean, write the node labels
+            size: A lenght parameter to control the surface interpolation size
+            '''
 
         # Open File and output header
         #if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
@@ -1367,7 +1447,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         if len(self.ref_axis)>0 and ref_axis==True:
             for r in xrange(len(self.ref_axis)):
                 axis_name = 'ref_axis%d'%(r)
-                self.ref_axis[r].writeTecplot(f,axis_name)
+                self.ref_axis[r]._writeTecplot(f,axis_name)
             # end for
         # end if
 
@@ -1377,7 +1457,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         if len(self.ref_axis)>0 and links==True:
             for r in xrange(len(self.ref_axis)):
-                self.writeTecplotLinks(f,self.ref_axis[r])
+                self._writeTecplotLinks(f,self.ref_axis[r])
             # end for
         # end if
               
@@ -1464,7 +1544,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         
         return
 
-    def writeTecplotLinks(self,handle,ref_axis):
+    def _writeTecplotLinks(self,handle,ref_axis):
         '''Write out the surface links. '''
 
         num_vectors = len(ref_axis.links_s)
@@ -1500,7 +1580,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
         return
 
     def writeIGES(self,file_name):
-        '''write the surfaces to IGES format'''
+        '''
+        Write the surface to IGES format
+        Required:
+            file_name: filname for writing the iges file
+        Returns:
+            None
+            '''
         f = open(file_name,'w')
 
         #Note: Eventually we may want to put the CORRECT Data here
@@ -1535,7 +1621,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
     # ----------------------------------------------------------------------
 
     def getCoordinatesFromFile(self,file_name):
-        '''Get a list of coordinates from a file - useful for testing'''
+        '''Get a list of coordinates from a file - useful for testing
+        Required:
+            file_name: filename for file
+        Returns:
+            coordinates: list of coordinates
+            '''
 
         f = open(file_name,'r')
         coordinates = []
@@ -1553,17 +1644,17 @@ offset.shape[0], Xsec, rot, must all have the same size'
         '''Attach a list of surface points to either all the pyGeo surfaces
         of a subset of the list of surfaces provided by patch_list.
 
-        Arguments:
+        Required:
              coordinates   :  a 3 by nPts numpy array
+        Optional
              patch_list    :  list of patches to locate next to nodes,
                               None means all patches will be used
              Nu,Nv         :  parameters that control the temporary
-                              discretization of each surface        
+                              discretization of each surface     
+             force_domain  : Force the u/v values to be in the 0->1 range
              
         Returns:
-             dist          :  distance between mesh location and point
-             patchID       :  patch on which each u,v coordinate is defined
-             uv            :  u,v coordinates in a 2 by nPts array.
+            None: The surface is added the attached_surface list
 
         Modified by GJK to include a search on a subset of surfaces.
         This is useful for associating points in a mesh where points may
@@ -1672,16 +1763,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # Now we can do a secondary newton search on the actual surface
         diff = zeros(nPts)
         for i in xrange(nPts):
-#            print 'before:',uv[i,0],uv[i,1]
             uv[i,0],uv[i,1],D = self.surfs[patchID[i]].projectPoint(coordinates[:,i],u=uv[i,0],v=uv[i,1])
-#            print 'after :',uv[i,0],uv[i,1]
             diff[i] = D[0]**2 + D[1]**2 + D[2] **2
-#             if diff[i] > 2:
-#                 print '-------------------'
-#                 print 'diff  :',diff[i]
-#                 print 'coor:',coordinates[:,i]
-#                 print 'surf:',self.surfs[patchID[i]](uv[i,0],uv[i,1])
-#                 print '-------------------'
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()
         mpiPrint('  -> Done Surface Attachment',self.NO_PRINT)
@@ -1691,10 +1774,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
         self.attached_surfaces.append(attached_surface(patchID,uv))
   
     def writeAttachedSurface(self,file_name,index):
-        '''Write the patchID and uv coordinates for a set of points to a
-        file. This allows the user to reload the points and (possibly)
-        (slightly) modify the underlying geometry (but NOT topology)'''
-        # index is which surface to write
+        '''Write the attached surface to file for reload
+        Required:
+            file_name: filename for attached surface
+            index: Which attached surface to write
+        Returns:
+            None
+            '''
         mpiPrint('Writing Attached Surface %d...'%(index),self.NO_PRINT)
         f = open(file_name,'w')
         patchID = self.attached_surfaces[index].patchID
@@ -1708,10 +1794,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
         return
 
     def readAttachedSurface(self,file_name):
-        '''Read the patchID and uv coordinates for a set of points from a
-        file. This allows the user to reload the points and (possibly)
-        (slightly) modify the underlying geometry (but NOT
-        topology)'''
+       '''Read the attached surface and append to attached surface list
+        Required:
+            file_name: filename for attached surface
+        Returns:
+            None
+            '''
         mpiPrint('Reading Attached Surface...',self.NO_PRINT)
         f = open(file_name,'r')
         patchID = []
@@ -1725,11 +1813,15 @@ offset.shape[0], Xsec, rot, must all have the same size'
         self.attached_surfaces.append(attached_surface(patchID,uv))
         return
 
-
     def createTACSGeo(self,surface_list=None):
         '''
         Create the spline classes for use within TACS
-        '''
+        Optional:
+            surface_list: a list of surfaces to include, default is use all
+        Returns:
+            global_geo: 
+            tacs_surfs: The list of tacs surfaces
+            '''
 
         try:
             from pyTACS import elements as elems
@@ -1830,23 +1922,23 @@ class ref_axis(object):
         high-level planform-type variables can be used as design
         variables
         
-        Input:
-        
-        The only non-keyword input is surf_ids: a list of surfaces for 
-        This ref axis
-        
-        # The spatial data supplied as 
-        x = x_coordiantes
-        y = y_coordiantes
-        z = z_coordiantes  OR
-        X = array((N,3)) with all x-y-z coordinates
-
-        # Rotation data is supplied as
-        rot_x = rot_x
-        rot_y = rot_y
-        rot_z = rot_z
-        
-        Note: Rotations are performed in the order: Z-Y-X
+        Reqruied:
+            surf_ids: The surfaces for this reference axis
+            surfs: The pyGeo surf list
+            topo: The pyGeo topology
+            x: x coordinates
+            y: y coordinates
+            z: z coordinates
+            rot_x: x rotations
+            rot_y: y rotations
+            rot_z: z rotation
+            rot_type: integer 1-6 to determine the rotation order
+                1 -> x-y-z
+                2 -> x-z-y
+                3 -> y-z-x  -> This example (right body x-streamwise y-out wing z-up)
+                4 -> y-x-z
+                5 -> z-x-y  -> Default aerosurf (Left body x-streamwise y-up z-out wing)
+                6 -> z-y-x
         '''
 
         # Extract Some information from kwargs:
@@ -2061,8 +2153,8 @@ class ref_axis(object):
 #         self.coef_list = reordered_coef_list
 #         self.surf_ids  = surf_ids
         
-    def update(self):
-        
+    def _update(self):
+
         self.xs.coef = self.base_point+self.x.astype('d')
         self.rotxs.coef = self.rot_x.astype('d')
         self.rotys.coef = self.rot_y.astype('d')
@@ -2076,7 +2168,7 @@ class ref_axis(object):
         
         return
        
-    def writeTecplot(self,handle,axis_name):
+    def _writeTecplot(self,handle,axis_name):
         '''Write the ref axis to the open file handle'''
         N = len(self.xs.s)
         handle.write('Zone T=%s I=%d\n'%(axis_name,N))
@@ -2087,14 +2179,14 @@ class ref_axis(object):
 
         return
 
-    def getRotMatrixGlobalToLocal(self,s):
+    def _getRotMatrixGlobalToLocal(self,s):
         
         '''Return the rotation matrix to convert vector from global to
         local frames'''
         return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
                                                     rotzM(self.rotzs(s)[0])))
     
-    def getRotMatrixLocalToGlobal(self,s):
+    def _getRotMatrixLocalToGlobal(self,s):
         
         '''Return the rotation matrix to convert vector from global to
         local frames'''
@@ -2103,16 +2195,17 @@ class ref_axis(object):
 
 
     def addRefAxisCon(self,axis1,axis2,con_type):
-        '''Add a reference axis connection to the connection list'''
-        
-        # Attach axis2 to axis1 
-        # Find out the POSITION and DISTANCE on
-        # axis1 that axis2 will be attached
-        
-        s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
+        '''Add a reference axis connection to the connection list
+        Attach axis2 to axis 1
+        Required:
+            axis1: First ref axis
+            axis2: Second Ref axis
+            con_type: Connection Type: 'end' or 'full'
+            '''
+        s,D = self.ref_axis[axis1].xs.projectPoint(\
             self.ref_axis[axis2].xs.getValue(0))
 
-        M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
+        M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
         D = dot(M,D)
 
         self.ref_axis[axis2].base_point_s = s
@@ -2123,10 +2216,10 @@ class ref_axis(object):
 is only available for reference axis with 2 points. A typical usage is for \
 a flap hinge line'
             
-            s,D,converged,update = self.ref_axis[axis1].xs.projectPoint(\
+            s,D = self.ref_axis[axis1].xs.projectPoint(\
                 self.ref_axis[axis2].xs.getValue(1.0))
 
-            M = self.ref_axis[axis1].getRotMatrixGlobalToLocal(s)
+            M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
             D = dot(M,D)
 
             self.ref_axis[axis2].end_point_s = s
@@ -2143,18 +2236,8 @@ class geoDVGlobal(object):
     def __init__(self,dv_name,value,lower,upper,function,useit=True):
         
         '''Create a geometric design variable (or design variable group)
-
-        Input:
-        
-        dv_name: Design variable name. Should be unique. Can be used
-        to set pyOpt variables directly
-
-        value: Value of Design Variable
-        
-        lower: Lower bound for the variable. Again for setting in
-        pyOpt
-
-        upper: Upper bound for the variable. '''
+        See addGeoDVGloabl in pyGeo for more information
+        '''
 
         self.name = dv_name
         self.value = value
@@ -2182,27 +2265,8 @@ class geoDVNormal(object):
      
     def __init__(self,dv_name,lower,upper,surface_id,coef_list,topo):
         
-        '''Create a set of gemoetric design variables which change the shape
-        of surface, surface_id
-
-        Input:
-        
-        dv_name: Design variable name. Must be unique. Can be used
-        to set pyOpt variables directly
-
-        lower: Lower bound for the variable. Again for setting in
-        pyOpt
-
-        upper: Upper bound for the variable.
-
-        surface_id: The surface these design variables apply to 
-
-        coef_list: The list of (global) indicies for thes design variables
-
-        topo: The topology for the geometry object
-
-        Note: Value is NOT specified, value will ALWAYS be initialized to 0
-
+        '''Create a set of gemoetric design variables which change the surface shape
+        See addGeoDVNormal for more information
         '''
 
         self.nVal = len(coef_list)
@@ -2241,6 +2305,7 @@ class geoDVNormal(object):
         return coef
 
     def getNormals(self,surf,coef):
+        '''Get the normals'''
         normals = pySpline.pyspline_real.getctlnormals(\
             coef,self.local_coef_index,self.coef_list,\
                 self.l_indexs,surf.tu,surf.tv,surf.ku,surf.kv)
@@ -2267,28 +2332,8 @@ class geoDVLocal(object):
         '''Create a set of gemoetric design variables whcih change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
-
-        Input:
-        
-        dv_name: Design variable name. Should be unique. Can be used
-        to set pyOpt variables directly
-
-        lower: Lower bound for the variable. Again for setting in
-        pyOpt
-
-        upper: Upper bound for the variable.
-
-        surface_id: Surface this set of design variables belongs to
-
-        coef_list: The indicies on the surface used for these dvs
-
-        global_coef: The pyGeo global_design variable linkinng list to
-        determine if a design variable is free of driven
-        
-        Note: Value is NOT specified, value will ALWAYS be initialized to 0
-
+        See addGeoDVLOcal for more information
         '''
-
         self.nVal = len(coef_list)
         self.value = zeros((3*self.nVal),'D')
         self.name = dv_name
@@ -2335,7 +2380,11 @@ class geoDVLocal(object):
 class attached_surface(object):
 
     def __init__(self,patchID,uv):
-        '''Initialize an attached surface object with a patchID and uv list'''
+        '''A Container class for an attached surface
+        Requires: 
+            PatchID list of patch ID's for points
+            uv: list of the uv points
+        '''
         self.patchID = patchID
         self.u = array(uv)[:,0]
         self.v = array(uv)[:,1]
