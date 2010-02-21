@@ -1794,7 +1794,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         return
 
     def readAttachedSurface(self,file_name):
-       '''Read the attached surface and append to attached surface list
+        '''Read the attached surface and append to attached surface list
         Required:
             file_name: filename for attached surface
         Returns:
