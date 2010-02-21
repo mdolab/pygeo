@@ -15,27 +15,20 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 
 from mdo_import_helper import *
 exec(import_modules('pyGeo'))
-timeA = time.time()
 
 # Load the plot3d xyz file
-aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/dpw.xyz',no_print=False)
-#Compute and save the connectivity
-aircraft.doEdgeConnectivity('./geo_input/dpw.con')
+# aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/dpw.xyz',no_print=False)
+# #Compute and save the connectivity
+# aircraft.doEdgeConnectivity('./geo_input/dpw2.con')
+# # Write an iges file so we can load it back in after
+# aircraft.writeIGES('./geo_input/dpw.igs')
 
-# Write A tecplot file
-aircraft.writeTecplot('./geo_output/dpw.dat',orig=True,directions=True,
-                      surf_labels=True,edge_labels=True,node_labels=True)
-# Write an iges file for reload 
-aircraft.writeIGES('./geo_input/dpw.igs')
-
-# #Re-load the above saved iges file
-# aircraft = pyGeo.pyGeo('iges',file_name='./geo_input/dpw.igs',no_print=False)
-# #Load the edge connectivity
-# aircraft.doEdgeConnectivity('./geo_input/dpw.con')
-
+# # #Re-load the above saved iges file
+aircraft = pyGeo.pyGeo('iges',file_name='./geo_input/dpw.igs',no_print=False)
+#Load the edge connectivity
+aircraft.doEdgeConnectivity('./geo_input/dpw2.con')
 
 # ------- Now We will attach a set of surface points ---------
-
 # We have a file with a set of surface points from a triangular surface
 # mesh from icem
 
@@ -52,12 +45,15 @@ aircraft.readAttachedSurface('./geo_input/attached_surface')
 
 # ------- Now we will add a reference axis --------
 nsec = 3
-x = array([1147+75,1314+50,1804.+25])
-y = [119,427,1156.]
+x = array([1147+75,1314+50,1827])
+y = [119,427,1148.]
 z = [150,176,264.]
 
 # Add reference axis
-aircraft.addRefAxis([2,3,4,5,8,9,10,11,16,17],x=x,y=y,z=z,rot_type=3) #Surface list then x,y,z
+aircraft.addRefAxis([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,76,77,78,79,41,45,51,43],x=x,y=y,z=z,rot_type=3) #Surface list then x,y,z
+aircraft.writeTecplot('./geo_output/dpw.dat',orig=True,directions=True,
+                      surf_labels=True,edge_labels=False,node_labels=False,
+                      links=True,ref_axis=True)
 
 # rot_type = 1,2,3,4,5 or 6 -> Specifies the rotation order
 # 1 -> x-y-z
@@ -87,20 +83,25 @@ def outer_dihedral(val,ref_axis):
     ref_axis[0].x[2,2] = ref_axis[0].x0[2,2] + val
     return ref_axis
 
+def tip_chord(val,ref_axis):
+    ref_axis[0].scale[2] = ref_axis[0].scale0[2]*val
+    return ref_axis
+
 mpiPrint(' ** Adding Global Design Variables **')
 aircraft.addGeoDVGlobal('span',1,0.5,2.0,span_extension)
 aircraft.addGeoDVGlobal('outer_sweep',0,-100,100.0,outer_sweep)
 aircraft.addGeoDVGlobal('outer_twist',0,-10,10.0,outer_twist)
 aircraft.addGeoDVGlobal('outer_dihedral',0,-50,50.0,outer_dihedral)
-
+aircraft.addGeoDVGlobal('tip_chord',1,.75,1.25,tip_chord)
 idg = aircraft.DV_namesGlobal #NOTE: This is constant (idg -> id global
 aircraft.DV_listGlobal[idg['span']].value = 1.2
-aircraft.DV_listGlobal[idg['outer_sweep']].value = 100
-aircraft.DV_listGlobal[idg['outer_twist']].value = 10
-aircraft.DV_listGlobal[idg['outer_dihedral']].value = 40
+aircraft.DV_listGlobal[idg['outer_sweep']].value = -25
+aircraft.DV_listGlobal[idg['outer_twist']].value = -2
+aircraft.DV_listGlobal[idg['outer_dihedral']].value = -20
+aircraft.DV_listGlobal[idg['tip_chord']].value = 1.25
 aircraft.update()
 
-aircraft.writeTecplot('./geo_output/dpw_update.dat',orig=True,directions=True,
+aircraft.writeTecplot('./geo_output/dpw_mod.dat',orig=True,directions=True,
                       surf_labels=True,edge_labels=True,node_labels=True,
                       links=True,ref_axis=True)
 
@@ -142,9 +143,8 @@ aircraft.computeSurfaceDerivative(index=0)
 #     g.write('%f\n'%(dptdx[i]))
 # f.close()
 # g.close()
-# Use xxdiff to verify they are identical 
+# #Use xxdiff to verify they are identical 
 
-print "time:",time.time()-timeA
-sys.exit(0)
+# sys.exit(0)
 
 
