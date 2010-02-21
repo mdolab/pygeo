@@ -1,0 +1,15 @@
+Readme for surface_extractor
+
+This is a small utility for extracting wall surfaces from CGNS files.
+It converts them to a surface plot3d file that can be directly used in 
+pyGeo.
+
+The scope of the program is fairly limited...it will only work on structured
+3D grids. The default boundary condition name for extraction is "BCWallViscous"
+however, this can be changed as necessary. (modify line ~78) 
+
+It has only been tested with ifort and gfortran.
+
+CGNS Linking
+The program requires the use of the CGNSlibrary. If cgnslib_f.h isn't in path where
+the compiler can find you must include its directory. The same goes for the libcgns. 
