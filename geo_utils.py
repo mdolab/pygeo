@@ -253,14 +253,14 @@ def read_af2(filename):
     r = array(r)
     x = r[:,0]
     y = r[:,1]
-    # Check for blunt TE:
-    if y[0] != y[-1]:
-        mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
-        mpiPrint('Merging to a point...')
-        yavg = 0.5*(y[0] + y[-1])
-        y[0]  = yavg
-        y[-1] = yavg
-    # end if
+#     # Check for blunt TE:
+#     if y[0] != y[-1]:
+#         mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
+#         mpiPrint('Merging to a point...')
+#         yavg = 0.5*(y[0] + y[-1])
+#         y[0]  = yavg
+#         y[-1] = yavg
+#     # end if
     ntotal = len(x)
     return x,y
 
