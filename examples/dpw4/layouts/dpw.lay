@@ -877,10 +877,10 @@ $!PAGE
     PAPERGRIDSPACING = HALFINCH
     REGIONINWORKAREA
       {
-      X1 = 1
-      Y1 = 0.25
-      X2 = 10
-      Y2 = 8.25
+      X1 = 1.612
+      Y1 = 0.453
+      X2 = 10.61
+      Y2 = 8.453
       }
     }
 ### Frame Number 1 ###
@@ -905,21 +905,22 @@ $!READDATASET  '|LFDSFN2|'
 $!REMOVEVAR |LFDSVL2|
 $!REMOVEVAR |LFDSFN2|
 $!FRAMELAYOUT 
+  SHOWBORDER = NO
   SHOWHEADER = NO
   HEADERCOLOR = RED
   XYPOS
     {
-    X = 1
-    Y = 0.25
+    X = 0.125
+    Y = 2.1
     }
-  WIDTH = 9
-  HEIGHT = 8
+  WIDTH = 10.75
+  HEIGHT = 3.75
 $!THREEDAXIS 
   ASPECTRATIOLIMIT = 25
   BOXASPECTRATIOLIMIT = 25
 $!PLOTTYPE  = CARTESIAN3D
 $!FRAMENAME  = 'Frame 001'
-$!ACTIVEFIELDMAPS  =  [81-162]
+$!ACTIVEFIELDMAPS  =  [1-162]
 $!GLOBALTIME 
   SOLUTIONTIME = 0
 $!GLOBALRGB 
@@ -1069,6 +1070,7 @@ $!GLOBALSCATTER
 $!FIELDMAP  [1]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1095,7 +1097,6 @@ $!FIELDMAP  [1]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1121,6 +1122,7 @@ $!FIELDMAP  [1]
 $!FIELDMAP  [2]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1147,7 +1149,6 @@ $!FIELDMAP  [2]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1173,6 +1174,7 @@ $!FIELDMAP  [2]
 $!FIELDMAP  [3]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1199,7 +1201,6 @@ $!FIELDMAP  [3]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1225,6 +1226,7 @@ $!FIELDMAP  [3]
 $!FIELDMAP  [4]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1251,7 +1253,6 @@ $!FIELDMAP  [4]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1277,6 +1278,7 @@ $!FIELDMAP  [4]
 $!FIELDMAP  [5]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1303,7 +1305,6 @@ $!FIELDMAP  [5]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1329,6 +1330,7 @@ $!FIELDMAP  [5]
 $!FIELDMAP  [6]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1355,7 +1357,6 @@ $!FIELDMAP  [6]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1381,6 +1382,7 @@ $!FIELDMAP  [6]
 $!FIELDMAP  [7]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1407,7 +1409,6 @@ $!FIELDMAP  [7]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1433,6 +1434,7 @@ $!FIELDMAP  [7]
 $!FIELDMAP  [8]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1459,7 +1461,6 @@ $!FIELDMAP  [8]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1485,6 +1486,7 @@ $!FIELDMAP  [8]
 $!FIELDMAP  [9]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1511,7 +1513,6 @@ $!FIELDMAP  [9]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1537,6 +1538,7 @@ $!FIELDMAP  [9]
 $!FIELDMAP  [10]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1563,7 +1565,6 @@ $!FIELDMAP  [10]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1589,6 +1590,7 @@ $!FIELDMAP  [10]
 $!FIELDMAP  [11]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1615,7 +1617,6 @@ $!FIELDMAP  [11]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1641,6 +1642,7 @@ $!FIELDMAP  [11]
 $!FIELDMAP  [12]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1667,7 +1669,6 @@ $!FIELDMAP  [12]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1693,6 +1694,7 @@ $!FIELDMAP  [12]
 $!FIELDMAP  [13]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1719,7 +1721,6 @@ $!FIELDMAP  [13]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1745,6 +1746,7 @@ $!FIELDMAP  [13]
 $!FIELDMAP  [14]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1771,7 +1773,6 @@ $!FIELDMAP  [14]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1797,6 +1798,7 @@ $!FIELDMAP  [14]
 $!FIELDMAP  [15]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1823,7 +1825,6 @@ $!FIELDMAP  [15]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1849,6 +1850,7 @@ $!FIELDMAP  [15]
 $!FIELDMAP  [16]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1875,7 +1877,6 @@ $!FIELDMAP  [16]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1901,6 +1902,7 @@ $!FIELDMAP  [16]
 $!FIELDMAP  [17]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1927,7 +1929,6 @@ $!FIELDMAP  [17]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -1953,6 +1954,7 @@ $!FIELDMAP  [17]
 $!FIELDMAP  [18]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -1979,7 +1981,6 @@ $!FIELDMAP  [18]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2005,6 +2006,7 @@ $!FIELDMAP  [18]
 $!FIELDMAP  [19]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2031,7 +2033,6 @@ $!FIELDMAP  [19]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2057,6 +2058,7 @@ $!FIELDMAP  [19]
 $!FIELDMAP  [20]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2083,7 +2085,6 @@ $!FIELDMAP  [20]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2109,6 +2110,7 @@ $!FIELDMAP  [20]
 $!FIELDMAP  [21]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2135,7 +2137,6 @@ $!FIELDMAP  [21]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2161,6 +2162,7 @@ $!FIELDMAP  [21]
 $!FIELDMAP  [22]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2187,7 +2189,6 @@ $!FIELDMAP  [22]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2213,6 +2214,7 @@ $!FIELDMAP  [22]
 $!FIELDMAP  [23]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2239,7 +2241,6 @@ $!FIELDMAP  [23]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2265,6 +2266,7 @@ $!FIELDMAP  [23]
 $!FIELDMAP  [24]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2291,7 +2293,6 @@ $!FIELDMAP  [24]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2317,6 +2318,7 @@ $!FIELDMAP  [24]
 $!FIELDMAP  [25]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2343,7 +2345,6 @@ $!FIELDMAP  [25]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2369,6 +2370,7 @@ $!FIELDMAP  [25]
 $!FIELDMAP  [26]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2395,7 +2397,6 @@ $!FIELDMAP  [26]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2421,6 +2422,7 @@ $!FIELDMAP  [26]
 $!FIELDMAP  [27]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2447,7 +2449,6 @@ $!FIELDMAP  [27]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2473,6 +2474,7 @@ $!FIELDMAP  [27]
 $!FIELDMAP  [28]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2499,7 +2501,6 @@ $!FIELDMAP  [28]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2525,6 +2526,7 @@ $!FIELDMAP  [28]
 $!FIELDMAP  [29]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2551,7 +2553,6 @@ $!FIELDMAP  [29]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2577,6 +2578,7 @@ $!FIELDMAP  [29]
 $!FIELDMAP  [30]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2603,7 +2605,6 @@ $!FIELDMAP  [30]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2629,6 +2630,7 @@ $!FIELDMAP  [30]
 $!FIELDMAP  [31]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2655,7 +2657,6 @@ $!FIELDMAP  [31]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2681,6 +2682,7 @@ $!FIELDMAP  [31]
 $!FIELDMAP  [32]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2707,7 +2709,6 @@ $!FIELDMAP  [32]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2733,6 +2734,7 @@ $!FIELDMAP  [32]
 $!FIELDMAP  [33]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2759,7 +2761,6 @@ $!FIELDMAP  [33]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2785,6 +2786,7 @@ $!FIELDMAP  [33]
 $!FIELDMAP  [34]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2811,7 +2813,6 @@ $!FIELDMAP  [34]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2837,6 +2838,7 @@ $!FIELDMAP  [34]
 $!FIELDMAP  [35]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2863,7 +2865,6 @@ $!FIELDMAP  [35]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2889,6 +2890,7 @@ $!FIELDMAP  [35]
 $!FIELDMAP  [36]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2915,7 +2917,6 @@ $!FIELDMAP  [36]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2941,6 +2942,7 @@ $!FIELDMAP  [36]
 $!FIELDMAP  [37]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -2967,7 +2969,6 @@ $!FIELDMAP  [37]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -2993,6 +2994,7 @@ $!FIELDMAP  [37]
 $!FIELDMAP  [38]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3019,7 +3021,6 @@ $!FIELDMAP  [38]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3045,6 +3046,7 @@ $!FIELDMAP  [38]
 $!FIELDMAP  [39]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3071,7 +3073,6 @@ $!FIELDMAP  [39]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3097,6 +3098,7 @@ $!FIELDMAP  [39]
 $!FIELDMAP  [40]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3123,7 +3125,6 @@ $!FIELDMAP  [40]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3149,6 +3150,7 @@ $!FIELDMAP  [40]
 $!FIELDMAP  [41]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3175,7 +3177,6 @@ $!FIELDMAP  [41]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3201,6 +3202,7 @@ $!FIELDMAP  [41]
 $!FIELDMAP  [42]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3227,7 +3229,6 @@ $!FIELDMAP  [42]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3253,6 +3254,7 @@ $!FIELDMAP  [42]
 $!FIELDMAP  [43]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3279,7 +3281,6 @@ $!FIELDMAP  [43]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3305,6 +3306,7 @@ $!FIELDMAP  [43]
 $!FIELDMAP  [44]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3331,7 +3333,6 @@ $!FIELDMAP  [44]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3357,6 +3358,7 @@ $!FIELDMAP  [44]
 $!FIELDMAP  [45]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3383,7 +3385,6 @@ $!FIELDMAP  [45]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3409,6 +3410,7 @@ $!FIELDMAP  [45]
 $!FIELDMAP  [46]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3435,7 +3437,6 @@ $!FIELDMAP  [46]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3461,6 +3462,7 @@ $!FIELDMAP  [46]
 $!FIELDMAP  [47]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3487,7 +3489,6 @@ $!FIELDMAP  [47]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3513,6 +3514,7 @@ $!FIELDMAP  [47]
 $!FIELDMAP  [48]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3539,7 +3541,6 @@ $!FIELDMAP  [48]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3565,6 +3566,7 @@ $!FIELDMAP  [48]
 $!FIELDMAP  [49]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3591,7 +3593,6 @@ $!FIELDMAP  [49]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3617,6 +3618,7 @@ $!FIELDMAP  [49]
 $!FIELDMAP  [50]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3643,7 +3645,6 @@ $!FIELDMAP  [50]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3669,6 +3670,7 @@ $!FIELDMAP  [50]
 $!FIELDMAP  [51]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3695,7 +3697,6 @@ $!FIELDMAP  [51]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3721,6 +3722,7 @@ $!FIELDMAP  [51]
 $!FIELDMAP  [52]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3747,7 +3749,6 @@ $!FIELDMAP  [52]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3773,6 +3774,7 @@ $!FIELDMAP  [52]
 $!FIELDMAP  [53]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3799,7 +3801,6 @@ $!FIELDMAP  [53]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3825,6 +3826,7 @@ $!FIELDMAP  [53]
 $!FIELDMAP  [54]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3851,7 +3853,6 @@ $!FIELDMAP  [54]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3877,6 +3878,7 @@ $!FIELDMAP  [54]
 $!FIELDMAP  [55]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3903,7 +3905,6 @@ $!FIELDMAP  [55]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3929,6 +3930,7 @@ $!FIELDMAP  [55]
 $!FIELDMAP  [56]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -3955,7 +3957,6 @@ $!FIELDMAP  [56]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -3981,6 +3982,7 @@ $!FIELDMAP  [56]
 $!FIELDMAP  [57]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4007,7 +4009,6 @@ $!FIELDMAP  [57]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4033,6 +4034,7 @@ $!FIELDMAP  [57]
 $!FIELDMAP  [58]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4059,7 +4061,6 @@ $!FIELDMAP  [58]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4085,6 +4086,7 @@ $!FIELDMAP  [58]
 $!FIELDMAP  [59]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4111,7 +4113,6 @@ $!FIELDMAP  [59]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4137,6 +4138,7 @@ $!FIELDMAP  [59]
 $!FIELDMAP  [60]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4163,7 +4165,6 @@ $!FIELDMAP  [60]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4189,6 +4190,7 @@ $!FIELDMAP  [60]
 $!FIELDMAP  [61]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4215,7 +4217,6 @@ $!FIELDMAP  [61]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4241,6 +4242,7 @@ $!FIELDMAP  [61]
 $!FIELDMAP  [62]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4267,7 +4269,6 @@ $!FIELDMAP  [62]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4293,6 +4294,7 @@ $!FIELDMAP  [62]
 $!FIELDMAP  [63]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4319,7 +4321,6 @@ $!FIELDMAP  [63]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4345,6 +4346,7 @@ $!FIELDMAP  [63]
 $!FIELDMAP  [64]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4371,7 +4373,6 @@ $!FIELDMAP  [64]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4397,6 +4398,7 @@ $!FIELDMAP  [64]
 $!FIELDMAP  [65]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4423,7 +4425,6 @@ $!FIELDMAP  [65]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4449,6 +4450,7 @@ $!FIELDMAP  [65]
 $!FIELDMAP  [66]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4475,7 +4477,6 @@ $!FIELDMAP  [66]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4501,6 +4502,7 @@ $!FIELDMAP  [66]
 $!FIELDMAP  [67]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4527,7 +4529,6 @@ $!FIELDMAP  [67]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4553,6 +4554,7 @@ $!FIELDMAP  [67]
 $!FIELDMAP  [68]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4579,7 +4581,6 @@ $!FIELDMAP  [68]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4605,6 +4606,7 @@ $!FIELDMAP  [68]
 $!FIELDMAP  [69]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4631,7 +4633,6 @@ $!FIELDMAP  [69]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4657,6 +4658,7 @@ $!FIELDMAP  [69]
 $!FIELDMAP  [70]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4683,7 +4685,6 @@ $!FIELDMAP  [70]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4709,6 +4710,7 @@ $!FIELDMAP  [70]
 $!FIELDMAP  [71]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4735,7 +4737,6 @@ $!FIELDMAP  [71]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4761,6 +4762,7 @@ $!FIELDMAP  [71]
 $!FIELDMAP  [72]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4787,7 +4789,6 @@ $!FIELDMAP  [72]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4813,6 +4814,7 @@ $!FIELDMAP  [72]
 $!FIELDMAP  [73]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4839,7 +4841,6 @@ $!FIELDMAP  [73]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4865,6 +4866,7 @@ $!FIELDMAP  [73]
 $!FIELDMAP  [74]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4891,7 +4893,6 @@ $!FIELDMAP  [74]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4917,6 +4918,7 @@ $!FIELDMAP  [74]
 $!FIELDMAP  [75]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4943,7 +4945,6 @@ $!FIELDMAP  [75]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -4969,6 +4970,7 @@ $!FIELDMAP  [75]
 $!FIELDMAP  [76]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -4995,7 +4997,6 @@ $!FIELDMAP  [76]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -5021,6 +5022,7 @@ $!FIELDMAP  [76]
 $!FIELDMAP  [77]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -5047,7 +5049,6 @@ $!FIELDMAP  [77]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -5073,6 +5074,7 @@ $!FIELDMAP  [77]
 $!FIELDMAP  [78]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -5099,7 +5101,6 @@ $!FIELDMAP  [78]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -5125,6 +5126,7 @@ $!FIELDMAP  [78]
 $!FIELDMAP  [79]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -5151,7 +5153,6 @@ $!FIELDMAP  [79]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -5177,6 +5178,7 @@ $!FIELDMAP  [79]
 $!FIELDMAP  [80]
   MESH
     {
+    SHOW = NO
     COLOR = BLACK
     }
   CONTOUR
@@ -5203,7 +5205,6 @@ $!FIELDMAP  [80]
     SHOW = YES
     EDGETYPE = BORDERSANDCREASES
     COLOR = BLACK
-    LINETHICKNESS = 0.1
     }
   POINTS
     {
@@ -5249,7 +5250,7 @@ $!FIELDMAP  [81]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5307,7 +5308,7 @@ $!FIELDMAP  [82]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5365,7 +5366,7 @@ $!FIELDMAP  [83]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5423,7 +5424,7 @@ $!FIELDMAP  [84]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5481,7 +5482,7 @@ $!FIELDMAP  [85]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5539,7 +5540,7 @@ $!FIELDMAP  [86]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5597,7 +5598,7 @@ $!FIELDMAP  [87]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5655,7 +5656,7 @@ $!FIELDMAP  [88]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5713,7 +5714,7 @@ $!FIELDMAP  [89]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5771,7 +5772,7 @@ $!FIELDMAP  [90]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5829,7 +5830,7 @@ $!FIELDMAP  [91]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5887,7 +5888,7 @@ $!FIELDMAP  [92]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -5945,7 +5946,7 @@ $!FIELDMAP  [93]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6003,7 +6004,7 @@ $!FIELDMAP  [94]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6061,7 +6062,7 @@ $!FIELDMAP  [95]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6119,7 +6120,7 @@ $!FIELDMAP  [96]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6177,7 +6178,7 @@ $!FIELDMAP  [97]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6235,7 +6236,7 @@ $!FIELDMAP  [98]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6293,7 +6294,7 @@ $!FIELDMAP  [99]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6351,7 +6352,7 @@ $!FIELDMAP  [100]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6409,7 +6410,7 @@ $!FIELDMAP  [101]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6467,7 +6468,7 @@ $!FIELDMAP  [102]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6525,7 +6526,7 @@ $!FIELDMAP  [103]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6583,7 +6584,7 @@ $!FIELDMAP  [104]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6641,7 +6642,7 @@ $!FIELDMAP  [105]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6699,7 +6700,7 @@ $!FIELDMAP  [106]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6757,7 +6758,7 @@ $!FIELDMAP  [107]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6815,7 +6816,7 @@ $!FIELDMAP  [108]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6873,7 +6874,7 @@ $!FIELDMAP  [109]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6931,7 +6932,7 @@ $!FIELDMAP  [110]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -6989,7 +6990,7 @@ $!FIELDMAP  [111]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7047,7 +7048,7 @@ $!FIELDMAP  [112]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7105,7 +7106,7 @@ $!FIELDMAP  [113]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7163,7 +7164,7 @@ $!FIELDMAP  [114]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7221,7 +7222,7 @@ $!FIELDMAP  [115]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7279,7 +7280,7 @@ $!FIELDMAP  [116]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7337,7 +7338,7 @@ $!FIELDMAP  [117]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7395,7 +7396,7 @@ $!FIELDMAP  [118]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7453,7 +7454,7 @@ $!FIELDMAP  [119]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7511,7 +7512,7 @@ $!FIELDMAP  [120]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7569,7 +7570,7 @@ $!FIELDMAP  [121]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7627,7 +7628,7 @@ $!FIELDMAP  [122]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7685,7 +7686,7 @@ $!FIELDMAP  [123]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7743,7 +7744,7 @@ $!FIELDMAP  [124]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7801,7 +7802,7 @@ $!FIELDMAP  [125]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7859,7 +7860,7 @@ $!FIELDMAP  [126]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7917,7 +7918,7 @@ $!FIELDMAP  [127]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -7975,7 +7976,7 @@ $!FIELDMAP  [128]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8033,7 +8034,7 @@ $!FIELDMAP  [129]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8091,7 +8092,7 @@ $!FIELDMAP  [130]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8149,7 +8150,7 @@ $!FIELDMAP  [131]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8207,7 +8208,7 @@ $!FIELDMAP  [132]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8265,7 +8266,7 @@ $!FIELDMAP  [133]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8323,7 +8324,7 @@ $!FIELDMAP  [134]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8381,7 +8382,7 @@ $!FIELDMAP  [135]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8439,7 +8440,7 @@ $!FIELDMAP  [136]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8497,7 +8498,7 @@ $!FIELDMAP  [137]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8555,7 +8556,7 @@ $!FIELDMAP  [138]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8613,7 +8614,7 @@ $!FIELDMAP  [139]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8671,7 +8672,7 @@ $!FIELDMAP  [140]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8729,7 +8730,7 @@ $!FIELDMAP  [141]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8787,7 +8788,7 @@ $!FIELDMAP  [142]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8845,7 +8846,7 @@ $!FIELDMAP  [143]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8903,7 +8904,7 @@ $!FIELDMAP  [144]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -8961,7 +8962,7 @@ $!FIELDMAP  [145]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9019,7 +9020,7 @@ $!FIELDMAP  [146]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9077,7 +9078,7 @@ $!FIELDMAP  [147]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9135,7 +9136,7 @@ $!FIELDMAP  [148]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9193,7 +9194,7 @@ $!FIELDMAP  [149]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9251,7 +9252,7 @@ $!FIELDMAP  [150]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9309,7 +9310,7 @@ $!FIELDMAP  [151]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9367,7 +9368,7 @@ $!FIELDMAP  [152]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9425,7 +9426,7 @@ $!FIELDMAP  [153]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9483,7 +9484,7 @@ $!FIELDMAP  [154]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9541,7 +9542,7 @@ $!FIELDMAP  [155]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9599,7 +9600,7 @@ $!FIELDMAP  [156]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9657,7 +9658,7 @@ $!FIELDMAP  [157]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9715,7 +9716,7 @@ $!FIELDMAP  [158]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9773,7 +9774,7 @@ $!FIELDMAP  [159]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -9831,7 +9832,7 @@ $!FIELDMAP  [160]
       GEOMSHAPE = SPHERE
       }
     COLOR = BLACK
-    FRAMESIZE = 1
+    FRAMESIZE = 0.5
     }
   SHADE
     {
@@ -14063,7 +14064,7 @@ $!THREEDAXIS
     GRSPACING = 1000
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 2
       }
     }
 $!THREEDAXIS 
@@ -14075,7 +14076,7 @@ $!THREEDAXIS
     GRSPACING = 500
     AXISLINE
       {
-      EDGE = 3
+      EDGE = 1
       }
     }
 $!THREEDAXIS 
@@ -14333,9 +14334,9 @@ $!GLOBALTHREED
     }
   ROTATEORIGIN
     {
-    X = 1628.298950610797
-    Y = 828.7846605007843
-    Z = 224.9064024725275
+    X = 1359.1155485
+    Y = 580.3438245
+    Z = 217.7119915
     }
   LIGHTSOURCE
     {
@@ -14356,1781 +14357,22 @@ $!GLOBALTHREED
   VECTORLIFTFRACTION = 0.7
   NEARPLANEFRACTION = 0.1
 $!THREEDVIEW 
-  PSIANGLE = 52.5889
-  THETAANGLE = -61.3976
-  ALPHAANGLE = -2.40943
+  PSIANGLE = 60.8412
+  THETAANGLE = 145.352
+  ALPHAANGLE = 5.33709
   VIEWERPOSITION
     {
-    X = 12319.73026533171
-    Y = -5000.949184848545
-    Z = 9539.091499111273
+    X = -6380.641840116109
+    Y = 11374.22683257199
+    Z = 7874.54727579246
     }
-  VIEWWIDTH = 901.019
+  VIEWWIDTH = 2428.69
 $!FIELDLAYERS 
   SHOWSCATTER = YES
   SHOWSHADE = YES
   USETRANSLUCENCY = YES
 $!STREAMTRACELAYERS 
   SHOW = NO
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1160.34688
-    Y = 339.931421
-    Z = 181.638867
-    }
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S0'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1496.335608
-    Y = 341.383357
-    Z = 170.059906
-    }
-  ZONE = 2
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S1'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1375.87843
-    Y = 341.78963
-    Z = 155.466897
-    }
-  ZONE = 3
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S2'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1377.836633
-    Y = 339.547135
-    Z = 188.235651
-    }
-  ZONE = 4
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S3'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1267.024709
-    Y = 482.495535
-    Z = 184.10729
-    }
-  ZONE = 5
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S4'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1533.629911
-    Y = 470.628795
-    Z = 180.962135
-    }
-  ZONE = 6
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S5'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1850.771526
-    Y = 1159.820258
-    Z = 269.139595
-    }
-  ZONE = 7
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S6'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1439.518015
-    Y = 475.194609
-    Z = 169.648358
-    }
-  ZONE = 8
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S7'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1439.41291
-    Y = 473.406775
-    Z = 196.543656
-    }
-  ZONE = 9
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S8'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1778.949661
-    Y = 1154.971935
-    Z = 263.893591
-    }
-  ZONE = 10
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S9'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1849.167269
-    Y = 1155.0468
-    Z = 262.807991
-    }
-  ZONE = 11
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S10'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1887.232078
-    Y = 1155.019087
-    Z = 270.691661
-    }
-  ZONE = 12
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S11'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1848.543328
-    Y = 1154.623351
-    Z = 271.902703
-    }
-  ZONE = 13
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S12'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1535.95852
-    Y = 834.962588
-    Z = 212.897368
-    }
-  ZONE = 14
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S13'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1652.499933
-    Y = 828.7119729999999
-    Z = 207.523665
-    }
-  ZONE = 15
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S14'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1716.314188
-    Y = 824.170742
-    Z = 216.167742
-    }
-  ZONE = 16
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S15'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1652.333898
-    Y = 827.340716
-    Z = 225.289351
-    }
-  ZONE = 17
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S16'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2467.394698
-    Y = 338.486336
-    Z = 293.050736
-    }
-  ZONE = 18
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S17'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2583.751576
-    Y = 328.115109
-    Z = 291.887315
-    }
-  ZONE = 19
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S18'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2542.761332
-    Y = 332.164373
-    Z = 287.886387
-    }
-  ZONE = 20
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S19'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2542.813781
-    Y = 331.472899
-    Z = 296.120075
-    }
-  ZONE = 21
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S20'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2535.525221
-    Y = 418.761455
-    Z = 303.776321
-    }
-  ZONE = 22
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S21'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2625.041525
-    Y = 418.115595
-    Z = 302.145927
-    }
-  ZONE = 23
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S22'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2595.3037
-    Y = 422.14461
-    Z = 304.046976
-    }
-  ZONE = 24
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S23'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2593.627433
-    Y = 419.288281
-    Z = 299.189669
-    }
-  ZONE = 25
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S24'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2593.524179
-    Y = 418.162719
-    Z = 305.616693
-    }
-  ZONE = 26
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S25'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 148.870779
-    Y = 41.276512
-    Z = 170.763808
-    }
-  ZONE = 27
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S26'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 375.28983
-    Y = 94.956445
-    Z = 145.954306
-    }
-  ZONE = 28
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S27'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 372.504914
-    Y = 40.276755
-    Z = 105.309946
-    }
-  ZONE = 29
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S28'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 141.622704
-    Y = 44.01604
-    Z = 210.963534
-    }
-  ZONE = 30
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S29'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 376.470765
-    Y = 115.031594
-    Z = 200.013285
-    }
-  ZONE = 31
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S30'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 170.835941
-    Y = 28.935995
-    Z = 257.813461
-    }
-  ZONE = 32
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S31'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 378.370409
-    Y = 91.443112
-    Z = 292.73571
-    }
-  ZONE = 33
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S32'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 378.497991
-    Y = 37.650092
-    Z = 329.598392
-    }
-  ZONE = 34
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S33'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 825.426841
-    Y = 97.913918
-    Z = 153.781506
-    }
-  ZONE = 35
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S34'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 825.255971
-    Y = 46.8825
-    Z = 110.614124
-    }
-  ZONE = 36
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S35'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 829.826776
-    Y = 118.04944
-    Z = 189.657612
-    }
-  ZONE = 37
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S36'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 825.788738
-    Y = 107.583857
-    Z = 286.422562
-    }
-  ZONE = 38
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S37'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 827.318727
-    Y = 44.553299
-    Z = 335.836903
-    }
-  ZONE = 39
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S38'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1292.281967
-    Y = 107.46976
-    Z = 106.258083
-    }
-  ZONE = 40
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S39'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1296.956501
-    Y = 53.466177
-    Z = 90.683055
-    }
-  ZONE = 41
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S40'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1004.156821
-    Y = 136.116727
-    Z = 177.603993
-    }
-  ZONE = 42
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S41'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 988.432933
-    Y = 120.324244
-    Z = 178.393205
-    }
-  ZONE = 43
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S42'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1297.290933
-    Y = 137.284294
-    Z = 126.05266
-    }
-  ZONE = 44
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S43'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1291.230947
-    Y = 120.108988
-    Z = 117.914305
-    }
-  ZONE = 45
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S44'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1299.40703
-    Y = 134.890949
-    Z = 171.17354
-    }
-  ZONE = 46
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S45'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1295.43931
-    Y = 117.607425
-    Z = 176.174595
-    }
-  ZONE = 47
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S46'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1297.286865
-    Y = 114.815115
-    Z = 274.576695
-    }
-  ZONE = 48
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S47'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1299.339209
-    Y = 48.988712
-    Z = 334.24605
-    }
-  ZONE = 49
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S48'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1982.474016
-    Y = 121.675298
-    Z = 173.128793
-    }
-  ZONE = 50
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S49'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1984.00735
-    Y = 64.92966800000001
-    Z = 112.178
-    }
-  ZONE = 51
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S50'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1461.183439
-    Y = 137.845153
-    Z = 143.819031
-    }
-  ZONE = 52
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S51'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1465.406875
-    Y = 120.408725
-    Z = 141.53528
-    }
-  ZONE = 53
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S52'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1980.430324
-    Y = 127.177262
-    Z = 214.68834
-    }
-  ZONE = 54
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S53'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1977.464616
-    Y = 94.969471
-    Z = 309.696118
-    }
-  ZONE = 55
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S54'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1977.647196
-    Y = 34.429393
-    Z = 341.500187
-    }
-  ZONE = 56
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S55'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2379.828447
-    Y = 52.014129
-    Z = 233.715507
-    }
-  ZONE = 57
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S56'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2382.283592
-    Y = 28.984905
-    Z = 205.809333
-    }
-  ZONE = 58
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S57'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2252.01826
-    Y = 85.55839
-    Z = 258.840754
-    }
-  ZONE = 59
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S58'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2236.84661
-    Y = 71.878702
-    Z = 257.461598
-    }
-  ZONE = 60
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S59'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2384.062683
-    Y = 65.323832
-    Z = 252.095091
-    }
-  ZONE = 61
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S60'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2375.886062
-    Y = 51.296323
-    Z = 248.168352
-    }
-  ZONE = 62
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S61'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2384.266745
-    Y = 65.070258
-    Z = 266.884327
-    }
-  ZONE = 63
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S62'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2376.787717
-    Y = 51.154957
-    Z = 269.562869
-    }
-  ZONE = 64
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S63'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2380.494967
-    Y = 45.125558
-    Z = 303.724787
-    }
-  ZONE = 65
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S64'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2381.418002
-    Y = 16.022473
-    Z = 311.181861
-    }
-  ZONE = 66
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S65'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2547.529679
-    Y = 5.418222
-    Z = 254.424571
-    }
-  ZONE = 67
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S66'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2506.682079
-    Y = 17.91462
-    Z = 250.766665
-    }
-  ZONE = 68
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S67'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2516.263969
-    Y = 12.832126
-    Z = 235.882362
-    }
-  ZONE = 69
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S68'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2455.88508
-    Y = 49.40737
-    Z = 260.315682
-    }
-  ZONE = 70
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S69'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2455.279754
-    Y = 32.275732
-    Z = 259.759658
-    }
-  ZONE = 71
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S70'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2546.410644
-    Y = 5.848684
-    Z = 264.950745
-    }
-  ZONE = 72
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S71'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2505.858518
-    Y = 18.357457
-    Z = 262.591431
-    }
-  ZONE = 73
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S72'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2548.171594
-    Y = 5.133096
-    Z = 281.979695
-    }
-  ZONE = 74
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S73'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2509.21477
-    Y = 16.623977
-    Z = 283.969366
-    }
-  ZONE = 75
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S74'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 2516.731402
-    Y = 9.469737
-    Z = 297.398007
-    }
-  ZONE = 76
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S75'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1745.032227
-    Y = 1110.198021
-    Z = 256.108449
-    }
-  ZONE = 77
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S76'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1821.260486
-    Y = 1108.467114
-    Z = 256.234819
-    }
-  ZONE = 78
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S77'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1862.677662
-    Y = 1107.475071
-    Z = 261.987715
-    }
-  ZONE = 79
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S78'
-$!ATTACHTEXT 
-  POSITIONCOORDSYS = GRID3D
-  ANCHORPOS
-    {
-    X = 1820.876177
-    Y = 1107.6125
-    Z = 266.600867
-    }
-  ZONE = 80
-  ATTACHTOZONE = YES
-  TEXTSHAPE
-    {
-    SIZEUNITS = FRAME
-    HEIGHT = 3
-    }
-  BOX
-    {
-    MARGIN = 10
-    LINETHICKNESS = 0.4
-    }
-  SCOPE = GLOBAL
-  TEXT = 'S79'
 $!FRAMECONTROL ACTIVATEBYNUMBER
   FRAME = 1
 $!SETSTYLEBASE CONFIG
