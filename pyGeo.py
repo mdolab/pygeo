@@ -360,6 +360,9 @@ offset.shape[0], Xsec, rot, must all have the same size'
             k_span = kwargs['k_span']
         else:
             k_span = 3
+            if len(Xsec) == 2:
+                k_span = 2
+            # end if
 
         if 'con_file' in kwargs:
             con_file = kwargs['con_file']
@@ -437,6 +440,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         # Now we can add the two surfaces
         temp = pySpline.curve(X=Xsec,k=k_span)
+
         self.surfs.append(pySpline.surface('create',coef=coef_top,ku=4,kv=k_span,tu=top_curves[0].t,
                                   tv=temp.t))
         self.surfs.append(pySpline.surface('create',coef=coef_bot,ku=4,kv=k_span,tu=bot_curves[0].t,
@@ -515,7 +519,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                         X[j+1,N:,2] = ac[i][j].Surface_z[1,N:][::-1]
                     # end if
                 # end for (sub Comp)
-                self.surfs.append(pySpline.surface(ku=2,kv=4,X=X,
+                self.surfs.append(pySpline.surface(ku=3,kv=4,X=X,
                                                    Nctlu=nSubComp+1,Nctlv=17))
                 self.nSurf += 1
             # end if (lifting/body type)
@@ -1910,6 +1914,98 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end
      
         return global_geo, tacs_surfs
+
+
+    def _projectCurves(self,curve1,curve2,surfs=None):
+        '''
+        Project a pySpline curve onto the pyGeo object
+        Requires: 
+            curve: the pyspline curve for projection
+        Optional:
+            surfs:  A subset list of surfaces to use
+        Returns:
+            pachID: The surface id of the intersectin
+            u     : u coordiante of intersection
+            v     : v coordinate of intersection
+        
+        Notes: This aglorithim is not efficient at all.  We basically
+        do the curve-surface projection agorithim for each surface
+        the loop back over them to see which is the best in terms of
+        closest distance. This intent is that the curve ACTUALLY
+        intersects one of the surfaces.
+        '''
+
+        if surfs == None:
+             surfs = arange(self.nSurf)
+         # end if
+        # res contains: u,v,s,D
+        c1_res = []
+        c2_res = []
+        for i in xrange(0,len(surfs)):
+            isurf = surfs[i]
+            res = self.surfs[surfs[isurf]].projectCurve(curve1)
+            if norm(res[3]) < 1e-6:
+                c1_res.append([res[0],res[1],res[2],res[3],isurf])
+            res = self.surfs[surfs[isurf]].projectCurve(curve2)
+            if norm(res[3]) < 1e-6:
+                c2_res.append([res[0],res[1],res[2],res[3],isurf])
+                
+        # end for
+        # Post Process
+        # If both intersection once, that's great
+        if len(c1_res) == 1 and len(c2_res) == 1:
+            return c1_res[0][4],c1_res[0][0],c1_res[0][1],c2_res[0][4],c2_res[0][0],c2_res[0][1]
+        else: # Its more complex
+            print 'Error:, The domain must entirely lie inside the surface'
+        # end if
+            return
+
+    def projectCurve(self,curve,surfs=None):
+        '''
+        Project a pySpline curve onto the pyGeo object
+        Requires: 
+            curve: the pyspline curve for projection
+        Optional:
+            surfs:  A subset list of surfaces to use
+        Returns:
+            pachID: The surface id of the intersectin
+            u     : u coordiante of intersection
+            v     : v coordinate of intersection
+        
+        Notes: This aglorithim is not efficient at all.  We basically
+        do the curve-surface projection agorithim for each surface
+        the loop back over them to see which is the best in terms of
+        closest distance. This intent is that the curve ACTUALLY
+        intersects one of the surfaces.
+        '''
+
+        if surfs == None:
+             surfs = arange(self.nSurf)
+         # end if
+        res = self.surfs[surfs[0]].projectCurve(curve)
+        u0 = res[0]
+        v0 = res[1]
+        D  = res[3]
+        patchID = surfs[0]
+        for i in xrange(1,len(surfs)):
+            isurf = surfs[i]
+            res = self.surfs[surfs[isurf]].projectCurve(curve)
+            if norm(res[3]) < norm(D):
+                u0 = res[0]
+                v0 = res[1]
+                D  = res[3]
+                patchID = isurf
+            # end if
+        # end for
+
+        return patchID,u0,v0
+        
+
+
+
+
+
+
 
 class ref_axis(object):
 

@@ -17,11 +17,11 @@ from mdo_import_helper import *
 exec(import_modules('pyGeo'))
 
 # Load the plot3d xyz file
-# aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/dpw.xyz',no_print=False)
+aircraft = pyGeo.pyGeo('plot3d',file_name='./geo_input/dpw.xyz',no_print=False)
 # #Compute and save the connectivity
-# aircraft.doEdgeConnectivity('./geo_input/dpw2.con')
+aircraft.doEdgeConnectivity('./geo_input/dpw2.con')
 # # Write an iges file so we can load it back in after
-# aircraft.writeIGES('./geo_input/dpw.igs')
+aircraft.writeIGES('./geo_input/dpw.igs')
 
 # # #Re-load the above saved iges file
 aircraft = pyGeo.pyGeo('iges',file_name='./geo_input/dpw.igs',no_print=False)
