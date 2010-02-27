@@ -1,9 +1,9 @@
 #!MC 1200
 # Created by Tecplot 360 build 12.1.0.6714
-$!VarSet |LFBD| = '/home/gaetan/svn/pyPSG/pyGeo/examples/dpw4/layouts'
-$!VarSet |LFDSFN1| = '"/home/gaetan/svn/pyPSG/pyGeo/examples/dpw4/geo_output/dpw.dat"'
+$!VarSet |LFBD| = '/nfs/mica/home/kenway/svn/pyPSG/pyGeo/examples/dpw4/layouts'
+$!VarSet |LFDSFN1| = '"/nfs/mica/home/kenway/svn/pyPSG/pyGeo/examples/dpw4/geo_output/dpw.dat"'
 $!VarSet |LFDSVL1| = '"X" "Y" "Z"'
-$!VarSet |LFDSFN2| = '"/home/gaetan/svn/pyPSG/pyGeo/examples/dpw4/geo_output/dpw_mod.dat"'
+$!VarSet |LFDSFN2| = '"/nfs/mica/home/kenway/svn/pyPSG/pyGeo/examples/dpw4/geo_output/dpw_mod.dat"'
 $!VarSet |LFDSVL2| = '"X" "Y" "Z"'
 $!SETSTYLEBASE FACTORY
 $!GLOBALLINKING 
@@ -14133,7 +14133,7 @@ $!THREEDAXIS
     GRSPACING = 1000
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 2
       }
     }
 $!THREEDAXIS 
@@ -14145,7 +14145,7 @@ $!THREEDAXIS
     GRSPACING = 500
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 3
       }
     }
 $!THREEDAXIS 
@@ -14157,7 +14157,7 @@ $!THREEDAXIS
     GRSPACING = 100
     AXISLINE
       {
-      EDGE = 2
+      EDGE = 3
       }
     }
 $!ISOSURFACEATTRIBUTES  1
@@ -14426,15 +14426,16 @@ $!GLOBALTHREED
   VECTORLIFTFRACTION = 0.7
   NEARPLANEFRACTION = 0.1
 $!THREEDVIEW 
-  PSIANGLE = 0
-  THETAANGLE = 0
+  PSIANGLE = 78.6987
+  THETAANGLE = -137.122
+  ALPHAANGLE = -5.04395
   VIEWERPOSITION
     {
-    X = 1480.195617066563
-    Y = 531.4489058617559
-    Z = 15556.13415106867
+    X = 12047.46160316712
+    Y = 11670.73480771077
+    Z = 3225.951146833275
     }
-  VIEWWIDTH = 3161.74
+  VIEWWIDTH = 2096.85
 $!FIELDLAYERS 
   SHOWEDGE = NO
   USETRANSLUCENCY = YES
@@ -27697,7 +27698,7 @@ $!THREEDAXIS
     GRSPACING = 1000
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 2
       }
     }
 $!THREEDAXIS 
@@ -27709,7 +27710,7 @@ $!THREEDAXIS
     GRSPACING = 500
     AXISLINE
       {
-      EDGE = 1
+      EDGE = 3
       }
     }
 $!THREEDAXIS 
@@ -27721,7 +27722,7 @@ $!THREEDAXIS
     GRSPACING = 100
     AXISLINE
       {
-      EDGE = 2
+      EDGE = 3
       }
     }
 $!ISOSURFACEATTRIBUTES  1
@@ -27990,15 +27991,16 @@ $!GLOBALTHREED
   VECTORLIFTFRACTION = 0.7
   NEARPLANEFRACTION = 0.1
 $!THREEDVIEW 
-  PSIANGLE = 0
-  THETAANGLE = 0
+  PSIANGLE = 78.6987
+  THETAANGLE = -137.122
+  ALPHAANGLE = -5.04395
   VIEWERPOSITION
     {
-    X = 1480.195617066563
-    Y = 531.4489058617559
-    Z = 15556.13415106867
+    X = 12047.46160316712
+    Y = 11670.73480771077
+    Z = 3225.951146833275
     }
-  VIEWWIDTH = 3161.74
+  VIEWWIDTH = 2096.85
 $!FIELDLAYERS 
   SHOWEDGE = NO
   USETRANSLUCENCY = YES

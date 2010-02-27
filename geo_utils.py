@@ -5,6 +5,7 @@
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,lexsort,mod,sort,\
     arange,copy,floor
+from numpy.linalg import norm
 import string ,sys, copy, pdb, os
 
 from mdo_import_helper import *
@@ -627,6 +628,34 @@ def blendKnotVectors(knot_vectors,sym):
 
     new_knot_vec /= nVec
     return new_knot_vec
+
+def orthogonzlize3(vector):
+    # Do the gram-schmitt orthogonalization process for space3
+    ndim = len(vector)
+    u = zeros((ndim,ndim))
+    v = zeros((ndim,ndim))
+    v[0] = vector
+    v[1] = [vector[0],vector[2],vector[1]]
+    v[2] = [vector[0],vector[2],vector[1]]
+    print v
+    v[0] /= norm(v[0])
+    v[1] /= norm(v[1])
+    v[2] /= norm(v[2])
+    print v
+    u[0] = v[0]
+    u[1] = v[1]-proj(v[1],u[0])
+    u[2] = v[2]-proj(v[2],u[0])-proj(v[2],u[1])
+    return u
+
+def proj(v,u):
+    # projection of v on u
+    return dot(v,u)*u/dot(u,u)
+
+def ei(i,ndim):
+    # Return the ith standard basis vector for space ndim
+    ei = zeros(ndim)
+    ei[i] = 1.0
+    return ei
 
 class point_select(object):
 
