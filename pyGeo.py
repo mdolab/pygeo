@@ -1915,6 +1915,38 @@ offset.shape[0], Xsec, rot, must all have the same size'
      
         return global_geo, tacs_surfs
 
+    def getBounds(self,surfs=None):
+        '''Deterine the extents of (a part of) the surfaces
+        Required:
+            None:
+        Optional:
+            surfs: a list of surfs to include in the calculation
+        Returns: xmin and xmin: lowest and highest points
+        '''
+        if surfs=None:
+            surfs = arange(self.nSurf):
+        # end if
+        Xmin0,Xmax0 = self.surfs(surfs[0])
+        for i in xrange(1,len(surfs)):
+            isurf = surfs[i]
+            Xmin,Xmax = self.surfs[isurf].getBounds
+            # Now check them 
+            if Xmin[0] < Xmin0[0]:
+                Xmin0[0] = Xmin[0]
+            if Xmin[1] < Xmin0[1]:
+                Xmin0[1] = Xmin[1]
+            if Xmin[2] < Xmin0[2]:
+                Xmin0[2] = Xmin[2]
+            if Xmax[0] > Xmax0[0]:
+                Xmax0[0] = Xmax[0]
+            if Xmax[1] > Xmax0[1]:
+                Xmax0[1] = Xmax[1]
+            if Xmax[2] > Xmax0[2]:
+                Xmax0[2] = Xmax[2]
+        # end for
+        return Xmin0,Xmax0
+
+
 
     def _projectCurves(self,curve1,curve2,surfs=None):
         '''
@@ -1999,11 +2031,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         return patchID,u0,v0
-        
-
-
-
-
 
 
 
