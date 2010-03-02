@@ -51,6 +51,209 @@ exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
 # =============================================================================
 # pyGeo class
 # =============================================================================
+class pyBlock():
+	
+    def __init__(self,init_type,*args, **kwargs):
+        
+        '''Create an instance of the geometry object. The initialization type,
+        init_type, specifies what type of initialization will be
+        used. There are currently 4 initialization types: plot3d,
+        iges, lifting_surface and acdt_geo
+
+        
+        Input: 
+        
+        init_type, string: a key word defining how this geo object
+        will be defined. Valid Options/keyword argmuents are:
+
+        'plot3d',file_name = 'file_name.xyz' : Load in a plot3D
+        surface patches and use them to create splined volumes
+        '''
+        
+        # First thing to do is to check if we want totally silent
+        # operation i.e. no print statments
+        if 'no_print' in kwargs:
+            self.NO_PRINT = kwargs['no_print']
+        else:
+            self.NO_PRINT = False
+        # end if
+        self.init_type = init_type
+        mpiPrint(' ',self.NO_PRINT)
+        mpiPrint('------------------------------------------------',self.NO_PRINT)
+        mpiPrint('pyVol Initialization Type is: %s'%(init_type),self.NO_PRINT)
+        mpiPrint('------------------------------------------------',self.NO_PRINT)
+
+        #------------------- pyVol Class Atributes -----------------
+        self.embeded_surfaces=[]# A list of the attached surface objects
+        self.topo = None         # The topology of the surfaces
+        self.vols = []          # The list of surface (pySpline surf)
+                                 # objects
+        self.nVol = None        # The total number of surfaces
+        self.coef  = None        # The global (reduced) set of control
+
+        # --------------------------------------------------------------
+
+        if init_type == 'plot3d':
+            self._readPlot3D(*args,**kwargs)
+        else:
+            mpiPrint('Not Implemented Yet')
+        return
+
+    def _readPlot3D(self,*args,**kwargs):
+
+        '''Load a plot3D file and create the splines to go with each patch'''
+        assert 'file_name' in kwargs,'file_name must be specified for plot3d'
+        file_name = kwargs['file_name']
+        mpiPrint('Loading plot3D file: %s ...'%(file_name),self.NO_PRINT)
+
+        f = open(file_name,'r')
+        nVol = int(f.readline())         # First load the number of patches
+
+        mpiPrint('nVol = %d'%(nVol),self.NO_PRINT)
+
+        patchSizes = readNValues(f,nVol*3,'int')
+        patchSizes = patchSizes.reshape([nVol,3])
+        nPts = 0
+        for i in xrange(nVol):
+            nPts += patchSizes[i,0]*patchSizes[i,1]*patchSizes[i,2]
+        # end for
+        mpiPrint('Number of Volume Points = %d'%(nPts),self.NO_PRINT)
+        dataTemp = readNValues(f,3*nPts,'float')
+        f.close() # Done with the file
+
+        # Post Processing
+        patches = []
+        counter = 0
+
+        for ivol in xrange(nVol):
+            patches.append(zeros([patchSizes[ivol,0],patchSizes[ivol,1],patchSizes[ivol,2],3]))
+            for idim in xrange(3):
+                for k in xrange(patchSizes[ivol,2]):
+                    for j in xrange(patchSizes[ivol,1]):
+                        for i in xrange(patchSizes[ivol,0]):
+                            patches[ivol][i,j,k,idim] = dataTemp[counter]
+                            counter += 1
+                        # end for
+                    # end for
+                # end for
+            # end for
+        # end for
+
+        # Now create a list of spline volume objects:
+        vols = []
+        for ivol in xrange(nVol):
+            vols.append(pySpline.volume(X=patches[ivol],ku=2,kv=2,kw=2,no_print=self.NO_PRINT))
+        self.vols = vols
+        self.nVol = nVol
+        return
+
+    def writeTecplot(self,file_name,vols=True,coef=True,
+                     vol_labels=False):
+
+        '''Write the pyGeo Object to Tecplot dat file
+        Required:
+            file_name: The filename for the output file
+        Optional:
+            vols: boolean, write the interpolated volumes
+            coef: boolean, write the control points
+            vol_labels: boolean, write the surface labels
+            '''
+
+        # Open File and output header
+        #if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
+        if MPI.Comm.Get_rank(MPI.COMM_WORLD) != 0: 
+            return
+        # end if
+        
+        mpiPrint('Writing Tecplot file: %s '%(file_name),self.NO_PRINT)
+
+        f = open(file_name,'w')
+        f.write ('VARIABLES = "X", "Y","Z"\n')
+
+        # --------------------------------------
+        #    Write out the Interpolated Surfaces
+        # --------------------------------------
+        
+        if vols == True:
+            for ivol in xrange(self.nVol):
+                self.vols[ivol]._writeTecplotVolume(f)
+
+        # -------------------------------
+        #    Write out the Control Points
+        # -------------------------------
+        
+        if coef == True:
+            for ivol in xrange(self.nVol):
+                self.vols[ivol]._writeTecplotCoef(f)
+
+        # ---------------------------------------------
+        #    Write out The Volume Labels
+        # ---------------------------------------------
+        if vol_labels == True:
+            # Split the filename off
+            (dirName,fileName) = os.path.split(file_name)
+            (fileBaseName, fileExtension)=os.path.splitext(fileName)
+            label_filename = dirName+'/'+fileBaseName+'.vol_labels.dat'
+            f2 = open(label_filename,'w')
+            for ivol in xrange(self.nVol):
+                midu = floor(self.vols[ivol].Nctlu/2)
+                midv = floor(self.vols[ivol].Nctlv/2)
+                midw = floor(self.vols[ivol].Nctlw/2)
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f, T=\"V%d\"\n'%(self.vols[ivol].coef[midu,midv,midw,0],self.vols[ivol].coef[midu,midv,midw,1], self.vols[ivol].coef[midu,midv,midw,2],ivol)
+                f2.write('%s'%(text_string))
+            # end for 
+            f2.close()
+        # end if 
+        f.close()
+        
+        return
+
+    def embedGeo(self,geo):
+        '''Embed a pyGeo object's surfaces into the volume'''
+        self.volID = []
+        self.u = []
+        self.v = []
+        self.w = []
+        
+        for icoef in xrange(len(geo.coef)):
+            ivol,u0,v0,w0,D0 = self.projectPoint(geo.coef[icoef])
+            self.u.append(u0)
+            self.v.append(v0)
+            self.w.append(w0)
+            self.volID.append(ivol)
+        # end for
+
+    def updateGeo(self,geo):
+        for icoef in xrange(len(geo.coef)):
+            geo.coef[icoef] = self.vols[self.volID[icoef]](\
+                self.u[icoef],self.v[icoef],self.w[icoef])
+        #end for
+        geo._updateSurfaceCoef()
+
+    def projectPoint(self,x0):
+        '''Project a point into any one of the volumes. Returns 
+        the volID,u,v,w,D of the point in volID or closest to it.
+
+        This is a brute force search and is NOT efficient'''
+        
+        u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
+        volID = 0
+        for ivol in xrange(1,self.nVol):
+            u,v,w,D = self.vols[ivol].projectPoint(x0)
+            if norm(D)<norm(D0):
+                D0 = D
+                u0 = u
+                v0 = v
+                w0 = w
+                volID = ivol
+            # end if
+        # end for
+        return volID,u0,v0,w0,D0
+                
+
+
+
+
 class pyGeo():
 	
     def __init__(self,init_type,*args, **kwargs):
@@ -1923,13 +2126,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
             surfs: a list of surfs to include in the calculation
         Returns: xmin and xmin: lowest and highest points
         '''
-        if surfs=None:
-            surfs = arange(self.nSurf):
+        if surfs==None:
+            surfs = arange(self.nSurf)
         # end if
-        Xmin0,Xmax0 = self.surfs(surfs[0])
+        Xmin0,Xmax0 = self.surfs[surfs[0]].getBounds()
         for i in xrange(1,len(surfs)):
             isurf = surfs[i]
-            Xmin,Xmax = self.surfs[isurf].getBounds
+            Xmin,Xmax = self.surfs[isurf].getBounds()
             # Now check them 
             if Xmin[0] < Xmin0[0]:
                 Xmin0[0] = Xmin[0]
