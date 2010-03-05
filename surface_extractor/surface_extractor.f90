@@ -1,10 +1,15 @@
-program read_cgns_1
+program surface_extractor
+  
+  ! Note:
+  ! Max number of surface points is 100,000. Increase if necessary (line ~21)
+  ! Max nuumber of boundary surfaces is 1000. (line ~22)
+
   implicit none
   include 'cgnslib_f.h'
 
   integer Ndim, i,boco
   parameter (Ndim = 3)
-  integer IndexDim, CellDim, PhysDim
+  integer  CellDim, PhysDim
   integer ier, n, zonetype
   character*32 name, filename,output_filename
   integer cg, base, zone,j
@@ -128,4 +133,4 @@ program read_cgns_1
   close(7)         
   print *,'Processed:',bc_counter-1,'zones'
   call cg_close_f(cg, ier)
-end program read_cgns_1
+end program surface_extractor

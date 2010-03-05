@@ -15,6 +15,8 @@ Z = cos(U)*sin(V)
 
 surf = pySpline.surface(x=U,y=V,z=Z,ku=4,kv=4,Nctlu=5,Nctlv=5)
 surf.writeTecplot('surface.dat')
+print surf(0.34,0.54)
+sys.exit(0)
 
 # Test the project point Algorithim
 x0 = [[0,0,0],
