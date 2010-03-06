@@ -1593,7 +1593,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def writeTecplot(self,file_name,orig=False,surfs=True,coef=True,
                      ref_axis=False,links=False,
-                     directions=False,surf_labels=False,edge_labels=False,size=None,
+                     directions=False,surf_labels=False,edge_labels=False,
                      node_labels=False):
 
         '''Write the pyGeo Object to Tecplot dat file
@@ -1618,10 +1618,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             return
         # end if
         
-        mpiPrint('Writing Tecplot file: %s '%(file_name),self.NO_PRINT)
-
-        f = open(file_name,'w')
-        f.write ('VARIABLES = "X", "Y","Z"\n')
+        f = pySpline.openTecplot(file_name,3)
 
         # --------------------------------------
         #    Write out the Interpolated Surfaces
@@ -1629,7 +1626,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         
         if surfs == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeTecplotSurface(f,size=size)
+                self.surfs[isurf]._writeTecplotSurface(f)
 
         # -------------------------------
         #    Write out the Control Points
@@ -1663,8 +1660,9 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # ------------------
 
         if len(self.ref_axis)>0 and links==True:
-            for r in xrange(len(self.ref_axis)):
-                self._writeTecplotLinks(f,self.ref_axis[r])
+            mpiPrint('Tecplot Link Plotting is not enabled')
+            #for r in xrange(len(self.ref_axis)):
+            #    self._writeTecplotLinks(f,self.ref_axis[r])
             # end for
         # end if
               
@@ -1746,8 +1744,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()
-
-        f.close()
+        pySpline.closeTecplot(f)
         
         return
 
@@ -2496,12 +2493,8 @@ class ref_axis(object):
        
     def _writeTecplot(self,handle,axis_name):
         '''Write the ref axis to the open file handle'''
-        N = len(self.xs.s)
-        handle.write('Zone T=%s I=%d\n'%(axis_name,N))
         values = self.xs.getValue(self.xs.s)
-        for i in xrange(N):
-            handle.write('%f %f %f \n'%(values[i,0],values[i,1],values[i,2]))
-        # end for
+        pySpline._writeTecplot1D(handle,axis_name,values)
 
         return
 

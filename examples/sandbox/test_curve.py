@@ -12,6 +12,11 @@ x = [0,2,3,5]
 y = [-2,5,3,0]
 z = [0,2,0,-1]
 curve1 = pySpline.curve(x=x,y=y,z=z,k=4)
+curve1.writeTecplot('curve1.plt')
+
+sys.exit(0)
+
+
 curve1.writeTecplot('curve1.dat',size=.1)
 vals = curve1(curve1.gpts)
 f = open('gpts.dat','w')
