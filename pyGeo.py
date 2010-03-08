@@ -80,75 +80,79 @@ class pyBlock():
         self.init_type = init_type
         mpiPrint(' ',self.NO_PRINT)
         mpiPrint('------------------------------------------------',self.NO_PRINT)
-        mpiPrint('pyVol Initialization Type is: %s'%(init_type),self.NO_PRINT)
+        mpiPrint('pyBlcok Initialization Type is: %s'%(init_type),self.NO_PRINT)
         mpiPrint('------------------------------------------------',self.NO_PRINT)
 
         #------------------- pyVol Class Atributes -----------------
-        self.embeded_surfaces=[]# A list of the attached surface objects
-        self.topo = None         # The topology of the surfaces
-        self.vols = []          # The list of surface (pySpline surf)
-                                 # objects
-        self.nVol = None        # The total number of surfaces
-        self.coef  = None        # The global (reduced) set of control
+        self.topo = None         # The topology of the volumes/surface
+        self.vols = []           # The list of volumes (pySpline volume)
+        self.nVol = None         # The total number of volumessurfaces
+        self.coef  = None        # The global (reduced) set of control pts
 
         # --------------------------------------------------------------
 
         if init_type == 'plot3d':
             self._readPlot3D(*args,**kwargs)
+        elif init_type == 'cgns':
+            self._readCGNS(*args,**kwargs)
+        elif init_type == 'bvol':
+            self._readBVol(*args,**kwargs)
         else:
-            mpiPrint('Not Implemented Yet')
+            mpiPrint('init_type must be one of plot3d,cgns, or bvol.')
+            sys.exit(0)
         return
 
     def _readPlot3D(self,*args,**kwargs):
 
         '''Load a plot3D file and create the splines to go with each patch'''
         assert 'file_name' in kwargs,'file_name must be specified for plot3d'
-        file_name = kwargs['file_name']
-        mpiPrint('Loading plot3D file: %s ...'%(file_name),self.NO_PRINT)
+        assert 'file_type' in kwargs,'file_type must be specified as binary or ascii'
+        file_name = kwargs['file_name']        
+        file_type = kwargs['file_type']
 
-        f = open(file_name,'r')
-        nVol = int(f.readline())         # First load the number of patches
-
+        if file_type == 'ascii':
+            mpiPrint('Loading ascii plot3D file: %s ...'%(file_name),self.NO_PRINT)
+            binary = False
+            f = open(file_name,'r')
+        else:
+            mpiPrint('Loading binary plot3D file: %s ...'%(file_name),self.NO_PRINT)
+            binary = True
+            f = open(file_name,'rb')
+        # end if
+        nVol = readNValues(f,1,'int',binary)[0]
         mpiPrint('nVol = %d'%(nVol),self.NO_PRINT)
-
-        patchSizes = readNValues(f,nVol*3,'int')
-        patchSizes = patchSizes.reshape([nVol,3])
-        nPts = 0
+        sizes   = readNValues(f,nVol*3,'int',binary).reshape((nVol,3))
+        blocks = []
         for i in xrange(nVol):
-            nPts += patchSizes[i,0]*patchSizes[i,1]*patchSizes[i,2]
-        # end for
-        mpiPrint('Number of Volume Points = %d'%(nPts),self.NO_PRINT)
-        dataTemp = readNValues(f,3*nPts,'float')
-        f.close() # Done with the file
-
-        # Post Processing
-        patches = []
-        counter = 0
-
-        for ivol in xrange(nVol):
-            patches.append(zeros([patchSizes[ivol,0],patchSizes[ivol,1],patchSizes[ivol,2],3]))
+            cur_size = sizes[i,0]*sizes[i,1]*sizes[i,2]
+            blocks.append(zeros([sizes[i,0],sizes[i,1],sizes[i,2],3]))
             for idim in xrange(3):
-                for k in xrange(patchSizes[ivol,2]):
-                    for j in xrange(patchSizes[ivol,1]):
-                        for i in xrange(patchSizes[ivol,0]):
-                            patches[ivol][i,j,k,idim] = dataTemp[counter]
-                            counter += 1
-                        # end for
-                    # end for
-                # end for
+                blocks[-1][:,:,:,idim] = readNValues(f,cur_size,'float',binary).reshape((sizes[i,0],sizes[i,1],sizes[i,2]),order='F')
             # end for
         # end for
+        f.close()
 
         # Now create a list of spline volume objects:
         vols = []
+        # Note This doesn't actually fit the volumes...just produces
+        # the parameterization and knot vectors
         for ivol in xrange(nVol):
-            vols.append(pySpline.volume(X=patches[ivol],ku=2,kv=2,kw=2,no_print=self.NO_PRINT))
+            print 'Creating volume %d'%(ivol)
+            vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
+                                            Nctlu=9,Nctlv=9,Nctlw=9,\
+                                            no_print=self.NO_PRINT))
         self.vols = vols
         self.nVol = nVol
         return
 
+    def _readCGNS(self,*args,**kwargs):
+        '''Load a CGNS fiel and create the spline to go with each patch'''
+        assert 'file_name' in kwargs,'file_name must be specified for CGNS'
+        file_name = kwargs['file_name']
+
+
     def writeTecplot(self,file_name,vols=True,coef=True,
-                     vol_labels=False):
+                     vol_labels=False,tecio=False):
 
         '''Write the pyGeo Object to Tecplot dat file
         Required:
@@ -160,15 +164,8 @@ class pyBlock():
             '''
 
         # Open File and output header
-        #if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
-        if MPI.Comm.Get_rank(MPI.COMM_WORLD) != 0: 
-            return
-        # end if
         
-        mpiPrint('Writing Tecplot file: %s '%(file_name),self.NO_PRINT)
-
-        f = open(file_name,'w')
-        f.write ('VARIABLES = "X", "Y","Z"\n')
+        f = pySpline.openTecplot(file_name,3,tecio=tecio)
 
         # --------------------------------------
         #    Write out the Interpolated Surfaces
@@ -190,23 +187,69 @@ class pyBlock():
         #    Write out The Volume Labels
         # ---------------------------------------------
         if vol_labels == True:
-            # Split the filename off
-            (dirName,fileName) = os.path.split(file_name)
-            (fileBaseName, fileExtension)=os.path.splitext(fileName)
-            label_filename = dirName+'/'+fileBaseName+'.vol_labels.dat'
-            f2 = open(label_filename,'w')
-            for ivol in xrange(self.nVol):
-                midu = floor(self.vols[ivol].Nctlu/2)
-                midv = floor(self.vols[ivol].Nctlv/2)
-                midw = floor(self.vols[ivol].Nctlw/2)
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f, T=\"V%d\"\n'%(self.vols[ivol].coef[midu,midv,midw,0],self.vols[ivol].coef[midu,midv,midw,1], self.vols[ivol].coef[midu,midv,midw,2],ivol)
-                f2.write('%s'%(text_string))
-            # end for 
-            f2.close()
+            print 'Not done yet'
+#             # Split the filename off
+#             (dirName,fileName) = os.path.split(file_name)
+#             (fileBaseName, fileExtension)=os.path.splitext(fileName)
+#             label_filename = dirName+'/'+fileBaseName+'.vol_labels.dat'
+#             f2 = open(label_filename,'w')
+#             for ivol in xrange(self.nVol):
+#                 midu = floor(self.vols[ivol].Nctlu/2)
+#                 midv = floor(self.vols[ivol].Nctlv/2)
+#                 midw = floor(self.vols[ivol].Nctlw/2)
+#                 text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f, T=\"V%d\"\n'%(self.vols[ivol].coef[midu,midv,midw,0],self.vols[ivol].coef[midu,midv,midw,1], self.vols[ivol].coef[midu,midv,midw,2],ivol)
+#                 f2.write('%s'%(text_string))
+#             # end for 
+#             f2.close()
         # end if 
-        f.close()
-        
+        pySpline.closeTecplot(f)
         return
+
+    def _calcConnectivity(self,node_tol,edge_tol):
+        # Determine the blocking connectivity
+
+        # First we have to determine all the unique FACES
+        face_mids = []
+        face_dist = []
+        for ivol in xrange(self.nVol):
+            for iface in xrange(6):
+                face_mids.append(self.vols[ivol].getMidPointFace(iface))
+                face_dist.append(dot(face_mids[-1],face_mids[-1]))
+            # end for
+        # end for
+
+        pointReduce(face_mids)
+        sys.exit(0)
+        # THIS IS VERY SLOW --- But it may not be worth the effort to fix...
+        coords= [face_mids[0]] # Physical Coordinates of the Nodes
+        face_link = []
+        for ivol in xrange(self.nVol):
+            for iface in xrange(6):
+                found_it = False
+                for i in xrange(len(coords)):
+                    if e_dist(face_mids[ivol*6+iface],coords[i]) < node_tol:
+                        face_link.append(i)
+                        found_it = True
+                        break
+                    # end if
+                # end for
+                if not found_it:
+                    coords.append(face_mids[ivol*6+iface])
+                    face_link.append(i+1)
+                # end if
+            # end for
+        # end for
+
+        # Now we can go though for each actual face, produce the
+        # vector of length 8 which contains the corners of each face 
+
+
+        return
+                            
+        
+    def doConnectivity(self,node_tol=1e-4,edge_tol=1e-4):
+        self._calcConnectivity(node_tol,edge_tol)
+
 
     def embedGeo(self,geo):
         '''Embed a pyGeo object's surfaces into the volume'''
@@ -250,9 +293,30 @@ class pyBlock():
         # end for
         return volID,u0,v0,w0,D0
                 
+    def _calcEdgeConnectivity(self,node_tol,edge_tol):
 
+        # We need one additional set before we can compute the the
+        # face connectivity using the topology object. We must
+        # determine the unique faces on the blocks
 
+        coords = zeros((self.nSurf,8,3))
+        for isurf in xrange(self.nSurf):
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(0)
+            coords[isurf][0] = beg
+            coords[isurf][1] = end
+            coords[isurf][4] = mid
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(1)
+            coords[isurf][2] = beg
+            coords[isurf][3] = end
+            coords[isurf][5] = mid
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(2)
+            coords[isurf][6] = mid
+            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(3)
+            coords[isurf][7] = mid
+        # end for
 
+        self.topo = Topology(coords=coords,node_tol=node_tol,edge_tol=edge_tol)
+        return
 
 class pyGeo():
 	
@@ -419,8 +483,8 @@ file_name=\'filename\' for iges init_type'
         # Now create a list of spline objects:
         surfs = []
         for isurf in xrange(nSurf):
-            surfs.append(pySpline.surface(X=patches[isurf],ku=4,kv=4,Nctlu=6,Nctlv=6,\
-                                              no_print=self.NO_PRINT))
+            surfs.append(pySpline.surface(X=patches[isurf],ku=4,kv=4,Nctlu=6,\
+                                              Nctlv=6,no_print=self.NO_PRINT))
         self.surfs = surfs
         self.nSurf = nSurf
         return
@@ -679,10 +743,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 nSubComp = len(ac[i])
                 for j in xrange(nSubComp):
                     [m,n] = ac[i][j].Surface_x.shape
-                    print 'm,n:',m,n
                     N = (n+1)/2
                     X = zeros((m,N,3))
-                    print N
                     X[:,:,0] = ac[i][j].Surface_x[:,N-1:]
                     X[:,:,1] = ac[i][j].Surface_y[:,N-1:]
                     X[:,:,2] = ac[i][j].Surface_z[:,N-1:]
@@ -1613,10 +1675,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
             '''
 
         # Open File and output header
-        #if MPI.Comm.Get_rank( MPI.WORLD ) != 0:
-        if MPI.Comm.Get_rank(MPI.COMM_WORLD) != 0: 
-            return
-        # end if
         
         f = pySpline.openTecplot(file_name,3)
 
