@@ -4,7 +4,7 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,lexsort,mod,sort,\
-    arange,copy,floor
+    arange,copy,floor,fromfile
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os
 
@@ -52,31 +52,41 @@ def rotzV(x,theta):
  #                I/O Functions
  # --------------------------------------------------------------
 
-def readNValues(handle,N,type):
+def readNValues(handle,N,type,binary=False):
     '''Read N values of type 'float' or 'int' from file handle'''
-    if type == 'int':
-        values = zeros(N,'intc')
-    elif type == 'float':
-        values = zeros(N)
-    else:
-        print 'Error: type is not known. MUST be \'int\' or \'float\''
-# end if
-        
-    counter = 0
-    while counter < N:
-        aux = string.split(handle.readline())
+    if binary == False:
         if type == 'int':
-            for i in xrange(len(aux)):
-                values[counter] = int(aux[i])
-                counter += 1
-            # end for
+            values = zeros(N,'intc')
+        elif type == 'float':
+            values = zeros(N)
         else:
-            for i in xrange(len(aux)):
-                values[counter] = float(aux[i])
-                counter += 1
-            # end for
+            print 'Error: type is not known. MUST be \'int\' or \'float\''
+    # end if
+
+        counter = 0
+        if type == 'int':
+            while counter < N:
+                aux = string.split(handle.readline())
+                for i in xrange(len(aux)):
+                    values[counter] = int(aux[i])
+                    counter += 1
+                # end for
+            # end while
+        else:
+            while counter < N:
+                aux = string.split(handle.readline())
+                for i in xrange(len(aux)):
+                    values[counter] = float(aux[i])
+                    counter += 1
+                # end for
+            # end while
         # end if
-    # end while
+    else:
+        if type == 'int':
+            values = fromfile(handle,dtype='int',count=N)
+        else:
+            values = fromfile(handle,dtype='float',count=N)
+        # end if
     return values
 
 def read_af(filename,file_type='xfoil',N=35):
@@ -400,6 +410,97 @@ def unique_index(s,s_hash=None):
     # end for
 
     return t[:lasti],ind
+
+def pointReduce(points):
+    '''Given a list of N points in ndim space, with possible
+    duplicates, return a list of the unique points AND a pointer list
+    for the original points to the reduced set'''
+
+    # First 
+
+    N = len(points)
+    dists = []
+    for ipt in xrange(N): 
+        dists.append(sqrt(dot(points[ipt],points[ipt])))
+    # end for
+
+    ind = argsort(dists)
+    #print ind
+    dists.sort()
+    new_points = [points[ind[0]]]
+    #print dists
+    for i in xrange(N-1):
+        #print i
+        #print dists[i],dists[i+1]
+        #print points[ind[i]],points[ind[i+1]]
+        #print '-----'
+        if abs(dists[i]-dists[i+1]) < 1e-4:
+            # Check to make sure they are ACTUALLY the same
+            if e_dist(points[ind[i]],points[ind[i+1]])<1e-4:
+                pass
+                #print 'Good!'
+                # We actually have the same point
+            else:
+                print 'Bad'                
+                print i
+                print dists[i],dists[i+1]
+                print points[ind[i]],points[ind[i+1]]
+                print '-----'
+                
+
+                
+                new_points.append(points[ind[i+1]])
+        else:
+            new_points.append(points[ind[i+1]])
+            # en dif
+        # end if
+    # end for
+    print 'new point len:',len(new_points)
+    print new_points
+
+    return
+
+
+
+#         found_it = False
+#         cur_dist = sqrt(dot(points[ipt],points[ipt0]))
+#         left  = dists.searchsorted(cur_dist,side='left')
+#         right = dists.searchsorted(cur_dist,side='right')
+
+#         # Check them
+#         for i in xrange(left,right):
+#             if e_dist(points[ipt],dists[i]) < node_tol and found_it == False:
+#                 points_link.append(i)
+#                 found_it = True
+#             # end if
+#         # end for
+        
+#         if not found_it:
+#             coords.insert(left,points[i])
+#             point_link.append(
+
+
+#         for ivol in xrange(self.nVol):
+#             if ivol !=0: face_link.append([])
+#             for iface in xrange(6):
+#                 found_it = False
+#                 for i in xrange(len(coords)):
+#                     if e_dist(face_mids[ivol][iface],coords[i]) < node_tol:
+#                         face_link[ivol].append(i)
+#                         found_it = True
+#                         break
+#                     # end if
+#                 # end for
+#                 if not found_it:
+#                     coords.append(face_mids[ivol][iface])
+#                     face_link[ivol].append(i+1)
+#                 # end if
+#             # end for
+#         # end for
+
+
+
+
 
 def directionAlongSurface(surface,line,section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
