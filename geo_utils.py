@@ -3,8 +3,8 @@
 # =============================================================================
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,max,min,insert,delete,empty,mod,tan,ones,argsort,lexsort,mod,sort,\
-    arange,copy,floor,fromfile
+    array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
+    arange,copy,floor,fromfile,choose
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os
 
@@ -411,96 +411,146 @@ def unique_index(s,s_hash=None):
 
     return t[:lasti],ind
 
-def pointReduce(points):
+def pointReduce(points,node_tol=1e-4):
     '''Given a list of N points in ndim space, with possible
     duplicates, return a list of the unique points AND a pointer list
     for the original points to the reduced set'''
 
     # First 
-
+    points = array(points)
     N = len(points)
     dists = []
     for ipt in xrange(N): 
         dists.append(sqrt(dot(points[ipt],points[ipt])))
     # end for
-
     ind = argsort(dists)
-    #print ind
-    dists.sort()
-    new_points = [points[ind[0]]]
-    #print dists
-    for i in xrange(N-1):
-        #print i
-        #print dists[i],dists[i+1]
-        #print points[ind[i]],points[ind[i+1]]
-        #print '-----'
-        if abs(dists[i]-dists[i+1]) < 1e-4:
-            # Check to make sure they are ACTUALLY the same
-            if e_dist(points[ind[i]],points[ind[i+1]])<1e-4:
-                pass
-                #print 'Good!'
-                # We actually have the same point
+    i= 0
+    cont = True
+    new_points = []
+    link = zeros(N,'intc')
+    link_counter = 0
+    while cont:
+        cont2 = True
+        temp_ind = []
+        j = i
+        while cont2:
+            if abs(dists[ind[i]]-dists[ind[j]])<node_tol:
+                temp_ind.append(ind[j])
+                j = j + 1
+                if j == N: # Overrun check
+                    cont2 = False
+                # end if
             else:
-                print 'Bad'                
-                print i
-                print dists[i],dists[i+1]
-                print points[ind[i]],points[ind[i+1]]
-                print '-----'
-                
+                cont2 = False
+            #end if
+        # end while
+        sub_points = [] # Copy of the list of sub points with the dists
+        for ii in xrange(len(temp_ind)):
+            sub_points.append(points[temp_ind[ii]])
 
-                
-                new_points.append(points[ind[i+1]])
-        else:
-            new_points.append(points[ind[i+1]])
-            # en dif
+        # Brute Force Search them 
+        sub_unique_pts,sub_link = pointReduceBruteForce(sub_points,node_tol)
+        new_points.extend(sub_unique_pts)
+
+        for ii in xrange(len(temp_ind)):
+            link[temp_ind[ii]] = sub_link[ii] + link_counter
+        # end if
+        link_counter += max(sub_link) + 1
+
+        
+        i = j-1
+        i = i + 1
+        if i == N:
+            cont = False
+        # end if
+    # end while
+    return array(new_points),array(link)
+
+def quadOrientation(pt1,pt2):
+    '''Given two sets of 4 points in ndim space, pt1 and pt2,
+    determine the orientation of pt2 wrt pt1
+    This works for both exact quads and "loosely" oriented quads
+    .'''
+    dist = zeros((4,4))
+    for i in xrange(4):
+        for j in xrange(4):
+            dist[i,j] = e_dist(pt1[i],pt2[j])
+        # end for
+    # end for
+
+    # Now compute the 8 distances for the 8 possible orientation
+    sum_dist = zeros(8)
+    sum_dist[0] = dist[0,0] + dist[1,1] + dist[2,2] + dist[3,3] # corners = [0,1,2,3]
+    sum_dist[1] = dist[0,1] + dist[1,0] + dist[2,3] + dist[3,2] # corners = [1,0,3,2]
+    sum_dist[2] = dist[0,2] + dist[1,3] + dist[2,0] + dist[3,1] # corners = [2,3,0,1]
+    sum_dist[3] = dist[0,3] + dist[1,2] + dist[2,1] + dist[3,0] # corners = [3,2,1,0]
+    sum_dist[4] = dist[0,0] + dist[1,2] + dist[2,1] + dist[3,3] # corners = [0,2,1,3]
+    sum_dist[5] = dist[0,2] + dist[1,0] + dist[2,3] + dist[3,1] # corners = [2,0,3,1]
+    sum_dist[6] = dist[0,1] + dist[1,3] + dist[2,0] + dist[3,2] # corners = [1,3,0,2]
+    sum_dist[7] = dist[0,3] + dist[1,1] + dist[2,2] + dist[3,0] # corners = [3,1,2,0]
+
+    index = sum_dist.argmin()
+
+    return index
+
+def orientArray(index,in_array):
+    '''Take an input array in_array, and rotate/flip according to the index
+    output from quadOrientation'''
+
+    if index == 0:
+        out_array = in_array.copy()
+    elif index == 1:
+        out_array = rotateCCW(in_array)
+        out_array = rotateCCW(out_array)
+        out_array = reverseRows(out_array)
+    elif index == 2:
+        out_array = reverseRows(in_array)
+    elif index == 3:
+        out_array = rotateCCW(in_array) # Verified working
+        out_array = rotateCCW(out_array)
+    elif index == 4:
+        out_array = rotateCW(in_array)
+        out_array = reverseRows(out_array)
+    elif index == 5:
+        out_array = rotateCCW(in_array)
+    elif index == 6:
+        out_array = rotateCW(in_array)
+    elif index == 7:
+        out_array = rotateCCW(in_array)
+        out_array = reverseRows(out_array)
+        
+    return out_array
+
+    
+
+
+
+def pointReduceBruteForce(points,node_tol=1e-4):
+    '''Given a list of N points in ndim space, with possible
+    duplicates, return a list of the unique points AND a pointer list
+    for the original points to the reduced set
+
+    BRUTE FORCE VERSION
+
+    '''
+    N = len(points)
+    unique_points = [points[0]]
+    link = [0]
+    for i in xrange(1,N):
+        found_it = False
+        for j in xrange(len(unique_points)):
+            if e_dist(points[i],unique_points[j]) < node_tol:
+                link.append(j)
+                found_it = True
+                break
+            # end if
+        # end for
+        if not found_it:
+            unique_points.append(points[i])
+            link.append(j+1)
         # end if
     # end for
-    print 'new point len:',len(new_points)
-    print new_points
-
-    return
-
-
-
-#         found_it = False
-#         cur_dist = sqrt(dot(points[ipt],points[ipt0]))
-#         left  = dists.searchsorted(cur_dist,side='left')
-#         right = dists.searchsorted(cur_dist,side='right')
-
-#         # Check them
-#         for i in xrange(left,right):
-#             if e_dist(points[ipt],dists[i]) < node_tol and found_it == False:
-#                 points_link.append(i)
-#                 found_it = True
-#             # end if
-#         # end for
-        
-#         if not found_it:
-#             coords.insert(left,points[i])
-#             point_link.append(
-
-
-#         for ivol in xrange(self.nVol):
-#             if ivol !=0: face_link.append([])
-#             for iface in xrange(6):
-#                 found_it = False
-#                 for i in xrange(len(coords)):
-#                     if e_dist(face_mids[ivol][iface],coords[i]) < node_tol:
-#                         face_link[ivol].append(i)
-#                         found_it = True
-#                         break
-#                     # end if
-#                 # end for
-#                 if not found_it:
-#                     coords.append(face_mids[ivol][iface])
-#                     face_link[ivol].append(i+1)
-#                 # end if
-#             # end for
-#         # end for
-
-
-
-
+    return array(unique_points),array(link)
 
 def directionAlongSurface(surface,line,section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
@@ -596,40 +646,6 @@ def indexPosition(i,j,N,M):
     elif i == N - 1 and j == M - 1:          # Node 3
         return 2,None,3,None
 
-def convertCSRtoCSC_one(nrow,ncol,Ap,Aj,Ax):
-    '''Convert a one-based CSR format to a one-based CSC format'''
-    nnz = Ap[-1]-1
-    Bp = zeros(ncol+1,'int')
-    Bi = zeros(nnz,'int')
-    Bx = zeros(nnz)
-
-    # compute number of non-zero entries per column of A 
-    nnz_per_col = zeros(ncol) # temp array
-
-    for i in xrange(nnz):
-        nnz_per_col[Aj[i]]+=1
-    # end for
-    # cumsum the nnz_per_col to get Bp[]
-    cumsum = 0
-    for i in xrange(ncol):
-        Bp[i] = cumsum+1
-        cumsum += nnz_per_col[i]
-        nnz_per_col[i] = 1
-    # end for
-    Bp[ncol] = nnz+1
-
-    for i in xrange(nrow):
-        row_start = Ap[i]
-        row_end = Ap[i+1]
-        for j  in xrange(row_start,row_end):
-            col = Aj[j-1]
-            k = Bp[col] + nnz_per_col[col] - 1
-            Bi[k-1] = i+1
-            Bx[k-1] = Ax[j-1]
-            nnz_per_col[col]+=1
-        # end for
-    # end for
-    return Bp,Bi,Bx
 # --------------------------------------------------------------
 #                     Node/Edge Functions
 # --------------------------------------------------------------
@@ -729,34 +745,6 @@ def blendKnotVectors(knot_vectors,sym):
 
     new_knot_vec /= nVec
     return new_knot_vec
-
-def orthogonzlize3(vector):
-    # Do the gram-schmitt orthogonalization process for space3
-    ndim = len(vector)
-    u = zeros((ndim,ndim))
-    v = zeros((ndim,ndim))
-    v[0] = vector
-    v[1] = [vector[0],vector[2],vector[1]]
-    v[2] = [vector[0],vector[2],vector[1]]
-    print v
-    v[0] /= norm(v[0])
-    v[1] /= norm(v[1])
-    v[2] /= norm(v[2])
-    print v
-    u[0] = v[0]
-    u[1] = v[1]-proj(v[1],u[0])
-    u[2] = v[2]-proj(v[2],u[0])-proj(v[2],u[1])
-    return u
-
-def proj(v,u):
-    # projection of v on u
-    return dot(v,u)*u/dot(u,u)
-
-def ei(i,ndim):
-    # Return the ith standard basis vector for space ndim
-    ei = zeros(ndim)
-    ei[i] = 1.0
-    return ei
 
 class point_select(object):
 
@@ -1020,30 +1008,12 @@ missing nodes')
         elif not coords == None:
             self.nFace = len(coords)
 
-            node_list= [coords[0][0]] # Physical Coordinates of the Nodes
-            node_link = [[]]
+            # We can use the pointReduce algorithim on the nodes
+            node_list,node_link = pointReduce(coords[:,0:4,:].reshape((self.nFace*4,3)))
+            node_link = node_link.reshape((self.nFace,4))
 
-            for iface in xrange(self.nFace):
-                if iface !=0: node_link.append([])
-                
-                for inode in xrange(4): 
-                    found_it = False
-                    for i in xrange(len(node_list)):
-                        if e_dist(coords[iface][inode],node_list[i]) < node_tol:
-                            node_link[iface].append(i)
-                            found_it = True
-                            break
-                        # end if
-                    # end for
-                    if not found_it:
-                        node_list.append(coords[iface][inode])
-                        node_link[iface].append(i+1)
-                    # end if
-                # end for
-            # end for
+            # Next Calculate the EDGE connectivity. -- This is Still Brute Force
 
-        # Next Calculate the EDGE connectivity. 
-                        
             edges = []
             midpoints = []
             edge_link = -1*ones(self.nFace*4,'intc')
@@ -1138,7 +1108,6 @@ missing nodes')
         self.nDG = dg_counter + 1
     
     def addDGEdge(self,i,edges,edge_link,edge_link_sorted,edge_link_ind):
-
         left  = edge_link_sorted.searchsorted(i,side='left')
         right = edge_link_sorted.searchsorted(i,side='right')
         res   = edge_link_ind[slice(left,right)]
@@ -1311,13 +1280,13 @@ the list of surfaces must be the same length'
 
         mpiPrint('------------------------------------------------------------------------')
         mpiPrint('%3d   %3d'%(self.nEdge,self.nFace))
-        mpiPrint('Edge Number    |  n0  |  n1  | Cont | Degen|Intsct|  DG  | Nctl |')
+        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,sys.stdout)
         # end for
-        mpiPrint('Surface Number |  n0  |  n1  |  n2  |  n3  |  e0  |  e1  |  e2  |  e3  | dir0 | dir1 | dir2 | dir3 |')
+        mpiPrint('Surface Number |  n0   |  n1   |  n2   |  n3   |  e0   |  e1   |  e2   |  e3   | dir0| dir1| dir2| dir3|')
         for i in xrange(self.nFace):
-            mpiPrint('    %3d        |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d '\
+            mpiPrint('  %5d        | %5d | %5d | %5d | %5d | %5d | %5d | %5d | %5d | %3d | %3d | %3d | %3d '\
                      %(i,self.node_link[i][0],self.node_link[i][1],self.node_link[i][2],
                        self.node_link[i][3],self.edge_link[i][0],self.edge_link[i][1],
                        self.edge_link[i][2],self.edge_link[i][3],self.edge_dir[i][0],
@@ -1330,17 +1299,17 @@ the list of surfaces must be the same length'
         '''Write the full edge connectivity to a file file_name'''
         f = open(file_name,'w')
         f.write('%3d %3d\n'%(self.nEdge,self.nFace))
-        f.write('Edge Number    |  n0  |  n1  | Cont | Degen|Intsct|  DG  | Nctl |\n')
+        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |\n')
         for i in xrange(self.nEdge):
             self.edges[i].write_info(i,f)
         # end for
-        f.write('Surface Number |  n0  |  n1  |  n2  |  n3  |  e0  |  e1  |  e2  |  e3  | dir0 | dir1 | dir2 | dir3 | \n')
+        f.write('Surface Number |  n0   |  n1   |  n2   |  n3   |  e0   |  e1   |  e2   |  e3   | dir0 | dir1 | dir2 | dir3 |\n')
         for i in xrange(self.nFace):
-            f.write('    %3d        |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d \n'\
-                    %(i,self.node_link[i][0],self.node_link[i][1],self.node_link[i][2],
-                      self.node_link[i][3],self.edge_link[i][0],self.edge_link[i][1],
-                      self.edge_link[i][2],self.edge_link[i][3],self.edge_dir[i][0],
-                      self.edge_dir[i][1],self.edge_dir[i][2],self.edge_dir[i][3]))
+            f.write('  %5d        | %5d | %5d | %5d | %5d | %5d | %5d | %5d | %5d | %3d | %3d | %3d | %3d \n'\
+                     %(i,self.node_link[i][0],self.node_link[i][1],self.node_link[i][2],
+                       self.node_link[i][3],self.edge_link[i][0],self.edge_link[i][1],
+                       self.edge_link[i][2],self.edge_link[i][3],self.edge_dir[i][0],
+                       self.edge_dir[i][1],self.edge_dir[i][2],self.edge_dir[i][3]))
         # end for
         f.close()
         
@@ -1537,215 +1506,9 @@ class edge(object):
         self.Nctl      = Nctl      # Number of control points for this edge
 
     def write_info(self,i,handle):
-        handle.write('  %3d          |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |  %3d |\n'\
+        handle.write('  %5d        | %5d | %5d | %5d | %5d | %5d |  %5d |  %5d |\n'\
                      %(i,self.n1,self.n2,self.cont,self.degen,self.intersect,self.dg,self.Nctl))
 
-
-# --------------------------------------------------------------
-#             Python Surface Mesh Warping Implementation
-# --------------------------------------------------------------
-
-def delI(i,j,vals):
-    return sqrt( ( vals[i,j,0]-vals[i-1,j,0]) ** 2 + \
-                  (vals[i,j,1]-vals[i-1,j,1]) ** 2 + \
-                  (vals[i,j,2]-vals[i-1,j,2]) ** 2)
-
-def delJ(i,j,vals):
-    return sqrt( ( vals[i,j,0]-vals[i,j-1,0]) ** 2 + \
-                  (vals[i,j,1]-vals[i,j-1,1]) ** 2 + \
-                  (vals[i,j,2]-vals[i,j-1,2]) ** 2)
-
-def parameterizeFace(Nu,Nv,coef):
-
-    '''Parameterize a pyGeo surface'''
-    S = zeros([Nu,Nv,2])
-
-    for i in xrange(1,Nu):
-        for j in xrange(1,Nv):
-            S[i,j,0] = S[i-1,j  ,0] + delI(i,j,coef)
-            S[i,j,1] = S[i  ,j-1,1] + delJ(i,j,coef)
-
-    for i in xrange(1,Nu):
-        S[i,0,0] = S[i-1,0,0] + delI(i,0,coef)
-    for j in xrange(1,Nv):
-        S[0,j,1] = S[0,j-1,1] + delJ(0,j,coef)
-
-    # Do a no-check normalization
-    for i in xrange(Nu):
-        for j in xrange(Nv):
-            S[i,j,0] /= S[-1,j,0]
-            S[i,j,1] /= S[i,-1,1]
-
-    return S
-
-def warp_face(Nu,Nv,S,dface):
-    '''Run the warp face algorithim'''
-
-    # Edge 0
-    for i in xrange(1,Nu):
-        j = 0
-        WTK2 = S[i,j,0]
-        WTK1 = 1.0-WTK2
-        dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
-
-    # Edge 1
-    for i in xrange(1,Nu):
-        j = -1
-        WTK2 = S[i,j,0]
-        WTK1 = 1.0-WTK2
-        dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
-
-    # Edge 1
-    for j in xrange(1,Nv):
-        i=0
-        WTK2 = S[i,j,1]
-        WTK1 = 1.0-WTK2
-        dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
-
-    # Edge 1
-    for j in xrange(1,Nv):
-        i=-1
-        WTK2 = S[i,j,1]
-        WTK1 = 1.0-WTK2
-        dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
-
-    eps = 1.0e-14
-   
-    for i in xrange(1,Nu-1):
-        for j in xrange(1,Nv-1):
-            WTI2 = S[i,j,0]
-            WTI1 = 1.0-WTI2
-            WTJ2 = S[i,j,1]
-            WTJ1 = 1.0-WTJ2
-            deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
-            delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
-
-            dface[i,j,0] = (abs(deli)*deli + abs(delj)*delj)/  \
-                max( ( abs (deli) + abs(delj),eps))
-
-            deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
-            delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
-
-            dface[i,j,1] = (abs(deli)*deli + abs(delj)*delj)/ \
-                max( ( abs (deli) + abs(delj),eps))
-        # end for
-    # end for
-
-    return dface
-
-# --------------------------------------------------------------
-#                Array Rotation and Flipping Functions
-# --------------------------------------------------------------
-
-def rotateCCW(input):
-    '''Rotate the input array 90 degrees CCW'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = empty([cols,rows],input.dtype)
- 
-    for row in xrange(rows):
-        for col in xrange(cols):
-            output[cols-col-1][row] = input[row][col]
-        # end for
-    # end for
-
-    return output
-
-def rotateCW(input):
-    '''Rotate the input array 90 degrees CW'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = empty([cols,rows],input.dtype)
- 
-    for row in xrange(rows):
-        for col in xrange(cols):
-            output[col][rows-row-1] = input[row][col]
-        # end for
-    # end for
-
-    return output
-
-def reverseRows(input):
-    '''Flip Rows (horizontally)'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = empty([rows,cols],input.dtype)
-    for row in xrange(rows):
-        output[row] = input[row][::-1].copy()
-    # end for
-
-    return output
-
-def reverseCols(input):
-    '''Flip Cols (vertically)'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = empty([rows,cols],input.dtype)
-    for col in xrange(cols):
-        output[:,col] = input[:,col][::-1].copy()
-    # end for
-
-    return output
-
-
-def getBiLinearMap(edge0,edge1,edge2,edge3):
-    '''Get the UV coordinates on a square defined from spacing on the edges'''
-
-    assert len(edge0)==len(edge1),'Error, getBiLinearMap: The len of edge0 and edge1 are \
-not the same'
-    assert len(edge2)==len(edge3),'Error, getBiLinearMap: The len of edge2 and edge3 are \
-not the same'
-
-    N = len(edge0)
-    M = len(edge2)
-
-    UV = zeros((N,M,2))
-
-    UV[:,0,0] = edge0
-    UV[:,0,1] = 0.0
-
-    UV[:,-1,0] = edge1
-    UV[:,-1,1] = 1.0
-
-    UV[0,:,0] = 0.0
-    UV[0,:,1] = edge2
-
-    UV[-1,:,0] = 1.0
-    UV[-1,:,1] = edge3
-   
-    for i in xrange(1,N-1):
-        x1 = edge0[i]
-        y1 = 0.0
-
-        x2 = edge1[i]
-        y2 = 1.0
-
-        for j in xrange(1,M-1):
-            x3 = 0
-            y3 = edge2[j]
-
-            x4 = 1.0
-            y4 = edge3[j]
-
-            UV[i,j] = calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4)
-            
-        # end for
-    # end for
-  
-    return UV
-
-def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
-    # Calc the intersection between two line segments defined by
-    # (x1,y1) to (x2,y2) and (x3,y3) to (x4,y4)
-
-    denom = (y4-y3)*(x2-x1) - (x4-x3)*(y2-y1);
-    ua = ((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/denom;
-    xi = x1 + ua*(x2-x1);
-    yi = y1 + ua*(y2-y1);
-
-    return xi,yi
-
-# ----------------------- Auto TRI-Pan Mesh Creation --------------------
 
 def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,default_size = 0.1):
 
@@ -1938,3 +1701,244 @@ def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,def
     f.close()
 
     return
+
+# --------------------------------------------------------------
+#                Array Rotation and Flipping Functions
+# --------------------------------------------------------------
+
+def rotateCCW(input):
+    '''Rotate the input array 90 degrees CCW'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([cols,rows],input.dtype)
+ 
+    for row in xrange(rows):
+        for col in xrange(cols):
+            output[cols-col-1][row] = input[row][col]
+        # end for
+    # end for
+
+    return output
+
+def rotateCW(input):
+    '''Rotate the input array 90 degrees CW'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([cols,rows],input.dtype)
+ 
+    for row in xrange(rows):
+        for col in xrange(cols):
+            output[col][rows-row-1] = input[row][col]
+        # end for
+    # end for
+
+    return output
+
+def reverseRows(input):
+    '''Flip Rows (horizontally)'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([rows,cols],input.dtype)
+    for row in xrange(rows):
+        output[row] = input[row][::-1].copy()
+    # end for
+
+    return output
+
+def reverseCols(input):
+    '''Flip Cols (vertically)'''
+    rows = input.shape[0]
+    cols = input.shape[1]
+    output = empty([rows,cols],input.dtype)
+    for col in xrange(cols):
+        output[:,col] = input[:,col][::-1].copy()
+    # end for
+
+    return output
+
+
+def getBiLinearMap(edge0,edge1,edge2,edge3):
+    '''Get the UV coordinates on a square defined from spacing on the edges'''
+
+    assert len(edge0)==len(edge1),'Error, getBiLinearMap: The len of edge0 and edge1 are \
+not the same'
+    assert len(edge2)==len(edge3),'Error, getBiLinearMap: The len of edge2 and edge3 are \
+not the same'
+
+    N = len(edge0)
+    M = len(edge2)
+
+    UV = zeros((N,M,2))
+
+    UV[:,0,0] = edge0
+    UV[:,0,1] = 0.0
+
+    UV[:,-1,0] = edge1
+    UV[:,-1,1] = 1.0
+
+    UV[0,:,0] = 0.0
+    UV[0,:,1] = edge2
+
+    UV[-1,:,0] = 1.0
+    UV[-1,:,1] = edge3
+   
+    for i in xrange(1,N-1):
+        x1 = edge0[i]
+        y1 = 0.0
+
+        x2 = edge1[i]
+        y2 = 1.0
+
+        for j in xrange(1,M-1):
+            x3 = 0
+            y3 = edge2[j]
+
+            x4 = 1.0
+            y4 = edge3[j]
+
+            UV[i,j] = calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4)
+            
+        # end for
+    # end for
+  
+    return UV
+
+def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
+    # Calc the intersection between two line segments defined by
+    # (x1,y1) to (x2,y2) and (x3,y3) to (x4,y4)
+
+    denom = (y4-y3)*(x2-x1) - (x4-x3)*(y2-y1);
+    ua = ((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/denom;
+    xi = x1 + ua*(x2-x1);
+    yi = y1 + ua*(y2-y1);
+
+    return xi,yi
+
+
+
+# def convertCSRtoCSC_one(nrow,ncol,Ap,Aj,Ax):
+#     '''Convert a one-based CSR format to a one-based CSC format'''
+#     nnz = Ap[-1]-1
+#     Bp = zeros(ncol+1,'int')
+#     Bi = zeros(nnz,'int')
+#     Bx = zeros(nnz)
+
+#     # compute number of non-zero entries per column of A 
+#     nnz_per_col = zeros(ncol) # temp array
+
+#     for i in xrange(nnz):
+#         nnz_per_col[Aj[i]]+=1
+#     # end for
+#     # cumsum the nnz_per_col to get Bp[]
+#     cumsum = 0
+#     for i in xrange(ncol):
+#         Bp[i] = cumsum+1
+#         cumsum += nnz_per_col[i]
+#         nnz_per_col[i] = 1
+#     # end for
+#     Bp[ncol] = nnz+1
+
+#     for i in xrange(nrow):
+#         row_start = Ap[i]
+#         row_end = Ap[i+1]
+#         for j  in xrange(row_start,row_end):
+#             col = Aj[j-1]
+#             k = Bp[col] + nnz_per_col[col] - 1
+#             Bi[k-1] = i+1
+#             Bx[k-1] = Ax[j-1]
+#             nnz_per_col[col]+=1
+#         # end for
+#     # end for
+#     return Bp,Bi,Bx
+
+# # --------------------------------------------------------------
+# #             Python Surface Mesh Warping Implementation
+# # --------------------------------------------------------------
+
+# def delI(i,j,vals):
+#     return sqrt( ( vals[i,j,0]-vals[i-1,j,0]) ** 2 + \
+#                   (vals[i,j,1]-vals[i-1,j,1]) ** 2 + \
+#                   (vals[i,j,2]-vals[i-1,j,2]) ** 2)
+
+# def delJ(i,j,vals):
+#     return sqrt( ( vals[i,j,0]-vals[i,j-1,0]) ** 2 + \
+#                   (vals[i,j,1]-vals[i,j-1,1]) ** 2 + \
+#                   (vals[i,j,2]-vals[i,j-1,2]) ** 2)
+
+# def parameterizeFace(Nu,Nv,coef):
+
+#     '''Parameterize a pyGeo surface'''
+#     S = zeros([Nu,Nv,2])
+
+#     for i in xrange(1,Nu):
+#         for j in xrange(1,Nv):
+#             S[i,j,0] = S[i-1,j  ,0] + delI(i,j,coef)
+#             S[i,j,1] = S[i  ,j-1,1] + delJ(i,j,coef)
+
+#     for i in xrange(1,Nu):
+#         S[i,0,0] = S[i-1,0,0] + delI(i,0,coef)
+#     for j in xrange(1,Nv):
+#         S[0,j,1] = S[0,j-1,1] + delJ(0,j,coef)
+
+#     # Do a no-check normalization
+#     for i in xrange(Nu):
+#         for j in xrange(Nv):
+#             S[i,j,0] /= S[-1,j,0]
+#             S[i,j,1] /= S[i,-1,1]
+
+#     return S
+
+# def warp_face(Nu,Nv,S,dface):
+#     '''Run the warp face algorithim'''
+
+#     # Edge 0
+#     for i in xrange(1,Nu):
+#         j = 0
+#         WTK2 = S[i,j,0]
+#         WTK1 = 1.0-WTK2
+#         dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
+
+#     # Edge 1
+#     for i in xrange(1,Nu):
+#         j = -1
+#         WTK2 = S[i,j,0]
+#         WTK1 = 1.0-WTK2
+#         dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
+
+#     # Edge 1
+#     for j in xrange(1,Nv):
+#         i=0
+#         WTK2 = S[i,j,1]
+#         WTK1 = 1.0-WTK2
+#         dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
+
+#     # Edge 1
+#     for j in xrange(1,Nv):
+#         i=-1
+#         WTK2 = S[i,j,1]
+#         WTK1 = 1.0-WTK2
+#         dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
+
+#     eps = 1.0e-14
+   
+#     for i in xrange(1,Nu-1):
+#         for j in xrange(1,Nv-1):
+#             WTI2 = S[i,j,0]
+#             WTI1 = 1.0-WTI2
+#             WTJ2 = S[i,j,1]
+#             WTJ1 = 1.0-WTJ2
+#             deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
+#             delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
+
+#             dface[i,j,0] = (abs(deli)*deli + abs(delj)*delj)/  \
+#                 max( ( abs (deli) + abs(delj),eps))
+
+#             deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
+#             delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
+
+#             dface[i,j,1] = (abs(deli)*deli + abs(delj)*delj)/ \
+#                 max( ( abs (deli) + abs(delj),eps))
+#         # end for
+#     # end for
+
+#     return dface
