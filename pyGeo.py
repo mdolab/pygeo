@@ -137,12 +137,12 @@ class pyBlock():
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
         for ivol in xrange(nVol):
-            print 'Creating volume %d'%(ivol)
             vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
-                                            Nctlu=9,Nctlv=9,Nctlw=9,\
+                                            Nctlu=4,Nctlv=4,Nctlw=4,\
                                             no_print=self.NO_PRINT))
         self.vols = vols
         self.nVol = nVol
+        
         return
 
     def _readCGNS(self,*args,**kwargs):
@@ -151,7 +151,7 @@ class pyBlock():
         file_name = kwargs['file_name']
 
 
-    def writeTecplot(self,file_name,vols=True,coef=True,
+    def writeTecplot(self,file_name,vols=True,coef=True,orig=False,
                      vol_labels=False,tecio=False):
 
         '''Write the pyGeo Object to Tecplot dat file
@@ -174,6 +174,14 @@ class pyBlock():
         if vols == True:
             for ivol in xrange(self.nVol):
                 self.vols[ivol]._writeTecplotVolume(f)
+
+        # --------------------------------------
+        #    Write out the Original Grid
+        # --------------------------------------
+        
+        if orig == True:
+            for ivol in xrange(self.nVol):
+                self.vols[ivol]._writeTecplotOrigData(f)
 
         # -------------------------------
         #    Write out the Control Points
@@ -207,43 +215,118 @@ class pyBlock():
 
     def _calcConnectivity(self,node_tol,edge_tol):
         # Determine the blocking connectivity
-
+        
         # First we have to determine all the unique FACES
+        mpiPrint('Doing Connectivity',self.NO_PRINT)
         face_mids = []
-        face_dist = []
         for ivol in xrange(self.nVol):
             for iface in xrange(6):
                 face_mids.append(self.vols[ivol].getMidPointFace(iface))
-                face_dist.append(dot(face_mids[-1],face_mids[-1]))
             # end for
         # end for
+        umids,face_link = pointReduce(face_mids) # umids stands for unique mids
+        nSurf = len(umids)
+        # Now produce (blindy) the corners and midpoints for each
+        # face;
 
-        pointReduce(face_mids)
-        sys.exit(0)
-        # THIS IS VERY SLOW --- But it may not be worth the effort to fix...
-        coords= [face_mids[0]] # Physical Coordinates of the Nodes
-        face_link = []
+        print 'nface:',nSurf
+
+        used = zeros(nSurf,'bool')
+        coords = zeros((nSurf,8,3))
+        face_dir = zeros((self.nVol,6),'intc')
         for ivol in xrange(self.nVol):
             for iface in xrange(6):
-                found_it = False
-                for i in xrange(len(coords)):
-                    if e_dist(face_mids[ivol*6+iface],coords[i]) < node_tol:
-                        face_link.append(i)
-                        found_it = True
-                        break
-                    # end if
-                # end for
-                if not found_it:
-                    coords.append(face_mids[ivol*6+iface])
-                    face_link.append(i+1)
+                if used[face_link[6*ivol+iface]] == False:
+                    used[face_link[6*ivol+iface]] = True # We have now used this one
+                    pts = self.vols[ivol].getOrigValuesFace(iface)
+                    coords[face_link[ivol*6+iface]][:,:] = pts
+                    face_dir[ivol][iface] =  0
+                else: # is already in...but add the face_dir info
+                    c1 = self.vols[ivol].getOrigValuesFace(iface)
+                    c2 = coords[face_link[6*ivol+iface]]
+                    index = quadOrientation(c1[0:4],c2[0:4])
+                    face_dir[ivol][iface] = index
                 # end if
             # end for
         # end for
 
-        # Now we can go though for each actual face, produce the
-        # vector of length 8 which contains the corners of each face 
+        face_topo = Topology(coords)  # Proudce the Face Topology
 
-
+        # Now compute the sizes from the surface topo object
+        sizes = zeros((face_topo.nFace,2),'intc')
+        for ivol in xrange(self.nVol):
+            for isurf in xrange(6):
+                face_ind = face_link[6*ivol + isurf]
+                if isurf in [0,1]:
+                    if face_dir[ivol][iface] in [0,1,2,3]:
+                        sizes[face_ind][0] = self.vols[ivol].Nctlu
+                        sizes[face_ind][1] = self.vols[ivol].Nctlv
+                    else:
+                        sizes[face_ind][0] = self.vols[ivol].Nctlv
+                        sizes[face_ind][1] = self.vols[ivol].Nctlu
+                elif isurf in [2,3]:
+                    if face_dir[ivol][iface] in [0,1,2,3]:
+                        sizes[face_ind][0] = self.vols[ivol].Nctlv
+                        sizes[face_ind][1] = self.vols[ivol].Nctlw
+                    else:
+                        sizes[face_ind][0] = self.vols[ivol].Nctlw
+                        sizes[face_ind][1] = self.vols[ivol].Nctlv
+                elif isurf in [4,5]:
+                    if face_dir[ivol][iface] in [0,1,2,3]:
+                        sizes[face_ind][0] = self.vols[ivol].Nctlu
+                        sizes[face_ind][1] = self.vols[ivol].Nctlw
+                    else:
+                        sizes[face_ind][0] = self.vols[ivol].Nctlw
+                        sizes[face_ind][1] = self.vols[ivol].Nctlu
+                    # end if
+                # end if
+            # end for
+        # end fof
+        face_topo.calcGlobalNumbering(sizes)
+        # Now we have "Hard" part done...we know the unique indices of
+        # the faces and edges...we just have to append l_index and
+        # g_index with the remainder of the points in the blocks
+        l_index = []
+        g_index = face_topo.g_index
+        counter = face_topo.counter
+        for ivol in xrange(self.nVol):
+            l_index.append(zeros((self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
+                                  self.vols[ivol].Nctlw),'intc'))
+            for iface in xrange(6):
+                face_ind = face_link[6*ivol + iface]
+                index = face_dir[ivol][iface]
+                if iface == 0:
+                    l_index[-1][:,:,0] = orientArray(index,face_topo.l_index[face_ind])
+                elif iface == 1:
+                    l_index[-1][:,:,-1] = orientArray(index,face_topo.l_index[face_ind])
+                elif iface == 2:
+                    l_index[-1][0,:,:] = orientArray(index,face_topo.l_index[face_ind])
+                elif iface == 3:
+                    l_index[-1][-1:,:] = orientArray(index,face_topo.l_index[face_ind])
+                elif iface == 4:
+                    l_index[-1][:,0,:] = orientArray(index,face_topo.l_index[face_ind])
+                elif iface == 5:
+                    l_index[-1][:,-1,:] = orientArray(index,face_topo.l_index[face_ind])
+                # end if
+            # end for
+            
+            # This is the easy part...just fill up the interiors
+            for i in xrange(1,self.vols[ivol].Nctlu-1):
+                for j in xrange(1,self.vols[ivol].Nctlv-1):
+                    for k in xrange(1,self.vols[ivol].Nctlw-1):
+                        l_index[-1][i,j,k] = counter
+                        counter += 1
+                        g_index.append([ivol,i,j,k])
+                    # end for
+                # end for
+            # end for
+        # end for
+        
+        # Lastly we need to fix the the beginning entries in g_index
+        # since they still refer the the face structure
+        for i in xrange(len(g_index)):
+            print g_index[i]
+        
         return
                             
         
