@@ -136,6 +136,7 @@ class pyBlock():
         vols = []
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
+
         for ivol in xrange(nVol):
             vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
                                             Nctlu=4,Nctlv=4,Nctlw=4,\
@@ -218,20 +219,137 @@ class pyBlock():
 
         # Compute the corners
         corners = zeros((self.nVol,8,3))
-        face_mids = zeros((self.nVol,6,3))
         for ivol in xrange(self.nVol):
             for icorner in xrange(8):
                 corners[ivol,icorner] = self.vols[ivol].getOrigValueCorner(icorner)
             # end for
-            for iface in xrange(6):
-                face_mids[ivol,iface] = self.vols[ivol].getMidPointFace(iface)
         # end for
-        self.topo = BlockTopology(corners,face_mids)
+        timeA = time.time()
+        self.topo = BlockTopology(corners)
+        print 'Topo Time:',time.time()-timeA
 
-        sys.exit(0)
-  
-                            
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
+                          self.vols[ivol].Nctlw])
+        self.topo.calcGlobalNumbering(sizes)
+
+        self.coef = []
+        # Now Fill up the self.coef list:
+        for ii in xrange(len(self.topo.g_index)):
+            ivol = self.topo.g_index[ii][0][0]
+            i = self.topo.g_index[ii][0][1]
+            j = self.topo.g_index[ii][0][2]
+            k = self.topo.g_index[ii][0][3]
+            self.coef.append( self.vols[ivol].coef[i,j,k])
+        # end for
+
+    def _updateVolumeCoef(self):
+        '''Copy the pyBlock list of control points back to the volumes'''
+        for ii in xrange(len(self.coef)):
+            for jj in xrange(len(self.topo.g_index[ii])):
+                ivol  = self.topo.g_index[ii][jj][0]
+                i     = self.topo.g_index[ii][jj][1]
+                j     = self.topo.g_index[ii][jj][2]
+                k     = self.topo.g_index[ii][jj][3]
+                self.vols[ivol].coef[i,j,k] = self.coef[ii].astype('d')
+            # end for
+        # end for
+        return
         
+    def writeFEAPCorners(self,file_name):
+        # Make sure sizes are 2
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([2,2,2])
+        # end for
+        E = 1.0
+        nu = 0.3
+        self.topo.calcGlobalNumbering(sizes)
+        
+        numnp  = self.topo.nNode #number of nodal points
+        numel  = self.nVol # number of elements
+        nummat = self.nVol  #one material type
+        ndm    = 3  #dimension of mesh
+        ndf    = 3  #number of dof per node
+        nen    = 8  #number of nodes per element
+
+        f = open(file_name,'w')
+        f.write("FEAP * * Solid Element Element Example\n")
+        f.write("NOPRINT\n")
+        f.write("%d %d %d %d %d %d\n"%(numnp,numel,1,ndm,ndf,nen))
+
+        f.write("\n")
+
+        #for ivol in xrange(self.nVol):
+        f.write("MATErial %d\n"%(1))
+        f.write("SOLID\n")
+        f.write("ELAStic ISOtripoic ")
+        f.write("%f %f\n"%(E,nu))
+
+        f.write("\n")
+
+        f.write("COORdinate ALL\n")
+        for icoord in xrange(self.topo.nNode):
+            ivol = self.topo.g_index[icoord][0][0]
+            i = self.topo.g_index[icoord][0][1]
+            j = self.topo.g_index[icoord][0][2]
+            k = self.topo.g_index[icoord][0][3]
+            pt = self.vols[ivol].X[i,j,k]
+            f.write("%d 0 %f %f %f \n"%(icoord+1,pt[0],pt[1],pt[2]))
+            
+        f.write("\n")
+
+        f.write("ELEMents\n") # Use vol_con here
+        for ivol in xrange(self.nVol):
+            f.write("%d 1 %d %d %d %d %d %d %d %d %d \n"
+                    %(ivol+1,1,
+                      self.topo.vol_con[ivol][0]+1,
+                      self.topo.vol_con[ivol][1]+1,
+                      self.topo.vol_con[ivol][3]+1,
+                      self.topo.vol_con[ivol][2]+1,
+                      self.topo.vol_con[ivol][4]+1,
+                      self.topo.vol_con[ivol][5]+1,
+                      self.topo.vol_con[ivol][7]+1,
+                      self.topo.vol_con[ivol][6]+1))
+        f.write("\n")
+        f.write("BOUNdary restraints\n")
+
+        f.write('%d 0 1 1 1 \n'%(1))
+        f.write('%d 0 1 1 1 \n'%(2))
+        f.write('%d 0 1 1 1 \n'%(3))
+        
+    
+        f.write("\n")
+        
+        f.write("FORCe\n")
+
+        f.write("%d 0 0 0 %f \n"%(10,10.00))
+        f.write("\n")
+
+        f.write("END\n")
+        f.write("NOPRINT\n")
+        f.write("BATCh\n")
+        f.write("TANGent\n")
+        f.write("FORM\n")
+        f.write("SOLV\n")
+        f.write("PRINT\n")
+        f.write("DISPlacement all\n")
+        f.write("END\n")
+        f.write("STOP\n")
+
+        f.close() #close file
+
+    def updateFEAP(file_name):
+        f = open(file_name)
+        counter = 0
+        new_pts = zeros((self.topo.nNode,3))
+        for line in f:
+            if counter >= 82 and mod(counter,2) == 0:
+                aux = string.split(line)
+                #new_pts[i,0] = 
+
+
     def doConnectivity(self,node_tol=1e-4,edge_tol=1e-4):
         self._calcConnectivity(node_tol,edge_tol)
 
