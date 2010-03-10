@@ -6,7 +6,7 @@ from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
     arange,copy,floor,fromfile,choose,sign,resize
 from numpy.linalg import norm
-import string ,sys, copy, pdb, os
+import string ,sys, copy, pdb, os,time
 
 from mdo_import_helper import *
 exec(import_modules('mpi4py'))
@@ -497,21 +497,21 @@ def faceOrientation(f1,f2):
     '''Compare two face orientations f1 and f2 and return the
     transform to get f1 back to f2'''
     
-    if f1   == [f2[0],f2[1],f2[2],f2[3]]:
+    if [f1[0],f1[1],f1[2],f1[3]] == [f2[0],f2[1],f2[2],f2[3]]:
         return 0
-    elif f1 == [f2[1],f2[0],f2[3],f2[2]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[1],f2[0],f2[3],f2[2]]:
         return 1
-    elif f1 == [f2[2],f2[3],f2[0],f2[1]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[2],f2[3],f2[0],f2[1]]:
         return 2
-    elif f1 == [f2[3],f2[2],f2[1],f2[0]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[3],f2[2],f2[1],f2[0]]:
         return 3
-    elif f1 == [f2[0],f2[2],f2[1],f2[3]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[0],f2[2],f2[1],f2[3]]:
         return 4
-    elif f1 == [f2[2],f2[0],f2[3],f2[1]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[2],f2[0],f2[3],f2[1]]:
         return 5
-    elif f1 == [f2[1],f2[3],f2[0],f2[2]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[1],f2[3],f2[0],f2[2]]:
         return 6
-    elif f1 == [f2[3],f2[1],f2[2],f2[0]]:
+    elif [f1[0],f1[1],f1[2],f1[3]] == [f2[3],f2[1],f2[2],f2[0]]:
         return 7
     else:
         mpiPrint('Error with faceOrientation: Not possible.')
@@ -1644,7 +1644,7 @@ class BlockTopology(object):
                    nodes and NO edges which loop back and have the same nodes
                    MUST BE SIMPLE
     '''
-    def __init__(self,corners,face_mids,node_tol=1e-4,edge_tol=1e-4):
+    def __init__(self,corners,node_tol=1e-4,edge_tol=1e-4):
         '''Initialize the class with data required to compute the topology'''
 
         # This is initialized with a list of coordiantes -> Corners
@@ -1679,14 +1679,19 @@ class BlockTopology(object):
             face_con.append([node_link[ivol][2],node_link[ivol][3],
                              node_link[ivol][6],node_link[ivol][7]])
         # end for
-
+        self.vol_con = vol_con
         # Uniqify the Faces 
-        u_mids,face_link = pointReduce(face_mids.reshape((6*self.nVol,3)))
-        self.face_link = face_link.reshape((self.nVol,6))
-        self.nFace = len(u_mids)
-        reduced_face_con = [[] for i in xrange(self.nFace)]
-       
+        face_hash = []
+        for iface in xrange(self.nVol * 6):
+            temp = sorted(face_con[iface])
+            face_hash.append((temp[0]*6*self.nVol*3 + temp[1]*6*self.nVol*2 +
+                              temp[2]*6*self.nVol*1 + temp[3]))
+
+        uf,face_link = unique_index(face_hash) # Only need the lengh of uf and face_link
+        self.face_link = array(face_link).reshape((self.nVol,6))
+        self.nFace = len(uf)
         used = zeros(self.nFace,'bool')
+        reduced_face_con = zeros((self.nFace,4),'intc')
         for ivol in xrange(self.nVol):
             for iface in xrange(6):
                 if used[self.face_link[ivol][iface]] == False:
@@ -1695,7 +1700,6 @@ class BlockTopology(object):
                         face_con[ivol*6+iface]
                 # end if
             # end for
-        # end for
 
         # Now get the directions for faces
         face_dir = zeros((self.nVol,6),'intc')
@@ -1706,6 +1710,7 @@ class BlockTopology(object):
             # end for
         # end for
         self.face_dir = face_dir
+
         # Uniqify the Edges - Get the edge_hash
         edges = []
         edge_hash = []
@@ -1762,12 +1767,6 @@ class BlockTopology(object):
             self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
         # end for
 
-        sizes = []
-        for ivol in xrange(self.nVol):
-            sizes.append([5,5,5])
-        # end for
-            
-        self.calcGlobalNumbering(sizes)
         return
 
     def _calcDGs(self,edges,edge_link,edge_link_sorted,edge_link_ind):
@@ -2045,7 +2044,7 @@ the list of volumes must be the same length'
                             elif self.face_dir[ii][number] == 3:
                                 cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
                             elif self.face_dir[ii][number] == 4:
-                                cur_index = face_index[self.face_link[ii][number]][jcount-1,jcount-1]
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
                             elif self.face_dir[ii][number] == 5:
                                 cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
                             elif self.face_dir[ii][number] == 6:
@@ -2593,3 +2592,55 @@ def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
 #     # end for
 
 #     return dface
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#         reduced_face_con1 = [[] for i in xrange(self.nFace)]
+#         used = zeros(self.nFace,'bool')
+#         for ivol in xrange(self.nVol):
+#             for iface in xrange(6):
+#                 if used[self.face_link1[ivol][iface]] == False:
+#                     used[self.face_link1[ivol][iface]] = True
+#                     reduced_face_con1[self.face_link1[ivol][iface]] = \
+#                         face_con[ivol*6+iface]
+        
+
+# #         print 'Unique faces:',len(unique_faces)
+
+      
+
+
+#         u_mids,face_link = pointReduce(face_mids.reshape((6*self.nVol,3)))
+#         self.face_link = face_link.reshape((self.nVol,6))
+#         self.nFace = len(u_mids)
+#         reduced_face_con = [[] for i in xrange(self.nFace)]
+       
+#         used = zeros(self.nFace,'bool')
+#         for ivol in xrange(self.nVol):
+#             for iface in xrange(6):
+#                 if used[self.face_link[ivol][iface]] == False:
+#                     used[self.face_link[ivol][iface]] = True
+#                     reduced_face_con[self.face_link[ivol][iface]] = \
+#                         face_con[ivol*6+iface]
+#                 # end if
+#             # end for
+#         # end for
+
+
+#         for ivol in xrange(self.nVol):
+#             for iface in xrange(6):
+#                 print reduced_face_con1[self.face_link1[ivol][iface]],reduced_face_con[self.face_link[ivol][iface]]
+
+#         sys.exit(0)
