@@ -4,7 +4,7 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
-    arange,copy,floor,fromfile,choose
+    arange,copy,floor,fromfile,choose,sign,resize
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os
 
@@ -227,7 +227,7 @@ and \'precomp\''
     # linearly interpolate to find the points at the positions we want
     X_u = interp(s_interp,s,x_u)
     Y_u = interp(s_interp,s,y_u)
-
+    
     # Now determine the lower surface 's' parameter
 
     s = zeros(n_lower)
@@ -466,6 +466,59 @@ def pointReduce(points,node_tol=1e-4):
     # end while
     return array(new_points),array(link)
 
+def pointReduceBruteForce(points,node_tol=1e-4):
+    '''Given a list of N points in ndim space, with possible
+    duplicates, return a list of the unique points AND a pointer list
+    for the original points to the reduced set
+
+    BRUTE FORCE VERSION
+
+    '''
+    N = len(points)
+    unique_points = [points[0]]
+    link = [0]
+    for i in xrange(1,N):
+        found_it = False
+        for j in xrange(len(unique_points)):
+            if e_dist(points[i],unique_points[j]) < node_tol:
+                link.append(j)
+                found_it = True
+                break
+            # end if
+        # end for
+        if not found_it:
+            unique_points.append(points[i])
+            link.append(j+1)
+        # end if
+    # end for
+    return array(unique_points),array(link)
+
+def faceOrientation(f1,f2):
+    '''Compare two face orientations f1 and f2 and return the
+    transform to get f1 back to f2'''
+    
+    if f1   == [f2[0],f2[1],f2[2],f2[3]]:
+        return 0
+    elif f1 == [f2[1],f2[0],f2[3],f2[2]]:
+        return 1
+    elif f1 == [f2[2],f2[3],f2[0],f2[1]]:
+        return 2
+    elif f1 == [f2[3],f2[2],f2[1],f2[0]]:
+        return 3
+    elif f1 == [f2[0],f2[2],f2[1],f2[3]]:
+        return 4
+    elif f1 == [f2[2],f2[0],f2[3],f2[1]]:
+        return 5
+    elif f1 == [f2[1],f2[3],f2[0],f2[2]]:
+        return 6
+    elif f1 == [f2[3],f2[1],f2[2],f2[0]]:
+        return 7
+    else:
+        mpiPrint('Error with faceOrientation: Not possible.')
+        mpiPrint('Orientation 1 [%d %d %d %d]'%(f1[0],f1[1],f1[2],f1[3]))
+        mpiPrint('Orientation 2 [%d %d %d %d]'%(f2[0],f2[1],f2[2],f2[3]))
+        sys.exit(0)
+
 def quadOrientation(pt1,pt2):
     '''Given two sets of 4 points in ndim space, pt1 and pt2,
     determine the orientation of pt2 wrt pt1
@@ -521,36 +574,6 @@ def orientArray(index,in_array):
         
     return out_array
 
-    
-
-
-
-def pointReduceBruteForce(points,node_tol=1e-4):
-    '''Given a list of N points in ndim space, with possible
-    duplicates, return a list of the unique points AND a pointer list
-    for the original points to the reduced set
-
-    BRUTE FORCE VERSION
-
-    '''
-    N = len(points)
-    unique_points = [points[0]]
-    link = [0]
-    for i in xrange(1,N):
-        found_it = False
-        for j in xrange(len(unique_points)):
-            if e_dist(points[i],unique_points[j]) < node_tol:
-                link.append(j)
-                found_it = True
-                break
-            # end if
-        # end for
-        if not found_it:
-            unique_points.append(points[i])
-            link.append(j+1)
-        # end if
-    # end for
-    return array(unique_points),array(link)
 
 def directionAlongSurface(surface,line,section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
@@ -616,7 +639,7 @@ def curveDirection(curve1,curve2):
     else:
         return tot,d_backward
 
-def indexPosition(i,j,N,M):
+def indexPosition2D(i,j,N,M):
     '''This function is a generic function which determines if for a grid
     of data NxM with index i going 0->N-1 and j going 0->M-1, it
     determines if i,j is on the interior, on an edge or on a corner
@@ -645,6 +668,88 @@ def indexPosition(i,j,N,M):
         return 2,None,2,None
     elif i == N - 1 and j == M - 1:          # Node 3
         return 2,None,3,None
+
+
+def indexPosition3D(i,j,k,N,M,L):
+    '''This function is a generic function which determines if for a
+    3dgrid of data NxMXL with index i going 0->N-1 and j going 0->M-1
+    k going 0->L-1, it determines if i,j,k is on the interior, on a
+    face, on an edge or on a corner
+
+    The funtion return theses values: 
+    type: this is 0 for interior, 1 for on an face, 
+           3 for an edge and 4 for on a corner
+    number: this is the face number if type==1,
+            this is the edge number if type==2
+            this is the node number if type==3 
+
+    index1: this is the value index along 0th dir the face
+        of interest OR edge of interest
+    index2: this is the value index along 1st dir the face
+        of interest
+        '''
+    
+    # Note to interior->Faces->Edges->Nodes to minimize number of if checks
+
+    if i>0 and i<N-1 and j>0 and j<M-1 and k>0 and k<L-1: # Interior
+        return 0,None,None,None
+
+    elif i > 0 and i < N-1 and j > 0 and j < M-1 and k == 0:   # Face 0
+        return 1,0,i,j
+    elif i > 0 and i < N-1 and j > 0 and j < M-1 and k == L-1: # Face 1
+        return 1,1,i,j
+    elif i == 0 and j > 0 and j < M-1 and k > 0 and k < L-1:   # Face 2
+        return 1,2,j,k
+    elif i == N-1 and j > 0 and j < M-1 and k > 0 and k < L-1: # Face 3
+        return 1,3,j,k
+    elif i > 0 and i < N-1 and j == 0 and k > 0 and k < L-1:   # Face 4
+        return 1,4,i,k
+    elif i > 0 and i < N-1 and j == M-1 and k > 0 and k < L-1: # Face 5
+        return 1,5,i,k
+
+    elif i > 0 and i < N-1 and j == 0 and k == 0:       # Edge 0
+        return 2,0,i,None
+    elif i > 0 and i < N-1 and j == M-1 and k == 0:     # Edge 1
+        return 2,1,i,None
+    elif i == 0 and j > 0 and j < M-1 and k == 0:       # Edge 2
+        return 2,2,j,None
+    elif i == N-1 and j > 0 and j < M-1 and k == 0:     # Edge 3
+        return 2,3,j,None
+    elif i > 0 and i < N-1 and j == 0 and k == L-1:     # Edge 4
+        return 2,4,i,None
+    elif i > 0 and i < N-1 and j == M-1 and k == L-1:   # Edge 5
+        return 2,5,i,None
+    elif i == 0 and j > 0 and j < M-1 and k == L-1:     # Edge 6
+        return 2,6,j,None
+    elif i == N-1 and j > 0 and j < M-1 and k == L-1:   # Edge 7
+        return 2,7,j,None
+    elif i == 0 and j == 0 and k > 0 and k < L-1:       # Edge 8
+        return 2,8,k,None
+    elif i == N-1 and j == 0 and k > 0 and k < L-1:     # Edge 9
+        return 2,9,k,None
+    elif i == 0 and j == M-1 and k > 0 and k < L-1:     # Edge 10
+        return 2,10,k,None
+    elif i == N-1 and j == M-1 and k > 0 and k < L-1:   # Edge 11
+        return 2,11,k,None
+
+    elif i == 0 and j == 0 and k == 0:                  # Node 0
+        return 3,0,None,None
+    elif i == N-1 and j == 0 and k == 0:                # Node 1
+        return 3,1,None,None
+    elif i == 0 and j == M-1 and k == 0:                # Node 2
+        return 3,2,None,None
+    elif i == N-1 and j == M-1 and k == 0:              # Node 3
+        return 3,3,None,None
+    elif i == 0 and j == 0 and k == L-1:                # Node 4
+        return 3,4,None,None
+    elif i == N-1 and j == 0 and k == L-1:              # Node 5
+        return 3,5,None,None
+    elif i == 0 and j == M-1 and k == L-1:              # Node 6
+        return 3,6,None,None
+    elif i == N-1 and j == M-1 and k == L-1:            # Node 7
+        return 3,7,None,None
+
+
 
 # --------------------------------------------------------------
 #                     Node/Edge Functions
@@ -703,6 +808,23 @@ def flipEdge(edge):
     if edge == 3: return 2
     else:
         return None
+
+def parallelEdgeVol(edge):
+    '''Returns the parallel edges on a volume'''
+    if edge == 0: return [1,4,5]
+    if edge == 1: return [0,4,5]
+    if edge == 2: return [3,6,7]
+    if edge == 3: return [2,6,7]
+    if edge == 4: return [0,1,5]
+    if edge == 5: return [0,1,4]
+    if edge == 6: return [2,3,7]
+    if edge == 7: return [2,3,6]
+    if edge == 8: return [9,10,11]
+    if edge == 9: return [8,10,11]
+    if edge == 10: return [8,9,11]
+    if edge == 11: return [8,9,10]
+
+
 
 # --------------------------------------------------------------
 #                  Knot Vector Manipulation Functions
@@ -1190,7 +1312,7 @@ the list of surfaces must be the same length'
             for i in xrange(N):
                 for j in xrange(M):
                     
-                    type,edge,node,index = indexPosition(i,j,N,M)
+                    type,edge,node,index = indexPosition2D(i,j,N,M)
 
                     if type == 0:           # Interior
                         l_index[ii][i,j] = counter
@@ -1491,6 +1613,535 @@ the list of surfaces must be the same length'
 
         return surfaces
 
+
+
+class BlockTopology(object):
+    '''
+    The topology class contains the data and functions assocatied with
+    at set of connected hexas. The hexas may not be degenerate and may not
+    have different edges beginning and ending at the same node. 
+
+    Class Attributes:
+        nVol : The number of volumes in the topology
+        nFace: The number of unique faces on the topology
+        nEdge: The number of uniuqe edges on the topology
+        nNode: The number of unique nodes on the topology
+
+        node_link: The array of size nVol x 6 which points
+                   to the node for each corner of a block
+        edge_link: The array of size nVol x 12 which points
+                   to the edge for each edge on a blcok
+        edge_dir:  The array of size nFace x 4 which detrmines
+                   if the intrinsic direction of this edge is
+                   opposite of the direction as recorded in the
+                   edge list. edge_dir[block][#] = 1 means same direction,
+                   edge_dir[face][#] = -1 means opposite direction
+        l_index:   The local->global list of arrays for each volue
+        g_index:   The global->local list points for the entire topology
+        edges:     The list of edge objects defining the topology
+        simple    : A flag to determine of this is a "simple" topology which means
+                   there are NO degernate Edges, NO multiple edges sharing the same
+                   nodes and NO edges which loop back and have the same nodes
+                   MUST BE SIMPLE
+    '''
+    def __init__(self,corners,face_mids,node_tol=1e-4,edge_tol=1e-4):
+        '''Initialize the class with data required to compute the topology'''
+
+        # This is initialized with a list of coordiantes -> Corners
+        # Point reduce them
+        self.nVol = len(corners)
+        corners = array(corners)
+        un,node_link = pointReduce(corners.reshape((8*self.nVol,3)))
+        node_link = node_link.reshape((self.nVol,8))
+        # We can now generate vol_con AND face_con
+        vol_con = []
+        face_con = []
+        for ivol in xrange(self.nVol):
+            vol_con.append(zeros(8,'intc'))
+            for icorner in xrange(8):
+                vol_con[-1][icorner] = node_link[ivol][icorner]
+            # end for
+            face_con.append([node_link[ivol][0],node_link[ivol][1],
+                             node_link[ivol][2],node_link[ivol][3]])
+
+            face_con.append([node_link[ivol][4],node_link[ivol][5],
+                             node_link[ivol][6],node_link[ivol][7]])
+
+            face_con.append([node_link[ivol][0],node_link[ivol][2],
+                             node_link[ivol][4],node_link[ivol][6]])
+
+            face_con.append([node_link[ivol][1],node_link[ivol][3],
+                             node_link[ivol][5],node_link[ivol][7]])
+
+            face_con.append([node_link[ivol][0],node_link[ivol][1],
+                             node_link[ivol][4],node_link[ivol][5]])
+
+            face_con.append([node_link[ivol][2],node_link[ivol][3],
+                             node_link[ivol][6],node_link[ivol][7]])
+        # end for
+
+        # Uniqify the Faces 
+        u_mids,face_link = pointReduce(face_mids.reshape((6*self.nVol,3)))
+        self.face_link = face_link.reshape((self.nVol,6))
+        self.nFace = len(u_mids)
+        reduced_face_con = [[] for i in xrange(self.nFace)]
+       
+        used = zeros(self.nFace,'bool')
+        for ivol in xrange(self.nVol):
+            for iface in xrange(6):
+                if used[self.face_link[ivol][iface]] == False:
+                    used[self.face_link[ivol][iface]] = True
+                    reduced_face_con[self.face_link[ivol][iface]] = \
+                        face_con[ivol*6+iface]
+                # end if
+            # end for
+        # end for
+
+        # Now get the directions for faces
+        face_dir = zeros((self.nVol,6),'intc')
+        for ivol in xrange(self.nVol):
+            for iface in xrange(6):
+                face_dir[ivol][iface] = faceOrientation(reduced_face_con[self.face_link[ivol][iface]],
+                                        face_con[ivol*6+iface])
+            # end for
+        # end for
+        self.face_dir = face_dir
+        # Uniqify the Edges - Get the edge_hash
+        edges = []
+        edge_hash = []
+        for ivol in xrange(self.nVol):
+#                 #             n1                ,n2               ,dg,n,degen
+            # k = 0 plane
+            edges.append([vol_con[ivol][0],vol_con[ivol][1],-1,0,0])
+            edges.append([vol_con[ivol][2],vol_con[ivol][3],-1,0,0])
+            edges.append([vol_con[ivol][0],vol_con[ivol][2],-1,0,0])
+            edges.append([vol_con[ivol][1],vol_con[ivol][3],-1,0,0])
+
+            # k = max plane
+            edges.append([vol_con[ivol][4],vol_con[ivol][5],-1,0,0])
+            edges.append([vol_con[ivol][6],vol_con[ivol][7],-1,0,0])
+            edges.append([vol_con[ivol][4],vol_con[ivol][6],-1,0,0])
+            edges.append([vol_con[ivol][5],vol_con[ivol][7],-1,0,0])
+
+            # Vertical ones
+            edges.append([vol_con[ivol][0],vol_con[ivol][4],-1,0,0])
+            edges.append([vol_con[ivol][1],vol_con[ivol][5],-1,0,0])
+            edges.append([vol_con[ivol][2],vol_con[ivol][6],-1,0,0])
+            edges.append([vol_con[ivol][3],vol_con[ivol][7],-1,0,0])
+        # end for
+
+        edge_dir = ones(len(edges),'intc')
+        for iedge in xrange(len(edges)):
+            if edges[iedge][0] > edges[iedge][1]:
+                temp = edges[iedge][0]
+                edges[iedge][0] = edges[iedge][1]
+                edges[iedge][1] = temp
+                edge_dir[iedge] = -1
+            # end if
+            edge_hash.append(edges[iedge][0]*12*self.nVol + edges[iedge][1])
+        # end for
+
+        edges,edge_link = unique_index(edges,edge_hash)
+
+        self.nNode = len(un)
+        self.nEdge = len(edges)
+
+        self.node_link = node_link
+        self.edge_link = array(edge_link).reshape((self.nVol,12))
+        self.edge_dir  = array(edge_dir).reshape((self.nVol,12))
+        
+        edge_link_sorted = sort(edge_link)
+        edge_link_ind    = argsort(edge_link)
+
+        # Next Calculate the Design Group Information
+        self._calcDGs(edges,edge_link,edge_link_sorted,edge_link_ind)
+
+        # Set the edge ojects
+        self.edges = []
+        for i in xrange(self.nEdge): # Create the edge objects
+            self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
+        # end for
+
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([5,5,5])
+        # end for
+            
+        self.calcGlobalNumbering(sizes)
+        return
+
+    def _calcDGs(self,edges,edge_link,edge_link_sorted,edge_link_ind):
+        dg_counter = -1
+        for i in xrange(self.nEdge):
+            if edges[i][2] == -1: # Not set yet
+                dg_counter += 1
+                edges[i][2] = dg_counter
+                self.addDGEdge(i,edges,edge_link,edge_link_sorted,edge_link_ind)
+            # end if
+        # end for
+        self.nDG = dg_counter + 1
+    
+    def addDGEdge(self,i,edges,edge_link,edge_link_sorted,edge_link_ind):
+        left  = edge_link_sorted.searchsorted(i,side='left')
+        right = edge_link_sorted.searchsorted(i,side='right')
+        res   = edge_link_ind[slice(left,right)]
+
+        for j in xrange(len(res)):
+            ivol = res[j]/12 #Integer Division
+            iedge = mod(res[j],12)
+                    
+            pEdges = parallelEdgeVol(iedge)
+            oppositeEdges = [edge_link[12*ivol+pEdges[0]],
+                            edge_link[12*ivol+pEdges[1]],
+                            edge_link[12*ivol+pEdges[2]]]
+            
+            for ii in xrange(3):
+                if edges[oppositeEdges[ii]][2] == -1:
+                    edges[oppositeEdges[ii]][2] = edges[i][2]
+                    if not edges[oppositeEdges[ii]][0] == edges[oppositeEdges[ii]][1]:
+                        self.addDGEdge(oppositeEdges[ii],edges,edge_link,edge_link_sorted,edge_link_ind)
+                # end if
+            # end if
+        # end for
+
+    def printConnectivity(self):
+        '''Print the Edge Connectivity to the screen'''
+
+        mpiPrint('------------------------------------------------------------------------')
+        mpiPrint('%3d   %3d'%(self.nEdge,self.nVol))
+        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |')
+        for i in xrange(len(self.edges)):
+            self.edges[i].write_info(i,sys.stdout)
+        # end for
+        mpiPrint('Vol Number | n0 | n1 | n2 | n3 | n4 | n5 | n6 | n7 | e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 | e10| e11|')
+        for i in xrange(self.nVol):
+            mpiPrint(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|'\
+                     %(i,self.node_link[i][0],self.node_link[i][1],
+                       self.node_link[i][2],self.node_link[i][3],
+                       self.node_link[i][4],self.node_link[i][5],
+                       self.node_link[i][6],self.node_link[i][7],
+                       
+                       self.edge_link[i][0]*self.edge_dir[i][0],
+                       self.edge_link[i][1]*self.edge_dir[i][1],
+                       self.edge_link[i][2]*self.edge_dir[i][2],
+                       self.edge_link[i][3]*self.edge_dir[i][3],
+                       self.edge_link[i][4]*self.edge_dir[i][4],
+                       self.edge_link[i][5]*self.edge_dir[i][5],
+                       self.edge_link[i][6]*self.edge_dir[i][6],
+                       self.edge_link[i][7]*self.edge_dir[i][7],
+                       self.edge_link[i][8]*self.edge_dir[i][8],
+                       self.edge_link[i][9]*self.edge_dir[i][9],
+                       self.edge_link[i][10]*self.edge_dir[i][10],
+                       self.edge_link[i][11]*self.edge_dir[i][11]))
+        # end for
+        mpiPrint('------------------------------------------------------------------------')
+        return
+
+
+    def writeConnectivity(self,file_name):
+        '''Write the full edge connectivity to a file file_name'''
+        f = open(file_name,'w')
+        f.write('%3d   %3d\n'%(self.nEdge,self.nVol))
+        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |\n')
+        for i in xrange(len(self.edges)):
+            self.edges[i].write_info(i,f)
+        # end for
+        f.write('Vol Number | n0 | n1 | n2 | n3 | n4 | n5 | n6 | n7 | e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 | e10| e11|\n')
+        for i in xrange(self.nVol):
+            f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|\n'\
+                     %(i,self.node_link[i][0],self.node_link[i][1],
+                       self.node_link[i][2],self.node_link[i][3],
+                       self.node_link[i][4],self.node_link[i][5],
+                       self.node_link[i][6],self.node_link[i][7],
+                       
+                       self.edge_link[i][0]*self.edge_dir[i][0],
+                       self.edge_link[i][1]*self.edge_dir[i][1],
+                       self.edge_link[i][2]*self.edge_dir[i][2],
+                       self.edge_link[i][3]*self.edge_dir[i][3],
+                       self.edge_link[i][4]*self.edge_dir[i][4],
+                       self.edge_link[i][5]*self.edge_dir[i][5],
+                       self.edge_link[i][6]*self.edge_dir[i][6],
+                       self.edge_link[i][7]*self.edge_dir[i][7],
+                       self.edge_link[i][8]*self.edge_dir[i][8],
+                       self.edge_link[i][9]*self.edge_dir[i][9],
+                       self.edge_link[i][10]*self.edge_dir[i][10],
+                       self.edge_link[i][11]*self.edge_dir[i][11]))
+        # end for
+        f.close()
+        
+        return
+
+    def readConnectivity(self,file_name):
+        '''Read the full edge connectivity from a file file_name'''
+        f = open(file_name,'r')
+        aux = string.split(f.readline())
+        self.nEdge = int(aux[0])
+        self.nVol = int(aux[1])
+        self.edges = []
+        
+        f.readline() # This is the header line so ignore
+        for i in xrange(self.nEdge):
+            aux = string.split(f.readline(),'|')
+            self.edges.append(edge(int(aux[1]),int(aux[2]),int(aux[3]),
+                                       int(aux[4]),int(aux[5]),int(aux[6]),int(aux[7])))
+        # end for
+
+        f.readline() # This the second header line so ignore
+
+        self.edge_link = zeros((self.nVol,12),'intc')
+        self.node_link = zeros((self.nVol,8),'intc')
+        self.edge_dir  = zeros((self.nVol,12),'intc')
+        
+        for i in xrange(self.nVol):
+            aux = string.split(f.readline(),'|')
+            
+            for j in xrange(8):
+                self.node_link[i][j] = int(aux[j+1])
+            for j in xrange(12):
+                self.edge_link[i][j] = int(aux[j+1+8])
+                self.edge_dir[i][j]  = sign(self.edge_link[i][j])
+            # end for
+        # end for
+                
+        self.nNode = len(unique(self.node_link.flatten()))
+        # Get the number of design groups
+        dgs = []
+        for iedge in xrange(self.nEdge):
+            dgs.append(self.edges[iedge].dg)
+        # end for
+        self.nDG = max(dgs)+ 1
+        return
+
+    def calcGlobalNumbering(self,sizes,volume_list=None):
+        '''Internal function to calculate the global/local numbering for each surface'''
+
+        for i in xrange(len(sizes)):
+            self.edges[self.edge_link[i][0]].Nctl = sizes[i][0]
+            self.edges[self.edge_link[i][1]].Nctl = sizes[i][0]
+            self.edges[self.edge_link[i][4]].Nctl = sizes[i][0]
+            self.edges[self.edge_link[i][5]].Nctl = sizes[i][0]
+
+            self.edges[self.edge_link[i][2]].Nctl = sizes[i][1]
+            self.edges[self.edge_link[i][3]].Nctl = sizes[i][1]
+            self.edges[self.edge_link[i][6]].Nctl = sizes[i][1]
+            self.edges[self.edge_link[i][7]].Nctl = sizes[i][1]
+
+            self.edges[self.edge_link[i][8]].Nctl = sizes[i][2]
+            self.edges[self.edge_link[i][9]].Nctl = sizes[i][2]
+            self.edges[self.edge_link[i][10]].Nctl = sizes[i][2]
+            self.edges[self.edge_link[i][11]].Nctl = sizes[i][2]
+
+        if volume_list == None:
+            volume_list = range(0,self.nVol)
+        # end if
+        
+        # ----------------- Start of Edge Computation ---------------------
+        counter = 0
+        g_index = []
+        l_index = []
+
+        assert len(sizes) == len(volume_list),'Error: The list of sizes and \
+the list of volumes must be the same length'
+
+        # Assign unique numbers to the corners -> Corners are indexed sequentially
+        node_index = arange(self.nNode)
+        counter = len(node_index)
+
+        edge_index = [ empty((0),'intc') for i in xrange(self.nEdge)]
+        face_index = [ empty((0,0),'intc') for i in xrange(self.nFace)]
+        # Assign unique numbers to the edges
+
+        for ii in xrange(len(volume_list)):
+            cur_size_e = [sizes[ii][0],sizes[ii][0],sizes[ii][1],sizes[ii][1],
+                          sizes[ii][0],sizes[ii][0],sizes[ii][1],sizes[ii][1],
+                          sizes[ii][2],sizes[ii][2],sizes[ii][2],sizes[ii][2]]  
+
+            cur_size_f = [[sizes[ii][0],sizes[ii][1]],
+                          [sizes[ii][0],sizes[ii][1]],
+                          [sizes[ii][1],sizes[ii][2]],
+                          [sizes[ii][1],sizes[ii][2]],
+                          [sizes[ii][0],sizes[ii][2]],
+                          [sizes[ii][0],sizes[ii][2]]]
+
+            ivol = volume_list[ii]
+            for iedge in xrange(12):
+                edge = self.edge_link[ii][iedge]
+                if edge_index[edge].shape == (0,):# Not added yet
+                    edge_index[edge] = resize(edge_index[edge],cur_size_e[iedge]-2)
+                    if self.edges[edge].degen == 1:
+                        # Get the counter value for this "node"
+                        index = node_index[self.edges[edge].n1]
+                        for jj in xrange(cur_size_e[iedge]-2):
+                            edge_index[edge][jj] = index
+                        # end for
+                    else:
+                        for jj in xrange(cur_size_e[iedge]-2):
+                            edge_index[edge][jj] = counter
+                            counter += 1
+                        # end for
+                    # end if
+                # end if
+            # end for
+            for iface in xrange(6):
+                face = self.face_link[ii][iface]
+                if face_index[face].shape == (0,0):
+                    face_index[face] = resize(face_index[face],
+                                               [cur_size_f[iface][0]-2,cur_size_f[iface][1]-2])
+                    for iii in xrange(cur_size_f[iface][0]-2):
+                        for jjj in xrange(cur_size_f[iface][1]-2):
+                            face_index[face][iii,jjj] = counter
+                            counter += 1
+                        # end for
+                    # end for
+                # end if
+            # end for
+        # end for
+
+        g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
+        l_index = []
+
+        # Now actually fill everything up
+        for ii in xrange(len(volume_list)):
+            ivol = volume_list[ii]
+            N = sizes[ii][0]
+            M = sizes[ii][1]
+            L = sizes[ii][2]
+            l_index.append(-1*ones((N,M,L),'intc'))
+
+            for i in xrange(N):
+                for j in xrange(M):
+                    for k in xrange(L):
+                    
+                        type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
+                        
+                        if type == 0:           # Interior
+                            l_index[ii][i,j,k] = counter
+                            g_index.append([[ivol,i,j,k]])
+                            counter += 1
+
+                        elif type == 1:         # Face 
+
+                            # This is going to be nasty since each
+                            # face can have one of 8 orientation and
+                            # we must deal with each face separately
+
+                            if number in [0,1]:
+                                icount = i;imax = N
+                                jcount = j;jmax = M
+                            elif number in [2,3]:
+                                icount = j;imax = M
+                                jcount = k;jmax = L
+                            elif number in [4,5]:
+                                icount = i;imax = N
+                                jcount = k;jmax = L
+                            # end if
+
+                            if self.face_dir[ii][number] == 0:
+                                cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
+                            elif self.face_dir[ii][number] == 1:
+                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
+                            elif self.face_dir[ii][number] == 2:
+                                cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
+                            elif self.face_dir[ii][number] == 3:
+                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
+                            elif self.face_dir[ii][number] == 4:
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,jcount-1]
+                            elif self.face_dir[ii][number] == 5:
+                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
+                            elif self.face_dir[ii][number] == 6:
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
+                            elif self.face_dir[ii][number] == 7:
+                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
+
+                            l_index[ii][i,j,k] = cur_index
+                            g_index[cur_index].append([ivol,i,j,k])
+                            
+                        elif type == 2:         # Edge
+                        
+                            if number in [0,1,4,5]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][i-1]
+                                # end if
+                            elif number in [2,3,6,7]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][j-1]
+                                # end if
+                            elif number in [8,9,10,11]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][k-1]
+                                # end if
+                            # end if
+                            l_index[ii][i,j,k] = cur_index
+                            g_index[cur_index].append([ivol,i,j,k])
+                            
+                        else:                  # Node
+                            cur_node = self.node_link[ii][number]
+                            l_index[ii][i,j,k] = node_index[cur_node]
+                            g_index[node_index[cur_node]].append([ivol,i,j,k])
+                        # end if type
+                    # end for (k)
+                # end for (j)
+            # end for (i)
+        # end for (ii)
+
+        self.counter = counter
+        self.g_index = g_index
+        self.l_index = l_index
+        
+        return 
+
+#     def makeSizesConsistent(self,sizes,order):
+#         '''Take a given list of [Nu x Nv] for each surface and return
+#         the sizes list such that all sizes are consistent
+
+#         prescedence is given according to the order list: 0 is highest
+#         prescedence, 1 is next highest ect.
+
+#         '''
+
+#         # First determine how many "order" loops we have
+#         nloops = max(order)+1
+#         edge_number = -1*ones(self.nDG,'intc')
+#         for iedge in xrange(self.nEdge):
+#             self.edges[iedge].Nctl = -1
+#         # end for
+    
+#         for iloop in xrange(nloops):
+#             for iface in xrange(self.nFace):
+#                 if order[iface] == iloop: # Set this edge
+#                     for iedge in xrange(4):
+#                         if edge_number[self.edges[self.edge_link[iface][iedge]].dg] == -1:
+#                             if iedge in [0,1]:
+#                                 edge_number[self.edges[self.edge_link[iface][iedge]].dg] = sizes[iface][0]
+#                             else:
+#                                 edge_number[self.edges[self.edge_link[iface][iedge]].dg] = sizes[iface][1]
+#                             # end if
+#                         # end if
+#                     # end if
+#                 # end for
+#             # end for
+#         # end for
+
+#         # Now repoluative the sizes:
+#         for iface in xrange(self.nFace):
+#             for i in [0,1]:
+#                 sizes[iface][i] = edge_number[self.edges[self.edge_link[iface][i*2]].dg]
+#             # end for
+#         # end for
+
+#         # And return the number of elements on each actual edge
+#         nEdge = []
+#         for iedge in xrange(self.nEdge):
+#             self.edges[iedge].Nctl = edge_number[self.edges[iedge].dg]
+#             nEdge.append(edge_number[self.edges[iedge].dg])
+#         # end if
+#         return sizes,nEdge
 
         
 class edge(object):
