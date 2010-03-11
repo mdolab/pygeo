@@ -51,375 +51,6 @@ exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
 # =============================================================================
 # pyGeo class
 # =============================================================================
-class pyBlock():
-	
-    def __init__(self,init_type,*args, **kwargs):
-        
-        '''Create an instance of the geometry object. The initialization type,
-        init_type, specifies what type of initialization will be
-        used. There are currently 4 initialization types: plot3d,
-        iges, lifting_surface and acdt_geo
-
-        
-        Input: 
-        
-        init_type, string: a key word defining how this geo object
-        will be defined. Valid Options/keyword argmuents are:
-
-        'plot3d',file_name = 'file_name.xyz' : Load in a plot3D
-        surface patches and use them to create splined volumes
-        '''
-        
-        # First thing to do is to check if we want totally silent
-        # operation i.e. no print statments
-        if 'no_print' in kwargs:
-            self.NO_PRINT = kwargs['no_print']
-        else:
-            self.NO_PRINT = False
-        # end if
-        self.init_type = init_type
-        mpiPrint(' ',self.NO_PRINT)
-        mpiPrint('------------------------------------------------',self.NO_PRINT)
-        mpiPrint('pyBlcok Initialization Type is: %s'%(init_type),self.NO_PRINT)
-        mpiPrint('------------------------------------------------',self.NO_PRINT)
-
-        #------------------- pyVol Class Atributes -----------------
-        self.topo = None         # The topology of the volumes/surface
-        self.vols = []           # The list of volumes (pySpline volume)
-        self.nVol = None         # The total number of volumessurfaces
-        self.coef  = None        # The global (reduced) set of control pts
-
-        # --------------------------------------------------------------
-
-        if init_type == 'plot3d':
-            self._readPlot3D(*args,**kwargs)
-        elif init_type == 'cgns':
-            self._readCGNS(*args,**kwargs)
-        elif init_type == 'bvol':
-            self._readBVol(*args,**kwargs)
-        else:
-            mpiPrint('init_type must be one of plot3d,cgns, or bvol.')
-            sys.exit(0)
-        return
-
-    def _readPlot3D(self,*args,**kwargs):
-
-        '''Load a plot3D file and create the splines to go with each patch'''
-        assert 'file_name' in kwargs,'file_name must be specified for plot3d'
-        assert 'file_type' in kwargs,'file_type must be specified as binary or ascii'
-        file_name = kwargs['file_name']        
-        file_type = kwargs['file_type']
-
-        if file_type == 'ascii':
-            mpiPrint('Loading ascii plot3D file: %s ...'%(file_name),self.NO_PRINT)
-            binary = False
-            f = open(file_name,'r')
-        else:
-            mpiPrint('Loading binary plot3D file: %s ...'%(file_name),self.NO_PRINT)
-            binary = True
-            f = open(file_name,'rb')
-        # end if
-        nVol = readNValues(f,1,'int',binary)[0]
-        mpiPrint('nVol = %d'%(nVol),self.NO_PRINT)
-        sizes   = readNValues(f,nVol*3,'int',binary).reshape((nVol,3))
-        blocks = []
-        for i in xrange(nVol):
-            cur_size = sizes[i,0]*sizes[i,1]*sizes[i,2]
-            blocks.append(zeros([sizes[i,0],sizes[i,1],sizes[i,2],3]))
-            for idim in xrange(3):
-                blocks[-1][:,:,:,idim] = readNValues(f,cur_size,'float',binary).reshape((sizes[i,0],sizes[i,1],sizes[i,2]),order='F')
-            # end for
-        # end for
-        f.close()
-
-        # Now create a list of spline volume objects:
-        vols = []
-        # Note This doesn't actually fit the volumes...just produces
-        # the parameterization and knot vectors
-
-        for ivol in xrange(nVol):
-            vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
-                                            Nctlu=4,Nctlv=4,Nctlw=4,\
-                                            no_print=self.NO_PRINT))
-        self.vols = vols
-        self.nVol = nVol
-        
-        return
-
-    def _readCGNS(self,*args,**kwargs):
-        '''Load a CGNS fiel and create the spline to go with each patch'''
-        assert 'file_name' in kwargs,'file_name must be specified for CGNS'
-        file_name = kwargs['file_name']
-
-
-    def writeTecplot(self,file_name,vols=True,coef=True,orig=False,
-                     vol_labels=False,tecio=False):
-
-        '''Write the pyGeo Object to Tecplot dat file
-        Required:
-            file_name: The filename for the output file
-        Optional:
-            vols: boolean, write the interpolated volumes
-            coef: boolean, write the control points
-            vol_labels: boolean, write the surface labels
-            '''
-
-        # Open File and output header
-        
-        f = pySpline.openTecplot(file_name,3,tecio=tecio)
-
-        # --------------------------------------
-        #    Write out the Interpolated Surfaces
-        # --------------------------------------
-        
-        if vols == True:
-            for ivol in xrange(self.nVol):
-                self.vols[ivol]._writeTecplotVolume(f)
-
-        # --------------------------------------
-        #    Write out the Original Grid
-        # --------------------------------------
-        
-        if orig == True:
-            for ivol in xrange(self.nVol):
-                self.vols[ivol]._writeTecplotOrigData(f)
-
-        # -------------------------------
-        #    Write out the Control Points
-        # -------------------------------
-        
-        if coef == True:
-            for ivol in xrange(self.nVol):
-                self.vols[ivol]._writeTecplotCoef(f)
-
-        # ---------------------------------------------
-        #    Write out The Volume Labels
-        # ---------------------------------------------
-        if vol_labels == True:
-            print 'Not done yet'
-#             # Split the filename off
-#             (dirName,fileName) = os.path.split(file_name)
-#             (fileBaseName, fileExtension)=os.path.splitext(fileName)
-#             label_filename = dirName+'/'+fileBaseName+'.vol_labels.dat'
-#             f2 = open(label_filename,'w')
-#             for ivol in xrange(self.nVol):
-#                 midu = floor(self.vols[ivol].Nctlu/2)
-#                 midv = floor(self.vols[ivol].Nctlv/2)
-#                 midw = floor(self.vols[ivol].Nctlw/2)
-#                 text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f, T=\"V%d\"\n'%(self.vols[ivol].coef[midu,midv,midw,0],self.vols[ivol].coef[midu,midv,midw,1], self.vols[ivol].coef[midu,midv,midw,2],ivol)
-#                 f2.write('%s'%(text_string))
-#             # end for 
-#             f2.close()
-        # end if 
-        pySpline.closeTecplot(f)
-        return
-
-    def _calcConnectivity(self,node_tol,edge_tol):
-        # Determine the blocking connectivity
-
-        # Compute the corners
-        corners = zeros((self.nVol,8,3))
-        for ivol in xrange(self.nVol):
-            for icorner in xrange(8):
-                corners[ivol,icorner] = self.vols[ivol].getOrigValueCorner(icorner)
-            # end for
-        # end for
-        timeA = time.time()
-        self.topo = BlockTopology(corners)
-        print 'Topo Time:',time.time()-timeA
-
-        sizes = []
-        for ivol in xrange(self.nVol):
-            sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
-                          self.vols[ivol].Nctlw])
-        self.topo.calcGlobalNumbering(sizes)
-
-        self.coef = []
-        # Now Fill up the self.coef list:
-        for ii in xrange(len(self.topo.g_index)):
-            ivol = self.topo.g_index[ii][0][0]
-            i = self.topo.g_index[ii][0][1]
-            j = self.topo.g_index[ii][0][2]
-            k = self.topo.g_index[ii][0][3]
-            self.coef.append( self.vols[ivol].coef[i,j,k])
-        # end for
-
-    def _updateVolumeCoef(self):
-        '''Copy the pyBlock list of control points back to the volumes'''
-        for ii in xrange(len(self.coef)):
-            for jj in xrange(len(self.topo.g_index[ii])):
-                ivol  = self.topo.g_index[ii][jj][0]
-                i     = self.topo.g_index[ii][jj][1]
-                j     = self.topo.g_index[ii][jj][2]
-                k     = self.topo.g_index[ii][jj][3]
-                self.vols[ivol].coef[i,j,k] = self.coef[ii].astype('d')
-            # end for
-        # end for
-        return
-        
-    def writeFEAPCorners(self,file_name):
-        # Make sure sizes are 2
-        sizes = []
-        for ivol in xrange(self.nVol):
-            sizes.append([2,2,2])
-        # end for
-        E = 1.0
-        nu = 0.3
-        self.topo.calcGlobalNumbering(sizes)
-        
-        numnp  = self.topo.nNode #number of nodal points
-        numel  = self.nVol # number of elements
-        nummat = self.nVol  #one material type
-        ndm    = 3  #dimension of mesh
-        ndf    = 3  #number of dof per node
-        nen    = 8  #number of nodes per element
-
-        f = open(file_name,'w')
-        f.write("FEAP * * Solid Element Element Example\n")
-        f.write("NOPRINT\n")
-        f.write("%d %d %d %d %d %d\n"%(numnp,numel,1,ndm,ndf,nen))
-
-        f.write("\n")
-
-        #for ivol in xrange(self.nVol):
-        f.write("MATErial %d\n"%(1))
-        f.write("SOLID\n")
-        f.write("ELAStic ISOtripoic ")
-        f.write("%f %f\n"%(E,nu))
-
-        f.write("\n")
-
-        f.write("COORdinate ALL\n")
-        for icoord in xrange(self.topo.nNode):
-            ivol = self.topo.g_index[icoord][0][0]
-            i = self.topo.g_index[icoord][0][1]
-            j = self.topo.g_index[icoord][0][2]
-            k = self.topo.g_index[icoord][0][3]
-            pt = self.vols[ivol].X[i,j,k]
-            f.write("%d 0 %f %f %f \n"%(icoord+1,pt[0],pt[1],pt[2]))
-            
-        f.write("\n")
-
-        f.write("ELEMents\n") # Use vol_con here
-        for ivol in xrange(self.nVol):
-            f.write("%d 1 %d %d %d %d %d %d %d %d %d \n"
-                    %(ivol+1,1,
-                      self.topo.vol_con[ivol][0]+1,
-                      self.topo.vol_con[ivol][1]+1,
-                      self.topo.vol_con[ivol][3]+1,
-                      self.topo.vol_con[ivol][2]+1,
-                      self.topo.vol_con[ivol][4]+1,
-                      self.topo.vol_con[ivol][5]+1,
-                      self.topo.vol_con[ivol][7]+1,
-                      self.topo.vol_con[ivol][6]+1))
-        f.write("\n")
-        f.write("BOUNdary restraints\n")
-
-        f.write('%d 0 1 1 1 \n'%(1))
-        f.write('%d 0 1 1 1 \n'%(2))
-        f.write('%d 0 1 1 1 \n'%(3))
-        
-    
-        f.write("\n")
-        
-        f.write("FORCe\n")
-
-        f.write("%d 0 0 0 %f \n"%(10,10.00))
-        f.write("\n")
-
-        f.write("END\n")
-        f.write("NOPRINT\n")
-        f.write("BATCh\n")
-        f.write("TANGent\n")
-        f.write("FORM\n")
-        f.write("SOLV\n")
-        f.write("PRINT\n")
-        f.write("DISPlacement all\n")
-        f.write("END\n")
-        f.write("STOP\n")
-
-        f.close() #close file
-
-    def updateFEAP(file_name):
-        f = open(file_name)
-        counter = 0
-        new_pts = zeros((self.topo.nNode,3))
-        for line in f:
-            if counter >= 82 and mod(counter,2) == 0:
-                aux = string.split(line)
-                #new_pts[i,0] = 
-
-
-    def doConnectivity(self,node_tol=1e-4,edge_tol=1e-4):
-        self._calcConnectivity(node_tol,edge_tol)
-
-
-    def embedGeo(self,geo):
-        '''Embed a pyGeo object's surfaces into the volume'''
-        self.volID = []
-        self.u = []
-        self.v = []
-        self.w = []
-        
-        for icoef in xrange(len(geo.coef)):
-            ivol,u0,v0,w0,D0 = self.projectPoint(geo.coef[icoef])
-            self.u.append(u0)
-            self.v.append(v0)
-            self.w.append(w0)
-            self.volID.append(ivol)
-        # end for
-
-    def updateGeo(self,geo):
-        for icoef in xrange(len(geo.coef)):
-            geo.coef[icoef] = self.vols[self.volID[icoef]](\
-                self.u[icoef],self.v[icoef],self.w[icoef])
-        #end for
-        geo._updateSurfaceCoef()
-
-    def projectPoint(self,x0):
-        '''Project a point into any one of the volumes. Returns 
-        the volID,u,v,w,D of the point in volID or closest to it.
-
-        This is a brute force search and is NOT efficient'''
-        
-        u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
-        volID = 0
-        for ivol in xrange(1,self.nVol):
-            u,v,w,D = self.vols[ivol].projectPoint(x0)
-            if norm(D)<norm(D0):
-                D0 = D
-                u0 = u
-                v0 = v
-                w0 = w
-                volID = ivol
-            # end if
-        # end for
-        return volID,u0,v0,w0,D0
-                
-    def _calcEdgeConnectivity(self,node_tol,edge_tol):
-
-        # We need one additional set before we can compute the the
-        # face connectivity using the topology object. We must
-        # determine the unique faces on the blocks
-
-        coords = zeros((self.nSurf,8,3))
-        for isurf in xrange(self.nSurf):
-            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(0)
-            coords[isurf][0] = beg
-            coords[isurf][1] = end
-            coords[isurf][4] = mid
-            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(1)
-            coords[isurf][2] = beg
-            coords[isurf][3] = end
-            coords[isurf][5] = mid
-            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(2)
-            coords[isurf][6] = mid
-            beg,mid,end = self.surfs[isurf].getOrigValuesEdge(3)
-            coords[isurf][7] = mid
-        # end for
-
-        self.topo = Topology(coords=coords,node_tol=node_tol,edge_tol=edge_tol)
-        return
 
 class pyGeo():
 	
@@ -921,6 +552,35 @@ offset.shape[0], Xsec, rot, must all have the same size'
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
+    def doEdgeConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
+        '''
+        This is the only public edge connectivity function. 
+        If file_name exists it loads the file OR it calculates the connectivity
+        and saves to that file.
+        Required:
+            file_name: filename for con file
+        Optional:
+            node_tol: The tolerance for identical nodes
+            edge_tol: The tolerance for midpoints of edge being identical
+        Returns:
+            None
+            '''
+        if os.path.isfile(file_name):
+            mpiPrint('Reading Edge Connectivity File: %s'%(file_name),self.NO_PRINT)
+            self.topo = Topology(file=file_name)
+            self._setEdgeConnectivity()
+            if not self.init_type == 'iges':
+                self._propagateKnotVectors()
+            # end if
+        else:
+            self._calcEdgeConnectivity(node_tol,edge_tol)
+            self.topo.writeEdgeConnectivity(file_name)
+            self._setEdgeConnectivity()
+            if not self.init_type == 'iges':
+                self._propagateKnotVectors()
+            # end if
+        # end if
+
     def _calcEdgeConnectivity(self,node_tol,edge_tol):
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
@@ -977,47 +637,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             '''
         self.topo.printEdgeConnectivity()
         return
-
-    def doEdgeConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
-        '''
-        This is the only public edge connectivity function. 
-        If file_name exists it loads the file OR it calculates the connectivity
-        and saves to that file.
-        Required:
-            file_name: filename for con file
-        Optional:
-            node_tol: The tolerance for identical nodes
-            edge_tol: The tolerance for midpoints of edge being identical
-        Returns:
-            None
-            '''
-        if os.path.isfile(file_name):
-            mpiPrint('Reading Edge Connectivity File: %s'%(file_name),self.NO_PRINT)
-            self.topo = Topology(file=file_name)
-            self._setEdgeConnectivity()
-            if not self.init_type == 'iges':
-                self._propagateKnotVectors()
-            # end if
-        else:
-            self._calcEdgeConnectivity(node_tol,edge_tol)
-            self.topo.writeEdgeConnectivity(file_name)
-            self._setEdgeConnectivity()
-            if not self.init_type == 'iges':
-                self._propagateKnotVectors()
-            # end if
-        # end if
-
-    def _calcnDG(self):
-        '''Calculate the number of design groups'''
-        nDG = -1
-        for i in xrange(len(self.edge_list)):
-            if self.edge_list[i].dg > nDG:
-                nDG = self.edge_list[i].dg
-            # end if
-        # end for
-        nDG += 1
-        self.nDG = nDG
-        
+  
     def _propagateKnotVectors(self):
         ''' Propage the knot vectors to make consistent'''
         # First get the number of design groups
@@ -1840,11 +1460,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # ---------------------------------------------
         #    Write out The Surface,Edge and Node Labels
         # ---------------------------------------------
+        (dirName,fileName) = os.path.split(file_name)
+        (fileBaseName, fileExtension)=os.path.splitext(fileName)
+
         if surf_labels == True:
             # Split the filename off
-            (dirName,fileName) = os.path.split(file_name)
-            (fileBaseName, fileExtension)=os.path.splitext(fileName)
-            label_filename = dirName+'/'+fileBaseName+'.surf_labels.dat'
+            label_filename = dirName+'./'+fileBaseName+'.surf_labels.dat'
             f2 = open(label_filename,'w')
             for isurf in xrange(self.nSurf):
                 midu = floor(self.surfs[isurf].Nctlu/2)
@@ -1857,9 +1478,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         if edge_labels == True:
             # Split the filename off
-            (dirName,fileName) = os.path.split(file_name)
-            (fileBaseName, fileExtension)=os.path.splitext(fileName)
-            label_filename = dirName+'/'+fileBaseName+'edge_labels.dat'
+            label_filename = dirName+'./'+fileBaseName+'edge_labels.dat'
             f2 = open(label_filename,'w')
             for iedge in xrange(self.topo.nEdge):
                 surfaces =  self.topo.getSurfaceFromEdge(iedge)
@@ -1894,9 +1513,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             # end for
             # Split the filename off
 
-            (dirName,fileName) = os.path.split(file_name)
-            (fileBaseName, fileExtension)=os.path.splitext(fileName)
-            label_filename = dirName+'/'+fileBaseName+'.node_labels.dat'
+            label_filename = dirName+'./'+fileBaseName+'.node_labels.dat'
             f2 = open(label_filename,'w')
 
             for i in xrange(n_nodes):

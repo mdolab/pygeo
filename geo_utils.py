@@ -89,6 +89,21 @@ def readNValues(handle,N,type,binary=False):
         # end if
     return values
 
+def writeValues(handle,values,type,binary=False):
+    '''Read N values of type 'float' or 'int' from file handle'''
+    if binary:
+        values.tofile(handle)
+    else:
+        if type == 'float':
+            values.tofile(handle,sep=" ",format="%f")
+        elif type == 'int':
+            values.tofile(handle,sep=" ",format="%d")
+        # end if
+    # end if
+    return 
+
+
+
 def read_af(filename,file_type='xfoil',N=35):
     ''' Load the airfoil file of type file_type'''
 
@@ -1929,7 +1944,7 @@ class BlockTopology(object):
             self.edges[self.edge_link[i][9]].Nctl = sizes[i][2]
             self.edges[self.edge_link[i][10]].Nctl = sizes[i][2]
             self.edges[self.edge_link[i][11]].Nctl = sizes[i][2]
-
+            
         if volume_list == None:
             volume_list = range(0,self.nVol)
         # end if
