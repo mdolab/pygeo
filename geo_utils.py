@@ -1642,15 +1642,21 @@ class BlockTopology(object):
         nEdge: The number of uniuqe edges on the topology
         nNode: The number of unique nodes on the topology
 
-        node_link: The array of size nVol x 6 which points
+        node_link: The array of size nVol x 8 which points
                    to the node for each corner of a block
         edge_link: The array of size nVol x 12 which points
                    to the edge for each edge on a blcok
+        face_link: The array of size nVol x 6 which points to 
+                   the face of each face on a block
+
         edge_dir:  The array of size nFace x 4 which detrmines
                    if the intrinsic direction of this edge is
                    opposite of the direction as recorded in the
                    edge list. edge_dir[block][#] = 1 means same direction,
-                   edge_dir[face][#] = -1 means opposite direction
+        face_dir:  The array of size nFace x 6 which determines the 
+                   intrinsic direction of this face. It is one of 0->7
+                   
+
         l_index:   The local->global list of arrays for each volue
         g_index:   The global->local list points for the entire topology
         edges:     The list of edge objects defining the topology
@@ -1659,19 +1665,25 @@ class BlockTopology(object):
                    nodes and NO edges which loop back and have the same nodes
                    MUST BE SIMPLE
     '''
-    def __init__(self,corners,node_tol=1e-4,edge_tol=1e-4):
+    def __init__(self,corners=None,node_tol=1e-4,edge_tol=1e-4,file=None):
         '''Initialize the class with data required to compute the topology'''
 
+        if file != None:
+            self.readConnectivity(file)
+            return
+        # end if
+
+        self.simple = True
         # This is initialized with a list of coordiantes -> Corners
         # Point reduce them
-        self.nVol = len(corners)
+        nVol = len(corners)
         corners = array(corners)
-        un,node_link = pointReduce(corners.reshape((8*self.nVol,3)))
-        node_link = node_link.reshape((self.nVol,8))
+        un,node_link = pointReduce(corners.reshape((8*nVol,3)))
+        node_link = node_link.reshape((nVol,8))
         # We can now generate vol_con AND face_con
         vol_con = []
         face_con = []
-        for ivol in xrange(self.nVol):
+        for ivol in xrange(nVol):
             vol_con.append(zeros(8,'intc'))
             for icorner in xrange(8):
                 vol_con[-1][icorner] = node_link[ivol][icorner]
@@ -1694,42 +1706,41 @@ class BlockTopology(object):
             face_con.append([node_link[ivol][2],node_link[ivol][3],
                              node_link[ivol][6],node_link[ivol][7]])
         # end for
-        self.vol_con = vol_con
+
         # Uniqify the Faces 
         face_hash = []
-        for iface in xrange(self.nVol * 6):
+        for iface in xrange(nVol * 6):
             temp = sorted(face_con[iface])
-            face_hash.append((temp[0]*6*self.nVol*3 + temp[1]*6*self.nVol*2 +
-                              temp[2]*6*self.nVol*1 + temp[3]))
+            face_hash.append((temp[0]*6*nVol*3 + temp[1]*6*nVol*2 +
+                              temp[2]*6*nVol*1 + temp[3]))
 
         uf,face_link = unique_index(face_hash) # Only need the lengh of uf and face_link
-        self.face_link = array(face_link).reshape((self.nVol,6))
-        self.nFace = len(uf)
-        used = zeros(self.nFace,'bool')
-        reduced_face_con = zeros((self.nFace,4),'intc')
-        for ivol in xrange(self.nVol):
+        face_link = array(face_link).reshape((nVol,6))
+        nFace = len(uf)
+        used = zeros(nFace,'bool')
+        reduced_face_con = zeros((nFace,4),'intc')
+        for ivol in xrange(nVol):
             for iface in xrange(6):
-                if used[self.face_link[ivol][iface]] == False:
-                    used[self.face_link[ivol][iface]] = True
-                    reduced_face_con[self.face_link[ivol][iface]] = \
+                if used[face_link[ivol][iface]] == False:
+                    used[face_link[ivol][iface]] = True
+                    reduced_face_con[face_link[ivol][iface]] = \
                         face_con[ivol*6+iface]
                 # end if
             # end for
 
         # Now get the directions for faces
-        face_dir = zeros((self.nVol,6),'intc')
-        for ivol in xrange(self.nVol):
+        face_dir = zeros((nVol,6),'intc')
+        for ivol in xrange(nVol):
             for iface in xrange(6):
-                face_dir[ivol][iface] = faceOrientation(reduced_face_con[self.face_link[ivol][iface]],
+                face_dir[ivol][iface] = faceOrientation(reduced_face_con[face_link[ivol][iface]],
                                         face_con[ivol*6+iface])
             # end for
         # end for
-        self.face_dir = face_dir
 
         # Uniqify the Edges - Get the edge_hash
         edges = []
         edge_hash = []
-        for ivol in xrange(self.nVol):
+        for ivol in xrange(nVol):
 #                 #             n1                ,n2               ,dg,n,degen
             # k = 0 plane
             edges.append([vol_con[ivol][0],vol_con[ivol][1],-1,0,0])
@@ -1758,28 +1769,35 @@ class BlockTopology(object):
                 edges[iedge][1] = temp
                 edge_dir[iedge] = -1
             # end if
-            edge_hash.append(edges[iedge][0]*12*self.nVol + edges[iedge][1])
+            edge_hash.append(edges[iedge][0]*12*nVol + edges[iedge][1])
         # end for
 
-        edges,edge_link = unique_index(edges,edge_hash)
+        ue,edge_link = unique_index(edges,edge_hash)
 
+        # --------- Set the Requried Data for this class ------------
         self.nNode = len(un)
-        self.nEdge = len(edges)
+        self.nEdge = len(ue)
+        self.nFace = len(uf)
+        self.nVol  = len(corners)
 
         self.node_link = node_link
-        self.edge_link = array(edge_link).reshape((self.nVol,12))
-        self.edge_dir  = array(edge_dir).reshape((self.nVol,12))
-        
+        self.edge_link = array(edge_link).reshape((nVol,12))
+        self.face_link = face_link
+
+        self.edge_dir  = array(edge_dir).reshape((nVol,12))
+        self.face_dir  = face_dir
+        # ------------------------------------------------------------
+
+        # Next Calculate the Design Group Information
         edge_link_sorted = sort(edge_link)
         edge_link_ind    = argsort(edge_link)
 
-        # Next Calculate the Design Group Information
-        self._calcDGs(edges,edge_link,edge_link_sorted,edge_link_ind)
+        self._calcDGs(ue,edge_link,edge_link_sorted,edge_link_ind)
 
         # Set the edge ojects
         self.edges = []
         for i in xrange(self.nEdge): # Create the edge objects
-            self.edges.append(edge(edges[i][0],edges[i][1],0,0,0,edges[i][2],edges[i][3]))
+            self.edges.append(edge(ue[i][0],ue[i][1],0,0,0,ue[i][2],ue[i][3]))
         # end for
 
         return
@@ -1822,11 +1840,22 @@ class BlockTopology(object):
         '''Print the Edge Connectivity to the screen'''
 
         mpiPrint('------------------------------------------------------------------------')
-        mpiPrint('%3d   %3d'%(self.nEdge,self.nVol))
+        mpiPrint('%4d  %4d  %4d   %4d'%(self.nNode,self.nEdge,self.nFace,self.nVol))
         mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,sys.stdout)
         # end for
+
+        mpiPrint('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|')
+        for i in xrange(self.nVol):
+            mpiPrint(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|'\
+                     %(i,self.face_link[i][0],self.face_link[i][1],
+                       self.face_link[i][2],self.face_link[i][3],
+                       self.face_link[i][3],self.face_link[i][5],
+                       self.face_dir[i][0],self.face_dir[i][1],
+                       self.face_dir[i][2],self.face_dir[i][3],
+                       self.face_dir[i][4],self.face_dir[i][5])) 
+
         mpiPrint('Vol Number | n0 | n1 | n2 | n3 | n4 | n5 | n6 | n7 | e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 | e10| e11|')
         for i in xrange(self.nVol):
             mpiPrint(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|'\
@@ -1851,15 +1880,24 @@ class BlockTopology(object):
         mpiPrint('------------------------------------------------------------------------')
         return
 
-
     def writeConnectivity(self,file_name):
         '''Write the full edge connectivity to a file file_name'''
         f = open(file_name,'w')
-        f.write('%3d   %3d\n'%(self.nEdge,self.nVol))
+        f.write('%4d  %4d  %4d   %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol))
         f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |\n')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,f)
         # end for
+        f.write('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
+        for i in xrange(self.nVol):
+            f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|\n'\
+                     %(i,self.face_link[i][0],self.face_link[i][1],
+                       self.face_link[i][2],self.face_link[i][3],
+                       self.face_link[i][4],self.face_link[i][5],
+                       self.face_dir[i][0],self.face_dir[i][1],
+                       self.face_dir[i][2],self.face_dir[i][3],
+                       self.face_dir[i][4],self.face_dir[i][5])) 
+
         f.write('Vol Number | n0 | n1 | n2 | n3 | n4 | n5 | n6 | n7 | e0 | e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 | e10| e11|\n')
         for i in xrange(self.nVol):
             f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|%4d|\n'\
@@ -1887,10 +1925,16 @@ class BlockTopology(object):
 
     def readConnectivity(self,file_name):
         '''Read the full edge connectivity from a file file_name'''
+        # We must be able to populate the following:
+        #nNode,nEdge,nFace,nVol,node_link,edge_link,face_link,edge_dir,face_dir
+
         f = open(file_name,'r')
         aux = string.split(f.readline())
-        self.nEdge = int(aux[0])
-        self.nVol = int(aux[1])
+        self.nNode = int(aux[0])
+        self.nEdge = int(aux[1])
+        self.nFace = int(aux[2])
+        self.nVol  = int(aux[3])
+
         self.edges = []
         
         f.readline() # This is the header line so ignore
@@ -1902,6 +1946,16 @@ class BlockTopology(object):
 
         f.readline() # This the second header line so ignore
 
+        self.face_link = zeros((self.nVol,6),'intc')
+        self.face_dir  = zeros((self.nVol,6),'intc')
+        for ivol in xrange(self.nVol):
+            aux = string.split(f.readline(),'|')
+            self.face_link[ivol] = [int(aux[i]) for i in xrange(1,7)]
+            self.face_dir[ivol]  = [int(aux[i]) for i in xrange(7,13)]
+        # end for
+
+        f.readline() # This is the third header line so ignore
+
         self.edge_link = zeros((self.nVol,12),'intc')
         self.node_link = zeros((self.nVol,8),'intc')
         self.edge_dir  = zeros((self.nVol,12),'intc')
@@ -1912,12 +1966,13 @@ class BlockTopology(object):
             for j in xrange(8):
                 self.node_link[i][j] = int(aux[j+1])
             for j in xrange(12):
-                self.edge_link[i][j] = int(aux[j+1+8])
-                self.edge_dir[i][j]  = sign(self.edge_link[i][j])
+                self.edge_dir[i][j]  = sign(int(aux[j+1+8]))
+                self.edge_link[i][j] = int(aux[j+1+8])*self.edge_dir[i][j]
+
             # end for
         # end for
                 
-        self.nNode = len(unique(self.node_link.flatten()))
+   
         # Get the number of design groups
         dgs = []
         for iedge in xrange(self.nEdge):
