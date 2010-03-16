@@ -29,12 +29,12 @@ exec(import_modules('pyBlock','pySpline','geo_utils'))
 
 #print ' '
 print 'SGS Wing Example'
-grid = pyBlock.pyBlock('plot3d',file_name='sgs.xyz',file_type='binary')
+grid = pyBlock.pyBlock('plot3d',file_name='sgs.xyz',file_type='ascii')
 grid.doConnectivity('sgs.con')
 grid.writePlot3d('sgs_new.xyz',binary=False)
 grid.writeTecplot('sgs.dat',vols=False,orig=True,coef=False)
 grid.writeBvol('sgs.bvol',binary=True)
-
+sys.exit(0)
 #grid = pyBlock.pyBlock('bvol',file_name='sgs.bvol',file_type='binary')
 #grid.doConnectivity('sgs.con')
 #grid.writeTecplot('sgs.dat',vols=True,orig=False,coef=True)
