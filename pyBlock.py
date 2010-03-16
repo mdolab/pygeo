@@ -36,7 +36,9 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 
 from numpy.linalg import lstsq,inv,norm
 
-from scipy import sparse, linsolve
+from scipy import sparse,io
+from scipy.sparse.linalg.dsolve import factorized
+
 
 # =============================================================================
 # Extension modules
@@ -77,7 +79,7 @@ class pyBlock():
         self.init_type = init_type
         mpiPrint(' ',self.NO_PRINT)
         mpiPrint('------------------------------------------------',self.NO_PRINT)
-        mpiPrint('pyBlcok Initialization Type is: %s'%(init_type),self.NO_PRINT)
+        mpiPrint('pyBlock Initialization Type is: %s'%(init_type),self.NO_PRINT)
         mpiPrint('------------------------------------------------',self.NO_PRINT)
 
         #------------------- pyVol Class Atributes -----------------
@@ -138,7 +140,7 @@ class pyBlock():
         vols = []
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
-        #nVol = 10
+        nVol = 66
         for ivol in xrange(nVol):
 #             print '---------%d---------'%(ivol)
 #             S,u,v,w = pyspline.para3d(blocks[ivol])
@@ -162,10 +164,9 @@ class pyBlock():
 #             print pyspline.knots_lms(S[-1,0,:,2],6,4)
 #             print pyspline.knots_lms(S[-1,-1,:,2],6,4)
 #             print 'w:',pyspline.knots_lms(w,6,4)
-            if ivol<=100:#3 or ivol==14:
-                vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
-                                                Nctlu=6,Nctlv=6,Nctlw=6,\
-                                                no_print=self.NO_PRINT))
+            vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
+                                            Nctlu=4,Nctlv=4,Nctlw=4,\
+                                            no_print=self.NO_PRINT))
         self.vols = vols
         self.nVol = len(vols)
         #self.nVol = nVol
@@ -211,6 +212,81 @@ class pyBlock():
         file_name = kwargs['file_name']
 
 
+
+    def fitGlobal(self):
+
+        nCtl = len(self.topo.g_index)
+        l_index = copy.deepcopy((self.topo.l_index))
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([self.vols[ivol].Nu,self.vols[ivol].Nv,self.vols[ivol].Nw])
+        # end for
+        
+        # Get the Globaling number of the original data
+        print 'Calculating sizes'
+        
+        self.topo.calcGlobalNumbering(sizes) # OVERWRITING TOPO HERE
+        N = len(self.topo.g_index)
+        print 'Calculating Points'
+        pts = zeros((N,3))
+        for ii in xrange(N):
+            ivol = self.topo.g_index[ii][0][0]
+            i = self.topo.g_index[ii][0][1]
+            j = self.topo.g_index[ii][0][2]
+            k = self.topo.g_index[ii][0][3]
+            pts[ii] = self.vols[ivol].X[i,j,k]
+        # end for
+
+        # Get the maximum k (ku,kv,kw for each vol)
+        kmax = 2
+        for ivol in xrange(self.nVol):
+            if self.vols[ivol].ku > kmax:
+                kmax = self.vols[ivol].ku
+            if self.vols[ivol].kv > kmax:
+                kmax = self.vols[ivol].kv
+            if self.vols[ivol].kw > kmax:
+                kmax = self.vols[ivol].kw
+            # end if
+        # end for
+        nnz = N*kmax*kmax*kmax
+        vals = zeros(nnz)
+        row_ptr = [0]
+        col_ind = zeros(nnz,'intc')
+        timeA = time.time()
+        print 'Calculating Jacobian'
+
+        for ii in xrange(N):
+            ivol = self.topo.g_index[ii][0][0]
+            i    = self.topo.g_index[ii][0][1]
+            j    = self.topo.g_index[ii][0][2]
+            k    = self.topo.g_index[ii][0][3]
+
+            u = self.vols[ivol].U[i,j,k]
+            v = self.vols[ivol].V[i,j,k]
+            w = self.vols[ivol].W[i,j,k]
+            vals,col_ind = self.vols[ivol]._getBasisPt(
+                u,v,w,vals,row_ptr[ii],col_ind,l_index[ivol])
+
+            kinc = self.vols[ivol].ku*self.vols[ivol].kv*self.vols[ivol].kw
+            row_ptr.append(row_ptr[-1] + kinc)
+        # end for
+
+        # Now we can crop out any additional values in col_ptr and vals
+        vals    = vals[:row_ptr[-1]]
+        col_ind = col_ind[:row_ptr[-1]]
+        # Now make a sparse matrix
+
+        NN = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,nCtl])
+        print 'Multiplying N^T * N'
+        del self.topo.g_index
+        del self.topo.l_index
+        time.sleep(5)
+        NNT = NN.T
+        NTN = NNT*NN
+        print 'Solving'
+        solve = factorized(NTN)
+        print 'N points:',N
+
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
@@ -236,16 +312,19 @@ class pyBlock():
                 sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
                               self.vols[ivol].Nctlw])
             self.topo.calcGlobalNumbering(sizes)
+
+
             if self.init_type != 'bvol':
                 self._propagateKnotVectors()
+                #self._setConnectivity()
+                #self._updateVolumeCoef()
             # end if
-            self._setConnectivity()
-            self._updateVolumeCoef()
+
         else:
             self._calcConnectivity(node_tol,edge_tol)
             self._propagateKnotVectors()
-            self._setConnectivity()
-            self._updateVolumeCoef()
+            #self._setConnectivity()
+            #self._updateVolumeCoef()
             self.topo.writeConnectivity(file_name)
         # end if
             
@@ -275,12 +354,14 @@ class pyBlock():
         self.coef = []
         # Now Fill up the self.coef list:
         for ii in xrange(len(self.topo.g_index)):
-            cur_coef = array([0,0,0])
+            #pdb.set_trace()
+            cur_coef = array([0,0,0],'f')
             for jj in xrange(len(self.topo.g_index[ii])):
                 ivol = self.topo.g_index[ii][jj][0]
                 i = self.topo.g_index[ii][jj][1]
                 j = self.topo.g_index[ii][jj][2]
                 k = self.topo.g_index[ii][jj][3]
+                #self.coef.append(self.vols[ivol].coef[i,j,k])
                 cur_coef+= self.vols[ivol].coef[i,j,k]
             # end for
             self.coef.append(cur_coef/len(self.topo.g_index[ii]))
@@ -301,7 +382,6 @@ class pyBlock():
     def _propagateKnotVectors(self):
         ''' Propage the knot vectors to make consistent'''
         # First get the number of design groups
-        print 'here'
         nDG = -1
         ncoef = []
         for i in xrange(self.topo.nEdge):
@@ -348,7 +428,7 @@ class pyBlock():
         # end for
         
         for idg in xrange(nDG):
-            print '---------------- DG %d ------------'%(idg)
+            #print '---------------- DG %d ------------'%(idg)
             sym = False
             knot_vectors = []
             syms = []
@@ -366,7 +446,7 @@ class pyBlock():
                         knot_vectors.append(self.vols[ivol].tu)
                     # end if
 
-                    print self.vols[ivol].tu
+                    #print self.vols[ivol].tu
                 # end if
                 if self.topo.edges[self.topo.edge_link[ivol][2]].dg == idg:
                     v_dirs = array([self.topo.edge_dir[ivol][i] for i in [2,3,6,7]])
@@ -378,7 +458,7 @@ class pyBlock():
                         syms.append(False)
                         knot_vectors.append(self.vols[ivol].tv)
                     # end if
-                    print self.vols[ivol].tv
+                    #print self.vols[ivol].tv
                 # end if
                 if self.topo.edges[self.topo.edge_link[ivol][8]].dg == idg:
                     w_dirs = array([self.topo.edge_dir[ivol][i] for i in [8,9,10,11]])
@@ -390,15 +470,15 @@ class pyBlock():
                         syms.append(False)
                         knot_vectors.append(self.vols[ivol].tw)
                     # end if
-                    print self.vols[ivol].tw
+                    #print self.vols[ivol].tw
                 # end if
 
             # end for
 
             # Now blend all the knot vectors
             new_knot_vec = blendKnotVectors(knot_vectors,sym)
-            print 'Belneded:','Sym is:',sym
-            print new_knot_vec
+            #print 'Belneded:','Sym is:',sym
+            #print new_knot_vec
 
 
             # And reset them all
@@ -413,12 +493,12 @@ class pyBlock():
             # end for
         # end for
        
-        mpiPrint('Recomputing volumes...',self.NO_PRINT)
+      #   mpiPrint('Recomputing volumes...',self.NO_PRINT)
 
-        for ivol in xrange(self.nVol):
-            mpiPrint('Volume %d'%(ivol))
-            self.vols[ivol].recompute()
-        # end for
+#         for ivol in xrange(self.nVol):
+#             mpiPrint('Volume %d'%(ivol))
+#             self.vols[ivol].recompute()
+#         # end for
 
         return    
 
