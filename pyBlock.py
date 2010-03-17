@@ -38,7 +38,7 @@ from numpy.linalg import lstsq,inv,norm
 
 from scipy import sparse,io
 from scipy.sparse.linalg.dsolve import factorized
-
+from scipy.sparse.linalg import bicgstab,gmres
 
 # =============================================================================
 # Extension modules
@@ -140,7 +140,7 @@ class pyBlock():
         vols = []
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
-        nVol = 66
+        #nVol = 200
         for ivol in xrange(nVol):
 #             print '---------%d---------'%(ivol)
 #             S,u,v,w = pyspline.para3d(blocks[ivol])
@@ -165,7 +165,7 @@ class pyBlock():
 #             print pyspline.knots_lms(S[-1,-1,:,2],6,4)
 #             print 'w:',pyspline.knots_lms(w,6,4)
             vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
-                                            Nctlu=4,Nctlv=4,Nctlw=4,\
+                                            Nctlu=6,Nctlv=6,Nctlw=6,\
                                             no_print=self.NO_PRINT))
         self.vols = vols
         self.nVol = len(vols)
@@ -251,6 +251,7 @@ class pyBlock():
         nnz = N*kmax*kmax*kmax
         vals = zeros(nnz)
         row_ptr = [0]
+        print nnz
         col_ind = zeros(nnz,'intc')
         timeA = time.time()
         print 'Calculating Jacobian'
@@ -278,14 +279,40 @@ class pyBlock():
 
         NN = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,nCtl])
         print 'Multiplying N^T * N'
-        del self.topo.g_index
-        del self.topo.l_index
-        time.sleep(5)
         NNT = NN.T
         NTN = NNT*NN
         print 'Solving'
+
+
+        usegmres = True
+        self.coef = zeros((nCtl,3))
+        timeA = time.time()
+        # if usegmres:
+        # for idim in xrange(3):
+#             print 'Solving idim:',idim
+#             res = bicgstab(NTN, NNT*pts[:,idim],tol=1.0e-10, maxiter=500)
+#             self.coef[:,idim] = res[0]
+#             print res
+#         # end for
+#         timeB = time.time()
+#         #else:
         solve = factorized(NTN)
-        print 'N points:',N
+        for idim in xrange(3):
+            self.coef[:,idim] = solve(NNT*pts[:,idim])
+        # end for
+#         # end if
+            #print 'gmres:',timeB-timeA,'direct:',time.time()-timeB
+        print 'reset numbering'
+        # Redo the normal numbering
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
+                          self.vols[ivol].Nctlw])
+
+        self.topo.calcGlobalNumbering(sizes)
+
+        self._updateVolumeCoef()
+
 
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
@@ -348,24 +375,24 @@ class pyBlock():
         self.topo.calcGlobalNumbering(sizes)
 
 
-    def _setConnectivity(self):
-        # Sets the numbering based on the number of control points on each edge
+#     def _setConnectivity(self):
+#         # Sets the numbering based on the number of control points on each edge
        
-        self.coef = []
-        # Now Fill up the self.coef list:
-        for ii in xrange(len(self.topo.g_index)):
-            #pdb.set_trace()
-            cur_coef = array([0,0,0],'f')
-            for jj in xrange(len(self.topo.g_index[ii])):
-                ivol = self.topo.g_index[ii][jj][0]
-                i = self.topo.g_index[ii][jj][1]
-                j = self.topo.g_index[ii][jj][2]
-                k = self.topo.g_index[ii][jj][3]
-                #self.coef.append(self.vols[ivol].coef[i,j,k])
-                cur_coef+= self.vols[ivol].coef[i,j,k]
-            # end for
-            self.coef.append(cur_coef/len(self.topo.g_index[ii]))
-        # end for
+#         self.coef = []
+#         # Now Fill up the self.coef list:
+#         for ii in xrange(len(self.topo.g_index)):
+#             #pdb.set_trace()
+#             cur_coef = array([0,0,0],'f')
+#             for jj in xrange(len(self.topo.g_index[ii])):
+#                 ivol = self.topo.g_index[ii][jj][0]
+#                 i = self.topo.g_index[ii][jj][1]
+#                 j = self.topo.g_index[ii][jj][2]
+#                 k = self.topo.g_index[ii][jj][3]
+#                 #self.coef.append(self.vols[ivol].coef[i,j,k])
+#                 cur_coef+= self.vols[ivol].coef[i,j,k]
+#             # end for
+#             self.coef.append(cur_coef/len(self.topo.g_index[ii]))
+#         # end for
 
 
     def printConnectivity(self):
