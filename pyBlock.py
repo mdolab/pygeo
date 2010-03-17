@@ -215,7 +215,8 @@ class pyBlock():
 
     def fitGlobal(self):
 
-        nCtl = len(self.topo.g_index)
+        nCtl = self.topo.nGlobal
+
         l_index = copy.deepcopy((self.topo.l_index))
         sizes = []
         for ivol in xrange(self.nVol):
@@ -224,19 +225,20 @@ class pyBlock():
         
         # Get the Globaling number of the original data
         print 'Calculating sizes'
-        
+        timeA = time.time()
         self.topo.calcGlobalNumbering(sizes) # OVERWRITING TOPO HERE
-        N = len(self.topo.g_index)
+        print 'Done Sizes',time.time()-timeA
+        N = self.topo.nGlobal
+
         print 'Calculating Points'
+        timeA = time.time()
         pts = zeros((N,3))
         for ii in xrange(N):
-            ivol = self.topo.g_index[ii][0][0]
-            i = self.topo.g_index[ii][0][1]
-            j = self.topo.g_index[ii][0][2]
-            k = self.topo.g_index[ii][0][3]
-            pts[ii] = self.vols[ivol].X[i,j,k]
+            start = self.topo.ptr[ii]
+            stuff = self.topo.g_index[self.topo.ptr[ii]:self.topo.ptr[ii]+4]
+            pts[ii] = self.vols[stuff[0]].X[stuff[1],stuff[2],stuff[3]]
         # end for
-
+        print 'Done Points',time.time()-timeA
         # Get the maximum k (ku,kv,kw for each vol)
         kmax = 2
         for ivol in xrange(self.nVol):
@@ -257,10 +259,10 @@ class pyBlock():
         print 'Calculating Jacobian'
 
         for ii in xrange(N):
-            ivol = self.topo.g_index[ii][0][0]
-            i    = self.topo.g_index[ii][0][1]
-            j    = self.topo.g_index[ii][0][2]
-            k    = self.topo.g_index[ii][0][3]
+            ivol = self.topo.g_index[self.topo.ptr[ii]]
+            i = self.topo.g_index[self.topo.ptr[ii]+1]
+            j = self.topo.g_index[self.topo.ptr[ii]+2]
+            k = self.topo.g_index[self.topo.ptr[ii]+3]
 
             u = self.vols[ivol].U[i,j,k]
             v = self.vols[ivol].V[i,j,k]
@@ -282,36 +284,36 @@ class pyBlock():
         NNT = NN.T
         NTN = NNT*NN
         print 'Solving'
-
-
-        usegmres = True
-        self.coef = zeros((nCtl,3))
-        timeA = time.time()
-        # if usegmres:
-        # for idim in xrange(3):
-#             print 'Solving idim:',idim
-#             res = bicgstab(NTN, NNT*pts[:,idim],tol=1.0e-10, maxiter=500)
-#             self.coef[:,idim] = res[0]
-#             print res
+        print 'done'
+        sys.exit(0)
+#         usegmres = True
+#         self.coef = zeros((nCtl,3))
+#         timeA = time.time()
+#         # if usegmres:
+#         # for idim in xrange(3):
+# #             print 'Solving idim:',idim
+# #             res = bicgstab(NTN, NNT*pts[:,idim],tol=1.0e-10, maxiter=500)
+# #             self.coef[:,idim] = res[0]
+# #             print res
+# #         # end for
+# #         timeB = time.time()
+# #         #else:
+#         solve = factorized(NTN)
+#         for idim in xrange(3):
+#             self.coef[:,idim] = solve(NNT*pts[:,idim])
 #         # end for
-#         timeB = time.time()
-#         #else:
-        solve = factorized(NTN)
-        for idim in xrange(3):
-            self.coef[:,idim] = solve(NNT*pts[:,idim])
-        # end for
-#         # end if
-            #print 'gmres:',timeB-timeA,'direct:',time.time()-timeB
-        print 'reset numbering'
-        # Redo the normal numbering
-        sizes = []
-        for ivol in xrange(self.nVol):
-            sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
-                          self.vols[ivol].Nctlw])
+# #         # end if
+#             #print 'gmres:',timeB-timeA,'direct:',time.time()-timeB
+#         print 'reset numbering'
+#         # Redo the normal numbering
+#         sizes = []
+#         for ivol in xrange(self.nVol):
+#             sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
+#                           self.vols[ivol].Nctlw])
 
-        self.topo.calcGlobalNumbering(sizes)
+#         self.topo.calcGlobalNumbering(sizes)
 
-        self._updateVolumeCoef()
+#         self._updateVolumeCoef()
 
 
 # ----------------------------------------------------------------------

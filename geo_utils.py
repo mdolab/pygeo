@@ -4,7 +4,7 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
-    arange,copy,floor,fromfile,choose,sign,resize
+    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os,time
 
@@ -302,15 +302,20 @@ def e_dist(x1,x2):
 #             Truly Miscellaneous Functions
 # --------------------------------------------------------------
 
-def flatten(x):
-    if not isinstance(x,list):
-        return x
-    elif len(x) is 0:
-        return []
-    elif isinstance(x[0],list):
-        return flatten(x[0]) + flatten(x[1:])
-    else:
-        return [x[0]] + flatten(x[1:])
+def flatten(l, ltypes=(list, tuple)):
+    ltype = type(l)
+    l = list(l)
+    i = 0
+    while i < len(l):
+        while isinstance(l[i], ltypes):
+            if not l[i]:
+                l.pop(i)
+                i -= 1
+                break
+            else:
+                l[i:i + 1] = l[i]
+        i += 1
+    return ltype(l)
 
 def unique(s):
     """Return a list of the elements in s, but without duplicates.
@@ -2077,18 +2082,18 @@ the list of volumes must be the same length'
             L = sizes[ii][2]
             l_index.append(-1*ones((N,M,L),'intc'))
 
-            for i in xrange(N):
-                for j in xrange(M):
-                    for k in xrange(L):
-                    
+            for i in [0,N-1]:
+                for j in [0,M-1]:
+                    for k in [0,L-1]:
+
                         type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
                         
-                        if type == 0:           # Interior
-                            l_index[ii][i,j,k] = counter
-                            g_index.append([[ivol,i,j,k]])
-                            counter += 1
+                       #  if type == 0:           # Interior  -> No longer requried...see end
+#                             l_index[ii][i,j,k] = counter
+#                             g_index.append([[ivol,i,j,k]])
+#                             counter += 1
 
-                        elif type == 1:         # Face 
+                        if type == 1:         # Face 
 
                             # This is going to be nasty since each
                             # face can have one of 8 orientation and
@@ -2159,10 +2164,49 @@ the list of volumes must be the same length'
             # end for (i)
         # end for (ii)
 
+        # Now we have all the g-indexes that POTENTIALLY have multiple
+        # attachments. Now we will 'flatten' the list and create a
+        # pointer array so we can find the data we need
+
+        pointer = zeros((len(g_index)+1),'intc')
+        ptr_counter = 0
+        for i in xrange(len(g_index)):
+            ptr_counter += len(g_index[i])*4
+            pointer[i+1] = ptr_counter
+        # end for
+
+        # Dont' ask..it works since we only have 1 level deep...
+        g_index = array([item for sublist in g_index for item in sublist])
+
+        for ivol in xrange(self.nVol):
+            ivol = volume_list[ivol]
+            N = sizes[ivol][0]
+            M = sizes[ivol][1]
+            L = sizes[ivol][2]
+
+            # L-index values
+            Nadd = (N-2)*(M-2)*(L-2)
+            l_index[ivol][1:N-1,1:M-1,1:L-1] = arange(counter,counter+Nadd).reshape((N-2,M-2,L-2))
+            counter += Nadd
+            # G-index values
+            # We must deal with both the pointer here and g_index
+
+            pointer = append(pointer,arange(pointer[-1],pointer[-1]+Nadd*4,4))
+            add = zeros((Nadd,4),'intc')
+            add[:,0] = ivol
+            temp = mgrid[1:N-1,1:M-1,1:L-1]
+            add[:,1] = temp[0,:,:,:].reshape(Nadd)
+            add[:,2] = temp[1,:,:,:].reshape(Nadd)
+            add[:,3] = temp[2,:,:,:].reshape(Nadd)
+
+            g_index = append(g_index,add)
+                   
+        # end for
         self.counter = counter
-        self.g_index = g_index
+        self.g_index = g_index#.flatten()
+        self.ptr     = pointer
         self.l_index = l_index
-        
+        self.nGlobal = len(pointer)-1
         return 
 
 #     def makeSizesConsistent(self,sizes,order):
