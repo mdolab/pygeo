@@ -2008,7 +2008,7 @@ class BlockTopology(object):
         counter = 0
         g_index = []
         l_index = []
-
+    
         assert len(sizes) == len(volume_list),'Error: The list of sizes and \
 the list of volumes must be the same length'
 

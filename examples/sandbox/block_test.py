@@ -31,19 +31,18 @@ exec(import_modules('pyBlock','pySpline','geo_utils'))
 
 
 #print ' '
-# print 'SGS Wing Example'
-# grid = pyBlock.pyBlock('plot3d',file_name='sgs.xyz',file_type='ascii')
-# grid.doConnectivity('sgs.con')
-# grid.fitGlobal()
-# sys.exit(0)
-# grid.writeTecplot('sgs1.dat',vols=True,orig=False,coef=False,tecio=False)
-# grid.writeBvol('sgs.bvol',binary=False)
-
-# grid = pyBlock.pyBlock('bvol',file_name='sgs.bvol',file_type='ascii')
-# grid.doConnectivity('sgs.con')
-# grid.writeTecplot('sgs2.dat',vols=True,orig=False,coef=False,tecio=False)
+print 'SGS Wing Example'
+grid = pyBlock.pyBlock('plot3d',file_name='sgs.xyz',file_type='ascii')
+grid.doConnectivity('sgs.con')
+grid.fitGlobal()
+grid.writePlot3d('sgs_new.xyz')
+grid.writeTecplot('sgs1.dat',vols=True,orig=True,coef=False,tecio=True)
+grid.writeBvol('sgs.bvol',binary=True)
+grid = pyBlock.pyBlock('bvol',file_name='sgs.bvol',file_type='binary')
+grid.doConnectivity('sgs.con')
 
 
+sys.exit(0)
 
 print ' '
 print 'DPW4 Example'
