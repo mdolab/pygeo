@@ -22,15 +22,15 @@ exec(import_modules('pyBlock','pySpline','geo_utils'))
 # print 'DV Volume Example'
 # grid = pyBlock.pyBlock('plot3d',file_name='dv_blocking.fmt',file_type='ascii')
 # grid.doConnectivity('dv.con')
-# grid.writeBvol('dv_volume.bvol',binary=True)
-# grid.writePlot3d('dv_volume_new.xyz')
+# grid.fitGlobal()
+#grid.writeBvol('dv_volume.bvol',binary=True)
+#grid.writePlot3d('dv_volume_new.xyz')
+#grid = pyBlock.pyBlock('bvol',file_name='dv_volume.bvol',file_type='binary')
+#grid.doConnectivity('dv.con')
+#grid.writeTecplot('dv.dat',vols=True,orig=False,coef=True,tecio=True)
 
-# grid = pyBlock.pyBlock('bvol',file_name='dv_volume.bvol',file_type='binary')
-# grid.doConnectivity('dv.con')
-# grid.writeTecplot('dv.dat',vols=True,orig=False,coef=True,tecio=True)
 
-
-#print ' '
+# print ' '
 # print 'SGS Wing Example'
 # grid = pyBlock.pyBlock('plot3d',file_name='sgs.xyz',file_type='ascii')
 # grid.doConnectivity('sgs.con')
@@ -46,13 +46,13 @@ exec(import_modules('pyBlock','pySpline','geo_utils'))
 
 print ' '
 print 'DPW4 Example'
-grid = pyBlock.pyBlock('plot3d',file_name='test.xyz',file_type='binary')
+grid = pyBlock.pyBlock('plot3d',file_name='dpw.xyz',file_type='ascii')
 grid.doConnectivity('dpw.con')
 grid.fitGlobal()
 sys.exit(0)
-grid.writeTecplot('blocks.dat',vols=True,orig=True,coef=False,tecio=True)
-grid.writePlot3d('dpw_new.xyz',binary=False)
-grid.writeBvol('dpw.bvol',binary=True)
+# grid.writeTecplot('blocks.dat',vols=True,orig=True,coef=False,tecio=True)
+# grid.writePlot3d('dpw_new.xyz',binary=False)
+# grid.writeBvol('dpw.bvol',binary=True)
 
 #grid = pyBlock.pyBlock('bvol',file_name='dpw.bvol',file_type='binary')
 #grid.doConnectivity('dpw.con')
