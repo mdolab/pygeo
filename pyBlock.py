@@ -37,8 +37,8 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 from numpy.linalg import lstsq,inv,norm
 
 from scipy import sparse,io
-from scipy.sparse.linalg.dsolve import factorized
-from scipy.sparse.linalg import bicgstab,gmres
+#from scipy.sparse.linalg.dsolve import factorized
+#from scipy.sparse.linalg import bicgstab,gmres
 
 # =============================================================================
 # Extension modules
@@ -267,19 +267,20 @@ class pyBlock():
             u = self.vols[ivol].U[i,j,k]
             v = self.vols[ivol].V[i,j,k]
             w = self.vols[ivol].W[i,j,k]
+
             vals,col_ind = self.vols[ivol]._getBasisPt(
                 u,v,w,vals,row_ptr[ii],col_ind,l_index[ivol])
 
             kinc = self.vols[ivol].ku*self.vols[ivol].kv*self.vols[ivol].kw
             row_ptr.append(row_ptr[-1] + kinc)
         # end for
-
+        print col_ind
         # Now we can crop out any additional values in col_ptr and vals
         vals    = vals[:row_ptr[-1]]
         col_ind = col_ind[:row_ptr[-1]]
         # Now make a sparse matrix
 
-        NN = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,nCtl])
+        NN = sparse.csr_matrix((vals,col_ind,row_ptr))
         print 'Multiplying N^T * N'
         NNT = NN.T
         NTN = NNT*NN

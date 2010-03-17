@@ -54,39 +54,15 @@ def rotzV(x,theta):
 
 def readNValues(handle,N,type,binary=False):
     '''Read N values of type 'float' or 'int' from file handle'''
-    if binary == False:
-        if type == 'int':
-            values = zeros(N,'intc')
-        elif type == 'float':
-            values = zeros(N)
-        else:
-            print 'Error: type is not known. MUST be \'int\' or \'float\''
-    # end if
-
-        counter = 0
-        if type == 'int':
-            while counter < N:
-                aux = string.split(handle.readline())
-                for i in xrange(len(aux)):
-                    values[counter] = int(aux[i])
-                    counter += 1
-                # end for
-            # end while
-        else:
-            while counter < N:
-                aux = string.split(handle.readline())
-                for i in xrange(len(aux)):
-                    values[counter] = float(aux[i])
-                    counter += 1
-                # end for
-            # end while
-        # end if
+    if binary == True:
+        sep = ""
     else:
-        if type == 'int':
-            values = fromfile(handle,dtype='int',count=N)
-        else:
-            values = fromfile(handle,dtype='float',count=N)
-        # end if
+        sep = " "
+    # end if
+    if type == 'int':
+        values = fromfile(handle,dtype='int',count=N,sep=sep)
+    else:
+        values = fromfile(handle,dtype='float',count=N,sep=sep)
     return values
 
 def writeValues(handle,values,type,binary=False):
@@ -2083,15 +2059,10 @@ the list of volumes must be the same length'
             l_index.append(-1*ones((N,M,L),'intc'))
 
             for i in [0,N-1]:
-                for j in [0,M-1]:
-                    for k in [0,L-1]:
+                for j in xrange(M):
+                    for k in xrange(L):
 
                         type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
-                        
-                       #  if type == 0:           # Interior  -> No longer requried...see end
-#                             l_index[ii][i,j,k] = counter
-#                             g_index.append([[ivol,i,j,k]])
-#                             counter += 1
 
                         if type == 1:         # Face 
 
@@ -2154,7 +2125,7 @@ the list of volumes must be the same length'
                             l_index[ii][i,j,k] = cur_index
                             g_index[cur_index].append([ivol,i,j,k])
                             
-                        else:                  # Node
+                        elif type == 3:                  # Node
                             cur_node = self.node_link[ii][number]
                             l_index[ii][i,j,k] = node_index[cur_node]
                             g_index[node_index[cur_node]].append([ivol,i,j,k])
@@ -2162,6 +2133,159 @@ the list of volumes must be the same length'
                     # end for (k)
                 # end for (j)
             # end for (i)
+
+            for i in xrange(N):
+                for j in [0,M-1]:
+                    for k in xrange(L):
+
+                        type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
+
+                        if type == 1:         # Face 
+
+                            # This is going to be nasty since each
+                            # face can have one of 8 orientation and
+                            # we must deal with each face separately
+
+                            if number in [0,1]:
+                                icount = i;imax = N
+                                jcount = j;jmax = M
+                            elif number in [2,3]:
+                                icount = j;imax = M
+                                jcount = k;jmax = L
+                            elif number in [4,5]:
+                                icount = i;imax = N
+                                jcount = k;jmax = L
+                            # end if
+
+                            if self.face_dir[ii][number] == 0:
+                                cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
+                            elif self.face_dir[ii][number] == 1:
+                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
+                            elif self.face_dir[ii][number] == 2:
+                                cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
+                            elif self.face_dir[ii][number] == 3:
+                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
+                            elif self.face_dir[ii][number] == 4:
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
+                            elif self.face_dir[ii][number] == 5:
+                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
+                            elif self.face_dir[ii][number] == 6:
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
+                            elif self.face_dir[ii][number] == 7:
+                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
+
+                            l_index[ii][i,j,k] = cur_index
+                            g_index[cur_index].append([ivol,i,j,k])
+                            
+                        elif type == 2:         # Edge
+                        
+                            if number in [0,1,4,5]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][i-1]
+                                # end if
+                            elif number in [2,3,6,7]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][j-1]
+                                # end if
+                            elif number in [8,9,10,11]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][k-1]
+                                # end if
+                            # end if
+                            l_index[ii][i,j,k] = cur_index
+                            g_index[cur_index].append([ivol,i,j,k])
+                            
+                        elif type == 3:                  # Node
+                            cur_node = self.node_link[ii][number]
+                            l_index[ii][i,j,k] = node_index[cur_node]
+                            g_index[node_index[cur_node]].append([ivol,i,j,k])
+                        # end if type
+                    # end for (k)
+                # end for (j)
+            # end for (i)
+            for i in xrange(N):
+                for j in xrange(M):
+                    for k in [0,L-1]:
+
+                        type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
+
+                        if type == 1:         # Face 
+
+                            # This is going to be nasty since each
+                            # face can have one of 8 orientation and
+                            # we must deal with each face separately
+
+                            if number in [0,1]:
+                                icount = i;imax = N
+                                jcount = j;jmax = M
+                            elif number in [2,3]:
+                                icount = j;imax = M
+                                jcount = k;jmax = L
+                            elif number in [4,5]:
+                                icount = i;imax = N
+                                jcount = k;jmax = L
+                            # end if
+
+                            if self.face_dir[ii][number] == 0:
+                                cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
+                            elif self.face_dir[ii][number] == 1:
+                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
+                            elif self.face_dir[ii][number] == 2:
+                                cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
+                            elif self.face_dir[ii][number] == 3:
+                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
+                            elif self.face_dir[ii][number] == 4:
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
+                            elif self.face_dir[ii][number] == 5:
+                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
+                            elif self.face_dir[ii][number] == 6:
+                                cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
+                            elif self.face_dir[ii][number] == 7:
+                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
+
+                            l_index[ii][i,j,k] = cur_index
+                            g_index[cur_index].append([ivol,i,j,k])
+                            
+                        elif type == 2:         # Edge
+                        
+                            if number in [0,1,4,5]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][i-1]
+                                # end if
+                            elif number in [2,3,6,7]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][j-1]
+                                # end if
+                            elif number in [8,9,10,11]:
+                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                                    cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
+                                else:  
+                                    cur_index = edge_index[self.edge_link[ii][number]][k-1]
+                                # end if
+                            # end if
+                            l_index[ii][i,j,k] = cur_index
+                            g_index[cur_index].append([ivol,i,j,k])
+                            
+                        elif type == 3:                  # Node
+                            cur_node = self.node_link[ii][number]
+                            l_index[ii][i,j,k] = node_index[cur_node]
+                            g_index[node_index[cur_node]].append([ivol,i,j,k])
+                        # end if type
+                    # end for (k)
+                # end for (j)
+            # end for (i)
+
+            
         # end for (ii)
 
         # Now we have all the g-indexes that POTENTIALLY have multiple
@@ -2174,15 +2298,13 @@ the list of volumes must be the same length'
             ptr_counter += len(g_index[i])*4
             pointer[i+1] = ptr_counter
         # end for
-
         # Dont' ask..it works since we only have 1 level deep...
         g_index = array([item for sublist in g_index for item in sublist])
-
-        for ivol in xrange(self.nVol):
-            ivol = volume_list[ivol]
-            N = sizes[ivol][0]
-            M = sizes[ivol][1]
-            L = sizes[ivol][2]
+        for ii in xrange(len(volume_list)):
+            ivol = volume_list[ii]
+            N = sizes[ii][0]
+            M = sizes[ii][1]
+            L = sizes[ii][2]
 
             # L-index values
             Nadd = (N-2)*(M-2)*(L-2)
@@ -2200,7 +2322,7 @@ the list of volumes must be the same length'
             add[:,3] = temp[2,:,:,:].reshape(Nadd)
 
             g_index = append(g_index,add)
-                   
+
         # end for
         self.counter = counter
         self.g_index = g_index#.flatten()
