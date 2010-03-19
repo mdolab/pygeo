@@ -37,8 +37,8 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 from numpy.linalg import lstsq,inv,norm
 
 from scipy import sparse,io
-#from scipy.sparse.linalg.dsolve import factorized
-#from scipy.sparse.linalg import bicgstab,gmres
+from scipy.sparse.linalg.dsolve import factorized
+from scipy.sparse.linalg import bicgstab,gmres
 
 # =============================================================================
 # Extension modules
@@ -165,7 +165,7 @@ class pyBlock():
 #             print pyspline.knots_lms(S[-1,-1,:,2],6,4)
 #             print 'w:',pyspline.knots_lms(w,6,4)
             vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
-                                            Nctlu=6,Nctlv=6,Nctlw=6,\
+                                            Nctlu=10,Nctlv=10,Nctlw=10,\
                                             no_print=self.NO_PRINT))
         self.vols = vols
         self.nVol = len(vols)
@@ -234,9 +234,9 @@ class pyBlock():
         timeA = time.time()
         pts = zeros((N,3))
         for ii in xrange(N):
-            start = self.topo.ptr[ii]
-            stuff = self.topo.g_index[self.topo.ptr[ii]:self.topo.ptr[ii]+4]
-            pts[ii] = self.vols[stuff[0]].X[stuff[1],stuff[2],stuff[3]]
+            pts[ii] = self.vols[self.topo.g_index[ii][0][0]].X[self.topo.g_index[ii][0][1],
+                                                               self.topo.g_index[ii][0][2],
+                                                               self.topo.g_index[ii][0][3]]
         # end for
         print 'Done Points',time.time()-timeA
         # Get the maximum k (ku,kv,kw for each vol)
@@ -259,10 +259,10 @@ class pyBlock():
         print 'Calculating Jacobian'
 
         for ii in xrange(N):
-            ivol = self.topo.g_index[self.topo.ptr[ii]]
-            i = self.topo.g_index[self.topo.ptr[ii]+1]
-            j = self.topo.g_index[self.topo.ptr[ii]+2]
-            k = self.topo.g_index[self.topo.ptr[ii]+3]
+            ivol = self.topo.g_index[ii][0][0]
+            i = self.topo.g_index[ii][0][1]
+            j = self.topo.g_index[ii][0][2]
+            k = self.topo.g_index[ii][0][3]
 
             u = self.vols[ivol].U[i,j,k]
             v = self.vols[ivol].V[i,j,k]
@@ -286,35 +286,35 @@ class pyBlock():
         NTN = NNT*NN
         print 'Solving'
         print 'done'
-        sys.exit(0)
-#         usegmres = True
-#         self.coef = zeros((nCtl,3))
-#         timeA = time.time()
-#         # if usegmres:
-#         # for idim in xrange(3):
-# #             print 'Solving idim:',idim
-# #             res = bicgstab(NTN, NNT*pts[:,idim],tol=1.0e-10, maxiter=500)
-# #             self.coef[:,idim] = res[0]
-# #             print res
-# #         # end for
-# #         timeB = time.time()
-# #         #else:
-#         solve = factorized(NTN)
-#         for idim in xrange(3):
-#             self.coef[:,idim] = solve(NNT*pts[:,idim])
+
+        usegmres = True
+        self.coef = zeros((nCtl,3))
+        timeA = time.time()
+        # if usegmres:
+        # for idim in xrange(3):
+#             print 'Solving idim:',idim
+#             res = bicgstab(NTN, NNT*pts[:,idim],tol=1.0e-10, maxiter=500)
+#             self.coef[:,idim] = res[0]
+#             print res
 #         # end for
-# #         # end if
-#             #print 'gmres:',timeB-timeA,'direct:',time.time()-timeB
-#         print 'reset numbering'
-#         # Redo the normal numbering
-#         sizes = []
-#         for ivol in xrange(self.nVol):
-#             sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
-#                           self.vols[ivol].Nctlw])
+#         timeB = time.time()
+#         #else:
+        solve = factorized(NTN)
+        for idim in xrange(3):
+            self.coef[:,idim] = solve(NNT*pts[:,idim])
+        # end for
+#         # end if
+            #print 'gmres:',timeB-timeA,'direct:',time.time()-timeB
+        print 'reset numbering'
+        # Redo the normal numbering
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
+                          self.vols[ivol].Nctlw])
 
-#         self.topo.calcGlobalNumbering(sizes)
+        self.topo.calcGlobalNumbering(sizes)
 
-#         self._updateVolumeCoef()
+        self._updateVolumeCoef()
 
 
 # ----------------------------------------------------------------------
@@ -459,68 +459,142 @@ class pyBlock():
         
         for idg in xrange(nDG):
             #print '---------------- DG %d ------------'%(idg)
-            sym = False
             knot_vectors = []
-            syms = []
+            flip = []
             for ivol in xrange(self.nVol):
-                dirs = array([self.topo.edge_dir[ivol][i] for i in range(12)])
-                # Check edge 0,2 and 8
-                if self.topo.edges[self.topo.edge_link[ivol][0]].dg == idg:
-                    u_dirs = array([self.topo.edge_dir[ivol][i] for i in [0,1,4,5]])
-                    if (u_dirs == -1).any():
-                        sym = True
-                        syms.append(True)
-                        knot_vectors.append(self.vols[ivol].tu)
-                    else:
-                        syms.append(False)
-                        knot_vectors.append(self.vols[ivol].tu)
-                    # end if
+                for iedge in xrange(12):
+                    if self.topo.edges[self.topo.edge_link[ivol][iedge]].dg == idg:
+                        if self.topo.edge_dir[ivol][iedge] == -1:
+                            flip.append(True)
+                        else:
+                            flip.append(False)
+                        # end if
+                        if iedge in [0,1,4,5]:
+                            knot_vec = self.vols[ivol].tu
+                        elif iedge in [2,3,6,7]:
+                            knot_vec = self.vols[ivol].tv
+                        elif iedge in [8,9,10,11]:
+                            knot_vec = self.vols[ivol].tw
+                        # end if
 
-                    #print self.vols[ivol].tu
-                # end if
-                if self.topo.edges[self.topo.edge_link[ivol][2]].dg == idg:
-                    v_dirs = array([self.topo.edge_dir[ivol][i] for i in [2,3,6,7]])
-                    if (v_dirs == -1).any():
-                        sym = True
-                        syms.append(True)
-                        knot_vectors.append(self.vols[ivol].tv)
-                    else:
-                        syms.append(False)
-                        knot_vectors.append(self.vols[ivol].tv)
+                        if flip[-1]:
+                            knot_vectors.append((1-knot_vec)[::-1].copy())
+                        else:
+                            knot_vectors.append(knot_vec)
+                        # end if
                     # end if
-                    #print self.vols[ivol].tv
-                # end if
-                if self.topo.edges[self.topo.edge_link[ivol][8]].dg == idg:
-                    w_dirs = array([self.topo.edge_dir[ivol][i] for i in [8,9,10,11]])
-                    if (w_dirs == -1).any():
-                        sym = True
-                        syms.append(True)
-                        knot_vectors.append(self.vols[ivol].tw)
-                    else:
-                        syms.append(False)
-                        knot_vectors.append(self.vols[ivol].tw)
-                    # end if
-                    #print self.vols[ivol].tw
-                # end if
-
+                # end for
             # end for
 
             # Now blend all the knot vectors
-            new_knot_vec = blendKnotVectors(knot_vectors,sym)
-            #print 'Belneded:','Sym is:',sym
-            #print new_knot_vec
-
-
+            new_knot_vec = blendKnotVectors(knot_vectors,False)
+            new_knot_vec_flip = (1-new_knot_vec)[::-1]
             # And reset them all
+
+            counter = 0
             for ivol in xrange(self.nVol):
-                # Check edge 0 and edge 2
-                if self.topo.edges[self.topo.edge_link[ivol][0]].dg == idg:
-                    self.vols[ivol].tu = new_knot_vec.copy()
-                if self.topo.edges[self.topo.edge_link[ivol][2]].dg == idg:
-                    self.vols[ivol].tv = new_knot_vec.copy()
-                if self.topo.edges[self.topo.edge_link[ivol][8]].dg == idg:
-                    self.vols[ivol].tw = new_knot_vec.copy()
+                for iedge in xrange(12):
+                    if self.topo.edges[self.topo.edge_link[ivol][iedge]].dg == idg:
+                        if iedge in [0,1,4,5]:
+                            if flip[counter] == True:
+                                self.vols[ivol].tu = new_knot_vec_flip.copy()
+                            else:
+                                self.vols[ivol].tu = new_knot_vec.copy()
+                            # end if
+                        elif iedge in [2,3,4,5]:
+                            if flip[counter] == True:
+                                self.vols[ivol].tv = new_knot_vec_flip.copy()
+                            else:
+                                self.vols[ivol].tv = new_knot_vec.copy()
+                            # end if
+                        elif iedge in [8,9,10,11]:
+                            if flip[counter] == True:
+                                self.vols[ivol].tw = new_knot_vec_flip.copy()
+                            else:
+                                self.vols[ivol].tw = new_knot_vec.copy()
+                            # end if
+                        # end if
+                        counter += 1
+                    # end if
+                # end for
             # end for
+
+       
+
+#                 # Check edge 0 and edge 2
+#                 if self.topo.edges[self.topo.edge_link[ivol][0]].dg == idg:
+#                     self.vols[ivol].tu = new_knot_vec.copy()
+#                 if self.topo.edges[self.topo.edge_link[ivol][2]].dg == idg:
+#                     self.vols[ivol].tv = new_knot_vec.copy()
+#                 if self.topo.edges[self.topo.edge_link[ivol][8]].dg == idg:
+#                     self.vols[ivol].tw = new_knot_vec.copy()
+#             # end for
+        # end for
+
+
+
+
+#                 dirs = array([self.topo.edge_dir[ivol][i] for i in range(12)])
+#                 # Check edge 0,2 and 8
+#                 if self.topo.edges[self.topo.edge_link[ivol][0]].dg == idg:
+#                     u_dirs = array([self.topo.edge_dir[ivol][i] for i in [0,1,4,5]])
+#                     if (u_dirs == -1).any():
+#                         sym = True
+#                         syms.append(True)
+#                         print 'udirs:',u_dirs
+#                         knot_vectors.append((1-self.vols[ivol].tu)[::-1])
+#                     else:
+#                         syms.append(False)
+#                         knot_vectors.append(self.vols[ivol].tu)
+#                     # end if
+
+#                     #print self.vols[ivol].tu
+#                 # end if
+#                 if self.topo.edges[self.topo.edge_link[ivol][2]].dg == idg:
+#                     v_dirs = array([self.topo.edge_dir[ivol][i] for i in [2,3,6,7]])
+#                     if (v_dirs == -1).any():
+#                         sym = True
+#                         syms.append(True)
+#                         knot_vectors.append((1-self.vols[ivol].tv)[::-1])
+#                         print 'vdirs:',v_dirs
+#                     else:
+#                         syms.append(False)
+#                         knot_vectors.append(self.vols[ivol].tv)
+#                     # end if
+#                     #print self.vols[ivol].tv
+#                 # end if
+#                 if self.topo.edges[self.topo.edge_link[ivol][8]].dg == idg:
+#                     w_dirs = array([self.topo.edge_dir[ivol][i] for i in [8,9,10,11]])
+#                     if (w_dirs == -1).any():
+#                         sym = True
+#                         syms.append(True)
+#                         print 'wdirs:',w_dirs
+#                         knot_vectors.append((1-self.vols[ivol].tw)[::-1])
+#                     else:
+#                         syms.append(False)
+#                         knot_vectors.append(self.vols[ivol].tw)
+#                     # end if
+#                     #print self.vols[ivol].tw
+#                 # end if
+
+#             # end for
+
+#             # Now blend all the knot vectors
+#             new_knot_vec = blendKnotVectors(knot_vectors,sym)
+#             #print 'Belneded:','Sym is:',sym
+#             #print new_knot_vec
+
+
+#             # And reset them all
+#             for ivol in xrange(self.nVol):
+#                 # Check edge 0 and edge 2
+#                 if self.topo.edges[self.topo.edge_link[ivol][0]].dg == idg:
+#                     self.vols[ivol].tu = new_knot_vec.copy()
+#                 if self.topo.edges[self.topo.edge_link[ivol][2]].dg == idg:
+#                     self.vols[ivol].tv = new_knot_vec.copy()
+#                 if self.topo.edges[self.topo.edge_link[ivol][8]].dg == idg:
+#                     self.vols[ivol].tw = new_knot_vec.copy()
+#             # end for
         # end for
        
       #   mpiPrint('Recomputing volumes...',self.NO_PRINT)
@@ -662,6 +736,7 @@ class pyBlock():
   
     def _updateVolumeCoef(self):
         '''Copy the pyBlock list of control points back to the volumes'''
+        print 'here'
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.topo.g_index[ii])):
                 ivol  = self.topo.g_index[ii][jj][0]
@@ -768,6 +843,123 @@ class pyBlock():
             if counter >= 82 and mod(counter,2) == 0:
                 aux = string.split(line)
                 #new_pts[i,0] = 
+
+
+    def writeFEAP(self,file_name):
+        # Make sure sizes are 2
+        nu = 0.3
+        numnp  = len(self.topo.g_index) #number of nodal points
+        numel = 0
+        for ivol in xrange(self.nVol):
+            numel += (self.vols[ivol].Nctlu-1)*(self.vols[ivol].Nctlv-1)*(self.vols[ivol].Nctlw-1)
+        nummat = numel  #one material type for each elem
+        ndm    = 3  #dimension of mesh
+        ndf    = 3  #number of dof per node
+        nen    = 8  #number of nodes per element
+
+        f = open(file_name,'w')
+        f.write("FEAP * * Solid Element Element Example\n")
+        f.write("%d %d %d %d %d %d\n"%(numnp,numel,1,ndm,ndf,nen))
+        f.write("NOPRINT\n")
+        f.write("\n")
+        counter = 1
+        g = open('bad_vols.dat','w')
+        g.write ('VARIABLES = "X", "Y","Z"\n')
+        Es = []
+        for ivol in xrange(self.nVol):
+            Nctlu = self.vols[ivol].Nctlu
+            Nctlv = self.vols[ivol].Nctlv
+            Nctlw = self.vols[ivol].Nctlw
+            print 'Nctlu,Nctlv,Nctlw:',Nctlu,Nctlv,Nctlw
+            for i in xrange(Nctlu-1):
+                for j in xrange(Nctlv-1):
+                    for k in xrange(Nctlw-1):
+                        points = [self.vols[ivol].coef[i,j,k  ],self.vols[ivol].coef[i+1,j  ,k],
+                                  self.vols[ivol].coef[i,j+1,k],self.vols[ivol].coef[i+1,j+1,k],
+                                  self.vols[ivol].coef[i,j,k+1],self.vols[ivol].coef[i+1,j,k+1],
+                                  self.vols[ivol].coef[i,j+1,k+1],self.vols[ivol].coef[i+1,j+1,k+1]]
+                        vol = volume_hexa(points)
+                        if vol<0:
+                            zone_name = '%d,%d,%d,%d'%(ivol,i,j,k)
+                            g.write('Zone T=\"%s\" I=%d J=%d K=%d\n'%(zone_name,2,2,2))
+                            g.write('DATAPACKING=POINT\n')
+                            for ii in xrange(8):
+                                g.write('%f %f %f\n'%(points[ii][0],points[ii][1],points[ii][2]))
+                            # end for
+
+                        # end if
+
+                        f.write("MATErial %d\n"%(counter))
+                        f.write("SOLID\n")
+                        f.write("ELAStic ISOtripoic ")
+                        f.write("%f %f\n"%(1/vol,nu))
+                        Es.append(1.0/vol)
+                        counter += 1
+                        f.write("\n")
+                    # end for
+                # end for
+            # end for
+        # end for
+        f.write("\n")
+        print 'Max E,Min E:',max(Es),min(Es),max(Es)/min(Es)
+        f.write("COORdinate ALL\n")
+        for ii in xrange(len(self.topo.g_index)):
+            ivol  = self.topo.g_index[ii][0][0]
+            i     = self.topo.g_index[ii][0][1]
+            j     = self.topo.g_index[ii][0][2]
+            k     = self.topo.g_index[ii][0][3]
+            pt = self.vols[ivol].coef[i,j,k]
+            f.write("%d 0 %f %f %f \n"%(ii+1,pt[0],pt[1],pt[2]))
+            
+        f.write("\n")
+
+        f.write("ELEMents\n") # Use vol_con here
+        counter = 1
+        for ivol in xrange(self.nVol):
+            Nctlu = self.vols[ivol].Nctlu
+            Nctlv = self.vols[ivol].Nctlv
+            Nctlw = self.vols[ivol].Nctlw
+            for i in xrange(Nctlu-1):
+                for j in xrange(Nctlv-1):
+                    for k in xrange(Nctlw-1):
+                        f.write("%d 1 %d %d %d %d %d %d %d %d %d \n"
+                                %(counter,counter,
+                                  self.topo.l_index[ivol][i,j,k]+1,
+                                  self.topo.l_index[ivol][i+1,j,k]+1,
+                                  self.topo.l_index[ivol][i+1,j+1,k]+1,
+                                  self.topo.l_index[ivol][i,j+1,k]+1,
+                                  self.topo.l_index[ivol][i,j,k+1]+1,
+                                  self.topo.l_index[ivol][i+1,j,k+1]+1,
+                                  self.topo.l_index[ivol][i+1,j+1,k+1]+1,
+                                  self.topo.l_index[ivol][i,j+1,k+1]+1))
+                        counter += 1
+        f.write("\n")
+        f.write("BOUNdary restraints\n")
+
+        for i in xrange(500):
+            f.write('%d 0 1 1 1 \n'%(i))
+        
+    
+        f.write("\n")
+        
+        f.write("FORCe\n")
+
+        f.write("%d 0 0 0 %f \n"%(1000,10.00))
+        f.write("\n")
+
+        f.write("END\n")
+        f.write("NOPRINT\n")
+        f.write("BATCh\n")
+        f.write("TANGent\n")
+        f.write("FORM\n")
+        f.write("SOLV\n")
+        #f.write("PRINT\n")
+        #f.write("DISPlacement all\n")
+        f.write("END\n")
+        f.write("STOP\n")
+
+        f.close() #close file
+
 
 # ----------------------------------------------------------------------
 #             Embeded Geometry Functions
