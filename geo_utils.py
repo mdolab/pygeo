@@ -2049,6 +2049,79 @@ the list of volumes must be the same length'
         g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
         l_index = []
 
+        def addNode(i,j,k,N,M,L):
+            type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
+            if type == 0:
+                l_index[ii][i,j,k] = counter
+                g_index.append([[ivol,i,j,k]])
+                counter += 1
+
+            elif type == 1:         # Face 
+
+                if number in [0,1]:
+                    icount = i;imax = N
+                    jcount = j;jmax = M
+                elif number in [2,3]:
+                    icount = j;imax = M
+                    jcount = k;jmax = L
+                elif number in [4,5]:
+                    icount = i;imax = N
+                    jcount = k;jmax = L
+                # end if
+
+                if self.face_dir[ii][number] == 0:
+                    cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
+                elif self.face_dir[ii][number] == 1:
+                    cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
+                elif self.face_dir[ii][number] == 2:
+                    cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
+                elif self.face_dir[ii][number] == 3:
+                    cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
+                elif self.face_dir[ii][number] == 4:
+                    cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
+                elif self.face_dir[ii][number] == 5:
+                    cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
+                elif self.face_dir[ii][number] == 6:
+                    cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
+                elif self.face_dir[ii][number] == 7:
+                    cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
+                    
+                l_index[ii][i,j,k] = cur_index
+                g_index[cur_index].append([ivol,i,j,k])
+                            
+            elif type == 2:         # Edge
+                        
+                if number in [0,1,4,5]:
+                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                        cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
+                    else:  
+                        cur_index = edge_index[self.edge_link[ii][number]][i-1]
+                    # end if
+                elif number in [2,3,6,7]:
+                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                        cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
+                    else:  
+                        cur_index = edge_index[self.edge_link[ii][number]][j-1]
+                    # end if
+                elif number in [8,9,10,11]:
+                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
+                        cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
+                    else:  
+                        cur_index = edge_index[self.edge_link[ii][number]][k-1]
+                    # end if
+                # end if
+                l_index[ii][i,j,k] = cur_index
+                g_index[cur_index].append([ivol,i,j,k])
+                            
+            elif type == 3:                  # Node
+                cur_node = self.node_link[ii][number]
+                l_index[ii][i,j,k] = node_index[cur_node]
+                g_index[node_index[cur_node]].append([ivol,i,j,k])
+            # end if type
+        return
+
+
+
         # Now actually fill everything up
         for ii in xrange(len(volume_list)):
             ivol = volume_list[ii]
@@ -2061,78 +2134,80 @@ the list of volumes must be the same length'
                 for j in xrange(M):
                     for k in xrange(L):
 
-                        type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
+                        addNode(i,j,k,N,M,L)
 
-                        if type == 0:
-                            l_index[ii][i,j,k] = counter
-                            g_index.append([[ivol,i,j,k]])
-                            counter += 1
+#                         type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
 
-                        elif type == 1:         # Face 
+#                         if type == 0:
+#                             l_index[ii][i,j,k] = counter
+#                             g_index.append([[ivol,i,j,k]])
+#                             counter += 1
 
-                            # This is going to be nasty since each
-                            # face can have one of 8 orientation and
-                            # we must deal with each face separately
+#                         elif type == 1:         # Face 
 
-                            if number in [0,1]:
-                                icount = i;imax = N
-                                jcount = j;jmax = M
-                            elif number in [2,3]:
-                                icount = j;imax = M
-                                jcount = k;jmax = L
-                            elif number in [4,5]:
-                                icount = i;imax = N
-                                jcount = k;jmax = L
-                            # end if
+#                             # This is going to be nasty since each
+#                             # face can have one of 8 orientation and
+#                             # we must deal with each face separately
 
-                            if self.face_dir[ii][number] == 0:
-                                cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
-                            elif self.face_dir[ii][number] == 1:
-                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
-                            elif self.face_dir[ii][number] == 2:
-                                cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
-                            elif self.face_dir[ii][number] == 3:
-                                cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
-                            elif self.face_dir[ii][number] == 4:
-                                cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
-                            elif self.face_dir[ii][number] == 5:
-                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
-                            elif self.face_dir[ii][number] == 6:
-                                cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
-                            elif self.face_dir[ii][number] == 7:
-                                cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
+#                             if number in [0,1]:
+#                                 icount = i;imax = N
+#                                 jcount = j;jmax = M
+#                             elif number in [2,3]:
+#                                 icount = j;imax = M
+#                                 jcount = k;jmax = L
+#                             elif number in [4,5]:
+#                                 icount = i;imax = N
+#                                 jcount = k;jmax = L
+#                             # end if
 
-                            l_index[ii][i,j,k] = cur_index
-                            g_index[cur_index].append([ivol,i,j,k])
+#                             if self.face_dir[ii][number] == 0:
+#                                 cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
+#                             elif self.face_dir[ii][number] == 1:
+#                                 cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
+#                             elif self.face_dir[ii][number] == 2:
+#                                 cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
+#                             elif self.face_dir[ii][number] == 3:
+#                                 cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
+#                             elif self.face_dir[ii][number] == 4:
+#                                 cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
+#                             elif self.face_dir[ii][number] == 5:
+#                                 cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
+#                             elif self.face_dir[ii][number] == 6:
+#                                 cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
+#                             elif self.face_dir[ii][number] == 7:
+#                                 cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
+
+#                             l_index[ii][i,j,k] = cur_index
+#                             g_index[cur_index].append([ivol,i,j,k])
                             
-                        elif type == 2:         # Edge
+#                         elif type == 2:         # Edge
                         
-                            if number in [0,1,4,5]:
-                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                                    cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
-                                else:  
-                                    cur_index = edge_index[self.edge_link[ii][number]][i-1]
-                                # end if
-                            elif number in [2,3,6,7]:
-                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                                    cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
-                                else:  
-                                    cur_index = edge_index[self.edge_link[ii][number]][j-1]
-                                # end if
-                            elif number in [8,9,10,11]:
-                                if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                                    cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
-                                else:  
-                                    cur_index = edge_index[self.edge_link[ii][number]][k-1]
-                                # end if
-                            # end if
-                            l_index[ii][i,j,k] = cur_index
-                            g_index[cur_index].append([ivol,i,j,k])
+#                             if number in [0,1,4,5]:
+#                                 if self.edge_dir[ii][number] == -1: # Its a reverse dir
+#                                     cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
+#                                 else:  
+#                                     cur_index = edge_index[self.edge_link[ii][number]][i-1]
+#                                 # end if
+#                             elif number in [2,3,6,7]:
+#                                 if self.edge_dir[ii][number] == -1: # Its a reverse dir
+#                                     cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
+#                                 else:  
+#                                     cur_index = edge_index[self.edge_link[ii][number]][j-1]
+#                                 # end if
+#                             elif number in [8,9,10,11]:
+#                                 if self.edge_dir[ii][number] == -1: # Its a reverse dir
+#                                     cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
+#                                 else:  
+#                                     cur_index = edge_index[self.edge_link[ii][number]][k-1]
+#                                 # end if
+#                             # end if
+#                             l_index[ii][i,j,k] = cur_index
+#                             g_index[cur_index].append([ivol,i,j,k])
                             
-                        elif type == 3:                  # Node
-                            cur_node = self.node_link[ii][number]
-                            l_index[ii][i,j,k] = node_index[cur_node]
-                            g_index[node_index[cur_node]].append([ivol,i,j,k])
+#                         elif type == 3:                  # Node
+#                             cur_node = self.node_link[ii][number]
+#                             l_index[ii][i,j,k] = node_index[cur_node]
+#                             g_index[node_index[cur_node]].append([ivol,i,j,k])
                         # end if type
                     # end for (k)
                 # end for (j)
