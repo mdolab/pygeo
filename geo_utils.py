@@ -425,6 +425,7 @@ def pointReduce(points,node_tol=1e-4):
     new_points = []
     link = zeros(N,'intc')
     link_counter = 0
+   
     while cont:
         cont2 = True
         temp_ind = []
@@ -454,8 +455,9 @@ def pointReduce(points,node_tol=1e-4):
         link_counter += max(sub_link) + 1
 
         
-        i = j-1
-        i = i + 1
+        #i = j-1
+        #i = i + 1
+        i=j-1+1
         if i == N:
             cont = False
         # end if
@@ -2118,8 +2120,6 @@ the list of volumes must be the same length'
                 l_index[ii][i,j,k] = node_index[cur_node]
                 g_index[node_index[cur_node]].append([ivol,i,j,k])
             # end if type
-        return
-
 
 
         # Now actually fill everything up
@@ -2130,91 +2130,47 @@ the list of volumes must be the same length'
             L = sizes[ii][2]
             l_index.append(-1*ones((N,M,L),'intc'))
 
-            for i in xrange(N):
+            # DO the 6 planes
+            for i in [0,N-1]:
                 for j in xrange(M):
                     for k in xrange(L):
-
                         addNode(i,j,k,N,M,L)
-
-#                         type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
-
-#                         if type == 0:
-#                             l_index[ii][i,j,k] = counter
-#                             g_index.append([[ivol,i,j,k]])
-#                             counter += 1
-
-#                         elif type == 1:         # Face 
-
-#                             # This is going to be nasty since each
-#                             # face can have one of 8 orientation and
-#                             # we must deal with each face separately
-
-#                             if number in [0,1]:
-#                                 icount = i;imax = N
-#                                 jcount = j;jmax = M
-#                             elif number in [2,3]:
-#                                 icount = j;imax = M
-#                                 jcount = k;jmax = L
-#                             elif number in [4,5]:
-#                                 icount = i;imax = N
-#                                 jcount = k;jmax = L
-#                             # end if
-
-#                             if self.face_dir[ii][number] == 0:
-#                                 cur_index = face_index[self.face_link[ii][number]][icount-1,jcount-1]
-#                             elif self.face_dir[ii][number] == 1:
-#                                 cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jcount-1]
-#                             elif self.face_dir[ii][number] == 2:
-#                                 cur_index = face_index[self.face_link[ii][number]][icount-1,jmax-jcount-2]
-#                             elif self.face_dir[ii][number] == 3:
-#                                 cur_index = face_index[self.face_link[ii][number]][imax-icount-2,jmax-jcount-2]
-#                             elif self.face_dir[ii][number] == 4:
-#                                 cur_index = face_index[self.face_link[ii][number]][jcount-1,icount-1]
-#                             elif self.face_dir[ii][number] == 5:
-#                                 cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,icount-1]
-#                             elif self.face_dir[ii][number] == 6:
-#                                 cur_index = face_index[self.face_link[ii][number]][jcount-1,imax-icount-2]
-#                             elif self.face_dir[ii][number] == 7:
-#                                 cur_index = face_index[self.face_link[ii][number]][jmax-jcount-2,imax-icount-2]
-
-#                             l_index[ii][i,j,k] = cur_index
-#                             g_index[cur_index].append([ivol,i,j,k])
-                            
-#                         elif type == 2:         # Edge
-                        
-#                             if number in [0,1,4,5]:
-#                                 if self.edge_dir[ii][number] == -1: # Its a reverse dir
-#                                     cur_index = edge_index[self.edge_link[ii][number]][N-i-2]
-#                                 else:  
-#                                     cur_index = edge_index[self.edge_link[ii][number]][i-1]
-#                                 # end if
-#                             elif number in [2,3,6,7]:
-#                                 if self.edge_dir[ii][number] == -1: # Its a reverse dir
-#                                     cur_index = edge_index[self.edge_link[ii][number]][M-j-2]
-#                                 else:  
-#                                     cur_index = edge_index[self.edge_link[ii][number]][j-1]
-#                                 # end if
-#                             elif number in [8,9,10,11]:
-#                                 if self.edge_dir[ii][number] == -1: # Its a reverse dir
-#                                     cur_index = edge_index[self.edge_link[ii][number]][L-k-2]
-#                                 else:  
-#                                     cur_index = edge_index[self.edge_link[ii][number]][k-1]
-#                                 # end if
-#                             # end if
-#                             l_index[ii][i,j,k] = cur_index
-#                             g_index[cur_index].append([ivol,i,j,k])
-                            
-#                         elif type == 3:                  # Node
-#                             cur_node = self.node_link[ii][number]
-#                             l_index[ii][i,j,k] = node_index[cur_node]
-#                             g_index[node_index[cur_node]].append([ivol,i,j,k])
-                        # end if type
-                    # end for (k)
-                # end for (j)
-            # end for (i)
-
+            for i in xrange(N):
+                for j in [0,M-1]:
+                    for k in xrange(L):
+                        addNode(i,j,k,N,M,L)
+            for i in xrange(N):
+                for j in xrange(M):
+                    for k in [0,L-1]:
+                        addNode(i,j,k,N,M,L)
             
         # end for (ii)
+
+        full = True
+        if full: # Add the remainder
+            for ii in xrange(len(volume_list)):
+                ivol = volume_list[ii]
+                N = sizes[ii][0]
+                M = sizes[ii][1]
+                L = sizes[ii][2]
+                for i in xrange(1,N-1):
+                    for j in xrange(1,M-1):
+                        for k in xrange(1,L-1):
+                            l_index[ii][i,j,k] = counter
+                            g_index.append([[ivol,i,j,k]])
+                            counter += 1
+                        # end for
+                    # end for
+                # end for
+            # end for
+        # end if
+
+        self.g_index = g_index
+        self.l_index = l_index
+        self.nGlobal = len(g_index)
+        return 
+
+
 
      #    # Now we have all the g-indexes that POTENTIALLY have multiple
 #         # attachments. Now we will 'flatten' the list and create a
@@ -2251,13 +2207,7 @@ the list of volumes must be the same length'
 
 #             g_index = append(g_index,add)
 
-        # end for
-        self.counter = counter
-        self.g_index = g_index
-        #self.ptr     = pointer
-        self.l_index = l_index
-        self.nGlobal = len(g_index)
-        return 
+       
 
 #     def makeSizesConsistent(self,sizes,order):
 #         '''Take a given list of [Nu x Nv] for each surface and return
