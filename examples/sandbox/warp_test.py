@@ -1,0 +1,110 @@
+# =============================================================================
+# Standard Python modules
+# =============================================================================
+import os, sys, string, pdb, copy, time
+
+# =============================================================================
+# External Python modules
+# =============================================================================
+from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
+    array, real, reshape, meshgrid, dot, cross,shape,alltrue
+
+# =============================================================================
+# Extension modules
+# =============================================================================
+
+from mdo_import_helper import *
+exec(import_modules('pyGeo','pyBlock','pySpline','geo_utils','mpi4py'))
+exec(import_modules('pyAero_problem','pyAero_flow','pyAero_reference','pyAero_geometry'))
+exec(import_modules('pySUMB','pyDummyMapping'))
+
+
+
+print 'Warp Test'
+# grid = pyBlock.pyBlock('plot3d',file_name='warp_test.xyz',file_type='ascii',order='f')
+# grid.doConnectivity('warp_test.con')
+# grid.fitGlobal()
+# grid.writeBvol('warp_test.bvol',binary=True)
+# grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
+
+grid = pyBlock.pyBlock('bvol',file_name='warp_test.bvol',file_type='binary')
+grid.doConnectivity('warp_test.con')
+grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
+grid.writeFEAP('warp_test.in')
+
+print ' '
+print 'Generating Surface Geometry'
+surface = pyGeo.pyGeo('plot3d',file_name='warp_test_surf.xyz',file_type='ascii',order='f')
+surface.doConnectivity('warp_test_surf.con')
+surface.fitGlobal()
+surface.writeTecplot('warp_test_surf.dat',tecio=True,coef=True,orig=False,surf_labels=True,directions=True)
+surface.addFFD('auto',nx=2,ny=3,nz=10)
+surface.FFD.writeTecplot('ffd.dat')
+
+# Do an ad-hoc modification
+# Pull out LE
+for j in xrange(surface.surfs[4].Nctlv):
+    surface.coef[surface.topo.l_index[4][1,j]] += [-.15,0,0]
+    surface.coef[surface.topo.l_index[4][2,j]] += [-.15,0,0]
+
+# Shrink TE
+for i in xrange(surface.surfs[2].Nctlu):
+    for j in xrange(surface.surfs[2].Nctlv):
+        surface.coef[surface.topo.l_index[2][i,j]][1] *= .02 
+
+# Pull Up Upper surface
+for j in xrange(surface.surfs[0].Nctlv):
+    surface.coef[surface.topo.l_index[0][1,j]] += [0,.03,0]
+    surface.coef[surface.topo.l_index[0][2,j]] += [0,-.02,0]
+
+surface._updateSurfaceCoef()
+surface.writeTecplot('warp_test_surf_update.dat',tecio=True,coef=True,orig=False)
+
+flow = Flow(name='Base Case',mach=0.5,alpha=2.0,beta=0.0,liftIndex=2)
+ref = Reference('Baseline Reference',1.0,1.0,1.0)
+geom = Geometry
+test_case = AeroProblem(name='Simple Test',geom=geom,flow_set=flow,ref_set=ref)
+solver = SUMB()
+solver_options={'reinitialize':True,\
+                'CFL':1.5,\
+                'L2Convergence':1.e-10,\
+                'MGCycle':'3w',\
+                'MetricConversion':1.0,\
+                'Discretization':'Central plus scalar dissipation',\
+                'sol_restart':'no',
+                'solveADjoint':'no',\
+                'set Monitor':'Yes',\
+                'Approx PC': 'no',\
+                'Adjoint solver type': 'GMRES',\
+                'adjoint relative tolerance':1e-10,\
+                'adjoint absolute tolerance':1e-16,\
+                'adjoint max iterations': 500,\
+                'adjoint restart iteration' : 80,\
+                'adjoint monitor step': 10,\
+                'dissipation lumping parameter':6,\
+                'Preconditioner Side': 'LEFT',\
+                'Matrix Ordering': 'NestedDissection',\
+                'Global Preconditioner Type': 'Additive Schwartz',\
+                'Local Preconditioner Type' : 'ILU',\
+                'ILU Fill Levels': 2,\
+                'ASM Overlap' : 5,\
+                'TS Stability': 'no'}
+solver(test_case,niterations=1,grid_file='warp_test',solver_options=solver_options)
+
+
+solver.interface.Mesh.warpMeshSolid()
+
+
+# # Print em'
+# myrank = MPI.COMM_WORLD.Get_rank()
+
+# spts = solver.interface.Mesh.GetSurfaceCoordinatesLocal()
+# N = spts.shape[1]
+# print 'pid,N:',myrank,N
+# f = open('surface%d.dat'%(myrank),'w')
+# f.write ('VARIABLES = "X", "Y","Z"\n')
+# f.write('Zone T=\"%s\" I=%d\n'%('points',N))
+# f.write('DATAPACKING=POINT\n')
+# for i in xrange(N):
+#     f.write('%f %f %f\n'%(spts[0,i],spts[1,i],spts[2,i]))
+# f.close()
