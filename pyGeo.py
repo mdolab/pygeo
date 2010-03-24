@@ -21,7 +21,6 @@ History
 -------
 	v. 1.0 - Initial Class Creation (GKK, 2009)
 '''
-
 # =============================================================================
 # Standard Python modules
 # =============================================================================
@@ -38,14 +37,21 @@ from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
 
 from numpy.linalg import lstsq,inv,norm
 
-from scipy import sparse, linsolve
+try:
+    from scipy import sparse,io
+    from scipy.sparse.linalg.dsolve import factorized
+    from scipy.sparse.linalg import bicgstab,gmres
+    USE_SCIPY_SPARSE = True
+except:
+    USE_SCIPY_SPARSE = False
+    print 'There was an error importing scipy scparse tools'
 
 # =============================================================================
 # Extension modules
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('geo_utils','pySpline','csm_pre','mpi4py'))
+exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre','mpi4py'))
 exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
 
 # =============================================================================
@@ -60,7 +66,6 @@ class pyGeo():
         init_type, specifies what type of initialization will be
         used. There are currently 4 initialization types: plot3d,
         iges, lifting_surface and acdt_geo
-
         
         Input: 
         
@@ -110,8 +115,8 @@ class pyGeo():
 
         #------------------- pyGeo Class Atributes -----------------
 
-        self.ref_axis       = [] # Reference Axis list
-        self.ref_axis_con   = [] # Reference Axis connection list
+        #self.ref_axis       = [] # Reference Axis list
+        #self.ref_axis_con   = [] # Reference Axis connection list
         self.DV_listGlobal  = [] # Global Design Variable List
         self.DV_listNormal  = [] # Normal Design Variable List
         self.DV_listLocal   = [] # Local Design Variable List
@@ -129,9 +134,6 @@ class pyGeo():
                                  # points
         self.sym   = None        # Symmetry type. 'xy','yz','xz'
         self.sym_normal = None   # Normal consistent with symmetry type
-        self.l_surfs = []        # Logical Surfaces: List of list of
-                                 # surfaces that can be thought of as
-                                 # connected.
 
         # --------------------------------------------------------------
 
@@ -166,62 +168,71 @@ file_name=\'filename\' for iges init_type'
 
         '''Load a plot3D file and create the splines to go with each patch'''
         assert 'file_name' in kwargs,'file_name must be specified for plot3d'
-        file_name = kwargs['file_name']
-        mpiPrint('Loading plot3D file: %s ...'%(file_name),self.NO_PRINT)
-
-        f = open(file_name,'r')
-        nSurf = int(f.readline())         # First load the number of patches
-
-        mpiPrint('nSurf = %d'%(nSurf),self.NO_PRINT)
-
-        patchSizes = readNValues(f,nSurf*3,'int')
-        patchSizes = patchSizes.reshape([nSurf,3])
+        assert 'file_type' in kwargs,'file_type must be specified as binary or ascii'
+        assert 'order'     in kwargs,'order must be specified as \'f\' or \'c\''
+        file_name = kwargs['file_name']        
+        file_type = kwargs['file_type']
+        order     = kwargs['order']
+        mpiPrint(' ',self.NO_PRINT)
+        if file_type == 'ascii':
+            mpiPrint('Loading ascii plot3D file: %s ...'%(file_name),self.NO_PRINT)
+            binary = False
+            f = open(file_name,'r')
+        else:
+            mpiPrint('Loading binary plot3D file: %s ...'%(file_name),self.NO_PRINT)
+            binary = True
+            f = open(file_name,'rb')
+        # end if
+        if binary:
+            itype = readNValues(f,1,'int',binary)[0]
+            nSurf = readNValues(f,1,'int',binary)[0]
+            itype = readNValues(f,1,'int',binary)[0] # Need these
+            itype = readNValues(f,1,'int',binary)[0] # Need these
+            sizes   = readNValues(f,nSurf*3,'int',binary).reshape((nSurf,3))
+        else:
+            nSurf = readNValues(f,1,'int',binary)[0]
+            sizes   = readNValues(f,nSurf*3,'int',binary).reshape((nSurf,3))
+        # end if
 
         # ONE of Patch Sizes index must be one
         nPts = 0
         for i in xrange(nSurf):
-            if patchSizes[i,0] == 1: # Compress back to indices 0 and 1
-                patchSizes[i,0] = patchSizes[i,1]
-                patchSizes[i,1] = patchSizes[i,2] 
-            elif patchSizes[i,1] == 1:
-                patchSizes[i,1] = patchSizes[i,2]
-            elif patchSizes[i,2] == 1:
+            if sizes[i,0] == 1: # Compress back to indices 0 and 1
+                sizes[i,0] = sizes[i,1]
+                sizes[i,1] = sizes[i,2] 
+            elif sizes[i,1] == 1:
+                sizes[i,1] = sizes[i,2]
+            elif sizes[i,2] == 1:
                 pass
             else:
                 mpiPrint('Error: One of the plot3d indices must be 1')
             # end if
-            nPts += patchSizes[i,0]*patchSizes[i,1]
+            nPts += sizes[i,0]*sizes[i,1]
         # end for
-            
-        mpiPrint('Number of Surface Points = %d'%(nPts),self.NO_PRINT)
-        dataTemp = readNValues(f,3*nPts,'float')
-        
-        f.close() # Done with the file
+        mpiPrint(' -> nSurf = %d'%(nSurf),self.NO_PRINT)
+        mpiPrint(' -> Surface Points: %d'%(nPts),self.NO_PRINT)
 
-        # Post Processing
-        patches = []
-        counter = 0
-
-        for isurf in xrange(nSurf):
-            patches.append(zeros([patchSizes[isurf,0],patchSizes[isurf,1],3]))
+        surfs = []
+        for i in xrange(nSurf):
+            cur_size = sizes[i,0]*sizes[i,1]
+            surfs.append(zeros([sizes[i,0],sizes[i,1],3]))
             for idim in xrange(3):
-                for j in xrange(patchSizes[isurf,1]):
-                    for i in xrange(patchSizes[isurf,0]):
-                        patches[isurf][i,j,idim] = dataTemp[counter]
-                        counter += 1
-                    # end for
-                # end for
+                surfs[-1][:,:,idim] = readNValues(f,cur_size,'float',binary).reshape((sizes[i,0],sizes[i,1]),order=order)
             # end for
         # end for
 
-        # Now create a list of spline objects:
-        surfs = []
-        for isurf in xrange(nSurf):
-            surfs.append(pySpline.surface(X=patches[isurf],ku=4,kv=4,Nctlu=6,\
-                                              Nctlv=6,no_print=self.NO_PRINT))
-        self.surfs = surfs
+        f.close()
+
+        # Now create a list of spline surface objects:
+        self.surfs = []
+        # Note This doesn't actually fit the surfaces...just produces
+        # the parameterization and knot vectors
         self.nSurf = nSurf
-        return
+        for isurf in xrange(self.nSurf):
+            self.surfs.append(pySpline.surface(X=surfs[isurf],ku=4,kv=4,
+                                              Nctlu=4,Nctlv=4,no_print=self.NO_PRINT))
+        
+        return     
 
     def _readIges(self,file_name,*args,**kwargs):
 
@@ -239,8 +250,6 @@ file_name=\'filename\' for iges init_type'
         directory_lines = int((file[-1][17:24]))
         parameter_lines = int((file[-1][25:32]))
 
-        #print start_lines,general_lines,directory_lines,parameter_lines
-        
         # Now we know how many lines we have to deal 
 
         dir_offset  = start_lines + general_lines
@@ -311,10 +320,11 @@ file_name=\'filename\' for iges init_type'
 
             self.surfs.append(pySpline.surface(\
                     'create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
-                        range=range,no_print=self.NO_PRINT))
+                        range=range,no_print=self.NO_PRINT,recompute=False))
         # end for
 
         return 
+
     def _init_lifting_surface(self,*args,**kwargs):
 
         assert 'xsections' in kwargs and 'scale' in kwargs \
@@ -371,7 +381,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
             mpiPrint('con_file not specified. Using default.con')
             con_file = 'default.con'
         # end if
-
 
         # Load in and fit them all 
         curves = []
@@ -459,7 +468,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
         self._calcEdgeConnectivity(1e-6,1e-6)
         self._setEdgeConnectivity()
-        self.topo.writeEdgeConnectivity(con_file)
+        self.topo.writeConnectivity(con_file)
+
+        sizes = []
+        for isurf in xrange(self.nSurf):
+            sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
+        self.topo.calcGlobalNumbering(sizes)
 
         return
 
@@ -483,7 +497,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     X[:,:,1] = ac[i][j].Surface_y[:,N-1:]
                     X[:,:,2] = ac[i][j].Surface_z[:,N-1:]
 
-                    self.surfs.append(pySpline.surface(ku=4,kv=4,X=X))
+                    self.surfs.append(pySpline.surface(ku=4,kv=4,X=X,recompute=True))
                     self.nSurf += 1
                 # end for (subcomp)
 
@@ -547,12 +561,164 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end if
 
         return
+
+    def fitGlobal(self):
+        mpiPrint(' ',self.NO_PRINT)
+        mpiPrint('Global Fitting',self.NO_PRINT)
+        nCtl = self.topo.nGlobal
+        mpiPrint(' -> Copying Topology')
+        orig_topo = copy.deepcopy(self.topo)
+        
+        mpiPrint(' -> Creating global numbering',self.NO_PRINT)
+        sizes = []
+        for isurf in xrange(self.nSurf):
+            sizes.append([self.surfs[isurf].Nu,self.surfs[isurf].Nv])
+        # end for
+        
+        # Get the Globaling number of the original data
+        orig_topo.calcGlobalNumbering(sizes) 
+        N = orig_topo.nGlobal
+        mpiPrint(' -> Creating global point list',self.NO_PRINT)
+        pts = zeros((N,3))
+        for ii in xrange(N):
+            pts[ii] = self.surfs[orig_topo.g_index[ii][0][0]].X[orig_topo.g_index[ii][0][1],
+                                                               orig_topo.g_index[ii][0][2]]
+        # end for
+
+        # Get the maximum k (ku,kv for each surf)
+        kmax = 2
+        for isurf in xrange(self.nSurf):
+            if self.surfs[isurf].ku > kmax:
+                kmax = self.surfs[isurf].ku
+            if self.surfs[isurf].kv > kmax:
+                kmax = self.surfs[isurf].kv
+            # end if
+        # end for
+        nnz = N*kmax*kmax
+        vals = zeros(nnz)
+        row_ptr = [0]
+        col_ind = zeros(nnz,'intc')
+        mpiPrint(' -> Calculating Jacobian',self.NO_PRINT)
+        for ii in xrange(N):
+            isurf = orig_topo.g_index[ii][0][0]
+            i = orig_topo.g_index[ii][0][1]
+            j = orig_topo.g_index[ii][0][2]
+
+            u = self.surfs[isurf].U[i,j]
+            v = self.surfs[isurf].V[i,j]
+
+            vals,col_ind = self.surfs[isurf]._getBasisPt(
+                u,v,vals,row_ptr[ii],col_ind,self.topo.l_index[isurf])
+
+            kinc = self.surfs[isurf].ku*self.surfs[isurf].kv
+            row_ptr.append(row_ptr[-1] + kinc)
+        # end for
+
+        # Now we can crop out any additional values in col_ptr and vals
+        vals    = vals[:row_ptr[-1]]
+        col_ind = col_ind[:row_ptr[-1]]
+        # Now make a sparse matrix
+
+        NN = sparse.csr_matrix((vals,col_ind,row_ptr))
+        mpiPrint(' -> Multiplying N^T * N',self.NO_PRINT)
+        NNT = NN.T
+        NTN = NNT*NN
+        mpiPrint(' -> Factorizing...',self.NO_PRINT)
+        solve = factorized(NTN)
+        mpiPrint(' -> Back Solving...',self.NO_PRINT)
+        self.coef = zeros((nCtl,3))
+        for idim in xrange(3):
+            self.coef[:,idim] = solve(NNT*pts[:,idim])
+        # end for
+
+        mpiPrint(' -> Setting Surface Coefficients...',self.NO_PRINT)
+        self._updateSurfaceCoef()
 	
+
+
+    def addFFD(self,ffd_type,*args,**kwargs):
+        '''
+        This function adds a Free Form Deformation volume to the
+        surface for global modifcations
+        This can be of one of two types:
+        
+        Requried:
+            ffd_type: 'auto' This generates a single cartesian bounding box
+                      around the geometry
+                      
+                      'bvol' This will use a bspline volume (bvol) representation
+                      for the warping. This is effectivly a collection of bspline
+                      volumes in the same sense that pyGeo is a collection of
+                      bspline surfaces. 
+
+            if ffd_type is 'bvol' and additional keyword arguments are required,
+                           'con' must be the connectivity file for the blocking
+                           'file_type' must be specified as 'ascii' or 'binary'
+        Optional:
+               Nx,Ny,Nz: The number of control points in the x,y,z respectively
+               for the 'auto' init type. Note, control over this for the bvol
+               type can be setup a-prori using the pyBlock class functionality
+               '''
+
+        if ffd_type == 'auto':
+            xmin,xmax = self.getBounds()
+            if 'nx' in kwargs:
+                nx = int(kwargs['nx'])
+            else:
+                nx = 2
+
+            if 'ny' in kwargs:
+                ny = int(kwargs['ny'])
+            else:
+                ny = 2
+
+            if 'nz' in kwargs:
+                nz = int(kwargs['nz'])
+            else:
+                nz = 2
+
+            # Now produce meshgrid data for it
+            x = linspace(xmin[0],xmax[0],nx)
+            y = linspace(xmin[1],xmax[1],ny)
+            z = linspace(xmin[2],xmax[2],nz)
+            
+            # Dump re-interpolated surface
+            X = zeros((nx,ny,nz))
+            Y = zeros((nx,ny,nz))
+            Z = zeros((nx,ny,nz))
+
+            for i in xrange(nx):
+                [Z[i,:,:],Y[i,:,:]] = meshgrid(z,y)
+                X[i,:,:] = x[i]
+            # end for
+            volume = pySpline.volume(x=X,y=Y,z=Z,ku=2,kv=2,kw=2,recompue=False)
+            self.FFD = pyBlock.pyBlock('create',no_print=True)
+            self.FFD.nVol = 1
+            self.FFD.vols = [volume]
+            
+            # Now we must produce a pyBlock object from the bounds data
+            self.FFD._calcConnectivity(1e-4,1e-4)
+            self.FFD._propagateKnotVectors()
+            self.FFD.fitGlobal()
+            sizes = [[nx,ny,nz]]
+            self.FFD.topo.calcGlobalNumbering(sizes)
+        else:
+            mpiPrint('Not Implemented Yet')
+                      
+        # end if
+
+        # Now take all the control points in the pyGeo surface object
+        # and project them INTO the FFD volume
+        
+        self.FFD.embedVolume(self.coef)
+        self.FFD._calcdPtdCoef(0)
+
+
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
-    def doEdgeConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
+    def doConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
         '''
         This is the only public edge connectivity function. 
         If file_name exists it loads the file OR it calculates the connectivity
@@ -566,22 +732,33 @@ offset.shape[0], Xsec, rot, must all have the same size'
             None
             '''
         if os.path.isfile(file_name):
-            mpiPrint('Reading Edge Connectivity File: %s'%(file_name),self.NO_PRINT)
-            self.topo = Topology(file=file_name)
-            self._setEdgeConnectivity()
-            if not self.init_type == 'iges':
+            mpiPrint(' ',self.NO_PRINT)
+            mpiPrint('Reading Connectivity File: %s'%(file_name),self.NO_PRINT)
+            self.topo = SurfaceTopology(file=file_name)
+            if self.init_type != 'iges':
                 self._propagateKnotVectors()
             # end if
+            sizes = []
+            for isurf in xrange(self.nSurf):
+                sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
+            self.topo.calcGlobalNumbering(sizes)
         else:
-            self._calcEdgeConnectivity(node_tol,edge_tol)
-            self.topo.writeEdgeConnectivity(file_name)
-            self._setEdgeConnectivity()
-            if not self.init_type == 'iges':
-                self._propagateKnotVectors()
-            # end if
-        # end if
+            mpiPrint(' ',self.NO_PRINT)
+            self._calcConnectivity(node_tol,edge_tol)
+            sizes = []
+            for isurf in xrange(self.nSurf):
+                sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
+            self.topo.calcGlobalNumbering(sizes)
+            self._propagateKnotVectors()
+            mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
+            self.topo.writeConnectivity(file_name)
 
-    def _calcEdgeConnectivity(self,node_tol,edge_tol):
+        # end if
+            
+
+        return 
+
+    def _calcConnectivity(self,node_tol,edge_tol):
         '''This function attempts to automatically determine the connectivity
         between the pataches'''
         
@@ -603,31 +780,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
             coords[isurf][7] = mid
         # end for
 
-        self.topo = Topology(coords=coords,node_tol=node_tol,edge_tol=edge_tol)
+        self.topo = SurfaceTopology(coords=coords,node_tol=node_tol,edge_tol=edge_tol)
         return
    
-    def _setEdgeConnectivity(self):
-        '''Internal function to set the global/local numbering'''
-     
-        # Call the calcGlobalNumbering function
-        sizes = []
-        for isurf in xrange(self.nSurf):
-            sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
-        # end for
-
-        self.topo.calcGlobalNumbering(sizes)
-        self.Ncoef = self.topo.counter
-        
-        self.coef = []
-        # Now Fill up the self.coef list:
-        for ii in xrange(len(self.topo.g_index)):
-            isurf = self.topo.g_index[ii][0][0]
-            i = self.topo.g_index[ii][0][1]
-            j = self.topo.g_index[ii][0][2]
-            self.coef.append( self.surfs[isurf].coef[i,j])
-        # end for
-            
-    def printEdgeConnectivity(self):
+    def printConnectivity(self):
         '''
         Print the Edge connectivity to the screen
         Required:
@@ -635,7 +791,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         Returns:
             None
             '''
-        self.topo.printEdgeConnectivity()
+        self.topo.printConnectivity()
         return
   
     def _propagateKnotVectors(self):
@@ -677,50 +833,58 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         for idg in xrange(nDG):
-            sym = False
             knot_vectors = []
+            flip = []
             for isurf in xrange(self.nSurf):
-                # Check edge 0 and edge 2
-                if self.topo.edges[self.topo.edge_link[isurf][0]].dg == idg:
-                    if self.topo.edge_dir[isurf][0] == -1 or self.topo.edge_dir[isurf][1] == -1:
-                        sym = True
-                    # end if
-                    knot_vectors.append(self.surfs[isurf].tu)
-                # end if
-                if self.topo.edges[self.topo.edge_link[isurf][2]].dg == idg:
-                    if self.topo.edge_dir[isurf][2] == -1 or self.topo.edge_dir[isurf][3] == -1:
-                        sym = True
-                    # end if
-                    knot_vectors.append(self.surfs[isurf].tv)
-                # end if
-            # end for
+                for iedge in xrange(4):
+                    if self.topo.edges[self.topo.edge_link[isurf][iedge]].dg == idg:
+                        if self.topo.edge_dir[isurf][iedge] == -1:
+                            flip.append(True)
+                        else:
+                            flip.append(False)
+                        # end if
+                        if iedge in [0,1]:
+                            knot_vec = self.surfs[isurf].tu
+                        elif iedge in [2,3]:
+                            knot_vec = self.surfs[isurf].tv
+                        # end if
 
+                        if flip[-1]:
+                            knot_vectors.append((1-knot_vec)[::-1].copy())
+                        else:
+                            knot_vectors.append(knot_vec)
+                        # end if
+                    # end if
+                # end for
+            # end for
+            
             # Now blend all the knot vectors
-            new_knot_vec = blendKnotVectors(knot_vectors,sym)
+            new_knot_vec = blendKnotVectors(knot_vectors,False)
+            new_knot_vec_flip = (1-new_knot_vec)[::-1]
 
-            # And reset them all
+            counter = 0
             for isurf in xrange(self.nSurf):
-                # Check edge 0 and edge 2
-                if self.topo.edges[self.topo.edge_link[isurf][0]].dg == idg:
-                    self.surfs[isurf].tu = new_knot_vec.copy()
-                # end if
-                if self.topo.edges[self.topo.edge_link[isurf][2]].dg == idg:
-                    self.surfs[isurf].tv = new_knot_vec.copy()
-                # end if
+                for iedge in xrange(4):
+                    if self.topo.edges[self.topo.edge_link[isurf][iedge]].dg == idg:
+                        if iedge in [0,1]:
+                            if flip[counter] == True:
+                                self.surfs[isurf].tu = new_knot_vec_flip.copy()
+                            else:
+                                self.surfs[isurf].tu = new_knot_vec.copy()
+                            # end if
+                        elif iedge in [2,3]:
+                            if flip[counter] == True:
+                                self.surfs[isurf].tv = new_knot_vec_flip.copy()
+                            else:
+                                self.surfs[isurf].tv = new_knot_vec.copy()
+                            # end if
+                        # end if
+                        counter += 1
+                    # end if
+                # end for
             # end for
-        # end for
-       
-        mpiPrint('Recomputing surfaces...',self.NO_PRINT)
-
-        for isurf in xrange(self.nSurf):
-            self.surfs[isurf].recompute()
-        # end for
-
-        # Update the coefficients on the local surfaces
-        self._setEdgeConnectivity()
-        self.update()
-
-        return
+        # end for idg
+        return   
 
     def _getSurfaceFromEdge(self,edge):
         '''Determine the surfaces and their edge_link index that points to edge iedge'''
@@ -762,21 +926,211 @@ offset.shape[0], Xsec, rot, must all have the same size'
             else:
                 return interpolant[-1,M-index-1],interpolant[-2,M-index-1]
 
-
 # ----------------------------------------------------------------------
 #                Reference Axis Handling
 # ----------------------------------------------------------------------
             
-    def addRefAxis(self,surf_ids,*args,**kwargs):
-        '''Add a reference axis to the Geometry Object
-        Required:
-            surf_ids: List of surfaces to use for this ref axis
-            See the ref_axis class for required kwargs
-        '''
-        mpiPrint('Adding ref axis...',self.NO_PRINT)
-        ra = ref_axis(surf_ids,self.surfs,self.topo,*args,**kwargs)
-        self.ref_axis.append(ra)
+  #   def addRefAxis(self,surf_ids,*args,**kwargs):
+#         '''Add a reference axis to the Geometry Object
+#         Required:
+#             surf_ids: List of surfaces to use for this ref axis
+#             See the ref_axis class for required kwargs
+#         '''
+#         mpiPrint('Adding ref axis...',self.NO_PRINT)
+#         ra = ref_axis(surf_ids,self.surfs,self.topo,*args,**kwargs)
+#         self.ref_axis.append(ra)
             
+#         return
+
+# ----------------------------------------------------------------------
+#                   Surface Writing Output Functions
+# ----------------------------------------------------------------------
+
+    def writeTecplot(self,file_name,orig=False,surfs=True,coef=True,
+                     ref_axis=False,links=False,
+                     directions=False,surf_labels=False,edge_labels=False,
+                     node_labels=False,tecio=False):
+
+        '''Write the pyGeo Object to Tecplot dat file
+        Required:
+            file_name: The filename for the output file
+        Optional:
+            orig: boolean, write the original data
+            surfs: boolean, write the interpolated surfaces 
+            coef: boolean, write the control points
+            ref_axis: boolean, write the reference axis
+            links: boolean, write the coefficient links
+            directions: boolean, write the surface direction indicators
+            surf_labels: boolean, write the surface labels
+            edge_labels: boolean, write the edge labels
+            node_lables: boolean, write the node labels
+            size: A lenght parameter to control the surface interpolation size
+            '''
+
+        # Open File and output header
+        
+        f = pySpline.openTecplot(file_name,3,tecio=tecio)
+
+        # --------------------------------------
+        #    Write out the Interpolated Surfaces
+        # --------------------------------------
+        
+        if surfs == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf]._writeTecplotSurface(f)
+
+        # -------------------------------
+        #    Write out the Control Points
+        # -------------------------------
+        
+        if coef == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf]._writeTecplotCoef(f)
+
+        # ----------------------------------
+        #    Write out the Original Data
+        # ----------------------------------
+        
+        if orig == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf]._writeTecplotOrigData(f)
+                
+      #   # ---------------------
+#         #    Write out Ref Axis
+#         # ---------------------
+
+#         if len(self.ref_axis)>0 and ref_axis==True:
+#             for r in xrange(len(self.ref_axis)):
+#                 axis_name = 'ref_axis%d'%(r)
+#                 self.ref_axis[r]._writeTecplot(f,axis_name)
+#             # end for
+#         # end if
+
+   #      # ------------------
+#         #    Write out Links
+#         # ------------------
+
+#         if len(self.ref_axis)>0 and links==True:
+#             mpiPrint('Tecplot Link Plotting is not enabled')
+#             #for r in xrange(len(self.ref_axis)):
+#             #    self._writeTecplotLinks(f,self.ref_axis[r])
+#             # end for
+#         # end if
+              
+        # -----------------------------------
+        #    Write out The Surface Directions
+        # -----------------------------------
+
+        if directions == True:
+            for isurf in xrange(self.nSurf):
+                self.surfs[isurf]._writeDirections(f,isurf)
+            # end for
+        # end if
+
+        # ---------------------------------------------
+        #    Write out The Surface,Edge and Node Labels
+        # ---------------------------------------------
+        (dirName,fileName) = os.path.split(file_name)
+        (fileBaseName, fileExtension)=os.path.splitext(fileName)
+
+        if surf_labels == True:
+            # Split the filename off
+            label_filename = dirName+'./'+fileBaseName+'.surf_labels.dat'
+            f2 = open(label_filename,'w')
+            for isurf in xrange(self.nSurf):
+                midu = floor(self.surfs[isurf].Nctlu/2)
+                midv = floor(self.surfs[isurf].Nctlv/2)
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"S%d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],isurf+1,isurf)
+                f2.write('%s'%(text_string))
+            # end for 
+            f2.close()
+        # end if 
+
+        if edge_labels == True:
+            # Split the filename off
+            label_filename = dirName+'./'+fileBaseName+'edge_labels.dat'
+            f2 = open(label_filename,'w')
+            for iedge in xrange(self.topo.nEdge):
+                surfaces =  self.topo.getSurfaceFromEdge(iedge)
+                pt = self.surfs[surfaces[0][0]].edge_curves[surfaces[0][1]](0.5)
+                text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,T=\"E%d\"\n'%(pt[0],pt[1],pt[2],iedge)
+                f2.write('%s'%(text_string))
+            # end for
+            f2.close()
+        # end if
+        
+        if node_labels == True:
+            # First we need to figure out where the corners actually *are*
+            n_nodes = len(unique(self.topo.node_link.flatten()))
+            node_coord = zeros((n_nodes,3))
+            for i in xrange(n_nodes):
+                # Try to find node i
+                for isurf in xrange(self.nSurf):
+                    if self.topo.node_link[isurf][0] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(0)
+                        break
+                    elif self.topo.node_link[isurf][1] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(1)
+                        break
+                    elif self.topo.node_link[isurf][2] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(2)
+                        break
+                    elif self.topo.node_link[isurf][3] == i:
+                        coordinate = self.surfs[isurf].getValueCorner(3)
+                        break
+                # end for
+                node_coord[i] = coordinate
+            # end for
+            # Split the filename off
+
+            label_filename = dirName+'./'+fileBaseName+'.node_labels.dat'
+            f2 = open(label_filename,'w')
+
+            for i in xrange(n_nodes):
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(
+                    node_coord[i][0],node_coord[i][1],node_coord[i][2],i)
+                f2.write('%s'%(text_string))
+            # end for 
+            f2.close()
+        pySpline.closeTecplot(f)
+        
+        return
+
+    def writeIGES(self,file_name):
+        '''
+        Write the surface to IGES format
+        Required:
+            file_name: filname for writing the iges file
+        Returns:
+            None
+            '''
+        f = open(file_name,'w')
+
+        #Note: Eventually we may want to put the CORRECT Data here
+        f.write('                                                                        S      1\n')
+        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
+        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254,0.0001,0.,             G      2\n')
+        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
+        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
+        
+        Dcount = 1;
+        Pcount = 1;
+
+        for isurf in xrange(self.nSurf):
+            Pcount,Dcount =self.surfs[isurf]._writeIGES_directory(\
+                f,Dcount,Pcount)
+
+        Pcount  = 1
+        counter = 1
+
+        for isurf in xrange(self.nSurf):
+            Pcount,counter = self.surfs[isurf]._writeIGES_parameters(\
+                f,Pcount,counter)
+
+        # Write the terminate statment
+        f.write('S%7dG%7dD%7dP%7d%40sT%6s1\n'%(1,4,Dcount-1,counter-1,' ',' '))
+        f.close()
+
         return
         
 # ----------------------------------------------------------------------
@@ -857,6 +1211,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         return
+
     def _updateCoef_c(self):
         '''Complex version for derivatives'''
         
@@ -1372,255 +1727,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end
         return
     
-# ----------------------------------------------------------------------
-#                   Surface Writing Output Functions
-# ----------------------------------------------------------------------
-
-    def writeTecplot(self,file_name,orig=False,surfs=True,coef=True,
-                     ref_axis=False,links=False,
-                     directions=False,surf_labels=False,edge_labels=False,
-                     node_labels=False):
-
-        '''Write the pyGeo Object to Tecplot dat file
-        Required:
-            file_name: The filename for the output file
-        Optional:
-            orig: boolean, write the original data
-            surfs: boolean, write the interpolated surfaces 
-            coef: boolean, write the control points
-            ref_axis: boolean, write the reference axis
-            links: boolean, write the coefficient links
-            directions: boolean, write the surface direction indicators
-            surf_labels: boolean, write the surface labels
-            edge_labels: boolean, write the edge labels
-            node_lables: boolean, write the node labels
-            size: A lenght parameter to control the surface interpolation size
-            '''
-
-        # Open File and output header
-        
-        f = pySpline.openTecplot(file_name,3)
-
-        # --------------------------------------
-        #    Write out the Interpolated Surfaces
-        # --------------------------------------
-        
-        if surfs == True:
-            for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeTecplotSurface(f)
-
-        # -------------------------------
-        #    Write out the Control Points
-        # -------------------------------
-        
-        if coef == True:
-            for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeTecplotCoef(f)
-
-        # ----------------------------------
-        #    Write out the Original Data
-        # ----------------------------------
-        
-        if orig == True:
-            for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeTecplotOrigData(f)
-                
-        # ---------------------
-        #    Write out Ref Axis
-        # ---------------------
-
-        if len(self.ref_axis)>0 and ref_axis==True:
-            for r in xrange(len(self.ref_axis)):
-                axis_name = 'ref_axis%d'%(r)
-                self.ref_axis[r]._writeTecplot(f,axis_name)
-            # end for
-        # end if
-
-        # ------------------
-        #    Write out Links
-        # ------------------
-
-        if len(self.ref_axis)>0 and links==True:
-            mpiPrint('Tecplot Link Plotting is not enabled')
-            #for r in xrange(len(self.ref_axis)):
-            #    self._writeTecplotLinks(f,self.ref_axis[r])
-            # end for
-        # end if
-              
-        # -----------------------------------
-        #    Write out The Surface Directions
-        # -----------------------------------
-
-        if directions == True:
-            for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeDirections(f,isurf)
-            # end for
-        # end if
-
-        # ---------------------------------------------
-        #    Write out The Surface,Edge and Node Labels
-        # ---------------------------------------------
-        (dirName,fileName) = os.path.split(file_name)
-        (fileBaseName, fileExtension)=os.path.splitext(fileName)
-
-        if surf_labels == True:
-            # Split the filename off
-            label_filename = dirName+'./'+fileBaseName+'.surf_labels.dat'
-            f2 = open(label_filename,'w')
-            for isurf in xrange(self.nSurf):
-                midu = floor(self.surfs[isurf].Nctlu/2)
-                midv = floor(self.surfs[isurf].Nctlv/2)
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d, T=\"S%d\"\n'%(self.surfs[isurf].coef[midu,midv,0],self.surfs[isurf].coef[midu,midv,1], self.surfs[isurf].coef[midu,midv,2],isurf+1,isurf)
-                f2.write('%s'%(text_string))
-            # end for 
-            f2.close()
-        # end if 
-
-        if edge_labels == True:
-            # Split the filename off
-            label_filename = dirName+'./'+fileBaseName+'edge_labels.dat'
-            f2 = open(label_filename,'w')
-            for iedge in xrange(self.topo.nEdge):
-                surfaces =  self.topo.getSurfaceFromEdge(iedge)
-                pt = self.surfs[surfaces[0][0]].edge_curves[surfaces[0][1]](0.5)
-                text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,T=\"E%d\"\n'%(pt[0],pt[1],pt[2],iedge)
-                f2.write('%s'%(text_string))
-            # end for
-            f2.close()
-        # end if
-        
-        if node_labels == True:
-            # First we need to figure out where the corners actually *are*
-            n_nodes = len(unique(self.topo.node_link.flatten()))
-            node_coord = zeros((n_nodes,3))
-            for i in xrange(n_nodes):
-                # Try to find node i
-                for isurf in xrange(self.nSurf):
-                    if self.topo.node_link[isurf][0] == i:
-                        coordinate = self.surfs[isurf].getValueCorner(0)
-                        break
-                    elif self.topo.node_link[isurf][1] == i:
-                        coordinate = self.surfs[isurf].getValueCorner(1)
-                        break
-                    elif self.topo.node_link[isurf][2] == i:
-                        coordinate = self.surfs[isurf].getValueCorner(2)
-                        break
-                    elif self.topo.node_link[isurf][3] == i:
-                        coordinate = self.surfs[isurf].getValueCorner(3)
-                        break
-                # end for
-                node_coord[i] = coordinate
-            # end for
-            # Split the filename off
-
-            label_filename = dirName+'./'+fileBaseName+'.node_labels.dat'
-            f2 = open(label_filename,'w')
-
-            for i in xrange(n_nodes):
-                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(
-                    node_coord[i][0],node_coord[i][1],node_coord[i][2],i)
-                f2.write('%s'%(text_string))
-            # end for 
-            f2.close()
-        pySpline.closeTecplot(f)
-        
-        return
-
-    def _writeTecplotLinks(self,handle,ref_axis):
-        '''Write out the surface links. '''
-
-        num_vectors = len(ref_axis.links_s)
-        coords = zeros((2*num_vectors,3))
-        icoord = 0
-    
-        for i in xrange(len(ref_axis.links_s)):
-            coords[icoord    ,:] = ref_axis.xs.getValue(ref_axis.links_s[i])
-            coords[icoord +1 ,:] = self.coef[ref_axis.coef_list[i]]
-            icoord += 2
-        # end for
-
-        icoord = 0
-        conn = zeros((num_vectors,2))
-        for ivector  in xrange(num_vectors):
-            conn[ivector,:] = icoord, icoord+1
-            icoord += 2
-        # end for
-
-        handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
-        handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
-
-        for n in xrange(3):
-            for i in  range(2*num_vectors):
-                handle.write('%f\n'%(coords[i,n]))
-            # end for
-        # end for
-
-        for i in range(num_vectors):
-            handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
-        # end for
-
-        return
-
-    def writeIGES(self,file_name):
-        '''
-        Write the surface to IGES format
-        Required:
-            file_name: filname for writing the iges file
-        Returns:
-            None
-            '''
-        f = open(file_name,'w')
-
-        #Note: Eventually we may want to put the CORRECT Data here
-        f.write('                                                                        S      1\n')
-        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
-        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254,0.0001,0.,             G      2\n')
-        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
-        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
-        
-        Dcount = 1;
-        Pcount = 1;
-
-        for isurf in xrange(self.nSurf):
-            Pcount,Dcount =self.surfs[isurf]._writeIGES_directory(\
-                f,Dcount,Pcount)
-
-        Pcount  = 1
-        counter = 1
-
-        for isurf in xrange(self.nSurf):
-            Pcount,counter = self.surfs[isurf]._writeIGES_parameters(\
-                f,Pcount,counter)
-
-        # Write the terminate statment
-        f.write('S%7dG%7dD%7dP%7d%40sT%6s1\n'%(1,4,Dcount-1,counter-1,' ',' '))
-        f.close()
-
-        return
-
     # ----------------------------------------------------------------------
     #                              Utility Functions 
     # ----------------------------------------------------------------------
 
-    def getCoordinatesFromFile(self,file_name):
-        '''Get a list of coordinates from a file - useful for testing
-        Required:
-            file_name: filename for file
-        Returns:
-            coordinates: list of coordinates
-            '''
-
-        f = open(file_name,'r')
-        coordinates = []
-        for line in f:
-            aux = string.split(line)
-            coordinates.append([float(aux[0]),float(aux[1]),float(aux[2])])
-        # end for
-        f.close()
-        coordinates = transpose(array(coordinates))
-
-        return coordinates
-  
     def attachSurface(self,coordinates,patch_list=None,Nu=20,Nv=20,force_domain=True):
 
         '''Attach a list of surface points to either all the pyGeo surfaces
@@ -1924,8 +2034,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
         return Xmin0,Xmax0
 
-
-
     def _projectCurves(self,curve1,curve2,surfs=None):
         '''
         Project a pySpline curve onto the pyGeo object
@@ -2010,323 +2118,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         return patchID,u0,v0
 
-
-
-class ref_axis(object):
-
-    def __init__(self,surf_ids,surfs,topo,*args,**kwargs):
-
-        ''' Create a generic reference axis. This object bascally defines a
-        set of points in space (x,y,z) each with three rotations
-        associated with it. The purpose of the ref_axis is to link
-        groups of b-spline controls points together such that
-        high-level planform-type variables can be used as design
-        variables
-        
-        Reqruied:
-            surf_ids: The surfaces for this reference axis
-            surfs: The pyGeo surf list
-            topo: The pyGeo topology
-            x: x coordinates
-            y: y coordinates
-            z: z coordinates
-            rot_x: x rotations
-            rot_y: y rotations
-            rot_z: z rotation
-            rot_type: integer 1-6 to determine the rotation order
-                1 -> x-y-z
-                2 -> x-z-y
-                3 -> y-z-x  -> This example (right body x-streamwise y-out wing z-up)
-                4 -> y-x-z
-                5 -> z-x-y  -> Default aerosurf (Left body x-streamwise y-up z-out wing)
-                6 -> z-y-x
-        '''
-
-        # Extract Some information from kwargs:
-        if 'X' in kwargs:
-            X = kwargs['X']
-        else:
-            X = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T
-        # end if
-        N = len(kwargs['x'])
-        self.rot_x = zeros(N).astype('D')
-        self.rot_y = zeros(N).astype('D')
-        self.rot_z = zeros(N).astype('D')
-
-        if 'rot_type' in kwargs:
-            self.rot_type = int(kwargs['rot_type'])
-        else:
-            self.rot_type = 5 # Default aero-surf like
-        # end if
-
-        # Create the splines for the axis
-            
-        self.xs    = pySpline.curve(X=X,k=2,no_print=True)
-        self.rotxs = pySpline.curve(x=self.rot_x,s=self.xs.s,k=2,no_print=True)
-        self.rotys = pySpline.curve(x=self.rot_y,s=self.xs.s,k=2,no_print=True)
-        self.rotzs = pySpline.curve(x=self.rot_z,s=self.xs.s,k=2,no_print=True)
-
-        self.scale = ones(self.xs.Nctl,'D')
-        self.scales = pySpline.curve(x=self.scale,s=self.xs.s,k=2,no_print=True)
-        self.links_s = []
-        self.links_x = []
-        self.con_type = None
-
-        self.base_point = self.xs(0)
-        
-        self.base_point_s = None
-        self.base_point_D = None
-
-        self.end_point   = self.xs(1)
-        self.end_point_s = None
-        self.end_point_D = None
-
-        # Values are stored wrt the base point
-        self.x = (self.xs.coef-self.base_point).astype('D')
-
-        # Deep copy the x,rot and scale for design variable reference
-        self.x0 = copy.deepcopy(self.x).astype('d')
-        self.scale0 = copy.deepcopy(self.scale).astype('d')
-
-        # Now determine what control points will be associated with this axis
-        coef_list = []
-        if not 'point_select' in kwargs: # No point_select->Assume full surface
-            for isurf in surf_ids:
-                coef_list.extend(topo.l_index[isurf].flatten())
-            # end for
-        # end if
-
-        else:   # We have a point selection class passed in
-            for isurf in surf_ids:
-                coef_list.extend(kwargs['point_select'].getControlPoints(\
-                        surfs[isurf],isurf,coef_list,topo.l_index))
-            # end for
-        # end if
-
-        # Now parse out duplicates and sort
-        coef_list = unique(coef_list) #unique is in geo_utils
-        coef_list.sort()
-
-        # More straight forward algorihtim
-        self.coef_list = coef_list
-        self.surf_ids  = surf_ids
-        vec = [1000,0,0]
-        for icoef in coef_list: 
-            isurf = topo.g_index[icoef][0][0]
-            u     = topo.g_index[icoef][0][1]
-            v     = topo.g_index[icoef][0][2]
-            pt = surfs[isurf].coef[u,v]
-            ray = pySpline.curve(k=2,t=[0,0,0.5,1,1],coef=[pt-vec,pt,pt+vec])
-            res = self.xs.projectCurve(ray)
-            s = res[0]
-            D = pt - self.xs(s)
-            self.links_s.append(s)
-            self.links_x.append(D)
-        # end for
-
-        # Now we must determine how the surfaces are oriented wrt the axis
-        # We also must determine (based on the design groups) how to attach the axis
-
-        # Algorithim Description:
-        # 1. Do until all surfaces accounted for:
-        # 2.    -> Take the first surface and determine its orientation wrt the axis
-        # 3.    -> The the perpendicualar design group attach in the same manner
-  #       surf_ids_copy =copy.copy(surf_ids)
-#         reordered_coef_list = []
-#         global_counter = 0 
-        
-#         while len(surf_ids_copy) > 0:
-#             isurf = surf_ids_copy.pop(0)
-#             dir_type = directionAlongSurface(surfs[isurf],self.xs)
-          
-#             surf_list = []
-#             dir_list = []
-#             surf_list.append(isurf)
-#             dir_list.append(dir_type)
-#             if dir_type in [0,1]:
-#                 dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
-#             else:
-
-#                 dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
-#             # Find all other surfaces/edges with this design group
-#             for isurf in set(surf_ids_copy).difference(set(surf_list)):
-#                 #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
-#                 if topo.edges[topo.edge_link[isurf][0]].dg == dg_parallel:
-#                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
-#                     surf_ids_copy.remove(isurf)
-#                     surf_list.append(isurf)
-#                     dir_list.append(dir_type)
-#                 elif topo.edges[topo.edge_link[isurf][2]].dg == dg_parallel:
-#                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
-#                     surf_ids_copy.remove(isurf)
-#                     surf_list.append(isurf)
-#                     dir_list.append(dir_type)
-# #             # end for
-      
-#             # Now we can simply attach all the surfaces in surf list according to the directions 
-            
-#             # N is the number of parallel control points
-#             if dir_list[0] == 0:
-#                 N = surfs[surf_list[0]].Nctlu
-#             else:
-#                 N = surfs[surf_list[0]].Nctlv
-#             # end if
-                
-#             s = zeros(N)
-       
-#             for i in xrange(N):
-#                 section_coef_list = []
-#                 for j in xrange(len(surf_list)):
-#                     isurf = surf_list[j]
-#                     if dir_list[j] == 0:
-#                         section_coef_list.extend(surfs[isurf].coef[i,:])
-#                     elif dir_list[j] == 1:
-#                         section_coef_list.extend(surfs[isurf].coef[-1-i,:])
-#                     elif dir_list[j] == 2:
-#                         section_coef_list.extend(surfs[isurf].coef[:,i])
-#                     else:
-#                         section_coef_list.extend(surfs[isurf].coef[:,-1-i])
-#                     # end if
-#                 # end if
-#                 # Average coefficients
-#                 pt = average(section_coef_list,axis=0)
-#                 # This effectively averages the coefficients
-#                 s[i],D = self.xs.projectPoint(pt)
-#             # end if
-
-#             # Now we can attach these with links if they are in coef_list
-#             for i in xrange(N):
-#                 for j in xrange(len(surf_list)):
-#                     isurf = surf_list[j]
-#                     if dir_list[j] == 0:
-#                         for k in xrange(surfs[isurf].Nctlv):
-#                             global_index = topo.l_index[isurf][i,k]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[i,k] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-#                         # end for
-#                     elif dir_list[j] == 1:
-#                         for k in xrange(surfs[isurf].Nctlv):
-#                             global_index = topo.l_index[isurf][-1-i,k]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[-1-i,k] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-#                         # end for
-#                     # end if
-#                     elif dir_list[j] == 2:
-#                         for k in xrange(surfs[isurf].Nctlu):
-#                             global_index = topo.l_index[isurf][k,i]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[k,i] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-#                         # end for
-#                     elif dir_list[j] == 3:
-#                         for k in xrange(surfs[isurf].Nctlu):
-#                             global_index = topo.l_index[isurf][k,-1-i]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[k,-1-i] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-
-
-#                 # end for
-#             # end for
-#         # end for
-#         self.coef_list = reordered_coef_list
-#         self.surf_ids  = surf_ids
-        
-    def _update(self):
-
-        self.xs.coef = self.base_point+self.x.astype('d')
-        self.rotxs.coef = self.rot_x.astype('d')
-        self.rotys.coef = self.rot_y.astype('d')
-        self.rotzs.coef = self.rot_z.astype('d')
-
-        self.scales.coef = self.scale.astype('d')
-
-        if self.con_type == 'full':
-            self.xs.coef[-1,:] = self.end_point
-        # end if
-        
-        return
-       
-    def _writeTecplot(self,handle,axis_name):
-        '''Write the ref axis to the open file handle'''
-        values = self.xs.getValue(self.xs.s)
-        pySpline._writeTecplot1D(handle,axis_name,values)
-
-        return
-
-    def _getRotMatrixGlobalToLocal(self,s):
-        
-        '''Return the rotation matrix to convert vector from global to
-        local frames'''
-        return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-                                                    rotzM(self.rotzs(s)[0])))
-    
-    def _getRotMatrixLocalToGlobal(self,s):
-        
-        '''Return the rotation matrix to convert vector from global to
-        local frames'''
-        return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-                                                    rotzM(self.rotzs(s)[0]))))
-
-
-    def addRefAxisCon(self,axis1,axis2,con_type):
-        '''Add a reference axis connection to the connection list
-        Attach axis2 to axis 1
-        Required:
-            axis1: First ref axis
-            axis2: Second Ref axis
-            con_type: Connection Type: 'end' or 'full'
-            '''
-        s,D = self.ref_axis[axis1].xs.projectPoint(\
-            self.ref_axis[axis2].xs.getValue(0))
-
-        M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
-        D = dot(M,D)
-
-        self.ref_axis[axis2].base_point_s = s
-        self.ref_axis[axis2].base_point_D = D
-        self.ref_axis[axis2].con_type = con_type
-        if con_type == 'full':
-            assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
-is only available for reference axis with 2 points. A typical usage is for \
-a flap hinge line'
-            
-            s,D = self.ref_axis[axis1].xs.projectPoint(\
-                self.ref_axis[axis2].xs.getValue(1.0))
-
-            M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
-            D = dot(M,D)
-
-            self.ref_axis[axis2].end_point_s = s
-            self.ref_axis[axis2].end_point_D = D
-            
-        # end if
-            
-        self.ref_axis_con.append([axis1,axis2,con_type])
-
-        return
 
 class geoDVGlobal(object):
      
@@ -4597,4 +4388,356 @@ if __name__ == '__main__':
 #                                                        Nctlv=4, *args,**kwargs))
 
 #         self.nSurf = len(self.surfs) # And last but not least
+#         return
+
+
+
+# class ref_axis(object):
+
+#     def __init__(self,surf_ids,surfs,topo,*args,**kwargs):
+
+#         ''' Create a generic reference axis. This object bascally defines a
+#         set of points in space (x,y,z) each with three rotations
+#         associated with it. The purpose of the ref_axis is to link
+#         groups of b-spline controls points together such that
+#         high-level planform-type variables can be used as design
+#         variables
+        
+#         Reqruied:
+#             surf_ids: The surfaces for this reference axis
+#             surfs: The pyGeo surf list
+#             topo: The pyGeo topology
+#             x: x coordinates
+#             y: y coordinates
+#             z: z coordinates
+#             rot_x: x rotations
+#             rot_y: y rotations
+#             rot_z: z rotation
+#             rot_type: integer 1-6 to determine the rotation order
+#                 1 -> x-y-z
+#                 2 -> x-z-y
+#                 3 -> y-z-x  -> This example (right body x-streamwise y-out wing z-up)
+#                 4 -> y-x-z
+#                 5 -> z-x-y  -> Default aerosurf (Left body x-streamwise y-up z-out wing)
+#                 6 -> z-y-x
+#         '''
+
+#         # Extract Some information from kwargs:
+#         if 'X' in kwargs:
+#             X = kwargs['X']
+#         else:
+#             X = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T
+#         # end if
+#         N = len(kwargs['x'])
+#         self.rot_x = zeros(N).astype('D')
+#         self.rot_y = zeros(N).astype('D')
+#         self.rot_z = zeros(N).astype('D')
+
+#         if 'rot_type' in kwargs:
+#             self.rot_type = int(kwargs['rot_type'])
+#         else:
+#             self.rot_type = 5 # Default aero-surf like
+#         # end if
+
+#         # Create the splines for the axis
+            
+#         self.xs    = pySpline.curve(X=X,k=2,no_print=True)
+#         self.rotxs = pySpline.curve(x=self.rot_x,s=self.xs.s,k=2,no_print=True)
+#         self.rotys = pySpline.curve(x=self.rot_y,s=self.xs.s,k=2,no_print=True)
+#         self.rotzs = pySpline.curve(x=self.rot_z,s=self.xs.s,k=2,no_print=True)
+
+#         self.scale = ones(self.xs.Nctl,'D')
+#         self.scales = pySpline.curve(x=self.scale,s=self.xs.s,k=2,no_print=True)
+#         self.links_s = []
+#         self.links_x = []
+#         self.con_type = None
+
+#         self.base_point = self.xs(0)
+        
+#         self.base_point_s = None
+#         self.base_point_D = None
+
+#         self.end_point   = self.xs(1)
+#         self.end_point_s = None
+#         self.end_point_D = None
+
+#         # Values are stored wrt the base point
+#         self.x = (self.xs.coef-self.base_point).astype('D')
+
+#         # Deep copy the x,rot and scale for design variable reference
+#         self.x0 = copy.deepcopy(self.x).astype('d')
+#         self.scale0 = copy.deepcopy(self.scale).astype('d')
+
+#         # Now determine what control points will be associated with this axis
+#         coef_list = []
+#         if not 'point_select' in kwargs: # No point_select->Assume full surface
+#             for isurf in surf_ids:
+#                 coef_list.extend(topo.l_index[isurf].flatten())
+#             # end for
+#         # end if
+
+#         else:   # We have a point selection class passed in
+#             for isurf in surf_ids:
+#                 coef_list.extend(kwargs['point_select'].getControlPoints(\
+#                         surfs[isurf],isurf,coef_list,topo.l_index))
+#             # end for
+#         # end if
+
+#         # Now parse out duplicates and sort
+#         coef_list = unique(coef_list) #unique is in geo_utils
+#         coef_list.sort()
+
+#         # More straight forward algorihtim
+#         self.coef_list = coef_list
+#         self.surf_ids  = surf_ids
+#         vec = [1000,0,0]
+#         for icoef in coef_list: 
+#             isurf = topo.g_index[icoef][0][0]
+#             u     = topo.g_index[icoef][0][1]
+#             v     = topo.g_index[icoef][0][2]
+#             pt = surfs[isurf].coef[u,v]
+#             ray = pySpline.curve(k=2,t=[0,0,0.5,1,1],coef=[pt-vec,pt,pt+vec])
+#             res = self.xs.projectCurve(ray)
+#             s = res[0]
+#             D = pt - self.xs(s)
+#             self.links_s.append(s)
+#             self.links_x.append(D)
+#         # end for
+
+#         # Now we must determine how the surfaces are oriented wrt the axis
+#         # We also must determine (based on the design groups) how to attach the axis
+
+#         # Algorithim Description:
+#         # 1. Do until all surfaces accounted for:
+#         # 2.    -> Take the first surface and determine its orientation wrt the axis
+#         # 3.    -> The the perpendicualar design group attach in the same manner
+#   #       surf_ids_copy =copy.copy(surf_ids)
+# #         reordered_coef_list = []
+# #         global_counter = 0 
+        
+# #         while len(surf_ids_copy) > 0:
+# #             isurf = surf_ids_copy.pop(0)
+# #             dir_type = directionAlongSurface(surfs[isurf],self.xs)
+          
+# #             surf_list = []
+# #             dir_list = []
+# #             surf_list.append(isurf)
+# #             dir_list.append(dir_type)
+# #             if dir_type in [0,1]:
+# #                 dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
+# #             else:
+
+# #                 dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
+# #             # Find all other surfaces/edges with this design group
+# #             for isurf in set(surf_ids_copy).difference(set(surf_list)):
+# #                 #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
+# #                 if topo.edges[topo.edge_link[isurf][0]].dg == dg_parallel:
+# #                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
+# #                     surf_ids_copy.remove(isurf)
+# #                     surf_list.append(isurf)
+# #                     dir_list.append(dir_type)
+# #                 elif topo.edges[topo.edge_link[isurf][2]].dg == dg_parallel:
+# #                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
+# #                     surf_ids_copy.remove(isurf)
+# #                     surf_list.append(isurf)
+# #                     dir_list.append(dir_type)
+# # #             # end for
+      
+# #             # Now we can simply attach all the surfaces in surf list according to the directions 
+            
+# #             # N is the number of parallel control points
+# #             if dir_list[0] == 0:
+# #                 N = surfs[surf_list[0]].Nctlu
+# #             else:
+# #                 N = surfs[surf_list[0]].Nctlv
+# #             # end if
+                
+# #             s = zeros(N)
+       
+# #             for i in xrange(N):
+# #                 section_coef_list = []
+# #                 for j in xrange(len(surf_list)):
+# #                     isurf = surf_list[j]
+# #                     if dir_list[j] == 0:
+# #                         section_coef_list.extend(surfs[isurf].coef[i,:])
+# #                     elif dir_list[j] == 1:
+# #                         section_coef_list.extend(surfs[isurf].coef[-1-i,:])
+# #                     elif dir_list[j] == 2:
+# #                         section_coef_list.extend(surfs[isurf].coef[:,i])
+# #                     else:
+# #                         section_coef_list.extend(surfs[isurf].coef[:,-1-i])
+# #                     # end if
+# #                 # end if
+# #                 # Average coefficients
+# #                 pt = average(section_coef_list,axis=0)
+# #                 # This effectively averages the coefficients
+# #                 s[i],D = self.xs.projectPoint(pt)
+# #             # end if
+
+# #             # Now we can attach these with links if they are in coef_list
+# #             for i in xrange(N):
+# #                 for j in xrange(len(surf_list)):
+# #                     isurf = surf_list[j]
+# #                     if dir_list[j] == 0:
+# #                         for k in xrange(surfs[isurf].Nctlv):
+# #                             global_index = topo.l_index[isurf][i,k]
+# #                             if global_index in coef_list:
+# #                                 D = surfs[isurf].coef[i,k] - self.xs(s[i])
+# #                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+# #                                 #D = dot(M,D) #Rotate to local frame
+# #                                 self.links_s.append(s[i])
+# #                                 self.links_x.append(D)
+# #                                 reordered_coef_list.append(global_index)
+# #                             # end if
+# #                         # end for
+# #                     elif dir_list[j] == 1:
+# #                         for k in xrange(surfs[isurf].Nctlv):
+# #                             global_index = topo.l_index[isurf][-1-i,k]
+# #                             if global_index in coef_list:
+# #                                 D = surfs[isurf].coef[-1-i,k] - self.xs(s[i])
+# #                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+# #                                 #D = dot(M,D) #Rotate to local frame
+# #                                 self.links_s.append(s[i])
+# #                                 self.links_x.append(D)
+# #                                 reordered_coef_list.append(global_index)
+# #                             # end if
+# #                         # end for
+# #                     # end if
+# #                     elif dir_list[j] == 2:
+# #                         for k in xrange(surfs[isurf].Nctlu):
+# #                             global_index = topo.l_index[isurf][k,i]
+# #                             if global_index in coef_list:
+# #                                 D = surfs[isurf].coef[k,i] - self.xs(s[i])
+# #                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+# #                                 #D = dot(M,D) #Rotate to local frame
+# #                                 self.links_s.append(s[i])
+# #                                 self.links_x.append(D)
+# #                                 reordered_coef_list.append(global_index)
+# #                             # end if
+# #                         # end for
+# #                     elif dir_list[j] == 3:
+# #                         for k in xrange(surfs[isurf].Nctlu):
+# #                             global_index = topo.l_index[isurf][k,-1-i]
+# #                             if global_index in coef_list:
+# #                                 D = surfs[isurf].coef[k,-1-i] - self.xs(s[i])
+# #                                 #M = self.getRotMatrixGlobalToLocal(s[i])
+# #                                 #D = dot(M,D) #Rotate to local frame
+# #                                 self.links_s.append(s[i])
+# #                                 self.links_x.append(D)
+# #                                 reordered_coef_list.append(global_index)
+# #                             # end if
+
+
+# #                 # end for
+# #             # end for
+# #         # end for
+# #         self.coef_list = reordered_coef_list
+# #         self.surf_ids  = surf_ids
+        
+#     def _update(self):
+
+#         self.xs.coef = self.base_point+self.x.astype('d')
+#         self.rotxs.coef = self.rot_x.astype('d')
+#         self.rotys.coef = self.rot_y.astype('d')
+#         self.rotzs.coef = self.rot_z.astype('d')
+
+#         self.scales.coef = self.scale.astype('d')
+
+#         if self.con_type == 'full':
+#             self.xs.coef[-1,:] = self.end_point
+#         # end if
+        
+#         return
+       
+#     def _writeTecplot(self,handle,axis_name):
+#         '''Write the ref axis to the open file handle'''
+#         values = self.xs.getValue(self.xs.s)
+#         pySpline._writeTecplot1D(handle,axis_name,values)
+
+#         return
+
+#     def _getRotMatrixGlobalToLocal(self,s):
+        
+#         '''Return the rotation matrix to convert vector from global to
+#         local frames'''
+#         return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
+#                                                     rotzM(self.rotzs(s)[0])))
+    
+#     def _getRotMatrixLocalToGlobal(self,s):
+        
+#         '''Return the rotation matrix to convert vector from global to
+#         local frames'''
+#         return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
+#                                                     rotzM(self.rotzs(s)[0]))))
+
+
+#     def addRefAxisCon(self,axis1,axis2,con_type):
+#         '''Add a reference axis connection to the connection list
+#         Attach axis2 to axis 1
+#         Required:
+#             axis1: First ref axis
+#             axis2: Second Ref axis
+#             con_type: Connection Type: 'end' or 'full'
+#             '''
+#         s,D = self.ref_axis[axis1].xs.projectPoint(\
+#             self.ref_axis[axis2].xs.getValue(0))
+
+#         M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
+#         D = dot(M,D)
+
+#         self.ref_axis[axis2].base_point_s = s
+#         self.ref_axis[axis2].base_point_D = D
+#         self.ref_axis[axis2].con_type = con_type
+#         if con_type == 'full':
+#             assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
+# is only available for reference axis with 2 points. A typical usage is for \
+# a flap hinge line'
+            
+#             s,D = self.ref_axis[axis1].xs.projectPoint(\
+#                 self.ref_axis[axis2].xs.getValue(1.0))
+
+#             M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
+#             D = dot(M,D)
+
+#             self.ref_axis[axis2].end_point_s = s
+#             self.ref_axis[axis2].end_point_D = D
+            
+#         # end if
+            
+#         self.ref_axis_con.append([axis1,axis2,con_type])
+
+#         return
+#     def _writeTecplotLinks(self,handle,ref_axis):
+#         '''Write out the surface links. '''
+
+#         num_vectors = len(ref_axis.links_s)
+#         coords = zeros((2*num_vectors,3))
+#         icoord = 0
+    
+#         for i in xrange(len(ref_axis.links_s)):
+#             coords[icoord    ,:] = ref_axis.xs.getValue(ref_axis.links_s[i])
+#             coords[icoord +1 ,:] = self.coef[ref_axis.coef_list[i]]
+#             icoord += 2
+#         # end for
+
+#         icoord = 0
+#         conn = zeros((num_vectors,2))
+#         for ivector  in xrange(num_vectors):
+#             conn[ivector,:] = icoord, icoord+1
+#             icoord += 2
+#         # end for
+
+#         handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
+#         handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
+
+#         for n in xrange(3):
+#             for i in  range(2*num_vectors):
+#                 handle.write('%f\n'%(coords[i,n]))
+#             # end for
+#         # end for
+
+#         for i in range(num_vectors):
+#             handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
+#         # end for
+
 #         return

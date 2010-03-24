@@ -266,6 +266,24 @@ def read_af2(filename):
     ntotal = len(x)
     return x,y
 
+def getCoordinatesFromFile(self,file_name):
+    '''Get a list of coordinates from a file - useful for testing
+    Required:
+        file_name: filename for file
+    Returns:
+        coordinates: list of coordinates
+    '''
+
+    f = open(file_name,'r')
+    coordinates = []
+    for line in f:
+        aux = string.split(line)
+        coordinates.append([float(aux[0]),float(aux[1]),float(aux[2])])
+    # end for
+    f.close()
+    coordinates = transpose(array(coordinates))
+
+    return coordinates
 # --------------------------------------------------------------
 #            Working with Edges Function
 # --------------------------------------------------------------
@@ -1017,7 +1035,7 @@ speficied in the following format: coef = [[i1,j1],[i2,j2],[i3,j3]]'
         return coef_list
 
 
-class Topology(object):
+class SurfaceTopology(object):
     '''
     The topology class contains the data and functions assocatied with
     at set of connected quadrilaterials. The quadraliterals may be
@@ -1187,7 +1205,7 @@ missing nodes')
             edge_link_ind    = argsort(edge_link.flatten())
 
         elif not file==None:
-            self.readEdgeConnectivity(file)
+            self.readConnectivity(file)
             return
         else:
             mpiPrint('Empty Topology Class Creation')
@@ -1247,7 +1265,6 @@ missing nodes')
 
     def calcGlobalNumbering(self,sizes,surface_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
-
         for i in xrange(len(sizes)):
             self.edges[self.edge_link[i][0]].Nctl = sizes[i][0]
             self.edges[self.edge_link[i][1]].Nctl = sizes[i][0]
@@ -1300,6 +1317,7 @@ the list of surfaces must be the same length'
         l_index = []
 
         # Now actually fill everything up
+
         for ii in xrange(len(surface_list)):
             isurf = surface_list[ii]
             N = sizes[ii][0]
@@ -1341,7 +1359,8 @@ the list of surfaces must be the same length'
                 # end for (j)
             # end for (i)
         # end for (ii)
-        self.counter = counter
+
+        self.nGlobal = len(g_index)
         self.g_index = g_index
         self.l_index = l_index
         
@@ -1394,7 +1413,7 @@ the list of surfaces must be the same length'
         # end if
         return sizes,nEdge
 
-    def printEdgeConnectivity(self):
+    def printConnectivity(self):
         '''Print the Edge Connectivity to the screen'''
 
         mpiPrint('------------------------------------------------------------------------')
@@ -1414,7 +1433,7 @@ the list of surfaces must be the same length'
         mpiPrint('------------------------------------------------------------------------')
         return
 
-    def writeEdgeConnectivity(self,file_name):
+    def writeConnectivity(self,file_name):
         '''Write the full edge connectivity to a file file_name'''
         f = open(file_name,'w')
         f.write('%3d %3d\n'%(self.nEdge,self.nFace))
@@ -1434,7 +1453,7 @@ the list of surfaces must be the same length'
         
         return
 
-    def readEdgeConnectivity(self,file_name):
+    def readConnectivity(self,file_name):
         '''Read the full edge connectivity from a file file_name'''
         f = open(file_name,'r')
         aux = string.split(f.readline())
@@ -2053,12 +2072,8 @@ the list of volumes must be the same length'
 
         def addNode(i,j,k,N,M,L):
             type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
-            if type == 0:
-                l_index[ii][i,j,k] = counter
-                g_index.append([[ivol,i,j,k]])
-                counter += 1
-
-            elif type == 1:         # Face 
+            
+            if type == 1:         # Face 
 
                 if number in [0,1]:
                     icount = i;imax = N
@@ -2120,8 +2135,7 @@ the list of volumes must be the same length'
                 l_index[ii][i,j,k] = node_index[cur_node]
                 g_index[node_index[cur_node]].append([ivol,i,j,k])
             # end if type
-
-
+        # end for (volume loop)
         # Now actually fill everything up
         for ii in xrange(len(volume_list)):
             ivol = volume_list[ii]
@@ -2496,7 +2510,7 @@ def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,def
     f.close()
 
     return
-
+ 
 # --------------------------------------------------------------
 #                Array Rotation and Flipping Functions
 # --------------------------------------------------------------

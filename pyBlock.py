@@ -91,7 +91,7 @@ class pyBlock():
         self.vols = []           # The list of volumes (pySpline volume)
         self.nVol = None         # The total number of volumessurfaces
         self.coef  = None        # The global (reduced) set of control pts
-
+        self.embeded_volumes = []
         # --------------------------------------------------------------
 
         if init_type == 'plot3d':
@@ -100,6 +100,8 @@ class pyBlock():
             self._readCGNS(*args,**kwargs)
         elif init_type == 'bvol':
             self._readBVol(*args,**kwargs)
+        elif init_type == 'create':
+            pass
         else:
             mpiPrint('init_type must be one of plot3d,cgns, or bvol.')
             sys.exit(0)
@@ -113,8 +115,10 @@ class pyBlock():
         '''Load a plot3D file and create the splines to go with each patch'''
         assert 'file_name' in kwargs,'file_name must be specified for plot3d'
         assert 'file_type' in kwargs,'file_type must be specified as binary or ascii'
+        assert 'order'     in kwargs,'order must be specified as \'f\' or \'c\''
         file_name = kwargs['file_name']        
         file_type = kwargs['file_type']
+        order     = kwargs['order']
         mpiPrint(' ',self.NO_PRINT)
         if file_type == 'ascii':
             mpiPrint('Loading ascii plot3D file: %s ...'%(file_name),self.NO_PRINT)
@@ -142,7 +146,7 @@ class pyBlock():
             cur_size = sizes[i,0]*sizes[i,1]*sizes[i,2]
             blocks.append(zeros([sizes[i,0],sizes[i,1],sizes[i,2],3]))
             for idim in xrange(3):
-                blocks[-1][:,:,:,idim] = readNValues(f,cur_size,'float',binary).reshape((sizes[i,0],sizes[i,1],sizes[i,2]),order='C')
+                blocks[-1][:,:,:,idim] = readNValues(f,cur_size,'float',binary).reshape((sizes[i,0],sizes[i,1],sizes[i,2]),order=order)
             # end for
         # end for
 
@@ -152,11 +156,12 @@ class pyBlock():
         vols = []
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
-        nVol =16
+
         for ivol in xrange(nVol):
-            vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,\
-                                            Nctlu=10,Nctlv=10,Nctlw=10,\
-                                            no_print=self.NO_PRINT))
+            vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,\
+                                            Nctlu=2,Nctlv=2,Nctlw=2,\
+                                            no_print=self.NO_PRINT,
+                                        recompute=False))
         self.vols = vols
         self.nVol = len(vols)
         
@@ -206,7 +211,7 @@ class pyBlock():
         mpiPrint(' ',self.NO_PRINT)
         mpiPrint('Global Fitting',self.NO_PRINT)
         nCtl = self.topo.nGlobal
-        mpiPrint(' -> Copying Topology')
+        mpiPrint(' -> Copying Topology',self.NO_PRINT)
         orig_topo = copy.deepcopy(self.topo)
         
         mpiPrint(' -> Creating global numbering',self.NO_PRINT)
@@ -216,7 +221,7 @@ class pyBlock():
         # end for
         
         # Get the Globaling number of the original data
-        orig_topo.calcGlobalNumbering(sizes) # OVERWRITING TOPO HERE
+        orig_topo.calcGlobalNumbering(sizes) 
         N = orig_topo.nGlobal
         mpiPrint(' -> Creating global point list',self.NO_PRINT)
         pts = zeros((N,3))
@@ -278,7 +283,7 @@ class pyBlock():
 
         mpiPrint(' -> Setting Volume Coefficients...',self.NO_PRINT)
         self._updateVolumeCoef()
-        #print self.vols[6].tu,self.vols[6].tv,self.vols[6].tw
+
 
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
@@ -301,13 +306,6 @@ class pyBlock():
             mpiPrint(' ',self.NO_PRINT)
             mpiPrint('Reading Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo = BlockTopology(file=file_name)
-            sizes = []
-            for ivol in xrange(self.nVol):
-                sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
-                              self.vols[ivol].Nctlw])
-            self.topo.calcGlobalNumbering(sizes)
-
-
             if self.init_type != 'bvol':
                 self._propagateKnotVectors()
             # end if
@@ -319,7 +317,12 @@ class pyBlock():
             mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo.writeConnectivity(file_name)
         # end if
-            
+
+        sizes = []
+        for ivol in xrange(self.nVol):
+            sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
+                              self.vols[ivol].Nctlw])
+        self.topo.calcGlobalNumbering(sizes)
         return 
 
     def _calcConnectivity(self,node_tol,edge_tol):
@@ -373,12 +376,7 @@ class pyBlock():
   
     def _propagateKnotVectors(self):
         ''' Propage the knot vectors to make consistent'''
-        # First get the number of design groups
-        # for ivol in xrange(self.nVol):
-#             print '------- %d -----------'%(ivol)
-#             for iedge in xrange(12):
-#                 print 'edge %d, dg: %d'%(iedge,self.topo.edges[self.topo.edge_link[ivol][iedge]].dg)
-
+     
         nDG = -1
         ncoef = []
         for i in xrange(self.topo.nEdge):
@@ -617,8 +615,6 @@ class pyBlock():
 # ----------------------------------------------------------------------
 #               Update Functions
 # ----------------------------------------------------------------------    
-
-  
     def _updateVolumeCoef(self):
         '''Copy the pyBlock list of control points back to the volumes'''
         for ii in xrange(len(self.coef)):
@@ -754,7 +750,6 @@ class pyBlock():
             Nctlu = self.vols[ivol].Nctlu
             Nctlv = self.vols[ivol].Nctlv
             Nctlw = self.vols[ivol].Nctlw
-            print 'Nctlu,Nctlv,Nctlw:',Nctlu,Nctlv,Nctlw
             for i in xrange(Nctlu-1):
                 for j in xrange(Nctlv-1):
                     for k in xrange(Nctlw-1):
@@ -840,27 +835,22 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def embedGeo(self,geo):
-        '''Embed a pyGeo object's surfaces into the volume'''
-        self.volID = []
-        self.u = []
-        self.v = []
-        self.w = []
+    def embedVolume(self,coordinates,volume_list=None):
+        '''Embed a set of coordinates into volume in volume_list'''
+        volID = []
+        u = []
+        v = []
+        w = []
         
-        for icoef in xrange(len(geo.coef)):
-            ivol,u0,v0,w0,D0 = self.projectPoint(geo.coef[icoef])
-            self.u.append(u0)
-            self.v.append(v0)
-            self.w.append(w0)
-            self.volID.append(ivol)
+        for i in xrange(len(coordinates)):
+            ivol,u0,v0,w0,D0 = self.projectPoint(coordinates[i])
+            u.append(u0)
+            v.append(v0)
+            w.append(w0)
+            volID.append(ivol)
         # end for
 
-    def updateGeo(self,geo):
-        for icoef in xrange(len(geo.coef)):
-            geo.coef[icoef] = self.vols[self.volID[icoef]](\
-                self.u[icoef],self.v[icoef],self.w[icoef])
-        #end for
-        geo._updateSurfaceCoef()
+        self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
 
 # ----------------------------------------------------------------------
@@ -872,9 +862,10 @@ class pyBlock():
         the volID,u,v,w,D of the point in volID or closest to it.
 
         This is a brute force search and is NOT efficient'''
-        
+
         u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
         volID = 0
+
         for ivol in xrange(1,self.nVol):
             u,v,w,D = self.vols[ivol].projectPoint(x0)
             if norm(D)<norm(D0):
@@ -885,7 +876,61 @@ class pyBlock():
                 volID = ivol
             # end if
         # end for
+
         return volID,u0,v0,w0,D0
-                
-    
-    
+
+    def _calcdPtdCoef(self,index):
+        '''Calculate the (fixed) volume derivative of a discrete set of ponits'''
+        volID = self.embeded_volumes[index].volID
+        u       = self.embeded_volumes[index].u
+        v       = self.embeded_volumes[index].v
+        w       = self.embeded_volumes[index].w
+        N       = self.embeded_volumes[index].N
+        mpiPrint('Calculating Volume %d Derivative for %d Points...'%(index,len(volID)),self.NO_PRINT)
+
+        # Get the maximum k (ku or kv for each surface)
+        kmax = 2
+        for ivol in xrange(self.nVol):
+            if self.vols[ivol].ku > kmax:
+                kmax = self.vols[ivol].ku
+            if self.vols[ivol].kv > kmax:
+                kmax = self.vols[ivol].kv
+            if self.vols[ivol].kw > kmax:
+                kmax = self.vols[ivol].kw
+            # end if
+        # end for
+        nnz = N*kmax*kmax*kmax
+        vals = zeros(nnz)
+        row_ptr = [0]
+        col_ind = zeros(nnz,'intc')
+        for i in xrange(N):
+            kinc = self.vols[volID[i]].ku*self.vols[volID[i]].kv*self.vols[volID[i]].kw
+            vals,col_ind = self.vols[volID[i]]._getBasisPt(\
+                u[i],v[i],w[i],vals,row_ptr[i],col_ind,self.topo.l_index[volID[i]])
+            row_ptr.append(row_ptr[-1] + kinc)
+
+        # Now we can crop out any additional values in col_ptr and vals
+        vals    = vals[:row_ptr[-1]]
+        col_ind = col_ind[:row_ptr[-1]]
+        # Now make a sparse matrix
+        self.embeded_volumes[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,len(self.coef)])
+        mpiPrint('  -> Finished Embeded Volume %d Derivative'%(index),self.NO_PRINT)
+        
+        return
+
+  
+class embeded_volume(object):
+
+    def __init__(self,volID,u,v,w):
+        '''A Container class for a set of embeded volume points
+        Requres:
+            voliD list of the volume iD's for the points
+            uvw: list of the uvw points
+            '''
+        self.volID = volID
+        self.u = u
+        self.v = v
+        self.w = w
+        self.N = len(self.u)
+        self.dPtdCoef = None
+        self.dPtdX    = None
