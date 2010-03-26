@@ -1668,7 +1668,9 @@ class BlockTopology(object):
     '''
     def __init__(self,corners=None,node_tol=1e-4,edge_tol=1e-4,file=None):
         '''Initialize the class with data required to compute the topology'''
-
+        self.g_index = None
+        self.l_index = None
+        self.nGlobal = None
         if file != None:
             self.readConnectivity(file)
             return
@@ -2145,17 +2147,17 @@ the list of volumes must be the same length'
             l_index.append(-1*ones((N,M,L),'intc'))
 
             # DO the 6 planes
-            for i in [0,N-1]:
-                for j in xrange(M):
-                    for k in xrange(L):
-                        addNode(i,j,k,N,M,L)
-            for i in xrange(N):
-                for j in [0,M-1]:
-                    for k in xrange(L):
-                        addNode(i,j,k,N,M,L)
             for i in xrange(N):
                 for j in xrange(M):
                     for k in [0,L-1]:
+                        addNode(i,j,k,N,M,L)
+            for i in xrange(N):
+                for j in [0,M-1]:
+                    for k in xrange(1,L-1):
+                        addNode(i,j,k,N,M,L)
+            for i in [0,N-1]:
+                for j in xrange(1,M-1):
+                    for k in xrange(1,L-1):
                         addNode(i,j,k,N,M,L)
             
         # end for (ii)
@@ -2178,98 +2180,44 @@ the list of volumes must be the same length'
                 # end for
             # end for
         # end if
-
         self.g_index = g_index
         self.l_index = l_index
         self.nGlobal = len(g_index)
+
         return 
 
+    def flatten_indices(self):
+        
+        '''Take g_index and l_index and "flatten" then into 1-D arrays
+        with pointers. This allows for us to use them in fortran easily'''
 
+        # NOTE: The resultof with will be ONE based numbering...for fortran
+        # We need to compute g_index,g_ptr,l_index and l_ptr
 
-     #    # Now we have all the g-indexes that POTENTIALLY have multiple
-#         # attachments. Now we will 'flatten' the list and create a
-#         # pointer array so we can find the data we need
+        assert self.g_index != None,'flatten_indicies can only be called after \
+calcGlobalNumbering'
 
-#         pointer = zeros((len(g_index)+1),'intc')
-#         ptr_counter = 0
-#         for i in xrange(len(g_index)):
-#             ptr_counter += len(g_index[i])*4
-#             pointer[i+1] = ptr_counter
-#         # end for
-#         # Dont' ask..it works since we only have 1 level deep...
-#         g_index = array([item for sublist in g_index for item in sublist])
-#         for ii in xrange(len(volume_list)):
-#             ivol = volume_list[ii]
-#             N = sizes[ii][0]
-#             M = sizes[ii][1]
-#             L = sizes[ii][2]
+        # Do the g_index firat
+        g_ptr = zeros((len(self.g_index)+1),'intc')
+        g_ptr[0] = 1# One based HERE
+        for i in xrange(len(self.g_index)):
+            g_ptr[i+1] = g_ptr[i] + len(self.g_index[i])*4
+        # end for
 
-#             # L-index values
-#             Nadd = (N-2)*(M-2)*(L-2)
-#             l_index[ivol][1:N-1,1:M-1,1:L-1] = arange(counter,counter+Nadd).reshape((N-2,M-2,L-2))
-#             counter += Nadd
-#             # G-index values
-#             # We must deal with both the pointer here and g_index
+        # Dont' ask..it works since we only have 1 level deep...
+        g_index = array([item for sublist in self.g_index for item in sublist]).flatten()
 
-#             pointer = append(pointer,arange(pointer[-1],pointer[-1]+Nadd*4,4))
-#             add = zeros((Nadd,4),'intc')
-#             add[:,0] = ivol
-#             temp = mgrid[1:N-1,1:M-1,1:L-1]
-#             add[:,1] = temp[0,:,:,:].reshape(Nadd)
-#             add[:,2] = temp[1,:,:,:].reshape(Nadd)
-#             add[:,3] = temp[2,:,:,:].reshape(Nadd)
+        # Do the l_index Next
+        l_index = []
+        l_ptr = [1]
+        l_sizes = zeros((len(self.l_index),3),'intc')
+        for i in xrange(len(self.l_index)):
+            l_index.extend(self.l_index[i].flatten())
+            l_ptr.append(l_ptr[-1] + self.l_index[i].size)
+            l_sizes[i] = [self.l_index[i].shape[0],self.l_index[i].shape[1],self.l_index[i].shape[2]]
+        # end for
 
-#             g_index = append(g_index,add)
-
-       
-
-#     def makeSizesConsistent(self,sizes,order):
-#         '''Take a given list of [Nu x Nv] for each surface and return
-#         the sizes list such that all sizes are consistent
-
-#         prescedence is given according to the order list: 0 is highest
-#         prescedence, 1 is next highest ect.
-
-#         '''
-
-#         # First determine how many "order" loops we have
-#         nloops = max(order)+1
-#         edge_number = -1*ones(self.nDG,'intc')
-#         for iedge in xrange(self.nEdge):
-#             self.edges[iedge].Nctl = -1
-#         # end for
-    
-#         for iloop in xrange(nloops):
-#             for iface in xrange(self.nFace):
-#                 if order[iface] == iloop: # Set this edge
-#                     for iedge in xrange(4):
-#                         if edge_number[self.edges[self.edge_link[iface][iedge]].dg] == -1:
-#                             if iedge in [0,1]:
-#                                 edge_number[self.edges[self.edge_link[iface][iedge]].dg] = sizes[iface][0]
-#                             else:
-#                                 edge_number[self.edges[self.edge_link[iface][iedge]].dg] = sizes[iface][1]
-#                             # end if
-#                         # end if
-#                     # end if
-#                 # end for
-#             # end for
-#         # end for
-
-#         # Now repoluative the sizes:
-#         for iface in xrange(self.nFace):
-#             for i in [0,1]:
-#                 sizes[iface][i] = edge_number[self.edges[self.edge_link[iface][i*2]].dg]
-#             # end for
-#         # end for
-
-#         # And return the number of elements on each actual edge
-#         nEdge = []
-#         for iedge in xrange(self.nEdge):
-#             self.edges[iedge].Nctl = edge_number[self.edges[iedge].dg]
-#             nEdge.append(edge_number[self.edges[iedge].dg])
-#         # end if
-#         return sizes,nEdge
-
+        return g_index,g_ptr,array(l_index),array(l_ptr),l_sizes
         
 class edge(object):
     '''A class for edge objects'''
@@ -2286,7 +2234,6 @@ class edge(object):
     def write_info(self,i,handle):
         handle.write('  %5d        | %5d | %5d | %5d | %5d | %5d |  %5d |  %5d |\n'\
                      %(i,self.n1,self.n2,self.cont,self.degen,self.intersect,self.dg,self.Nctl))
-
 
 def volume_hexa(points):
     # return the volume of a hexahedra with points given in points (8,3)
@@ -2317,7 +2264,6 @@ def volpym(p,a,b,c,d):
         ((a[0] - c[0])*(b[1] - d[1]) - (a[1] - c[1])*(b[0] - d[0]))
     
     return volpym
-
 
 def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,default_size = 0.1):
 
