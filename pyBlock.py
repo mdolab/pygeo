@@ -159,7 +159,7 @@ class pyBlock():
 
         for ivol in xrange(nVol):
             vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,\
-                                            Nctlu=2,Nctlv=2,Nctlw=2,\
+                                            Nctlu=5,Nctlv=5,Nctlw=5,\
                                             no_print=self.NO_PRINT,
                                         recompute=False))
         self.vols = vols
@@ -309,7 +309,6 @@ class pyBlock():
             if self.init_type != 'bvol':
                 self._propagateKnotVectors()
             # end if
-
         else:
             mpiPrint(' ',self.NO_PRINT)
             self._calcConnectivity(node_tol,edge_tol)
@@ -343,26 +342,6 @@ class pyBlock():
         self.topo.calcGlobalNumbering(sizes)
 
 
-#     def _setConnectivity(self):
-#         # Sets the numbering based on the number of control points on each edge
-       
-#         self.coef = []
-#         # Now Fill up the self.coef list:
-#         for ii in xrange(len(self.topo.g_index)):
-#             #pdb.set_trace()
-#             cur_coef = array([0,0,0],'f')
-#             for jj in xrange(len(self.topo.g_index[ii])):
-#                 ivol = self.topo.g_index[ii][jj][0]
-#                 i = self.topo.g_index[ii][jj][1]
-#                 j = self.topo.g_index[ii][jj][2]
-#                 k = self.topo.g_index[ii][jj][3]
-#                 #self.coef.append(self.vols[ivol].coef[i,j,k])
-#                 cur_coef+= self.vols[ivol].coef[i,j,k]
-#             # end for
-#             self.coef.append(cur_coef/len(self.topo.g_index[ii]))
-#         # end for
-
-
     def printConnectivity(self):
         '''
         Print the connectivity to the screen
@@ -386,7 +365,7 @@ class pyBlock():
             # end if
         # end for
         nDG += 1
-            
+        
     	for ivol in xrange(self.nVol):
             dg_u = self.topo.edges[self.topo.edge_link[ivol][0]].dg
             dg_v = self.topo.edges[self.topo.edge_link[ivol][2]].dg
@@ -485,7 +464,9 @@ class pyBlock():
                         counter += 1
                     # end if
                 # end for
+                self.vols[ivol]._setCoefSize()
             # end for
+        # end for (dg loop)
 
         return    
 
