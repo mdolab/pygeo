@@ -19,12 +19,15 @@ exec(import_modules('pyAero_problem','pyAero_flow','pyAero_reference','pyAero_ge
 exec(import_modules('pySUMB','pyDummyMapping'))
 
 print 'Warp Test'
-# grid = pyBlock.pyBlock('plot3d',file_name='warp_test.xyz',file_type='ascii',order='f')
-# grid.doConnectivity('warp_test.con')
-# grid.fitGlobal()
-# grid.writeBvol('warp_test.bvol',binary=True)
-# grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
 
+grid = pyBlock.pyBlock('cgns',file_name='warp_test.cgns')
+#grid = pyBlock.pyBlock('plot3d',file_name='warp_test.xyz',file_type='ascii',order='f')
+grid.doConnectivity('warp_test.con')
+grid.fitGlobal()
+grid.writeBvol('warp_test.bvol',binary=True)
+grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
+
+sys.exit(0)
 grid = pyBlock.pyBlock('bvol',file_name='warp_test.bvol',file_type='binary')
 grid.doConnectivity('warp_test.con')
 g_index,gptr,l_index,lptr,l_sizes = grid.topo.flatten_indices()

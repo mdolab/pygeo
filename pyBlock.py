@@ -200,11 +200,42 @@ class pyBlock():
                     kv=inits[4],kw=inits[5],tu=tu,tv=tv,tw=tw,coef=coef))
         # end for
             
-
     def _readCGNS(self,*args,**kwargs):
         '''Load a CGNS file and create the spline to go with each patch'''
         assert 'file_name' in kwargs,'file_name must be specified for CGNS'
         file_name = kwargs['file_name']
+        import pyspline
+
+        mpiPrint(' ',self.NO_PRINT)
+        mpiPrint('Loading CGNS file: %s ...'%(file_name),self.NO_PRINT)
+        cg,nzones = pyspline.open_cgns(file_name)
+        mpiPrint(' -> nVol = %d'%(nzones),self.NO_PRINT)
+
+        blocks = []
+        BCs = []
+        for i in xrange(nzones):
+            zoneshape = pyspline.read_cgns_zone_shape(cg,i+1)
+            X,faceBCs = pyspline.read_cgns_zone(cg,i+1,zoneshape[0],zoneshape[1],zoneshape[2])
+            blocks.append(X)
+            BCs.append(faceBCs)
+        # end for
+
+        pyspline.close_cgns(cg)
+
+        # Now create a list of spline volume objects:
+        vols = []
+        # Note This doesn't actually fit the volumes...just produces
+        # the parameterization and knot vectors
+
+        for ivol in xrange(nzones):
+            vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,
+                                        Nctlu=5,Nctlv=5,Nctlw=5,
+                                        no_print=self.NO_PRINT,
+                                        recompute=False,faceBCs=BCs[ivol])
+        self.vols = vols
+        self.nVol = len(vols)
+    
+        return
 
 
     def fitGlobal(self):
