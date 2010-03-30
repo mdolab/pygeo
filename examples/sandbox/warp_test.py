@@ -21,18 +21,17 @@ exec(import_modules('pySUMB','pyDummyMapping'))
 print 'Warp Test'
 
 grid = pyBlock.pyBlock('cgns',file_name='warp_test.cgns')
-#grid = pyBlock.pyBlock('plot3d',file_name='warp_test.xyz',file_type='ascii',order='f')
 grid.doConnectivity('warp_test.con')
+nFree,nSurface,nBoundary = grid.reOrderIndices()
 grid.fitGlobal()
 grid.writeBvol('warp_test.bvol',binary=True)
 grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
 
-sys.exit(0)
-grid = pyBlock.pyBlock('bvol',file_name='warp_test.bvol',file_type='binary')
-grid.doConnectivity('warp_test.con')
+# grid = pyBlock.pyBlock('bvol',file_name='warp_test.bvol',file_type='binary')
+# grid.doConnectivity('warp_test.con')
+
 g_index,gptr,l_index,lptr,l_sizes = grid.topo.flatten_indices()
 mpiPrint('Number of Unique Nodes in Mesh: %d'%(len(grid.topo.g_index)))
-#grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
 
 print ' '
 print 'Generating Surface Geometry'
@@ -105,6 +104,6 @@ surface.writeTecplot('warp_test_surf_update.dat',coef=False,tecio=True,direction
 # Now do the solid warp
 timeA = time.time()
 solver.interface.Mesh.SetGlobalSurfaceCoordinates(surface.getSurfacePoints(0).transpose())
-solver.interface.Mesh.warpMeshSolid(g_index,gptr,l_index,lptr,l_sizes)
+solver.interface.Mesh.warpMeshSolid(g_index,gptr,l_index,lptr,l_sizes,nFree,nSurface,nBoundary)
 print 'Time is:',time.time()-timeA
 
