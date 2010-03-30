@@ -2199,7 +2199,7 @@ calcGlobalNumbering'
 
         # Do the g_index firat
         g_ptr = zeros((len(self.g_index)+1),'intc')
-        g_ptr[0] = 1# One based HERE
+        g_ptr[0] = 0# Zerobased Here
         for i in xrange(len(self.g_index)):
             g_ptr[i+1] = g_ptr[i] + len(self.g_index[i])*4
         # end for
@@ -2209,7 +2209,7 @@ calcGlobalNumbering'
 
         # Do the l_index Next
         l_index = []
-        l_ptr = [1]
+        l_ptr = [0] # -> Zero Based Here
         l_sizes = zeros((len(self.l_index),3),'intc')
         for i in xrange(len(self.l_index)):
             l_index.extend(self.l_index[i].flatten())
