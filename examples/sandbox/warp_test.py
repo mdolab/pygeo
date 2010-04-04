@@ -79,15 +79,15 @@ surface.attachSurface(cfd_surface_points[:,:,0])
 #surface.coef[surface.topo.l_index[1][-1,:]] += [-.05,.002525,0]
 #surface.coef[surface.topo.l_index[0][-1,:]] += [.05,.000062525,0]
 
-# # Pull out LE
+# # # Pull out LE
 for j in xrange(surface.surfs[4].Nctlv):
-    surface.coef[surface.topo.l_index[4][1,j]] += [-.05,0,0]
-    surface.coef[surface.topo.l_index[4][2,j]] += [-.05,0,0]
+    surface.coef[surface.topo.l_index[4][1,j]] += [-.03,0,0]
+    surface.coef[surface.topo.l_index[4][2,j]] += [-.03,0,0]
 
 # # Shrink TE
 for i in xrange(surface.surfs[2].Nctlu):
     for j in xrange(surface.surfs[2].Nctlv):
-        surface.coef[surface.topo.l_index[2][i,j]][1] *= .175 
+        surface.coef[surface.topo.l_index[2][i,j]][1] *= .1 
 
 # # Pull Up Upper surface
 for j in xrange(surface.surfs[0].Nctlv):
@@ -99,6 +99,10 @@ for j in xrange(surface.surfs[3].Nctlv):
     surface.coef[surface.topo.l_index[3][1,j]] -= [0,.09,0]
     surface.coef[surface.topo.l_index[3][2,j]] -= [0,.03,0]
 
+# Displace the whole thing up
+surface.coef[:] += [-.030,.03,0]
+
+
 surface._updateSurfaceCoef()
 surface.writeTecplot('warp_test_surf_update.dat',coef=False,tecio=True,directions=True)
 
@@ -108,6 +112,7 @@ surface.writeTecplot('warp_test_surf_update.dat',coef=False,tecio=True,direction
 timeA = time.time()
 solver.interface.Mesh.SetGlobalSurfaceCoordinates(surface.getSurfacePoints(0).transpose())
 solver.interface.Mesh.warpMeshSolid(g_index,gptr,l_index,lptr,l_sizes,nFree,nSurface,nBoundary)
+#solver.interface.Mesh.warpMesh()
 solver.interface.Mesh.WriteMeshFile('warp_test_new.cgns')
 
 print 'Time is:',time.time()-timeA
