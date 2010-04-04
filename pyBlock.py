@@ -229,7 +229,7 @@ class pyBlock():
 
         for ivol in xrange(nzones):
             vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,
-                                        Nctlu=4,Nctlv=4,Nctlw=4,
+                                        Nctlu=2,Nctlv=2,Nctlw=2,
                                         no_print=self.NO_PRINT,
                                         recompute=False,faceBCs=BCs[ivol]))
         self.vols = vols
