@@ -18,27 +18,15 @@ exec(import_modules('pyGeo','pyBlock','pySpline','geo_utils','mpi4py'))
 exec(import_modules('pyAero_problem','pyAero_flow','pyAero_reference','pyAero_geometry'))
 exec(import_modules('pySUMB','pyDummyMapping'))
 
-print 'Warp Test'
+mpiPrint('------- Warp Test Example ---------')
 
-grid = pyBlock.pyBlock('cgns',file_name='warp_test.cgns')
-grid.doConnectivity('warp_test.con')
-nFree,nSurface,nBoundary = grid.reOrderIndices()
-grid.fitGlobal()
-grid.writeBvol('warp_test.bvol',binary=True)
-grid.writeTecplot('warp_test.dat',tecio=True,orig=True)
-
-g_index,gptr,l_index,lptr,l_sizes = grid.topo.flatten_indices()
-mpiPrint('Number of Unique Nodes in Mesh: %d'%(len(grid.topo.g_index)))
-
-print ' '
-print 'Generating Surface Geometry'
+mpiPrint('\nGenerating Surface Geometry')
 surface = pyGeo.pyGeo('plot3d',file_name='warp_test_surf.xyz',file_type='ascii',order='f')
 surface.doConnectivity('warp_test_surf.con')
 surface.fitGlobal()
 surface.writeTecplot('warp_test_surf.dat',tecio=True,coef=True,orig=False,surf_labels=True,directions=True)
 
-#surface.addFFD('auto',nx=2,ny=3,nz=10)
-#surface.FFD.writeTecplot('ffd.dat')
+mpiPrint('\nInitializating Flow Problem')
 
 flow = Flow(name='Base Case',mach=0.5,alpha=2.0,beta=0.0,liftIndex=2)
 ref = Reference('Baseline Reference',1.0,1.0,1.0)
@@ -69,10 +57,12 @@ solver_options={'reinitialize':True,\
                 'ILU Fill Levels': 2,\
                 'ASM Overlap' : 5,\
                 'TS Stability': 'no'}
+
 solver(test_case,niterations=1,grid_file='warp_test',solver_options=solver_options)
 
 cfd_surface_points = solver.interface.Mesh.GetGlobalSurfaceCoordinates()
 surface.attachSurface(cfd_surface_points[:,:,0])
+
 
 #--------------  Do an ad-hoc modification --------------
 #surface.coef[surface.topo.l_index[2][:,:]] += [.400,.200,0]
@@ -111,8 +101,12 @@ surface.writeTecplot('warp_test_surf_update.dat',coef=False,tecio=True,direction
 # Now do the solid warp
 timeA = time.time()
 solver.interface.Mesh.SetGlobalSurfaceCoordinates(surface.getSurfacePoints(0).transpose())
-solver.interface.Mesh.warpMeshSolid(g_index,gptr,l_index,lptr,l_sizes,nFree,nSurface,nBoundary)
+#solver.interface.Mesh.warpMeshSolid(file='warp_test_FEA.cgns')
+solver.interface.Mesh.warpMeshSolid(n=3)
+#solver.interface.Mesh.warpMeshSolid(n=3)
 #solver.interface.Mesh.warpMesh()
+
+
 solver.interface.Mesh.WriteMeshFile('warp_test_new.cgns')
 
 print 'Time is:',time.time()-timeA
