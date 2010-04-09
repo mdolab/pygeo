@@ -1266,10 +1266,10 @@ missing nodes')
     def calcGlobalNumbering(self,sizes,surface_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
         for i in xrange(len(sizes)):
-            self.edges[self.edge_link[i][0]].Nctl = sizes[i][0]
-            self.edges[self.edge_link[i][1]].Nctl = sizes[i][0]
-            self.edges[self.edge_link[i][2]].Nctl = sizes[i][1]
-            self.edges[self.edge_link[i][3]].Nctl = sizes[i][1]
+            self.edges[self.edge_link[i][0]].N = sizes[i][0]
+            self.edges[self.edge_link[i][1]].N = sizes[i][0]
+            self.edges[self.edge_link[i][2]].N = sizes[i][1]
+            self.edges[self.edge_link[i][3]].N = sizes[i][1]
 
         if surface_list == None:
             surface_list = range(0,self.nFace)
@@ -1379,7 +1379,7 @@ the list of surfaces must be the same length'
         nloops = max(order)+1
         edge_number = -1*ones(self.nDG,'intc')
         for iedge in xrange(self.nEdge):
-            self.edges[iedge].Nctl = -1
+            self.edges[iedge].N = -1
         # end for
     
         for iloop in xrange(nloops):
@@ -1408,7 +1408,7 @@ the list of surfaces must be the same length'
         # And return the number of elements on each actual edge
         nEdge = []
         for iedge in xrange(self.nEdge):
-            self.edges[iedge].Nctl = edge_number[self.edges[iedge].dg]
+            self.edges[iedge].N = edge_number[self.edges[iedge].dg]
             nEdge.append(edge_number[self.edges[iedge].dg])
         # end if
         return sizes,nEdge
@@ -1418,7 +1418,7 @@ the list of surfaces must be the same length'
 
         mpiPrint('------------------------------------------------------------------------')
         mpiPrint('%3d   %3d'%(self.nEdge,self.nFace))
-        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |')
+        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,sys.stdout)
         # end for
@@ -1437,7 +1437,7 @@ the list of surfaces must be the same length'
         '''Write the full edge connectivity to a file file_name'''
         f = open(file_name,'w')
         f.write('%3d %3d\n'%(self.nEdge,self.nFace))
-        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |\n')
+        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n')
         for i in xrange(self.nEdge):
             self.edges[i].write_info(i,f)
         # end for
@@ -1628,8 +1628,6 @@ the list of surfaces must be the same length'
         # end for
 
         return surfaces
-
-
 
 class BlockTopology(object):
     '''
@@ -1843,8 +1841,13 @@ class BlockTopology(object):
         '''Print the Edge Connectivity to the screen'''
 
         mpiPrint('------------------------------------------------------------------------')
-        mpiPrint('%4d  %4d  %4d   %4d'%(self.nNode,self.nEdge,self.nFace,self.nVol))
-        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |')
+        mpiPrint('%4d  %4d  %4d  %4d  %4d '%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
+        N_list = self._getDGList()
+        for i in xrange(self.nDG):
+            mpiPrint('%5d        | %5d       '%(i,N_list[i]))
+        # end for
+
+        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,sys.stdout)
         # end for
@@ -1886,8 +1889,15 @@ class BlockTopology(object):
     def writeConnectivity(self,file_name):
         '''Write the full edge connectivity to a file file_name'''
         f = open(file_name,'w')
-        f.write('%4d  %4d  %4d   %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol))
-        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  Nctl  |\n')
+        f.write('%4d  %4d  %4d   %4d  %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
+        f.write('Design Group |  Number\n')
+        # Write out the design groups and their number parameter
+        N_list = self._getDGList()
+        for i in xrange(self.nDG):
+            f.write('%5d        | %5d       \n'%(i,N_list[i]))
+        # end for
+
+        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,f)
         # end for
@@ -1937,17 +1947,26 @@ class BlockTopology(object):
         self.nEdge = int(aux[1])
         self.nFace = int(aux[2])
         self.nVol  = int(aux[3])
-
+        self.nDG   = int(aux[4])
         self.edges = []
         
         f.readline() # This is the header line so ignore
+
+        N_list = zeros(self.nDG,'intc')
+        for i in xrange(self.nDG):
+            aux = string.split(f.readline(),'|')
+            N_list[i] = int(aux[1])
+        # end for
+
+        f.readline() # Second Header line
+
         for i in xrange(self.nEdge):
             aux = string.split(f.readline(),'|')
             self.edges.append(edge(int(aux[1]),int(aux[2]),int(aux[3]),
                                        int(aux[4]),int(aux[5]),int(aux[6]),int(aux[7])))
         # end for
 
-        f.readline() # This the second header line so ignore
+        f.readline() # This the third header line so ignore
 
         self.face_link = zeros((self.nVol,6),'intc')
         self.face_dir  = zeros((self.nVol,6),'intc')
@@ -1957,7 +1976,7 @@ class BlockTopology(object):
             self.face_dir[ivol]  = [int(aux[i]) for i in xrange(7,13)]
         # end for
 
-        f.readline() # This is the third header line so ignore
+        f.readline() # This is the fourth header line so ignore
 
         self.edge_link = zeros((self.nVol,12),'intc')
         self.node_link = zeros((self.nVol,8),'intc')
@@ -1974,35 +1993,42 @@ class BlockTopology(object):
 
             # end for
         # end for
-                
-   
-        # Get the number of design groups
-        dgs = []
+      
+        # Set the N_list to the edges
         for iedge in xrange(self.nEdge):
-            dgs.append(self.edges[iedge].dg)
-        # end for
-        self.nDG = max(dgs)+ 1
+            self.edges[iedge].N = N_list[self.edges[iedge].dg]
+            
         return
 
-    def calcGlobalNumbering(self,sizes,volume_list=None):
+    def calcGlobalNumbering(self,sizes=None,volume_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
 
-        for i in xrange(len(sizes)):
-            self.edges[self.edge_link[i][0]].Nctl = sizes[i][0]
-            self.edges[self.edge_link[i][1]].Nctl = sizes[i][0]
-            self.edges[self.edge_link[i][4]].Nctl = sizes[i][0]
-            self.edges[self.edge_link[i][5]].Nctl = sizes[i][0]
+        if sizes != None:
+            for i in xrange(len(sizes)):
+                self.edges[self.edge_link[i][0]].N = sizes[i][0]
+                self.edges[self.edge_link[i][1]].N = sizes[i][0]
+                self.edges[self.edge_link[i][4]].N = sizes[i][0]
+                self.edges[self.edge_link[i][5]].N = sizes[i][0]
 
-            self.edges[self.edge_link[i][2]].Nctl = sizes[i][1]
-            self.edges[self.edge_link[i][3]].Nctl = sizes[i][1]
-            self.edges[self.edge_link[i][6]].Nctl = sizes[i][1]
-            self.edges[self.edge_link[i][7]].Nctl = sizes[i][1]
+                self.edges[self.edge_link[i][2]].N = sizes[i][1]
+                self.edges[self.edge_link[i][3]].N = sizes[i][1]
+                self.edges[self.edge_link[i][6]].N = sizes[i][1]
+                self.edges[self.edge_link[i][7]].N = sizes[i][1]
 
-            self.edges[self.edge_link[i][8]].Nctl = sizes[i][2]
-            self.edges[self.edge_link[i][9]].Nctl = sizes[i][2]
-            self.edges[self.edge_link[i][10]].Nctl = sizes[i][2]
-            self.edges[self.edge_link[i][11]].Nctl = sizes[i][2]
-            
+                self.edges[self.edge_link[i][8]].N = sizes[i][2]
+                self.edges[self.edge_link[i][9]].N = sizes[i][2]
+                self.edges[self.edge_link[i][10]].N = sizes[i][2]
+                self.edges[self.edge_link[i][11]].N = sizes[i][2]
+            # end for
+        else: # N is already set in the edge objects, use them
+            sizes = zeros((self.nVol,3),'intc')
+            for ivol in xrange(self.nVol):
+                sizes[ivol][0] = self.edges[self.edge_link[ivol][0]].N
+                sizes[ivol][1] = self.edges[self.edge_link[ivol][2]].N
+                sizes[ivol][2] = self.edges[self.edge_link[ivol][8]].N
+            # end for
+        # end if
+
         if volume_list == None:
             volume_list = range(0,self.nVol)
         # end if
@@ -2186,13 +2212,26 @@ the list of volumes must be the same length'
 
         return 
 
+    def _getDGList(self):
+        '''After calcGlobalNumbering is called with the size
+        parameters, we can now produce a list of length ndg with the
+        each entry coorsponing to the number N associated with that DG'''
+
+        # This can be run in linear time...just loop over each edge
+        # and add to dg list
+        N_list = zeros(self.nDG,'intc')
+        for iedge in xrange(self.nEdge):
+            N_list[self.edges[iedge].dg] = self.edges[iedge].N
+        # end for
+            
+        return N_list
+
+
+
     def flatten_indices(self):
         
         '''Take g_index and l_index and "flatten" then into 1-D arrays
         with pointers. This allows for us to use them in fortran easily'''
-
-        # NOTE: The resultof with will be ONE based numbering...for fortran
-        # We need to compute g_index,g_ptr,l_index and l_ptr
 
         assert self.g_index != None,'flatten_indicies can only be called after \
 calcGlobalNumbering'
@@ -2222,18 +2261,18 @@ calcGlobalNumbering'
 class edge(object):
     '''A class for edge objects'''
 
-    def __init__(self,n1,n2,cont,degen,intersect,dg,Nctl):
+    def __init__(self,n1,n2,cont,degen,intersect,dg,N):
         self.n1        = n1        # Integer for node 1
         self.n2        = n2        # Integer for node 2
         self.cont      = cont      # Integer: 0 for c0 continuity, 1 for c1 continuity
         self.degen     = degen     # Integer: 1 for degenerate, 0 otherwise
         self.intersect = intersect # Integer: 1 for an intersected edge, 0 otherwise
         self.dg        = dg        # Design Group index
-        self.Nctl      = Nctl      # Number of control points for this edge
+        self.N         = N         # Number of control points for this edge
 
     def write_info(self,i,handle):
         handle.write('  %5d        | %5d | %5d | %5d | %5d | %5d |  %5d |  %5d |\n'\
-                     %(i,self.n1,self.n2,self.cont,self.degen,self.intersect,self.dg,self.Nctl))
+                     %(i,self.n1,self.n2,self.cont,self.degen,self.intersect,self.dg,self.N))
 
 def volume_hexa(points):
     # return the volume of a hexahedra with points given in points (8,3)

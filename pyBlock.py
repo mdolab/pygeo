@@ -313,6 +313,9 @@ class pyBlock():
 
         mpiPrint(' -> Setting Volume Coefficients...',self.NO_PRINT)
         self._updateVolumeCoef()
+        for ivol in xrange(self.nVol):
+            self.vols[ivol]._setFaceSurfaces()
+            self.vols[ivol]._setEdgeCurves()
 
 
 # ----------------------------------------------------------------------
@@ -391,7 +394,7 @@ class pyBlock():
         for i in xrange(self.topo.nEdge):
             if self.topo.edges[i].dg > nDG:
                 nDG = self.topo.edges[i].dg
-                ncoef.append(self.topo.edges[i].Nctl)
+                ncoef.append(self.topo.edges[i].N)
             # end if
         # end for
         nDG += 1
@@ -502,7 +505,7 @@ class pyBlock():
 # ----------------------------------------------------------------------    
 
     def writeTecplot(self,file_name,vols=True,coef=True,orig=False,
-                     vol_labels=False,tecio=False):
+                     vol_labels=False,edge_labels=False,tecio=False):
 
         '''Write the pyGeo Object to Tecplot dat file
         Required:
@@ -559,6 +562,28 @@ class pyBlock():
             # end for 
             f2.close()
         # end if 
+        if edge_labels == True:
+            # Split the filename off
+            (dirName,fileName) = os.path.split(file_name)
+            (fileBaseName, fileExtension)=os.path.splitext(fileName)
+            label_filename = dirName+'./'+fileBaseName+'.edge_labels.dat'
+            f2 = open(label_filename,'w')
+            for ivol in xrange(self.nVol):
+                for iedge in xrange(12):
+                    pt = self.vols[ivol].edge_curves[iedge](0.5)
+                    edge_id = self.topo.edge_link[ivol][iedge]
+                    text_string = 'TEXT CS=GRID3D X=%f,Y=%f,Z=%f,T=\"E%d\"\n'%(pt[0],pt[1],pt[2],edge_id)
+                    f2.write('%s'%(text_string))
+                # end for
+            # end for 
+            f2.close()
+        # end if
+
+
+
+
+
+
         pySpline.closeTecplot(f)
         return
 
