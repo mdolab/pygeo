@@ -802,7 +802,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         for i in xrange(self.topo.nEdge):
             if self.topo.edges[i].dg > nDG:
                 nDG = self.topo.edges[i].dg
-                ncoef.append(self.topo.edges[i].Nctl)
+                ncoef.append(self.topo.edges[i].N)
             # end if
         # end for
 
