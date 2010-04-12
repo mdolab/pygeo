@@ -840,6 +840,21 @@ def parallelEdgeVol(edge):
     if edge == 11: return [8,9,10]
 
 
+# Volume Face/edge functions
+def nodesFromFace(face):
+    if face == 0:
+        return [0,1,2,3]
+    elif face == 1:
+        return [4,5,6,7]
+    elif face == 2:
+        return [0,2,4,6]
+    elif face == 3:
+        return [1,3,5,7]
+    elif face == 4:
+        return [0,1,4,5]
+    elif face == 5:
+        return [2,3,6,7]
+
 
 # --------------------------------------------------------------
 #                  Knot Vector Manipulation Functions
