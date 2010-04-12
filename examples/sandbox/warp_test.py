@@ -109,8 +109,8 @@ surface.writeTecplot('block_update.dat',coef=False,tecio=True,directions=True)
 
 solver.interface.Mesh.SetGlobalSurfaceCoordinates(surface.getSurfacePoints(0).transpose(),True)
 timeA = time.time()
-solver.interface.Mesh.warpMeshSolid(topo='warp_test_FEA.con')
-#solver.interface.Mesh.warpMeshSolid(n=2)
+#solver.interface.Mesh.warpMeshSolid(topo='warp_test_FEA.con')
+solver.interface.Mesh.warpMeshSolid(n=2)
 print 'Time is:',time.time()-timeA
 #solver.interface.Mesh.warpMesh()
 
