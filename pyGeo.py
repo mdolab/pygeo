@@ -466,8 +466,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
             self.surfs[i].Nu = 3
             self.surfs[i].Nv = 3
         # end for
-        self._calcEdgeConnectivity(1e-6,1e-6)
-        self._setEdgeConnectivity()
+
+        self._calcConnectivity(1e-6,1e-6)
         self.topo.writeConnectivity(con_file)
 
         sizes = []

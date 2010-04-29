@@ -1375,8 +1375,43 @@ the list of surfaces must be the same length'
             # end for (i)
         # end for (ii)
 
+        # Reorder the indices with a greedy scheme
+
+        new_indices = zeros(len(g_index),'intc')
+        new_indices[:] = -1
+        new_g_index = [[] for i in xrange(len(g_index))]
+        counter = 0
+
+        # Re-order the l_index
+        for ii in xrange(len(surface_list)):
+            isurf = surface_list[ii]
+            N = sizes[ii][0]
+            M = sizes[ii][1]
+            for i in xrange(N):
+                for j in xrange(M):
+                    if new_indices[l_index[ii][i,j]] == -1:
+                        new_indices[l_index[ii][i,j]] = counter
+                        l_index[ii][i,j] = counter 
+                        counter += 1
+                    else:
+                        l_index[ii][i,j] = new_indices[l_index[ii][i,j]]
+                    # end if
+                # end for
+            # end for
+        # end for
+       
+        # Re-order the g_index
+        for ii in xrange(len(g_index)):
+            isurf = g_index[ii][0][0]
+            i     = g_index[ii][0][1]
+            j     = g_index[ii][0][2]
+            pt = l_index[isurf][i,j]
+            new_g_index[pt] = g_index[ii]
+            # end for
+        # end for
+            
         self.nGlobal = len(g_index)
-        self.g_index = g_index
+        self.g_index = new_g_index
         self.l_index = l_index
         
         return 
@@ -2221,9 +2256,49 @@ the list of volumes must be the same length'
                 # end for
             # end for
         # end if
-        self.g_index = g_index
-        self.l_index = l_index
+
+        # Reorder the indices with a greedy scheme
+            
+        new_indices = zeros(len(g_index),'intc')
+        new_indices[:] = -1
+        new_g_index = [[] for i in xrange(len(g_index))]
+        counter = 0
+
+        # Re-order the l_index
+        for ii in xrange(len(volume_list)):
+            ivol = volume_list[ii]
+            N = sizes[ii][0]
+            M = sizes[ii][1]
+            L = sizes[ii][2]
+            for i in xrange(N):
+                for j in xrange(M):
+                    for k in xrange(L):
+                        if new_indices[l_index[ii][i,j,k]] == -1:
+                            new_indices[l_index[ii][i,j,k]] = counter
+                            l_index[ii][i,j,k] = counter 
+                            counter += 1
+                        else:
+                            l_index[ii][i,j,k] = new_indices[l_index[ii][i,j,k]]
+                        # end if
+                    # end for
+                # end for
+            # end for
+        # end for
+       
+        # Re-order the g_index
+        for ii in xrange(len(g_index)):
+            ivol  = g_index[ii][0][0]
+            i     = g_index[ii][0][1]
+            j     = g_index[ii][0][2]
+            k     = g_index[ii][0][3]
+            pt = l_index[ivol][i,j,k]
+            new_g_index[pt] = g_index[ii]
+            # end for
+        # end for
+            
         self.nGlobal = len(g_index)
+        self.g_index = new_g_index
+        self.l_index = l_index
 
         return 
 

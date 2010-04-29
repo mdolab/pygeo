@@ -661,6 +661,27 @@ class pyBlock():
         # end for
         return
 
+    def getVolumePoints(self,index):
+        '''
+        Return all the volume points for an embedded volume with index index
+        Required:
+            index: the index for the embeded volume
+        Returns:
+            coordinates: an aray of the volume points
+            '''
+
+        volID   = self.embeded_volumes[index].volID
+        u       = self.embeded_volumes[index].u
+        v       = self.embeded_volumes[index].v
+        w       = self.embeded_volumes[index].w
+        N       = self.embeded_volumes[index].N
+        coordinates = zeros((N,3))
+        for i in xrange(N):
+            coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
+
+        return coordinates
+
+
 # ----------------------------------------------------------------------
 #               External Struct Solve Functions
 # ----------------------------------------------------------------------    
@@ -868,8 +889,14 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def embedVolume(self,coordinates,volume_list=None):
+    def embedVolume(self,coordinates,volume_list=None,file_name=None):
         '''Embed a set of coordinates into volume in volume_list'''
+
+        if os.path.isfile(file_name):
+            self._readEmbededVolume(file_name)
+            return 
+        # end if
+        
         volID = []
         u = []
         v = []
@@ -885,12 +912,23 @@ class pyBlock():
 
         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
+        if file_name != None:
+            if USE_MPI:
+                if MPI.COMM_WORLD.rank == 0:
+                    print 'here here'
+                    self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
+                # end if
+                MPI.COMM_WORLD.barrier()
+            else:
+                self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
+            # end if
+        # end if
 
 # ----------------------------------------------------------------------
 #             Geometric Functions
 # ----------------------------------------------------------------------    
 
-    def projectPoint(self,x0):
+    def projectPoint(self,x0,eps=1e-14):
         '''Project a point into any one of the volumes. Returns 
         the volID,u,v,w,D of the point in volID or closest to it.
 
@@ -900,7 +938,7 @@ class pyBlock():
         volID = 0
 
         for ivol in xrange(1,self.nVol):
-            u,v,w,D = self.vols[ivol].projectPoint(x0)
+            u,v,w,D = self.vols[ivol].projectPoint(x0,eps1=eps,eps2=eps)
             if norm(D)<norm(D0):
                 D0 = D
                 u0 = u
@@ -951,6 +989,50 @@ class pyBlock():
         
         return
 
+    def _writeEmbededVolume(self,file_name,index):
+        '''Write the embeded volume to file for reload
+        Required:
+            file_name: filename for attached surface
+            index: Which volume to write
+        Returns:
+            None
+            '''
+        mpiPrint('Writing Embeded Volume %d...'%(index),self.NO_PRINT)
+        f = open(file_name,'w')
+        array(self.embeded_volumes[index].N).tofile(f,sep="\n")
+        f.write('\n')
+        self.embeded_volumes[index].volID.tofile(f,sep="\n",format="%d")
+        f.write('\n')
+        self.embeded_volumes[index].u.tofile(f,sep="\n",format="%20.16g")
+        f.write('\n')
+        self.embeded_volumes[index].v.tofile(f,sep="\n",format="%20.16g")
+        f.write('\n')
+        self.embeded_volumes[index].w.tofile(f,sep="\n",format="%20.16g")
+        f.close()
+
+        return
+
+    def _readEmbededVolume(self,file_name):
+        '''Write the embeded volume to file for reload
+        Required:
+            file_name: filename for attached surface
+            index: Which volume to write
+        Returns:
+            None
+            '''
+        mpiPrint('Read Embeded Volume ...',self.NO_PRINT)
+        f = open(file_name,'r')
+        N = readNValues(f,1,'int',binary=False)[0]
+        volID = readNValues(f,N,'int',binary=False)
+        u     = readNValues(f,N,'float',binary=False)
+        v     = readNValues(f,N,'float',binary=False)
+        w     = readNValues(f,N,'float',binary=False)
+
+        self.embeded_volumes.append(embeded_volume(volID,u,v,w))
+
+        return
+
+
   
 class embeded_volume(object):
 
@@ -960,10 +1042,10 @@ class embeded_volume(object):
             voliD list of the volume iD's for the points
             uvw: list of the uvw points
             '''
-        self.volID = volID
-        self.u = u
-        self.v = v
-        self.w = w
+        self.volID = array(volID)
+        self.u = array(u)
+        self.v = array(v)
+        self.w = array(w)
         self.N = len(self.u)
         self.dPtdCoef = None
         self.dPtdX    = None
