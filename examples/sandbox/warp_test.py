@@ -7,7 +7,7 @@ import os, sys, string, pdb, copy, time
 # External Python modules
 # =============================================================================
 from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
-    array, real, reshape, meshgrid, dot, cross,shape,alltrue
+    array, real, reshape, meshgrid, dot, cross,shape,alltrue,loadtxt
 
 # =============================================================================
 # Extension modules
@@ -29,6 +29,7 @@ mpiPrint('\nGenerating Surface Geometry')
 surface = pyGeo.pyGeo('plot3d',file_name='warp_test_surf.xyz',file_type='ascii',order='f')
 surface.doConnectivity('warp_test_surf.con')
 surface.fitGlobal()
+
 surface.writeTecplot('warp_test_update.dat',tecio=True,coef=True,orig=False,surf_labels=True,directions=True)
 
 mpiPrint('\nInitializating Flow Problem')
@@ -64,8 +65,25 @@ solver_options={'reinitialize':True,\
                 'TS Stability': 'no'}
 
 solver(test_case,niterations=1,grid_file='warp_test',solver_options=solver_options)
+solver.interface.Mesh.GetMeshQuality('quality.txt')
+
 
 cfd_surface_points = solver.interface.Mesh.GetGlobalSurfaceCoordinates()
+
+# Dump these out
+f = open('surface.dat','w')
+nx = cfd_surface_points.shape[1]
+f.write('Zone T=data I=%d\n'%(nx))
+f.write('DATAPACKING=POINT\n')
+for i in xrange(nx):
+    for idim in xrange(3):
+        f.write('%f '%(cfd_surface_points[idim,i]))
+    # end for
+    f.write('\n')
+# end for
+f.close()
+
+
 surface.attachSurface(cfd_surface_points[:,:,0])
 
 
@@ -86,19 +104,22 @@ for i in xrange(surface.surfs[2].Nctlu):
 
 # # Pull Up Upper surface
 for j in xrange(surface.surfs[0].Nctlv):
+    surface.coef[surface.topo.l_index[0][0,j]] += [0,.001,0]
     surface.coef[surface.topo.l_index[0][1,j]] += [0,.05,0]
     surface.coef[surface.topo.l_index[0][2,j]] += [0,-.02,0]
-
+    surface.coef[surface.topo.l_index[0][3,j]] += [0,.001,0]
 # # Pull Down Lower surface
 for j in xrange(surface.surfs[3].Nctlv):
+    surface.coef[surface.topo.l_index[3][0,j]] -= [0,.001,0]
     surface.coef[surface.topo.l_index[3][1,j]] -= [0,.05,0]
     surface.coef[surface.topo.l_index[3][2,j]] -= [0,.03,0]
+    surface.coef[surface.topo.l_index[3][3,j]] -= [0,.001,0]
 
-# Displace the whole thing up and forware
+# Displace the whole thing up and forwards
 surface.coef[:] += [-1.1,1.1,0]
 
 for i in xrange(len(surface.coef)):
-    surface.coef[i]= rotzV(surface.coef[i],-10*pi/180)
+    surface.coef[i]= rotzV(surface.coef[i],-12*pi/180)
 
 surface._updateSurfaceCoef()
 surface.writeTecplot('block_update.dat',coef=False,tecio=True,directions=True)
@@ -107,14 +128,65 @@ surface.writeTecplot('block_update.dat',coef=False,tecio=True,directions=True)
 
 # Now do the solid warp
 
+solver.interface.initializeADjoint()
+
+# Get coords0
 solver.interface.Mesh.SetGlobalSurfaceCoordinates(surface.getSurfacePoints(0).transpose(),True)
 timeA = time.time()
-#solver.interface.Mesh.warpMeshSolid(topo='warp_test_FEA.con')
-solver.interface.Mesh.warpMeshSolid(n=2)
-print 'Time is:',time.time()-timeA
-#solver.interface.Mesh.warpMesh()
-
+solver.interface.Mesh.warpMeshSolid(n=4)
+print 'time is:',time.time()-timeA
 solver.interface.Mesh.WriteMeshFile('warp_test_new.cgns')
+sys.exit(0)
+solver.interface.Mesh.warpMeshSolidDeriv()
+os.system('mv deriv.txt deriv_ad.txt')
+#solver.interface.Mesh.warpMesh()
+#solver.interface.setupVolumeSurfaceDerivatives()
+
+
+
+n_local = solver.interface.Mesh.getNBlocksLocal()
+coords0 = []
+for i in xrange(n_local):
+    dims = solver.interface.Mesh.getBlockDimensions(i+1)
+    coords0.extend(solver.interface.Mesh.getBlockCoordinates(i+1,dims[0],dims[1],dims[2]).flatten())
+# end for
+coords0 = array(coords0)
+h = 1e-5
+# Perturb a point and redo
+temp = surface.getSurfacePoints(0).transpose()
+temp[0,0] += h
+solver.interface.Mesh.SetGlobalSurfaceCoordinates(temp)
+solver.interface.Mesh.warpMeshSolid(n=4)
+
+coords = []
+for i in xrange(n_local):
+    dims = solver.interface.Mesh.getBlockDimensions(i+1)
+    coords.extend(solver.interface.Mesh.getBlockCoordinates(i+1,dims[0],dims[1],dims[2]).flatten())
+# end for
+coords = array(coords)
+
+deriv = (coords-coords0)/h
+
+temp = loadtxt("uu.txt")
+uu = temp[0:len(temp)/2]
+uuph = temp[len(temp)/2:]
+
+deriv = (uuph-uu)/h
+#deriv = temp[0:len(temp)/2]
+
+f = open('deriv_fd.txt','w')
+for i in xrange(len(deriv)):
+    f.write('%10.5f\n'%(deriv[i]))
+# end for
+f.close()
+
+
+#solver.interface.Mesh.GetMeshQuality('quality2.txt')
+solver.interface.Mesh.WriteMeshFile('warp_test_new.cgns')
+
+
+
+
 
 
 
