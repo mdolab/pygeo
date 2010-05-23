@@ -51,8 +51,8 @@ except:
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre','mpi4py'))
 exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
+exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre','mpi4py'))
 
 # =============================================================================
 # pyGeo class
@@ -139,19 +139,13 @@ class pyGeo():
 
         if init_type == 'plot3d':
             self._readPlot3D(*args,**kwargs)
-
         elif init_type == 'iges':
-            assert 'file_name' in kwargs,'file_name must be specified as \
-file_name=\'filename\' for iges init_type'
-            self._readIges(kwargs['file_name'])
-
+            self._readIges(*args,**kwargs)
         elif init_type == 'lifting_surface':
             self._init_lifting_surface(*args,**kwargs)
-
         elif init_type == 'acdt_geo':
             self._init_acdt_geo(*args,**kwargs)
-        elif init_type == 'create':
-            # Don't do anything 
+        elif init_type == 'create':  # Don't do anything 
             pass
         else:
             mpiPrint('Unknown init type. Valid Init types are \'plot3d\', \
@@ -168,7 +162,7 @@ file_name=\'filename\' for iges init_type'
 
         '''Load a plot3D file and create the splines to go with each patch'''
         assert 'file_name' in kwargs,'file_name must be specified for plot3d'
-        assert 'file_type' in kwargs,'file_type must be specified as binary or ascii'
+        assert 'file_type' in kwargs,'file_type must be specified as \'binary\' or \'ascii\''
         assert 'order'     in kwargs,'order must be specified as \'f\' or \'c\''
         file_name = kwargs['file_name']        
         file_type = kwargs['file_type']
@@ -230,8 +224,8 @@ file_name=\'filename\' for iges init_type'
         self.nSurf = nSurf
         for isurf in xrange(self.nSurf):
             self.surfs.append(pySpline.surface(X=surfs[isurf],ku=4,kv=4,
-                                              Nctlu=4,Nctlv=4,no_print=self.NO_PRINT))
-        
+                                              Nctlu=7,Nctlv=7,no_print=self.NO_PRINT))
+        # end for
         return     
 
     def _readIges(self,file_name,*args,**kwargs):
@@ -300,8 +294,7 @@ file_name=\'filename\' for iges init_type'
             weights = data[counter:counter+Nctlu*Nctlv]
             weights = array(weights)
             if weights.all() != 1:
-                print 'WARNING: Not all weight in B-spline surface are 1.\
- A NURBS surface CANNOT be replicated exactly'
+                mpiPrint('WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly')
             counter += Nctlu*Nctlv
 
             coef = zeros([Nctlu,Nctlv,3])
@@ -360,10 +353,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             sys.exit(1)
         # end if
         if 'Nctl' in kwargs:
-            Nctl = kwargs['Nctl']*2
-            if mod(Nctl,2) == 0:
-                Nctl += 1 # Make it odd
-            # end if
+            Nctl = kwargs['Nctl']*2+1
         else:
             Nctl = 27
         # end if
@@ -634,7 +624,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         mpiPrint(' -> Setting Surface Coefficients...',self.NO_PRINT)
         self._updateSurfaceCoef()
 	
-
+        return
 
     def addFFD(self,ffd_type,*args,**kwargs):
         '''
@@ -2034,7 +2024,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
         return Xmin0,Xmax0
 
-    def _projectCurves(self,curve1,curve2,surfs=None):
+    def projectCurve(self,curve,surfs=None,*args,**kwargs):
         '''
         Project a pySpline curve onto the pyGeo object
         Requires: 
@@ -2056,67 +2046,79 @@ offset.shape[0], Xsec, rot, must all have the same size'
         if surfs == None:
              surfs = arange(self.nSurf)
          # end if
-        # res contains: u,v,s,D
-        c1_res = []
-        c2_res = []
-        for i in xrange(0,len(surfs)):
+        temp   = zeros((len(surfs),4))
+        result = zeros((len(surfs),4))
+        patchID= zeros(len(surfs),'intc')
+
+        for i in xrange(len(surfs)):
             isurf = surfs[i]
-            res = self.surfs[surfs[isurf]].projectCurve(curve1)
-            if norm(res[3]) < 1e-6:
-                c1_res.append([res[0],res[1],res[2],res[3],isurf])
-            res = self.surfs[surfs[isurf]].projectCurve(curve2)
-            if norm(res[3]) < 1e-6:
-                c2_res.append([res[0],res[1],res[2],res[3],isurf])
-                
+            u,v,s,d = self.surfs[isurf].projectCurve(curve,*args,**kwargs)
+            temp[i,:] = [u,v,s,norm(d)]
         # end for
-        # Post Process
-        # If both intersection once, that's great
-        if len(c1_res) == 1 and len(c2_res) == 1:
-            return c1_res[0][4],c1_res[0][0],c1_res[0][1],c2_res[0][4],c2_res[0][0],c2_res[0][1]
-        else: # Its more complex
-            print 'Error:, The domain must entirely lie inside the surface'
+
+        # Sort the results by distance 
+        index = argsort(temp[:,3])
+        
+        
+        for i in xrange(len(surfs)):
+            result[i] = temp[index[i]]
+            patchID[i] = surfs[index[i]]
+
+        return result,patchID
+
+    def projectPoints(self,points,surfs=None,*args,**kwargs):
+        ''' Project a point(s) onto the nearest surface
+        Requires:
+            points: points to project (N by 3)
+        Optional: 
+            surfs:  A list of the surfaces to use
+            '''
+
+        if surfs == None:
+            surfs = arange(self.nSurf)
         # end if
-            return
-
-    def projectCurve(self,curve,surfs=None):
-        '''
-        Project a pySpline curve onto the pyGeo object
-        Requires: 
-            curve: the pyspline curve for projection
-        Optional:
-            surfs:  A subset list of surfaces to use
-        Returns:
-            pachID: The surface id of the intersectin
-            u     : u coordiante of intersection
-            v     : v coordinate of intersection
         
-        Notes: This aglorithim is not efficient at all.  We basically
-        do the curve-surface projection agorithim for each surface
-        the loop back over them to see which is the best in terms of
-        closest distance. This intent is that the curve ACTUALLY
-        intersects one of the surfaces.
-        '''
+        if 'normal' in kwargs:
+            normal = kwargs['normal']
+        else:
+            normal = None
 
-        if surfs == None:
-             surfs = arange(self.nSurf)
-         # end if
-        res = self.surfs[surfs[0]].projectCurve(curve)
-        u0 = res[0]
-        v0 = res[1]
-        D  = res[3]
-        patchID = surfs[0]
-        for i in xrange(1,len(surfs)):
+        N = len(points)
+        U       = zeros((N,len(surfs)))
+        V       = zeros((N,len(surfs)))
+        D       = zeros((N,len(surfs),3))
+        for i in xrange(len(surfs)):
             isurf = surfs[i]
-            res = self.surfs[surfs[isurf]].projectCurve(curve)
-            if norm(res[3]) < norm(D):
-                u0 = res[0]
-                v0 = res[1]
-                D  = res[3]
-                patchID = isurf
-            # end if
+            U[:,i],V[:,i],D[:,i,:] = self.surfs[isurf].projectPoint(points,*args,**kwargs)
         # end for
 
-        return patchID,u0,v0
+        u = zeros(N)
+        v = zeros(N)
+        patchID = zeros(N,'intc')
+
+        # Now post-process to get the lowest one
+        for i in xrange(N):
+            d0 = norm((D[i,0]))
+            u[i] = U[i,0]
+            v[i] = V[i,0]
+            patchID[i] = surfs[0]
+            for j in xrange(len(surfs)):
+                if norm(D[i,j]) < d0:
+                    d0 = norm(D[i,j])
+                    u[i] = U[i,j]
+                    v[i] = V[i,j]
+                    patchID[i] = surfs[j]
+                # end for
+            # end for
+            
+        # end for
+
+        return u,v,patchID
+
+            
+      
+
+        
 
 
 class geoDVGlobal(object):

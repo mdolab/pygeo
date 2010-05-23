@@ -676,214 +676,11 @@ class pyBlock():
         w       = self.embeded_volumes[index].w
         N       = self.embeded_volumes[index].N
         coordinates = zeros((N,3))
+
         for i in xrange(N):
             coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
 
         return coordinates
-
-
-# ----------------------------------------------------------------------
-#               External Struct Solve Functions
-# ----------------------------------------------------------------------    
-
-    def writeFEAPCorners(self,file_name):
-        # Make sure sizes are 2
-        sizes = []
-        for ivol in xrange(self.nVol):
-            sizes.append([2,2,2])
-        # end for
-        E = 1.0
-        nu = 0.3
-        self.topo.calcGlobalNumbering(sizes)
-        
-        numnp  = self.topo.nNode #number of nodal points
-        numel  = self.nVol # number of elements
-        nummat = self.nVol  #one material type
-        ndm    = 3  #dimension of mesh
-        ndf    = 3  #number of dof per node
-        nen    = 8  #number of nodes per element
-
-        f = open(file_name,'w')
-        f.write("FEAP * * Solid Element Element Example\n")
-        #f.write("NOPRINT\n")
-        f.write("%d %d %d %d %d %d\n"%(numnp,numel,1,ndm,ndf,nen))
-
-        f.write("\n")
-
-        #for ivol in xrange(self.nVol):
-        f.write("MATErial %d\n"%(1))
-        f.write("SOLID\n")
-        f.write("ELAStic ISOtripoic ")
-        f.write("%f %f\n"%(E,nu))
-
-        f.write("\n")
-
-        f.write("COORdinate ALL\n")
-        for icoord in xrange(self.topo.nNode):
-            ivol = self.topo.g_index[icoord][0][0]
-            i = self.topo.g_index[icoord][0][1]
-            j = self.topo.g_index[icoord][0][2]
-            k = self.topo.g_index[icoord][0][3]
-            pt = self.vols[ivol].X[i,j,k]
-            f.write("%d 0 %f %f %f \n"%(icoord+1,pt[0],pt[1],pt[2]))
-            
-        f.write("\n")
-
-        f.write("ELEMents\n") # Use vol_con here
-        for ivol in xrange(self.nVol):
-            f.write("%d 1 %d %d %d %d %d %d %d %d %d \n"
-                    %(ivol+1,1,
-                      self.topo.vol_con[ivol][0]+1,
-                      self.topo.vol_con[ivol][1]+1,
-                      self.topo.vol_con[ivol][3]+1,
-                      self.topo.vol_con[ivol][2]+1,
-                      self.topo.vol_con[ivol][4]+1,
-                      self.topo.vol_con[ivol][5]+1,
-                      self.topo.vol_con[ivol][7]+1,
-                      self.topo.vol_con[ivol][6]+1))
-        f.write("\n")
-        f.write("BOUNdary restraints\n")
-
-        f.write('%d 0 1 1 1 \n'%(1))
-        f.write('%d 0 1 1 1 \n'%(2))
-        f.write('%d 0 1 1 1 \n'%(3))
-        
-    
-        f.write("\n")
-        
-        f.write("FORCe\n")
-
-        f.write("%d 0 0 0 %f \n"%(10,10.00))
-        f.write("\n")
-
-        f.write("END\n")
-        #f.write("NOPRINT\n")
-        f.write("BATCh\n")
-        f.write("TANGent\n")
-        f.write("FORM\n")
-        f.write("SOLV\n")
-        f.write("PRINT\n")
-        f.write("DISPlacement all\n")
-        f.write("END\n")
-        f.write("STOP\n")
-
-        f.close() #close file
-
-    def updateFEAP(file_name):
-        f = open(file_name)
-        counter = 0
-        new_pts = zeros((self.topo.nNode,3))
-        for line in f:
-            if counter >= 82 and mod(counter,2) == 0:
-                aux = string.split(line)
-                #new_pts[i,0] = 
-
-
-    def writeFEAP(self,file_name):
-
-        nu = 0.0
-        numnp  = len(self.topo.g_index) #number of nodal points
-        numel = 0
-        for ivol in xrange(self.nVol):
-            numel += (self.vols[ivol].Nctlu-1)*(self.vols[ivol].Nctlv-1)*(self.vols[ivol].Nctlw-1)
-        nummat = numel  #one material type for each elem
-        ndm    = 3  #dimension of mesh
-        ndf    = 3  #number of dof per node
-        nen    = 8  #number of nodes per element
-
-        f = open(file_name,'w')
-        f.write("FEAP * * Solid Element Element Example\n")
-        f.write("%d %d %d %d %d %d\n"%(numnp,numel,1,ndm,ndf,nen))
-        f.write("NOPRINT\n")
-        f.write("\n")
-        counter = 1
-        Es = []
-        g = open('bad_vols.dat','w')
-        g.write ('VARIABLES = "X", "Y","Z"\n')
-        for ivol in xrange(self.nVol):
-            Nctlu = self.vols[ivol].Nctlu
-            Nctlv = self.vols[ivol].Nctlv
-            Nctlw = self.vols[ivol].Nctlw
-            for i in xrange(Nctlu-1):
-                for j in xrange(Nctlv-1):
-                    for k in xrange(Nctlw-1):
-                        points = [self.vols[ivol].coef[i,j,k  ],self.vols[ivol].coef[i+1,j  ,k],
-                                  self.vols[ivol].coef[i,j+1,k],self.vols[ivol].coef[i+1,j+1,k],
-                                  self.vols[ivol].coef[i,j,k+1],self.vols[ivol].coef[i+1,j,k+1],
-                                  self.vols[ivol].coef[i,j+1,k+1],self.vols[ivol].coef[i+1,j+1,k+1]]
-                        vol = volume_hexa(points)
-                        if vol < 0:
-                            name = '%d,%d,%d,%d'%(ivol,i,j,k)
-                            g.write('Zone T=\"%s\" I=%d J=%d K=%d\n'%(name,2,2,2))
-                            g.write('DATAPACKING=POINT\n')
-                            for ii in xrange(8):
-                                g.write('%f %f %f\n'%(points[ii][0],points[ii][1],points[ii][2]))
-                            # end for
-                        # end if
-                        f.write("MATErial %d\n"%(counter))
-                        f.write("SOLID\n")
-                        f.write("ELAStic ISOtripoic ")
-                        f.write("%f %f\n"%(1/vol,nu))
-                        Es.append(1.0/vol)
-                        counter += 1
-                        f.write("\n")
-                    # end for
-                # end for
-            # end for
-        # end for
-        f.write("\n")
-        print 'Max E: %g, Min E:%g, Ratio: %g'%(max(Es),min(Es),max(Es)/min(Es))
-        f.write("COORdinate ALL\n")
-        for ii in xrange(len(self.topo.g_index)):
-            ivol  = self.topo.g_index[ii][0][0]
-            i     = self.topo.g_index[ii][0][1]
-            j     = self.topo.g_index[ii][0][2]
-            k     = self.topo.g_index[ii][0][3]
-            pt = self.vols[ivol].coef[i,j,k]
-            f.write("%d 0 %f %f %f \n"%(ii+1,pt[0],pt[1],pt[2]))
-            
-        f.write("\n")
-
-        f.write("ELEMents\n") 
-        counter = 1
-        for ivol in xrange(self.nVol):
-            for i in xrange(self.vols[ivol].Nctlu-1):
-                for j in xrange(self.vols[ivol].Nctlv-1):
-                    for k in xrange(self.vols[ivol].Nctlw-1):
-                        f.write("%d 1 %d %d %d %d %d %d %d %d %d \n"
-                                %(counter,counter,
-                                  self.topo.l_index[ivol][i,j,k]+1,
-                                  self.topo.l_index[ivol][i+1,j,k]+1,
-                                  self.topo.l_index[ivol][i+1,j+1,k]+1,
-                                  self.topo.l_index[ivol][i,j+1,k]+1,
-                                  self.topo.l_index[ivol][i,j,k+1]+1,
-                                  self.topo.l_index[ivol][i+1,j,k+1]+1,
-                                  self.topo.l_index[ivol][i+1,j+1,k+1]+1,
-                                  self.topo.l_index[ivol][i,j+1,k+1]+1))
-                        counter += 1
-        f.write("\n")
-        f.write("BOUNdary restraints\n")
-
-        for i in xrange(50):
-            f.write('%d 0 1 1 1 \n'%(i))
-        
-    
-        f.write("\n")
-        f.write("FORCe\n")
-        f.write("%d 0 0 0 %f \n"%(100,10.00))
-        f.write("\n")
-
-        f.write("END\n")
-        f.write("BATCh\n")
-        f.write("TANGent\n")
-        f.write("FORM\n")
-        f.write("SOLV\n")
-        f.write("DISPlacement all\n")
-        f.write("END\n")
-        f.write("STOP\n")
-
-        f.close() #close file
-
 
 # ----------------------------------------------------------------------
 #             Embeded Geometry Functions
@@ -892,16 +689,17 @@ class pyBlock():
     def embedVolume(self,coordinates,volume_list=None,file_name=None):
         '''Embed a set of coordinates into volume in volume_list'''
 
-        if os.path.isfile(file_name):
-            self._readEmbededVolume(file_name)
-            return 
+        if file_name != None:
+            if os.path.isfile(file_name):
+                self._readEmbededVolume(file_name)
+                return 
+            # end if
         # end if
         
         volID = []
         u = []
         v = []
         w = []
-        
         for i in xrange(len(coordinates)):
             ivol,u0,v0,w0,D0 = self.projectPoint(coordinates[i])
             u.append(u0)
@@ -915,7 +713,6 @@ class pyBlock():
         if file_name != None:
             if USE_MPI:
                 if MPI.COMM_WORLD.rank == 0:
-                    print 'here here'
                     self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
                 # end if
                 MPI.COMM_WORLD.barrier()

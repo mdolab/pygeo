@@ -78,8 +78,6 @@ def writeValues(handle,values,type,binary=False):
     # end if
     return 
 
-
-
 def read_af(filename,file_type='xfoil',N=35):
     ''' Load the airfoil file of type file_type'''
 
@@ -437,6 +435,9 @@ def pointReduce(points,node_tol=1e-4):
     for ipt in xrange(N): 
         dists.append(sqrt(dot(points[ipt],points[ipt])))
     # end for
+    temp = array(dists)
+    temp.sort()
+    print 'temp:',temp
     ind = argsort(dists)
     i= 0
     cont = True
@@ -1467,7 +1468,12 @@ the list of surfaces must be the same length'
         '''Print the Edge Connectivity to the screen'''
 
         mpiPrint('------------------------------------------------------------------------')
-        mpiPrint('%3d   %3d'%(self.nEdge,self.nFace))
+        mpiPrint('%4d  %4d  %4d  %4d '%(self.nNode,self.nEdge,self.nFace,self.nDG))
+        N_list = self._getDGList()
+        for i in xrange(self.nDG):
+            mpiPrint('%5d        | %5d       '%(i,N_list[i]))
+        # end for
+
         mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |')
         for i in xrange(len(self.edges)):
             self.edges[i].write_info(i,sys.stdout)
@@ -1667,7 +1673,7 @@ the list of surfaces must be the same length'
 
     def getSurfaceFromEdge(self,edge):
         '''Determine the surfaces and their edge_link index that points to edge iedge'''
-        # Its not efficient but it works
+        # Its not efficient but it works - scales with Nface not constant
         surfaces = []
         for isurf in xrange(self.nFace):
             for iedge in xrange(4):
@@ -1678,6 +1684,21 @@ the list of surfaces must be the same length'
         # end for
 
         return surfaces
+
+    def _getDGList(self):
+        '''After calcGlobalNumbering is called with the size
+        parameters, we can now produce a list of length ndg with the
+        each entry coorsponing to the number N associated with that DG'''
+
+        # This can be run in linear time...just loop over each edge
+        # and add to dg list
+        N_list = zeros(self.nDG,'intc')
+        for iedge in xrange(self.nEdge):
+            N_list[self.edges[iedge].dg] = self.edges[iedge].N
+        # end for
+            
+        return N_list
+
 
 class BlockTopology(object):
     '''
@@ -1729,8 +1750,9 @@ class BlockTopology(object):
         # Point reduce them
         nVol = len(corners)
         corners = array(corners)
-        un,node_link = pointReduce(corners.reshape((8*nVol,3)))
+        un,node_link = pointReduceBruteForce(corners.reshape((8*nVol,3)))
         node_link = node_link.reshape((nVol,8))
+
         # We can now generate vol_con AND face_con
         vol_con = []
         face_con = []
@@ -2316,8 +2338,6 @@ the list of volumes must be the same length'
             
         return N_list
 
-
-
     def flatten_indices(self):
         
         '''Take g_index and l_index and "flatten" then into 1-D arrays
@@ -2381,7 +2401,6 @@ def volume_hexa(points):
     vp6 = volpym(center,points[2],points[3],points[7],points[6])
 
     return (vp1 + vp2 + vp3 + vp4 + vp5 + vp6)/6
-
 
 def volpym(p,a,b,c,d):
     # 6*Volume of a pyrimid -> Counter clockwise ordering
@@ -2699,182 +2718,154 @@ def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
     return xi,yi
 
 
+def checkInput(input,input_name,data_type,data_rank,data_shape=None):
+    '''This is a generic function to check the data type and sizes of
+    inputs in functions where the user must supply proper
+    values. Since Python does not do type checking on Inputs, this is
+    required
 
-# def convertCSRtoCSC_one(nrow,ncol,Ap,Aj,Ax):
-#     '''Convert a one-based CSR format to a one-based CSC format'''
-#     nnz = Ap[-1]-1
-#     Bp = zeros(ncol+1,'int')
-#     Bi = zeros(nnz,'int')
-#     Bx = zeros(nnz)
+    input: The input argument
 
-#     # compute number of non-zero entries per column of A 
-#     nnz_per_col = zeros(ncol) # temp array
+    input_name: A string with the argument's name to be used in an 
+                output error message
 
-#     for i in xrange(nnz):
-#         nnz_per_col[Aj[i]]+=1
-#     # end for
-#     # cumsum the nnz_per_col to get Bp[]
-#     cumsum = 0
-#     for i in xrange(ncol):
-#         Bp[i] = cumsum+1
-#         cumsum += nnz_per_col[i]
-#         nnz_per_col[i] = 1
-#     # end for
-#     Bp[ncol] = nnz+1
+    data_type: The requested numpy data type. Up-casting will be done
+               automatically, warnings will be issued if downcasting or 
+               doing a float to int conversion etc. A value of None 
+               indicates the data_type is not be checked.
 
-#     for i in xrange(nrow):
-#         row_start = Ap[i]
-#         row_end = Ap[i+1]
-#         for j  in xrange(row_start,row_end):
-#             col = Aj[j-1]
-#             k = Bp[col] + nnz_per_col[col] - 1
-#             Bi[k-1] = i+1
-#             Bx[k-1] = Ax[j-1]
-#             nnz_per_col[col]+=1
-#         # end for
-#     # end for
-#     return Bp,Bi,Bx
+    rank     : The desired rank of the array. It is 0 for scalars, 1 for 
+               vectors, 2 for matrices etc. 
 
-# # --------------------------------------------------------------
-# #             Python Surface Mesh Warping Implementation
-# # --------------------------------------------------------------
+    data_shape: The required shape of the data. A value of 0 indicates
+                a scalar. 1D arrays are specified with a value =>
+                1. Higher dimensional arrays sizes are specified with
+                a list such as [dim0,dim1,...,dimN]. A value of None
+                indicates the data shape is not to be checked
+          
+    Output : Returns the input value iff it conforms to the specified 
+             data_type and data_shape. Execption is raised otherwise. 
+             
+''' 
 
-# def delI(i,j,vals):
-#     return sqrt( ( vals[i,j,0]-vals[i-1,j,0]) ** 2 + \
-#                   (vals[i,j,1]-vals[i-1,j,1]) ** 2 + \
-#                   (vals[i,j,2]-vals[i-1,j,2]) ** 2)
+    # Checking the depth is the first and easiest thing to do.
+    rank = checkRank(input)
+    if not(rank == data_rank):
+        if data_rank == 0:
+            mpiPrint('Error: \'%s\' must be a scalar, rank=0. Input of rank %d was given.'%(input_name,rank))
+            sys.exit(0)
+        elif data_rank == 1:
+            mpiPrint('Error: \'%s\' must be a vector, rank=1. Input of rank %d was given.'%(input_name,rank))
+            sys.exit(0)
+        elif data_rank == 2:
+            mpiPrint('Error: \'%s\' must be a matrix, rank=2. Input of rank %d was given.'%(input_name,rank))
+            sys.exit(0)
+        else:
+            mpiPrint('Error: \'%s\' must be of rank %d. Input of rank %d was given.'%(input_name,data_rank,rank))
+            sys.exit(0)
+        # end if
+    # end if
 
-# def delJ(i,j,vals):
-#     return sqrt( ( vals[i,j,0]-vals[i,j-1,0]) ** 2 + \
-#                   (vals[i,j,1]-vals[i,j-1,1]) ** 2 + \
-#                   (vals[i,j,2]-vals[i,j-1,2]) ** 2)
+    # Now we know the rank is what we expect it to be
 
-# def parameterizeFace(Nu,Nv,coef):
+    if rank == 0: #Scalar Case
+        if data_type == None: # No need to check type and data_shape is irrelevant 
+            return input
+        # end if
 
-#     '''Parameterize a pyGeo surface'''
-#     S = zeros([Nu,Nv,2])
+        input_type = type(input)
 
-#     for i in xrange(1,Nu):
-#         for j in xrange(1,Nv):
-#             S[i,j,0] = S[i-1,j  ,0] + delI(i,j,coef)
-#             S[i,j,1] = S[i  ,j-1,1] + delJ(i,j,coef)
+        if data_type == complex: # We can upcast-ANYthing to complex
+            input = complex(input)
+        elif data_type == float:
+            if isinstance(input,complex):
+                mpiPrint('Error: \'%s\' must be a given a \'float\' value, not a \'%s\' value'%(input_name,input_type.__name__))
+                sys.exit(0)
+            else:
+                input = float(input)
+            # end if
+        elif data_type == int:
+            if isinstance(input,(complex,float)):
+                mpiPrint('Error: \'%s\' must be a given a \'int\' value, not a \'%s\' value'%(input_name,input_type.__name__))
+                sys.exit(0)
+            else:
+                input = int(input)
+            # end if
+        elif data_type == bool:
+            if isinstance(input,(complex,float,int)):
+                mpiPrint('Error: \'%s\' must be a given a \'bool\' value, not a \'%s\' value'%(input_name,input_type.__name__))
+                sys.exit(0)
+            else:
+                input = bool(input)
+            # end if
+        # end if
 
-#     for i in xrange(1,Nu):
-#         S[i,0,0] = S[i-1,0,0] + delI(i,0,coef)
-#     for j in xrange(1,Nv):
-#         S[0,j,1] = S[0,j-1,1] + delJ(0,j,coef)
+        return input
+    else: # We have array-like objects
+        try:
+            input = array(input)
+        except:
+            mpiPrint('Error: Rank>1 object must be cast-able to numpy array for checkInput to work')
+        # end try
 
-#     # Do a no-check normalization
-#     for i in xrange(Nu):
-#         for j in xrange(Nv):
-#             S[i,j,0] /= S[-1,j,0]
-#             S[i,j,1] /= S[i,-1,1]
+        if not(data_type == None): # Now check the data type
+            if rank == 1: test_val=input[0]
+            if rank == 2: test_val=input[0][0]
+            if rank == 3: test_val=input[0][0][0]
+            if rank == 4: test_val=input[0][0][0][0]
+            if rank == 5: test_val=input[0][0][0][0][0]
 
-#     return S
+            input_type = type(test_val)
 
-# def warp_face(Nu,Nv,S,dface):
-#     '''Run the warp face algorithim'''
+            if data_type == complex: # We can upcast-ANYthing to complex
+                input = input.astype('D')
+            elif data_type == float:
+                if isinstance(test_val,complex):
+                    mpiPrint('Error: \'%s\' must be of type \'float\', not type \'%s\'.'%(input_name,input_type.__name__))
+                    sys.exit(0)
+                else:
+                    input = input.astype('d')
+                # end if
+            elif data_type == int:
+                if isinstance(test_val,(complex,float)):
+                    mpiPrint('Error: \'%s\' must be of type \'int\', not type \'%s\'.'%(input_name,input_type.__name__))
+                    sys.exit(0)
+                else:
+                    input = input.astype('intc')
+                # end if
+            elif data_type == bool:
+                if isinstance(test_val,(complex,float,int)):
+                    mpiPrint('Error: \'%s\' must be of type \'bool\', not type \'%s\'.'%(input_name,input_type.__name__))
+                    sys.exit(0)
+                else:
+                    input = input.astype('bool')
+                # end if
+            # end if
+        # end if
 
-#     # Edge 0
-#     for i in xrange(1,Nu):
-#         j = 0
-#         WTK2 = S[i,j,0]
-#         WTK1 = 1.0-WTK2
-#         dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
+        if not(data_shape) == None:
+            # Check the size of each rank
+            if isinstance(data_shape,int): # Make sure data_shape is iterable
+                data_shape = array([data_shape])
+            # end if
 
-#     # Edge 1
-#     for i in xrange(1,Nu):
-#         j = -1
-#         WTK2 = S[i,j,0]
-#         WTK1 = 1.0-WTK2
-#         dface[i,j] = WTK1 * dface[0,j] + WTK2 * dface[-1,j]
+            array_shape = input.shape
+            for irank in xrange(rank):
+                if not(array_shape[irank] == data_shape[irank]):
+                    mpiPrint('Error: \'%s\' must have a length of %d in rank %d, not %d.'%(input_name,data_shape[irank],irank,array_shape[irank]))
+                    sys.exit(0)
+                # end if
+            # end for
+        # end if
 
-#     # Edge 1
-#     for j in xrange(1,Nv):
-#         i=0
-#         WTK2 = S[i,j,1]
-#         WTK1 = 1.0-WTK2
-#         dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
+        return input # If we made it to the end, just return input
+    # end if
 
-#     # Edge 1
-#     for j in xrange(1,Nv):
-#         i=-1
-#         WTK2 = S[i,j,1]
-#         WTK1 = 1.0-WTK2
-#         dface[i,j] = WTK1 * dface[i,0] + WTK2 * dface[i,-1]
-
-#     eps = 1.0e-14
-   
-#     for i in xrange(1,Nu-1):
-#         for j in xrange(1,Nv-1):
-#             WTI2 = S[i,j,0]
-#             WTI1 = 1.0-WTI2
-#             WTJ2 = S[i,j,1]
-#             WTJ1 = 1.0-WTJ2
-#             deli = WTI1 * dface[0,j,0] + WTI2 * dface[-1,j,0]
-#             delj = WTJ1 * dface[i,0,0] + WTJ2 * dface[i,-1,0]
-
-#             dface[i,j,0] = (abs(deli)*deli + abs(delj)*delj)/  \
-#                 max( ( abs (deli) + abs(delj),eps))
-
-#             deli = WTI1 * dface[0,j,1] + WTI2 * dface[-1,j,1]
-#             delj = WTJ1 * dface[i,0,1] + WTJ2 * dface[i,-1,1]
-
-#             dface[i,j,1] = (abs(deli)*deli + abs(delj)*delj)/ \
-#                 max( ( abs (deli) + abs(delj),eps))
-#         # end for
-#     # end for
-
-#     return dface
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#         reduced_face_con1 = [[] for i in xrange(self.nFace)]
-#         used = zeros(self.nFace,'bool')
-#         for ivol in xrange(self.nVol):
-#             for iface in xrange(6):
-#                 if used[self.face_link1[ivol][iface]] == False:
-#                     used[self.face_link1[ivol][iface]] = True
-#                     reduced_face_con1[self.face_link1[ivol][iface]] = \
-#                         face_con[ivol*6+iface]
-        
-
-# #         print 'Unique faces:',len(unique_faces)
-
-      
+def checkRank(input):
+    if not(hasattr(input,'__iter__')):
+        return 0
+    else:
+        return 1 + checkRank(input[0])
+    
 
 
-#         u_mids,face_link = pointReduce(face_mids.reshape((6*self.nVol,3)))
-#         self.face_link = face_link.reshape((self.nVol,6))
-#         self.nFace = len(u_mids)
-#         reduced_face_con = [[] for i in xrange(self.nFace)]
-       
-#         used = zeros(self.nFace,'bool')
-#         for ivol in xrange(self.nVol):
-#             for iface in xrange(6):
-#                 if used[self.face_link[ivol][iface]] == False:
-#                     used[self.face_link[ivol][iface]] = True
-#                     reduced_face_con[self.face_link[ivol][iface]] = \
-#                         face_con[ivol*6+iface]
-#                 # end if
-#             # end for
-#         # end for
-
-
-#         for ivol in xrange(self.nVol):
-#             for iface in xrange(6):
-#                 print reduced_face_con1[self.face_link1[ivol][iface]],reduced_face_con[self.face_link[ivol][iface]]
-
-#         sys.exit(0)
