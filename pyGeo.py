@@ -224,7 +224,7 @@ class pyGeo():
         self.nSurf = nSurf
         for isurf in xrange(self.nSurf):
             self.surfs.append(pySpline.surface(X=surfs[isurf],ku=4,kv=4,
-                                              Nctlu=7,Nctlv=7,no_print=self.NO_PRINT))
+                                              Nctlu=4,Nctlv=4,no_print=self.NO_PRINT))
         # end for
         return     
 
@@ -311,9 +311,8 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
-            self.surfs.append(pySpline.surface(\
-                    'create',ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,\
-                        range=range,no_print=self.NO_PRINT,recompute=False))
+            self.surfs.append(pySpline.surface(ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,
+                                               ,no_print=self.NO_PRINT)
         # end for
 
         return 
@@ -405,9 +404,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
         for i in xrange(len(xsections)):
             c1,c2 = curves[i].splitCurve(u_split)
             top_curves.append(c1)
+            c2.reverse()
             bot_curves.append(c2)
         # end for
-        
+   
         # Now we can set the surfaces
         ncoef = top_curves[0].Nctl
         coef_top = zeros((ncoef,len(xsections),3))
@@ -441,16 +441,93 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # Now we can add the two surfaces
         temp = pySpline.curve(X=Xsec,k=k_span)
 
+
+    
         self.surfs.append(pySpline.surface('create',coef=coef_top,ku=4,kv=k_span,tu=top_curves[0].t,
                                   tv=temp.t))
         self.surfs.append(pySpline.surface('create',coef=coef_bot,ku=4,kv=k_span,tu=bot_curves[0].t,
                                   tv=temp.t))
         self.nSurf =  2
+
+        print self.surfs[0].tu
+        print self.surfs[1].tu
+
+        # Add on additional surfaces if required for a rounded pinch tip
+        if 'tip' in kwargs:
+            if kwargs['tip'].lower() == 'rounded':
+
+                dist_max = 0.0
+                for j in xrange(ncoef):
+                    dist = e_dist(coef_top[j,-1],coef_bot[j,-1])
+                    if dist > dist_max:
+                        dist_max = dist
+                    # end if
+                # end for
+
+                # Generate the midpoint of the coefficients
+                mid_pts = zeros([ncoef,3])
+                up_vec  = zeros([ncoef,3])
+                up_vec_norm = zeros([ncoef,3])
+                for j in xrange(ncoef):
+                    mid_pts[j] = 0.5*(coef_top[j,-1] + coef_bot[j,-1])
+                    up_vec[j]  = (coef_top[j,-1] - coef_bot[j,-1])
+                    if norm(up_vec[j]) > 0:
+                        up_vec_norm[j] = up_vec[j]/norm(up_vec[j])
+                # end for
+
+                chord_line = coef_top[0,-1]-coef_top[-1,-1]
+                chord_line /= norm(chord_line)
+
+                # Generate "average" projection Vector
+                proj_vec = zeros(3)
+                for j in xrange(ncoef):
+                    proj_vec += cross(-up_vec_norm[j],chord_line)
+                proj_vec /= ncoef
+                proj_vec *= dist_max*0.5
+
+                # Generate the tip "line"
+                tip_line = zeros([ncoef,3])
+                for j in xrange(ncoef):
+                    tip_line[j] =  mid_pts[j] + proj_vec #+ cross(-up_vec[j],chord_line)*dist_max*.25
+                # end for
+
+
+                #tip_curve = pySpline.curve(X=tip_line,k=4)
+                #tip_curve.writeTecplot('tip_curve.dat')
+
+#                 print 'mid_pts',mid_pts
+#                 print 'up_vec',up_vec
+#                 print 'chord_line',chord_line
+#                 print 'tip_line',tip_line
+
+                # Generate a k=4 (cubic) surface
+                coef_top_tip = zeros([ncoef,4,3])
+                coef_bot_tip = zeros([ncoef,4,3])
+
+                for j in xrange(ncoef):
+                    coef_top_tip[j,0] = coef_top[j,-1]
+                    coef_top_tip[j,1] = coef_top[j,-1] + proj_vec*.5
+                    coef_top_tip[j,2] = tip_line[j] + 0.5*up_vec[j]
+                    coef_top_tip[j,3] = tip_line[j]
+
+                    coef_bot_tip[j,0] = coef_bot[j,-1]
+                    coef_bot_tip[j,1] = coef_bot[j,-1] + proj_vec*.5
+                    coef_bot_tip[j,2] = tip_line[j] - 0.5*up_vec[j]
+                    coef_bot_tip[j,3] = tip_line[j]
+                # end for
+
+                surf_top_tip = pySpline.surface('create',coef=coef_top_tip,ku=4,kv=4,tu=top_curves[0].t,tv=[0,0,0,0,1,1,1,1])
+                surf_bot_tip = pySpline.surface('create',coef=coef_bot_tip,ku=4,kv=4,tu=bot_curves[0].t,tv=[0,0,0,0,1,1,1,1])
+                self.surfs.append(surf_top_tip)
+                self.surfs.append(surf_bot_tip)
+                self.nSurf += 2
+                
+
         # Cheat and make "original data" so that the edge connectivity works
         u = linspace(0,1,3)
         v = linspace(0,1,3)
         [V,U] = meshgrid(u,v)
-        for i in xrange(2):
+        for i in xrange(self.nSurf):
             self.surfs[i].orig_data = True
             self.surfs[i].X = self.surfs[i](U,V)
             self.surfs[i].Nu = 3
@@ -2114,12 +2191,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         return u,v,patchID
-
-            
-      
-
-        
-
 
 class geoDVGlobal(object):
      

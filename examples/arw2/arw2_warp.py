@@ -16,23 +16,39 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 from mdo_import_helper import *
 import warnings
 warnings.filterwarnings("ignore")
+exec(import_modules('PETScInit'))
+PETScInit.PETScInit()
 
 exec(import_modules('pyGeo','pyBlock','pySpline','geo_utils','mpi4py','pyLayout2'))
 exec(import_modules('pyAero_problem','pyAero_flow','pyAero_reference','pyAero_geometry'))
-exec(import_modules('pySUMB'))
-exec(import_modules('TACS','functions','constitutive','elements'))
-exec(import_modules('MultiblockMesh'))
 exec(import_modules('pyAeroStruct'))
-from petsc4py import PETSc
+if 'complex' in sys.argv:
+    exec(import_modules('pySUMB_C','MultiblockMesh_C'))
+    exec(import_modules('TACS_cs','functions_cs','constitutive_cs','elements_cs'))
+    TACS = TACS_cs
+    functions = functions_cs
+    constitutive = constitutive_cs
+    elements = elements_cs
+    SUMB = SUMB_C
+    MBMesh = MBMesh_C
+    complex = True
+else:
+    # Real Imports
+    exec(import_modules('pySUMB','MultiblockMesh'))
+    exec(import_modules('TACS','functions','constitutive','elements'))
+    complex = False
+# end if
+
 mpiPrint('------- ARW2 Example ----------------')
 
 # ================================================================
 #                   Grid File
-grid_file = 'arw2_debug_nofam'
+grid_file = 'arw2_debug2'
+#grid_file = 'arw2_400k'
 #
 # ================================================================
 #        Set the number of processors for Aero and Structures
-npAero = 3
+npAero = 1
 npStruct =1
 comm,flags,cumGroups = createGroups([npAero,npStruct],noSplit=False)
 aeroID = 0
@@ -49,12 +65,57 @@ FFD._updateVolumeCoef()
 #               Set Options for each solver
 #
 
-aeroOptions={'reinitialize':False,'CFL':1.6,'L2Convergence':1e-8,
-             'L2ConvergenceRel':1e-1,
-             'MGCycle':'3w','MetricConversion':1.0,'sol_restart':'no',
-             'printIterations':False,'printSolTime':False,'writeSolution':False}
+aeroOptions={'reinitialize':False,'CFL':1.9,
+             'L2Convergence':1e-11,'L2ConvergenceRel':1e-1,
+             'MGCycle':'2v','MetricConversion':1.0,'sol_restart':'no',
+             'printIterations':True,'printSolTime':False,'writeSolution':False,
+             'Dissipation Coefficients':[0.5,0.015625],
+             'Dissipation Scaling Exponent':0.87,
+             'Approx PC': 'yes',
+             'Adjoint solver type':'GMRES',
+             'adjoint relative tolerance':1e-8,
+             'adjoint absolute tolerance':1e-16,
+             'adjoint max iterations': 500,
+             'adjoint restart iteration' : 100,
+             'adjoint monitor step': 20,
+             'dissipation lumping parameter':6.0,
+             'Preconditioner Side':'LEFT',
+             'Matrix Ordering': 'NestedDissection',
+             'Global Preconditioner Type': 'Additive Schwartz',
+             'Local Preconditioner Type' : 'ILU',
+             'ILU Fill Levels': 2,
+             'ASM Overlap':6
+             }            
 
-structOptions={'test':1}
+structOptions={'PCFillLevel':4,
+               'PCFillRatio':6.0,
+               'msub':10,
+               'subSpaceSize':120,
+               'nRestarts':15,
+               'flexible':1,
+               'L2Convergence':1e-10,
+               'L2ConvergenceRel':1e-3,
+               'useMonitor':False,
+               'monitorFrequency':10,
+               'filename':'wing_box',
+               'restart':False}
+
+mdOptions = {'relTol':1e-6,
+             'writeIterationVolSolutionCFD':False,
+             'writeIterationSurfSolutionCFD':False,
+             'writeIterationSolutionFEA':False,
+             'writeVolSolutionCFD':True,
+             'writeSurfSolutionCFD':False,
+             'writeSolutionFEA':True,
+             }
+
+meshOptions = {
+    'warpType':'solid',
+    'solidWarpType':'n', # or 'topo'
+    'n':3,
+    'sym':'xy'
+    }
+
 # Setup Aero-Solver and multiblock Mesh
 
 if flags[aeroID] == True:
@@ -63,18 +124,15 @@ if flags[aeroID] == True:
     ref = Reference('Baseline Reference',1.0,1.0,1.0) #area,span,chord 
     geom = Geometry
     aeroProblem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
-    CFDsolver = SUMB(comm=comm,init_petsc=False)
-
-    mesh = MultiBlockMesh.MultiBlockMesh(grid_file,comm)
-    mesh.initializeWarping()
+    CFDsolver = SUMB(comm=comm,init_petsc=False,options=aeroOptions)
+    
+    mesh = MBMesh(grid_file,comm,meshOptions=meshOptions)
     mesh.addFamilyGroup("wing",['wing_le','wing_up','wing_low','wing_tip'])
     mesh.addFamilyGroup("all")
-
-    CFDsolver.initialize(aeroProblem,'steady',grid_file,solver_options=aeroOptions)
+    mesh.warpMesh()
+    CFDsolver.initialize(aeroProblem,'steady',grid_file)
     CFDsolver.interface.Mesh.initializeExternalWarping(mesh.getGridDOF())
-
     structure = None
-
 # end if
 
 if flags[structID]:
@@ -82,15 +140,13 @@ if flags[structID]:
     aeroProblem = None
     CFDsolver = None
     mesh = None
- 
-# # end if
+# end if
 
-AS = AeroStruct(MPI.COMM_WORLD,comm,flags,aeroOptions=aeroOptions, \
-                structOptions=structOptions)
+AS = AeroStruct(MPI.COMM_WORLD,comm,flags,aeroOptions=aeroOptions, 
+                structOptions=structOptions,mdOptions=mdOptions,complex=complex)
 
 AS.initialize(aeroProblem,CFDsolver,structure,mesh,'wing')
-timeA = time.time()
-AS.solve(nMDiterations=15)
-print 'MDA time:',time.time()-timeA
-sys.exit(0)
+AS.solve(nMDiterations=10)
+#AS.initializeCoupledAdjoint()
+#AS.solveCoupledAdjoint('cl')
 

@@ -437,7 +437,6 @@ def pointReduce(points,node_tol=1e-4):
     # end for
     temp = array(dists)
     temp.sort()
-    print 'temp:',temp
     ind = argsort(dists)
     i= 0
     cont = True
@@ -866,28 +865,29 @@ def blendKnotVectors(knot_vectors,sym):
 
     nVec = len(knot_vectors)
  
-#     if sym: # Symmetrize each knot vector first
-#         for i in xrange(nVec):
-#             cur_knot_vec = knot_vectors[i].copy()
-#             if mod(len(cur_knot_vec),2) == 1: #its odd
-#                 mid = (len(cur_knot_vec) -1)/2
-#                 beg1 = cur_knot_vec[0:mid]
-#                 beg2 = (1-cur_knot_vec[mid+1:])[::-1]
-#                 # Average
-#                 beg = 0.5*(beg1+beg2)
-#                 cur_knot_vec[0:mid] = beg
-#                 cur_knot_vec[mid+1:] = (1-beg)[::-1]
-#             else: # its even
-#                 mid = len(cur_knot_vec)/2
-#                 beg1 = cur_knot_vec[0:mid]
-#                 beg2 = (1-cur_knot_vec[mid:])[::-1]
-#                 beg = 0.5*(beg1+beg2)
-#                 cur_knot_vec[0:mid] = beg
-#                 cur_knot_vec[mid:] = (1-beg)[::-1]
-#             # end if
-#             knot_vectors[i] = cur_knot_vec
-#         # end for
-#     # end if
+    if sym: # Symmetrize each knot vector first
+        for i in xrange(nVec):
+            cur_knot_vec = knot_vectors[i].copy()
+            if mod(len(cur_knot_vec),2) == 1: #its odd
+                mid = (len(cur_knot_vec) -1)/2
+                beg1 = cur_knot_vec[0:mid]
+                beg2 = (1-cur_knot_vec[mid+1:])[::-1]
+                # Average
+                beg = 0.5*(beg1+beg2)
+                cur_knot_vec[0:mid] = beg
+                cur_knot_vec[mid+1:] = (1-beg)[::-1]
+                cur_knot_vec[mid] = 0.5
+            else: # its even
+                mid = len(cur_knot_vec)/2
+                beg1 = cur_knot_vec[0:mid]
+                beg2 = (1-cur_knot_vec[mid:])[::-1]
+                beg = 0.5*(beg1+beg2)
+                cur_knot_vec[0:mid] = beg
+                cur_knot_vec[mid:] = (1-beg)[::-1]
+            # end if
+            knot_vectors[i] = cur_knot_vec
+        # end for
+    # end if
 
     # Now average them all
    
