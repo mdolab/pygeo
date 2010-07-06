@@ -313,13 +313,20 @@ class pyGeo():
 
             self.surfs.append(pySpline.surface(ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,
                                                no_print=self.NO_PRINT))
+
             # Generate dummy data for connectivity to work
             u = linspace(0,1,3)
             v = linspace(0,1,3)
             [V,U] = meshgrid(v,u)
             self.surfs[-1].X = self.surfs[-1](U,V)
+            self.surfs[-1].Nu = 3
+            self.surfs[-1].Nv = 3
+            self.surfs[-1].orig_data = True
+            
 
-            return 
+        return 
+
+
 
     def _init_lifting_surface(self,*args,**kwargs):
 
@@ -820,7 +827,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
             for isurf in xrange(self.nSurf):
                 sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
             self.topo.calcGlobalNumbering(sizes)
-            self._propagateKnotVectors()
+            if self.init_type != 'iges':
+                self._propagateKnotVectors()
             mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo.writeConnectivity(file_name)
 
@@ -836,6 +844,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # Calculate the 4 corners and 4 midpoints for each surface
 
         coords = zeros((self.nSurf,8,3))
+      
         for isurf in xrange(self.nSurf):
             beg,mid,end = self.surfs[isurf].getOrigValuesEdge(0)
             coords[isurf][0] = beg
