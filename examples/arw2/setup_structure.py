@@ -20,14 +20,14 @@ te_list = array([[31.7,59,12.5],[73.4,57,113.5]])
 
 
 nrib = 4
-nspar = 2
+nspar = 4
 domain = pyLayout2.domain(le_list,te_list,k=2)
 
 # rib_space = [2,2,2,2,2]
 # span_space = 3*ones(nrib-1,'intc')
 # v_space = 3
 
-rib_space = [1,1,1]#,1,1]
+rib_space = [1,1,1,1,1]
 span_space = 1*ones(nrib-1,'intc')
 v_space = 1
 

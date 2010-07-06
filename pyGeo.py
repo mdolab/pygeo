@@ -312,10 +312,14 @@ class pyGeo():
             range[3] = data[counter + 3]
 
             self.surfs.append(pySpline.surface(ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,
-                                               ,no_print=self.NO_PRINT)
-        # end for
+                                               no_print=self.NO_PRINT))
+            # Generate dummy data for connectivity to work
+            u = linspace(0,1,3)
+            v = linspace(0,1,3)
+            [V,U] = meshgrid(v,u)
+            self.surfs[-1].X = self.surfs[-1](U,V)
 
-        return 
+            return 
 
     def _init_lifting_surface(self,*args,**kwargs):
 
