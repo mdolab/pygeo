@@ -20,9 +20,10 @@ exec(import_modules('PETScInit'))
 PETScInit.PETScInit()
 
 exec(import_modules('pyGeo','pyBlock','pySpline','geo_utils','mpi4py','pyLayout2'))
-exec(import_modules('pyAero_problem','pyAero_flow','pyAero_reference','pyAero_geometry'))
+exec(import_modules('pyAero_problem','pyAero_reference','pyAero_geometry'))
 exec(import_modules('pyAeroStruct'))
 if 'complex' in sys.argv:
+    exec(import_modules('pyAero_flow_C'))
     exec(import_modules('pySUMB_C','MultiblockMesh_C'))
     exec(import_modules('TACS_cs','functions_cs','constitutive_cs','elements_cs'))
     TACS = TACS_cs
@@ -34,6 +35,7 @@ if 'complex' in sys.argv:
     complex = True
 else:
     # Real Imports
+    exec(import_modules('pyAero_flow'))
     exec(import_modules('pySUMB','MultiblockMesh'))
     exec(import_modules('TACS','functions','constitutive','elements'))
     complex = False
@@ -48,7 +50,7 @@ grid_file = 'arw2_debug2'
 #
 # ================================================================
 #        Set the number of processors for Aero and Structures
-npAero = 1
+npAero = 3
 npStruct =1
 comm,flags,cumGroups = createGroups([npAero,npStruct],noSplit=False)
 aeroID = 0
@@ -66,9 +68,9 @@ FFD._updateVolumeCoef()
 #
 
 aeroOptions={'reinitialize':False,'CFL':1.9,
-             'L2Convergence':1e-11,'L2ConvergenceRel':1e-1,
+             'L2Convergence':1e-6,'L2ConvergenceRel':8e-1,
              'MGCycle':'2v','MetricConversion':1.0,'sol_restart':'no',
-             'printIterations':True,'printSolTime':False,'writeSolution':False,
+             'printIterations':True,'printSolTime':False,'writeSolution':True,
              'Dissipation Coefficients':[0.5,0.015625],
              'Dissipation Scaling Exponent':0.87,
              'Approx PC': 'yes',
@@ -101,12 +103,12 @@ structOptions={'PCFillLevel':4,
                'restart':False}
 
 mdOptions = {'relTol':1e-6,
-             'writeIterationVolSolutionCFD':False,
-             'writeIterationSurfSolutionCFD':False,
+             'writeIterationVolSolutionCFD':True,
+             'writeIterationSurfSolutionCFD':True,
              'writeIterationSolutionFEA':False,
-             'writeVolSolutionCFD':True,
+             'writeVolSolutionCFD':False,
              'writeSurfSolutionCFD':False,
-             'writeSolutionFEA':True,
+             'writeSolutionFEA':False,
              }
 
 meshOptions = {
@@ -125,7 +127,6 @@ if flags[aeroID] == True:
     geom = Geometry
     aeroProblem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
     CFDsolver = SUMB(comm=comm,init_petsc=False,options=aeroOptions)
-    
     mesh = MBMesh(grid_file,comm,meshOptions=meshOptions)
     mesh.addFamilyGroup("wing",['wing_le','wing_up','wing_low','wing_tip'])
     mesh.addFamilyGroup("all")
@@ -142,11 +143,12 @@ if flags[structID]:
     mesh = None
 # end if
 
+
 AS = AeroStruct(MPI.COMM_WORLD,comm,flags,aeroOptions=aeroOptions, 
                 structOptions=structOptions,mdOptions=mdOptions,complex=complex)
 
 AS.initialize(aeroProblem,CFDsolver,structure,mesh,'wing')
-AS.solve(nMDiterations=10)
+AS.solve(nMDiterations=100)
 #AS.initializeCoupledAdjoint()
 #AS.solveCoupledAdjoint('cl')
 
