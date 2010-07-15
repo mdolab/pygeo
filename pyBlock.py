@@ -578,12 +578,6 @@ class pyBlock():
             # end for 
             f2.close()
         # end if
-
-
-
-
-
-
         pySpline.closeTecplot(f)
         return
 
@@ -602,6 +596,7 @@ class pyBlock():
             self.vols[ivol]._writeBvol(f,binary)
         # end for
         
+        return
 
     def writePlot3d(self,file_name,binary=False):
         '''Write the grid to a plot3d file'''
@@ -623,8 +618,7 @@ class pyBlock():
                 vals[:,:,:,0].flatten(1).tofile(f,sep="")
                 vals[:,:,:,1].flatten(1).tofile(f,sep="")
                 vals[:,:,:,2].flatten(1).tofile(f,sep="")
-            
-            
+            # end for
         else:
             f = open(file_name,'w')
             f.write('%d\n'%(self.nVol))
@@ -639,11 +633,49 @@ class pyBlock():
                 f.write('\n')
                 vals[:,:,:,2].flatten(1).tofile(f,sep="\n")
                 f.write('\n')
-                
-
-        # end for
+            # end for
+        # end if
         f.close()
         
+        return
+    
+    def getCoefQuality(self):
+        '''Get the list of quality for each of the volumes'''
+        quality = array([],'d')
+        for ivol in xrange(self.nVol):
+            quality = append(quality,self.vols[ivol].getCoefQuality())
+        # end for
+        return quality
+
+    def getCoefQualityDeriv(self):
+        '''Get the derivative of the quality list'''
+        # Get the number of volumes
+        counter = 0
+        for ivol in xrange(self.nVol):
+            counter += (self.vols[ivol].Nctlu-1)*(self.vols[ivol].Nctlv-1)*(self.vols[ivol].Nctlw-1)
+        # end if
+        nQuality = counter
+        # The number of non-zeros is EXACTLY 24*number of volumes (8 points per vol*3dof/pt)
+        vals = zeros(nQuality*24)
+        col_ind = zeros(nQuality*24,'intc')
+        row_ptr = linspace(0,nQuality*24,nQuality+1).astype('intc')
+
+        counter = 0 
+        for ivol in xrange(self.nVol):
+            vals,col_ind = self.vols[ivol].getCoefQualityDeriv(counter,self.topo.l_index[ivol],vals,col_ind)
+            counter += (self.vols[ivol].Nctlu-1)*(self.vols[ivol].Nctlv-1)*(self.vols[ivol].Nctlw-1)*24
+        # end for
+
+        dQdx = sparse.csr_matrix((vals,col_ind,row_ptr),shape=(nQuality,3*len(self.coef)))
+
+        return dQdx
+
+    def verifyCoefQualityDeriv(self):
+        for ivol in xrange(self.nVol):
+            self.vols[ivol].verifyQualityDeriv()
+        # end for
+            
+        return
 
 # ----------------------------------------------------------------------
 #               Update Functions
