@@ -1552,6 +1552,22 @@ the list of surfaces must be the same length'
         
         return 
 
+    def getSurfaceFromEdge(self,edge):
+        '''Determine the surfaces and their edge_link index that points to edge iedge'''
+        # Its not efficient but it works - scales with Nface not constant
+        surfaces = []
+        for isurf in xrange(self.nFace):
+            for iedge in xrange(4):
+                if self.edge_link[isurf][iedge] == edge:
+                    surfaces.append([isurf,iedge])
+                # end if
+            # end for
+        # end for
+
+        return surfaces
+
+
+
 class BlockTopology(topology):
     '''
     See Topology base class for more information
