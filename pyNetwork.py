@@ -244,19 +244,18 @@ class pyNetwork():
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
 
-    def _updateCoef(self):
+    def _updateCurveCoef(self):
         '''update the coefficents on the pyNetwork update'''
         
-    def update(self):
-        '''
-        Update the coefficients after a design variable change
-        Required:
-            None
-        Returns:
-            None
-            '''
-
-        return
+        for ii in xrange(len(self.coef)):
+            for jj in xrange(len(self.topo.g_index[ii])):
+                icurve = self.topo.g_index[ii][jj][0]
+                i      = self.topo.g_index[ii][jj][1]
+                self.curves[icurve].coef[i] = self.coef[ii].astype('d')
+            # end for
+        # end for
+        
+        return 
 
     def getBounds(self,curves=None):
         '''Deterine the extents of (a part of) the curves

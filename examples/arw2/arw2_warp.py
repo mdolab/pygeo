@@ -46,7 +46,7 @@ mpiPrint('------- ARW2 Example ----------------')
 # ================================================================
 #                   Grid File
 grid_file = 'arw2_debug2'
-#grid_file = 'arw2_400k'
+#grid_file = 'arw2_700k'
 #
 # ================================================================
 #        Set the number of processors for Aero and Structures
@@ -67,11 +67,11 @@ FFD._updateVolumeCoef()
 #               Set Options for each solver
 #
 
-aeroOptions={'reinitialize':False,'CFL':1.9,
-             'L2Convergence':1e-6,'L2ConvergenceRel':8e-1,
+aeroOptions={'reinitialize':False,'CFL':1.75,
+             'L2Convergence':1e-11,'L2ConvergenceRel':1e-1,
              'MGCycle':'2v','MetricConversion':1.0,'sol_restart':'no',
-             'printIterations':True,'printSolTime':False,'writeSolution':True,
-             'Dissipation Coefficients':[0.5,0.015625],
+             'printIterations':False,'printSolTime':False,'writeSolution':False,
+             'Dissipation Coefficients':[0.25,0.015625],
              'Dissipation Scaling Exponent':0.87,
              'Approx PC': 'yes',
              'Adjoint solver type':'GMRES',
@@ -89,26 +89,30 @@ aeroOptions={'reinitialize':False,'CFL':1.9,
              'ASM Overlap':6
              }            
 
-structOptions={'PCFillLevel':4,
+structOptions={'PCFillLevel':5,
                'PCFillRatio':6.0,
                'msub':10,
-               'subSpaceSize':120,
+               'subSpaceSize':140,
                'nRestarts':15,
                'flexible':1,
-               'L2Convergence':1e-10,
-               'L2ConvergenceRel':1e-3,
+               'L2Convergence':1e-11,
+               'L2ConvergenceRel':1e-2,
                'useMonitor':False,
-               'monitorFrequency':10,
+               'monitorFrequency':1,
                'filename':'wing_box',
                'restart':False}
 
-mdOptions = {'relTol':1e-6,
-             'writeIterationVolSolutionCFD':True,
-             'writeIterationSurfSolutionCFD':True,
+mdOptions = {'relTol':1e-9,
+             'writeIterationVolSolutionCFD':False,
+             'writeIterationSurfSolutionCFD':False,
              'writeIterationSolutionFEA':False,
              'writeVolSolutionCFD':False,
-             'writeSurfSolutionCFD':False,
-             'writeSolutionFEA':False,
+             'writeSurfSolutionCFD':True,
+             'writeSolutionFEA':True,
+             'writeMDConvergence':True,
+             'MDConvergenceFile':'mdconverg.txt',
+             'beta0':0.5,
+             'CFDIter':50,
              }
 
 meshOptions = {
@@ -121,8 +125,7 @@ meshOptions = {
 # Setup Aero-Solver and multiblock Mesh
 
 if flags[aeroID] == True:
-
-    flow = Flow(name='Base Case',mach=0.8,alpha=2.0,beta=0.0,liftIndex=2)
+    flow = Flow(name='Base Case',mach=0.8,alpha=6.0,beta=0.0,liftIndex=2)
     ref = Reference('Baseline Reference',1.0,1.0,1.0) #area,span,chord 
     geom = Geometry
     aeroProblem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
@@ -141,14 +144,19 @@ if flags[structID]:
     aeroProblem = None
     CFDsolver = None
     mesh = None
-# end if
+    mass = structure.evalFunction(mass_func)
+    #ks   = structure.evalFunction(ks_func)
+    
+    print 'Mass is:',mass
+    #print 'KS is:',ks
 
+# end if
 
 AS = AeroStruct(MPI.COMM_WORLD,comm,flags,aeroOptions=aeroOptions, 
                 structOptions=structOptions,mdOptions=mdOptions,complex=complex)
 
 AS.initialize(aeroProblem,CFDsolver,structure,mesh,'wing')
-AS.solve(nMDiterations=100)
+AS.solve(nMDiterations=50)
 #AS.initializeCoupledAdjoint()
 #AS.solveCoupledAdjoint('cl')
 

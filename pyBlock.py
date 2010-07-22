@@ -158,9 +158,9 @@ class pyBlock():
         # the parameterization and knot vectors
 
         for ivol in xrange(nVol):
-            vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,\
-                                            Nctlu=3,Nctlv=3,Nctlw=3,\
-                                            no_print=self.NO_PRINT,
+            vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,
+                                        Nctlu=3,Nctlv=3,Nctlw=3,
+                                        no_print=self.NO_PRINT,
                                         recompute=False))
         self.vols = vols
         self.nVol = len(vols)
@@ -286,10 +286,11 @@ class pyBlock():
             u = self.vols[ivol].U[i,j,k]
             v = self.vols[ivol].V[i,j,k]
             w = self.vols[ivol].W[i,j,k]
+         
 
             vals,col_ind = self.vols[ivol]._getBasisPt(
                 u,v,w,vals,row_ptr[ii],col_ind,self.topo.l_index[ivol])
-
+         
             kinc = self.vols[ivol].ku*self.vols[ivol].kv*self.vols[ivol].kw
             row_ptr.append(row_ptr[-1] + kinc)
         # end for
@@ -523,7 +524,7 @@ class pyBlock():
         # --------------------------------------
         #    Write out the Interpolated Surfaces
         # --------------------------------------
-        
+
         if vols == True:
             for ivol in xrange(self.nVol):
                 self.vols[ivol]._writeTecplotVolume(f)
@@ -728,16 +729,13 @@ class pyBlock():
             # end if
         # end if
         
-        volID = []
-        u = []
-        v = []
-        w = []
-        for i in xrange(len(coordinates)):
-            ivol,u0,v0,w0,D0 = self.projectPoint(coordinates[i])
-            u.append(u0)
-            v.append(v0)
-            w.append(w0)
-            volID.append(ivol)
+        N = len(coordinates)
+        volID = zeros(N,'intc')
+        u = zeros(N)
+        v = zeros(N)
+        w = zeros(N)
+        for i in xrange(N):
+            volID[i],u[i],v[i],w[i],D0 = self.projectPoint(coordinates[i])
         # end for
 
         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
@@ -765,7 +763,6 @@ class pyBlock():
 
         u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
         volID = 0
-
         for ivol in xrange(1,self.nVol):
             u,v,w,D = self.vols[ivol].projectPoint(x0,eps1=eps,eps2=eps)
             if norm(D)<norm(D0):
