@@ -322,8 +322,7 @@ class pyGeo():
             self.surfs[-1].Nu = 3
             self.surfs[-1].Nv = 3
             self.surfs[-1].orig_data = True
-            
-
+         
         return 
 
 
@@ -714,82 +713,82 @@ offset.shape[0], Xsec, rot, must all have the same size'
 	
         return
 
-    def addFFD(self,ffd_type,*args,**kwargs):
-        '''
-        This function adds a Free Form Deformation volume to the
-        surface for global modifcations
-        This can be of one of two types:
+ #    def addFFD(self,ffd_type,*args,**kwargs):
+#         '''
+#         This function adds a Free Form Deformation volume to the
+#         surface for global modifcations
+#         This can be of one of two types:
         
-        Requried:
-            ffd_type: 'auto' This generates a single cartesian bounding box
-                      around the geometry
+#         Requried:
+#             ffd_type: 'auto' This generates a single cartesian bounding box
+#                       around the geometry
                       
-                      'bvol' This will use a bspline volume (bvol) representation
-                      for the warping. This is effectivly a collection of bspline
-                      volumes in the same sense that pyGeo is a collection of
-                      bspline surfaces. 
+#                       'bvol' This will use a bspline volume (bvol) representation
+#                       for the warping. This is effectivly a collection of bspline
+#                       volumes in the same sense that pyGeo is a collection of
+#                       bspline surfaces. 
 
-            if ffd_type is 'bvol' and additional keyword arguments are required,
-                           'con' must be the connectivity file for the blocking
-                           'file_type' must be specified as 'ascii' or 'binary'
-        Optional:
-               Nx,Ny,Nz: The number of control points in the x,y,z respectively
-               for the 'auto' init type. Note, control over this for the bvol
-               type can be setup a-prori using the pyBlock class functionality
-               '''
+#             if ffd_type is 'bvol' and additional keyword arguments are required,
+#                            'con' must be the connectivity file for the blocking
+#                            'file_type' must be specified as 'ascii' or 'binary'
+#         Optional:
+#                Nx,Ny,Nz: The number of control points in the x,y,z respectively
+#                for the 'auto' init type. Note, control over this for the bvol
+#                type can be setup a-prori using the pyBlock class functionality
+#                '''
 
-        if ffd_type == 'auto':
-            xmin,xmax = self.getBounds()
-            if 'nx' in kwargs:
-                nx = int(kwargs['nx'])
-            else:
-                nx = 2
+#         if ffd_type == 'auto':
+#             xmin,xmax = self.getBounds()
+#             if 'nx' in kwargs:
+#                 nx = int(kwargs['nx'])
+#             else:
+#                 nx = 2
 
-            if 'ny' in kwargs:
-                ny = int(kwargs['ny'])
-            else:
-                ny = 2
+#             if 'ny' in kwargs:
+#                 ny = int(kwargs['ny'])
+#             else:
+#                 ny = 2
 
-            if 'nz' in kwargs:
-                nz = int(kwargs['nz'])
-            else:
-                nz = 2
+#             if 'nz' in kwargs:
+#                 nz = int(kwargs['nz'])
+#             else:
+#                 nz = 2
 
-            # Now produce meshgrid data for it
-            x = linspace(xmin[0],xmax[0],nx)
-            y = linspace(xmin[1],xmax[1],ny)
-            z = linspace(xmin[2],xmax[2],nz)
+#             # Now produce meshgrid data for it
+#             x = linspace(xmin[0],xmax[0],nx)
+#             y = linspace(xmin[1],xmax[1],ny)
+#             z = linspace(xmin[2],xmax[2],nz)
             
-            # Dump re-interpolated surface
-            X = zeros((nx,ny,nz))
-            Y = zeros((nx,ny,nz))
-            Z = zeros((nx,ny,nz))
+#             # Dump re-interpolated surface
+#             X = zeros((nx,ny,nz))
+#             Y = zeros((nx,ny,nz))
+#             Z = zeros((nx,ny,nz))
 
-            for i in xrange(nx):
-                [Z[i,:,:],Y[i,:,:]] = meshgrid(z,y)
-                X[i,:,:] = x[i]
-            # end for
-            volume = pySpline.volume(x=X,y=Y,z=Z,ku=2,kv=2,kw=2,recompue=False)
-            self.FFD = pyBlock.pyBlock('create',no_print=True)
-            self.FFD.nVol = 1
-            self.FFD.vols = [volume]
+#             for i in xrange(nx):
+#                 [Z[i,:,:],Y[i,:,:]] = meshgrid(z,y)
+#                 X[i,:,:] = x[i]
+#             # end for
+#             volume = pySpline.volume(x=X,y=Y,z=Z,ku=2,kv=2,kw=2,recompue=False)
+#             self.FFD = pyBlock.pyBlock('create',no_print=True)
+#             self.FFD.nVol = 1
+#             self.FFD.vols = [volume]
             
-            # Now we must produce a pyBlock object from the bounds data
-            self.FFD._calcConnectivity(1e-4,1e-4)
-            self.FFD._propagateKnotVectors()
-            self.FFD.fitGlobal()
-            sizes = [[nx,ny,nz]]
-            self.FFD.topo.calcGlobalNumbering(sizes)
-        else:
-            mpiPrint('Not Implemented Yet')
+#             # Now we must produce a pyBlock object from the bounds data
+#             self.FFD._calcConnectivity(1e-4,1e-4)
+#             self.FFD._propagateKnotVectors()
+#             self.FFD.fitGlobal()
+#             sizes = [[nx,ny,nz]]
+#             self.FFD.topo.calcGlobalNumbering(sizes)
+#         else:
+#             mpiPrint('Not Implemented Yet')
                       
-        # end if
+#         # end if
 
-        # Now take all the control points in the pyGeo surface object
-        # and project them INTO the FFD volume
+#         # Now take all the control points in the pyGeo surface object
+#         # and project them INTO the FFD volume
         
-        self.FFD.embedVolume(self.coef)
-        self.FFD._calcdPtdCoef(0)
+#         self.FFD.embedVolume(self.coef)
+#         self.FFD._calcdPtdCoef(0)
 
 
 # ----------------------------------------------------------------------
@@ -821,7 +820,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
             self.topo.calcGlobalNumbering(sizes)
         else:
-            mpiPrint(' ',self.NO_PRINT)
             self._calcConnectivity(node_tol,edge_tol)
             sizes = []
             for isurf in xrange(self.nSurf):
@@ -833,7 +831,8 @@ offset.shape[0], Xsec, rot, must all have the same size'
             self.topo.writeConnectivity(file_name)
 
         # end if
-            
+        if self.init_type == 'iges':
+            self._setSurfaceCoef()
 
         return 
 
@@ -1379,7 +1378,22 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 self.surfs[isurf].coef[i,j] = self.coef[ii].astype('d')
             # end for
         # end for
+        for isurf in xrange(self.nSurf):
+            self.surfs[isurf]._setEdgeCurves()
         return
+
+    def _setSurfaceCoef(self):
+        '''Set the surface coef list from the pySpline surfaces'''
+        self.coef = zeros((self.topo.nGlobal,3))
+        for isurf in xrange(self.nSurf):
+            surf = self.surfs[isurf]
+            for i in xrange(surf.Nctlu):
+                for j in xrange(surf.Nctlv):
+                    self.coef[self.topo.l_index[isurf][i,j]] = surf.coef[i,j]
+                # end for
+            # end for
+        # end for
+
 
     def getSizes( self ):
         '''
@@ -1817,7 +1831,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         of a subset of the list of surfaces provided by patch_list.
 
         Required:
-             coordinates   :  a 3 by nPts numpy array
+             coordinates   :  a nPtsx3 numpy array
         Optional
              patch_list    :  list of patches to locate next to nodes,
                               None means all patches will be used
@@ -1840,7 +1854,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             patch_list = range(self.nSurf)
         # end
 
-        nPts = coordinates.shape[1]
+        nPts = len(coordinates)
         
         # Now make the 'FE' Grid from the sufaces.
         patches = len(patch_list)
@@ -1879,8 +1893,9 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         # Now run the csm_pre command 
         mpiPrint('  -> Running CSM_PRE...',self.NO_PRINT)
+
         [dist,nearest_elem,uvw,base_coord,weightt,weightr] = \
-            csm_pre.csm_pre(coordinates,xyz,conn,elemtype)
+            csm_pre.csm_pre(coordinates.T,xyz,conn,elemtype)
 
         # All we need from this is the nearest_elem array and the uvw array
 
@@ -1935,7 +1950,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # Now we can do a secondary newton search on the actual surface
         diff = zeros(nPts)
         for i in xrange(nPts):
-            uv[i,0],uv[i,1],D = self.surfs[patchID[i]].projectPoint(coordinates[:,i],u=uv[i,0],v=uv[i,1])
+            uv[i,0],uv[i,1],D = self.surfs[patchID[i]].projectPoint(coordinates[i],u=uv[i,0],v=uv[i,1])
             diff[i] = D[0]**2 + D[1]**2 + D[2] **2
         # Release the tree - otherwise fortran will get upset
         csm_pre.release_adt()

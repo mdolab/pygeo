@@ -4,7 +4,7 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
-    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average
+    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,rank
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os,time
 
@@ -47,6 +47,30 @@ def rotzV(x,theta):
     'rotatez:'
     M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
     return dot(M,x)
+
+def rotVbyW(V,W,theta):
+    ''' Rotate a vector V, about an axis W by angle theta'''
+
+    ux = W[0]
+    uy = W[1]
+    uz = W[2]
+    
+    c = cos(theta)
+    s = sin(theta)
+    R = zeros((3,3))
+    R[0,0] = ux**2 + (1-ux**2)*c
+    R[0,1] = ux*uy*(1-c) - uz*s
+    R[0,2] = ux*uz*(1-c) + uy*s
+    
+    R[1,0] = ux*uy*(1-c) + uz*s
+    R[1,1] = uy**2 + (1-uy**2)*c
+    R[1,2] = uy*uz*(1-c) - ux*s
+                    
+    R[2,0] = ux*uz*(1-c) - uy*s
+    R[2,1] = uy*uz*(1-c) + ux*s
+    R[2,2] = uz**2+(1-uz**2)*c
+
+    return dot(R,V)
 
  # --------------------------------------------------------------
  #                I/O Functions
@@ -1566,8 +1590,6 @@ the list of surfaces must be the same length'
 
         return surfaces
 
-
-
 class BlockTopology(topology):
     '''
     See Topology base class for more information
@@ -2248,350 +2270,37 @@ def checkRank(input):
     else:
         return 1 + checkRank(input[0])
 
-class ref_axis(object):
 
-    def __init__(self,network,points,*args,**kwags):
-
-        ''' Create a reference axis network from a pyNetwork object
+class geoDVGlobal(object):
+     
+    def __init__(self,dv_name,value,lower,upper,function,useit=True):
         
-        Reqruied:
-            network: The pyNetwork object to use
-            points:              surfs: The pyGeo surf list
-            topo: The pyGeo topology
-            x: x coordinates
-            y: y coordinates
-            z: z coordinates
-            rot_x: x rotations
-            rot_y: y rotations
-            rot_z: z rotation
-            rot_type: integer 1-6 to determine the rotation order
-                1 -> x-y-z
-                2 -> x-z-y
-                3 -> y-z-x  -> This example (right body x-streamwise y-out wing z-up)
-                4 -> y-x-z
-                5 -> z-x-y  -> Default aerosurf (Left body x-streamwise y-up z-out wing)
-                6 -> z-y-x
+        '''Create a geometric design variable (or design variable group)
+        See addGeoDVGloabl in pyGeo for more information
         '''
 
-        # Extract Some information from kwargs:
-        if 'X' in kwargs:
-            X = kwargs['X']
+        self.name = dv_name
+        self.value = value
+        if not(rank(value) == 0):
+            self.nVal = len(value)
         else:
-            X = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T
-        # end if
-        N = len(kwargs['x'])
-        self.rot_x = zeros(N).astype('D')
-        self.rot_y = zeros(N).astype('D')
-        self.rot_z = zeros(N).astype('D')
-
-        if 'rot_type' in kwargs:
-            self.rot_type = int(kwargs['rot_type'])
-        else:
-            self.rot_type = 5 # Default aero-surf like
+            self.nVal = 1
         # end if
 
-        # Create the splines for the axis
-            
-        self.xs    = pySpline.curve(X=X,k=2,no_print=True)
-        self.rotxs = pySpline.curve(x=self.rot_x,s=self.xs.s,k=2,no_print=True)
-        self.rotys = pySpline.curve(x=self.rot_y,s=self.xs.s,k=2,no_print=True)
-        self.rotzs = pySpline.curve(x=self.rot_z,s=self.xs.s,k=2,no_print=True)
-
-        self.scale = ones(self.xs.Nctl,'D')
-        self.scales = pySpline.curve(x=self.scale,s=self.xs.s,k=2,no_print=True)
-        self.links_s = []
-        self.links_x = []
-        self.con_type = None
-
-        self.base_point = self.xs(0)
-        
-        self.base_point_s = None
-        self.base_point_D = None
-
-        self.end_point   = self.xs(1)
-        self.end_point_s = None
-        self.end_point_D = None
-
-        # Values are stored wrt the base point
-        self.x = (self.xs.coef-self.base_point).astype('D')
-
-        # Deep copy the x,rot and scale for design variable reference
-        self.x0 = copy.deepcopy(self.x).astype('d')
-        self.scale0 = copy.deepcopy(self.scale).astype('d')
-
-        # Now determine what control points will be associated with this axis
-        coef_list = []
-        if not 'point_select' in kwargs: # No point_select->Assume full surface
-            for isurf in surf_ids:
-                coef_list.extend(topo.l_index[isurf].flatten())
-            # end for
-        # end if
-
-        else:   # We have a point selection class passed in
-            for isurf in surf_ids:
-                coef_list.extend(kwargs['point_select'].getControlPoints(\
-                        surfs[isurf],isurf,coef_list,topo.l_index))
-            # end for
-        # end if
-
-        # Now parse out duplicates and sort
-        coef_list = unique(coef_list) #unique is in geo_utils
-        coef_list.sort()
-
-        # More straight forward algorihtim
-        self.coef_list = coef_list
-        self.surf_ids  = surf_ids
-        vec = [1000,0,0]
-        for icoef in coef_list: 
-            isurf = topo.g_index[icoef][0][0]
-            u     = topo.g_index[icoef][0][1]
-            v     = topo.g_index[icoef][0][2]
-            pt = surfs[isurf].coef[u,v]
-            ray = pySpline.curve(k=2,t=[0,0,0.5,1,1],coef=[pt-vec,pt,pt+vec])
-            res = self.xs.projectCurve(ray)
-            s = res[0]
-            D = pt - self.xs(s)
-            self.links_s.append(s)
-            self.links_x.append(D)
-        # end for
-
-        # Now we must determine how the surfaces are oriented wrt the axis
-        # We also must determine (based on the design groups) how to attach the axis
-
-        # Algorithim Description:
-        # 1. Do until all surfaces accounted for:
-        # 2.    -> Take the first surface and determine its orientation wrt the axis
-        # 3.    -> The the perpendicualar design group attach in the same manner
-  #       surf_ids_copy =copy.copy(surf_ids)
-#         reordered_coef_list = []
-#         global_counter = 0 
-        
-#         while len(surf_ids_copy) > 0:
-#             isurf = surf_ids_copy.pop(0)
-#             dir_type = directionAlongSurface(surfs[isurf],self.xs)
-          
-#             surf_list = []
-#             dir_list = []
-#             surf_list.append(isurf)
-#             dir_list.append(dir_type)
-#             if dir_type in [0,1]:
-#                 dg_parallel = topo.edges[topo.edge_link[isurf][0]].dg
-#             else:
-
-#                 dg_parallel = topo.edges[topo.edge_link[isurf][2]].dg
-#             # Find all other surfaces/edges with this design group
-#             for isurf in set(surf_ids_copy).difference(set(surf_list)):
-#                 #print 'isurf,dg:',isurf,topo.edges[topo.edge_link[isurf][0]].dg,topo.edges[topo.edge_link[isurf][2]].dg
-#                 if topo.edges[topo.edge_link[isurf][0]].dg == dg_parallel:
-#                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
-#                     surf_ids_copy.remove(isurf)
-#                     surf_list.append(isurf)
-#                     dir_list.append(dir_type)
-#                 elif topo.edges[topo.edge_link[isurf][2]].dg == dg_parallel:
-#                     dir_type = directionAlongSurface(surfs[isurf],self.xs)
-#                     surf_ids_copy.remove(isurf)
-#                     surf_list.append(isurf)
-#                     dir_list.append(dir_type)
-# #             # end for
-      
-#             # Now we can simply attach all the surfaces in surf list according to the directions 
-            
-#             # N is the number of parallel control points
-#             if dir_list[0] == 0:
-#                 N = surfs[surf_list[0]].Nctlu
-#             else:
-#                 N = surfs[surf_list[0]].Nctlv
-#             # end if
-                
-#             s = zeros(N)
-       
-#             for i in xrange(N):
-#                 section_coef_list = []
-#                 for j in xrange(len(surf_list)):
-#                     isurf = surf_list[j]
-#                     if dir_list[j] == 0:
-#                         section_coef_list.extend(surfs[isurf].coef[i,:])
-#                     elif dir_list[j] == 1:
-#                         section_coef_list.extend(surfs[isurf].coef[-1-i,:])
-#                     elif dir_list[j] == 2:
-#                         section_coef_list.extend(surfs[isurf].coef[:,i])
-#                     else:
-#                         section_coef_list.extend(surfs[isurf].coef[:,-1-i])
-#                     # end if
-#                 # end if
-#                 # Average coefficients
-#                 pt = average(section_coef_list,axis=0)
-#                 # This effectively averages the coefficients
-#                 s[i],D = self.xs.projectPoint(pt)
-#             # end if
-
-#             # Now we can attach these with links if they are in coef_list
-#             for i in xrange(N):
-#                 for j in xrange(len(surf_list)):
-#                     isurf = surf_list[j]
-#                     if dir_list[j] == 0:
-#                         for k in xrange(surfs[isurf].Nctlv):
-#                             global_index = topo.l_index[isurf][i,k]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[i,k] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-#                         # end for
-#                     elif dir_list[j] == 1:
-#                         for k in xrange(surfs[isurf].Nctlv):
-#                             global_index = topo.l_index[isurf][-1-i,k]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[-1-i,k] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-#                         # end for
-#                     # end if
-#                     elif dir_list[j] == 2:
-#                         for k in xrange(surfs[isurf].Nctlu):
-#                             global_index = topo.l_index[isurf][k,i]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[k,i] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
-#                         # end for
-#                     elif dir_list[j] == 3:
-#                         for k in xrange(surfs[isurf].Nctlu):
-#                             global_index = topo.l_index[isurf][k,-1-i]
-#                             if global_index in coef_list:
-#                                 D = surfs[isurf].coef[k,-1-i] - self.xs(s[i])
-#                                 #M = self.getRotMatrixGlobalToLocal(s[i])
-#                                 #D = dot(M,D) #Rotate to local frame
-#                                 self.links_s.append(s[i])
-#                                 self.links_x.append(D)
-#                                 reordered_coef_list.append(global_index)
-#                             # end if
+        self.lower    = lower
+        self.upper    = upper
+        self.function = function
+        self.useit    = useit
 
 
-#                 # end for
-#             # end for
-#         # end for
-#         self.coef_list = reordered_coef_list
-#         self.surf_ids  = surf_ids
-        
-#     def _update(self):
+        return
 
-#         self.xs.coef = self.base_point+self.x.astype('d')
-#         self.rotxs.coef = self.rot_x.astype('d')
-#         self.rotys.coef = self.rot_y.astype('d')
-#         self.rotzs.coef = self.rot_z.astype('d')
+    def __call__(self,ref_axis):
 
-#         self.scales.coef = self.scale.astype('d')
+        '''When the object is called, actually apply the function'''
+        # Run the user-supplied function
 
-#         if self.con_type == 'full':
-#             self.xs.coef[-1,:] = self.end_point
-#         # end if
-        
-#         return
-       
-#     def _writeTecplot(self,handle,axis_name):
-#         '''Write the ref axis to the open file handle'''
-#         values = self.xs.getValue(self.xs.s)
-#         pySpline._writeTecplot1D(handle,axis_name,values)
-
-#         return
-
-#     def _getRotMatrixGlobalToLocal(self,s):
-        
-#         '''Return the rotation matrix to convert vector from global to
-#         local frames'''
-#         return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-#                                                     rotzM(self.rotzs(s)[0])))
-    
-#     def _getRotMatrixLocalToGlobal(self,s):
-        
-#         '''Return the rotation matrix to convert vector from global to
-#         local frames'''
-#         return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-#                                                     rotzM(self.rotzs(s)[0]))))
-
-
-#     def addRefAxisCon(self,axis1,axis2,con_type):
-#         '''Add a reference axis connection to the connection list
-#         Attach axis2 to axis 1
-#         Required:
-#             axis1: First ref axis
-#             axis2: Second Ref axis
-#             con_type: Connection Type: 'end' or 'full'
-#             '''
-#         s,D = self.ref_axis[axis1].xs.projectPoint(\
-#             self.ref_axis[axis2].xs.getValue(0))
-
-#         M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
-#         D = dot(M,D)
-
-#         self.ref_axis[axis2].base_point_s = s
-#         self.ref_axis[axis2].base_point_D = D
-#         self.ref_axis[axis2].con_type = con_type
-#         if con_type == 'full':
-#             assert self.ref_axis[axis2].N == 2, 'Full reference axis connection \
-# is only available for reference axis with 2 points. A typical usage is for \
-# a flap hinge line'
-            
-#             s,D = self.ref_axis[axis1].xs.projectPoint(\
-#                 self.ref_axis[axis2].xs.getValue(1.0))
-
-#             M = self.ref_axis[axis1]._getRotMatrixGlobalToLocal(s)
-#             D = dot(M,D)
-
-#             self.ref_axis[axis2].end_point_s = s
-#             self.ref_axis[axis2].end_point_D = D
-            
-#         # end if
-            
-#         self.ref_axis_con.append([axis1,axis2,con_type])
-
-#         return
-#     def _writeTecplotLinks(self,handle,ref_axis):
-#         '''Write out the surface links. '''
-
-#         num_vectors = len(ref_axis.links_s)
-#         coords = zeros((2*num_vectors,3))
-#         icoord = 0
-    
-#         for i in xrange(len(ref_axis.links_s)):
-#             coords[icoord    ,:] = ref_axis.xs.getValue(ref_axis.links_s[i])
-#             coords[icoord +1 ,:] = self.coef[ref_axis.coef_list[i]]
-#             icoord += 2
-#         # end for
-
-#         icoord = 0
-#         conn = zeros((num_vectors,2))
-#         for ivector  in xrange(num_vectors):
-#             conn[ivector,:] = icoord, icoord+1
-#             icoord += 2
-#         # end for
-
-#         handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
-#         handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
-
-#         for n in xrange(3):
-#             for i in  range(2*num_vectors):
-#                 handle.write('%f\n'%(coords[i,n]))
-#             # end for
-#         # end for
-
-#         for i in range(num_vectors):
-#             handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
-#         # end for
-
-#         return
+        return self.function(self.value,ref_axis)
 
 
     

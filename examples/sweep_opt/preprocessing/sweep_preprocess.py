@@ -44,7 +44,7 @@ offset = zeros((naf,2))
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    scale=chord,offset=offset,x=x,y=y,z=z,
                    rot_x=rot_x,rot_y=rot_y,rot_z=rot_z,Nctl=Nctl,
-                   k_span=2,con_file='arw2.con',tip='rounded')
+                   k_span=2,con_file='sweep.con',tip='rounded')
 wing.setSymmetry('xy')
 wing.writeIGES('sweep.igs')
 wing.writeTecplot('sweep.dat')
