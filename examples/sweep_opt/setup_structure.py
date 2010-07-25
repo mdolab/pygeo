@@ -1,7 +1,7 @@
 # This is just a scrip that is execfile'd in the main script to setup the structure. 
 geo_surface = pyGeo.pyGeo('iges',file_name='sweep.igs')
 geo_surface.doConnectivity('sweep.con')
-geo_surface.writeTecplot('geo.dat',edge_labels=True)
+#geo_surface.writeTecplot('geo.dat',edge_labels=True)
 
 # This surface needs to be scaled by 2.33
 geo_surface.coef*=2.33

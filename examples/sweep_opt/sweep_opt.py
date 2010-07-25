@@ -57,19 +57,20 @@ grid_file = 'sweep_debug'
 #
 # ================================================================
 #        Set the number of processors for Aero and Structures
-npAero = 3
+npAero = MPI.COMM_WORLD.size -1 
 npStruct =1
 comm,flags,cumGroups = createGroups([npAero,npStruct],noSplit=False)
 aeroID = 0
 structID = 1
-
+#comm = MPI.COMM_WORLD
+#flags = [True]
 # ================================================================
 #               Set Options for each solver
 #
 aeroOptions={'reinitialize':False,'CFL':.80,
-             'L2Convergence':1e-7,'L2ConvergenceRel':1e-7,
+             'L2Convergence':1e-6,'L2ConvergenceRel':1e-6,
              'MGCycle':'4w','MetricConversion':1.0,'sol_restart':'no',
-             'printIterations':False,'printSolTime':False,'writeSolution':False,
+             'printIterations':True,'printSolTime':False,'writeSolution':False,
              'Dissipation Coefficients':[0.30,0.020],
              'Dissipation Scaling Exponent':0.125,
              'Approx PC': 'yes',
@@ -109,8 +110,8 @@ mdOptions = {'relTol':1e-5,
              'writeIterationSolutionFEA':False,
              'writeVolSolutionCFD':False,
              'writeSurfSolutionCFD':True,
-             'writeSolutionFEA':True,
-             'writeMDConvergence':True,
+             'writeSolutionFEA':False,
+             'writeMDConvergence':False,
              'MDConvergenceFile':'mdconverg.txt',
              'beta0':0.25,
              'CFDIter':750,
@@ -226,7 +227,6 @@ if flags[structID]:
     mesh = None
     mass = structure.evalFunction(mass_func)
     ks   = structure.evalFunction(ks_func)
-    print 'Mass is:',mass
 
     Nnodes = structure.getNumVariables()
     coords = empty(3*Nnodes,'d')
@@ -250,17 +250,26 @@ def fun_obj(x):
 
     # =====================================================
     #        Set DV's
+
+    # Sclale DV's back to range
+    alpha = x[0]*6-3
+    sweep = x[1]*45 + 0
+    twist = x[2]*20 - 10
+
     if MPI.COMM_WORLD.rank == 0:
-        print 'DVs are:',x
+        print 'DVs are:'
+        print 'alpha:',alpha
+        print 'sweep:',sweep
+        print 'twist:',twist
     # Set up the Flow and aeroProblem again 
-    flow = Flow(name='Base Case',mach=0.8,alpha=x[0],beta=0.0,liftIndex=2)
+    flow = Flow(name='Base Case',mach=0.8,alpha=alpha,beta=0.0,liftIndex=2)
     ref = Reference('Baseline Reference',5.0,5.0,1.0) #area,span,chord 
     geom = Geometry
     AS.aero_problem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
 
     # Set Sweep and Twist
-    ref_axis.DV_listGlobal[idg['sweep']].value = x[1]
-    ref_axis.DV_listGlobal[idg['twist']].value = x[2]
+    ref_axis.DV_listGlobal[idg['sweep']].value = sweep
+    ref_axis.DV_listGlobal[idg['twist']].value = twist
 
     # Update FFD
     FFD.coef = ref_axis.update()
@@ -285,8 +294,8 @@ def fun_obj(x):
         Lift = Force[1]
         Drag = Force[0]
 
-        f_obj = Drag
-        f_con = array([Lift])
+        f_obj = Drag/1000
+        f_con = array([Lift])/95870.0
     
         fail = 0
     except:
@@ -301,6 +310,8 @@ def fun_obj(x):
         print 'f_con:',f_con
 
 
+
+
     return f_obj,f_con,fail
 
 
@@ -311,12 +322,12 @@ def fun_obj(x):
 opt_prob = Optimization('Swept Wing Optimization',fun_obj)
 
 # Add variables
-opt_prob.addVar('alpha',value=-2.,lower=-2.,upper=4.)
-opt_prob.addVar('sweep',value=5.,lower=0.,upper=45.)
-opt_prob.addVar('twist',value=0.,lower=-5.,upper=5.)
+opt_prob.addVar('alpha',value=0.,lower=0.,upper=1.)
+opt_prob.addVar('sweep',value=.1,lower=0.,upper=1.)
+opt_prob.addVar('twist',value=.5,lower=0.,upper=1.)
 
 # Add Constraints
-opt_prob.addCon('lift', type='i', lower=95870.0, upper=1000000.0)
+opt_prob.addCon('lift', type='i', lower=1.0, upper=10.0)
 
 # Add Objective 
 opt_prob.addObj('Drag')
@@ -326,5 +337,5 @@ snopt = SNOPT(options=optOptions)
 
 # Run optimization
 snopt(opt_prob)
-#fun_obj([0,30,0])
-#fun_obj([0,30,0])
+#fun_obj([0,.1,0.5])
+#fun_obj([0,.1,0.5])
