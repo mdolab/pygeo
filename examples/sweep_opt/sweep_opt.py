@@ -70,7 +70,7 @@ structID = 1
 aeroOptions={'reinitialize':False,'CFL':.80,
              'L2Convergence':1e-6,'L2ConvergenceRel':1e-6,
              'MGCycle':'4w','MetricConversion':1.0,'sol_restart':'no',
-             'printIterations':True,'printSolTime':False,'writeSolution':False,
+             'printIterations':False,'printSolTime':False,'writeSolution':False,
              'Dissipation Coefficients':[0.30,0.020],
              'Dissipation Scaling Exponent':0.125,
              'Approx PC': 'yes',
@@ -163,9 +163,9 @@ def sweep(val,ref_axis):
     
     # Extract coef for 0-th ref axis
     C = zeros((len(ref_axis.topo.l_index[0]),3))
-    C[:,0] = take(ref_axis.coef[:,0],ref_axis.topo.l_index[0])
-    C[:,1] = take(ref_axis.coef[:,1],ref_axis.topo.l_index[0])
-    C[:,2] = take(ref_axis.coef[:,2],ref_axis.topo.l_index[0])
+    C[:,0] = take(ref_axis.coef0[:,0],ref_axis.topo.l_index[0])
+    C[:,1] = take(ref_axis.coef0[:,1],ref_axis.topo.l_index[0])
+    C[:,2] = take(ref_axis.coef0[:,2],ref_axis.topo.l_index[0])
 
     M = rotyM(val)
     C[1] = C[0] + dot(M,C[1]-C[0])
@@ -258,6 +258,7 @@ def fun_obj(x):
 
     if MPI.COMM_WORLD.rank == 0:
         print 'DVs are:'
+        print 'x',x
         print 'alpha:',alpha
         print 'sweep:',sweep
         print 'twist:',twist
@@ -288,7 +289,7 @@ def fun_obj(x):
     # Solve the aerostructural Problem
     try:
         Force = AS.solve(nMDiterations=1)
-        M = rotzM(-x[0])
+        M = rotzM(-alpha)
         Force = dot(M,Force)
     
         Lift = Force[1]
@@ -305,12 +306,8 @@ def fun_obj(x):
 
 
     if MPI.COMM_WORLD.rank == 0:
-        print 'x',x
         print 'f_obj:',f_obj
         print 'f_con:',f_con
-
-
-
 
     return f_obj,f_con,fail
 
@@ -322,12 +319,12 @@ def fun_obj(x):
 opt_prob = Optimization('Swept Wing Optimization',fun_obj)
 
 # Add variables
-opt_prob.addVar('alpha',value=0.,lower=0.,upper=1.)
+opt_prob.addVar('alpha',value=0.5,lower=0.,upper=1.)
 opt_prob.addVar('sweep',value=.1,lower=0.,upper=1.)
 opt_prob.addVar('twist',value=.5,lower=0.,upper=1.)
 
 # Add Constraints
-opt_prob.addCon('lift', type='i', lower=1.0, upper=10.0)
+opt_prob.addCon('lift', type='i', lower=1.0, upper=1.01)
 
 # Add Objective 
 opt_prob.addObj('Drag')
@@ -337,5 +334,3 @@ snopt = SNOPT(options=optOptions)
 
 # Run optimization
 snopt(opt_prob)
-#fun_obj([0,.1,0.5])
-#fun_obj([0,.1,0.5])
