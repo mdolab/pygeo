@@ -48,10 +48,10 @@ spar_blank[-1] = 0
 rib  = wing_box.getConstitutive(0.002,yieldstress=87.6e6)
 
 # Spar constitutive classe
-spar = wing_box.getConstitutive(0.05,dv=0,t_min=.001,t_max=1,yieldstress=87.6e6)
+spar = wing_box.getConstitutive(0.1,dv=0,t_min=.001,t_max=1,yieldstress=87.6e6)
 
 # Skin constitutvie classes
-skin = wing_box.getConstitutive(0.003,dv=1,t_min=.001,t_max=1,yieldstress=87.6e6)
+skin = wing_box.getConstitutive(0.02,dv=1,t_min=.001,t_max=1,yieldstress=87.6e6)
 
 struct_def1 = pyLayout2.struct_def(
     nrib,nspar,
