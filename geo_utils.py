@@ -4,7 +4,8 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
-    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,rank
+    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,rank,\
+    atleast_1d,atleast_2d,atleast_3d
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os,time
 
@@ -401,7 +402,7 @@ def faceOrientation(f1,f2):
         mpiPrint('Error with faceOrientation: Not possible.')
         mpiPrint('Orientation 1 [%d %d %d %d]'%(f1[0],f1[1],f1[2],f1[3]))
         mpiPrint('Orientation 2 [%d %d %d %d]'%(f2[0],f2[1],f2[2],f2[3]))
-        sys.exit(0)
+        raise value
 
 def quadOrientation(pt1,pt2):
     '''Given two sets of 4 points in ndim space, pt1 and pt2,
@@ -690,6 +691,22 @@ def nodesFromEdge(edge):
         return 0,2
     elif edge == 3:
         return 1,3
+    elif edge == 4:
+        return 4,5
+    elif edge == 5:
+        return 6,7
+    elif edge == 6:
+        return 4,6
+    elif edge == 7:
+        return 5,7
+    elif edge == 8:
+        return 0,4
+    elif edge == 9:
+        return 1,5
+    elif edge == 10:
+        return 2,6
+    elif edge == 11:
+        return 3,7
 
 # Volume Face/edge functions
 def nodesFromFace(face):
@@ -1595,8 +1612,9 @@ class BlockTopology(topology):
     See Topology base class for more information
     '''
 
-    def __init__(self,corners=None,node_tol=1e-4,edge_tol=1e-4,file=None):
+    def __init__(self,coords=None,node_tol=1e-4,edge_tol=1e-4,file=None):
         '''Initialize the class with data required to compute the topology'''
+        
         topology.__init__(self)
         self.mNodeEnt = 8
         self.mEdgeEnt = 12
@@ -1611,121 +1629,259 @@ class BlockTopology(topology):
             return
         # end if
 
-        self.simple = True
-        # This is initialized with a list of coordiantes -> Corners
-        # Point reduce them
-        nVol = len(corners)
-        corners = array(corners)
-        un,node_link = pointReduceBruteForce(corners.reshape((8*nVol,3)))
-        node_link = node_link.reshape((nVol,8))
+        coords = atleast_2d(coords)
+        nVol = len(coords)
+        
+        if coords.shape[1] == 8: # Just the corners are given
+            self.simple = True
+            # This is initialized with a list of coordiantes -> Corners
+            # Point reduce them
+            un,node_link = pointReduceBruteForce(coords.reshape((8*nVol,3)))
+            node_link = node_link.reshape((nVol,8))
 
-        # We can now generate vol_con AND face_con
-        vol_con = []
-        face_con = []
-        for ivol in xrange(nVol):
-            vol_con.append(zeros(8,'intc'))
-            for icorner in xrange(8):
-                vol_con[-1][icorner] = node_link[ivol][icorner]
+            # We can now generate vol_con AND face_con
+            vol_con = []
+            face_con = []
+            for ivol in xrange(nVol):
+                vol_con.append(zeros(8,'intc'))
+                for icorner in xrange(8):
+                    vol_con[-1][icorner] = node_link[ivol][icorner]
+                # end for
+                face_con.append([node_link[ivol][0],node_link[ivol][1],
+                                 node_link[ivol][2],node_link[ivol][3]])
+                
+                face_con.append([node_link[ivol][4],node_link[ivol][5],
+                                 node_link[ivol][6],node_link[ivol][7]])
+
+                face_con.append([node_link[ivol][0],node_link[ivol][2],
+                                 node_link[ivol][4],node_link[ivol][6]])
+                
+                face_con.append([node_link[ivol][1],node_link[ivol][3],
+                                 node_link[ivol][5],node_link[ivol][7]])
+                
+                face_con.append([node_link[ivol][0],node_link[ivol][1],
+                                 node_link[ivol][4],node_link[ivol][5]])
+                
+                face_con.append([node_link[ivol][2],node_link[ivol][3],
+                                 node_link[ivol][6],node_link[ivol][7]])
             # end for
-            face_con.append([node_link[ivol][0],node_link[ivol][1],
-                             node_link[ivol][2],node_link[ivol][3]])
 
-            face_con.append([node_link[ivol][4],node_link[ivol][5],
-                             node_link[ivol][6],node_link[ivol][7]])
-
-            face_con.append([node_link[ivol][0],node_link[ivol][2],
-                             node_link[ivol][4],node_link[ivol][6]])
-
-            face_con.append([node_link[ivol][1],node_link[ivol][3],
-                             node_link[ivol][5],node_link[ivol][7]])
-
-            face_con.append([node_link[ivol][0],node_link[ivol][1],
-                             node_link[ivol][4],node_link[ivol][5]])
-
-            face_con.append([node_link[ivol][2],node_link[ivol][3],
-                             node_link[ivol][6],node_link[ivol][7]])
-        # end for
-
-        # Uniqify the Faces 
-        face_hash = []
-        for iface in xrange(nVol * 6):
-            temp = sorted(face_con[iface])
-            face_hash.append((temp[0]*6*nVol*3 + temp[1]*6*nVol*2 +
+            # Uniqify the Faces 
+            face_hash = []
+            for iface in xrange(nVol * 6):
+                temp = sorted(face_con[iface])
+                face_hash.append((temp[0]*6*nVol*3 + temp[1]*6*nVol*2 +
                               temp[2]*6*nVol*1 + temp[3]))
+                
+            uf,face_link = unique_index(face_hash) # Only need the lengh of uf and face_link
+            face_link = array(face_link).reshape((nVol,6))
+            nFace = len(uf)
+            used = zeros(nFace,'bool')
+            reduced_face_con = zeros((nFace,4),'intc')
+            for ivol in xrange(nVol):
+                for iface in xrange(6):
+                    if used[face_link[ivol][iface]] == False:
+                        used[face_link[ivol][iface]] = True
+                        reduced_face_con[face_link[ivol][iface]] = \
+                            face_con[ivol*6+iface]
+                    # end if
+                # end for
 
-        uf,face_link = unique_index(face_hash) # Only need the lengh of uf and face_link
-        face_link = array(face_link).reshape((nVol,6))
-        nFace = len(uf)
-        used = zeros(nFace,'bool')
-        reduced_face_con = zeros((nFace,4),'intc')
-        for ivol in xrange(nVol):
-            for iface in xrange(6):
-                if used[face_link[ivol][iface]] == False:
-                    used[face_link[ivol][iface]] = True
-                    reduced_face_con[face_link[ivol][iface]] = \
-                        face_con[ivol*6+iface]
+            # Now get the directions for faces
+            face_dir = zeros((nVol,6),'intc')
+            for ivol in xrange(nVol):
+                for iface in xrange(6):
+                    face_dir[ivol][iface] = faceOrientation(reduced_face_con[face_link[ivol][iface]],
+                                            face_con[ivol*6+iface])
+                # end for
+            # end for
+
+            # Uniqify the Edges - Get the edge_hash
+            edges = []
+            edge_hash = []
+            for ivol in xrange(nVol):
+                #                 #             n1                ,n2               ,dg,n,degen
+                # k = 0 plane
+                edges.append([vol_con[ivol][0],vol_con[ivol][1],-1,0,0])
+                edges.append([vol_con[ivol][2],vol_con[ivol][3],-1,0,0])
+                edges.append([vol_con[ivol][0],vol_con[ivol][2],-1,0,0])
+                edges.append([vol_con[ivol][1],vol_con[ivol][3],-1,0,0])
+
+                # k = max plane
+                edges.append([vol_con[ivol][4],vol_con[ivol][5],-1,0,0])
+                edges.append([vol_con[ivol][6],vol_con[ivol][7],-1,0,0])
+                edges.append([vol_con[ivol][4],vol_con[ivol][6],-1,0,0])
+                edges.append([vol_con[ivol][5],vol_con[ivol][7],-1,0,0])
+
+                # Vertical ones
+                edges.append([vol_con[ivol][0],vol_con[ivol][4],-1,0,0])
+                edges.append([vol_con[ivol][1],vol_con[ivol][5],-1,0,0])
+                edges.append([vol_con[ivol][2],vol_con[ivol][6],-1,0,0])
+                edges.append([vol_con[ivol][3],vol_con[ivol][7],-1,0,0])
+            # end for
+
+            edge_dir = ones(len(edges),'intc')
+            for iedge in xrange(len(edges)):
+                if edges[iedge][0] > edges[iedge][1]:
+                    temp = edges[iedge][0]
+                    edges[iedge][0] = edges[iedge][1]
+                    edges[iedge][1] = temp
+                    edge_dir[iedge] = -1
                 # end if
+                edge_hash.append(edges[iedge][0]*12*nVol + edges[iedge][1])
             # end for
 
-        # Now get the directions for faces
-        face_dir = zeros((nVol,6),'intc')
-        for ivol in xrange(nVol):
-            for iface in xrange(6):
-                face_dir[ivol][iface] = faceOrientation(reduced_face_con[face_link[ivol][iface]],
-                                        face_con[ivol*6+iface])
+            ue,edge_link = unique_index(edges,edge_hash)
+
+        else:
+            # Now it is much more complex, since the nodes no longer
+            # uniqely define edges, and in general, faces are not
+            # uniqely defined by edges.
+
+            # Coords is now assumed to be of size nvol,(8 + 12 + 6),3
+            #                 8 corners + 12 edge midpoints + 6 face midpoints
+
+
+            un,node_link = pointReduceBruteForce(coords[:,0:8,:].reshape((nVol*8,3)))
+            node_link = node_link.reshape((nVol,8))
+
+            # Next Calculate the EDGE connectivity. -- This is Still Brute Force
+            print 'fucking nodes:'
+            for i in xrange(len(un)):
+                print 'node i:',i,un[i]
+            print 'node link:'
+            print node_link
+#             for ivol in xrange(nVol):
+#                 print '------- ivol ',ivol, '----------'
+#                 for iedge in xrange(12):
+#                     n1,n2 = nodesFromEdge(iedge)
+#                     print 'edge,n1,n2,mid,expected:',iedge,n1,n2,coords[ivol,n1,:],coords[ivol,n2,:],coords[ivol,8+iedge,:]
+
+
+            ue = []
+            midpoints = []
+            edge_link = -1*ones(nVol*12,'intc')
+            edge_dir  = zeros((nVol,12),'intc')
+
+            for ivol in xrange(nVol):
+                for iedge in xrange(12):
+                    n1,n2 = nodesFromEdge(iedge)
+
+                    n1 = node_link[ivol][n1]
+                    n2 = node_link[ivol][n2]
+                    
+
+                    error = False
+                    midpoint = coords[ivol][iedge + 8]
+
+                    if len(ue) == 0:
+                        ue.append([n1,n2,-1,0,0])
+                        print 'len 0 add'
+                        midpoints.append(midpoint)
+                        edge_link[12*ivol + iedge] = 0
+                        edge_dir [ivol][iedge] = 1
+                    else:
+                        found_it = False
+                        for i in xrange(len(ue)):
+                            if [n1,n2] == ue[i][0:2]:
+                                if e_dist(midpoint,midpoints[i]) < edge_tol:
+                                    edge_link[12*ivol + iedge] = i
+                                    edge_dir [ivol][iedge] = 1
+                                    found_it = True
+                                # end if
+                                else:
+                                    error = True
+                                    print 'Same nodes, differenet mid1',n1,n2,midpoint,midpoints[i]
+                            elif [n2,n1] == ue[i][0:2]:
+                                if e_dist(midpoint,midpoints[i]) < edge_tol:
+                                    edge_link[12*ivol + iedge] = i
+                                    edge_dir[ivol][iedge] = -1
+                                    found_it = True
+                                # end if
+                                else:
+                                    error = True
+                                    print 'Same nodes, differenet mid2',n1,n2,midpoint,midpoints[i]
+                            # end if
+                        # end for
+
+                        # We went all the way though the list so add it at end and return index
+                        if not found_it:
+                            print 'adding edge:',n1,n2
+                            ue.append([n1,n2,-1,0,0])
+                            midpoints.append(midpoint)
+                            edge_link[12*ivol + iedge] = i+1
+                            edge_dir [ivol][iedge] = 1
+                    # end if
+                # end for
             # end for
-        # end for
+            print 'Found ',len(ue), ' unique edges'
+            print 'node_linK:',node_link
+            print 'edge_link:',edge_link.reshape((nVol,12))
+            print array(ue).reshape(len(ue),5)
 
-        # Uniqify the Edges - Get the edge_hash
-        edges = []
-        edge_hash = []
-        for ivol in xrange(nVol):
-#                 #             n1                ,n2               ,dg,n,degen
-            # k = 0 plane
-            edges.append([vol_con[ivol][0],vol_con[ivol][1],-1,0,0])
-            edges.append([vol_con[ivol][2],vol_con[ivol][3],-1,0,0])
-            edges.append([vol_con[ivol][0],vol_con[ivol][2],-1,0,0])
-            edges.append([vol_con[ivol][1],vol_con[ivol][3],-1,0,0])
+            # Next Calculate the FACE connectivity. -- This is Still Brute Force
 
-            # k = max plane
-            edges.append([vol_con[ivol][4],vol_con[ivol][5],-1,0,0])
-            edges.append([vol_con[ivol][6],vol_con[ivol][7],-1,0,0])
-            edges.append([vol_con[ivol][4],vol_con[ivol][6],-1,0,0])
-            edges.append([vol_con[ivol][5],vol_con[ivol][7],-1,0,0])
+            uf = []
+            midpoints = []
+            face_link = -1*ones(nVol*6,'intc')
+            face_dir  = zeros((nVol,6),'intc')
 
-            # Vertical ones
-            edges.append([vol_con[ivol][0],vol_con[ivol][4],-1,0,0])
-            edges.append([vol_con[ivol][1],vol_con[ivol][5],-1,0,0])
-            edges.append([vol_con[ivol][2],vol_con[ivol][6],-1,0,0])
-            edges.append([vol_con[ivol][3],vol_con[ivol][7],-1,0,0])
-        # end for
+            for ivol in xrange(nVol):
+                for iface in xrange(6):
+                    n1,n2,n3,n4 = nodesFromFace(iface)
+                    n1 = node_link[ivol][n1]
+                    n2 = node_link[ivol][n2] 
+                    n3 = node_link[ivol][n3]
+                    n4 = node_link[ivol][n4] 
 
-        edge_dir = ones(len(edges),'intc')
-        for iedge in xrange(len(edges)):
-            if edges[iedge][0] > edges[iedge][1]:
-                temp = edges[iedge][0]
-                edges[iedge][0] = edges[iedge][1]
-                edges[iedge][1] = temp
-                edge_dir[iedge] = -1
-            # end if
-            edge_hash.append(edges[iedge][0]*12*nVol + edges[iedge][1])
-        # end for
+                    midpoint = coords[ivol][iface + 8 + 12]
 
-        ue,edge_link = unique_index(edges,edge_hash)
+                    if len(uf) == 0:
+                        uf.append([n1,n2,n3,n4])
+                        midpoints.append(midpoint)
+                        face_link[6*ivol + iface] = 0
+                        face_dir [ivol][iface] = 0
+                    else:
+                        found_it = False
+                        for i in xrange(len(uf)):
+                            if sorted([n1,n2,n3,n4]) == sorted(uf[i]):
+                                # We have the same face, but not not necessairly the same orientation
+
+                                if e_dist(midpoint,midpoints[i]) < edge_tol:
+                                    face_link[6*ivol + iface] = i
+                                    face_dir[ivol][iface] = faceOrientation(uf[i],[n1,n2,n3,n4])
+                                    found_it = True
+                                # end if
+                            # end if
+                        # end for
+
+                        # We went all the way though the list so add it at end and return index
+                        if not found_it:
+                            uf.append([n1,n2,n3,n4])
+                            midpoints.append(midpoint)
+                            face_link[6*ivol + iface] = i+1
+                            face_dir [ivol][iface] = 0
+                    # end if
+                # end for
+            # end for
+            face_link = face_link.reshape([nVol,6])
+        # end if 
 
         # --------- Set the Requried Data for this class ------------
-        self.nNode = len(un)
-        self.nEdge = len(ue)
-        self.nFace = len(uf)
-        self.nVol  = len(corners)
-        self.nEnt  = self.nVol
+        self.nNode = len(un) # Done
+        self.nEdge = len(ue) # Done
+        self.nFace = len(uf) # Done
+        self.nVol  = len(coords) # Done
+        self.nEnt  = self.nVol # Done
 
-        self.node_link = node_link
-        self.edge_link = array(edge_link).reshape((nVol,12))
-        self.face_link = face_link
+        self.node_link = node_link # Done
+        self.edge_link = array(edge_link).reshape((nVol,12)) # Done
+        self.face_link = face_link # Done
 
-        self.edge_dir  = array(edge_dir).reshape((nVol,12))
-        self.face_dir  = face_dir
+        self.edge_dir  = array(edge_dir).reshape((nVol,12))  # Done
+        self.face_dir  = face_dir # Done
+        
+       
         # ------------------------------------------------------------
 
         # Next Calculate the Design Group Information
@@ -1734,6 +1890,11 @@ class BlockTopology(topology):
 
         self._calcDGs(ue,edge_link,edge_link_sorted,edge_link_ind)
 
+        print 'Found ',len(ue), ' unique edges'
+        print 'node_linK:',node_link
+        print 'edge_link:',edge_link.reshape((nVol,12))
+        print array(ue).reshape(len(ue),5)
+            
         # Set the edge ojects
         self.edges = []
         for i in xrange(self.nEdge): # Create the edge objects

@@ -67,13 +67,13 @@ structID = 1
 # ================================================================
 #               Set Options for each solver
 #
-aeroOptions={'reinitialize':False,'CFL':1.45, # 1.5 for large grid
-             'L2Convergence':1e-6,'L2ConvergenceRel':1e-1,
-             'MGCycle':'4w','MetricConversion':1.0,'sol_restart':'no',
-             'OutputDir':'/scratch/kenway/',
-             'printIterations':False,'printSolTime':False,'writeSolution':False,
-             'Dissipation Coefficients':[0.25,0.016], 
-             'Dissipation Scaling Exponent':0.125, # .25 for large grid
+aeroOptions={'reinitialize':False,'CFL':1.0, # 1.5 for large grid
+             'L2Convergence':1e-6,'L2ConvergenceRel':1e-6,
+             'MGCycle':'3w','MetricConversion':1.0,'sol_restart':'no',
+             'OutputDir':'./',
+             'printIterations':True,'printSolTime':False,'writeSolution':False,
+             'Dissipation Coefficients':[0.25,0.02], 
+             'Dissipation Scaling Exponent':0.25, # .25 for large grid
              'Approx PC': 'yes',
              'Adjoint solver type':'GMRES',
              'adjoint relative tolerance':1e-8,
@@ -102,7 +102,7 @@ structOptions={'PCFillLevel':7,
                'L2ConvergenceRel':1e-3,
                'useMonitor':False,
                'monitorFrequency':1,
-               'filename':'/scratch/kenway/wing_box',
+               'filename':'wing_box',
                'restart':False}
 
 mdOptions = {'relTol':1e-5,
@@ -110,12 +110,12 @@ mdOptions = {'relTol':1e-5,
              'writeIterationSurfSolutionCFD':False,
              'writeIterationSolutionFEA':False,
              'writeVolSolutionCFD':False,
-             'writeSurfSolutionCFD':False,
-             'writeSolutionFEA':False,
+             'writeSurfSolutionCFD':True,
+             'writeSolutionFEA':True,
              'writeMDConvergence':False,
              'MDConvergenceFile':'mdconverg.txt',
              'beta0':.5,
-             'CFDIter':2500,
+             'CFDIter':500,
              }
 
 meshOptions = {'warpType':'solid',
@@ -136,8 +136,8 @@ optOptions = {'Major feasibility tolerance':1.0e-3,
               'Function precision':1.0e-5,
               #'Difference interval':.003, 	# Function precision^(1/2)
               #'Central difference interval':.02,# Function precision^(1/3)
-              'Print file':'/scratch/kenway/SNOPT_print.out',
-              'Summary file':'/scratch/kenway/SNOPT_summary.out',
+              'Print file':'SNOPT_print.out',
+              'Summary file':'SNOPT_summary.out',
               'Problem Type':'Maximize'
 }
 
@@ -260,11 +260,11 @@ def fun_obj(x):
     #        Set DV's
 
     # Sclale DV's back to range
-    alpha = x[0]*8-4
+    alpha = x[0]*20-10
     sweep = x[1]*45
-    twist = 0#x[2]*10 - 5
-    thick1 = .03
-    thick2 = x[2]
+    twist = x[2]*10 - 5
+    thick1 = .04
+    thick2 = x[3]
     r = MPI.COMM_WORLD.rank
     print 'DVs are:'
     print 'x',r,x
@@ -296,11 +296,12 @@ def fun_obj(x):
 
         mesh.setSurfaceCoordinatesLocal('wing',FFD.getVolumePoints(0))
         mesh.warpMesh()
+        mesh.writeVolumeGrid('fuck.cgns')
         CFDsolver.interface.Mesh.setGrid(mesh.getGrid()) 
     # end if
 
     # Solve the aerostructural Problem
-    Force,fail = AS.solve(nMDiterations=20)
+    Force,fail = AS.solve(nMDiterations=1)
 
     if fail:
         fail = 1
@@ -372,7 +373,7 @@ opt_prob = Optimization('Swept Wing Optimization',fun_obj)
 # Add variables
 opt_prob.addVar('alpha',value=0.453098,lower=0.,upper=1.)
 opt_prob.addVar('sweep',value=.25,lower=0.,upper=1.)
-#opt_prob.addVar('twist',value=.5,lower=0.,upper=1.)
+opt_prob.addVar('twist',value=.5,lower=0.,upper=1.)
 #opt_prob.addVar('thick1',value=.05,lower=.005,upper=1)
 opt_prob.addVar('thick2',value=0.01,lower=0.005,upper=1)
 # Add Constraints
@@ -390,10 +391,10 @@ opt_prob.addObj('Range')
 #r = MPI.COMM_WORLD.rank
 #print 'rank:',r,opt_prob
 
-fun_obj([.5,0,.005])
-fun_obj([.501,0,.00500])
-fun_obj([.50,0.001,.00500])
-fun_obj([.50,0.000,.00510])
+fun_obj([.9,.75,.7,.02])
+#fun_obj([.501,0,.00500])
+#fun_obj([.50,0.001,.00500])
+#fun_obj([.50,0.000,.00510])
 # if MPI.COMM_WORLD.rank == 0:
 #     f = open('/scratch/kenway/alpha_sweep.txt','w')
 #     f.write('Lift           Drag               KS\n')

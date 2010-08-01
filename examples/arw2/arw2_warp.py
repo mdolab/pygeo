@@ -16,8 +16,8 @@ from numpy import linspace, cos, pi, hstack, zeros, ones, sqrt, imag, interp, \
 from mdo_import_helper import *
 import warnings
 warnings.filterwarnings("ignore")
-exec(import_modules('PETScInit'))
-PETScInit.PETScInit()
+import petsc4py
+from petsc4py import PETSc
 
 exec(import_modules('pyGeo','pyBlock','pySpline','geo_utils','mpi4py','pyLayout2'))
 exec(import_modules('pyAero_problem','pyAero_reference','pyAero_geometry'))
@@ -156,7 +156,7 @@ AS = AeroStruct(MPI.COMM_WORLD,comm,flags,aeroOptions=aeroOptions,
                 structOptions=structOptions,mdOptions=mdOptions,complex=complex)
 
 AS.initialize(aeroProblem,CFDsolver,structure,mesh,'wing')
-AS.solve(nMDiterations=50)
+AS.solve(nMDiterations=1)
 #AS.initializeCoupledAdjoint()
 #AS.solveCoupledAdjoint('cl')
 
