@@ -1741,22 +1741,9 @@ class BlockTopology(topology):
             # Coords is now assumed to be of size nvol,(8 + 12 + 6),3
             #                 8 corners + 12 edge midpoints + 6 face midpoints
 
-
             un,node_link = pointReduceBruteForce(coords[:,0:8,:].reshape((nVol*8,3)))
             node_link = node_link.reshape((nVol,8))
-
             # Next Calculate the EDGE connectivity. -- This is Still Brute Force
-            print 'fucking nodes:'
-            for i in xrange(len(un)):
-                print 'node i:',i,un[i]
-            print 'node link:'
-            print node_link
-#             for ivol in xrange(nVol):
-#                 print '------- ivol ',ivol, '----------'
-#                 for iedge in xrange(12):
-#                     n1,n2 = nodesFromEdge(iedge)
-#                     print 'edge,n1,n2,mid,expected:',iedge,n1,n2,coords[ivol,n1,:],coords[ivol,n2,:],coords[ivol,8+iedge,:]
-
 
             ue = []
             midpoints = []
@@ -1769,14 +1756,10 @@ class BlockTopology(topology):
 
                     n1 = node_link[ivol][n1]
                     n2 = node_link[ivol][n2]
-                    
-
-                    error = False
                     midpoint = coords[ivol][iedge + 8]
 
                     if len(ue) == 0:
                         ue.append([n1,n2,-1,0,0])
-                        print 'len 0 add'
                         midpoints.append(midpoint)
                         edge_link[12*ivol + iedge] = 0
                         edge_dir [ivol][iedge] = 1
@@ -1789,24 +1772,17 @@ class BlockTopology(topology):
                                     edge_dir [ivol][iedge] = 1
                                     found_it = True
                                 # end if
-                                else:
-                                    error = True
-                                    print 'Same nodes, differenet mid1',n1,n2,midpoint,midpoints[i]
                             elif [n2,n1] == ue[i][0:2]:
                                 if e_dist(midpoint,midpoints[i]) < edge_tol:
                                     edge_link[12*ivol + iedge] = i
                                     edge_dir[ivol][iedge] = -1
                                     found_it = True
                                 # end if
-                                else:
-                                    error = True
-                                    print 'Same nodes, differenet mid2',n1,n2,midpoint,midpoints[i]
                             # end if
                         # end for
 
                         # We went all the way though the list so add it at end and return index
                         if not found_it:
-                            print 'adding edge:',n1,n2
                             ue.append([n1,n2,-1,0,0])
                             midpoints.append(midpoint)
                             edge_link[12*ivol + iedge] = i+1
