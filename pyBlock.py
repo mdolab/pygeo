@@ -362,13 +362,20 @@ class pyBlock():
         # Determine the blocking connectivity
 
         # Compute the corners
-        corners = zeros((self.nVol,8,3))
+        coords = zeros((self.nVol,26,3))
         for ivol in xrange(self.nVol):
             for icorner in xrange(8):
-                corners[ivol,icorner] = self.vols[ivol].getOrigValueCorner(icorner)
+                coords[ivol,icorner] = self.vols[ivol].getOrigValueCorner(icorner)
+            # end for
+            for iedge in xrange(12):
+                coords[ivol,8+iedge] = self.vols[ivol].getMidPointEdge(iedge)
+            # end for
+            for iface in xrange(6):
+                coords[ivol,20+iface] = self.vols[ivol].getMidPointFace(iface)
             # end for
         # end for
-        self.topo = BlockTopology(corners)
+
+        self.topo = BlockTopology(coords)
         sizes = []
         for ivol in xrange(self.nVol):
             sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
@@ -506,7 +513,8 @@ class pyBlock():
 # ----------------------------------------------------------------------    
 
     def writeTecplot(self,file_name,vols=True,coef=True,orig=False,
-                     vol_labels=False,edge_labels=False,tecio=False):
+                     vol_labels=False,edge_labels=False,node_labels=False,
+                     tecio=False):
 
         '''Write the pyGeo Object to Tecplot dat file
         Required:
@@ -578,7 +586,36 @@ class pyBlock():
                 # end for
             # end for 
             f2.close()
+
+        if node_labels == True:
+            # First we need to figure out where the corners actually *are*
+            n_nodes = len(unique(self.topo.node_link.flatten()))
+            node_coord = zeros((n_nodes,3))
+
+            for i in xrange(n_nodes):
+                # Try to find node i
+                for ivol in xrange(self.nVol):
+                    for inode  in xrange(8):
+                        if self.topo.node_link[ivol][inode] == i:
+                            coordinate = self.vols[ivol].getValueCorner(inode)
+                        # end if
+                    # end for
+                # end for
+                node_coord[i] = coordinate
+            # end for
+            # Split the filename off
+            (dirName,fileName) = os.path.split(file_name)
+            (fileBaseName, fileExtension)=os.path.splitext(fileName)
+            label_filename = dirName+'./'+fileBaseName+'.node_labels.dat'
+            f2 = open(label_filename,'w')
+            for i in xrange(n_nodes):
+                text_string = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,T=\"n%d\"\n'%(
+                    node_coord[i][0],node_coord[i][1],node_coord[i][2],i)
+                f2.write('%s'%(text_string))
+            # end for 
+            f2.close()
         # end if
+
         pySpline.closeTecplot(f)
         return
 
