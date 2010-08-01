@@ -1814,11 +1814,7 @@ class BlockTopology(topology):
                     # end if
                 # end for
             # end for
-            print 'Found ',len(ue), ' unique edges'
-            print 'node_linK:',node_link
-            print 'edge_link:',edge_link.reshape((nVol,12))
-            print array(ue).reshape(len(ue),5)
-
+      
             # Next Calculate the FACE connectivity. -- This is Still Brute Force
 
             uf = []
@@ -1890,11 +1886,6 @@ class BlockTopology(topology):
 
         self._calcDGs(ue,edge_link,edge_link_sorted,edge_link_ind)
 
-        print 'Found ',len(ue), ' unique edges'
-        print 'node_linK:',node_link
-        print 'edge_link:',edge_link.reshape((nVol,12))
-        print array(ue).reshape(len(ue),5)
-            
         # Set the edge ojects
         self.edges = []
         for i in xrange(self.nEdge): # Create the edge objects
