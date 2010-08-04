@@ -1,7 +1,7 @@
 # =============================================================================
 # Standard Python modules
 # =============================================================================
-import os, sys, string, pdb, copy, time
+import os, sys, string, pdb, copy, time, datetime
 
 # =============================================================================
 # External Python modules
@@ -51,9 +51,18 @@ else:
 mpiPrint('------- Sweep Example ----------------')
 
 # ================================================================
-#                   Grid File
-grid_file = 'sweep_debug2'
-#grid_file = 'sweep_400k2'
+#                   INPUT INFORMATION
+grid_file = 'sweep_cgrid_debug'
+output_directory = '.'
+problem_name = 'sweep_opt'
+
+# ================================================================
+#                   Create Working Directoy
+problem_dir = output_directory + '/' + problem_name + '_'+datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+
+if MPI.COMM_WORLD.rank == 0:
+    os.mkdir(problem_dir)
+print problem_dir
 #
 # ================================================================
 #        Set the number oBf processors for Aero and Structures
@@ -62,18 +71,16 @@ npStruct =1
 comm,flags,cumGroups = createGroups([npAero,npStruct],noSplit=False)
 aeroID = 0
 structID = 1
-#comm = MPI.COMM_WORLD
-#flags = [True]
+
 # ================================================================
 #               Set Options for each solver
 #
 aeroOptions={'reinitialize':False,'CFL':1.0, # 1.5 for large grid
-             'L2Convergence':1e-6,'L2ConvergenceRel':1e-6,
+             'L2Convergence':1e-7,'L2ConvergenceRel':1e-1,
              'MGCycle':'3w','MetricConversion':1.0,'sol_restart':'no',
-             'OutputDir':'./',
-             'printIterations':True,'printSolTime':False,'writeSolution':False,
-             'Dissipation Coefficients':[0.25,0.02], 
-             'Dissipation Scaling Exponent':0.25, # .25 for large grid
+             'printIterations':False,'printSolTime':False,'writeSolution':False,
+             'Dissipation Coefficients':[0.25,0.0156], 
+             'Dissipation Scaling Exponent':0.3, # .25 for large grid
              'Approx PC': 'yes',
              'Adjoint solver type':'GMRES',
              'adjoint relative tolerance':1e-8,
@@ -102,25 +109,27 @@ structOptions={'PCFillLevel':7,
                'L2ConvergenceRel':1e-3,
                'useMonitor':False,
                'monitorFrequency':1,
-               'filename':'wing_box',
                'restart':False}
 
-mdOptions = {'relTol':1e-5,
+mdOptions = {'relTol':1e-3,
              'writeIterationVolSolutionCFD':False,
              'writeIterationSurfSolutionCFD':False,
              'writeIterationSolutionFEA':False,
-             'writeVolSolutionCFD':False,
+             'writeVolSolutionCFD':True,
              'writeSurfSolutionCFD':True,
              'writeSolutionFEA':True,
-             'writeMDConvergence':False,
+             'saveIterations':True, 
+             'writeMDConvergence':True,
              'MDConvergenceFile':'mdconverg.txt',
              'beta0':.5,
              'CFDIter':500,
+             'outputDir':problem_dir,
+             'problemName':problem_name
              }
 
 meshOptions = {'warpType':'solid',
                'solidWarpType':'n', # or 'topo'
-               'n':3,
+               'n':4,
                'sym':'xy'
                }
 
@@ -134,10 +143,8 @@ optOptions = {'Major feasibility tolerance':1.0e-3,
               'Derivative level':0,	     
               'Nonderivative linesearch':None,
               'Function precision':1.0e-5,
-              #'Difference interval':.003, 	# Function precision^(1/2)
-              #'Central difference interval':.02,# Function precision^(1/3)
-              'Print file':'SNOPT_print.out',
-              'Summary file':'SNOPT_summary.out',
+              'Print file':problem_dir+'/SNOPT_print.out',
+              'Summary file':problem_dir+'/SNOPT_summary.out',
               'Problem Type':'Maximize'
 }
 
@@ -213,6 +220,7 @@ if flags[aeroID] == True:
     geom = Geometry
     aeroProblem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
     CFDsolver = SUMB(comm=comm,init_petsc=False,options=aeroOptions)
+
     mesh = MBMesh(grid_file,comm,meshOptions=meshOptions)
     mesh.addFamilyGroup("wing")
     mesh.warpMesh()
@@ -301,7 +309,7 @@ def fun_obj(x):
     # end if
 
     # Solve the aerostructural Problem
-    Force,fail = AS.solve(nMDiterations=1)
+    Force,fail = AS.solve(nMDiterations=3)
 
     if fail:
         fail = 1
@@ -391,7 +399,10 @@ opt_prob.addObj('Range')
 #r = MPI.COMM_WORLD.rank
 #print 'rank:',r,opt_prob
 
-fun_obj([.9,.75,.7,.02])
+fun_obj([.6,.8,0.8,.005])
+fun_obj([.7,.8,0.8,.005])
+fun_obj([.8,.8,0.8,.005])
+
 #fun_obj([.501,0,.00500])
 #fun_obj([.50,0.001,.00500])
 #fun_obj([.50,0.000,.00510])
