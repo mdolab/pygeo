@@ -209,7 +209,7 @@ class RefAxis(pyNetwork.pyNetwork):
                     D[0] *= scale_x
                     D[1] *= scale_y
                     D[2] *= scale_z
-
+                    print 'scale is:',scale,scale_x,scale_y,scale_z
                     new_pts[ipt] = base_pt + D*scale
                 else:
                     print 'Not Done Yet'
