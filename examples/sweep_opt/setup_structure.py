@@ -29,9 +29,9 @@ nspar = 4
 domain = pyLayout2.domain(le_list,te_list,k=2)
 
 # Number of elements on each section
-rib_space = [3,3,3,3,3] # nspar + 1
-span_space = 3*ones(nrib-1,'intc') # nribs-1
-v_space = 3 # scalar
+rib_space = [1,1,1,1,1] # nspar + 1
+span_space = 1*ones(nrib-1,'intc') # nribs-1
+v_space = 1 # scalar
 
 # Blanking for ribs
 spar_blank = ones([nspar,nrib-1],'intc')

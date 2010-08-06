@@ -124,20 +124,20 @@ meshOptions = {
 
 # Setup Aero-Solver and multiblock Mesh
 
-if flags[aeroID] == True:
-    flow = Flow(name='Base Case',mach=0.8,alpha=6.0,beta=0.0,liftIndex=2)
-    ref = Reference('Baseline Reference',1.0,1.0,1.0) #area,span,chord 
-    geom = Geometry
-    aeroProblem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
-    CFDsolver = SUMB(comm=comm,init_petsc=False,options=aeroOptions)
-    mesh = MBMesh(grid_file,comm,meshOptions=meshOptions)
-    mesh.addFamilyGroup("wing",['wing_le','wing_up','wing_low','wing_tip'])
-    mesh.addFamilyGroup("all")
-    mesh.warpMesh()
-    CFDsolver.initialize(aeroProblem,'steady',grid_file)
-    CFDsolver.interface.Mesh.initializeExternalWarping(mesh.getGridDOF())
-    structure = None
-# end if
+# if flags[aeroID] == True:
+#     flow = Flow(name='Base Case',mach=0.8,alpha=6.0,beta=0.0,liftIndex=2)
+#     ref = Reference('Baseline Reference',1.0,1.0,1.0) #area,span,chord 
+#     geom = Geometry
+#     aeroProblem = AeroProblem(name='AeroStruct Test',geom=geom,flow_set=flow,ref_set=ref)
+#     CFDsolver = SUMB(comm=comm,init_petsc=False,options=aeroOptions)
+#     mesh = MBMesh(grid_file,comm,meshOptions=meshOptions)
+#     mesh.addFamilyGroup("wing",['wing_le','wing_up','wing_low','wing_tip'])
+#     mesh.addFamilyGroup("all")
+#     mesh.warpMesh()
+#     CFDsolver.initialize(aeroProblem,'steady',grid_file)
+#     CFDsolver.interface.Mesh.initializeExternalWarping(mesh.getGridDOF())
+#     structure = None
+# # end if
 
 if flags[structID]:
     execfile('setup_structure.py')
@@ -146,12 +146,12 @@ if flags[structID]:
     mesh = None
     mass = structure.evalFunction(mass_func)
     #ks   = structure.evalFunction(ks_func)
-    
+    structure.writeTecplotFile(0,'temp')
     print 'Mass is:',mass
     #print 'KS is:',ks
 
 # end if
-
+sys.exit(0)
 AS = AeroStruct(MPI.COMM_WORLD,comm,flags,aeroOptions=aeroOptions, 
                 structOptions=structOptions,mdOptions=mdOptions,complex=complex)
 
