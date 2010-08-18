@@ -52,7 +52,7 @@ except:
 
 from mdo_import_helper import *
 exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
-exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre','mpi4py'))
+exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre'))
 
 # =============================================================================
 # pyGeo class
