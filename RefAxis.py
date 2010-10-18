@@ -188,14 +188,10 @@ class RefAxis(pyNetwork.pyNetwork):
         to do with the points
         '''
         
-        print 'self.coef: before:',self.coef
-        
         # Step 1: Call all the design variables
 
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
-
-        print 'self.coef: after:',self.coef
 
         self._updateCurveCoef()
 
@@ -208,7 +204,6 @@ class RefAxis(pyNetwork.pyNetwork):
             scale_x = self.scale_x[self.curveIDs[ipt]](self.links_s[ipt]) 
             scale_y = self.scale_y[self.curveIDs[ipt]](self.links_s[ipt]) 
             scale_z = self.scale_z[self.curveIDs[ipt]](self.links_s[ipt]) 
-            print ipt,self.curveIDs[ipt],self.links_s[ipt]
             if self.rot_type == 0:
                 deriv = self.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= norm(deriv) # Normalize
