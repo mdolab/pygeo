@@ -108,40 +108,6 @@ class RefAxis(pyNetwork.pyNetwork):
 
         pySpline.closeTecplot(f)
 
-
-    def _writeTecplotLinks(self,handle):
-        '''Write out the surface links. '''
-
-        num_vectors = self.nPt
-        coords = zeros((2*num_vectors,3))
-        icoord = 0
-    
-        for i in xrange(self.nPt):
-            coords[icoord    ,:] = self.curves[self.curveIDs[i]](self.links_s[i])
-            coords[icoord +1 ,:] = self.points[i]
-            icoord += 2
-        # end for
-
-        icoord = 0
-        conn = zeros((num_vectors,2))
-        for ivector  in xrange(num_vectors):
-            conn[ivector,:] = icoord, icoord+1
-            icoord += 2
-        # end for
-
-        handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
-        handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
-
-        for n in xrange(3):
-            for i in  range(2*num_vectors):
-                handle.write('%f\n'%(coords[i,n]))
-            # end for
-        # end for
-
-        for i in range(num_vectors):
-            handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
-        # end for
-
         return
 
     
@@ -198,38 +164,96 @@ class RefAxis(pyNetwork.pyNetwork):
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
             else:
-
                 rotX = rotxM(self.rot_x[self.curveIDs[ipt]](self.links_s[ipt]))
                 rotY = rotyM(self.rot_y[self.curveIDs[ipt]](self.links_s[ipt]))
                 rotZ = rotzM(self.rot_z[self.curveIDs[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
-                if self.rot_type == 5: # Rotate by z -x - y 
-                    D = dot(rotY,dot(rotX,dot(rotZ,D)))
-                    D[0] *= scale_x
-                    D[1] *= scale_y
-                    D[2] *= scale_z
-                    print 'scale is:',scale,scale_x,scale_y,scale_z
-                    new_pts[ipt] = base_pt + D*scale
-                else:
-                    print 'Not Done Yet'
-                    sys.exit(0)
-                # end if
+                rotM = self._getRotMatrix(rotX,rotY,rotZ)
+                D = dot(rotM,D)
+
+                D[0] *= scale_x
+                D[1] *= scale_y
+                D[2] *= scale_z
+                new_pts[ipt] = base_pt + D*scale
             # end if
          # end for
                     
         return new_pts
 
-    def _getRotMatrixGlobalToLocal(self,s):
+
+    def ptDeriv(self,X):
+        '''
+        Compute the derivative of the the attached points
+
+
+
+
+
         
-        '''Return the rotation matrix to convert vector from global to
-        local frames'''
-        return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-                                                    rotzM(self.rotzs(s)[0])))
+        '''
+
+    def _getRotMatrix(self,rotX,rotY,rotZ):
+        if self.rot_type == 1:
+            D = dot(rotZ,dot(rotY,rotX))
+        elif self.rot_type == 2:
+            D = dot(rotY,dot(rotZ,rotX))
+        elif self.rot_type == 3:
+            D = dot(rotX,dot(rotZ,rotY))
+        elif self.rot_type == 4:
+            D = dot(rotZ,dot(rotX,rotY))
+        elif self.rot_type == 5:
+            D = dot(rotY,dot(rotX,rotZ))
+        elif self.rot_type == 6:
+            D = dot(rotX,dot(rotY,rotZ))
+        # end if
+        return D
+
+#     def _getRotMatrixGlobalToLocal(self,s):
+        
+#         '''Return the rotation matrix to convert vector from global to
+#         local frames'''
+#         return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
+#                                                     rotzM(self.rotzs(s)[0])))
     
-    def _getRotMatrixLocalToGlobal(self,s):
+#     def _getRotMatrixLocalToGlobal(self,s):
         
-        '''Return the rotation matrix to convert vector from global to
-        local frames'''
-        return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-                                                    rotzM(self.rotzs(s)[0]))))
+#         '''Return the rotation matrix to convert vector from global to
+#         local frames'''
+#         return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
+#                                                     rotzM(self.rotzs(s)[0]))))
+
+    def _writeTecplotLinks(self,handle):
+        '''Write out the surface links. '''
+
+        num_vectors = self.nPt
+        coords = zeros((2*num_vectors,3))
+        icoord = 0
+    
+        for i in xrange(self.nPt):
+            coords[icoord    ,:] = self.curves[self.curveIDs[i]](self.links_s[i])
+            coords[icoord +1 ,:] = self.points[i]
+            icoord += 2
+        # end for
+
+        icoord = 0
+        conn = zeros((num_vectors,2))
+        for ivector  in xrange(num_vectors):
+            conn[ivector,:] = icoord, icoord+1
+            icoord += 2
+        # end for
+
+        handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
+        handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
+
+        for n in xrange(3):
+            for i in  range(2*num_vectors):
+                handle.write('%f\n'%(coords[i,n]))
+            # end for
+        # end for
+
+        for i in range(num_vectors):
+            handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
+        # end for
+
+        return
