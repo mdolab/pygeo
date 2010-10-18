@@ -4,7 +4,8 @@
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
-    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,cross
+    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,cross,\
+    amax,atleast_1d
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os,time
 
@@ -72,7 +73,21 @@ class RefAxis(pyNetwork.pyNetwork):
         self.scale_z0 = copy.deepcopy(self.scale)
 
         self.rot_type = rot_type
-        self.curveIDs,s = self.projectPoints(points)
+        if 'axis' in kwargs:
+            if kwargs['axis'] == 'x':
+                axis = [1,0,0]
+            elif kwargs['axis'] == 'y':
+                axis = [0,1,0]
+            elif kwargs['axis'] == 'z':
+                axis = [0,0,1]
+            else:
+                axis = kwargs['axis']
+            # end if
+            
+            self.curveIDs,s = self.projectRays(points,axis)
+        else:
+            self.curveIDs,s = self.projectPoints(points)
+        # end if
 
         self.coef0 = self.coef.copy()
 
@@ -173,10 +188,14 @@ class RefAxis(pyNetwork.pyNetwork):
         to do with the points
         '''
         
+        print 'self.coef: before:',self.coef
+        
         # Step 1: Call all the design variables
 
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
+
+        print 'self.coef: after:',self.coef
 
         self._updateCurveCoef()
 
@@ -189,7 +208,7 @@ class RefAxis(pyNetwork.pyNetwork):
             scale_x = self.scale_x[self.curveIDs[ipt]](self.links_s[ipt]) 
             scale_y = self.scale_y[self.curveIDs[ipt]](self.links_s[ipt]) 
             scale_z = self.scale_z[self.curveIDs[ipt]](self.links_s[ipt]) 
-
+            print ipt,self.curveIDs[ipt],self.links_s[ipt]
             if self.rot_type == 0:
                 deriv = self.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= norm(deriv) # Normalize
@@ -204,12 +223,13 @@ class RefAxis(pyNetwork.pyNetwork):
                 rotZ = rotzM(self.rot_z[self.curveIDs[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
+            
+
                 if self.rot_type == 5: # Rotate by z -x - y 
                     D = dot(rotY,dot(rotX,dot(rotZ,D)))
                     D[0] *= scale_x
                     D[1] *= scale_y
                     D[2] *= scale_z
-                    print 'scale is:',scale,scale_x,scale_y,scale_z
                     new_pts[ipt] = base_pt + D*scale
                 else:
                     print 'Not Done Yet'
@@ -233,3 +253,53 @@ class RefAxis(pyNetwork.pyNetwork):
         local frames'''
         return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
                                                     rotzM(self.rotzs(s)[0]))))
+    def projectRays(self,points,axis,curves=None,*args,**kwargs):
+        ''' Project ray directed along "axis" the nearest curve
+        Requires:
+            points: points to project (N by 3)
+            axis  : Direction to project along
+        Optional: 
+            curves:  A list of the curves to use
+            '''
+        
+        if curves == None:
+            curves = arange(self.nCurve)
+        # end if
+        
+        # Estimate "size" of point cloud to get scaling
+        axis = atleast_1d(axis)
+        mid = average(points,axis=0)
+        D = points-mid
+        Dmax = norm(amax(D,axis=0))
+
+        axis *= Dmax
+
+        N = len(points)
+        S = zeros((N,len(curves)))
+        D = zeros((N,len(curves),3))     
+        for i in xrange(len(curves)):
+            icurve = curves[i]
+            for ipt in xrange(len(points)):
+                temp = pySpline.line(points[ipt]-axis/2,points[ipt]+axis/2)
+                S[ipt,i],t,D[ipt,i,:] = self.curves[icurve].projectCurve(temp)
+            # end for
+        # end for
+
+        s = zeros(N)
+        curveID = zeros(N,'intc')
+       
+        # Now post-process to get the lowest one
+        for i in xrange(N):
+            d0 = norm((D[i,0]))
+            s[i] = S[i,0]
+            curveID[i] = curves[0]
+            for j in xrange(len(curves)):
+                if norm(D[i,j]) < d0:
+                    d0 = norm(D[i,j])
+                    s[i] = S[i,j]
+                    curveID[i] = curves[j]
+                # end for
+            # end for
+            
+        # end for
+        return curveID,s

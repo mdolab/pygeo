@@ -23,11 +23,11 @@ exec(import_modules('pyGeo','pySpline'))
 
 # Script to Generate a Wing Geometry
 
-naf=2
+
 airfoil_list = ['foil.dat',
                 'foil.dat']
 
-# Preprocess the sections to use either the design or actual coordinates
+naf=len(airfoil_list)
 
 Nctl = 13
 chord = array([1,1])
