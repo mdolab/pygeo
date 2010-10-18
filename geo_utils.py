@@ -104,7 +104,7 @@ def writeValues(handle,values,type,binary=False):
     # end if
     return 
 
-def read_af2(filename):
+def read_af2(filename,blunt_te=False,blunt_scale=0.1):
     ''' Load the airfoil file of type file_type'''
     f = open(filename,'r')
     line  = f.readline() # Read (and ignore) the first line
@@ -124,15 +124,31 @@ def read_af2(filename):
     r = array(r)
     x = r[:,0]
     y = r[:,1]
-#     # Check for blunt TE:
-#     if y[0] != y[-1]:
-#         mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
-#         mpiPrint('Merging to a point...')
-#         yavg = 0.5*(y[0] + y[-1])
-#         y[0]  = yavg
-#         y[-1] = yavg
-#     # end if
-    ntotal = len(x)
+    npt = len(x)
+    # Check for blunt TE:
+    if blunt_te == False:
+        if y[0] != y[-1]:
+            mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
+            mpiPrint('Merging to a point over final %f ...'%(blunt_scale))
+            yavg = 0.5*(y[0] + y[-1])
+            y_top = y[0]
+            y_bot = y[-1]
+            # Indices on the TOP surface of the wing
+            indices = where(x[0:npt/2]>=(1-blunt_scale))[0]
+            for i in xrange(len(indices)):
+                fact = (x[indices[i]]- (1-blunt_scale))/blunt_scale
+                y[indices[i]] = y[indices[i]]- fact*(y_top-yavg)
+
+            # Indices on the BOTTOM surface of the wing
+            indices = where(x[npt/2:]>=(1-blunt_scale))[0]
+            indices = indices + npt/2
+                    
+            for i in xrange(len(indices)):
+                fact = (x[indices[i]]- (1-blunt_scale))/blunt_scale
+                y[indices[i]] = y[indices[i]]- fact*(y_bot-yavg)
+            # end for
+        # end if
+    # end if
     return x,y
 
 def getCoordinatesFromFile(self,file_name):
