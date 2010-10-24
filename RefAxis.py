@@ -5,7 +5,7 @@
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
     array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
     arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,cross,\
-    amax,atleast_1d
+    amax,atleast_1d,real,imag
 from numpy.linalg import norm
 import string ,sys, copy, pdb, os,time
 
@@ -53,20 +53,22 @@ class RefAxis(pyNetwork.pyNetwork):
         self.scale_x = []
         self.scale_y = []
         self.scale_z = []
+        self.coef.astype('D')
+
         for i in xrange(len(self.curves)):
             t = self.curves[i].t
             k = self.curves[i].k
             N = len(self.curves[i].coef)
-            self.rot_x.append(pySpline.curve(t=t,k=k,coef=zeros((N,1))))
-            self.rot_y.append(pySpline.curve(t=t,k=k,coef=zeros((N,1))))
-            self.rot_z.append(pySpline.curve(t=t,k=k,coef=zeros((N,1))))
+            self.rot_x.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'D')))
+            self.rot_y.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'D')))
+            self.rot_z.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'D')))
 
-            self.scale.append(pySpline.curve(t=t,k=k,coef=ones((N,1))))
-            self.scale_x.append(pySpline.curve(t=t,k=k,coef=ones((N,1))))
-            self.scale_y.append(pySpline.curve(t=t,k=k,coef=ones((N,1))))
-            self.scale_z.append(pySpline.curve(t=t,k=k,coef=ones((N,1))))
+            self.scale.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
+            self.scale_x.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
+            self.scale_y.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
+            self.scale_z.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
         # end for
-
+        
         self.scale0 = copy.deepcopy(self.scale)
         self.scale_x0 = copy.deepcopy(self.scale)
         self.scale_y0 = copy.deepcopy(self.scale)
@@ -199,13 +201,39 @@ class RefAxis(pyNetwork.pyNetwork):
     def ptDeriv(self,X):
         '''
         Compute the derivative of the the attached points
-
-
-
-
-
-        
         '''
+        h = 1.0e-40j
+        oneoverh = 1.0/1e-40
+        # Just do a CS loop over the coef
+        # First sum the actual number of globalDVs
+        nDV = 0
+        for i in xrange(len(self.DV_listGlobal)):
+            nDV += self.DV_listGlobal[i].nVal
+        # end for
+
+        Jacobian = zeros((self.nPt*3,nDV))
+        counter = 0
+        for i in xrange(len(self.DV_listGlobal)):
+            nVal = self.DV_listGlobal[i].nVal
+            for j in xrange(nVal):
+                refVal = self.DV_listGlobal[i].value[j]
+
+                self.DV_listGlobal[i].value[j] += h
+                deriv = oneoverh*imag(self.update()).flatten()
+                Jacobian[:,counter] = deriv
+                counter = counter + 1
+
+                self.DV_listGlobal[i].value[j] = refVal
+                
+            # end for
+        # end for
+
+        # just dot with X
+        dIdx = dot(Jacobian.T,X)
+
+        return dIdx
+            
+
 
     def _getRotMatrix(self,rotX,rotY,rotZ):
         if self.rot_type == 1:
@@ -222,20 +250,6 @@ class RefAxis(pyNetwork.pyNetwork):
             D = dot(rotX,dot(rotY,rotZ))
         # end if
         return D
-
-#     def _getRotMatrixGlobalToLocal(self,s):
-        
-#         '''Return the rotation matrix to convert vector from global to
-#         local frames'''
-#         return     dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-#                                                     rotzM(self.rotzs(s)[0])))
-    
-#     def _getRotMatrixLocalToGlobal(self,s):
-        
-#         '''Return the rotation matrix to convert vector from global to
-#         local frames'''
-#         return transpose(dot(rotyM(self.rotys(s)[0]),dot(rotxM(self.rotxs(s)[0]),\
-#                                                     rotzM(self.rotzs(s)[0]))))
 
     def _writeTecplotLinks(self,handle):
         '''Write out the surface links. '''

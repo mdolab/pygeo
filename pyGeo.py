@@ -340,7 +340,7 @@ class pyGeo():
 'X must be specified (coordinates of positions) or x,y,z must be specified'
 
         if 'X' in kwargs:
-            Xsec = aray(kwargs['Xsec'])
+            Xsec = array(kwargs['X'])
         else:
             Xsec = vstack([kwargs['x'],kwargs['y'],kwargs['z']]).T          
         # end if
@@ -395,23 +395,79 @@ offset.shape[0], Xsec, rot, must all have the same size'
         curves = []
         knots = []
         for i in xrange(len(xsections)):
-            x,y = read_af2(xsections[i],blunt_te)
-            weights = ones(len(x))
-            weights[0] = -1
-            weights[-1] = -1
-            c = pySpline.curve(x=x,y=y,Nctl=Nctl,k=4,weights=weights)
-            curves.append(c)
-            knots.append(c.t)
+            if xsections[i] is not None:
+                x,y = read_af2(xsections[i],blunt_te)
+                weights = ones(len(x))
+                weights[0] = -1
+                weights[-1] = -1
+                c = pySpline.curve(x=x,y=y,Nctl=Nctl,k=4,weights=weights)
+                curves.append(c)
+                knots.append(c.t)
+            else:
+                curves.append(None)
+            # end if
         # end for
 
         # Now blend the knot vectors
         new_knots = blendKnotVectors(knots,True)
 
-        # Set the new knots in the cruve and recompute
+        # Interpolate missing curves and set the new knots in the
+        # cruve and recompue
+
+        # Generate a curve from X just for the paramterization
+        Xcurve = pySpline.curve(X=Xsec,k=2)
+
         for i in xrange(len(xsections)):
-            curves[i].t = new_knots.copy()
-            curves[i].recompute(500)
+            if xsections[i] is None:
+                # Fist two cuves bounding this unknown one:
+                for j in xrange(i,-1,-1):
+                    if xsections[j] is not None:
+                        istart = j
+                        break
+                    # end if
+                # end for
+
+                for j in xrange(i,len(xsections),1):
+                    if xsections[j] is not None:
+                        iend = j
+                        break
+                    # end if
+                # end for
+
+                # Now generate blending paramter alpha
+                s_start = Xcurve.s[istart]
+                s_end   = Xcurve.s[iend]
+                s       = Xcurve.s[i]
+
+                alpha = (s-s_start)/(s_end-s_start)
+
+                coef = curves[istart].coef*(1-alpha) + \
+                    curves[iend].coef*(alpha)
+
+                curves[i] = pySpline.curve(coef=coef,k=4,t=new_knots.copy())
+            else:
+                curves[i].t = new_knots.copy()
+                curves[i].recompute(100)
         # end for
+
+        # Rescale the thickness if required:
+        if 'thickness' in kwargs:
+            thickness = kwargs['thickness']
+            assert len(thickness) == len(xsections),'Length of thickness array is not correct'
+            # Thickness is treated as absolute, so the scaling factor
+            # depend on the actual thickness which we must estimate
+
+            # Evaluate each curve 150 points and get max-y and min-y
+            s = linspace(0,1,150)
+            
+            for i in xrange(len(xsections)):
+                vals = curves[i](s)
+                max_y = max(vals[:,1])
+                min_y = min(vals[:,1])
+                cur_thick = max_y - min_y
+                curves[i].coef[:,1]*= thickness[i]/cur_thick
+            # end for
+        # end if
                     
         # Now split each curve at u_split which roughly coorsponds to LE
         u_split = new_knots[(Nctl+4-1)/2]
@@ -492,7 +548,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     te_offset = scale[-1]*0.002 # Take .2% of tip chord 
                 # end if
 
-                print le_offset,te_offset,tip_scale
                 # Generate the midpoint of the coefficients
                 mid_pts = zeros([ncoef,3])
                 up_vec  = zeros([ncoef,3])
