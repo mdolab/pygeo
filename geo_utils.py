@@ -2425,13 +2425,8 @@ class geoDVGlobal(object):
         '''
 
         self.name = dv_name
-        self.value = value
-        if not(rank(value) == 0):
-            self.nVal = len(value)
-        else:
-            self.nVal = 1
-        # end if
-
+        self.value = atleast_1d(array(value)).astype('D')
+        self.nVal = len(self.value)
         self.lower    = lower
         self.upper    = upper
         self.function = function
