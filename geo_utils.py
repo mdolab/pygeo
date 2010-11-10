@@ -2439,7 +2439,6 @@ class geoDVGlobal(object):
 
         '''When the object is called, actually apply the function'''
         # Run the user-supplied function
-
         return self.function(self.value,ref_axis)
 
 

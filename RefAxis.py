@@ -42,6 +42,7 @@ class RefAxis(pyNetwork.pyNetwork):
         
         pyNetwork.pyNetwork.__init__(self,curves,*args,**kwargs)
         self.doConnectivity()
+
         self.points = points
         self.nPt = len(points)
 
@@ -53,20 +54,20 @@ class RefAxis(pyNetwork.pyNetwork):
         self.scale_x = []
         self.scale_y = []
         self.scale_z = []
-        self.coef.astype('D')
+        self.coef.astype('d')
 
         for i in xrange(len(self.curves)):
             t = self.curves[i].t
             k = self.curves[i].k
             N = len(self.curves[i].coef)
-            self.rot_x.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'D')))
-            self.rot_y.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'D')))
-            self.rot_z.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'D')))
+            self.rot_x.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'d')))
+            self.rot_y.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'d')))
+            self.rot_z.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'d')))
 
-            self.scale.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
-            self.scale_x.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
-            self.scale_y.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
-            self.scale_z.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'D')))
+            self.scale.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
+            self.scale_x.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
+            self.scale_y.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
+            self.scale_z.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
         # end for
         
         self.scale0 = copy.deepcopy(self.scale)
@@ -140,15 +141,14 @@ class RefAxis(pyNetwork.pyNetwork):
         Returns:
             None
             '''
-
-
         self.DV_listGlobal.append(geoDVGlobal(\
                 dv_name,value,lower,upper,function,useit))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
+
         return
 
 
-    def update(self):
+    def update(self,derivCall=False):
 
         '''This is pretty straight forward, perform the operations on
         the ref axis according to the design variables, then return
@@ -164,7 +164,12 @@ class RefAxis(pyNetwork.pyNetwork):
         self._updateCurveCoef()
 
         # Step 2: Update the points
-        new_pts = zeros((self.nPt,3))
+        if derivCall:
+            new_pts = zeros((self.nPt,3),'D')
+        else:
+            new_pts = zeros((self.nPt,3),'d')
+        # end if
+
         for ipt in xrange(self.nPt):
             base_pt = self.curves[self.curveIDs[ipt]](self.links_s[ipt])
 
@@ -180,6 +185,7 @@ class RefAxis(pyNetwork.pyNetwork):
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
             else:
+
                 rotX = rotxM(self.rot_x[self.curveIDs[ipt]](self.links_s[ipt]))
                 rotY = rotyM(self.rot_y[self.curveIDs[ipt]](self.links_s[ipt]))
                 rotZ = rotzM(self.rot_z[self.curveIDs[ipt]](self.links_s[ipt]))
@@ -202,6 +208,20 @@ class RefAxis(pyNetwork.pyNetwork):
         '''
         Compute the derivative of the the attached points
         '''
+        # Convert coef to complex temporairly
+        for i in xrange(len(self.curves)):
+            self.rot_x[i].coef = self.rot_x[i].coef.astype('D')
+            self.rot_y[i].coef = self.rot_y[i].coef.astype('D')
+            self.rot_z[i].coef = self.rot_z[i].coef.astype('D')
+
+            self.scale[i].coef = self.scale[i].coef.astype('D')
+            self.scale_x[i].coef = self.scale_x[i].coef.astype('D')
+            self.scale_y[i].coef = self.scale_y[i].coef.astype('D')
+            self.scale_z[i].coef = self.scale_z[i].coef.astype('D')
+        # end for
+
+        self.coef = self.coef.astype('D')
+
         h = 1.0e-40j
         oneoverh = 1.0/1e-40
         # Just do a CS loop over the coef
@@ -219,7 +239,7 @@ class RefAxis(pyNetwork.pyNetwork):
                 refVal = self.DV_listGlobal[i].value[j]
 
                 self.DV_listGlobal[i].value[j] += h
-                deriv = oneoverh*imag(self.update()).flatten()
+                deriv = oneoverh*imag(self.update(derivCall=True)).flatten()
                 Jacobian[:,counter] = deriv
                 counter = counter + 1
 
@@ -231,9 +251,21 @@ class RefAxis(pyNetwork.pyNetwork):
         # just dot with X
         dIdx = dot(Jacobian.T,X)
 
-        return dIdx
-            
+        # Convert the compexified coef back to real
+        for i in xrange(len(self.curves)):
+            self.rot_x[i].coef = self.rot_x[i].coef.astype('d')
+            self.rot_y[i].coef = self.rot_y[i].coef.astype('d')
+            self.rot_z[i].coef = self.rot_z[i].coef.astype('d')
 
+            self.scale[i].coef = self.scale[i].coef.astype('d')
+            self.scale_x[i].coef = self.scale_x[i].coef.astype('d')
+            self.scale_y[i].coef = self.scale_y[i].coef.astype('d')
+            self.scale_z[i].coef = self.scale_z[i].coef.astype('d')
+        # end for
+
+        self.coef = self.coef.astype('d')
+
+        return dIdx, Jacobian
 
     def _getRotMatrix(self,rotX,rotY,rotZ):
         if self.rot_type == 1:
@@ -285,3 +317,4 @@ class RefAxis(pyNetwork.pyNetwork):
         # end for
 
         return
+    
