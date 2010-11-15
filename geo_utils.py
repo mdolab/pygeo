@@ -3,7 +3,7 @@
 # =============================================================================
 
 from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,max,min,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
+    array,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
     arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,rank,\
     atleast_1d,atleast_2d,atleast_3d
 
@@ -34,12 +34,12 @@ def rotzM(theta):
     M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
     return M
 
-def rotxV(x,theta):
+def rotxV(x, theta):
     ''' Rotate a coordinate in the local x frame'''
     M = [[1,0,0],[0,cos(theta),-sin(theta)],[0,sin(theta),cos(theta)]]
     return dot(M,x)
 
-def rotyV(x,theta):
+def rotyV(x, theta):
     '''Rotate a coordinate in the local y frame'''
     M = [[cos(theta),0,sin(theta)],[0,1,0],[-sin(theta),0,cos(theta)]]
     return dot(M,x)
@@ -50,7 +50,7 @@ def rotzV(x,theta):
     M = [[cos(theta),-sin(theta),0],[sin(theta),cos(theta),0],[0,0,1]]
     return dot(M,x)
 
-def rotVbyW(V,W,theta):
+def rotVbyW(V, W, theta):
     ''' Rotate a vector V, about an axis W by angle theta'''
 
     ux = W[0]
@@ -78,7 +78,7 @@ def rotVbyW(V,W,theta):
  #                I/O Functions
  # --------------------------------------------------------------
 
-def readNValues(handle,N,type,binary=False):
+def readNValues(handle, N, type, binary=False):
     '''Read N values of type 'float' or 'int' from file handle'''
     if binary == True:
         sep = ""
@@ -91,7 +91,7 @@ def readNValues(handle,N,type,binary=False):
         values = fromfile(handle,dtype='float',count=N,sep=sep)
     return values
 
-def writeValues(handle,values,type,binary=False):
+def writeValues(handle, values, type, binary=False):
     '''Read N values of type 'float' or 'int' from file handle'''
     if binary:
         values.tofile(handle)
@@ -104,7 +104,7 @@ def writeValues(handle,values,type,binary=False):
     # end if
     return 
 
-def read_af2(filename,blunt_te=False,blunt_scale=0.1):
+def read_af2(filename, blunt_te=False, blunt_scale=0.1):
     ''' Load the airfoil file of type file_type'''
     f = open(filename,'r')
     line  = f.readline() # Read (and ignore) the first line
@@ -151,7 +151,7 @@ def read_af2(filename,blunt_te=False,blunt_scale=0.1):
     # end if
     return x,y
 
-def getCoordinatesFromFile(self,file_name):
+def getCoordinatesFromFile(file_name):
     '''Get a list of coordinates from a file - useful for testing
     Required:
         file_name: filename for file
@@ -173,7 +173,7 @@ def getCoordinatesFromFile(self,file_name):
 #            Working with Edges Function
 # --------------------------------------------------------------
 
-def e_dist(x1,x2):
+def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
     return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
 
@@ -266,7 +266,7 @@ def unique(s):
             u.append(x)
     return u
 
-def unique_index(s,s_hash=None):
+def unique_index(s, s_hash=None):
     '''
     This function is based on unique
 
@@ -309,7 +309,7 @@ def unique_index(s,s_hash=None):
 
     return t[:lasti],ind
 
-def pointReduce(points,node_tol=1e-4):
+def pointReduce(points, node_tol=1e-4):
     '''Given a list of N points in ndim space, with possible
     duplicates, return a list of the unique points AND a pointer list
     for the original points to the reduced set'''
@@ -368,7 +368,7 @@ def pointReduce(points,node_tol=1e-4):
     # end while
     return array(new_points),array(link)
 
-def pointReduceBruteForce(points,node_tol=1e-4):
+def pointReduceBruteForce(points, node_tol=1e-4):
     '''Given a list of N points in ndim space, with possible
     duplicates, return a list of the unique points AND a pointer list
     for the original points to the reduced set
@@ -395,7 +395,7 @@ def pointReduceBruteForce(points,node_tol=1e-4):
     # end for
     return array(unique_points),array(link)
 
-def faceOrientation(f1,f2):
+def faceOrientation(f1, f2):
     '''Compare two face orientations f1 and f2 and return the
     transform to get f1 back to f2'''
     
@@ -421,7 +421,7 @@ def faceOrientation(f1,f2):
         mpiPrint('Orientation 2 [%d %d %d %d]'%(f2[0],f2[1],f2[2],f2[3]))
         raise value
 
-def quadOrientation(pt1,pt2):
+def quadOrientation(pt1, pt2):
     '''Given two sets of 4 points in ndim space, pt1 and pt2,
     determine the orientation of pt2 wrt pt1
     This works for both exact quads and "loosely" oriented quads
@@ -448,7 +448,7 @@ def quadOrientation(pt1,pt2):
 
     return index
 
-def orientArray(index,in_array):
+def orientArray(index, in_array):
     '''Take an input array in_array, and rotate/flip according to the index
     output from quadOrientation'''
 
@@ -476,7 +476,7 @@ def orientArray(index,in_array):
         
     return out_array
 
-def directionAlongSurface(surface,line,section=None):
+def directionAlongSurface(surface, line, section=None):
     '''Determine the dominate (u or v) direction of line along surface'''
     # Now Do two tests: Take N points in u and test N groups
     # against dn and take N points in v and test the N groups
@@ -520,7 +520,7 @@ def directionAlongSurface(surface,line,section=None):
         # end if
     # end if 
 
-def curveDirection(curve1,curve2):
+def curveDirection(curve1, curve2):
     '''Determine if the direction of curve 1 is basically in the same
     direction as curve2. Return 1 for same direction, -1 for opposite direction'''
 
@@ -540,7 +540,7 @@ def curveDirection(curve1,curve2):
     else:
         return tot,d_backward
 
-def indexPosition1D(i,N):
+def indexPosition1D(i, N):
     '''This function is a generic function which determines if index
     over a list of length N is an interior point or node 0 or node 1.
     '''
@@ -551,7 +551,7 @@ def indexPosition1D(i,N):
     elif i == N-1: # Node 1
         return 1,1
 
-def indexPosition2D(i,j,N,M):
+def indexPosition2D(i, j, N, M):
     '''This function is a generic function which determines if for a grid
     of data NxM with index i going 0->N-1 and j going 0->M-1, it
     determines if i,j is on the interior, on an edge or on a corner
@@ -581,7 +581,7 @@ def indexPosition2D(i,j,N,M):
     elif i == N - 1 and j == M - 1:          # Node 3
         return 2,None,3,None
 
-def indexPosition3D(i,j,k,N,M,L):
+def indexPosition3D(i, j, k, N, M, L):
     '''This function is a generic function which determines if for a
     3dgrid of data NxMXL with index i going 0->N-1 and j going 0->M-1
     k going 0->L-1, it determines if i,j,k is on the interior, on a
@@ -664,7 +664,7 @@ def indexPosition3D(i,j,k,N,M,L):
 #                     Node/Edge Functions
 # --------------------------------------------------------------
 
-def edgeFromNodes(n1,n2):
+def edgeFromNodes(n1, n2):
     '''Return the edge coorsponding to nodes n1,n2'''
     if (n1 == 0 and n2 == 1) or (n1 == 1 and n2 == 0):
         return 0
@@ -686,7 +686,7 @@ def edgesFromNode(n):
     if n == 3:
         return 1,3
 
-def edgesFromNodeIndex(n,N,M):
+def edgesFromNodeIndex(n, N, M):
     ''' Return the two edges coorsponding to node n AND return the index
 of the node on the edge according to the size (N,M)'''
     if n == 0:
@@ -744,7 +744,7 @@ def nodesFromFace(face):
 #                  Knot Vector Manipulation Functions
 # --------------------------------------------------------------
     
-def blendKnotVectors(knot_vectors,sym):
+def blendKnotVectors(knot_vectors, sym):
     '''Take in a list of knot vectors and average them'''
 
     nVec = len(knot_vectors)
@@ -874,7 +874,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
         return
 
-    def getPoints(self,points):
+    def getPoints(self, points):
 
         '''Take in a list of points and return the ones that statify
         the point select class.'''
@@ -983,7 +983,7 @@ class topology(object):
             # end if
         # end for
 
-    def _getParallelEdges(self,iedge):
+    def _getParallelEdges(self, iedge):
         '''Return parallel edges for surfaces and volumes'''
 
         if self.topo_type == 'surface':
@@ -1058,7 +1058,7 @@ class topology(object):
         # end if
         return
 
-    def writeConnectivity(self,file_name):
+    def writeConnectivity(self, file_name):
         '''Write the full edge connectivity to a file file_name'''
         f = open(file_name,'w')
         f.write('%4d  %4d  %4d   %4d  %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
@@ -1108,7 +1108,7 @@ class topology(object):
         
         return
 
-    def readConnectivity(self,file_name):
+    def readConnectivity(self, file_name):
         '''Read the full edge connectivity from a file file_name'''
         # We must be able to populate the following:
         #nNode,nEdge,nFace,nVol,node_link,edge_link,face_link,edge_dir,face_dir
@@ -1198,7 +1198,7 @@ class CurveTopology(topology):
     '''
     See topology class for more information
     '''
-    def __init__(self,coords=None,file=None,node_tol=1e-4):
+    def __init__(self, coords=None, file=None, node_tol=1e-4):
         '''Initialize the class with data required to compute the topology'''
         topology.__init__(self)
         self.mNodeEnt = 2
@@ -1249,7 +1249,7 @@ class CurveTopology(topology):
         self.nEnt = self.nEdge
         return
 
-    def calcGlobalNumbering(self,sizes,curve_list=None):
+    def calcGlobalNumbering(self, sizes, curve_list=None):
         '''Internal function to calculate the global/local numbering for each curve'''
         for i in xrange(len(sizes)):
             self.edges[self.edge_link[i][0]].N = sizes[i]
@@ -1323,7 +1323,8 @@ class SurfaceTopology(topology):
     '''
     See topology class for more information
     '''
-    def __init__(self,coords=None,face_con=None,file=None,node_tol=1e-4,edge_tol=1e-4):
+    def __init__(self, coords=None, face_con=None, file=None, node_tol=1e-4,
+                 edge_tol=1e-4):
         '''Initialize the class with data required to compute the topology'''
         topology.__init__(self)
         self.mNodeEnt = 4
@@ -1472,7 +1473,7 @@ missing nodes')
 
         return
 
-    def calcGlobalNumbering(self,sizes,surface_list=None):
+    def calcGlobalNumbering(self, sizes, surface_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
         for i in xrange(len(sizes)):
             self.edges[self.edge_link[i][0]].N = sizes[i][0]
@@ -1610,7 +1611,7 @@ the list of surfaces must be the same length'
         
         return 
 
-    def getSurfaceFromEdge(self,edge):
+    def getSurfaceFromEdge(self, edge):
         '''Determine the surfaces and their edge_link index that points to edge iedge'''
         # Its not efficient but it works - scales with Nface not constant
         surfaces = []
@@ -1629,7 +1630,7 @@ class BlockTopology(topology):
     See Topology base class for more information
     '''
 
-    def __init__(self,coords=None,node_tol=1e-4,edge_tol=1e-4,file=None):
+    def __init__(self,coords=None, node_tol=1e-4, edge_tol=1e-4, file=None):
         '''Initialize the class with data required to compute the topology'''
         
         topology.__init__(self)
@@ -1887,7 +1888,7 @@ class BlockTopology(topology):
 
         return
 
-    def calcGlobalNumbering(self,sizes=None,volume_list=None):
+    def calcGlobalNumbering(self, sizes=None, volume_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
 
         if sizes != None:
@@ -1985,7 +1986,7 @@ the list of volumes must be the same length'
         g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
         l_index = []
 
-        def addNode(i,j,k,N,M,L):
+        def addNode(i, j, k, N, M, L):
             type,number,index1,index2 = indexPosition3D(i,j,k,N,M,L)
             
             if type == 1:         # Face 
@@ -2142,7 +2143,7 @@ the list of volumes must be the same length'
 class edge(object):
     '''A class for edge objects'''
 
-    def __init__(self,n1,n2,cont,degen,intersect,dg,N):
+    def __init__(self, n1, n2, cont, degen, intersect, dg, N):
         self.n1        = n1        # Integer for node 1
         self.n2        = n2        # Integer for node 2
         self.cont      = cont      # Integer: 0 for c0 continuity, 1 for c1 continuity
@@ -2209,7 +2210,7 @@ def reverseCols(input):
 
     return output
 
-def getBiLinearMap(edge0,edge1,edge2,edge3):
+def getBiLinearMap(edge0, edge1, edge2, edge3):
     '''Get the UV coordinates on a square defined from spacing on the edges'''
 
     assert len(edge0)==len(edge1),'Error, getBiLinearMap: The len of edge0 and edge1 are \
@@ -2255,7 +2256,7 @@ not the same'
   
     return UV
 
-def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
+def calc_intersection(x1, y1, x2, y2, x3, y3, x4, y4):
     # Calc the intersection between two line segments defined by
     # (x1,y1) to (x2,y2) and (x3,y3) to (x4,y4)
 
@@ -2266,7 +2267,7 @@ def calc_intersection(x1,y1,x2,y2,x3,y3,x4,y4):
 
     return xi,yi
 
-def checkInput(input,input_name,data_type,data_rank,data_shape=None):
+def checkInput(input, input_name, data_type, data_rank, data_shape=None):
     '''This is a generic function to check the data type and sizes of
     inputs in functions where the user must supply proper
     values. Since Python does not do type checking on Inputs, this is
@@ -2418,7 +2419,7 @@ def checkRank(input):
 
 class geoDVGlobal(object):
      
-    def __init__(self,dv_name,value,lower,upper,function,useit=True):
+    def __init__(self, dv_name, value, lower, upper, function, useit=True):
         
         '''Create a geometric design variable (or design variable group)
         See addGeoDVGloabl in pyGeo for more information
@@ -2432,15 +2433,72 @@ class geoDVGlobal(object):
         self.function = function
         self.useit    = useit
 
-
         return
 
-    def __call__(self,ref_axis):
+    def __call__(self, ref_axis):
 
         '''When the object is called, actually apply the function'''
         # Run the user-supplied function
         return self.function(self.value,ref_axis)
 
+
+class geoDVLocal(object):
+     
+    def __init__(self, dv_name, lower, upper, axis, coef_list, useit=True):
+        
+        '''Create a set of gemoetric design variables whcih change the shape
+        of a surface surface_id. Local design variables change the surface
+        in all three axis.
+        See addGeoDVLOcal for more information
+        '''
+        if axis.lower() in ['x','y','z']:
+            N = 1
+        else:
+            N = 3
+        # end if
+
+        self.nVal = len(coef_list)*N
+
+        self.value = zeros(self.nVal,'D')
+        self.name = dv_name
+        self.lower = lower*ones(self.nVal)
+        self.upper = upper*ones(self.nVal)
+        self.coef_list = zeros((self.nVal,2),'intc')
+        
+        j = 0
+
+        for i in xrange(len(coef_list)):
+            if axis.lower() == 'x':
+                self.coef_list[j] = [coef_list[i],0]
+                j += 1
+            elif axis.lower() == 'y':
+                self.coef_list[j] = [coef_list[i],1]
+                j += 1
+            elif axis.lower() == 'z':
+                self.coef_list[j] = [coef_list[i],2]
+                j += 1
+            else:
+                self.coef_list[j] = [coef_list[i],0]
+                j += 1
+                self.coef_list[j] = [coef_list[i],1]
+                j += 1
+                self.coef_list[j] = [coef_list[i],2]
+                j += 1
+            # end if
+        # end for
+        
+        return
+
+    def __call__(self, coef):
+
+        '''When the object is called, apply the design variable values to 
+        coefficients'''
+        
+        for i in xrange(self.nVal):
+            coef[self.coef_list[i,0],self.coef_list[i,1]] += self.value[i]
+        # end for
+      
+        return coef
 
     
 # def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,default_size = 0.1):
