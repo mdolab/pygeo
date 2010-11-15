@@ -141,6 +141,7 @@ class pyBlock():
         # end if
 
         mpiPrint(' -> nVol = %d'%(nVol),self.NO_PRINT)
+
         blocks = []
         for i in xrange(nVol):
             cur_size = sizes[i,0]*sizes[i,1]*sizes[i,2]
@@ -150,16 +151,38 @@ class pyBlock():
             # end for
         # end for
 
+
+
         f.close()
 
         # Now create a list of spline volume objects:
-        vols = []
+        self.vols = []
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
 
+
+        if 'FFD' in kwargs:
+            if kwargs['FFD']:
+                # Assemble blocks directly
+                for ivol in xrange(nVol):
+                    ku = min(4,sizes[ivol,0])
+                    kv = min(4,sizes[ivol,1])
+                    kw = min(4,sizes[ivol,2])
+
+                    self.vols.append(pySpline.volume(
+                            X=blocks[ivol],ku=ku,kv=kv,kw=kw,
+                            no_print=self.NO_PRINT,
+                            recompute=False))
+                # end for
+                self.nVol = len(self.vols)
+                return
+            # end if
+        # end if
+            
+        # Otherwise do a regular fit
         for ivol in xrange(nVol):
-            vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,
-                                        Nctlu=3,Nctlv=3,Nctlw=3,
+            vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,
+                                        Nctlu=4,Nctlv=4,Nctlw=4,
                                         no_print=self.NO_PRINT,
                                         recompute=False))
         self.vols = vols
@@ -273,6 +296,7 @@ class pyBlock():
             # end if
         # end for
         nnz = N*kmax*kmax*kmax
+
         vals = zeros(nnz)
         row_ptr = [0]
         col_ind = zeros(nnz,'intc')
@@ -287,17 +311,18 @@ class pyBlock():
             v = self.vols[ivol].V[i,j,k]
             w = self.vols[ivol].W[i,j,k]
          
-
             vals,col_ind = self.vols[ivol]._getBasisPt(
                 u,v,w,vals,row_ptr[ii],col_ind,self.topo.l_index[ivol])
          
             kinc = self.vols[ivol].ku*self.vols[ivol].kv*self.vols[ivol].kw
+
             row_ptr.append(row_ptr[-1] + kinc)
         # end for
 
         # Now we can crop out any additional values in col_ptr and vals
         vals    = vals[:row_ptr[-1]]
         col_ind = col_ind[:row_ptr[-1]]
+
         # Now make a sparse matrix
 
         NN = sparse.csr_matrix((vals,col_ind,row_ptr))
@@ -771,6 +796,7 @@ class pyBlock():
         u = zeros(N)
         v = zeros(N)
         w = zeros(N)
+        
         for i in xrange(N):
             volID[i],u[i],v[i],w[i],D0 = self.projectPoint(coordinates[i])
         # end for
@@ -797,8 +823,9 @@ class pyBlock():
         the volID,u,v,w,D of the point in volID or closest to it.
 
         This is a brute force search and is NOT efficient'''
-
+     
         u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
+       
         volID = 0
         for ivol in xrange(1,self.nVol):
             u,v,w,D = self.vols[ivol].projectPoint(x0,eps1=eps,eps2=eps)
@@ -810,7 +837,6 @@ class pyBlock():
                 volID = ivol
             # end if
         # end for
-
         return volID,u0,v0,w0,D0
 
     def _calcdPtdCoef(self,index):
