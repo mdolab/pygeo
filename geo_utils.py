@@ -2430,6 +2430,7 @@ class geoDVGlobal(object):
         self.nVal = len(self.value)
         self.lower    = lower
         self.upper    = upper
+        self.range    = upper-lower
         self.function = function
         self.useit    = useit
 
@@ -2463,6 +2464,7 @@ class geoDVLocal(object):
         self.name = dv_name
         self.lower = lower*ones(self.nVal)
         self.upper = upper*ones(self.nVal)
+        self.range    = upper-lower
         self.coef_list = zeros((self.nVal,2),'intc')
         
         j = 0
