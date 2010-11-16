@@ -208,7 +208,7 @@ class DVGeometry(object):
 
         return self.DV_listLocal[-1].nVal
 
-    def setValues(self,dvName,value=None):
+    def setValues(self,dvName,value=None,scaled=True):
         ''' This is the generic set values function. It can set values
         in a number of different ways:
 
@@ -235,14 +235,27 @@ class DVGeometry(object):
         for key in dv_dict:
             if key in self.DV_namesGlobal:
                 vals_to_set = atleast_1d(dv_dict[key])
-                assert len(vals_to_set) == self.DV_listGlobal[self.DV_namesGlobal[key]].nVal,\
+                assert len(vals_to_set) == self.DV_listGlobal[
+                    self.DV_namesGlobal[key]].nVal,\
                     'Incorrect number of design variables for DV: %'%(key)
+                if scaled:
+                    vals_to_set = vals_to_set * \
+                        self.DV_listGlobal[self.DV_namesGlobal[key]].range +\
+                        self.DV_listGlobal[self.DV_namesGlobal[key]].lower
+                # end if
+
                 self.DV_listGlobal[self.DV_namesGlobal[key]].value = vals_to_set
             # end if
             if key in self.DV_namesLocal:
                 vals_to_set = atleast_1d(dv_dict[key])
                 assert len(vals_to_set) == self.DV_listLocal[self.DV_namesLocal[key]].nVal,\
                     'Incorrect number of design variables for DV: %'%(key)
+                if scaled:
+                    vals_to_set = vals_to_set * \
+                        self.DV_listLocal[self.DV_namesLocal[key]].range +\
+                        self.DV_listLocal[self.DV_namesLocal[key]].lower
+                # end if
+
                 self.DV_listLocal[self.DV_namesLocal[key]].value = vals_to_set
             # end if
         return
@@ -457,36 +470,36 @@ class DVGeometry(object):
         self.coef = self.coef.astype('d')
 
 
-    def totalSensitivity(self,dIdpt,comm):
+    def totalSensitivity(self,dIdpt,comm,scaled=True):
         '''This function takes the total derivative of an objective,
         I, with respect the points controlled on this processor. We
         take the transpose prodducts and mpi_allreduce them to get the
         resulting value on each processor. 
         '''
 
-        self.computeTotalJacobian()
+        self.computeTotalJacobian(scaled)
 
         dIdx_local = self.J.T.dot(dIdpt.flatten())
         dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
 
         return dIdx
 
-    def computeTotalJacobian(self):
+    def computeTotalJacobian(self,scaled=True):
         ''' Return the total point jacobian in CSR format since we
         need this for TACS'''
 
         # This is going to be DENSE in general
-        J_attach = self._attachedPtJacobian()
+        #J_attach = self._attachedPtJacobian()
 
         # This is the sparse jacobian for the local DVs that affect
-        # Control points directly. Not Implemented yet.
+        # Control points directly.
 
-        J_local = self._localDVJacobian()
+        J_local = self._localDVJacobian(scaled=scaled)
 
         # HStack em'
 
-        J_temp = sparse.hstack([J_attach,J_local],format='lil')
-
+        #J_temp = sparse.hstack([J_attach,J_local],format='lil')
+        J_temp = J_local
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
         
@@ -548,7 +561,7 @@ class DVGeometry(object):
 
         return Jacobian
 
-    def _localDVJacobian(self):
+    def _localDVJacobian(self,scaled=True):
         '''
         Return the derivative of the coefficients wrt the local design 
         variables
@@ -566,7 +579,11 @@ class DVGeometry(object):
             for j in xrange(nVal):
                 pt_dv = self.DV_listLocal[i].coef_list[j] 
                 irow = pt_dv[0]*3 + pt_dv[1]
-                Jacobian[irow,j] = 1.0
+                if scaled:
+                    Jacobian[irow,j] = 1.0
+                else:
+                    Jacobian[irow,j] = self.DV_listLocal[i].range[j]
+                # end if
             # end for
         # end for
 
@@ -577,16 +594,25 @@ class DVGeometry(object):
         Add the current set of global and local design variables to the opt_prob specified
         '''
 
+        # We are going to do our own scaling here...since pyOpt can't
+        # do it...
+
         for dvList in [self.DV_listGlobal, self.DV_listLocal]:
-            for n in dvList:
-                if n.nVal > 1:
-                    opt_prob.addVarGroup(
-                        n.name, n.nVal, 'c', value=real(n.value),
-                        lower=n.lower,  upper=n.upper)
+            for dv in dvList:
+                if dv.nVal > 1:
+                    low = zeros(dv.nVal)
+                    high= ones(dv.nVal)
+                    val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
+                                         value=val, lower=low, upper=high)
                 else:
-                    opt_prob.addVar(
-                        n.name, 'c', value=real(n.value), lower=n.lower,
-                        upper=n.upper)
+                    low = 0.0
+                    high= 1.0
+                    val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVar(dv.name, 'c', value=real(dv.value),
+                                    lower=low,upper=high)
                 # end
             # end
         # end
