@@ -251,7 +251,7 @@ class pyNetwork():
             for jj in xrange(len(self.topo.g_index[ii])):
                 icurve = self.topo.g_index[ii][jj][0]
                 i      = self.topo.g_index[ii][jj][1]
-                self.curves[icurve].coef[i] = self.coef[ii].astype('d')
+                self.curves[icurve].coef[i] = self.coef[ii]
             # end for
         # end for
         
@@ -287,6 +287,57 @@ class pyNetwork():
                 Xmax0[2] = Xmax[2]
         # end for
         return Xmin0,Xmax0
+
+    def projectRays(self,points,axis,curves=None,*args,**kwargs):
+        
+        # Lets, cheat, do a point projection:
+        
+        curveID0,s0 = self.projectPoints(points)
+
+        D0 = zeros((len(s0),3),'d')
+        for i in xrange(len(s0)):
+            D0[i,:] = self.curves[curveID0[i]](s0[i])-points[i]
+        # end for
+
+        if curves == None:
+            curves = arange(self.nCurve)
+        # end if
+
+        # Now do the same calc as before
+        N = len(points)
+        S = zeros((N,len(curves)))
+        D = zeros((N,len(curves),3))     
+        
+        for i in xrange(len(curves)):
+            icurve = curves[i]
+            for j in xrange(N):
+                ray = pySpline.line(points[j]-axis*1.5*norm(D0[j]),
+                                    points[j]+axis*1.5*norm(D0[j]))
+                # end if
+
+                S[j,i],t,D[j,i,:] = self.curves[icurve].projectCurve(ray,Niter=2000)
+            # end for
+        # end for
+
+        s = zeros(N)
+        curveID = zeros(N,'intc')
+
+        # Now post-process to get the lowest one
+        for i in xrange(N):
+            d0 = norm((D[i,0]))
+            s[i] = S[i,0]
+            curveID[i] = curves[0]
+            for j in xrange(len(curves)):
+                if norm(D[i,j]) < d0:
+                    d0 = norm(D[i,j])
+                    s[i] = S[i,j]
+                    curveID[i] = curves[j]
+                # end for
+            # end for
+            
+        # end for
+
+        return curveID,s
 
     def projectPoints(self,points,curves=None,*args,**kwargs):
         ''' Project a point(s) onto the nearest curve

@@ -181,12 +181,12 @@ class pyBlock():
             
         # Otherwise do a regular fit
         for ivol in xrange(nVol):
-            vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,
+            self.vols.append(pySpline.volume(X=blocks[ivol],ku=4,kv=4,kw=4,
                                         Nctlu=4,Nctlv=4,Nctlw=4,
                                         no_print=self.NO_PRINT,
                                         recompute=False))
-        self.vols = vols
-        self.nVol = len(vols)
+
+        self.nVol = len(self.vols)
         
         return
 
