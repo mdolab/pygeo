@@ -143,7 +143,7 @@ class DVGeometry(object):
             else:
                 axis = kwargs['axis']
             # end if
-            self.curveIDs,s = self.refAxis.projectRays(self.ptAttach,axis)
+            self.curveIDs,s = self.refAxis.projectRays(self.ptAttach,array(axis))
         else:
             self.curveIDs,s = self.refAxis.projectPoints(self.ptAttach)
         # end if
@@ -160,6 +160,16 @@ class DVGeometry(object):
 
         return
     
+
+    def _setInitialValues(self):
+
+        self.coef = copy.deepcopy(self.coef0).astype('D')
+        self.scale = copy.deepcopy(self.scale0)
+        self.scale_x = copy.deepcopy(self.scale_x0)
+        self.scale_y = copy.deepcopy(self.scale_y0)
+        self.scale_z = copy.deepcopy(self.scale_z0)      
+        
+
     def addGeoDVGlobal(self,dv_name,value,lower,upper,function,useit=True):
         '''Add a global design variable
         Required:
@@ -234,7 +244,7 @@ class DVGeometry(object):
 
         for key in dv_dict:
             if key in self.DV_namesGlobal:
-                vals_to_set = atleast_1d(dv_dict[key])
+                vals_to_set = atleast_1d(dv_dict[key]).astype('D')
                 assert len(vals_to_set) == self.DV_listGlobal[
                     self.DV_namesGlobal[key]].nVal,\
                     'Incorrect number of design variables for DV: %'%(key)
@@ -307,6 +317,9 @@ class DVGeometry(object):
         to do with the points
         '''
         
+        # Set all coef Values back to initial values
+        self._setInitialValues()
+        
         # Step 1: Call all the design variables
 
         if self.complex:
@@ -315,11 +328,14 @@ class DVGeometry(object):
         else:
             new_pts = zeros((self.nPtAttach,3),'d')
         # end if
+        
+        self._complexifyCoef()
 
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
 
+        self.refAxis.coef = self.coef
         self.refAxis._updateCurveCoef()
 
         for ipt in xrange(self.nPtAttach):
@@ -394,12 +410,16 @@ class DVGeometry(object):
         
         # Step 1: Call all the design variables
 
-        self._complexifyCoef()
+       
         new_pts = zeros((self.nPtAttach,3),'D')
+
+        # Set all coef Values back to initial values
 
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
-
+        # end for
+       
+        self.refAxis.coef = self.coef
         self.refAxis._updateCurveCoef()
 
         for ipt in xrange(self.nPtAttach):
@@ -433,8 +453,6 @@ class DVGeometry(object):
             # end if
         # end for
 
-        self._unComplexifyCoef()
-                        
         return new_pts
 
     def _complexifyCoef(self):
@@ -449,9 +467,12 @@ class DVGeometry(object):
             self.scale_x[i].coef = self.scale_x[i].coef.astype('D')
             self.scale_y[i].coef = self.scale_y[i].coef.astype('D')
             self.scale_z[i].coef = self.scale_z[i].coef.astype('D')
+            self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.astype('D')
         # end for
 
         self.coef = self.coef.astype('D')
+
+        
 
     def _unComplexifyCoef(self):
        
@@ -465,6 +486,7 @@ class DVGeometry(object):
             self.scale_x[i].coef = self.scale_x[i].coef.astype('d')
             self.scale_y[i].coef = self.scale_y[i].coef.astype('d')
             self.scale_z[i].coef = self.scale_z[i].coef.astype('d')
+            self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.astype('d')
         # end for
 
         self.coef = self.coef.astype('d')
@@ -480,6 +502,7 @@ class DVGeometry(object):
         self.computeTotalJacobian(scaled)
 
         dIdx_local = self.J.T.dot(dIdpt.flatten())
+
         dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
 
         return dIdx
@@ -489,7 +512,7 @@ class DVGeometry(object):
         need this for TACS'''
 
         # This is going to be DENSE in general
-        #J_attach = self._attachedPtJacobian()
+        J_attach = self._attachedPtJacobian()
 
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
@@ -497,9 +520,16 @@ class DVGeometry(object):
         J_local = self._localDVJacobian(scaled=scaled)
 
         # HStack em'
+        # Three different possibilities: 
+        # J_attach and no J_local
+        if J_attach is not None and J_local is None:
+            J_temp = J_attach
+        elif J_local is not None and J_attach is None:
+            J_temp = J_local
+        else:
+            J_temp = sparse.hstack([J_attach,J_local],format='lil')
+        # end if
 
-        #J_temp = sparse.hstack([J_attach,J_local],format='lil')
-        J_temp = J_local
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
         
@@ -521,14 +551,20 @@ class DVGeometry(object):
         # end if
 
         self.J = JT.tocsr().transpose(copy=True)
-       
+
+        
         return 
 
     def _attachedPtJacobian(self):
         '''
         Compute the derivative of the the attached points
         '''
-        
+
+        nDV = self._getNDVGlobal()
+        if nDV == 0:
+            return None
+
+        self._setInitialValues()
         self._complexifyCoef()
 
         h = 1.0e-40j
@@ -536,7 +572,6 @@ class DVGeometry(object):
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
 
-        nDV = self._getNDVGlobal()
 
         Jacobian = zeros((self.nPtAttach*3,nDV))
 
@@ -547,9 +582,10 @@ class DVGeometry(object):
                 refVal = self.DV_listGlobal[i].value[j]
 
                 self.DV_listGlobal[i].value[j] += h
+                
                 deriv = oneoverh*imag(self.update_deriv()).flatten()
-                Jacobian[:,counter] = deriv
 
+                Jacobian[:,counter] = deriv
                 counter = counter + 1
 
                 self.DV_listGlobal[i].value[j] = refVal
@@ -571,8 +607,10 @@ class DVGeometry(object):
         # entirely one's or zeros
 
         nDV = self._getNDVLocal()
+        
+        if nDV == 0:
+            return None
 
-        Jacobian = zeros((self.nPtAttach*3,nDV))
         Jacobian = sparse.lil_matrix((self.nPtAttach*3,nDV))
         for i in xrange(len(self.DV_listLocal)):
             nVal = self.DV_listLocal[i].nVal
@@ -602,8 +640,6 @@ class DVGeometry(object):
                 if dv.nVal > 1:
                     low = zeros(dv.nVal)
                     high= ones(dv.nVal)
-                    val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
-
                     opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
                                          value=val, lower=low, upper=high)
                 else:
@@ -611,7 +647,7 @@ class DVGeometry(object):
                     high= 1.0
                     val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
 
-                    opt_prob.addVar(dv.name, 'c', value=real(dv.value),
+                    opt_prob.addVar(dv.name, 'c', value=val,
                                     lower=low,upper=high)
                 # end
             # end

@@ -2428,8 +2428,8 @@ class geoDVGlobal(object):
         self.name = dv_name
         self.value = atleast_1d(array(value)).astype('D')
         self.nVal = len(self.value)
-        self.lower    = lower
-        self.upper    = upper
+        self.lower    = float(lower)
+        self.upper    = float(upper)
         self.range    = upper-lower
         self.function = function
         self.useit    = useit
