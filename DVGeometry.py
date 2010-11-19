@@ -512,7 +512,7 @@ class DVGeometry(object):
         need this for TACS'''
 
         # This is going to be DENSE in general
-        J_attach = self._attachedPtJacobian()
+        J_attach = self._attachedPtJacobian(scaled=scaled)
 
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
@@ -555,7 +555,7 @@ class DVGeometry(object):
         
         return 
 
-    def _attachedPtJacobian(self):
+    def _attachedPtJacobian(self,scaled=True):
         '''
         Compute the derivative of the the attached points
         '''
@@ -585,7 +585,12 @@ class DVGeometry(object):
                 
                 deriv = oneoverh*imag(self.update_deriv()).flatten()
 
-                Jacobian[:,counter] = deriv
+                if scaled:
+                    Jacobian[:,counter] = deriv*self.DV_listGlobal[i].range[j]
+                else:
+                    Jacobian[:,counter] = deriv
+                # end if
+
                 counter = counter + 1
 
                 self.DV_listGlobal[i].value[j] = refVal
