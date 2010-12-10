@@ -87,7 +87,7 @@ class DVGeometry(object):
         if FFD:
             self.FFD = FFD
             self.ptAttach = self.FFD.coef
-            self.FFD.embedVolume(points)
+            self.FFD.embedVolume(real(points))
             self.FFD._calcdPtdCoef(0)
         elif Surface:
             self.Surface = Surface
@@ -551,7 +551,6 @@ class DVGeometry(object):
         # end if
 
         self.J = JT.tocsr().transpose(copy=True)
-
         
         return 
 
@@ -571,7 +570,6 @@ class DVGeometry(object):
         oneoverh = 1.0/1e-40
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
-
 
         Jacobian = zeros((self.nPtAttach*3,nDV))
 
@@ -645,6 +643,7 @@ class DVGeometry(object):
                 if dv.nVal > 1:
                     low = zeros(dv.nVal)
                     high= ones(dv.nVal)
+                    val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
                     opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
                                          value=val, lower=low, upper=high)
                 else:
@@ -659,38 +658,3 @@ class DVGeometry(object):
         # end
 
         return opt_prob
-
-    def _writeTecplotLinks(self,handle):
-        '''Write out the surface links. '''
-
-        num_vectors = self.nPt
-        coords = zeros((2*num_vectors,3))
-        icoord = 0
-    
-        for i in xrange(self.nPtAttach):
-            coords[icoord    ,:] = self.refAxis.curves[self.curveIDs[i]](self.links_s[i])
-            coords[icoord +1 ,:] = self.ptAttach[i]
-            icoord += 2
-        # end for
-
-        icoord = 0
-        conn = zeros((num_vectors,2))
-        for ivector  in xrange(num_vectors):
-            conn[ivector,:] = icoord, icoord+1
-            icoord += 2
-        # end for
-
-        handle.write('Zone T= %s N= %d ,E= %d\n'%('links',2*num_vectors, num_vectors) )
-        handle.write('DATAPACKING=BLOCK, ZONETYPE = FELINESEG\n')
-
-        for n in xrange(3):
-            for i in  range(2*num_vectors):
-                handle.write('%f\n'%(coords[i,n]))
-            # end for
-        # end for
-
-        for i in range(num_vectors):
-            handle.write('%d %d \n'%(conn[i,0]+1,conn[i,1]+1))
-        # end for
-
-        return
