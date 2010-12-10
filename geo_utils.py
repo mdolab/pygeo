@@ -2428,8 +2428,21 @@ class geoDVGlobal(object):
         self.name = dv_name
         self.value = atleast_1d(array(value)).astype('D')
         self.nVal = len(self.value)
-        self.lower    = atleast_1d(array(lower))
-        self.upper    = atleast_1d(array(upper))
+
+        low = atleast_1d(array(lower))
+        if len(low) == self.nVal:
+            self.lower = low
+        else:
+            self.lower = ones(self.nVal)*lower
+        # end if
+
+        high = atleast_1d(array(upper))
+        if len(high) == self.nVal:
+            self.upper = high
+        else:
+            self.upper = ones(self.nVal)*upper
+        # end if
+
         self.range    = self.upper-self.lower
         self.function = function
         self.useit    = useit
@@ -2452,11 +2465,7 @@ class geoDVLocal(object):
         in all three axis.
         See addGeoDVLOcal for more information
         '''
-        if axis.lower() in ['x','y','z']:
-            N = 1
-        else:
-            N = 3
-        # end if
+        N = len(axis)
 
         self.nVal = len(coef_list)*N
 
@@ -2470,20 +2479,13 @@ class geoDVLocal(object):
         j = 0
 
         for i in xrange(len(coef_list)):
-            if axis.lower() == 'x':
+            if 'x' in axis.lower():
                 self.coef_list[j] = [coef_list[i],0]
                 j += 1
-            elif axis.lower() == 'y':
+            elif 'y' in axis.lower():
                 self.coef_list[j] = [coef_list[i],1]
                 j += 1
-            elif axis.lower() == 'z':
-                self.coef_list[j] = [coef_list[i],2]
-                j += 1
-            else:
-                self.coef_list[j] = [coef_list[i],0]
-                j += 1
-                self.coef_list[j] = [coef_list[i],1]
-                j += 1
+            elif 'z' in axis.lower():
                 self.coef_list[j] = [coef_list[i],2]
                 j += 1
             # end if
