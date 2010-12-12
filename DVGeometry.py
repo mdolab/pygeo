@@ -620,7 +620,7 @@ class DVGeometry(object):
             for j in xrange(nVal):
                 pt_dv = self.DV_listLocal[i].coef_list[j] 
                 irow = pt_dv[0]*3 + pt_dv[1]
-                if scaled:
+                if not scaled:
                     Jacobian[irow,j] = 1.0
                 else:
                     Jacobian[irow,j] = self.DV_listLocal[i].range[j]

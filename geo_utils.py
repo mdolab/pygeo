@@ -2468,12 +2468,12 @@ class geoDVLocal(object):
         N = len(axis)
 
         self.nVal = len(coef_list)*N
-
         self.value = zeros(self.nVal,'D')
         self.name = dv_name
         self.lower = lower*ones(self.nVal)
         self.upper = upper*ones(self.nVal)
-        self.range    = upper-lower
+        self.range    = self.upper-self.lower
+       
         self.coef_list = zeros((self.nVal,2),'intc')
         
         j = 0
