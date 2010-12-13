@@ -63,8 +63,28 @@ class DVGeometry(object):
         self.DV_listLocal   = [] # Local Design Variable List
         self.DV_namesLocal  = {} # Names of Local Design Variables
 
-        # Thes are the descrete points we must manipulate
-        self.points = points
+        # Points are the descrete points we must manipulate. We have
+        # to be careful here, since this MAY be a list
+        if isinstance(points,list):
+            assert 'names' in kwargs,'Names must be specified if more than one \
+set of points are used'
+
+            self.points = []
+            self.pt_ptr = {}
+            i_start = 0
+            names = kwargs['names']
+            for i in xrange(len(points)):
+                self.points.extend(points[i])
+                self.pt_ptr[names[i]] = [i_start,i_start + len(points[i])]
+                i_start += len(points[i])
+            # end if
+            self.points = array(self.points)
+        else:
+            self.points = points
+            self.pt_tr = None
+
+        # end if
+
         self.rot_type = rot_type
         self.J = None
         if 'complex' in kwargs:
@@ -87,12 +107,12 @@ class DVGeometry(object):
         if FFD:
             self.FFD = FFD
             self.ptAttach = self.FFD.coef
-            self.FFD.embedVolume(real(points))
+            self.FFD.embedVolume(real(self.points))
             self.FFD._calcdPtdCoef(0)
         elif Surface:
             self.Surface = Surface
             self.ptAttach = self.Surface.coef
-            self.Surface.attachSurface(points)
+            self.Surface.attachSurface(self.points)
             self.Surface._calcdPtdCoef(0)
         else:
             self.ptAttach = pts
@@ -268,6 +288,7 @@ class DVGeometry(object):
 
                 self.DV_listLocal[self.DV_namesLocal[key]].value = vals_to_set
             # end if
+            self.J = None # J is no longer up to date
         return
 
     def _getRotMatrix(self,rotX,rotY,rotZ):
@@ -309,7 +330,7 @@ class DVGeometry(object):
 
         return nDV
 
-    def update(self):
+    def update(self,name=None):
 
         '''This is pretty straight forward, perform the operations on
         the ref axis according to the design variables, then return
@@ -369,7 +390,6 @@ class DVGeometry(object):
             # end if
         # end for
 
-
         if self.FFD or self.Surface:
             # Now run the local DVs
             for i in xrange(len(self.DV_listLocal)):
@@ -400,6 +420,10 @@ class DVGeometry(object):
              # end if   
             self._unComplexifyCoef()
 
+        # end if
+
+        if name:
+            coords = coords[self.pt_ptr[name][0]:self.pt_ptr[name][1],:]
         # end if
                         
         return coords
@@ -492,18 +516,29 @@ class DVGeometry(object):
         self.coef = self.coef.astype('d')
 
 
-    def totalSensitivity(self,dIdpt,comm,scaled=True):
+    def totalSensitivity(self,dIdpt,comm=None,scaled=True,name=None):
         '''This function takes the total derivative of an objective,
         I, with respect the points controlled on this processor. We
         take the transpose prodducts and mpi_allreduce them to get the
         resulting value on each processor. 
         '''
 
+        if name: # dIdpt WONT't be correct length. Pad Accordingly
+            dIdpt_full = zeros((self.nPt,3))
+            dIdpt_full[self.pt_ptr[name][0]:self.pt_ptr[name][1],:] = dIdpt
+        else:
+            dIdpt_full = dIdpt
+        # end if
+
         self.computeTotalJacobian(scaled)
 
-        dIdx_local = self.J.T.dot(dIdpt.flatten())
+        dIdx_local = self.J.T.dot(dIdpt_full.flatten())
 
-        dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        if comm: # If we have a comm, globaly reduce with sum
+            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        else:
+            dIdx = dIdx_local
+        # end if
 
         return dIdx
 
@@ -511,6 +546,9 @@ class DVGeometry(object):
         ''' Return the total point jacobian in CSR format since we
         need this for TACS'''
 
+        if self.J is not None: # Already computed
+            return
+        
         # This is going to be DENSE in general
         J_attach = self._attachedPtJacobian(scaled=scaled)
 
