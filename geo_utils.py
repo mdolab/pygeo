@@ -177,6 +177,31 @@ def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
     return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
 
+
+def e_dist_b(x1, x2):
+  x1b = 0.0
+  x2b = 0.0
+  db  = 1.0
+  x1b = zeros(3)
+  x2b = zeros(3)
+  if ((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2 == 0.0): 
+      tempb = 0.0
+  else:
+      tempb = db/(2.0*sqrt((x1[0]-x2[0])**2+(x1[1]-x2[1])**2+(x1[2]-x2[2])**2))
+  # end if
+  tempb0 = 2*(x1[0]-x2[0])*tempb
+  tempb1 = 2*(x1[1]-x2[1])*tempb
+  tempb2 = 2*(x1[2]-x2[2])*tempb
+  x1b[0] = tempb0
+  x2b[0] = -tempb0
+  x1b[1] = tempb1
+  x2b[1] = -tempb1
+  x1b[2] = tempb2
+  x2b[2] = -tempb2
+
+  return x1b,x2b
+
+
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions
 # --------------------------------------------------------------
@@ -2409,6 +2434,83 @@ def checkInput(input, input_name, data_type, data_rank, data_shape=None):
 
         return input # If we made it to the end, just return input
     # end if
+
+def fill_knots(t,k,level):
+    t = t[k-1:-k+1] # Strip out the zeros
+    new_t = zeros(len(t) + (len(t)-1)*level)
+    start = 0 
+    for i in xrange(len(t)-1):
+        new_t[start:start+level+2] = linspace(t[i],t[i+1],level+2)
+        start += level + 1
+    # end for
+    return new_t
+
+def projectNode(pt,up_vec,p0,v1,v2):
+    # Project a point x in domain, onto the geo object and return
+    # the two points cloestest points they intersect 
+
+    # First get a domain normal to bais "up" and "down"
+
+    # Get the bounds of the geo object so we know what to scale by
+    import pySpline
+    sol1,n_sol1 = pySpline.pyspline.line_plane(pt,up_vec,p0.T,v1.T,v2.T)
+    sol2,n_sol2 = pySpline.pyspline.line_plane(pt,-up_vec,p0.T,v1.T,v2.T)
+    sol1 = sol1.T
+    sol2 = sol2.T
+    if (n_sol1 + n_sol2) < 2:
+        print 'Error Did not find 2 intersections'
+        print n_sol1,n_sol2
+        print pt,up_vec
+        sys.exit(0)
+    sol = []
+    for i in xrange(n_sol1):
+        sol.append(sol1[i,:])
+    # end for
+    for i in xrange(n_sol2):
+        sol.append(sol2[i,:])
+    # end for
+
+    xmid = (sol[0][3:6] + sol[1][3:6])/2
+    dot1 = dot(up_vec,sol[0][3:6]-xmid)
+    dot2 = dot(up_vec,sol[1][3:6]-xmid)
+
+    if int(sign(dot1)) == 1:
+        return sol[0][3:6],sol[1][3:6]
+    else:
+        return sol[1][3:6],sol[0][3:6]
+
+    if n_sol1 + n_sol2 >=2: # This is more complicated
+        print 'More than 2 solutions'
+        sys.exit(0)
+
+    # end if
+
+def tfi_2d(e0,e1,e2,e3):
+    # Input
+    # e0: Nodes along edge 0. Size Nu x 3
+    # e1: Nodes along edge 1. Size Nu x 3
+    # e0: Nodes along edge 2. Size Nv x 3
+    # e1: Nodes along edge 3. Size Nv x 3
+
+    Nu = len(e0)
+    Nv = len(e2)
+    assert Nu == len(e1),'Number of nodes on edge0 and edge1 are not the same,%d %d'%(len(e0),len(e1))
+    assert Nv == len(e3),'Number of nodes on edge2 and edge3 are not the same,%d %d'%(len(e2),len(e3))
+    
+    U = linspace(0,1,Nu)
+    V = linspace(0,1,Nv)
+
+    X = zeros((Nu,Nv,3))
+
+    for i in xrange(Nu):
+        for j in xrange(Nv):
+            X[i,j] = (1-V[j])*e0[i] + V[j]*e1[i] + (1-U[i])*e2[j] + U[i]*e3[j] - \
+                (U[i]*V[j]*e1[-1] + U[i]*(1-V[j])*e0[-1] + V[j]*(1-U[i])*e1[0] + \
+                     (1-U[i])*(1-V[j])*e0[0])
+        # end for
+    # end for
+
+    return X
 
 def checkRank(input):
     if not(hasattr(input,'__iter__')):
