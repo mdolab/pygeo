@@ -16,10 +16,19 @@ exec(import_modules('geo_utils','pySpline'))
 
 class DVConstraints(object):
 
-    def __init__(self,wing,le_list,te_list,nSpan,nChord):
+    def __init__(self):
 
-        '''Create a DVconstrains object.
+        '''Create a (empty) DVconstrains object. Specific types of
+        constraints will added individually'''
 
+        self.thickCon = None
+        self.LeTeCon = None
+
+        return
+
+    def addThicknessConstraints(self,wing,le_list,te_list,nSpan,nChord):
+
+        '''
         Inputs:
 
         wing: a pyGeo object representing the wing
@@ -104,14 +113,44 @@ class DVConstraints(object):
             # end for
         # end for
 
+        self.thickCon = True
+
+        return
+
+
+    def addLeTeCon(self,DVGeo,axis='z'):
+        '''Add Leading Edge and Trailing Edge Constraints to the FFD
+        or Surface in DVGeo
+
+        axis: The dominate direction along which to constrain LE/TE
+        
+        '''
+
+        self.LECon = []
+        if DVGeo.FFD: # Only Setup for FFD's currently
+            # Loop over each block in FFD
+            for ivol in xrange(DVGeo.nVol):
+                # Determine which (two) faces coorrespond to the LE
+                # and TE. We will currently cheat and hard-code the
+                # two we need. Also, we'll assume we only have on eset
+                # of geoDVLocals
+                
+                for i in xrange(len(self.GeoDVLcoal)
+                
+                
+        
+                
+        
+
+
     def getCoordinates(self):
-        ''' Return the current set of coordinates used for the
-        thickness computation'''
+        ''' Return the current set of coordinates used in
+        DVConstraints'''
 
         return self.coords.reshape((self.nSpan*self.nChord*2,3))
 
     def setCoordinates(self,coords):
-        ''' Set the new set of surface coordinates '''
+        ''' Set the new set of coordinates'''
 
         self.coords = coords.reshape((self.nSpan,self.nChord,2,3))
 
@@ -122,12 +161,17 @@ class DVConstraints(object):
                 lower    -> Fraction of initial thickness allowed
                 upper    -> Fraction of upper thickness allowed
                 '''
-        lower = lower*numpy.ones((self.nSpan,self.nChord),'d').flatten()
-        upper = upper*numpy.ones((self.nSpan,self.nChord),'d').flatten()
+
+        if thickCon:
+            lower = lower*numpy.ones((self.nSpan,self.nChord),'d').flatten()
+            upper = upper*numpy.ones((self.nSpan,self.nChord),'d').flatten()
         
-        value = ones((self.nSpan,self.nChord),'d').flatten()
-        opt_prob.addConGroup('thickness',self.nSpan*self.nChord, 'i', 
-                             value=value, lower=lower, upper=upper)
+            value = ones((self.nSpan,self.nChord),'d').flatten()
+            opt_prob.addConGroup('thickness',self.nSpan*self.nChord, 'i', 
+                                 value=value, lower=lower, upper=upper)
+
+        if self.LeTeCon:
+            pass
 
     def getThicknessConstraints(self):
         '''Return the current thickness constraint'''

@@ -180,6 +180,36 @@ set of points are used'
 
         return
     
+    def addLeTeCon(self):
+        '''Add Leading Edge and Trailing Edge Constraints to the FFD
+        or Surface. We can use the supplied Refernece axis to
+        determine which of the faces on the FFD we need to constrain or which edge on a set of surfaces to constrain.
+        
+        '''
+        # We will generate a list of the indices that the DVGeometry object will use to make equal and opposite
+        if DVGeo.FFD: # Only Setup for FFD's currently
+            # Loop over each block in FFD
+            for ivol in xrange(DVGeo.nVol):
+                # Determine which (two) faces coorrespond to the LE
+                # and TE. We will currently cheat and hard-code the
+                # two that we need. its faceid 2 and 3
+
+                for k in xrange(self.FFD.vols[ivol].Nctlw):
+                    
+                                    
+
+                for i in xrange(len(self.DV_listLocal)):
+                    
+
+                
+            
+        
+        
+
+        
+
+
+
 
     def _setInitialValues(self):
 
@@ -387,6 +417,7 @@ set of points are used'
                 D[1] *= scale_y
                 D[2] *= scale_z
                 new_pts[ipt] = base_pt + D*scale
+
             # end if
         # end for
 
