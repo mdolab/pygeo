@@ -198,8 +198,8 @@ set of points are used'
                     
                                     
 
-                for i in xrange(len(self.DV_listLocal)):
-                    
+                    for i in xrange(len(self.DV_listLocal)):
+                        pass
 
                 
             
@@ -385,7 +385,7 @@ set of points are used'
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
-
+            
         self.refAxis.coef = self.coef
         self.refAxis._updateCurveCoef()
 

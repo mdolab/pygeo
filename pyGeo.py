@@ -1586,7 +1586,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         self.dCoefdX = sparse.csc_matrix((array(vals),row_ind,col_ptr))#,shape=(N,NdvTotal))
         self.dCoefdX = self.dCoefdX.tocsr()
 
-
 #         # The next step is go to over all the NORMAL and LOCAL variables,
 #         # compute the surface normal
         
@@ -1652,7 +1651,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # Now make a sparse matrix
         self.attached_surfaces[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[3*N,3*len(self.coef)])
         mpiPrint('  -> Finished Attached Surface %d Derivative'%(index),self.NO_PRINT)
-
 
         return
 
