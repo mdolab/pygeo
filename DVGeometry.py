@@ -289,6 +289,9 @@ set of points are used'
                 self.DV_listLocal[self.DV_namesLocal[key]].value = vals_to_set
             # end if
             self.J = None # J is no longer up to date
+        #endfor
+
+
         return
 
     def _getRotMatrix(self,rotX,rotY,rotZ):
