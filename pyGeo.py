@@ -51,7 +51,7 @@ except:
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('pyGeometry_liftingsurface','pyGeometry_bodysurface'))
+exec(import_modules('pyGeometry_liftingsurface_c','pyGeometry_bodysurface'))
 exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre'))
 
 # =============================================================================
@@ -633,7 +633,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         dtor = pi/180
         self.nSurf = 0
         geo_objects = []
-
+        print 'ac',len(ac)
         for i in xrange(len(ac)):
             print 'Processing Component: %s'%(ac[i].Name)
             # Determine Type -> Lifting Surface or Body Surface
@@ -652,38 +652,42 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # end for (subcomp)
 
             elif isinstance(ac[i],LiftingSurface):
+                
                 nSubComp = len(ac[i])
                 [m,n] = ac[i][0].Surface_x.shape
+            
                 X = zeros((nSubComp+1,n,3))
                 for j in xrange(nSubComp):
                     [m,n] = ac[i][j].Surface_x.shape
                     N=  (n-1)/2
+                   
                     if j == 0:
                         X[j,0:N+1,0] = ac[i][j].Surface_x[0,0:N+1][::-1]
-                        X[j,0:N+1,1] = ac[i][j].Surface_y[0,0:N+1][::-1]
-                        X[j,0:N+1,2] = ac[i][j].Surface_z[0,0:N+1][::-1]
+                        X[j,0:N+1,1] = ac[i][j].Surface_z[0,0:N+1][::-1]
+                        X[j,0:N+1,2] = ac[i][j].Surface_y[0,0:N+1][::-1]
                         X[j,N:,0] = ac[i][j].Surface_x[0,N:][::-1]
-                        X[j,N:,1] = ac[i][j].Surface_y[0,N:][::-1]
-                        X[j,N:,2] = ac[i][j].Surface_z[0,N:][::-1]
+                        X[j,N:,1] = ac[i][j].Surface_z[0,N:][::-1]
+                        X[j,N:,2] = ac[i][j].Surface_y[0,N:][::-1]
                     else:
                         X[j,0:N+1,0] = 0.5*(ac[i][j-1].Surface_x[1,0:N+1][::-1]+ac[i][j].Surface_x[0,0:N+1][::-1])
-                        X[j,0:N+1,1] = 0.5*(ac[i][j-1].Surface_y[1,0:N+1][::-1]+ac[i][j].Surface_y[0,0:N+1][::-1])
-                        X[j,0:N+1,2] = 0.5*(ac[i][j-1].Surface_z[1,0:N+1][::-1]+ac[i][j].Surface_z[0,0:N+1][::-1])
+                        X[j,0:N+1,1] = 0.5*(ac[i][j-1].Surface_z[1,0:N+1][::-1]+ac[i][j].Surface_y[0,0:N+1][::-1])
+                        X[j,0:N+1,2] = 0.5*(ac[i][j-1].Surface_y[1,0:N+1][::-1]+ac[i][j].Surface_z[0,0:N+1][::-1])
                         X[j,N:,0] = 0.5*(ac[i][j-1].Surface_x[1,N:][::-1]+ac[i][j].Surface_x[0,N:][::-1])
-                        X[j,N:,1] = 0.5*(ac[i][j-1].Surface_y[1,N:][::-1]+ac[i][j].Surface_y[0,N:][::-1])
-                        X[j,N:,2] = 0.5*(ac[i][j-1].Surface_z[1,N:][::-1]+ac[i][j].Surface_z[0,N:][::-1])
+                        X[j,N:,1] = 0.5*(ac[i][j-1].Surface_z[1,N:][::-1]+ac[i][j].Surface_y[0,N:][::-1])
+                        X[j,N:,2] = 0.5*(ac[i][j-1].Surface_y[1,N:][::-1]+ac[i][j].Surface_z[0,N:][::-1])
                     # end if
                     if  j == nSubComp-1:
-                        X[j+1,0:N+1,0] = ac[i][j].Surface_x[1,0:N+1][::-1]
-                        X[j+1,0:N+1,1] = ac[i][j].Surface_y[1,0:N+1][::-1]
-                        X[j+1,0:N+1,2] = ac[i][j].Surface_z[1,0:N+1][::-1]
-                        X[j+1,N:,0] = ac[i][j].Surface_x[1,N:][::-1]
-                        X[j+1,N:,1] = ac[i][j].Surface_y[1,N:][::-1]
-                        X[j+1,N:,2] = ac[i][j].Surface_z[1,N:][::-1]
+                        X[j+1,0:N+1,0] = ac[i][j].Surface_x[m-1,0:N+1][::-1]
+                        X[j+1,0:N+1,1] = ac[i][j].Surface_z[m-1,0:N+1][::-1]
+                        X[j+1,0:N+1,2] = ac[i][j].Surface_y[m-1,0:N+1][::-1]
+                        X[j+1,N:,0] = ac[i][j].Surface_x[m-1,N:][::-1]
+                        X[j+1,N:,1] = ac[i][j].Surface_z[m-1,N:][::-1]
+                        X[j+1,N:,2] = ac[i][j].Surface_y[m-1,N:][::-1]
                     # end if
                 # end for (sub Comp)
-                self.surfs.append(pySpline.surface(ku=3,kv=4,X=X,
-                                                   Nctlu=nSubComp+1,Nctlv=17))
+                
+                self.surfs.append(pySpline.surface(ku=2,kv=3,X=X,
+                                                   Nctlu=nSubComp+1,Nctlv=n/2))
                 self.nSurf += 1
             # end if (lifting/body type)
         # end if (Comp Loop)
@@ -1128,7 +1132,9 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # --------------------------------------
         
         if surfs == True:
+            print 'in surfs',self.nSurf
             for isurf in xrange(self.nSurf):
+                print 'writing surface',f
                 self.surfs[isurf]._writeTecplotSurface(f)
 
         # -------------------------------
