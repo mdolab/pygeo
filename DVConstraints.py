@@ -40,7 +40,7 @@ class DVConstraints(object):
         root_line = [le_list[0],te_list[0]]
         tip_line  = [le_list[-1],te_list[-1]]
         le_s = pySpline.curve(X=le_list,k=2)
-        te_s = pySpline.curve(X=le_list,k=2)
+        te_s = pySpline.curve(X=te_list,k=2)
         root_s = pySpline.curve(X=[le_list[0],te_list[0]],k=2)
         tip_s  = pySpline.curve(X=[le_list[-1],te_list[-1]],k=2)
 
