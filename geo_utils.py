@@ -78,12 +78,10 @@ def rotVbyW(V, W, theta):
  #                I/O Functions
  # --------------------------------------------------------------
 
-def readNValues(handle, N, type, binary=False):
+def readNValues(handle, N, type, binary=False,sep=' '):
     '''Read N values of type 'float' or 'int' from file handle'''
     if binary == True:
         sep = ""
-    else:
-        sep = " "
     # end if
     if type == 'int':
         values = fromfile(handle,dtype='int',count=N,sep=sep)
@@ -131,21 +129,25 @@ def read_af2(filename, blunt_te=False, blunt_scale=0.1):
             mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
             mpiPrint('Merging to a point over final %f ...'%(blunt_scale))
             yavg = 0.5*(y[0] + y[-1])
+            xavg = 0.5*(x[0] + x[-1])
             y_top = y[0]
             y_bot = y[-1]
+            x_top = x[0]
+            x_bot = x[-1]
             # Indices on the TOP surface of the wing
             indices = where(x[0:npt/2]>=(1-blunt_scale))[0]
             for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (1-blunt_scale))/blunt_scale
+                fact = (x[indices[i]]- (x[0]-blunt_scale))/blunt_scale
                 y[indices[i]] = y[indices[i]]- fact*(y_top-yavg)
-
+                x[indices[i]] = x[indices[i]]- fact*(x_top-xavg)
             # Indices on the BOTTOM surface of the wing
             indices = where(x[npt/2:]>=(1-blunt_scale))[0]
             indices = indices + npt/2
                     
             for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (1-blunt_scale))/blunt_scale
+                fact = (x[indices[i]]- (x[-1]-blunt_scale))/blunt_scale
                 y[indices[i]] = y[indices[i]]- fact*(y_bot-yavg)
+                x[indices[i]] = x[indices[i]]- fact*(x_bot-xavg)
             # end for
         # end if
     # end if
@@ -1379,8 +1381,8 @@ class SurfaceTopology(topology):
             # Check to make sure nodes are sequential
             self.nNode = len(unique(face_con.flatten()))
             if self.nNode != max(face_con.flatten())+1:
-                mpiPrint('Error: The Node numbering in faceCon is not sequential. There are \
-missing nodes')
+                # We don't have sequential nodes
+                mpiPrint("Error: Nodes are not sequential")
                 sys.exit(1)
             # end if
             
