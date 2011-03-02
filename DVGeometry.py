@@ -198,8 +198,8 @@ set of points are used'
                     
                                     
 
-                for i in xrange(len(self.DV_listLocal)):
-                    
+                    for i in xrange(len(self.DV_listLocal)):
+                        pass
 
                 
             
@@ -385,7 +385,7 @@ set of points are used'
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
-
+            
         self.refAxis.coef = self.coef
         self.refAxis._updateCurveCoef()
 
@@ -727,3 +727,20 @@ set of points are used'
         # end
 
         return opt_prob
+
+
+    def printDesignVariables(self):
+        
+        for dg in self.DV_listGlobal:
+            mpiPrint('%s'%(dg.name))
+            for i in xrange(dg.nVal):
+                mpiPrint('%20.15f'%(dg.value[i]))
+            # end for
+        # end for
+
+        for dl in self.DV_listLocal:
+            mpiPrint('%s'%(dl.name))
+            for i in xrange(dl.nVal):
+                mpiPrint('%20.15f'%(dl.value[i]))
+            # end for
+        # end for
