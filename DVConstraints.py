@@ -22,7 +22,7 @@ class DVConstraints(object):
         constraints will added individually'''
 
         self.thickCon = None
-        self.LeTeCon = None
+        self.LeTeCon = []
 
         return
 
@@ -118,30 +118,47 @@ class DVConstraints(object):
         return
 
 
-    def addLeTeCon(self,DVGeo,axis='z'):
+    def addLeTeCon(self,DVGeo,up_ind,low_ind):
         '''Add Leading Edge and Trailing Edge Constraints to the FFD
-        or Surface in DVGeo
+        at the indiceis defined by up_ind and low_ind'''
 
-        axis: The dominate direction along which to constrain LE/TE
-        
-        '''
+        assert len(up_ind) == len(low_ind), 'up_ind and low_ind are not the same length'
 
-        self.LECon = []
         if DVGeo.FFD: # Only Setup for FFD's currently
-            # Loop over each block in FFD
-            for ivol in xrange(DVGeo.nVol):
-                # Determine which (two) faces coorrespond to the LE
-                # and TE. We will currently cheat and hard-code the
-                # two we need. Also, we'll assume we only have on eset
-                # of geoDVLocals
-                
-                for i in xrange(len(self.GeoDVLcoal)
-                
-                
-        
-                
-        
+            # Check to see if we have local design variables in DVGeo
+            if len(DVGeo.DV_listLocal) == 0:
+                mpiPrint('Warning: Trying to add Le/Te Constraint when no local variables found')
+            # end if
 
+            # Loop over each set of Local Design Variables
+            for i in xrange(len(DVGeo.DV_listLocal)):
+                
+                # We will assume that each GeoDVLocal only moves on 1,2, or 3 coordinate directions (but not mixed)
+                temp = DVGeo.DV_listLocal[i].coef_list # This is already an array
+
+                for j in xrange(len(up_ind)): # Try to find this index in the coef_list
+                    up = None
+                    down = None
+                    for k in xrange(len(temp)):
+                        if temp[k][0] == up_ind[j]:
+                            up = k
+                        # end if
+                        if temp[k][0] == low_ind[j]:
+                            down = k
+                        # end for
+                    # end for
+
+                    # If we haven't found up AND down do nothing
+                    if up is not None and down is not None:
+                        self.LeTeCon.append([i,up,down])
+                    # end if
+                # end for
+            # end for
+        else:
+            mpiPrint('Warning: addLeTECon is only setup for FFDs')
+        # end if
+
+        return
 
     def getCoordinates(self):
         ''' Return the current set of coordinates used in
@@ -162,16 +179,55 @@ class DVConstraints(object):
                 upper    -> Fraction of upper thickness allowed
                 '''
 
-        if thickCon:
+        if self.thickCon:
             lower = lower*numpy.ones((self.nSpan,self.nChord),'d').flatten()
             upper = upper*numpy.ones((self.nSpan,self.nChord),'d').flatten()
         
-            value = ones((self.nSpan,self.nChord),'d').flatten()
-            opt_prob.addConGroup('thickness',self.nSpan*self.nChord, 'i', 
-                                 value=value, lower=lower, upper=upper)
+            #value = ones((self.nSpan,self.nChord),'d').flatten()
+            opt_prob.addConGroup('thickness',self.nSpan*self.nChord, 'i', lower=lower, upper=upper)
+                                 #value=value
 
         if self.LeTeCon:
-            pass
+            # We can just add them individualy
+            for i in xrange(len(self.LeTeCon)):
+                opt_prob.addCon('LeTeCon%d'%(i),'i',lower=0.0,upper=0.0)
+
+    def getLeTeConstraints(self,DVGeo):
+        '''Evaluate the LeTe constraint using the current DVGeo opject'''
+
+        con = zeros(len(self.LeTeCon))
+        for i in xrange(len(self.LeTeCon)):
+            dv = self.LeTeCon[i][0]
+            up = self.LeTeCon[i][1]
+            down = self.LeTeCon[i][2]
+            con[i] = DVGeo.DV_listLocal[dv].value[up] + DVGeo.DV_listLocal[dv].value[down]
+        # end for
+
+        return con
+
+    def getLeTeSensitivity(self,DVGeo,scaled=True):
+        ndv = DVGeo._getNDV()
+        nlete = len(self.LeTeCon)
+        dLeTedx = zeros([nlete,ndv]A)
+
+        offset = [DVGeo._getNDVGloabl]
+        # Generate offset lift of the number of local variables
+        for i in xrange(len(DVGeo.DV_listLocal)):
+            offset.append(localOffset[-1] + DVGeo.DV_listLocal[i].nVal)
+
+        for i in xrange(len(self.LeTeCon)):
+            # Set the two values a +1 and -1 or (+range - range if scaled)
+            dv = self.LeTeCon[i][0]
+            up = self.LeTeCon[i][1]
+            down = self.LeTeCon[i][2]
+            if scaled:
+                dLeTedx[i,offset + up  ] =  DVGeo.DV_listLocal[dv].range[up  ]
+                dLeTedx[i,offset + down] = -DVGeo.DV_listLocal[dv].range[down]
+            else:
+                dLeTedx[i,offset + up  ] =  1.0
+                dLeTedx[i,offset + down] = -1.0
+            # end if
+        # end for
 
     def getThicknessConstraints(self):
         '''Return the current thickness constraint'''

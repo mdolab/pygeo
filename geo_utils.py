@@ -833,6 +833,8 @@ class point_select(object):
         'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
         COUNTER-CLOCKWISE orientation 
 
+        'list': Define the indices of a list that will be used to extract the points
+
         '''
         
         if type == 'x' or type == 'y' or type == 'z':
@@ -845,59 +847,64 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
                 and 'pt4' in kwargs,'Error:, four points \
 must be specified with initialization type quad. Points are specified \
 with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
-        
+            
         # end if
         corners = zeros([4,3])
-        if type == 'x':
-            corners[0] = kwargs['pt1']
+        if type in ['x','y','z','corners']:
+            if type == 'x':
+                corners[0] = kwargs['pt1']
 
-            corners[1][1] = kwargs['pt2'][1]
-            corners[1][2] = kwargs['pt1'][2]
+                corners[1][1] = kwargs['pt2'][1]
+                corners[1][2] = kwargs['pt1'][2]
 
-            corners[2][1] = kwargs['pt1'][1]
-            corners[2][2] = kwargs['pt2'][2]
+                corners[2][1] = kwargs['pt1'][1]
+                corners[2][2] = kwargs['pt2'][2]
 
-            corners[3] = kwargs['pt2']
+                corners[3] = kwargs['pt2']
 
-            corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
+                corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
 
-        elif type == 'y':
-            corners[0] = kwargs['pt1']
+            elif type == 'y':
+                corners[0] = kwargs['pt1']
 
-            corners[1][0] = kwargs['pt2'][0]
-            corners[1][2] = kwargs['pt1'][2]
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][2] = kwargs['pt1'][2]
 
-            corners[2][0] = kwargs['pt1'][0]
-            corners[2][2] = kwargs['pt2'][2]
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][2] = kwargs['pt2'][2]
 
-            corners[3] = kwargs['pt2']
+                corners[3] = kwargs['pt2']
 
-            corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
+                corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
 
-        elif type == 'z':
-            corners[0] = kwargs['pt1']
+            elif type == 'z':
+                corners[0] = kwargs['pt1']
 
-            corners[1][0] = kwargs['pt2'][0]
-            corners[1][1] = kwargs['pt1'][1]
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][1] = kwargs['pt1'][1]
 
-            corners[2][0] = kwargs['pt1'][0]
-            corners[2][1] = kwargs['pt2'][1]
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][1] = kwargs['pt2'][1]
 
-            corners[3] = kwargs['pt2']
+                corners[3] = kwargs['pt2']
 
-            corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
+                corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
 
-        elif type == 'quad':
-            corners[0] = kwargs['pt1']
-            corners[1] = kwargs['pt2']
-            corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
-            corners[3] = kwargs['pt3']
-        # end if
+            elif type == 'quad':
+                corners[0] = kwargs['pt1']
+                corners[1] = kwargs['pt2']
+                corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
+                corners[3] = kwargs['pt3']
+            # end if
 
-        X = reshape(corners,[2,2,3])
+            X = reshape(corners,[2,2,3])
 
-        self.box=pySpline.bilinear_surface(X=X)
-        self.type = type
+            self.box=pySpline.bilinear_surface(X=X)
+            self.type = 'box'
+        elif type == 'list':
+            self.box = None
+            self.type = type
+            self.indices = array(args[0])
 
         return
 
@@ -907,14 +914,21 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
         the point select class.'''
         pt_list = []
         ind_list = []
-        for i in xrange(len(points)):
-            u0,v0,D,converged = self.box.projectPoint(points[i])
-            if u0>0 and u0<1 and v0>0 and v0<1: #Its Inside
-                pt_list.append(points[i])
-                ind_list.append(i)
-            # end if
-        # end for
-
+        if self.type == 'box':
+            for i in xrange(len(points)):
+                u0,v0,D,converged = self.box.projectPoint(points[i])
+                if u0>0 and u0<1 and v0>0 and v0<1: #Its Inside
+                    pt_list.append(points[i])
+                    ind_list.append(i)
+                # end if
+            # end for
+        elif self.type == 'list':
+            for i in xrange(len(self.indices)):
+                pt_list.append(points[self.indices[i]])
+            # end for
+            ind_list = self.indices.copy()
+        # end if
+        
         return pt_list,ind_list
 
 class topology(object):
@@ -2302,7 +2316,7 @@ def checkInput(input, input_name, data_type, data_rank, data_shape=None):
 
     input: The input argument
 
-    input_name: A string with the argument's name to be used in an 
+    input_name: A string with the arguments name to be used in an 
                 output error message
 
     data_type: The requested numpy data type. Up-casting will be done
