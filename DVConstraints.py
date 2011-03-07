@@ -208,12 +208,12 @@ class DVConstraints(object):
     def getLeTeSensitivity(self,DVGeo,scaled=True):
         ndv = DVGeo._getNDV()
         nlete = len(self.LeTeCon)
-        dLeTedx = zeros([nlete,ndv]A)
+        dLeTedx = zeros([nlete,ndv])
 
-        offset = [DVGeo._getNDVGloabl]
+        DVoffset = [DVGeo._getNDVGlobal()]
         # Generate offset lift of the number of local variables
         for i in xrange(len(DVGeo.DV_listLocal)):
-            offset.append(localOffset[-1] + DVGeo.DV_listLocal[i].nVal)
+            DVoffset.append(DVoffset[-1] + DVGeo.DV_listLocal[i].nVal)
 
         for i in xrange(len(self.LeTeCon)):
             # Set the two values a +1 and -1 or (+range - range if scaled)
@@ -221,14 +221,15 @@ class DVConstraints(object):
             up = self.LeTeCon[i][1]
             down = self.LeTeCon[i][2]
             if scaled:
-                dLeTedx[i,offset + up  ] =  DVGeo.DV_listLocal[dv].range[up  ]
-                dLeTedx[i,offset + down] = -DVGeo.DV_listLocal[dv].range[down]
+                dLeTedx[i,DVoffset[dv] + up  ] =  DVGeo.DV_listLocal[dv].range[up  ]
+                dLeTedx[i,DVoffset[dv] + down] =  DVGeo.DV_listLocal[dv].range[down]
             else:
-                dLeTedx[i,offset + up  ] =  1.0
-                dLeTedx[i,offset + down] = -1.0
+                dLeTedx[i,DVoffset[dv] + up  ] =  1.0
+                dLeTedx[i,DVoffset[dv] + down] =  1.0
             # end if
         # end for
 
+        return dLeTedx
     def getThicknessConstraints(self):
         '''Return the current thickness constraint'''
 
