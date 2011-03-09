@@ -2687,6 +2687,7 @@ def createTriPanMesh(geo, tripan_file, wake_file,
     # edge_type == what type of parametrization to use along an edge
     edge_type   = ['linear']*n_edge
     wake_edges = []
+    wake_dir   = []
 
     if specs_file:
         f = open(specs_file,'r')
@@ -2707,8 +2708,12 @@ def createTriPanMesh(geo, tripan_file, wake_file,
             aux = string.split(f.readline())
             edge_number[iedge] = string.atoi(aux[1])
             edge_type[iedge] = aux[2]
-            if string.atoi(aux[5]) == 1:
+            if string.atoi(aux[5]) > 0:
                 wake_edges.append(iedge)
+                wake_dir.append(1)
+            elif string.atoi(aux[5]) < 0:
+                wake_edges.append(iedge)
+                wake_dir.append(-1)
             # end if
         # end for
         f.close()
@@ -2826,9 +2831,9 @@ Using a linear type'%(edge_type[iedge]))
     fp.write('%d\n'%(len(wake_edges)))
     print 'wake_edges:', wake_edges
 
-    for edge in wake_edges:
+    for k in xrange(len(wake_edges)):
         # Get a surface/edge for this edge
-        surfaces = topo.getSurfaceFromEdge(edge)
+        surfaces = topo.getSurfaceFromEdge(wake_edges[k])
         iface = surfaces[0][0]
         iedge = surfaces[0][1]
         if iedge == 0:
@@ -2843,9 +2848,15 @@ Using a linear type'%(edge_type[iedge]))
         
         fp.write('%d\n'%(len(indices)))
 
-        for i in xrange(len(indices)):
-            te_node_type = 3 # A constant in TriPan to indicate projected wake
-            fp.write('%d %d\n'%(indices[len(indices)-1-i], te_node_type))
+        if wake_dir[k] > 0:
+            for i in xrange(len(indices)):
+                # A constant in TriPan to indicate projected wake
+                te_node_type = 3 
+                fp.write('%d %d\n'%(indices[i], te_node_type))
+        else:
+            for i in xrange(len(indices)):
+                te_node_type = 3 
+                fp.write('%d %d\n'%(indices[len(indices)-1-i], te_node_type))
         # end for
     # end for
 
