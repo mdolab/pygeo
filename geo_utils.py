@@ -1666,6 +1666,56 @@ the list of surfaces must be the same length'
 
         return surfaces
 
+    def makeSizesConsistent(self,sizes,order):
+        '''
+        Take a given list of [Nu x Nv] for each surface and return
+        the sizes list such that all sizes are consistent
+
+        prescedence is given according to the order list: 0 is highest
+        prescedence, 1 is next highest ect.
+        '''
+
+        # First determine how many "order" loops we have
+        nloops = max(order)+1
+        edge_number = -1*ones(self.nDG, 'intc')
+        for iedge in xrange(self.nEdge):
+            self.edges[iedge].N = -1
+        # end for
+    
+        for iloop in xrange(nloops):
+            for iface in xrange(self.nFace):
+                if order[iface] == iloop: # Set this edge
+                    for iedge in xrange(4):
+                        dg = self.edges[self.edge_link[iface][iedge]].dg
+                        if edge_number[dg] == -1:
+                            if iedge in [0,1]:
+                                edge_number[dg] = sizes[iface][0]
+                            else:
+                                edge_number[dg] = sizes[iface][1]
+                            # end if
+                        # end if
+                    # end if
+                # end for
+            # end for
+        # end for
+
+        # Now re-populate the sizes:
+        for iface in xrange(self.nFace):
+            for i in [0,1]:
+                dg = self.edges[self.edge_link[iface][i*2]].dg
+                sizes[iface][i] = edge_number[dg]
+            # end for
+        # end for
+
+        # And return the number of elements on each actual edge
+        nEdge = []
+        for iedge in xrange(self.nEdge):
+            self.edges[iedge].N = edge_number[self.edges[iedge].dg]
+            nEdge.append(edge_number[self.edges[iedge].dg])
+        # end if
+
+        return sizes, nEdge
+
 class BlockTopology(topology):
     '''
     See Topology base class for more information
@@ -2623,250 +2673,240 @@ class geoDVLocal(object):
         return coef
 
     
-# def createTriPanMesh(geo,tripan_name,wake_name,surfaces=None,specs_file=None,default_size = 0.1):
+def createTriPanMesh(geo, tripan_file, wake_file,
+                     specs_file=None, default_size=0.1):
+    '''
+    Create a TriPan mesh from a pyGeo object.
 
-#     '''Create a TriPanMesh from a pyGeo Object'''
+    geo:          The pyGeo object
+    tripan_file:  The name of the TriPan File
+    wake_file:    The name of the wake file
+    specs_file:   The specification of panels/edge and edge types
+    default_size: If no specs_file is given, attempt to make edges with
+    default_size-length panels
     
-#     if MPI: # Only run this on Root Prosessor if MPI
-#         if MPI.Comm.Get_rank( MPI.WORLD ) == 0:
-#             pass
-#             # end if
-#         else:
-#             return
-#         # end if
-#     # end if
-
-#     if surfaces == None:
-#         surfaces = arange(geo.topo.nFace)
-#     # end if
-
-#     # Create a sub_topology, which MAY be the same as the original one
-#     topo = geo.topo.createSubTopology(surfaces)
-
-#     nEdge = topo.nEdge
-#     nFace = topo.nFace
+    This cannot be run in parallel!
+    '''
     
-#     Edge_Number = -1*ones(nEdge,'intc')
-#     Edge_Type = [ '' for i in xrange(nEdge)]
-#     wakeEdges = []
-#     if specs_file:
-#         f = open(specs_file,'r')
-#         f.readline()
-#         for iedge in xrange(nEdge):
-#             aux = string.split(f.readline())
-#             Edge_Number[iedge] = int(aux[1])
-#             Edge_Type[iedge]   = aux[2]
-#             if int(aux[5]) == 1:
-#                 wakeEdges.append(iedge)
-#             # end if
-#         # end for
-#         f.close()
-#     else:
-#         default_size = float(default_size)
-#         # First Get the default number on each edge
+    # Use the topology of the entire geo object
+    topo = geo.topo
+
+    n_edge = topo.nEdge
+    n_face = topo.nFace
     
-#         for iface in xrange(nFace):
-#             for iedge in xrange(4):
-#                 # First check if we even have to do it
-#                 if Edge_Number[topo.edge_link[iface][iedge]] == -1:
-#                     edge_length = geo.surfs[topo.sub_to_master_faces[iface]].getEdgeLength(iedge)
-#                     Edge_Number[topo.edge_link[iface][iedge]] = int(floor(edge_length/default_size))+2
-#                     Edge_Type[topo.edge_link[iface][iedge]] = 'linear'
-#                 # end if
-#             # end for
-#         # end for
-#     # end if
+    # Face orientation
+    face_orientation = [1]*n_face
+    # edge_number == number of panels along a given edge
+    edge_number = -1*ones(n_edge, 'intc')
+    # edge_type == what type of parametrization to use along an edge
+    edge_type   = ['linear']*n_edge
+    wake_edges = []
+    wake_dir   = []
+
+    if specs_file:
+        f = open(specs_file,'r')
+        line = string.split(f.readline())
+        if string.atoi(line[0]) != n_face:
+            mpiPrint('Number of faces do not match in specs file')
+        if string.atoi(line[1]) != n_edge:
+            mpiPrint('Number of edges do not match in specs file')
+        # Discard a line
+        f.readline()
+        # Read in the face info
+        for iface in xrange(n_face):
+            aux = string.split(f.readline())
+            face_orientation[iface] = string.atoi(aux[1])
+        f.readline()
+        # Read in the edge info
+        for iedge in xrange(n_edge):
+            aux = string.split(f.readline())
+            edge_number[iedge] = string.atoi(aux[1])
+            edge_type[iedge] = aux[2]
+            if string.atoi(aux[5]) > 0:
+                wake_edges.append(iedge)
+                wake_dir.append(1)
+            elif string.atoi(aux[5]) < 0:
+                wake_edges.append(iedge)
+                wake_dir.append(-1)
+            # end if
+        # end for
+        f.close()
+    else:
+        default_size = float(default_size)
+        # First Get the default number on each edge
     
-#     # Create the sizes Geo for the make consistent function
-#     sizes = []
-#     order = []
-#     for iface in xrange(nFace):
-#         sizes.append([Edge_Number[topo.edge_link[iface][0]],Edge_Number[topo.edge_link[iface][2]]])
-#         order.append(0)
-#     # end for
-#     sizes,Edge_Number = topo.makeSizesConsistent(sizes,order)
+        for iface in xrange(n_face):
+            for iedge in xrange(4):
+                # First check if we even have to do it
+                if edge_number[topo.edge_link[iface][iedge]] == -1:
+                    # Get the physical length of the edge
+                    edge_length = \
+                        geo.surfs[iface].edge_curves[iedge].getLength()
 
-#     # Now create the global numbering scheme
+                    # Using default_size calculate the number of panels 
+                    # along this edge
+                    edge_number[topo.edge_link[iface][iedge]] = \
+                        int(floor(edge_length/default_size))+2
+                # end if
+            # end for
+        # end for
+    # end if
     
-#     # Now we need to get the edge parameter spacing for each edge
-#     topo.calcGlobalNumbering(sizes) # This gets g_index,l_index and counter
+    # Create the sizes Geo for the make consistent function
+    sizes = []
+    order = [0]*n_face
+    for iface in xrange(n_face):
+        sizes.append([edge_number[topo.edge_link[iface][0]], 
+                      edge_number[topo.edge_link[iface][2]]])
+    # end for
+    sizes, edge_number = topo.makeSizesConsistent(sizes, order)
 
-#     # Now calculate the intrinsic spacing for each edge:
-#     edge_para = []
-#     for iedge in xrange(nEdge):
-#         if Edge_Type[iedge] == 'linear':
-#             edge_para.append(linspace(0,1,Edge_Number[iedge]))
-#         elif Edge_Type[iedge] == 'full_cos':
-#             edge_para.append(0.5*(1-cos(linspace(0,pi,Edge_Number[iedge]))))
-#         else:
-#             mpiPrint('Warning: Edge type not understood. Using a linear type')
-#             edge_para.append(0,1,Edge_Number[iedge])
-#         # end if
-#     # end for
+    # Now we need to get the edge parameter spacing for each edge
+    topo.calcGlobalNumbering(sizes) # This gets g_index,l_index and counter
 
-#     # Get the number of panels
-#     nPanels = 0
-#     for iface in xrange(nFace):
-#         nPanels += (sizes[iface][0]-1)*(sizes[iface][1]-1)
-#     # end for
+    # Now calculate the intrinsic spacing for each edge:
+    edge_para = []
+    for iedge in xrange(n_edge):
+        if edge_type[iedge] == 'linear':
+            spacing = linspace(0.0, 1.0, edge_number[iedge])
+            edge_para.append(spacing)
+        elif edge_type[iedge] == 'cos':
+            spacing = 0.5*(1.0 - cos(linspace(0, pi, edge_number[iedge])))
+            edge_para.append(spacing)
+        elif edge_type[iedge] == 'hyperbolic':
+            x = linspace(0.0, 1.0, edge_number[iedge])
+            beta = 1.8
+            spacing = x - beta*x*(x - 1.0)*(x - 0.5)
+            edge_para.append(spacing)
+        else:
+            mpiPrint('Warning: Edge type %s not understood. \
+Using a linear type'%(edge_type[iedge]))
+            edge_para.append(0, 1, edge_number[iedge])
+        # end if
+    # end for
 
-#     # Open the outputfile
-#     fp = open(tripan_name,'w')
+    # Get the number of panels
+    n_panels = 0
+    n_nodes = len(topo.g_index)
+    for iface in xrange(n_face):
+        n_panels += (sizes[iface][0]-1)*(sizes[iface][1]-1)        
+    # end for
 
-#     # Write he number of points and panels
-#     fp.write( '%5d %5d \n'%(topo.counter,nPanels))
+    # Open the outputfile
+    fp = open(tripan_file, 'w')
+
+    # Write he number of points and panels
+    fp.write('%5d %5d\n'%(n_nodes, n_panels))
    
-#     # Output the Points First
-#     UV = []
-#     for iface in xrange(nFace):
-        
-#         uv= getBiLinearMap(edge_para[topo.edge_link[iface][0]],
-#                            edge_para[topo.edge_link[iface][1]],
-#                            edge_para[topo.edge_link[iface][2]],
-#                            edge_para[topo.edge_link[iface][3]])
-#         UV.append(uv)
+    # Output the Points First
+    UV = []
+    for iface in xrange(n_face):
+        uv = getBiLinearMap(edge_para[topo.edge_link[iface][0]],
+                            edge_para[topo.edge_link[iface][1]],
+                            edge_para[topo.edge_link[iface][2]],
+                            edge_para[topo.edge_link[iface][3]])
+        UV.append(uv)
 
-#     # end for
+    # end for
     
-#     for ipt in xrange(len(topo.g_index)):
-#         iface = topo.g_index[ipt][0][0]
-#         i     = topo.g_index[ipt][0][1]
-#         j     = topo.g_index[ipt][0][2]
-#         pt = geo.surfs[topo.sub_to_master_faces[iface]].getValue(UV[iface][i,j][0],UV[iface][i,j][1])
-#         fp.write( '%12.10e %12.10e %12.10e \n'%(pt[0],pt[1],pt[2]))
-#     # end for
+    for ipt in xrange(len(topo.g_index)):
+        iface = topo.g_index[ipt][0][0]
+        i     = topo.g_index[ipt][0][1]
+        j     = topo.g_index[ipt][0][2]
+        pt = geo.surfs[iface].getValue(UV[iface][i,j][0], UV[iface][i,j][1])
+        fp.write( '%12.10e %12.10e %12.10e \n'%(pt[0],pt[1],pt[2]))
+    # end for
 
-#     # Output the connectivity Next
-#     count = 0
-#     for iface in xrange(nFace):
-#         for i in xrange(sizes[iface][0]-1):
-#             for j in xrange(sizes[iface][1]-1):
-#                 count += 1
-#                 fp.write('%d %d %d %d \n'%(topo.l_index[iface][i  ,j],
-#                                            topo.l_index[iface][i,j+1],
-#                                            topo.l_index[iface][i+1,j+1],
-#                                            topo.l_index[iface][i+1  ,j]))
-#             # end for
-#         # end for
-#     # end for
-#     fp.write('\n')
-#     fp.close()
+    # Output the connectivity Next
+    for iface in xrange(n_face):
+        if face_orientation[iface] >= 0:
+            for i in xrange(sizes[iface][0]-1):
+                for j in xrange(sizes[iface][1]-1):
+                    fp.write('%d %d %d %d \n'%(topo.l_index[iface][i,j],
+                                               topo.l_index[iface][i+1,j],
+                                               topo.l_index[iface][i+1,j+1],
+                                               topo.l_index[iface][i,j+1]))
+        else:
+            for i in xrange(sizes[iface][0]-1):
+                for j in xrange(sizes[iface][1]-1):
+                    fp.write('%d %d %d %d \n'%(topo.l_index[iface][i,j],
+                                               topo.l_index[iface][i,j+1],
+                                               topo.l_index[iface][i+1,j+1],
+                                               topo.l_index[iface][i+1,j]))
 
-#     # Output the wake file
+            # end for
+        # end for
+    # end for
+    fp.write('\n')
+    fp.close()
 
-#     fp = open(wake_name,'w')
-#     fp.write('%d\n'%(len(wakeEdges)))
-#     print 'wakeEdges:',wakeEdges
-#     for edge in wakeEdges:
-#         # Get a surface/edge for this edge
-#         surfaces = topo.getSurfaceFromEdge(edge)
-#         iface = surfaces[0][0]
-#         iedge = surfaces[0][1]
-#         print 'iface,iedge:',iface,iedge
-#         if iedge == 0:
-#             indices = topo.l_index[iface][:,0]
-#         elif iedge == 1:
-#             indices = topo.l_index[iface][:,-1]
-#         elif iedge == 2:
-#             indices = topo.l_index[iface][0,:]
-#         elif iedge == 3:
-#             indices = topo.l_index[iface][-1,:]
-#         # end if
+    # Output the wake file
+    fp = open(wake_file, 'w')
+    fp.write('%d\n'%(len(wake_edges)))
+    print 'wake_edges:', wake_edges
+
+    for k in xrange(len(wake_edges)):
+        # Get a surface/edge for this edge
+        surfaces = topo.getSurfaceFromEdge(wake_edges[k])
+        iface = surfaces[0][0]
+        iedge = surfaces[0][1]
+        if iedge == 0:
+            indices = topo.l_index[iface][:,0]
+        elif iedge == 1:
+            indices = topo.l_index[iface][:,-1]
+        elif iedge == 2:
+            indices = topo.l_index[iface][0,:]
+        elif iedge == 3:
+            indices = topo.l_index[iface][-1,:]
+        # end if
         
-#         fp.write('%d\n'%(len(indices)))
+        fp.write('%d\n'%(len(indices)))
 
-#         for i in xrange(len(indices)):
-#             fp.write('%d %d\n'%(indices[len(indices)-1-i],3))
-#         # end for
-#     # end for
+        if wake_dir[k] > 0:
+            for i in xrange(len(indices)):
+                # A constant in TriPan to indicate projected wake
+                te_node_type = 3 
+                fp.write('%d %d\n'%(indices[i], te_node_type))
+        else:
+            for i in xrange(len(indices)):
+                te_node_type = 3 
+                fp.write('%d %d\n'%(indices[len(indices)-1-i], te_node_type))
+        # end for
+    # end for
 
-#     fp.close()
+    fp.close()
 
-#     # Write out the default specFile
-#     (dirName,fileName) = os.path.split(tripan_name)
-#     (fileBaseName, fileExtension)=os.path.splitext(fileName)
-#     if dirName != '':
-#         new_specs_file = dirName+'/'+fileBaseName+'.specs'
-#     else:
-#         new_specs_file = fileBaseName+'.specs'
-#     # end if
-#     if specs_file == None:
-#         if os.path.isfile(new_specs_file):
-#             mpiPrint('Error: Attempting to write the specs file %s, but it already exists. Please\
-#             delete this file and re-run'%(new_specs_file))
-#             sys.exit(1)
-#         # end if
-#     # end if
-#     specs_file = new_specs_file
-#     f = open(specs_file,'w')
-#     f.write('Edge Number #Node Type     Start Space   End Space   WakeEdge\n') 
-#     for iedge in xrange(nEdge):
-#         if iedge in wakeEdges:
-#             f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
-#                 topo.sub_to_master_edges[iedge],Edge_Number[iedge],Edge_Type[iedge],.1,.1,1))
-#         else:
-#             f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
-#             topo.sub_to_master_edges[iedge],Edge_Number[iedge],Edge_Type[iedge],.1,.1,0))
-#         # end if
+    # Write out the default specFile
+    if specs_file == None:
+        (dirName, fileName) = os.path.split(tripan_file)
+        (fileBaseName, fileExtension) = os.path.splitext(fileName)
+        if dirName != '':
+            new_specs_file = dirName+'/'+fileBaseName+'.specs'
+        else:
+            new_specs_file = fileBaseName+'.specs'
+        # end if
+        specs_file = new_specs_file
 
-#         # end for
-#     # end for
-#     f.close()
+    if not os.path.isfile(specs_file):
+        f = open(specs_file, 'w')
+        f.write('%d %d Number of faces and number of edges'%(n_face, n_edge))
+        f.write('Face number   Normal (1 for regular, -1 for reversed orientation')
+        for iface in xrange(n_face):
+            f.write('%d %d'%(iface, face_orientation[iface]))
+        f.write('Edge Number #Node Type     Start Space   End Space   WakeEdge\n') 
+        for iedge in xrange(n_edge):
+            if iedge in wake_edges:
+                f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
+                        iedge, edge_number[iedge], edge_type[iedge], .1, .1, 1))
+            else:
+                f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
+                        iedge, edge_number[iedge], edge_type[iedge], .1, .1, 0))
+            # end if
 
-#     return
+    f.close()
+
+    return
  
-    
-
-
-
-    # def makeSizesConsistent(self,sizes,order):
-    #     '''Take a given list of [Nu x Nv] for each surface and return
-    #     the sizes list such that all sizes are consistent
-
-    #     prescedence is given according to the order list: 0 is highest
-    #     prescedence, 1 is next highest ect.
-
-    #     '''
-
-    #     # First determine how many "order" loops we have
-    #     nloops = max(order)+1
-    #     edge_number = -1*ones(self.nDG,'intc')
-    #     for iedge in xrange(self.nEdge):
-    #         self.edges[iedge].N = -1
-    #     # end for
-    
-    #     for iloop in xrange(nloops):
-    #         for iface in xrange(self.nFace):
-    #             if order[iface] == iloop: # Set this edge
-    #                 for iedge in xrange(4):
-    #                     if edge_number[self.edges[self.edge_link[iface][iedge]].dg] == -1:
-    #                         if iedge in [0,1]:
-    #                             edge_number[self.edges[self.edge_link[iface][iedge]].dg] = sizes[iface][0]
-    #                         else:
-    #                             edge_number[self.edges[self.edge_link[iface][iedge]].dg] = sizes[iface][1]
-    #                         # end if
-    #                     # end if
-    #                 # end if
-    #             # end for
-    #         # end for
-    #     # end for
-
-    #     # Now repoluative the sizes:
-    #     for iface in xrange(self.nFace):
-    #         for i in [0,1]:
-    #             sizes[iface][i] = edge_number[self.edges[self.edge_link[iface][i*2]].dg]
-    #         # end for
-    #     # end for
-
-    #     # And return the number of elements on each actual edge
-    #     nEdge = []
-    #     for iedge in xrange(self.nEdge):
-    #         self.edges[iedge].N = edge_number[self.edges[iedge].dg]
-    #         nEdge.append(edge_number[self.edges[iedge].dg])
-    #     # end if
-    #     return sizes,nEdge
-
-
 #     def createSubTopology(self,face_list):
 #         '''Produce another insistance of the topology class which
 #         contains a subset of the faces on this topology class'''
