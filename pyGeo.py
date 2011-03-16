@@ -1134,9 +1134,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # --------------------------------------
         
         if surfs == True:
-            print 'in surfs',self.nSurf
             for isurf in xrange(self.nSurf):
-                print 'writing surface',f
                 self.surfs[isurf]._writeTecplotSurface(f)
 
         # -------------------------------
