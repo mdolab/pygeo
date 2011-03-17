@@ -78,12 +78,10 @@ def rotVbyW(V, W, theta):
  #                I/O Functions
  # --------------------------------------------------------------
 
-def readNValues(handle, N, type, binary=False):
+def readNValues(handle, N, type, binary=False,sep=' '):
     '''Read N values of type 'float' or 'int' from file handle'''
     if binary == True:
         sep = ""
-    else:
-        sep = " "
     # end if
     if type == 'int':
         values = fromfile(handle,dtype='int',count=N,sep=sep)
@@ -131,21 +129,25 @@ def read_af2(filename, blunt_te=False, blunt_scale=0.1):
             mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
             mpiPrint('Merging to a point over final %f ...'%(blunt_scale))
             yavg = 0.5*(y[0] + y[-1])
+            xavg = 0.5*(x[0] + x[-1])
             y_top = y[0]
             y_bot = y[-1]
+            x_top = x[0]
+            x_bot = x[-1]
             # Indices on the TOP surface of the wing
             indices = where(x[0:npt/2]>=(1-blunt_scale))[0]
             for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (1-blunt_scale))/blunt_scale
+                fact = (x[indices[i]]- (x[0]-blunt_scale))/blunt_scale
                 y[indices[i]] = y[indices[i]]- fact*(y_top-yavg)
-
+                x[indices[i]] = x[indices[i]]- fact*(x_top-xavg)
             # Indices on the BOTTOM surface of the wing
             indices = where(x[npt/2:]>=(1-blunt_scale))[0]
             indices = indices + npt/2
                     
             for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (1-blunt_scale))/blunt_scale
+                fact = (x[indices[i]]- (x[-1]-blunt_scale))/blunt_scale
                 y[indices[i]] = y[indices[i]]- fact*(y_bot-yavg)
+                x[indices[i]] = x[indices[i]]- fact*(x_bot-xavg)
             # end for
         # end if
     # end if
@@ -831,6 +833,8 @@ class point_select(object):
         'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
         COUNTER-CLOCKWISE orientation 
 
+        'list': Define the indices of a list that will be used to extract the points
+
         '''
         
         if type == 'x' or type == 'y' or type == 'z':
@@ -843,59 +847,64 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
                 and 'pt4' in kwargs,'Error:, four points \
 must be specified with initialization type quad. Points are specified \
 with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
-        
+            
         # end if
         corners = zeros([4,3])
-        if type == 'x':
-            corners[0] = kwargs['pt1']
+        if type in ['x','y','z','corners']:
+            if type == 'x':
+                corners[0] = kwargs['pt1']
 
-            corners[1][1] = kwargs['pt2'][1]
-            corners[1][2] = kwargs['pt1'][2]
+                corners[1][1] = kwargs['pt2'][1]
+                corners[1][2] = kwargs['pt1'][2]
 
-            corners[2][1] = kwargs['pt1'][1]
-            corners[2][2] = kwargs['pt2'][2]
+                corners[2][1] = kwargs['pt1'][1]
+                corners[2][2] = kwargs['pt2'][2]
 
-            corners[3] = kwargs['pt2']
+                corners[3] = kwargs['pt2']
 
-            corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
+                corners[:,0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
 
-        elif type == 'y':
-            corners[0] = kwargs['pt1']
+            elif type == 'y':
+                corners[0] = kwargs['pt1']
 
-            corners[1][0] = kwargs['pt2'][0]
-            corners[1][2] = kwargs['pt1'][2]
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][2] = kwargs['pt1'][2]
 
-            corners[2][0] = kwargs['pt1'][0]
-            corners[2][2] = kwargs['pt2'][2]
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][2] = kwargs['pt2'][2]
 
-            corners[3] = kwargs['pt2']
+                corners[3] = kwargs['pt2']
 
-            corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
+                corners[:,1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
 
-        elif type == 'z':
-            corners[0] = kwargs['pt1']
+            elif type == 'z':
+                corners[0] = kwargs['pt1']
 
-            corners[1][0] = kwargs['pt2'][0]
-            corners[1][1] = kwargs['pt1'][1]
+                corners[1][0] = kwargs['pt2'][0]
+                corners[1][1] = kwargs['pt1'][1]
 
-            corners[2][0] = kwargs['pt1'][0]
-            corners[2][1] = kwargs['pt2'][1]
+                corners[2][0] = kwargs['pt1'][0]
+                corners[2][1] = kwargs['pt2'][1]
 
-            corners[3] = kwargs['pt2']
+                corners[3] = kwargs['pt2']
 
-            corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
+                corners[:,2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
 
-        elif type == 'quad':
-            corners[0] = kwargs['pt1']
-            corners[1] = kwargs['pt2']
-            corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
-            corners[3] = kwargs['pt3']
-        # end if
+            elif type == 'quad':
+                corners[0] = kwargs['pt1']
+                corners[1] = kwargs['pt2']
+                corners[2] = kwargs['pt4'] # Note the switch here from CC orientation
+                corners[3] = kwargs['pt3']
+            # end if
 
-        X = reshape(corners,[2,2,3])
+            X = reshape(corners,[2,2,3])
 
-        self.box=pySpline.bilinear_surface(X=X)
-        self.type = type
+            self.box=pySpline.bilinear_surface(X=X)
+            self.type = 'box'
+        elif type == 'list':
+            self.box = None
+            self.type = type
+            self.indices = array(args[0])
 
         return
 
@@ -905,14 +914,21 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
         the point select class.'''
         pt_list = []
         ind_list = []
-        for i in xrange(len(points)):
-            u0,v0,D,converged = self.box.projectPoint(points[i])
-            if u0>0 and u0<1 and v0>0 and v0<1: #Its Inside
-                pt_list.append(points[i])
-                ind_list.append(i)
-            # end if
-        # end for
-
+        if self.type == 'box':
+            for i in xrange(len(points)):
+                u0,v0,D,converged = self.box.projectPoint(points[i])
+                if u0>0 and u0<1 and v0>0 and v0<1: #Its Inside
+                    pt_list.append(points[i])
+                    ind_list.append(i)
+                # end if
+            # end for
+        elif self.type == 'list':
+            for i in xrange(len(self.indices)):
+                pt_list.append(points[self.indices[i]])
+            # end for
+            ind_list = self.indices.copy()
+        # end if
+        
         return pt_list,ind_list
 
 class topology(object):
@@ -1085,51 +1101,64 @@ class topology(object):
 
     def writeConnectivity(self, file_name):
         '''Write the full edge connectivity to a file file_name'''
-        f = open(file_name,'w')
-        f.write('%4d  %4d  %4d   %4d  %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
-        f.write('Design Group |  Number\n')
-        # Write out the design groups and their number parameter
-        N_list = self._getDGList()
-        for i in xrange(self.nDG):
-            f.write('%5d        | %5d       \n'%(i,N_list[i]))
-        # end for
+        if MPI:
+            MPI.COMM_WORLD.barrier()
+            if MPI.COMM_WORLD.rank == 0:
+                is_root = True
+            else:
+                is_root = False
+            # end if
+        else:
+            is_root = True
+        # end if
 
-        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n')
-        for i in xrange(len(self.edges)):
-            self.edges[i].write_info(i,f)
-        # end for
+        if is_root:
+            f = open(file_name,'w')
+            f.write('%4d  %4d  %4d   %4d  %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
+            f.write('Design Group |  Number\n')
+            # Write out the design groups and their number parameter
+            N_list = self._getDGList()
+            for i in xrange(self.nDG):
+                f.write('%5d        | %5d       \n'%(i,N_list[i]))
+            # end for
 
-        f.write('%9s Num |'%(self.topo_type))
-        for i in xrange(self.mNodeEnt):
-            f.write(' n%2d|'%(i))
-        for i in xrange(self.mEdgeEnt):
-            f.write(' e%2d|'%(i))
-        f.write('\n')
-            
-        for i in xrange(self.nEnt):
-            f.write(' %5d        |'%(i))
-            for j in xrange(self.mNodeEnt):
-                f.write('%4d|'%self.node_link[i][j])
+            f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n')
+            for i in xrange(len(self.edges)):
+                self.edges[i].write_info(i,f)
             # end for
-            for j in xrange(self.mEdgeEnt):
-                f.write('%4d|'%(self.edge_link[i][j]*self.edge_dir[i][j]))
-            # end for
+
+            f.write('%9s Num |'%(self.topo_type))
+            for i in xrange(self.mNodeEnt):
+                f.write(' n%2d|'%(i))
+            for i in xrange(self.mEdgeEnt):
+                f.write(' e%2d|'%(i))
             f.write('\n')
-        # end for
 
-        if self.topo_type == 'volume':
+            for i in xrange(self.nEnt):
+                f.write(' %5d        |'%(i))
+                for j in xrange(self.mNodeEnt):
+                    f.write('%4d|'%self.node_link[i][j])
+                # end for
+                for j in xrange(self.mEdgeEnt):
+                    f.write('%4d|'%(self.edge_link[i][j]*self.edge_dir[i][j]))
+                # end for
+                f.write('\n')
+            # end for
 
-            f.write('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
-            for i in xrange(self.nVol):
-                f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|\n'\
-                            %(i,self.face_link[i][0],self.face_link[i][1],
-                              self.face_link[i][2],self.face_link[i][3],
-                              self.face_link[i][4],self.face_link[i][5],
-                              self.face_dir[i][0],self.face_dir[i][1],
-                              self.face_dir[i][2],self.face_dir[i][3],
-                              self.face_dir[i][4],self.face_dir[i][5])) 
-  
-        f.close()
+            if self.topo_type == 'volume':
+
+                f.write('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
+                for i in xrange(self.nVol):
+                    f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|\n'\
+                                %(i,self.face_link[i][0],self.face_link[i][1],
+                                  self.face_link[i][2],self.face_link[i][3],
+                                  self.face_link[i][4],self.face_link[i][5],
+                                  self.face_dir[i][0],self.face_dir[i][1],
+                                  self.face_dir[i][2],self.face_dir[i][3],
+                                  self.face_dir[i][4],self.face_dir[i][5])) 
+
+            f.close()
+        # end if
         
         return
 
@@ -1379,8 +1408,8 @@ class SurfaceTopology(topology):
             # Check to make sure nodes are sequential
             self.nNode = len(unique(face_con.flatten()))
             if self.nNode != max(face_con.flatten())+1:
-                mpiPrint('Error: The Node numbering in faceCon is not sequential. There are \
-missing nodes')
+                # We don't have sequential nodes
+                mpiPrint("Error: Nodes are not sequential")
                 sys.exit(1)
             # end if
             
@@ -2300,7 +2329,7 @@ def checkInput(input, input_name, data_type, data_rank, data_shape=None):
 
     input: The input argument
 
-    input_name: A string with the argument's name to be used in an 
+    input_name: A string with the arguments name to be used in an 
                 output error message
 
     data_type: The requested numpy data type. Up-casting will be done

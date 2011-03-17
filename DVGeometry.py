@@ -180,37 +180,6 @@ set of points are used'
 
         return
     
-    def addLeTeCon(self):
-        '''Add Leading Edge and Trailing Edge Constraints to the FFD
-        or Surface. We can use the supplied Refernece axis to
-        determine which of the faces on the FFD we need to constrain or which edge on a set of surfaces to constrain.
-        
-        '''
-        # We will generate a list of the indices that the DVGeometry object will use to make equal and opposite
-        if DVGeo.FFD: # Only Setup for FFD's currently
-            # Loop over each block in FFD
-            for ivol in xrange(DVGeo.nVol):
-                # Determine which (two) faces coorrespond to the LE
-                # and TE. We will currently cheat and hard-code the
-                # two that we need. its faceid 2 and 3
-
-                for k in xrange(self.FFD.vols[ivol].Nctlw):
-                    
-                                    
-
-                    for i in xrange(len(self.DV_listLocal)):
-                        pass
-
-                
-            
-        
-        
-
-        
-
-
-
-
     def _setInitialValues(self):
 
         self.coef = copy.deepcopy(self.coef0).astype('D')
@@ -232,13 +201,18 @@ set of points are used'
         Returns:
         None
         '''
+        if not self.DV_listLocal == []:
+            mpiPrint('Error: All Global Variables must be set BEFORE setting local Variables')
+            sys.exit(1)
+        # end if
+        
         self.DV_listGlobal.append(geoDVGlobal(\
                 dv_name,value,lower,upper,function,useit))
         self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
 
         return
 
-    def addGeoDVLocal(self,dv_name,lower,upper,axis='y',useit=True):
+    def addGeoDVLocal(self,dv_name,lower,upper,axis='y',pointSelect=None,useit=True):
         '''Add a local design variable
         Required:
         dv_name: a unique name for this design variable (group)
@@ -257,8 +231,13 @@ set of points are used'
         # Surface.coef
 
         if self.FFD:
-            self.DV_listLocal.append(geoDVLocal(\
-                    dv_name,lower,upper,axis,arange(len(self.FFD.coef))))
+            if pointSelect is not None:
+                pts, ind = pointSelect.getPoints(self.FFD.coef)
+            else:
+                ind = arange(len(self.FFD.coef))
+            # end if
+                
+            self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,axis,ind))
             
         if self.Surface:
             self.DV_listLocal.append(geoDVLocal(\
