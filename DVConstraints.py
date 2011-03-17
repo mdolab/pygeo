@@ -118,29 +118,29 @@ class DVConstraints(object):
         return
 
 
-    def addLeTeCon(self,DVGeo,axis='z'):
-        '''Add Leading Edge and Trailing Edge Constraints to the FFD
-        or Surface in DVGeo
+##     def addLeTeCon(self,DVGeo,axis='z'):
+##         '''Add Leading Edge and Trailing Edge Constraints to the FFD
+##         or Surface in DVGeo
 
-        axis: The dominate direction along which to constrain LE/TE
+##         axis: The dominate direction along which to constrain LE/TE
         
-        '''
+##         '''
 
-        self.LECon = []
-        if DVGeo.FFD: # Only Setup for FFD's currently
-            # Loop over each block in FFD
-            for ivol in xrange(DVGeo.nVol):
-                # Determine which (two) faces coorrespond to the LE
-                # and TE. We will currently cheat and hard-code the
-                # two we need. Also, we'll assume we only have on eset
-                # of geoDVLocals
+##         self.LECon = []
+##         if DVGeo.FFD: # Only Setup for FFD's currently
+##             # Loop over each block in FFD
+##             for ivol in xrange(DVGeo.nVol):
+##                 # Determine which (two) faces coorrespond to the LE
+##                 # and TE. We will currently cheat and hard-code the
+##                 # two we need. Also, we'll assume we only have on eset
+##                 # of geoDVLocals
                 
-                for i in xrange(len(self.GeoDVLcoal)
+##                 for i in xrange(len(self.GeoDVLcoal)
                 
-                
-        
                 
         
+                
+                                
 
 
     def getCoordinates(self):
@@ -183,7 +183,7 @@ class DVConstraints(object):
             # end for
         # end for
 
-        con_value = D/self.D0
+        con_value = D#/self.D0
 
         return con_value.flatten()
 
@@ -197,8 +197,8 @@ class DVConstraints(object):
         p1b,p2b = e_dist_b(self.coords[i,j,0,:],self.coords[i,j,1,:])
         
         istart = 2*i*self.nChord + 2*j
-        dTdpt[istart,:] = p1b/self.D0[i,j]
-        dTdpt[istart+1] = p2b/self.D0[i,j]
+        dTdpt[istart,:] = p1b#/self.D0[i,j]
+        dTdpt[istart+1] = p2b#/self.D0[i,j]
 
         return dTdpt
         
