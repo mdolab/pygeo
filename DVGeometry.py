@@ -107,7 +107,7 @@ set of points are used'
         if FFD:
             self.FFD = FFD
             self.ptAttach = self.FFD.coef
-            self.FFD.embedVolume(real(self.points))
+            self.FFD.embedVolume(real(self.points),*args,**kwargs)
             self.FFD._calcdPtdCoef(0)
         elif Surface:
             self.Surface = Surface
