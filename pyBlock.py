@@ -781,7 +781,7 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def embedVolume(self,coordinates,volume_list=None,file_name=None):
+    def embedVolume(self,coordinates,volume_list=None,file_name=None,*args,**kwargs):
         '''Embed a set of coordinates into volume in volume_list'''
 
         if file_name != None:
@@ -798,7 +798,7 @@ class pyBlock():
         w = zeros(N)
      
         # Project Points
-        volID,u,v,w,D0 = self.projectPoints(coordinates)
+        volID,u,v,w,D0 = self.projectPoints(coordinates,*args,**kwargs)
         
         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
@@ -817,17 +817,17 @@ class pyBlock():
 #             Geometric Functions
 # ----------------------------------------------------------------------    
 
-    def projectPoints(self,x0,eps=1e-14):
+    def projectPoints(self,x0,eps=1e-14,*args,**kwargs):
         '''Project a point into any one of the volumes. Returns 
         the volID,u,v,w,D of the point in volID or closest to it.
 
         This is a brute force search and is NOT efficient'''
         x0 = atleast_2d(x0)
-        u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
+        u0,v0,w0,D0 = self.vols[0].projectPoint(x0,eps1=eps,eps2=eps,**kwargs)
        
         volID = zeros(len(x0),'intc')
         for ivol in xrange(1,self.nVol):
-            u,v,w,D = self.vols[ivol].projectPoint(x0,eps1=eps,eps2=eps)
+            u,v,w,D = self.vols[ivol].projectPoint(x0,eps1=eps,eps2=eps,**kwargs)
             # Now check projections
             for i in xrange(len(x0)):
                 if norm(D[i])<norm(D0[i]):
