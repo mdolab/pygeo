@@ -28,6 +28,7 @@ class DVConstraints(object):
         self.coords = numpy.zeros([0,3],dtype='d')
         self.D0     = numpy.zeros([0  ],dtype='d')
         self.thickConSizes = []
+        self.scaled = []
         return
 
     def addThicknessConstraints(self,wing,le_list,te_list,nSpan,nChord,
@@ -51,7 +52,7 @@ class DVConstraints(object):
         Upper: The upper bound for the thickness constraint
 
         '''
-        
+        self.scaled.append(scaled)
         self.thickConPtr.append(self.thickConPtr[-1] + nSpan*nChord)
 
         # Expand out lower and upper to make them the correct size
