@@ -299,12 +299,16 @@ class DVConstraints(object):
     def getThicknessConstraints(self):
         '''Return the current thickness constraint'''
         D = zeros(self.D0.shape)
-        for i in xrange(len(D)):
-            D[i] = e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
+
+        for ii in xrange(len(self.thickConPtr)-1):
+            for i in xrange(self.thickConPtr[ii]:self.thickConPointer[ii+1]):
+                D[i] = e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
+                if self.scaled[ii]:
+                    D[i]/=self.D0[i]
             # end for
         # end for
 
-        con_value = D/self.D0
+#        con_value = D/self.D0
 
         return con_value
 
@@ -321,15 +325,24 @@ class DVConstraints(object):
         dTdx = zeros((self.nThickCon,nDV))
         dTdpt = zeros(self.coords.shape)
 
-        for i in xrange(self.nThickCon):
-            dTdpt[:,:] = 0.0
+        for ii in xrange(len(self.thickConPtr)-1):
+            for i in xrange(self.thickConPtr[ii]:self.thickConPointer[ii+1]):
 
-            p1b,p2b = e_dist_b(self.coords[2*i,:],self.coords[2*i+1,:])
+                dTdpt[:,:] = 0.0
+
+                p1b,p2b = e_dist_b(self.coords[2*i,:],self.coords[2*i+1,:])
         
-            dTdpt[2*i,:] = p1b/self.D0[i]
-            dTdpt[2*i+1,:] = p2b/self.D0[i]
+                dTdpt[2*i,:] = p1b
+                dTdpt[2*i+1,:] = p2b
 
-            dTdx[i,:] = DVGeo.totalSensitivity(dTdpt,name=coord_name)
+                if self.scaled[ii]:
+                    dTdpt[2*i,:] /= self.D0[i]
+                    dTdpt[2*i+1,:] /= self.D0[i]
+                # end if
+
+                dTdx[i,:] = DVGeo.totalSensitivity(dTdpt,name=coord_name)
+            # end for
+        # end for
 
         return dTdx
         
