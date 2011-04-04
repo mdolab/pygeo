@@ -27,6 +27,7 @@ class DVConstraints(object):
         self.LeTeCon = []
         self.coords = numpy.zeros([0,3],dtype='d')
         self.D0     = numpy.zeros([0  ],dtype='d')
+        self.thickConSizes = []
         return
 
     def addThicknessConstraints(self,wing,le_list,te_list,nSpan,nChord,
@@ -175,7 +176,7 @@ class DVConstraints(object):
         self.thickConLower.extend(lower.flatten())
         self.thickConUpper.extend(upper.flatten())
         self.nThickCon += len(lower.flatten())
-
+        self.thickConSizes.append([nSpan,nChord])
         return
 
 
