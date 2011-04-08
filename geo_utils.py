@@ -2889,10 +2889,10 @@ Using a linear type'%(edge_type[iedge]))
 
     if not os.path.isfile(specs_file):
         f = open(specs_file, 'w')
-        f.write('%d %d Number of faces and number of edges'%(n_face, n_edge))
-        f.write('Face number   Normal (1 for regular, -1 for reversed orientation')
+        f.write('%d %d Number of faces and number of edges\n'%(n_face, n_edge))
+        f.write('Face number   Normal (1 for regular, -1 for reversed orientation\n')
         for iface in xrange(n_face):
-            f.write('%d %d'%(iface, face_orientation[iface]))
+            f.write('%d %d\n'%(iface, face_orientation[iface]))
         f.write('Edge Number #Node Type     Start Space   End Space   WakeEdge\n') 
         for iedge in xrange(n_edge):
             if iedge in wake_edges:
@@ -2902,8 +2902,7 @@ Using a linear type'%(edge_type[iedge]))
                 f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
                         iedge, edge_number[iedge], edge_type[iedge], .1, .1, 0))
             # end if
-
-    f.close()
+        f.close()
 
     return
  
