@@ -2704,7 +2704,7 @@ def createTriPanMesh(geo, tripan_file, wake_file,
     wake_dir   = []
 
     if specs_file:
-        f = open(specs_file,'r')
+        f = open(specs_file, 'r')
         line = string.split(f.readline())
         if string.atoi(line[0]) != n_face:
             mpiPrint('Number of faces do not match in specs file')
