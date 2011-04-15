@@ -87,7 +87,6 @@ class DVConstraints(object):
 
         X = tfi_2d(le_s(span_s),te_s(span_s),root_s(chord_s),tip_s(chord_s))
 
-
         p0 = []
         v1 = []
         v2 = []
@@ -160,7 +159,6 @@ class DVConstraints(object):
 
                 # Determine the distance between points
                 self.D0[D0_offset] = e_dist(up,down)
-                D0_offset += 1
 
                 # The constraint will ALWAYS be set as a scaled value,
                 # however, it is possible that the user has specified
@@ -169,7 +167,8 @@ class DVConstraints(object):
                 if not scaled:
                     lower[i,j] /= self.D0[D0_offset]
                     upper[i,j] /= self.D0[D0_offset]
-
+                #end
+                D0_offset += 1
             # end for
         # end for
         
@@ -301,14 +300,14 @@ class DVConstraints(object):
         D = zeros(self.D0.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
-            for i in xrange(self.thickConPtr[ii]:self.thickConPointer[ii+1]):
+            for i in xrange(self.thickConPtr[ii],self.thickConPtr[ii+1]):
                 D[i] = e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
                 if self.scaled[ii]:
                     D[i]/=self.D0[i]
             # end for
         # end for
 
-#        con_value = D/self.D0
+        con_value = D
 
         return con_value
 
@@ -326,7 +325,7 @@ class DVConstraints(object):
         dTdpt = zeros(self.coords.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
-            for i in xrange(self.thickConPtr[ii]:self.thickConPointer[ii+1]):
+            for i in xrange(self.thickConPtr[ii],self.thickConPtr[ii+1]):
 
                 dTdpt[:,:] = 0.0
 
