@@ -1450,7 +1450,6 @@ class SurfaceTopology(topology):
             self.nEnt  = self.nFace
             # We can use the pointReduce algorithim on the nodes
             node_list,node_link = pointReduce(coords[:,0:4,:].reshape((self.nFace*4,3)),node_tol)
-            print node_list
             node_link = node_link.reshape((self.nFace,4))
           
             # Next Calculate the EDGE connectivity. -- This is Still Brute Force
@@ -1712,7 +1711,7 @@ class BlockTopology(topology):
                                  # mid points
             temp = numpy.zeros((nvol,(8 + 12 + 6),3))
             temp[:,0:8,:] = coords
-            coords = temp
+            coords = temp.copy()
         # end if
 
         # ----------------------------------------------------------
@@ -1799,8 +1798,11 @@ class BlockTopology(topology):
 
         face_dir = []
         for i in xrange(len(face_objs)): # This is nVol * 12
-            face_dir.append(faceOrientation(orig_faces[i],unique_face_objs[face_link[i]].nodes))
+            face_dir.append(faceOrientation(unique_face_objs[face_link[i]].nodes,
+                                            orig_faces[i]))
+            uEdge = face_link[i]
         # end for
+
         # --------- Set the Requried Data for this class ------------
         self.nNode = len(un)
         self.nEdge = len(unique_edge_objs)
@@ -1816,17 +1818,17 @@ class BlockTopology(topology):
         self.face_dir  = array(face_dir).reshape((nVol,6))
 
         # Next Calculate the Design Group Information
-        edge_link_sorted = sort(edge_link)
-        edge_link_ind    = argsort(edge_link)
+        edge_link_sorted = sort(edge_link.flatten())
+        edge_link_ind    = argsort(edge_link.flatten())
 
         ue = []
         for i in xrange(len(unique_edge_objs)):
             ue.append([unique_edge_objs[i].nodes[0],
-                       unique_edge_objs[i].nodes[1],0,0])
+                       unique_edge_objs[i].nodes[1],-1,0,0])
         # end for
-                            
-        self._calcDGs(ue,edge_link,edge_link_sorted,edge_link_ind)
 
+        self._calcDGs(ue,edge_link,edge_link_sorted,edge_link_ind)
+        
         # Set the edge ojects
         self.edges = []
         for i in xrange(self.nEdge): # Create the edge objects
@@ -2084,6 +2086,11 @@ class BlockTopology(topology):
 #         # Next Calculate the Design Group Information
 #         edge_link_sorted = sort(edge_link)
 #         edge_link_ind    = argsort(edge_link)
+
+#         for i in xrange(len(ue)):
+#             print ue[i]
+#         print 'edge_link_sorted:',edge_link_ind
+        
 
 #         self._calcDGs(ue,edge_link,edge_link_sorted,edge_link_ind)
 
@@ -2346,6 +2353,23 @@ the list of volumes must be the same length'
         self.l_index = l_index
 
         return 
+
+def getCircularDVs(topo):
+    # For a given topology class determine the circular design
+    # variables. This really only makes sense for a surface topology
+    # class since in a volume, all edges fall into this category.
+    
+    assert isinstance(topo,SurfaceTopology,'Error: getCircularDVs is only used for Surface Topologies')
+    
+    # Basically what we want to do, is for each design group, find and
+    # edge for that group, and then for each parallel edge, keep going
+    # until you come back to 
+
+
+
+
+
+
 
 class edge(object):
     '''A class for edge objects'''
