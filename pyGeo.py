@@ -311,6 +311,16 @@ class pyGeo():
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
 
+            # Re-scale the knot vectors in case the upper bound is not 1
+            tu = array(tu)
+            tv = array(tv)
+            if not tu[-1] == 1.0:
+                tu /= tu[-1]
+
+            if not tv[-1] == 1.0:
+                tv /= tv[-1]
+
+
             self.surfs.append(pySpline.surface(ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,
                                                no_print=self.NO_PRINT))
 
