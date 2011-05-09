@@ -86,7 +86,7 @@ set of points are used'
         # end if
 
         self.rot_type = rot_type
-        self.J = None
+        self.JT = None
         if 'complex' in kwargs:
             if kwargs['complex']:
                 self.complex = True
@@ -297,7 +297,7 @@ set of points are used'
 
                 self.DV_listLocal[self.DV_namesLocal[key]].value = vals_to_set
             # end if
-            self.J = None # J is no longer up to date
+            self.JT = None # J is no longer up to date
         #endfor
 
 
@@ -545,7 +545,7 @@ set of points are used'
 
         self.computeTotalJacobian(scaled)
 
-        dIdx_local = self.J.T.dot(dIdpt_full.flatten())
+        dIdx_local = self.JT.dot(dIdpt_full.flatten())
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -559,7 +559,7 @@ set of points are used'
         ''' Return the total point jacobian in CSR format since we
         need this for TACS'''
 
-        if self.J is not None: # Already computed
+        if self.JT is not None: # Already computed
             return
         
         # This is going to be DENSE in general
@@ -601,7 +601,7 @@ set of points are used'
             # end for
         # end if
 
-        self.J = JT.tocsr().transpose(copy=True)
+        self.JT = JT.tocsr()
         
         return 
 
