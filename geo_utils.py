@@ -1263,6 +1263,9 @@ class topology(object):
             
         return N_list
 
+
+
+
 class CurveTopology(topology):
     '''
     See topology class for more information
@@ -2367,22 +2370,27 @@ the list of volumes must be the same length'
 
         return 
 
-def getCircularDVs(topo):
-    # For a given topology class determine the circular design
-    # variables. This really only makes sense for a surface topology
-    # class since in a volume, all edges fall into this category.
-    
-    assert isinstance(topo,SurfaceTopology,'Error: getCircularDVs is only used for Surface Topologies')
-    
-    # Basically what we want to do, is for each design group, find and
-    # edge for that group, and then for each parallel edge, keep going
-    # until you come back to 
+    def reOrder(self,reOrderList):
+        '''This function takes as input a permutation list which is
+        used to reorder the entities in the topology object'''
+        
+        # Class atributates that possible need to be modified
+        for i in xrange(8):
+            self.node_link[:,i] = self.node_link[:,i].take(reOrderList)
+        # end for
 
+        for i in xrange(12):
+            self.edge_link[:,i] = self.edge_link[:,i].take(reOrderList)
+            self.edge_dir[:,i] = self.edge_dir[:,i].take(reOrderList)
 
+        # end for
 
-
-
-
+        for i in xrange(6):
+            self.face_link[:,i] = self.face_link[:,i].take(reOrderList)
+            self.face_dir[:,i] = self.face_dir[:,i].take(reOrderList)
+        # end for
+        
+        return
 
 class edge(object):
     '''A class for edge objects'''
