@@ -196,7 +196,6 @@ class DVConstraints(object):
                 
                 # We will assume that each GeoDVLocal only moves on 1,2, or 3 coordinate directions (but not mixed)
                 temp = DVGeo.DV_listLocal[i].coef_list # This is already an array
-
                 for j in xrange(len(up_ind)): # Try to find this index in the coef_list
                     up = None
                     down = None
@@ -208,13 +207,17 @@ class DVConstraints(object):
                             down = k
                         # end for
                     # end for
-
                     # If we haven't found up AND down do nothing
                     if up is not None and down is not None:
                         self.LeTeCon.append([i,up,down])
                     # end if
                 # end for
             # end for
+            
+            # Finally, unique the list to parse out duplicates. Note:
+            # This sort may not be stable however, the order of the
+            # LeTeCon list doens't matter
+            self.LeTeCon = unique(self.LeTeCon)
         else:
             mpiPrint('Warning: addLeTECon is only setup for FFDs')
         # end if
@@ -299,14 +302,12 @@ class DVConstraints(object):
         D = zeros(self.D0.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
-            for i in xrange(self.thickConPtr[ii]:self.thickConPointer[ii+1]):
+            for i in xrange(self.thickConPtr[ii],self.thickConPointer[ii+1]):
                 D[i] = e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
                 if self.scaled[ii]:
                     D[i]/=self.D0[i]
             # end for
         # end for
-
-#        con_value = D/self.D0
 
         return con_value
 
@@ -324,7 +325,7 @@ class DVConstraints(object):
         dTdpt = zeros(self.coords.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
-            for i in xrange(self.thickConPtr[ii]:self.thickConPointer[ii+1]):
+            for i in xrange(self.thickConPtr[ii],self.thickConPointer[ii+1]):
 
                 dTdpt[:,:] = 0.0
 

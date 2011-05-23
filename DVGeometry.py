@@ -86,16 +86,11 @@ set of points are used'
         # end if
 
         self.rot_type = rot_type
+
+        # Transpose Jacobian:
         self.JT = None
-        if 'complex' in kwargs:
-            if kwargs['complex']:
-                self.complex = True
-            else:
-                self.complex = False
-            # end if
-        else:
-            self.complex = False
-        # end if
+
+        self.complex = kwargs.pop('complex',False)
 
         if Surface and FFD:
             print 'DVGeometry can only use 1 of FFD or Surface'
@@ -106,12 +101,60 @@ set of points are used'
 
         if FFD:
             self.FFD = FFD
-            self.ptAttach = self.FFD.coef
+#             if 'vol_list' in kwargs:
+#                 # If the user has specified a vol_list, the curves
+#                 # should only act on some of the volumes. 
+#                 vol_list = kwargs['vol_list']
+#                 assert len(curves)==len(vol_list),\
+#                     'The length of vol_list and curves must be the same'
+#                 # The ptAttach list *MAY* be smaller than the full set
+#                 # of coordinates defining the FFD. Also, the user had
+#                 # told us WHICH volume(s) must be connected to WHICH
+#                 # Axis. It we put all these in a list there's a
+#                 # possibility the curve projects will break this
+#                 # association.
+                
+#                 # So...create ptAttachInd which are the indicies of
+#                 # self.FFD.coef that we are actually manipulating. If
+#                 # there's no vol_list, then this is just [0,1,2,...N]
+#                 self.ptAttachInd = []
+#                 self.ptAttachPtr = [0]
+#                 for ii in xrange(len(kwargs['vol_list'])):
+#                     for iVol in kwargs['vol_list'][ii]:
+#                         for i in xrange(self.FFD.vols[iVol].Nctlu):
+#                             for j in xrange(self.FFD.vols[iVol].Nctlv):
+#                                 for k in xrange(self.FFD.vols[iVol].Nctlw):
+#                                     self.ptAttachInd.append(
+#                                         self.FFD.topo.l_index[iVol][i,j,k])
+#                                 # end for
+#                             # end for
+#                         # end for
+#                     # end for
+#                     self.ptAttachPtr.append(len(self.ptAttachInd))
+#                 # end for
+#                 # Convert the ind list to an array
+#                 self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
+#             else:
+#                 self.ptAttachInd = arange(len(self.FFD.coef))
+#                 self.ptAttachPtr = [0,len(self.FFD.coef)]
+#             # end if
+         
+            # self.ptAttach is possibly a subset of
+            # self.FFD.coef...however, self.ptAttachInd is correctly
+            # accounts for this case
+
+#             self.ptAttach = self.FFD.coef.take(self.ptAttachInd,axis=0)
+#             self.ptAttachFull= self.FFD.coef.copy()
+
+            self.ptAttach = self.FFD.coef.copy()
+            self.ptAttachFull= self.FFD.coef.copy()
+            
             self.FFD.embedVolume(real(self.points),*args,**kwargs)
             self.FFD._calcdPtdCoef(0)
         elif Surface:
             self.Surface = Surface
-            self.ptAttach = self.Surface.coef
+            self.ptAttach = self.Surface.coef()
+            self.ptAttachFull = self.surface.coef.copy()
             self.Surface.attachSurface(self.points)
             self.Surface._calcdPtdCoef(0)
         else:
@@ -120,6 +163,7 @@ set of points are used'
 
         # Number of points attached to ref axis
         self.nPtAttach = len(self.ptAttach)
+        self.nPtAttachFull = len(self.ptAttachFull)
         self.nPt = len(self.points)
         self.refAxis = pyNetwork.pyNetwork(curves,*args,**kwargs)
         self.refAxis.doConnectivity()
@@ -153,6 +197,9 @@ set of points are used'
         self.scale_y0 = copy.deepcopy(self.scale)
         self.scale_z0 = copy.deepcopy(self.scale)        
 
+        # Next we will do the point/curve ray/projections. Note we
+        # have to take into account the user's desired volume(s)/direction(s)
+
         if 'axis' in kwargs:
             if kwargs['axis'] == 'x':
                 axis = [1,0,0]
@@ -163,11 +210,28 @@ set of points are used'
             else:
                 axis = kwargs['axis']
             # end if
-            self.curveIDs,s = self.refAxis.projectRays(self.ptAttach,array(axis))
+            axis = array(axis)
+            axis = array([1,0,0])
         else:
-            self.curveIDs,s = self.refAxis.projectPoints(self.ptAttach)
+            axis = None
         # end if
-                
+
+        curveIDs = []
+        s = []
+#        for ii in xrange(len(self.ptAttachPtr)-1):
+            #pts_to_use = self.ptAttach[
+            #    self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1],:]
+        pts_to_use = self.ptAttach
+        if axis is not None:
+            ids,s0 = self.refAxis.projectRays(pts_to_use,axis)#,curves=[ii])
+        else:
+            ids,s0 = self.refAxis.projectPoints(pts_to_use)#,curves=[ii])
+        # end for
+
+        curveIDs.extend(ids)
+        s.extend(s0)
+        # end for
+        self.curveIDs = numpy.array(curveIDs)
         self.links_s = s
         self.links_x = []
         self.links_n = []
@@ -252,6 +316,7 @@ set of points are used'
         in a number of different ways:
 
         Type One:
+
         dvName is a STRING and value is the number of values associated with this DV
 
         Type Two:
@@ -361,8 +426,6 @@ set of points are used'
         else:
             new_pts = zeros((self.nPtAttach,3),'d')
         # end if
-        
-        self._complexifyCoef()
 
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
@@ -410,7 +473,12 @@ set of points are used'
             # end for
 
         if self.FFD:
-            self.FFD.coef = real(new_pts)
+            temp = real(new_pts)
+            self.FFD.coef = temp.copy()
+#             self.FFD.coef = self.ptAttachFull.copy()
+#             numpy.put(self.FFD.coef[:,0],self.ptAttachInd,temp[:,0])
+#             numpy.put(self.FFD.coef[:,1],self.ptAttachInd,temp[:,1])
+#             numpy.put(self.FFD.coef[:,2],self.ptAttachInd,temp[:,2])
             self.FFD._updateVolumeCoef()
             coords = self.FFD.getVolumePoints(0)
         elif self.Surface:
@@ -622,7 +690,7 @@ set of points are used'
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
 
-        Jacobian = zeros((self.nPtAttach*3,nDV))
+        Jacobian = zeros((self.nPtAttachFull*3,nDV))
 
         counter = 0
         for i in xrange(len(self.DV_listGlobal)):
@@ -635,9 +703,29 @@ set of points are used'
                 deriv = oneoverh*imag(self.update_deriv()).flatten()
 
                 if scaled:
+                    # ptAttachInd is of length nPtAttach, but need to
+                    # set the x-y-z coordinates here:
+                    #print 'putting into slice size:',len(Jacobian[0::3,counter])
+                    #print 'Slice size is:',len(deriv[0::3])
+                    #print 'Ind length:',len(self.ptAttachInd),min(self.ptAttachInd),max(self.ptAttachInd)
                     Jacobian[:,counter] = deriv*self.DV_listGlobal[i].range[j]
+#                     numpy.put(Jacobian[0::3,counter],self.ptAttachInd,
+#                               deriv[0::3]*self.DV_listGlobal[i].range[j])
+#                     numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
+#                               deriv[1::3]*self.DV_listGlobal[i].range[j])
+#                     numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
+#                               deriv[2::3]*self.DV_listGlobal[i].range[j])
                 else:
                     Jacobian[:,counter] = deriv
+#                     numpy.put(Jacobian[0::3,counter],self.ptAttachInd,
+#                               deriv[0::3])
+#                     numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
+#                               deriv[1::3])
+#                     numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
+#                               deriv[2::3])
+
+
+#                    numpy.put(Jacobian[:,counter],self.ptAttachInd,deriv)
                 # end if
 
                 counter = counter + 1
@@ -665,7 +753,7 @@ set of points are used'
         if nDV == 0:
             return None
 
-        Jacobian = sparse.lil_matrix((self.nPtAttach*3,nDV))
+        Jacobian = sparse.lil_matrix((self.nPtAttachFull*3,nDV))
         for i in xrange(len(self.DV_listLocal)):
             nVal = self.DV_listLocal[i].nVal
             for j in xrange(nVal):
