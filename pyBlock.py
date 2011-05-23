@@ -29,7 +29,7 @@ import os, sys, string, copy, pdb, time
 # =============================================================================
 # External Python modules
 # =============================================================================
-
+import numpy
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
     real, imag, dstack, floor, size, reshape, arange,alltrue,cross,average
@@ -784,12 +784,12 @@ class pyBlock():
     def embedVolume(self,coordinates,volume_list=None,file_name=None,*args,**kwargs):
         '''Embed a set of coordinates into volume in volume_list'''
 
-        if file_name != None:
-            if os.path.isfile(file_name):
-                self._readEmbededVolume(file_name)
-                return 
-            # end if
-        # end if
+#         if file_name != None:
+#             if os.path.isfile(file_name):
+#                 self._readEmbededVolume(file_name)
+#                 return 
+#             # end if
+#         # end if
         
         N = len(coordinates)
         volID = zeros(N,'intc')
@@ -802,16 +802,16 @@ class pyBlock():
         
         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
-        if file_name != None:
-            if USE_MPI:
-                if MPI.COMM_WORLD.rank == 0:
-                    self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
-                # end if
-                MPI.COMM_WORLD.barrier()
-            else:
-                self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
-            # end if
-        # end if
+      #   if file_name != None:
+#             if USE_MPI:
+#                 if MPI.COMM_WORLD.rank == 0:
+#                     self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
+#                 # end if
+#                 MPI.COMM_WORLD.barrier()
+#             else:
+#                 self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
+#             # end if
+#         # end if
 
 # ----------------------------------------------------------------------
 #             Geometric Functions
@@ -839,6 +839,7 @@ class pyBlock():
                 # end if
             # end for
         # end for
+              
         return volID,u0,v0,w0,D0
 
     def _calcdPtdCoef(self,index):
@@ -880,48 +881,48 @@ class pyBlock():
         
         return
 
-    def _writeEmbededVolume(self,file_name,index):
-        '''Write the embeded volume to file for reload
-        Required:
-            file_name: filename for attached surface
-            index: Which volume to write
-        Returns:
-            None
-            '''
-        mpiPrint('Writing Embeded Volume %d...'%(index),self.NO_PRINT)
-        f = open(file_name,'w')
-        array(self.embeded_volumes[index].N).tofile(f,sep="\n")
-        f.write('\n')
-        self.embeded_volumes[index].volID.tofile(f,sep="\n",format="%d")
-        f.write('\n')
-        self.embeded_volumes[index].u.tofile(f,sep="\n",format="%20.16g")
-        f.write('\n')
-        self.embeded_volumes[index].v.tofile(f,sep="\n",format="%20.16g")
-        f.write('\n')
-        self.embeded_volumes[index].w.tofile(f,sep="\n",format="%20.16g")
-        f.close()
+   #  def _writeEmbededVolume(self,file_name,index):
+#         '''Write the embeded volume to file for reload
+#         Required:
+#             file_name: filename for attached surface
+#             index: Which volume to write
+#         Returns:
+#             None
+#             '''
+#         mpiPrint('Writing Embeded Volume %d...'%(index),self.NO_PRINT)
+#         f = open(file_name,'w')
+#         array(self.embeded_volumes[index].N).tofile(f,sep="\n")
+#         f.write('\n')
+#         self.embeded_volumes[index].volID.tofile(f,sep="\n",format="%d")
+#         f.write('\n')
+#         self.embeded_volumes[index].u.tofile(f,sep="\n",format="%20.16g")
+#         f.write('\n')
+#         self.embeded_volumes[index].v.tofile(f,sep="\n",format="%20.16g")
+#         f.write('\n')
+#         self.embeded_volumes[index].w.tofile(f,sep="\n",format="%20.16g")
+#         f.close()
 
-        return
+#         return
 
-    def _readEmbededVolume(self,file_name):
-        '''Write the embeded volume to file for reload
-        Required:
-            file_name: filename for attached surface
-            index: Which volume to write
-        Returns:
-            None
-            '''
-        mpiPrint('Read Embeded Volume ...',self.NO_PRINT)
-        f = open(file_name,'r')
-        N = readNValues(f,1,'int',binary=False)[0]
-        volID = readNValues(f,N,'int',binary=False)
-        u     = readNValues(f,N,'float',binary=False)
-        v     = readNValues(f,N,'float',binary=False)
-        w     = readNValues(f,N,'float',binary=False)
+#     def _readEmbededVolume(self,file_name):
+#         '''Write the embeded volume to file for reload
+#         Required:
+#             file_name: filename for attached surface
+#             index: Which volume to write
+#         Returns:
+#             None
+#             '''
+#         mpiPrint('Read Embeded Volume ...',self.NO_PRINT)
+#         f = open(file_name,'r')
+#         N = readNValues(f,1,'int',binary=False)[0]
+#         volID = readNValues(f,N,'int',binary=False)
+#         u     = readNValues(f,N,'float',binary=False)
+#         v     = readNValues(f,N,'float',binary=False)
+#         w     = readNValues(f,N,'float',binary=False)
 
-        self.embeded_volumes.append(embeded_volume(volID,u,v,w))
+#         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
-        return
+#         return
 
 
   
