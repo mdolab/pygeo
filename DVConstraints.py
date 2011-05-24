@@ -197,7 +197,6 @@ class DVConstraints(object):
                 
                 # We will assume that each GeoDVLocal only moves on 1,2, or 3 coordinate directions (but not mixed)
                 temp = DVGeo.DV_listLocal[i].coef_list # This is already an array
-
                 for j in xrange(len(up_ind)): # Try to find this index in the coef_list
                     up = None
                     down = None
@@ -209,13 +208,17 @@ class DVConstraints(object):
                             down = k
                         # end for
                     # end for
-
                     # If we haven't found up AND down do nothing
                     if up is not None and down is not None:
                         self.LeTeCon.append([i,up,down])
                     # end if
                 # end for
             # end for
+            
+            # Finally, unique the list to parse out duplicates. Note:
+            # This sort may not be stable however, the order of the
+            # LeTeCon list doens't matter
+            self.LeTeCon = unique(self.LeTeCon)
         else:
             mpiPrint('Warning: addLeTECon is only setup for FFDs')
         # end if
