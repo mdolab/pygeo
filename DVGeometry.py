@@ -98,7 +98,7 @@ set of points are used'
 
         self.Surface = None
         self.FFD     = None
-
+      
         if FFD:
             self.FFD = FFD
             if 'vol_list' in kwargs:
@@ -144,14 +144,14 @@ set of points are used'
                 self.ptAttachInd = arange(len(self.FFD.coef))
                 self.ptAttachPtr = [0,len(self.FFD.coef)]
             # end if
-         
+          
             # self.ptAttach is possibly a subset of
             # self.FFD.coef...however, self.ptAttachInd is correctly
             # accounts for this case
 
             self.ptAttach = self.FFD.coef.take(self.ptAttachInd,axis=0)
             self.ptAttachFull= self.FFD.coef.copy()
-            
+
             self.FFD.embedVolume(real(self.points),*args,**kwargs)
             self.FFD._calcdPtdCoef(0)
         elif Surface:
@@ -221,6 +221,7 @@ set of points are used'
 
         curveIDs = []
         s = []
+        print 'myid rays:',MPI.COMM_WORLD.rank
         for ii in xrange(len(self.ptAttachPtr)-1):
             pts_to_use = self.ptAttach[
                 self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1],:]
@@ -269,7 +270,8 @@ set of points are used'
         None
         '''
         if not self.DV_listLocal == []:
-            mpiPrint('Error: All Global Variables must be set BEFORE setting local Variables')
+            mpiPrint('Error: All Global Variables must be set BEFORE\
+ setting local Variables')
             sys.exit(1)
         # end if
         
@@ -279,7 +281,8 @@ set of points are used'
 
         return
 
-    def addGeoDVLocal(self,dv_name,lower,upper,axis='y',pointSelect=None,useit=True):
+    def addGeoDVLocal(self,dv_name,lower,upper,axis='y',pointSelect=None,
+                      useit=True):
         '''Add a local design variable
         Required:
         dv_name: a unique name for this design variable (group)
