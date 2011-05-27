@@ -312,7 +312,7 @@ class DVConstraints(object):
         return con_value
 
 
-    def getThicknessSensitivity(self,DVGeo,coord_name):
+    def getThicknessSensitivity(self,DVGeo,name=None):
 
         '''Return the derivative of all the thickness constraints We
         pass in the DVGeo object so this function retuns the full
@@ -339,7 +339,7 @@ class DVConstraints(object):
                     dTdpt[2*i+1,:] /= self.D0[i]
                 # end if
 
-                dTdx[i,:] = DVGeo.totalSensitivity(dTdpt,name=coord_name)
+                dTdx[i,:] = DVGeo.totalSensitivity(dTdpt,name=name)
             # end for
         # end for
 
