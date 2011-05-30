@@ -65,30 +65,27 @@ class DVGeometry(object):
 
         # Points are the descrete points we must manipulate. We have
         # to be careful here, since this MAY be a list
+        self.points = []
+        self.pt_ind = {}
         if isinstance(points,list):
             assert 'names' in kwargs,'Names must be specified if more than one \
 set of points are used'
-
-            self.points = []
-            self.pt_ptr = {}
-            i_start = 0
-            names = kwargs['names']
             for i in xrange(len(points)):
-                self.points.extend(points[i])
-                self.pt_ptr[names[i]] = [i_start,i_start + len(points[i])]
-                i_start += len(points[i])
-            # end if
-            self.points = array(self.points)
+                self.points.append(points[i])
+                self.pt_ind[kwargs['names'][i]] = i
         else:
-            self.points = points
-            self.pt_tr = None
-
+            self.points = [points]
+            self.pt_ind['default'] = 0
         # end if
 
         self.rot_type = rot_type
 
-        # Transpose Jacobian:
+        # Jacobians:
+        # self.JT: Total transpose jacobian for self.J_name
         self.JT = None
+        self.J_name = None
+        self.J_attach = None
+        self.J_local  = None
 
         self.complex = kwargs.pop('complex',False)
 
@@ -144,22 +141,26 @@ set of points are used'
                 self.ptAttachInd = arange(len(self.FFD.coef))
                 self.ptAttachPtr = [0,len(self.FFD.coef)]
             # end if
-          
-            # self.ptAttach is possibly a subset of
-            # self.FFD.coef...however, self.ptAttachInd is correctly
-            # accounts for this case
-
+     
+            # Take the subset of the FFD cofficients as what will be
+            # attached
             self.ptAttach = self.FFD.coef.take(self.ptAttachInd,axis=0)
             self.ptAttachFull= self.FFD.coef.copy()
 
-            self.FFD.embedVolume(real(self.points),*args,**kwargs)
-            self.FFD._calcdPtdCoef(0)
+            # Project Points in to volume:
+            for i in xrange(len(self.points)):
+                self.FFD.embedVolume(self.points[i])
+                self.FFD._calcdPtdCoef(i)
+            # end for
+
         elif Surface:
-            self.Surface = Surface
-            self.ptAttach = self.Surface.coef()
-            self.ptAttachFull = self.surface.coef.copy()
-            self.Surface.attachSurface(self.points)
-            self.Surface._calcdPtdCoef(0)
+            print 'Not Done yet'
+            sys.exit(0)
+#             self.Surface = Surface
+#             self.ptAttach = self.Surface.coef()
+#             self.ptAttachFull = self.surface.coef.copy()
+#             self.Surface.attachSurface(self.points)
+#             self.Surface._calcdPtdCoef(0)
         else:
             self.ptAttach = pts
         # end if
@@ -167,7 +168,7 @@ set of points are used'
         # Number of points attached to ref axis
         self.nPtAttach = len(self.ptAttach)
         self.nPtAttachFull = len(self.ptAttachFull)
-        self.nPt = len(self.points)
+
         self.refAxis = pyNetwork.pyNetwork(curves,*args,**kwargs)
         self.refAxis.doConnectivity()
        
@@ -221,15 +222,15 @@ set of points are used'
 
         curveIDs = []
         s = []
-        print 'myid rays:',MPI.COMM_WORLD.rank
+
         for ii in xrange(len(self.ptAttachPtr)-1):
             pts_to_use = self.ptAttach[
                 self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1],:]
             pts_to_use = self.ptAttach
             if axis is not None:
-                ids,s0 = self.refAxis.projectRays(pts_to_use,axis)#,curves=[ii])
+                ids,s0 = self.refAxis.projectRays(pts_to_use,axis,curves=[ii])
             else:
-                ids,s0 = self.refAxis.projectPoints(pts_to_use)#,curves=[ii])
+                ids,s0 = self.refAxis.projectPoints(pts_to_use,curves=[ii])
             # end for
 
             curveIDs.extend(ids)
@@ -369,6 +370,9 @@ set of points are used'
                 self.DV_listLocal[self.DV_namesLocal[key]].value = vals_to_set
             # end if
             self.JT = None # J is no longer up to date
+            self.J_name = None # Name is no longer defined
+            self.J_attach = None
+            self.J_local = None
         #endfor
 
 
@@ -413,7 +417,7 @@ set of points are used'
 
         return nDV
 
-    def update(self,name=None):
+    def update(self,name="default"):
 
         '''This is pretty straight forward, perform the operations on
         the ref axis according to the design variables, then return
@@ -485,7 +489,7 @@ set of points are used'
             numpy.put(self.FFD.coef[:,1],self.ptAttachInd,temp[:,1])
             numpy.put(self.FFD.coef[:,2],self.ptAttachInd,temp[:,2])
             self.FFD._updateVolumeCoef()
-            coords = self.FFD.getVolumePoints(0)
+            coords = self.FFD.getVolumePoints(self.pt_ind[name])
         elif self.Surface:
             self.Surface.coef = real(new_pts)
             self.Surface._updateSurfaceCoef()
@@ -499,17 +503,13 @@ set of points are used'
             imag_part     = imag(new_pts)
             imag_j = 1j
             if self.FFD:
-                coords += imag_j*self.FFD.embeded_volumes[0].dPtdCoef.dot(imag_part)
+                coords += imag_j*self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef.dot(imag_part)
             elif self.Surface:
                 coords += imag_j*self.Surface.attached_surfaces[0].\
                     dPtdCoef.dot(imag_part)
              # end if   
             self._unComplexifyCoef()
 
-        # end if
-
-        if name:
-            coords = coords[self.pt_ptr[name][0]:self.pt_ptr[name][1],:]
         # end if
                         
         return coords
@@ -602,23 +602,55 @@ set of points are used'
         self.coef = self.coef.astype('d')
 
 
-    def totalSensitivity(self,dIdpt,comm=None,scaled=True,name=None):
+    def totalSensitivity(self,dIdpt,comm=None,scaled=True,name='default'):
         '''This function takes the total derivative of an objective,
         I, with respect the points controlled on this processor. We
         take the transpose prodducts and mpi_allreduce them to get the
-        resulting value on each processor. 
+        resulting value on each processor.  Note we DO NOT want to run
+        computeTotalJacobian as this forms the dPt/dXdv jacobian which
+        is unnecessary and SLOW!
         '''
 
-        if name: # dIdpt WONT't be correct length. Pad Accordingly
-            dIdpt_full = zeros((self.nPt,3))
-            dIdpt_full[self.pt_ptr[name][0]:self.pt_ptr[name][1],:] = dIdpt
+        # This is going to be DENSE in general -- does not depend on
+        # name
+        if self.J_attach is None:
+            self.J_attach = self._attachedPtJacobian(scaled=scaled)
+           
+        # This is the sparse jacobian for the local DVs that affect
+        # Control points directly.
+        if self.J_local is None:
+            self.J_local = self._localDVJacobian(scaled=scaled)
+         
+        # HStack em'
+        # Three different possibilities: 
+        # J_attach and no J_local
+        if self.J_attach is not None and self.J_local is None:
+            J_temp = self.J_attach
+        elif self.J_local is not None and self.J_attach is None:
+            J_temp = self.J_local
         else:
-            dIdpt_full = dIdpt
+            J_temp = sparse.hstack([self.J_attach,self.J_local],format='lil')
         # end if
 
-        self.computeTotalJacobian(scaled)
+        # Convert J_temp to CSR Matrix
+        J_temp = sparse.csr_matrix(J_temp)
 
-        dIdx_local = self.JT.dot(dIdpt_full.flatten())
+        # Transpose of the point-coef jacobian:
+        dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
+
+        dIdcoef = zeros((self.nPtAttachFull*3))
+        dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:,0])
+        dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:,1])
+        dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:,2])
+
+        # Now back to design variables:
+        dIdx_local = J_temp.T.dot(dIdcoef)
+
+        # ---------------- OLD --------------------
+        # dIdx_local = self.JT.dot(dIdpt.flatten())
+        # dIdpt = numpy.zeros_like(self.points[self.pt_ind[name]])
+        # self.computeTotalJacobian(name,scaled)
+        # dIdx_local = self.JT.dot(dIdpt.flatten())
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -628,42 +660,45 @@ set of points are used'
 
         return dIdx
 
-    def computeTotalJacobian(self,scaled=True):
+    def computeTotalJacobian(self,name='default',scaled=True):
         ''' Return the total point jacobian in CSR format since we
         need this for TACS'''
 
-        if self.JT is not None: # Already computed
+        if self.JT is not None and self.J_name == name: # Already computed
             return
         
-        # This is going to be DENSE in general
-        J_attach = self._attachedPtJacobian(scaled=scaled)
-
+        # This is going to be DENSE in general -- does not depend on
+        # name
+        if self.J_attach is None:
+            self.J_attach = self._attachedPtJacobian(scaled=scaled)
+           
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
-
-        J_local = self._localDVJacobian(scaled=scaled)
-
+        if self.J_local is None:
+            self.J_local = self._localDVJacobian(scaled=scaled)
+         
         # HStack em'
         # Three different possibilities: 
         # J_attach and no J_local
-        if J_attach is not None and J_local is None:
-            J_temp = J_attach
-        elif J_local is not None and J_attach is None:
-            J_temp = J_local
+        if self.J_attach is not None and self.J_local is None:
+            J_temp = self.J_attach
+        elif self.J_local is not None and self.J_attach is None:
+            J_temp = self.J_local
         else:
-            J_temp = sparse.hstack([J_attach,J_local],format='lil')
+            J_temp = sparse.hstack([self.J_attach,self.J_local],format='lil')
         # end if
 
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
         
         # Transpose of JACOBIAN
-
+      
         nDV = self._getNDV()
-        JT = sparse.lil_matrix((nDV,self.nPt*3))
-
+        nPt = len(self.points[self.pt_ind[name]])
+        JT = sparse.lil_matrix((nDV,nPt*3))
+      
         if self.FFD:
-            dPtdCoef = self.FFD.embeded_volumes[0].dPtdCoef
+            dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
             # We have a slight problem...dPtdCoef only has the shape
             # functions, and not 3 copies for each of the dof. 
             
@@ -710,10 +745,6 @@ set of points are used'
                 if scaled:
                     # ptAttachInd is of length nPtAttach, but need to
                     # set the x-y-z coordinates here:
-                    #print 'putting into slice size:',len(Jacobian[0::3,counter])
-                    #print 'Slice size is:',len(deriv[0::3])
-                    #print 'Ind length:',len(self.ptAttachInd),min(self.ptAttachInd),max(self.ptAttachInd)
-#                    Jacobian[:,counter] = deriv*self.DV_listGlobal[i].range[j]
                     numpy.put(Jacobian[0::3,counter],self.ptAttachInd,
                               deriv[0::3]*self.DV_listGlobal[i].range[j])
                     numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
@@ -721,7 +752,6 @@ set of points are used'
                     numpy.put(Jacobian[2::3,counter],self.ptAttachInd,
                               deriv[2::3]*self.DV_listGlobal[i].range[j])
                 else:
-#                    Jacobian[:,counter] = deriv
                     numpy.put(Jacobian[0::3,counter],self.ptAttachInd,
                               deriv[0::3])
                     numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
@@ -800,9 +830,10 @@ set of points are used'
 
         return opt_prob
 
-    def checkDerivatives(self):
+    def checkDerivatives(self,name='default'):
         '''Run a brute force FD check on ALL design variables'''
-        self.computeTotalJacobian(scaled=False)
+        print 'Computing Analytic Jacobian...'
+        self.computeTotalJacobian(name,scaled=False)
         Jac = copy.deepcopy(self.JT)
         
         # Global Variables
@@ -810,8 +841,8 @@ set of points are used'
         mpiPrint('             Global Variables           ')
         mpiPrint('========================================')
                  
-        coords0 = self.update().flatten()
-        h = 1e-8
+        coords0 = self.update(name).flatten()
+        h = 1e-10
         DVCount = 0
         for i in xrange(len(self.DV_listGlobal)):
             for j in xrange(self.DV_listGlobal[i].nVal):
@@ -823,7 +854,7 @@ set of points are used'
                 refVal = self.DV_listGlobal[i].value[j]
 
                 self.DV_listGlobal[i].value[j] += h
-                coordsph = self.update().flatten()
+                coordsph = self.update(name).flatten()
 
                 deriv = (coordsph-coords0)/h
 
@@ -848,13 +879,13 @@ set of points are used'
                 refVal = self.DV_listLocal[i].value[j]
 
                 self.DV_listLocal[i].value[j] += h
-                coordsph = self.update().flatten()
+                coordsph = self.update(name).flatten()
 
                 deriv = (coordsph-coords0)/h
 
                 for ii in xrange(len(deriv)):
                     relErr = (deriv[ii] - Jac[DVCount,ii])/(1e-16 + Jac[DVCount,ii])
-                    if abs(relErr) > 1e-1 and (abs(deriv[ii]) > 1e-6 or abs(Jac[DVCount,ii]) > 1e-6):
+                    if abs(relErr) > 1e-6 and (abs(deriv[ii]) > 1e-7 or abs(Jac[DVCount,ii]) > 1e-7):
                         print ii,deriv[ii],Jac[DVCount,ii]
                     # end if
                 # end for

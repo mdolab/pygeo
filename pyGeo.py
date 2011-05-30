@@ -51,7 +51,6 @@ except:
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('pyGeometry_liftingsurface_c','pyGeometry_bodysurface'))
 exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre'))
 
 # =============================================================================
@@ -641,6 +640,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def _init_acdt_geo(self,ac,*args,**kwargs):
         '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
+        exec(import_modules('pyGeometry_liftingsurface_c','pyGeometry_bodysurface'))
 
         dtor = pi/180
         self.nSurf = 0
