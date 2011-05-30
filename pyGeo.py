@@ -907,6 +907,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             sizes = []
             for isurf in xrange(self.nSurf):
                 sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
+                self.surfs[isurf].recompute()
             self.topo.calcGlobalNumbering(sizes)
         else:
             self._calcConnectivity(node_tol,edge_tol)
