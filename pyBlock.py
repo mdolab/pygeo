@@ -821,9 +821,13 @@ class pyBlock():
         for i in xrange(len(x0)):
             for j in xrange(self.nVol):
                 iVol = vol_list[j]
-
                 u0,v0,w0,D0 = self.vols[iVol].projectPoint(
                     x0[i],eps=eps,**kwargs)
+
+                # Evaluate new pt to get actual difference:
+                new_pt = self.vols[iVol](u0,v0,w0)
+                D0 = x0[i]-new_pt
+
                 if (numpy.linalg.norm(D0) < eps*10):
                     volID[i] = iVol
                     u[i]     = u0
@@ -840,9 +844,11 @@ class pyBlock():
             vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
         # end for
         
-        # Do a check to see how well we've projected the points. We
-        # will compute the RMS error, the Max Error and the number of
-        # points worse than 10*eps. 
+        # We are going to a an ACTUAL check of how well the points
+        # converged. We don't care about what the newton search thinks
+        # is the error, we actually care about the distance between
+        # the points and vol(u,v,w). We will compute the RMS error,
+        # the Max Error and the number of points worse than 10*eps.
         counter = 0
         D_max = 0.0
         D_rms = 0.0
@@ -863,8 +869,7 @@ class pyBlock():
         # Check to see if we have bad projections and print a warning:
         if counter > 0:
             print ' -> Warning: %d point(s) not projected to tolerance: \
-%g\n   Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
-              
+%g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
         return volID,u,v,w,D
 
     def _calcdPtdCoef(self,index):

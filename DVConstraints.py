@@ -24,6 +24,7 @@ class DVConstraints(object):
         self.thickConPtr = [0]
         self.thickConLower = []
         self.thickConUpper = []
+        self.scaled = []
         self.LeTeCon = []
         self.coords = numpy.zeros([0,3],dtype='d')
         self.D0     = numpy.zeros([0  ],dtype='d')
@@ -175,7 +176,7 @@ class DVConstraints(object):
         self.thickConLower.extend(lower.flatten())
         self.thickConUpper.extend(upper.flatten())
         self.nThickCon += len(lower.flatten())
-
+        self.scaled.append(scaled)
         return
 
 
@@ -302,14 +303,14 @@ class DVConstraints(object):
         D = zeros(self.D0.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
-            for i in xrange(self.thickConPtr[ii],self.thickConPointer[ii+1]):
+            for i in xrange(self.thickConPtr[ii],self.thickConPtr[ii+1]):
                 D[i] = e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
                 if self.scaled[ii]:
                     D[i]/=self.D0[i]
             # end for
         # end for
 
-        return con_value
+        return D
 
 
     def getThicknessSensitivity(self,DVGeo,name=None):
@@ -325,7 +326,7 @@ class DVConstraints(object):
         dTdpt = zeros(self.coords.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
-            for i in xrange(self.thickConPtr[ii],self.thickConPointer[ii+1]):
+            for i in xrange(self.thickConPtr[ii],self.thickConPtr[ii+1]):
 
                 dTdpt[:,:] = 0.0
 
