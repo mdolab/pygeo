@@ -312,14 +312,7 @@ class DVConstraints(object):
             # end for
         # end for
 
-<<<<<<< local
         return D
-=======
-        con_value = D
-
-        return con_value
->>>>>>> other
-
 
     def getThicknessSensitivity(self,DVGeo,name=None):
 
