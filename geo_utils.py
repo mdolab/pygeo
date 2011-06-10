@@ -2903,14 +2903,14 @@ class geoDVGlobal(object):
         if len(low) == self.nVal:
             self.lower = low
         else:
-            self.lower = ones(self.nVal)*lower[0]
+            self.lower = ones(self.nVal)*low[0]
         # end if
 
         high = atleast_1d(array(upper))
         if len(high) == self.nVal:
             self.upper = high
         else:
-            self.upper = ones(self.nVal)*upper[0]
+            self.upper = ones(self.nVal)*high[0]
         # end if
 
         self.range    = self.upper-self.lower
