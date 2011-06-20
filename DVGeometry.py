@@ -228,9 +228,9 @@ set of points are used'
                 self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1],:]
             pts_to_use = self.ptAttach
             if axis is not None:
-                ids,s0 = self.refAxis.projectRays(pts_to_use,axis,curves=[ii])
+                ids,s0 = self.refAxis.projectRays(pts_to_use,axis)#,curves=[ii])
             else:
-                ids,s0 = self.refAxis.projectPoints(pts_to_use,curves=[ii])
+                ids,s0 = self.refAxis.projectPoints(pts_to_use)#,curves=[ii])
             # end for
 
             curveIDs.extend(ids)
@@ -459,7 +459,6 @@ set of points are used'
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
             else:
-            
                 rotX = rotxM(self.rot_x[self.curveIDs[ipt]](self.links_s[ipt]))
                 rotY = rotyM(self.rot_y[self.curveIDs[ipt]](self.links_s[ipt]))
                 rotZ = rotzM(self.rot_z[self.curveIDs[ipt]](self.links_s[ipt]))
@@ -499,11 +498,22 @@ set of points are used'
         # end if
 
         if self.complex:
+
+            tempCoef = self.ptAttachFull.copy().astype('D')
+            numpy.put(tempCoef[:,0],self.ptAttachInd,new_pts[:,0])
+            numpy.put(tempCoef[:,1],self.ptAttachInd,new_pts[:,1])
+            numpy.put(tempCoef[:,2],self.ptAttachInd,new_pts[:,2])
+         
             coords = coords.astype('D')
-            imag_part     = imag(new_pts)
+            imag_part     = numpy.imag(tempCoef)
             imag_j = 1j
+
             if self.FFD:
-                coords += imag_j*self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef.dot(imag_part)
+                dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
+                for ii in xrange(3):
+                    coords[:,ii] += imag_j*dPtdCoef.dot(imag_part[:,ii])
+
+
             elif self.Surface:
                 coords += imag_j*self.Surface.attached_surfaces[0].\
                     dPtdCoef.dot(imag_part)
