@@ -2512,44 +2512,53 @@ def fill_knots(t,k,level):
     return new_t
 
 def projectNode(pt,up_vec,p0,v1,v2):
-    # Project a point x in domain, onto the geo object and return
-    # the two points cloestest points they intersect 
+    '''
+    Project a point pt onto a triagnulated surface and return two
+    intersections.
 
-    # First get a domain normal to bais "up" and "down"
+    pt: The initial point
+    up_vec: The vector pointing in the search direction
+    p0: A numpy array of triangle origins
+    v1: A numpy array of the first triangle vectors
+    v2: A numpy array of the second triangle vectors
+    '''
 
     # Get the bounds of the geo object so we know what to scale by
     import pySpline
-    sol1,n_sol1 = pySpline.pyspline.line_plane(pt,up_vec,p0.T,v1.T,v2.T)
-    sol2,n_sol2 = pySpline.pyspline.line_plane(pt,-up_vec,p0.T,v1.T,v2.T)
-    sol1 = sol1.T
-    sol2 = sol2.T
-    if (n_sol1 + n_sol2) < 2:
-        print 'Error Did not find 2 intersections'
-        print n_sol1,n_sol2
-        print pt,up_vec
-        sys.exit(0)
-    sol = []
-    for i in xrange(n_sol1):
-        sol.append(sol1[i,:])
-    # end for
-    for i in xrange(n_sol2):
-        sol.append(sol2[i,:])
-    # end for
+    fail = 0
+    if p0.shape[0] == 0:
+        fail = 2
+        return None, None, fail
 
-    xmid = (sol[0][3:6] + sol[1][3:6])/2
-    dot1 = dot(up_vec,sol[0][3:6]-xmid)
-    dot2 = dot(up_vec,sol[1][3:6]-xmid)
+    sol, n_sol = pySpline.pyspline.line_plane(pt,up_vec,p0.T,v1.T,v2.T)
+    sol = sol.T
 
-    if int(sign(dot1)) == 1:
-        return sol[0][3:6],sol[1][3:6]
+    if n_sol == 0:
+        fail = 2
+        return None, None, fail
+    elif n_sol == 1:
+        fail = 1
+        return sol[0,3:6], None, fail
+    elif n_sol == 2:
+        fail = 0
+        # Determine the 'top' and 'bottom' solution
+        first  = sol[0,3:6]
+        second = sol[1,3:6]
+
+        if dot(up_vec, first) >= dot(up_vec, second):
+            return first, second, fail
+        else:
+            return first, second, fail
     else:
-        return sol[1][3:6],sol[0][3:6]
+        # This just returns the two points with the minimum absolute 
+        # distance to the points that have been found.
+        fail = -1
 
-    if n_sol1 + n_sol2 >=2: # This is more complicated
-        print 'More than 2 solutions'
-        sys.exit(0)
+        pmin = abs(dot(up_vec, sol[:n_sol,3:6]))
+        min_index = argsort(pmin)
+        
+        return sol[min_index[0],3:6], sol[min_index[1],3:6]
 
-    # end if
 
 def tfi_2d(e0,e1,e2,e3):
     # Input
