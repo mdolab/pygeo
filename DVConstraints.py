@@ -150,7 +150,11 @@ class DVConstraints(object):
 
                 up_vec = numpy.cross(u_vec,v_vec)*scale
 
-                up,down = projectNode(X[i,j],up_vec,p0,v1,v2)
+                up,down,fail = projectNode(X[i,j],up_vec,p0,v1,v2)
+                if fail:
+                    print 'Project Node failed'
+                    sys.exit(0)
+                # end if
                 self.coords[coord_offset,:] = up
                 coord_offset += 1
 
