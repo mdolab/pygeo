@@ -2545,7 +2545,7 @@ def projectNode(pt,up_vec,p0,v1,v2):
         first  = sol[0,3:6]
         second = sol[1,3:6]
 
-        if dot(up_vec, first) >= dot(up_vec, second):
+        if dot(first - pt, up_vec) >= dot(second - pt, up_vec):
             return first, second, fail
         else:
             return first, second, fail
@@ -2554,10 +2554,52 @@ def projectNode(pt,up_vec,p0,v1,v2):
         # distance to the points that have been found.
         fail = -1
 
-        pmin = abs(dot(up_vec, sol[:n_sol,3:6]))
+        pmin = abs(dot(sol[:n_sol,3:6] - pt, up_vec))
         min_index = argsort(pmin)
         
-        return sol[min_index[0],3:6], sol[min_index[1],3:6]
+        return sol[min_index[0],3:6], sol[min_index[1],3:6], fail
+
+def projectNodePosOnly(pt,up_vec,p0,v1,v2):
+    '''
+    Project a point pt onto a triagnulated surface and the solution
+    that is the closest in the positive direction (as defined by
+    up_vec).
+
+    pt: The initial point
+    up_vec: The vector pointing in the search direction
+    p0: A numpy array of triangle origins
+    v1: A numpy array of the first triangle vectors
+    v2: A numpy array of the second triangle vectors
+    '''
+
+    # Get the bounds of the geo object so we know what to scale by
+    import pySpline
+    fail = 0
+    if p0.shape[0] == 0:
+        fail = 1
+        return None, fail
+
+    sol, n_sol = pySpline.pyspline.line_plane(pt,up_vec,p0.T,v1.T,v2.T)
+    sol = sol.T
+
+    if n_sol == 0:
+        fail = 1
+        return None, fail
+    elif n_sol >= 1:
+        # Find the least positve solution
+        min_index = -1
+        d = 0.0
+        for k in xrange(n_sol):
+            dn = dot(sol[k,3:6] - pt, up_vec)
+            if dn >= 0.0 and (min_index == -1 or dn < d):
+                min_index = k
+                d = dn
+        
+        if min_index >= 0:
+            return sol[min_index,3:6], fail
+
+    fail = 1
+    return None, fail
 
 
 def tfi_2d(e0,e1,e2,e3):
