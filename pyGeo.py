@@ -51,7 +51,6 @@ except:
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('pyGeometry_liftingsurface_c','pyGeometry_bodysurface'))
 exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre'))
 
 # =============================================================================
@@ -310,6 +309,16 @@ class pyGeo():
             range[1] = data[counter + 1]
             range[2] = data[counter + 2]
             range[3] = data[counter + 3]
+
+            # Re-scale the knot vectors in case the upper bound is not 1
+            tu = array(tu)
+            tv = array(tv)
+            if not tu[-1] == 1.0:
+                tu /= tu[-1]
+
+            if not tv[-1] == 1.0:
+                tv /= tv[-1]
+
 
             self.surfs.append(pySpline.surface(ku=ku,kv=kv,tu=tu,tv=tv,coef=coef,
                                                no_print=self.NO_PRINT))
@@ -631,6 +640,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def _init_acdt_geo(self,ac,*args,**kwargs):
         '''Create a list of pyGeo objects coorsponding to the pyACDT geometry specified in ac'''
+        exec(import_modules('pyGeometry_liftingsurface_c','pyGeometry_bodysurface'))
 
         dtor = pi/180
         self.nSurf = 0
