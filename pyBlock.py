@@ -29,7 +29,7 @@ import os, sys, string, copy, pdb, time
 # =============================================================================
 # External Python modules
 # =============================================================================
-
+import numpy
 from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
     transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
     real, imag, dstack, floor, size, reshape, arange,alltrue,cross,average
@@ -781,63 +781,96 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def embedVolume(self,coordinates,volume_list=None,file_name=None):
-        '''Embed a set of coordinates into volume in volume_list'''
+    def embedVolume(self,coordinates,*args,**kwargs):
+        '''Embed a set of coordinates into all volumes'''
 
-        if file_name != None:
-            if os.path.isfile(file_name):
-                self._readEmbededVolume(file_name)
-                return 
-            # end if
-        # end if
-        
-        N = len(coordinates)
-        volID = zeros(N,'intc')
-        u = zeros(N)
-        v = zeros(N)
-        w = zeros(N)
-        
-        for i in xrange(N):
-            volID[i],u[i],v[i],w[i],D0 = self.projectPoint(coordinates[i])
-        # end for
-
+        # Project Points
+        volID,u,v,w,D = self.projectPoints(coordinates,*args,**kwargs)
         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
-        if file_name != None:
-            if USE_MPI:
-                if MPI.COMM_WORLD.rank == 0:
-                    self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
-                # end if
-                MPI.COMM_WORLD.barrier()
-            else:
-                self._writeEmbededVolume(file_name,len(self.embeded_volumes)-1)
-            # end if
-        # end if
-
+        return
 # ----------------------------------------------------------------------
 #             Geometric Functions
 # ----------------------------------------------------------------------    
 
-    def projectPoint(self,x0,eps=1e-14):
+    def projectPoints(self,x0,eps=1e-12,*args,**kwargs):
         '''Project a point into any one of the volumes. Returns 
         the volID,u,v,w,D of the point in volID or closest to it.
+        
+        This is still *technically* a inefficient brute force search,
+        but it uses some huristics to give a much more efficient
+        algorithm. Basically, we use the volume the last point was
+        projected in as a "good guess" as to what volume the current
+        point falls in. This works since subsequent points are usually
+        close together. This will not help for randomly distrubuted
+        points.
+        '''
 
-        This is a brute force search and is NOT efficient'''
-     
-        u0,v0,w0,D0 = self.vols[0].projectPoint(x0)
-       
-        volID = 0
-        for ivol in xrange(1,self.nVol):
-            u,v,w,D = self.vols[ivol].projectPoint(x0,eps1=eps,eps2=eps)
-            if norm(D)<norm(D0):
-                D0 = D
-                u0 = u
-                v0 = v
-                w0 = w
-                volID = ivol
+        # Make sure we are dealing with a 2D "Nx3" list of points
+        x0 = atleast_2d(x0)
+
+        volID = zeros(len(x0),'intc')
+        u     = zeros(len(x0))
+        v     = zeros(len(x0))
+        w     = zeros(len(x0))
+        D     = zeros((len(x0),3))
+
+        # Starting list is just [0,1,2,...,nVol-1]
+        vol_list = arange(self.nVol)
+
+        for i in xrange(len(x0)):
+            for j in xrange(self.nVol):
+                iVol = vol_list[j]
+                u0,v0,w0,D0 = self.vols[iVol].projectPoint(
+                    x0[i],eps=eps,**kwargs)
+
+                # Evaluate new pt to get actual difference:
+                new_pt = self.vols[iVol](u0,v0,w0)
+                D0 = x0[i]-new_pt
+
+                if (numpy.linalg.norm(D0) < eps*10):
+                    volID[i] = iVol
+                    u[i]     = u0
+                    v[i]     = v0
+                    w[i]     = w0
+                    D[i]     = D0
+                    break
+                # end if
+            # end for
+
+            # Shuffle the order of the vol_list such that the last
+            # volume used (iVol or vol_list[j]) is at the start of the
+            # list and the remainder are shuflled towards the back
+            vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
+        # end for
+        
+        # We are going to a an ACTUAL check of how well the points
+        # converged. We don't care about what the newton search thinks
+        # is the error, we actually care about the distance between
+        # the points and vol(u,v,w). We will compute the RMS error,
+        # the Max Error and the number of points worse than 10*eps.
+        counter = 0
+        D_max = 0.0
+        D_rms = 0.0
+        for i in xrange(len(x0)):
+            nrm = numpy.linalg.norm(D[i])
+            if nrm > D_max:
+                D_max = nrm
+            # end if
+
+            D_rms += nrm**2
+            
+            if nrm > 10*eps:
+                counter += 1
             # end if
         # end for
-        return volID,u0,v0,w0,D0
+        D_rms = sqrt(D_rms / len(x0))
+      
+        # Check to see if we have bad projections and print a warning:
+        if counter > 0:
+            print ' -> Warning: %d point(s) not projected to tolerance: \
+%g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
+        return volID,u,v,w,D
 
     def _calcdPtdCoef(self,index):
         '''Calculate the (fixed) volume derivative of a discrete set of ponits'''
@@ -878,50 +911,23 @@ class pyBlock():
         
         return
 
-    def _writeEmbededVolume(self,file_name,index):
-        '''Write the embeded volume to file for reload
-        Required:
-            file_name: filename for attached surface
-            index: Which volume to write
+    def getBounds(self):
+        '''Determine the extents of the volumes
+        Required: 
+            None:
         Returns:
-            None
+            xmin,xmax: xmin is the lowest x,y,z point and xmax the highest
             '''
-        mpiPrint('Writing Embeded Volume %d...'%(index),self.NO_PRINT)
-        f = open(file_name,'w')
-        array(self.embeded_volumes[index].N).tofile(f,sep="\n")
-        f.write('\n')
-        self.embeded_volumes[index].volID.tofile(f,sep="\n",format="%d")
-        f.write('\n')
-        self.embeded_volumes[index].u.tofile(f,sep="\n",format="%20.16g")
-        f.write('\n')
-        self.embeded_volumes[index].v.tofile(f,sep="\n",format="%20.16g")
-        f.write('\n')
-        self.embeded_volumes[index].w.tofile(f,sep="\n",format="%20.16g")
-        f.close()
+        Xmin,Xmax = self.vols[0].getBounds()
+        for iVol in xrange(1,self.nVol):
+            Xmin0,Xmax0 = self.vols[iVol].getBounds()
+            for iDim in xrange(3):
+                Xmin[iDim] = min(Xmin[iDim],Xmin0[iDim])
+                Xmax[iDim] = max(Xmax[iDim],Xmax0[iDim])
+            # end for
+        # end for
 
-        return
-
-    def _readEmbededVolume(self,file_name):
-        '''Write the embeded volume to file for reload
-        Required:
-            file_name: filename for attached surface
-            index: Which volume to write
-        Returns:
-            None
-            '''
-        mpiPrint('Read Embeded Volume ...',self.NO_PRINT)
-        f = open(file_name,'r')
-        N = readNValues(f,1,'int',binary=False)[0]
-        volID = readNValues(f,N,'int',binary=False)
-        u     = readNValues(f,N,'float',binary=False)
-        v     = readNValues(f,N,'float',binary=False)
-        w     = readNValues(f,N,'float',binary=False)
-
-        self.embeded_volumes.append(embeded_volume(volID,u,v,w))
-
-        return
-
-
+        return Xmin,Xmax
   
 class embeded_volume(object):
 
