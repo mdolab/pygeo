@@ -2887,7 +2887,7 @@ def projectNode(pt,up_vec,p0,v1,v2):
         if dot(first - pt, up_vec) >= dot(second - pt, up_vec):
             return first, second, fail
         else:
-            return first, second, fail
+            return second, first, fail
     else:
         # This just returns the two points with the minimum absolute 
         # distance to the points that have been found.
