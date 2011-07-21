@@ -28,6 +28,8 @@ class DVConstraints(object):
         self.LeTeCon = []
         self.coords = numpy.zeros([0,3],dtype='d')
         self.D0     = numpy.zeros([0  ],dtype='d')
+        self.thickConSizes = []
+        self.scaled = []
         return
 
     def addThicknessConstraints(self,wing,le_list,te_list,nSpan,nChord,
@@ -51,7 +53,7 @@ class DVConstraints(object):
         Upper: The upper bound for the thickness constraint
 
         '''
-        
+        self.scaled.append(scaled)
         self.thickConPtr.append(self.thickConPtr[-1] + nSpan*nChord)
 
         # Expand out lower and upper to make them the correct size
@@ -85,7 +87,6 @@ class DVConstraints(object):
         chord_s = numpy.linspace(0,1,nChord)
 
         X = tfi_2d(le_s(span_s),te_s(span_s),root_s(chord_s),tip_s(chord_s))
-
 
         p0 = []
         v1 = []
@@ -163,7 +164,6 @@ class DVConstraints(object):
 
                 # Determine the distance between points
                 self.D0[D0_offset] = e_dist(up,down)
-                D0_offset += 1
 
                 # The constraint will ALWAYS be set as a scaled value,
                 # however, it is possible that the user has specified
@@ -172,7 +172,8 @@ class DVConstraints(object):
                 if not scaled:
                     lower[i,j] /= self.D0[D0_offset]
                     upper[i,j] /= self.D0[D0_offset]
-
+                #end
+                D0_offset += 1
             # end for
         # end for
         
@@ -181,6 +182,7 @@ class DVConstraints(object):
         self.thickConUpper.extend(upper.flatten())
         self.nThickCon += len(lower.flatten())
         self.scaled.append(scaled)
+
         return
 
 
@@ -315,7 +317,6 @@ class DVConstraints(object):
         # end for
 
         return D
-
 
     def getThicknessSensitivity(self,DVGeo,name=None):
 

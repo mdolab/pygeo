@@ -1116,51 +1116,64 @@ class topology(object):
 
     def writeConnectivity(self, file_name):
         '''Write the full edge connectivity to a file file_name'''
-        f = open(file_name,'w')
-        f.write('%4d  %4d  %4d   %4d  %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
-        f.write('Design Group |  Number\n')
-        # Write out the design groups and their number parameter
-        N_list = self._getDGList()
-        for i in xrange(self.nDG):
-            f.write('%5d        | %5d       \n'%(i,N_list[i]))
-        # end for
+        if MPI:
+            MPI.COMM_WORLD.barrier()
+            if MPI.COMM_WORLD.rank == 0:
+                is_root = True
+            else:
+                is_root = False
+            # end if
+        else:
+            is_root = True
+        # end if
 
-        f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n')
-        for i in xrange(len(self.edges)):
-            self.edges[i].write_info(i,f)
-        # end for
+        if is_root:
+            f = open(file_name,'w')
+            f.write('%4d  %4d  %4d   %4d  %4d\n'%(self.nNode,self.nEdge,self.nFace,self.nVol,self.nDG))
+            f.write('Design Group |  Number\n')
+            # Write out the design groups and their number parameter
+            N_list = self._getDGList()
+            for i in xrange(self.nDG):
+                f.write('%5d        | %5d       \n'%(i,N_list[i]))
+            # end for
 
-        f.write('%9s Num |'%(self.topo_type))
-        for i in xrange(self.mNodeEnt):
-            f.write(' n%2d|'%(i))
-        for i in xrange(self.mEdgeEnt):
-            f.write(' e%2d|'%(i))
-        f.write('\n')
-            
-        for i in xrange(self.nEnt):
-            f.write(' %5d        |'%(i))
-            for j in xrange(self.mNodeEnt):
-                f.write('%4d|'%self.node_link[i][j])
+            f.write('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n')
+            for i in xrange(len(self.edges)):
+                self.edges[i].write_info(i,f)
             # end for
-            for j in xrange(self.mEdgeEnt):
-                f.write('%4d|'%(self.edge_link[i][j]*self.edge_dir[i][j]))
-            # end for
+
+            f.write('%9s Num |'%(self.topo_type))
+            for i in xrange(self.mNodeEnt):
+                f.write(' n%2d|'%(i))
+            for i in xrange(self.mEdgeEnt):
+                f.write(' e%2d|'%(i))
             f.write('\n')
-        # end for
 
-        if self.topo_type == 'volume':
+            for i in xrange(self.nEnt):
+                f.write(' %5d        |'%(i))
+                for j in xrange(self.mNodeEnt):
+                    f.write('%4d|'%self.node_link[i][j])
+                # end for
+                for j in xrange(self.mEdgeEnt):
+                    f.write('%4d|'%(self.edge_link[i][j]*self.edge_dir[i][j]))
+                # end for
+                f.write('\n')
+            # end for
 
-            f.write('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
-            for i in xrange(self.nVol):
-                f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|\n'\
-                            %(i,self.face_link[i][0],self.face_link[i][1],
-                              self.face_link[i][2],self.face_link[i][3],
-                              self.face_link[i][4],self.face_link[i][5],
-                              self.face_dir[i][0],self.face_dir[i][1],
-                              self.face_dir[i][2],self.face_dir[i][3],
-                              self.face_dir[i][4],self.face_dir[i][5])) 
-  
-        f.close()
+            if self.topo_type == 'volume':
+
+                f.write('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
+                for i in xrange(self.nVol):
+                    f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|\n'\
+                                %(i,self.face_link[i][0],self.face_link[i][1],
+                                  self.face_link[i][2],self.face_link[i][3],
+                                  self.face_link[i][4],self.face_link[i][5],
+                                  self.face_dir[i][0],self.face_dir[i][1],
+                                  self.face_dir[i][2],self.face_dir[i][3],
+                                  self.face_dir[i][4],self.face_dir[i][5])) 
+
+            f.close()
+        # end if
         
         return
 
