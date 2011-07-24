@@ -691,9 +691,9 @@ set of points are used'
         # Three different possibilities: 
         # J_attach and no J_local
         if self.J_attach is not None and self.J_local is None:
-            J_temp = self.J_attach
+            J_temp = sparse.lil_matrix(self.J_attach)
         elif self.J_local is not None and self.J_attach is None:
-            J_temp = self.J_local
+            J_temp = sparse.lil_matrix(self.J_local)
         else:
             J_temp = sparse.hstack([self.J_attach,self.J_local],format='lil')
         # end if
@@ -705,22 +705,58 @@ set of points are used'
       
         nDV = self._getNDV()
         nPt = len(self.points[self.pt_ind[name]])
-        JT = sparse.lil_matrix((nDV,nPt*3))
-      
+
         if self.FFD:
-            dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
+         
+            dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef.tocoo()
             # We have a slight problem...dPtdCoef only has the shape
-            # functions, and not 3 copies for each of the dof. 
+            # functions, so it size Npt x Coef. We need a matrix of
+            # size 3*Npt x 3*nCoef, where each non-zero entry of
+            # dPtdCoef is replaced by value * 3x3 Identity matrix.
+
+            # Extract IJV Triplet from dPtdCoef
+            row = dPtdCoef.row
+            col = dPtdCoef.col
+            data= dPtdCoef.data
+
+            new_row = zeros(3*len(row),'int')
+            new_col = zeros(3*len(row),'int')
+            new_data= zeros(3*len(row))
             
-            for i in xrange(nDV):
-                JT[i,0::3] = dPtdCoef.dot(J_temp[0::3,i])
-                JT[i,1::3] = dPtdCoef.dot(J_temp[1::3,i])
-                JT[i,2::3] = dPtdCoef.dot(J_temp[2::3,i])
+            # Loop over each entry and expand:
+            for i in xrange(len(row)):
+                for j in xrange(3):
+                    new_row[3*i+j]  = row[i]*3 + j 
+                    new_col[3*i+j]  = col[i]*3 + j
+                    new_data[3*i+j] = data[i]
+                # end for
             # end for
+                    
+            # Size of New Matrix:
+            Nrow = dPtdCoef.shape[0]*3
+            Ncol = dPtdCoef.shape[1]*3
+
+            # Create new matrix in coo-dinate format and convert to csr
+            new_dPtdCoef = sparse.coo_matrix(
+                (new_data,(new_row,new_col)),shape=(Nrow,Ncol)).tocsr()
+
+            # Do Sparse Mat-Mat multiplaiction and resort indices
+            self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
+            self.JT.sort_indices()
+         
+            # ------------- OLD VERY SLOW IMPLEMENTATION -----------
+         #    dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
+#             JT = sparse.lil_matrix((nDV,nPt*3))
+#             for i in xrange(nDV):
+#                 JT[i,0::3] = dPtdCoef.dot(J_temp[0::3,i])
+#                 JT[i,1::3] = dPtdCoef.dot(J_temp[1::3,i])
+#                 JT[i,2::3] = dPtdCoef.dot(J_temp[2::3,i])
+#             # end for
+#             self.JT = JT.tocsr()
+#             self.JT.sort_indices()
+            # ------------------------------------------------------
         # end if
 
-        self.JT = JT.tocsr()
-        
         return 
 
     def _attachedPtJacobian(self,scaled=True):
@@ -852,7 +888,7 @@ set of points are used'
         mpiPrint('========================================')
                  
         coords0 = self.update(name).flatten()
-        h = 1e-10
+        h = 1e-6
         DVCount = 0
         for i in xrange(len(self.DV_listGlobal)):
             for j in xrange(self.DV_listGlobal[i].nVal):
@@ -870,7 +906,7 @@ set of points are used'
 
                 for ii in xrange(len(deriv)):
                     relErr = (deriv[ii] - Jac[DVCount,ii])/(1e-16 + Jac[DVCount,ii])
-                    if abs(relErr) > 1e-1 and (abs(deriv[ii]) > 1e-6 or abs(Jac[DVCount,ii]) > 1e-6):
+                    if abs(relErr) > 1e-1 and (abs(deriv[ii]) > 10*h or abs(Jac[DVCount,ii]) > 10*h):
                         print ii,deriv[ii],Jac[DVCount,ii]
                     # end if
                 # end for
