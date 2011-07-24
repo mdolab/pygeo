@@ -348,7 +348,7 @@ class pyBlock():
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
-    def doConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
+    def doConnectivity(self,file_name=None,node_tol=1e-4,edge_tol=1e-4):
         '''
         This is the only public edge connectivity function. 
         If file_name exists it loads the file OR it calculates the connectivity
@@ -361,7 +361,7 @@ class pyBlock():
         Returns:
             None
             '''
-        if os.path.isfile(file_name):
+        if file_name is not None and os.path.isfile(file_name):
             mpiPrint(' ',self.NO_PRINT)
             mpiPrint('Reading Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo = BlockTopology(file=file_name)
@@ -372,8 +372,10 @@ class pyBlock():
             mpiPrint(' ',self.NO_PRINT)
             self._calcConnectivity(node_tol,edge_tol)
             self._propagateKnotVectors()
-            mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
-            self.topo.writeConnectivity(file_name)
+            if file_name is not None:
+                mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
+                self.topo.writeConnectivity(file_name)
+            # end if
         # end if
 
         sizes = []
