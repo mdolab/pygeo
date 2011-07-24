@@ -884,20 +884,19 @@ offset.shape[0], Xsec, rot, must all have the same size'
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
-    def doConnectivity(self,file_name,node_tol=1e-4,edge_tol=1e-4):
+    def doConnectivity(self,file_name=None,node_tol=1e-4,edge_tol=1e-4):
         '''
         This is the only public edge connectivity function. 
         If file_name exists it loads the file OR it calculates the connectivity
         and saves to that file.
-        Required:
-            file_name: filename for con file
         Optional:
+            file_name: filename for con file
             node_tol: The tolerance for identical nodes
             edge_tol: The tolerance for midpoints of edge being identical
         Returns:
             None
             '''
-        if os.path.isfile(file_name):
+        if file_name is not None and os.path.isfile(file_name):
             mpiPrint(' ',self.NO_PRINT)
             mpiPrint('Reading Connectivity File: %s'%(file_name),self.NO_PRINT)
             self.topo = SurfaceTopology(file=file_name)
@@ -907,6 +906,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             sizes = []
             for isurf in xrange(self.nSurf):
                 sizes.append([self.surfs[isurf].Nctlu,self.surfs[isurf].Nctlv])
+                self.surfs[isurf].recompute()
             self.topo.calcGlobalNumbering(sizes)
         else:
             self._calcConnectivity(node_tol,edge_tol)
@@ -916,9 +916,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
             self.topo.calcGlobalNumbering(sizes)
             if self.init_type != 'iges':
                 self._propagateKnotVectors()
-            mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
-            self.topo.writeConnectivity(file_name)
-
+            if file_name is not None:
+                mpiPrint('Writing Connectivity File: %s'%(file_name),self.NO_PRINT)
+                self.topo.writeConnectivity(file_name)
+            # end if
         # end if
         if self.init_type == 'iges':
             self._setSurfaceCoef()
