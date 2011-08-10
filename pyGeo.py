@@ -557,6 +557,18 @@ offset.shape[0], Xsec, rot, must all have the same size'
                     te_offset = scale[-1]*0.002 # Take .2% of tip chord 
                 # end if
 
+                if 'span_tang' in kwargs:
+                    span_tang = kwargs['span_tang']
+                else:
+                    span_tang = 0.5
+                # end if
+
+                if 'up_tang' in kwargs:
+                    up_tang = kwargs['up_tang']
+                else:
+                    up_tang = 0.5
+                # end if
+
                 # Generate the midpoint of the coefficients
                 mid_pts = zeros([ncoef,3])
                 up_vec  = zeros([ncoef,3])
@@ -586,13 +598,13 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 for j in xrange(ncoef):
                     coef_top_tip[j,0] = coef_top[j,-1]
-                    coef_top_tip[j,1] = coef_top[j,-1] + proj_vec[j]*.5
-                    coef_top_tip[j,2] = tip_line[j] + 0.5*up_vec[j]
+                    coef_top_tip[j,1] = coef_top[j,-1] + proj_vec[j]*span_tang
+                    coef_top_tip[j,2] = tip_line[j] + up_tang*up_vec[j]
                     coef_top_tip[j,3] = tip_line[j]
 
                     coef_bot_tip[j,0] = coef_bot[j,-1]
-                    coef_bot_tip[j,1] = coef_bot[j,-1] + proj_vec[j]*.5
-                    coef_bot_tip[j,2] = tip_line[j] - 0.5*up_vec[j]
+                    coef_bot_tip[j,1] = coef_bot[j,-1] + proj_vec[j]*span_tang
+                    coef_bot_tip[j,2] = tip_line[j] - up_tang*up_vec[j]
                     coef_bot_tip[j,3] = tip_line[j]
                 # end for
 

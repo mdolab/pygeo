@@ -2,13 +2,12 @@
 # Utility Functions for Use in pyGeo
 # =============================================================================
 
-from numpy import pi,cos,sin,linspace,zeros,where,interp,sqrt,hstack,dot,\
-    array,insert,delete,empty,mod,tan,ones,argsort,mod,sort,\
-    arange,copy,floor,fromfile,choose,sign,resize,append,mgrid,average,rank,\
-    atleast_1d,atleast_2d,atleast_3d
+from numpy import pi, cos, sin, linspace, zeros, where, sqrt, dot,\
+    array, empty, mod, ones, argsort, sort, mod, arange, copy, floor, \
+    fromfile, sign, resize, atleast_1d, atleast_2d, atleast_3d
 
 from numpy.linalg import norm
-import string ,sys, copy, pdb, os,time
+import string, sys, os, copy
 
 from mdo_import_helper import *
 
@@ -1477,7 +1476,7 @@ class SurfaceTopology(topology):
 
             for iface in xrange(self.nFace):
                 for iedge in xrange(4):
-                    n1,n2 = nodesFromEdge(iedge) # nodesFromEdge in geo_utils
+                    n1,n2 = nodesFromEdge(iedge)
                     n1 = node_link[iface][n1]
                     n2 = node_link[iface][n2] 
                     midpoint = coords[iface][iedge + 4]
