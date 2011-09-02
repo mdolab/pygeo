@@ -1544,6 +1544,71 @@ class SurfaceTopology(topology):
 
         return
 
+    def calcGlobalNumberingDummy(self, sizes, surface_list=None):
+        '''Internal function to calculate the global/local numbering for each surface'''
+        for i in xrange(len(sizes)):
+            self.edges[self.edge_link[i][0]].N = sizes[i][0]
+            self.edges[self.edge_link[i][1]].N = sizes[i][0]
+            self.edges[self.edge_link[i][2]].N = sizes[i][1]
+            self.edges[self.edge_link[i][3]].N = sizes[i][1]
+
+        if surface_list == None:
+            surface_list = range(0,self.nFace)
+        # end if
+        
+        # ----------------- Start of Edge Computation ---------------------
+        counter = 0
+        g_index = []
+        l_index = []
+
+        assert len(sizes) == len(surface_list),'Error: The list of sizes and \
+the list of surfaces must be the same length'
+
+        # Assign unique numbers to the corners -> Corners are indexed sequentially
+        node_index = arange(self.nNode)
+        counter = len(node_index)
+        edge_index = [ [] for i in xrange(len(self.edges))]
+     
+        # Assign unique numbers to the edges
+
+        for ii in xrange(len(surface_list)):
+            cur_size = [sizes[ii][0],sizes[ii][0],sizes[ii][1],sizes[ii][1]]
+            isurf = surface_list[ii]
+            for iedge in xrange(4):
+                edge = self.edge_link[ii][iedge]
+                    
+                if edge_index[edge] == []:# Not added yet
+                    if self.edges[edge].degen == 1:
+                        # Get the counter value for this "node"
+                        index = node_index[self.edges[edge].n1]
+                        for jj in xrange(cur_size[iedge]-2):
+                            edge_index[edge].append(index)
+                        # end for
+                    else:
+                        for jj in xrange(cur_size[iedge]-2):
+                            edge_index[edge].append(counter)
+                            counter += 1
+                        # end for
+                    # end if
+                # end if
+            # end for
+        # end for
+     
+        g_index = [ [] for i in xrange(counter)] # We must add [] for each global node
+        l_index = []
+
+        # Now actually fill everything up
+
+        for ii in xrange(len(surface_list)):
+            isurf = surface_list[ii]
+            N = sizes[ii][0]
+            M = sizes[ii][1]
+            l_index.append(-1*ones((N,M),'intc'))
+        # end for
+        self.l_index = l_index
+
+        return
+
     def calcGlobalNumbering(self, sizes, surface_list=None):
         '''Internal function to calculate the global/local numbering for each surface'''
         for i in xrange(len(sizes)):
