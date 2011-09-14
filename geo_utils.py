@@ -4,7 +4,7 @@
 
 from numpy import pi, cos, sin, linspace, zeros, where, sqrt, dot,\
     array, empty, mod, ones, argsort, sort, mod, arange, copy, floor, \
-    fromfile, sign, resize, atleast_1d, atleast_2d, atleast_3d
+    fromfile, sign, resize, atleast_1d, atleast_2d, atleast_3d, average
 
 from numpy.linalg import norm
 import string, sys, os, copy
@@ -3024,26 +3024,39 @@ def tfi_2d(e0,e1,e2,e3):
     # e1: Nodes along edge 1. Size Nu x 3
     # e0: Nodes along edge 2. Size Nv x 3
     # e1: Nodes along edge 3. Size Nv x 3
+    import pySpline
+    try:
+        X = pySpline.pyspline.tfi2d(e0.T,e1.T,e2.T,e3.T).T
+    except:
+     
+        Nu = len(e0)
+        Nv = len(e2)
+        assert Nu == len(e1),'Number of nodes on edge0 and edge1 are not the same,%d %d'%(len(e0),len(e1))
+        assert Nv == len(e3),'Number of nodes on edge2 and edge3 are not the same,%d %d'%(len(e2),len(e3))
 
-    Nu = len(e0)
-    Nv = len(e2)
-    assert Nu == len(e1),'Number of nodes on edge0 and edge1 are not the same,%d %d'%(len(e0),len(e1))
-    assert Nv == len(e3),'Number of nodes on edge2 and edge3 are not the same,%d %d'%(len(e2),len(e3))
-    
-    U = linspace(0,1,Nu)
-    V = linspace(0,1,Nv)
+        U = linspace(0,1,Nu)
+        V = linspace(0,1,Nv)
 
-    X = zeros((Nu,Nv,3))
+        X = zeros((Nu,Nv,3))
 
-    for i in xrange(Nu):
-        for j in xrange(Nv):
-            X[i,j] = (1-V[j])*e0[i] + V[j]*e1[i] + (1-U[i])*e2[j] + U[i]*e3[j] - \
-                (U[i]*V[j]*e1[-1] + U[i]*(1-V[j])*e0[-1] + V[j]*(1-U[i])*e1[0] + \
-                     (1-U[i])*(1-V[j])*e0[0])
+        for i in xrange(Nu):
+            for j in xrange(Nv):
+                X[i,j] = (1-V[j])*e0[i] + V[j]*e1[i] + (1-U[i])*e2[j] + U[i]*e3[j] - \
+                    (U[i]*V[j]*e1[-1] + U[i]*(1-V[j])*e0[-1] + V[j]*(1-U[i])*e1[0] + \
+                         (1-U[i])*(1-V[j])*e0[0])
+            # end for
         # end for
-    # end for
+    # end try
 
     return X
+
+def linear_edge(pt1,pt2,N):
+    # Return N points along line from pt1 to pt2
+    pts = zeros((N,3))
+
+    for i in xrange(N):
+        pts[i] = float(i)/(N-1)*(pt2-pt1) + pt1
+    return pts
 
 def checkRank(input):
     if not(hasattr(input,'__iter__')):
@@ -3051,7 +3064,174 @@ def checkRank(input):
     else:
         return 1 + checkRank(input[0])
 
+def split_quad(e0,e1,e2,e3,alpha,beta,N_O):
+    # This function takes the coordinates of a quad patch, and
+    # creates an O-grid inside the quad making 4 quads and leaving
+    # a hole in the center whose size is determined by alpha and
+    # beta
 
+    # Input                        Output 
+    #       2             3        2      e1     3 
+    #       +-------------+        +-------------+
+    #       |             |        |\           /|
+    #       |             |        | \c2  P1 c3/ |
+    #       |             |        |  \       /  |
+    #       |             |        |   \6   7/   |
+    #       |             |        |    \***/    |
+    #       |             |     e2 | P2 *   * P3 | e3
+    #       |             |        |    /***\    |
+    #       |             |        |   / 4  5\   |
+    #       |             |        |  /       \  |
+    #       |             |        | /c0 P0  c1\ |
+    #       |             |        |/           \|
+    #       +-------------+        +-------------+
+    #       0             1        0     e0      1
+
+    # Input:
+    # e0: points along edge0
+    # e1: points along edge1
+    # e2: points along edge2
+    # e3: points along edge3
+    # alpha: Fraction of hole covered by u-direction
+    # beta : Fraction of hole covered by v-direction
+
+    # Makeing the assumption each edge is fairly straight
+    Nu = len(e0)
+    Nv = len(e2)
+
+    # Corners of patch
+    pts = zeros((4,3))
+    pts[0] = e0[0]
+    pts[1] = e0[-1]
+    pts[2] = e1[0]
+    pts[3] = e1[-1]
+
+    # First generate edge lengths
+    l = zeros(4)
+    l[0] = e_dist(pts[0],pts[1])
+    l[1] = e_dist(pts[2],pts[3])
+    l[2] = e_dist(pts[0],pts[2])
+    l[3] = e_dist(pts[1],pts[3])
+
+    # Vector along edges 0->3
+    vec = zeros((4,3))
+    vec[0] = pts[1]-pts[0]
+    vec[1] = pts[3]-pts[2]
+    vec[2] = pts[2]-pts[0]
+    vec[3] = pts[3]-pts[1]
+
+    U = 0.5*(vec[0]+vec[1])
+    V = 0.5*(vec[2]+vec[3])
+    u =U/norm(U)
+    v =V/norm(V)
+
+    mid  = average(pts,axis=0)
+
+    u_bar = 0.5*(l[0]+l[1])*alpha
+    v_bar = 0.5*(l[2]+l[3])*beta
+
+    aspect = u_bar/v_bar
+   
+    if aspect < 1: # its higher than wide, logically roate the element
+        v,u = u,-v
+        v_bar,u_bar = u_bar,v_bar
+        alpha,beta = beta,alpha
+        Nv,Nu = Nu,Nv
+
+        E0 = e2[::-1,:].copy()
+        E1 = e3[::-1,:].copy()
+        E2 = e1.copy()
+        E3 = e0.copy()
+
+        #Also need to permute points
+        PTS = zeros((4,3))
+        PTS[0] = pts[2].copy()
+        PTS[1] = pts[0].copy()
+        PTS[2] = pts[3].copy()
+        PTS[3] = pts[1].copy()
+    else:
+        E0 = e0.copy()
+        E1 = e1.copy()
+        E2 = e2.copy()
+        E3 = e3.copy()
+        PTS = pts.copy()
+    # end if
+
+    rect_corners = zeros((4,3))
+
+    # These are the output pactch object
+    P0 = zeros((Nu,4,3),'d') 
+    P1 = zeros((Nu,4,3),'d') 
+    P2 = zeros((Nv,4,3),'d') 
+    P3 = zeros((Nv,4,3),'d') 
+
+    rad = v_bar*beta
+    rect_len = u_bar-2*rad
+    if rect_len < 0:
+        rect_len = 0
+    # end if
+    # Determine 4 corners of rectangular part
+
+    rect_corners[0] = mid-u*(rect_len/2)-sin(pi/4)*rad*v-cos(pi/4)*rad*u
+    rect_corners[1] = mid+u*(rect_len/2)-sin(pi/4)*rad*v+cos(pi/4)*rad*u
+    rect_corners[2] = mid-u*(rect_len/2)+sin(pi/4)*rad*v-cos(pi/4)*rad*u
+    rect_corners[3] = mid+u*(rect_len/2)+sin(pi/4)*rad*v+cos(pi/4)*rad*u
+
+    arc_len = pi*rad/2 + rect_len # Two quarter circles straight line
+    eighth_arc = 0.25*pi*rad
+    # We have to distribute Nu-2 nodes over this arc-length
+    spacing = arc_len/(Nu-1)
+
+    bot_edge = zeros((Nu,3),'d')
+    top_edge = zeros((Nu,3),'d')
+    bot_edge[0] = rect_corners[0]
+    bot_edge[-1] = rect_corners[1]
+    top_edge[0] = rect_corners[2]
+    top_edge[-1] = rect_corners[3]
+    for i in xrange(Nu-2):
+        dist_along_arc = (i+1)*spacing
+        if dist_along_arc < eighth_arc:
+            theta = dist_along_arc/rad # Angle in radians
+            bot_edge[i+1] = mid-u*(rect_len/2) - sin(theta+pi/4)*rad*v - cos(theta+pi/4)*rad*u
+            top_edge[i+1] = mid-u*(rect_len/2) + sin(theta+pi/4)*rad*v - cos(theta+pi/4)*rad*u
+        elif dist_along_arc > rect_len+eighth_arc:
+            theta = (dist_along_arc-rect_len-eighth_arc)/rad
+            bot_edge[i+1] = mid+u*(rect_len/2) + sin(theta)*rad*u - cos(theta)*rad*v
+            top_edge[i+1] = mid+u*(rect_len/2) + sin(theta)*rad*u + cos(theta)*rad*v
+        else:
+            top_edge[i+1] = mid -u*rect_len/2 + rad*v + (dist_along_arc-eighth_arc)*u 
+            bot_edge[i+1] = mid -u*rect_len/2 - rad*v + (dist_along_arc-eighth_arc)*u 
+
+    # end for
+
+    left_edge = zeros((Nv,3),'d')
+    right_edge = zeros((Nv,3),'d')
+    theta = linspace(-pi/4,pi/4,Nv)
+
+    for i in xrange(Nv):
+        left_edge[i]  = mid-u*(rect_len/2) + sin(theta[i])*rad*v - cos(theta[i])*rad*u
+        right_edge[i] = mid+u*(rect_len/2) + sin(theta[i])*rad*v + cos(theta[i])*rad*u
+    # end if
+
+    # Do the corner edges
+    c0 = linear_edge(PTS[0],rect_corners[0],N_O)
+    c1 = linear_edge(PTS[1],rect_corners[1],N_O)
+    c2 = linear_edge(PTS[2],rect_corners[2],N_O)
+    c3 = linear_edge(PTS[3],rect_corners[3],N_O)
+
+    # Now we can finally do the pactches
+
+    P0 = tfi_2d(E0,bot_edge,c0,c1)
+    P1 = tfi_2d(E1,top_edge,c2,c3)
+    P2 = tfi_2d(E2,left_edge,c0,c2)
+    P3 = tfi_2d(E3,right_edge,c1,c3)
+
+    if aspect < 1:
+        return P3,P2,P0[::-1,:,:],P1[::-1,:,:]
+    else:
+        return P0,P1,P2,P3
+    # end if
+  
 class geoDVGlobal(object):
      
     def __init__(self, dv_name, value, lower, upper, function, useit=True):
