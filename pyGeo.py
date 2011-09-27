@@ -51,7 +51,7 @@ except:
 # =============================================================================
 
 from mdo_import_helper import *
-exec(import_modules('pyBlock','geo_utils','pySpline','csm_pre'))
+exec(import_modules('geo_utils','pySpline','csm_pre'))
 
 # =============================================================================
 # pyGeo class
