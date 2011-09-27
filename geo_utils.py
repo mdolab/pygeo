@@ -178,6 +178,10 @@ def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
     return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
 
+def e_dist2D(x1, x2):
+    '''Get the eculidean distance between two points'''
+    return sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2)
+
 
 def e_dist_b(x1, x2):
   x1b = 0.0

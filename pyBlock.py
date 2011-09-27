@@ -49,7 +49,7 @@ except:
 # Extension modules
 # =============================================================================
 from mdo_import_helper import *
-exec(import_modules('geo_utils','pySpline','mpi4py'))
+exec(import_modules('geo_utils','pySpline'))
 
 # =============================================================================
 # pyBlock class
