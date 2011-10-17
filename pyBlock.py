@@ -24,15 +24,12 @@ History
 # Standard Python modules
 # =============================================================================
 
-import os, sys, string, copy, pdb, time
+import os, sys, copy
 
 # =============================================================================
 # External Python modules
 # =============================================================================
 import numpy
-from numpy import sin, cos, linspace, pi, zeros, where, hstack, mat, array, \
-    transpose, vstack, max, dot, sqrt, append, mod, ones, interp, meshgrid, \
-    real, imag, dstack, floor, size, reshape, arange,alltrue,cross,average
 
 from numpy.linalg import lstsq,inv,norm
 
@@ -48,8 +45,9 @@ except:
 # =============================================================================
 # Extension modules
 # =============================================================================
-from mdo_import_helper import *
+from mdo_import_helper import import_modules, mpiPrint
 exec(import_modules('geo_utils','pySpline'))
+import geo_utils, pySpline # not required, but pylint is happier
 
 # =============================================================================
 # pyBlock class
@@ -130,14 +128,14 @@ class pyBlock():
             f = open(file_name,'rb')
         # end if
         if binary:
-            itype = readNValues(f,1,'int',binary)[0]
-            nVol = readNValues(f,1,'int',binary)[0]
-            itype = readNValues(f,1,'int',binary)[0] # Need these
-            itype = readNValues(f,1,'int',binary)[0] # Need these
-            sizes   = readNValues(f,nVol*3,'int',binary).reshape((nVol,3))
+            itype = geo_utils.readNValues(f,1,'int',binary)[0]
+            nVol = geo_utils.readNValues(f,1,'int',binary)[0]
+            itype = geo_utils.readNValues(f,1,'int',binary)[0] # Need these
+            itype = geo_utils.readNValues(f,1,'int',binary)[0] # Need these
+            sizes   = geo_utils.readNValues(f,nVol*3,'int',binary).reshape((nVol,3))
         else:
-            nVol = readNValues(f,1,'int',binary)[0]
-            sizes   = readNValues(f,nVol*3,'int',binary).reshape((nVol,3))
+            nVol = geo_utils.readNValues(f,1,'int',binary)[0]
+            sizes   = geo_utils.readNValues(f,nVol*3,'int',binary).reshape((nVol,3))
         # end if
 
         mpiPrint(' -> nVol = %d'%(nVol),self.NO_PRINT)
@@ -145,13 +143,13 @@ class pyBlock():
         blocks = []
         for i in xrange(nVol):
             cur_size = sizes[i,0]*sizes[i,1]*sizes[i,2]
-            blocks.append(zeros([sizes[i,0],sizes[i,1],sizes[i,2],3]))
+            blocks.append(numpy.zeros([sizes[i,0],sizes[i,1],sizes[i,2],3]))
             for idim in xrange(3):
-                blocks[-1][:,:,:,idim] = readNValues(f,cur_size,'float',binary).reshape((sizes[i,0],sizes[i,1],sizes[i,2]),order=order)
+                blocks[-1][:,:,:,idim] = geo_utils.readNValues(
+                    f,cur_size,'float',binary).reshape(
+                    (sizes[i,0],sizes[i,1],sizes[i,2]),order=order)
             # end for
         # end for
-
-
 
         f.close()
 
@@ -207,17 +205,19 @@ class pyBlock():
             f = open(file_name,'rb')
         # end for
 
-        self.nVol = readNValues(f,1,'int',binary)
+        self.nVol = geo_utils.readNValues(f,1,'int',binary)
         mpiPrint(' -> nVol = %d'%(self.nVol),self.NO_PRINT)
         self.vols = []
         for ivol in xrange(self.nVol):
-            inits = readNValues(f,6,'int',binary) # This is
+            inits = geo_utils.readNValues(f,6,'int',binary) # This is
                                                   # nctlu,nctlv,nctlw,
                                                   # ku,kv,kw
-            tu  = readNValues(f,inits[0]+inits[3],'float',binary)
-            tv  = readNValues(f,inits[1]+inits[4],'float',binary)
-            tw  = readNValues(f,inits[2]+inits[5],'float',binary)
-            coef= readNValues(f,inits[0]*inits[1]*inits[2]*3,'float',binary).reshape([inits[0],inits[1],inits[2],3])
+            tu  = geo_utils.readNValues(f,inits[0]+inits[3],'float',binary)
+            tv  = geo_utils.readNValues(f,inits[1]+inits[4],'float',binary)
+            tw  = geo_utils.readNValues(f,inits[2]+inits[5],'float',binary)
+            coef= geo_utils.readNValues(
+                f,inits[0]*inits[1]*inits[2]*3,'float',binary).reshape(
+                [inits[0],inits[1],inits[2],3])
             self.vols.append(pySpline.volume(\
                     Nctlu=inits[0],Nctlv=inits[1],Nctlw=inits[2],ku=inits[3],
                     kv=inits[4],kw=inits[5],tu=tu,tv=tv,tw=tw,coef=coef))
@@ -277,7 +277,7 @@ class pyBlock():
         orig_topo.calcGlobalNumbering(sizes) 
         N = orig_topo.nGlobal
         mpiPrint(' -> Creating global point list',self.NO_PRINT)
-        pts = zeros((N,3))
+        pts = numpy.zeros((N,3))
         for ii in xrange(N):
             pts[ii] = self.vols[orig_topo.g_index[ii][0][0]].X[orig_topo.g_index[ii][0][1],
                                                                orig_topo.g_index[ii][0][2],
@@ -297,9 +297,9 @@ class pyBlock():
         # end for
         nnz = N*kmax*kmax*kmax
 
-        vals = zeros(nnz)
+        vals = numpy.zeros(nnz)
         row_ptr = [0]
-        col_ind = zeros(nnz,'intc')
+        col_ind = numpy.zeros(nnz,'intc')
         mpiPrint(' -> Calculating Jacobian',self.NO_PRINT)
         for ii in xrange(N):
             ivol = orig_topo.g_index[ii][0][0]
@@ -332,7 +332,7 @@ class pyBlock():
         mpiPrint(' -> Factorizing...',self.NO_PRINT)
         solve = factorized(NTN)
         mpiPrint(' -> Back Solving...',self.NO_PRINT)
-        self.coef = zeros((nCtl,3))
+        self.coef = numpy.zeros((nCtl,3))
         for idim in xrange(3):
             self.coef[:,idim] = solve(NNT*pts[:,idim])
         # end for
@@ -364,7 +364,7 @@ class pyBlock():
         if file_name is not None and os.path.isfile(file_name):
             mpiPrint(' ',self.NO_PRINT)
             mpiPrint('Reading Connectivity File: %s'%(file_name),self.NO_PRINT)
-            self.topo = BlockTopology(file=file_name)
+            self.topo = geo_utils.BlockTopology(file=file_name)
             if self.init_type != 'bvol':
                 self._propagateKnotVectors()
             # end if
@@ -389,7 +389,7 @@ class pyBlock():
         # Determine the blocking connectivity
 
         # Compute the corners
-        coords = zeros((self.nVol,26,3))
+        coords = numpy.zeros((self.nVol,26,3))
         for ivol in xrange(self.nVol):
             for icorner in xrange(8):
                 coords[ivol,icorner] = self.vols[ivol].getOrigValueCorner(icorner)
@@ -402,7 +402,7 @@ class pyBlock():
             # end for
         # end for
 
-        self.topo = BlockTopology(coords)
+        self.topo = geo_utils.BlockTopology(coords)
         sizes = []
         for ivol in xrange(self.nVol):
             sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
@@ -470,7 +470,6 @@ class pyBlock():
         # end for
         
         for idg in xrange(nDG):
-            #print '---------------- DG %d ------------'%(idg)
             knot_vectors = []
             flip = []
             for ivol in xrange(self.nVol):
@@ -499,7 +498,7 @@ class pyBlock():
             # end for
            
             # Now blend all the knot vectors
-            new_knot_vec = blendKnotVectors(knot_vectors,False)
+            new_knot_vec = geo_utils.blendKnotVectors(knot_vectors,False)
             new_knot_vec_flip = (1-new_knot_vec)[::-1]
             # And reset them all
             counter = 0
@@ -617,7 +616,7 @@ class pyBlock():
         if node_labels == True:
             # First we need to figure out where the corners actually *are*
             n_nodes = len(unique(self.topo.node_link.flatten()))
-            node_coord = zeros((n_nodes,3))
+            node_coord = numpy.zeros((n_nodes,3))
 
             for i in xrange(n_nodes):
                 # Try to find node i
@@ -652,7 +651,7 @@ class pyBlock():
         '''
         if binary:
             f = open(file_name,'wb')
-            array(self.nVol).tofile(f,sep="")
+            numpy.array(self.nVol).tofile(f,sep="")
         else:
             f = open(file_name,'w')
             f.write('%d\n'%(self.nVol))
@@ -675,8 +674,8 @@ class pyBlock():
         
         if binary:
             f = open(file_name,'wb')
-            array(self.nVol).tofile(f,sep="")
-            array(sizes).tofile(f,sep="")
+            numpy.array(self.nVol).tofile(f,sep="")
+            numpy.array(sizes).tofile(f,sep="")
             for ivol in xrange(self.nVol):
                 vals = self.vols[ivol](self.vols[ivol].U,self.vols[ivol].V,
                                        self.vols[ivol].W)
@@ -687,7 +686,7 @@ class pyBlock():
         else:
             f = open(file_name,'w')
             f.write('%d\n'%(self.nVol))
-            array(sizes).tofile(f,sep=" ")
+            numpy.array(sizes).tofile(f,sep=" ")
             f.write('\n')
             for ivol in xrange(self.nVol):
                 vals = self.vols[ivol](self.vols[ivol].U,self.vols[ivol].V,
@@ -706,7 +705,7 @@ class pyBlock():
     
     def getCoefQuality(self):
         '''Get the list of quality for each of the volumes'''
-        quality = array([],'d')
+        quality = numpy.array([],'d')
         for ivol in xrange(self.nVol):
             quality = append(quality,self.vols[ivol].getCoefQuality())
         # end for
@@ -721,8 +720,8 @@ class pyBlock():
         # end if
         nQuality = counter
         # The number of non-zeros is EXACTLY 24*number of volumes (8 points per vol*3dof/pt)
-        vals = zeros(nQuality*24)
-        col_ind = zeros(nQuality*24,'intc')
+        vals = numpy.zeros(nQuality*24)
+        col_ind = numpy.zeros(nQuality*24,'intc')
         row_ptr = linspace(0,nQuality*24,nQuality+1).astype('intc')
 
         counter = 0 
@@ -758,7 +757,62 @@ class pyBlock():
         # end for
         return
 
-    def getVolumePoints(self,index):
+    def _setVolumeCoef(self):
+        '''Set the volumecoef list from the pySpline volumes'''
+        self.coef = zeros((self.topo.nGlobal,3))
+        for ivol in xrange(self.nVol):
+            vol = self.surfs[ivol]
+            for i in xrange(vol.Nctlu):
+                for j in xrange(vol.Nctlv):
+                    for k in xrange(vol.Nctlw):
+                        self.coef[self.topo.l_index[ivol][i,j,k]] = \
+                            vol.coef[i,j,k]
+                # end for
+            # end for
+        # end for
+
+        return 
+
+    def _calcdPtdCoef(self,index):
+        '''Calculate the (fixed) volume derivative of a discrete set of ponits'''
+        volID = self.embeded_volumes[index].volID
+        u       = self.embeded_volumes[index].u
+        v       = self.embeded_volumes[index].v
+        w       = self.embeded_volumes[index].w
+        N       = self.embeded_volumes[index].N
+        mpiPrint('Calculating Volume %d Derivative for %d Points...'%(index,len(volID)),self.NO_PRINT)
+
+        # Get the maximum k (ku or kv for each surface)
+        kmax = 2
+        for ivol in xrange(self.nVol):
+            if self.vols[ivol].ku > kmax:
+                kmax = self.vols[ivol].ku
+            if self.vols[ivol].kv > kmax:
+                kmax = self.vols[ivol].kv
+            if self.vols[ivol].kw > kmax:
+                kmax = self.vols[ivol].kw
+            # end if
+        # end for
+        nnz = N*kmax*kmax*kmax
+        vals = numpy.zeros(nnz)
+        row_ptr = [0]
+        col_ind = numpy.zeros(nnz,'intc')
+        for i in xrange(N):
+            kinc = self.vols[volID[i]].ku*self.vols[volID[i]].kv*self.vols[volID[i]].kw
+            vals,col_ind = self.vols[volID[i]]._getBasisPt(\
+                u[i],v[i],w[i],vals,row_ptr[i],col_ind,self.topo.l_index[volID[i]])
+            row_ptr.append(row_ptr[-1] + kinc)
+
+        # Now we can crop out any additional values in col_ptr and vals
+        vals    = vals[:row_ptr[-1]]
+        col_ind = col_ind[:row_ptr[-1]]
+        # Now make a sparse matrix
+        self.embeded_volumes[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,len(self.coef)])
+        mpiPrint('  -> Finished Embeded Volume %d Derivative'%(index),self.NO_PRINT)
+        
+        return
+
+    def getAttachedPoints(self,index):
         '''
         Return all the volume points for an embedded volume with index index
         Required:
@@ -772,7 +826,7 @@ class pyBlock():
         v       = self.embeded_volumes[index].v
         w       = self.embeded_volumes[index].w
         N       = self.embeded_volumes[index].N
-        coordinates = zeros((N,3))
+        coordinates = numpy.zeros((N,3))
 
         for i in xrange(N):
             coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
@@ -783,7 +837,7 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def embedVolume(self,coordinates,*args,**kwargs):
+    def attachPoints(self,coordinates,*args,**kwargs):
         '''Embed a set of coordinates into all volumes'''
 
         # Project Points
@@ -791,6 +845,8 @@ class pyBlock():
         self.embeded_volumes.append(embeded_volume(volID,u,v,w))
 
         return
+
+
 # ----------------------------------------------------------------------
 #             Geometric Functions
 # ----------------------------------------------------------------------    
@@ -809,16 +865,16 @@ class pyBlock():
         '''
 
         # Make sure we are dealing with a 2D "Nx3" list of points
-        x0 = atleast_2d(x0)
+        x0 = numpy.atleast_2d(x0)
 
-        volID = zeros(len(x0),'intc')
-        u     = zeros(len(x0))
-        v     = zeros(len(x0))
-        w     = zeros(len(x0))
-        D     = zeros((len(x0),3))
+        volID = numpy.zeros(len(x0),'intc')
+        u     = numpy.zeros(len(x0))
+        v     = numpy.zeros(len(x0))
+        w     = numpy.zeros(len(x0))
+        D     = numpy.zeros((len(x0),3))
 
         # Starting list is just [0,1,2,...,nVol-1]
-        vol_list = arange(self.nVol)
+        vol_list = numpy.arange(self.nVol)
 
         for i in xrange(len(x0)):
             for j in xrange(self.nVol):
@@ -866,52 +922,13 @@ class pyBlock():
                 counter += 1
             # end if
         # end for
-        D_rms = sqrt(D_rms / len(x0))
+        D_rms = numpy.sqrt(D_rms / len(x0))
       
         # Check to see if we have bad projections and print a warning:
         if counter > 0:
             print ' -> Warning: %d point(s) not projected to tolerance: \
 %g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
         return volID,u,v,w,D
-
-    def _calcdPtdCoef(self,index):
-        '''Calculate the (fixed) volume derivative of a discrete set of ponits'''
-        volID = self.embeded_volumes[index].volID
-        u       = self.embeded_volumes[index].u
-        v       = self.embeded_volumes[index].v
-        w       = self.embeded_volumes[index].w
-        N       = self.embeded_volumes[index].N
-        mpiPrint('Calculating Volume %d Derivative for %d Points...'%(index,len(volID)),self.NO_PRINT)
-
-        # Get the maximum k (ku or kv for each surface)
-        kmax = 2
-        for ivol in xrange(self.nVol):
-            if self.vols[ivol].ku > kmax:
-                kmax = self.vols[ivol].ku
-            if self.vols[ivol].kv > kmax:
-                kmax = self.vols[ivol].kv
-            if self.vols[ivol].kw > kmax:
-                kmax = self.vols[ivol].kw
-            # end if
-        # end for
-        nnz = N*kmax*kmax*kmax
-        vals = zeros(nnz)
-        row_ptr = [0]
-        col_ind = zeros(nnz,'intc')
-        for i in xrange(N):
-            kinc = self.vols[volID[i]].ku*self.vols[volID[i]].kv*self.vols[volID[i]].kw
-            vals,col_ind = self.vols[volID[i]]._getBasisPt(\
-                u[i],v[i],w[i],vals,row_ptr[i],col_ind,self.topo.l_index[volID[i]])
-            row_ptr.append(row_ptr[-1] + kinc)
-
-        # Now we can crop out any additional values in col_ptr and vals
-        vals    = vals[:row_ptr[-1]]
-        col_ind = col_ind[:row_ptr[-1]]
-        # Now make a sparse matrix
-        self.embeded_volumes[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,len(self.coef)])
-        mpiPrint('  -> Finished Embeded Volume %d Derivative'%(index),self.NO_PRINT)
-        
-        return
 
     def getBounds(self):
         '''Determine the extents of the volumes
@@ -939,10 +956,20 @@ class embeded_volume(object):
             voliD list of the volume iD's for the points
             uvw: list of the uvw points
             '''
-        self.volID = array(volID)
-        self.u = array(u)
-        self.v = array(v)
-        self.w = array(w)
+        self.volID = numpy.array(volID)
+        self.u = numpy.array(u)
+        self.v = numpy.array(v)
+        self.w = numpy.array(w)
         self.N = len(self.u)
         self.dPtdCoef = None
         self.dPtdX    = None
+
+#==============================================================================
+# Class Test
+#==============================================================================
+if __name__ == '__main__':
+	
+    # Run a Simple Test Case
+    print 'Testing pyBlock...'
+    print 'No tests implemented yet...'
+
