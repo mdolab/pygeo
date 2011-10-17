@@ -7,17 +7,16 @@
 # spactialy distributed points. 
 # =============================================================================
 
-
+import sys, copy
 import numpy
-from numpy import cross,real,imag
 from scipy import sparse
-from mdo_import_helper import *
-exec(import_modules('geo_utils','pySpline','pyNetwork'))
+from mdo_import_helper import MPI, mpiPrint, import_modules
+exec(import_modules('geo_utils', 'pySpline', 'pyNetwork'))
 
 class DVGeometry(object):
     
-    def __init__(self,points, curves, FFD=None, Surface=None, 
-                 rot_type=0,*args,**kwargs):
+    def __init__(self, points, curves, FFD=None, Surface=None, 
+                 rot_type=0, *args, **kwargs):
 
         ''' Create a DV Geometry module to handle all design variable
         manipulation 
@@ -67,9 +66,9 @@ class DVGeometry(object):
         # to be careful here, since this MAY be a list
         self.points = []
         self.pt_ind = {}
-        if isinstance(points,list):
-            assert 'names' in kwargs,'Names must be specified if more than one \
-set of points are used'
+        if isinstance(points, list):
+            assert 'names' in kwargs, 'Names must be specified if more than\
+ one set of points are used'
             for i in xrange(len(points)):
                 self.points.append(points[i])
                 self.pt_ind[kwargs['names'][i]] = i
@@ -87,7 +86,7 @@ set of points are used'
         self.J_attach = None
         self.J_local  = None
 
-        self.complex = kwargs.pop('complex',False)
+        self.complex = kwargs.pop('complex', False)
 
         if Surface and FFD:
             print 'DVGeometry can only use 1 of FFD or Surface'
@@ -102,7 +101,7 @@ set of points are used'
                 # If the user has specified a vol_list, the curves
                 # should only act on some of the volumes. 
                 vol_list = kwargs['vol_list']
-                assert len(curves)==len(vol_list),\
+                assert len(curves)==len(vol_list), \
                     'The length of vol_list and curves must be the same'
                 # The ptAttach list *MAY* be smaller than the full set
                 # of coordinates defining the FFD. Also, the user had
@@ -113,7 +112,7 @@ set of points are used'
                 
                 # So...create ptAttachInd which are the indicies of
                 # self.FFD.coef that we are actually manipulating. If
-                # there's no vol_list, then this is just [0,1,2,...N]
+                # there's no vol_list, then this is just [0, 1, 2, ...N]
                 self.ptAttachInd = []
                 self.ptAttachPtr = [0]
 
@@ -123,7 +122,8 @@ set of points are used'
                         for i in xrange(self.FFD.vols[iVol].Nctlu):
                             for j in xrange(self.FFD.vols[iVol].Nctlv):
                                 for k in xrange(self.FFD.vols[iVol].Nctlw):
-                                    temp.append(self.FFD.topo.l_index[iVol][i,j,k])
+                                    temp.append(
+                                        self.FFD.topo.l_index[iVol][i, j, k])
 
 
                                 # end for
@@ -131,25 +131,25 @@ set of points are used'
                         # end for
                     # end for
                     # Uniuque the values we just added:
-                    temp = unique(temp)
+                    temp = geo_utils.unique(temp)
                     self.ptAttachInd.extend(temp)
                     self.ptAttachPtr.append(len(self.ptAttachInd))
                 # end for
                 # Convert the ind list to an array
                 self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
             else:
-                self.ptAttachInd = arange(len(self.FFD.coef))
-                self.ptAttachPtr = [0,len(self.FFD.coef)]
+                self.ptAttachInd = numpy.arange(len(self.FFD.coef))
+                self.ptAttachPtr = [0, len(self.FFD.coef)]
             # end if
      
             # Take the subset of the FFD cofficients as what will be
             # attached
-            self.ptAttach = self.FFD.coef.take(self.ptAttachInd,axis=0)
-            self.ptAttachFull= self.FFD.coef.copy()
+            self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
+            self.ptAttachFull = self.FFD.coef.copy()
 
             # Project Points in to volume:
             for i in xrange(len(self.points)):
-                self.FFD.embedVolume(self.points[i])
+                self.FFD.attachPoints(self.points[i])
                 self.FFD._calcdPtdCoef(i)
             # end for
 
@@ -162,14 +162,14 @@ set of points are used'
 #             self.Surface.attachSurface(self.points)
 #             self.Surface._calcdPtdCoef(0)
         else:
-            self.ptAttach = pts
+            self.ptAttach = points
         # end if
 
         # Number of points attached to ref axis
         self.nPtAttach = len(self.ptAttach)
         self.nPtAttachFull = len(self.ptAttachFull)
 
-        self.refAxis = pyNetwork.pyNetwork(curves,*args,**kwargs)
+        self.refAxis = pyNetwork.pyNetwork(curves, *args, **kwargs)
         self.refAxis.doConnectivity()
        
         # New setup splines for the rotations
@@ -186,17 +186,24 @@ set of points are used'
             t = self.refAxis.curves[i].t
             k = self.refAxis.curves[i].k
             N = len(self.refAxis.curves[i].coef)
-            self.rot_x.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'d')))
-            self.rot_y.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'d')))
-            self.rot_z.append(pySpline.curve(t=t,k=k,coef=zeros((N,1),'d')))
+            self.rot_x.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+            self.rot_y.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+            self.rot_z.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
 
-            self.scale.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
-            self.scale_x.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
-            self.scale_y.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
-            self.scale_z.append(pySpline.curve(t=t,k=k,coef=ones((N,1),'d')))
+            self.scale.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+            self.scale_x.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+            self.scale_y.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+            self.scale_z.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
         # end for
         
-        self.scale0 = copy.deepcopy(self.scale)
+            self.scale0 = copy.deepcopy(self.scale)
         self.scale_x0 = copy.deepcopy(self.scale)
         self.scale_y0 = copy.deepcopy(self.scale)
         self.scale_z0 = copy.deepcopy(self.scale)        
@@ -206,16 +213,16 @@ set of points are used'
 
         if 'axis' in kwargs:
             if kwargs['axis'] == 'x':
-                axis = [1,0,0]
+                axis = [1, 0, 0]
             elif kwargs['axis'] == 'y':
-                axis = [0,1,0]
+                axis = [0, 1, 0]
             elif kwargs['axis'] == 'z':
-                axis = [0,0,1]
+                axis = [0, 0, 1]
             else:
                 axis = kwargs['axis']
             # end if
-            axis = array(axis)
-            axis = array([1,0,0])
+            axis = numpy.array(axis)
+            axis = numpy.array([1, 0, 0])
         else:
             axis = None
         # end if
@@ -225,12 +232,14 @@ set of points are used'
 
         for ii in xrange(len(self.ptAttachPtr)-1):
             pts_to_use = self.ptAttach[
-                self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1],:]
+                self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1], :]
             pts_to_use = self.ptAttach
             if axis is not None:
-                ids,s0 = self.refAxis.projectRays(pts_to_use,axis)#,curves=[ii])
+                ids, s0 = self.refAxis.projectRays(
+                    pts_to_use, axis)#, curves=[ii])
             else:
-                ids,s0 = self.refAxis.projectPoints(pts_to_use)#,curves=[ii])
+                ids, s0 = self.refAxis.projectPoints(
+                    pts_to_use)#, curves=[ii])
             # end for
 
             curveIDs.extend(ids)
@@ -241,10 +250,13 @@ set of points are used'
         self.links_x = []
         self.links_n = []
         for i in xrange(self.nPtAttach):
-            self.links_x.append(self.ptAttach[i] - self.refAxis.curves[self.curveIDs[i]](s[i]))
-            deriv = self.refAxis.curves[self.curveIDs[i]].getDerivative(self.links_s[i])
-            deriv /= norm(deriv) # Normalize
-            self.links_n.append(cross(deriv,self.links_x[-1]))
+            self.links_x.append(
+                self.ptAttach[i] - \
+                    self.refAxis.curves[self.curveIDs[i]](s[i]))
+            deriv = self.refAxis.curves[
+                self.curveIDs[i]].getDerivative(self.links_s[i])
+            deriv /= numpy.linalg.norm(deriv) # Normalize
+            self.links_n.append(numpy.cross(deriv, self.links_x[-1]))
         # end for
 
         return
@@ -258,7 +270,7 @@ set of points are used'
         self.scale_z = copy.deepcopy(self.scale_z0)      
         
 
-    def addGeoDVGlobal(self,dv_name,value,lower,upper,function,useit=True):
+    def addGeoDVGlobal(self, dv_name, value, lower, upper, function, useit=True):
         '''Add a global design variable
         Required:
         dv_name: a unquie name for this design variable (group)
@@ -276,14 +288,14 @@ set of points are used'
             sys.exit(1)
         # end if
         
-        self.DV_listGlobal.append(geoDVGlobal(\
-                dv_name,value,lower,upper,function,useit))
-        self.DV_namesGlobal[dv_name]=len(self.DV_listGlobal)-1
+        self.DV_listGlobal.append(geo_utils.geoDVGlobal(\
+                dv_name, value, lower, upper, function, useit))
+        self.DV_namesGlobal[dv_name] = len(self.DV_listGlobal)-1
 
         return
 
-    def addGeoDVLocal(self,dv_name,lower,upper,axis='y',pointSelect=None,
-                      useit=True):
+    def addGeoDVLocal(self, dv_name, lower, upper, axis='y', pointSelect=None):
+
         '''Add a local design variable
         Required:
         dv_name: a unique name for this design variable (group)
@@ -291,7 +303,7 @@ set of points are used'
         upper: The upper bound for this design variable
         Optional:
         axis: The epecified axis direction to move this dof. It can be 
-              'x','y','z' or 'all'. 
+              'x', 'y', 'z' or 'all'. 
         useitg: Boolean flag as to whether to ignore this design variable
         Returns: 
         N: The number of design variables added for this local Set
@@ -305,29 +317,32 @@ set of points are used'
             if pointSelect is not None:
                 pts, ind = pointSelect.getPoints(self.FFD.coef)
             else:
-                #ind = arange(len(self.FFD.coef))
-                ind = arange(self.nPtAttach)
+                ind = numpy.arange(self.nPtAttach)
             # end if
-            self.DV_listLocal.append(geoDVLocal(dv_name,lower,upper,axis,ind))
+            self.DV_listLocal.append(
+                geo_utils.geoDVLocal(dv_name, lower, upper, axis, ind))
             
         if self.Surface:
-            self.DV_listLocal.append(geoDVLocal(\
-                    dv_name,lower,upper,axis,arange(len(self.Surface.coef))))
+            self.DV_listLocal.append(geo_utils.geoDVLocal(\
+                    dv_name, lower, upper, axis, numpy.arange(
+                        len(self.Surface.coef))))
             
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
 
         return self.DV_listLocal[-1].nVal
 
-    def setValues(self,dvName,value=None,scaled=True):
+    def setValues(self, dvName, value=None, scaled=True):
         ''' This is the generic set values function. It can set values
         in a number of different ways:
 
         Type One:
 
-        dvName is a STRING and value is the number of values associated with this DV
+        dvName is a STRING and value is the number of values
+        associated with this DV
 
-        Type Two:
-        dvName is a DICTIONARY and the argument of each dictionary entry is the value to set.
+        Type Two: 
+        dvName is a DICTIONARY and the argument of each
+        dictionary entry is the value to set.
 
         '''
 
@@ -339,16 +354,17 @@ set of points are used'
         elif type(dvName) == dict:
             dv_dict = dvName
         else:
-            mpiPrint('Error setting values. dvName must be one of string or dict')
+            mpiPrint('Error setting values. dvName must be one of\
+ string or dict')
             return
         # end 
 
         for key in dv_dict:
             if key in self.DV_namesGlobal:
-                vals_to_set = atleast_1d(dv_dict[key]).astype('D')
+                vals_to_set = numpy.atleast_1d(dv_dict[key]).astype('D')
                 assert len(vals_to_set) == self.DV_listGlobal[
-                    self.DV_namesGlobal[key]].nVal,\
-                    'Incorrect number of design variables for DV: %'%(key)
+                    self.DV_namesGlobal[key]].nVal, \
+                    'Incorrect number of design variables for DV: %s'%(key)
                 if scaled:
                     vals_to_set = vals_to_set * \
                         self.DV_listGlobal[self.DV_namesGlobal[key]].range +\
@@ -358,9 +374,10 @@ set of points are used'
                 self.DV_listGlobal[self.DV_namesGlobal[key]].value = vals_to_set
             # end if
             if key in self.DV_namesLocal:
-                vals_to_set = atleast_1d(dv_dict[key])
-                assert len(vals_to_set) == self.DV_listLocal[self.DV_namesLocal[key]].nVal,\
-                    'Incorrect number of design variables for DV: %'%(key)
+                vals_to_set = numpy.atleast_1d(dv_dict[key])
+                assert len(vals_to_set) == self.DV_listLocal[
+                    self.DV_namesLocal[key]].nVal, \
+                    'Incorrect number of design variables for DV: %s'%(key)
                 if scaled:
                     vals_to_set = vals_to_set * \
                         self.DV_listLocal[self.DV_namesLocal[key]].range +\
@@ -378,19 +395,19 @@ set of points are used'
 
         return
 
-    def _getRotMatrix(self,rotX,rotY,rotZ):
+    def _getRotMatrix(self, rotX, rotY, rotZ):
         if self.rot_type == 1:
-            D = dot(rotZ,dot(rotY,rotX))
+            D = numpy.dot(rotZ, numpy.dot(rotY, rotX))
         elif self.rot_type == 2:
-            D = dot(rotY,dot(rotZ,rotX))
+            D = numpy.dot(rotY, numpy.dot(rotZ, rotX))
         elif self.rot_type == 3:
-            D = dot(rotX,dot(rotZ,rotY))
+            D = numpy.dot(rotX, numpy.dot(rotZ, rotY))
         elif self.rot_type == 4:
-            D = dot(rotZ,dot(rotX,rotY))
+            D = numpy.dot(rotZ, numpy.dot(rotX, rotY))
         elif self.rot_type == 5:
-            D = dot(rotY,dot(rotX,rotZ))
+            D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
         elif self.rot_type == 6:
-            D = dot(rotX,dot(rotY,rotZ))
+            D = numpy.dot(rotX, numpy.dot(rotY, rotZ))
         # end if
         return D
 
@@ -417,7 +434,7 @@ set of points are used'
 
         return nDV
 
-    def update(self,name="default"):
+    def update(self, name="default"):
 
         '''This is pretty straight forward, perform the operations on
         the ref axis according to the design variables, then return
@@ -432,9 +449,9 @@ set of points are used'
 
         if self.complex:
             self._complexifyCoef()
-            new_pts = zeros((self.nPtAttach,3),'D')
+            new_pts = numpy.zeros((self.nPtAttach, 3), 'D')
         else:
-            new_pts = zeros((self.nPtAttach,3),'d')
+            new_pts = numpy.zeros((self.nPtAttach, 3), 'd')
         # end if
 
         # Run Global Design Vars
@@ -452,20 +469,25 @@ set of points are used'
             scale_y = self.scale_y[self.curveIDs[ipt]](self.links_s[ipt]) 
             scale_z = self.scale_z[self.curveIDs[ipt]](self.links_s[ipt]) 
             if self.rot_type == 0:
-                deriv = self.refAxis.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                deriv /= norm(deriv) # Normalize
-                new_vec = -cross(deriv,self.links_n[ipt])
-                new_vec = rotVbyW(new_vec,deriv,self.rot_x[self.curveIDs[ipt]](self.links_s[ipt])*pi/180)
+                deriv = self.refAxis.curves[
+                    self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+                deriv /= numpy.linalg.norm(deriv) # Normalize
+                new_vec = -numpy.cross(deriv, self.links_n[ipt])
+                new_vec = rotVbyW(new_vec, deriv, self.rot_x[
+                        self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
             else:
-                rotX = rotxM(self.rot_x[self.curveIDs[ipt]](self.links_s[ipt]))
-                rotY = rotyM(self.rot_y[self.curveIDs[ipt]](self.links_s[ipt]))
-                rotZ = rotzM(self.rot_z[self.curveIDs[ipt]](self.links_s[ipt]))
+                rotX = geo_utils.rotxM(self.rot_x[
+                        self.curveIDs[ipt]](self.links_s[ipt]))
+                rotY = geo_utils.rotyM(self.rot_y[
+                        self.curveIDs[ipt]](self.links_s[ipt]))
+                rotZ = geo_utils.rotzM(self.rot_z[
+                        self.curveIDs[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
-                rotM = self._getRotMatrix(rotX,rotY,rotZ)
-                D = dot(rotM,D)
+                rotM = self._getRotMatrix(rotX, rotY, rotZ)
+                D = numpy.dot(rotM, D)
 
                 D[0] *= scale_x
                 D[1] *= scale_y
@@ -482,15 +504,15 @@ set of points are used'
             # end for
 
         if self.FFD:
-            temp = real(new_pts)
+            temp = numpy.real(new_pts)
             self.FFD.coef = self.ptAttachFull.copy()
-            numpy.put(self.FFD.coef[:,0],self.ptAttachInd,temp[:,0])
-            numpy.put(self.FFD.coef[:,1],self.ptAttachInd,temp[:,1])
-            numpy.put(self.FFD.coef[:,2],self.ptAttachInd,temp[:,2])
+            numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, temp[:, 0])
+            numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, temp[:, 1])
+            numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, temp[:, 2])
             self.FFD._updateVolumeCoef()
-            coords = self.FFD.getVolumePoints(self.pt_ind[name])
+            coords = self.FFD.getAttachedPoints(self.pt_ind[name])
         elif self.Surface:
-            self.Surface.coef = real(new_pts)
+            self.Surface.coef = numpy.real(new_pts)
             self.Surface._updateSurfaceCoef()
             coords = self.Surface.getSurfacePoints(0)
         else:
@@ -500,9 +522,9 @@ set of points are used'
         if self.complex:
 
             tempCoef = self.ptAttachFull.copy().astype('D')
-            numpy.put(tempCoef[:,0],self.ptAttachInd,new_pts[:,0])
-            numpy.put(tempCoef[:,1],self.ptAttachInd,new_pts[:,1])
-            numpy.put(tempCoef[:,2],self.ptAttachInd,new_pts[:,2])
+            numpy.put(tempCoef[:, 0], self.ptAttachInd, new_pts[:, 0])
+            numpy.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
+            numpy.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
          
             coords = coords.astype('D')
             imag_part     = numpy.imag(tempCoef)
@@ -511,7 +533,7 @@ set of points are used'
             if self.FFD:
                 dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
                 for ii in xrange(3):
-                    coords[:,ii] += imag_j*dPtdCoef.dot(imag_part[:,ii])
+                    coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
 
 
             elif self.Surface:
@@ -531,7 +553,7 @@ set of points are used'
         # Step 1: Call all the design variables
 
        
-        new_pts = zeros((self.nPtAttach,3),'D')
+        new_pts = numpy.zeros((self.nPtAttach, 3), 'D')
 
         # Set all coef Values back to initial values
 
@@ -550,21 +572,26 @@ set of points are used'
             scale_y = self.scale_y[self.curveIDs[ipt]](self.links_s[ipt]) 
             scale_z = self.scale_z[self.curveIDs[ipt]](self.links_s[ipt]) 
             if self.rot_type == 0:
-                deriv = self.refAxis.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                deriv /= norm(deriv) # Normalize
-                new_vec = -cross(deriv,self.links_n[ipt])
-                new_vec = rotVbyW(new_vec,deriv,self.rot_x[self.curveIDs[ipt]](self.links_s[ipt])*pi/180)
+                deriv = self.refAxis.curves[
+                    self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+                deriv /= numpy.linalg.norm(deriv) # Normalize
+                new_vec = -numpy.cross(deriv, self.links_n[ipt])
+                new_vec = rotVbyW(new_vec, deriv, self.rot_x[
+                        self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
             else:
 
-                rotX = rotxM(self.rot_x[self.curveIDs[ipt]](self.links_s[ipt]))
-                rotY = rotyM(self.rot_y[self.curveIDs[ipt]](self.links_s[ipt]))
-                rotZ = rotzM(self.rot_z[self.curveIDs[ipt]](self.links_s[ipt]))
+                rotX = geo_utils.rotxM(self.rot_x[
+                        self.curveIDs[ipt]](self.links_s[ipt]))
+                rotY = geo_utils.rotyM(self.rot_y[
+                        self.curveIDs[ipt]](self.links_s[ipt]))
+                rotZ = geo_utils.rotzM(self.rot_z[
+                        self.curveIDs[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
-                rotM = self._getRotMatrix(rotX,rotY,rotZ)
-                D = dot(rotM,D)
+                rotM = self._getRotMatrix(rotX, rotY, rotZ)
+                D = numpy.dot(rotM, D)
 
                 D[0] *= scale_x
                 D[1] *= scale_y
@@ -587,7 +614,8 @@ set of points are used'
             self.scale_x[i].coef = self.scale_x[i].coef.astype('D')
             self.scale_y[i].coef = self.scale_y[i].coef.astype('D')
             self.scale_z[i].coef = self.scale_z[i].coef.astype('D')
-            self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.astype('D')
+            self.refAxis.curves[i].coef = \
+                self.refAxis.curves[i].coef.astype('D')
         # end for
 
         self.coef = self.coef.astype('D')
@@ -606,14 +634,15 @@ set of points are used'
             self.scale_x[i].coef = self.scale_x[i].coef.astype('d')
             self.scale_y[i].coef = self.scale_y[i].coef.astype('d')
             self.scale_z[i].coef = self.scale_z[i].coef.astype('d')
-            self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.astype('d')
+            self.refAxis.curves[i].coef = \
+                self.refAxis.curves[i].coef.astype('d')
         # end for
 
         self.coef = self.coef.astype('d')
 
 
-    def totalSensitivity(self,dIdpt,comm=None,scaled=True,name='default'):
-        '''This function takes the total derivative of an objective,
+    def totalSensitivity(self, dIdpt, comm=None, scaled=True, name='default'):
+        '''This function takes the total derivative of an objective, 
         I, with respect the points controlled on this processor. We
         take the transpose prodducts and mpi_allreduce them to get the
         resulting value on each processor.  Note we DO NOT want to run
@@ -639,7 +668,7 @@ set of points are used'
         elif self.J_local is not None and self.J_attach is None:
             J_temp = self.J_local
         else:
-            J_temp = sparse.hstack([self.J_attach,self.J_local],format='lil')
+            J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
         # end if
 
         # Convert J_temp to CSR Matrix
@@ -648,18 +677,18 @@ set of points are used'
         # Transpose of the point-coef jacobian:
         dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
 
-        dIdcoef = zeros((self.nPtAttachFull*3))
-        dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:,0])
-        dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:,1])
-        dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:,2])
+        dIdcoef = numpy.zeros((self.nPtAttachFull*3))
+        dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
+        dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
+        dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
 
         # Now back to design variables:
         dIdx_local = J_temp.T.dot(dIdcoef)
 
         # ---------------- OLD --------------------
         # dIdx_local = self.JT.dot(dIdpt.flatten())
-        # dIdpt = numpy.zeros_like(self.points[self.pt_ind[name]])
-        # self.computeTotalJacobian(name,scaled)
+        # dIdpt = numpy.numpy.zeros_like(self.points[self.pt_ind[name]])
+        # self.computeTotalJacobian(name, scaled)
         # dIdx_local = self.JT.dot(dIdpt.flatten())
 
         if comm: # If we have a comm, globaly reduce with sum
@@ -670,7 +699,7 @@ set of points are used'
 
         return dIdx
 
-    def computeTotalJacobian(self,name='default',scaled=True):
+    def computeTotalJacobian(self, name='default', scaled=True):
         ''' Return the total point jacobian in CSR format since we
         need this for TACS'''
 
@@ -695,20 +724,16 @@ set of points are used'
         elif self.J_local is not None and self.J_attach is None:
             J_temp = sparse.lil_matrix(self.J_local)
         else:
-            J_temp = sparse.hstack([self.J_attach,self.J_local],format='lil')
+            J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
         # end if
 
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
         
-        # Transpose of JACOBIAN
-      
-        nDV = self._getNDV()
-        nPt = len(self.points[self.pt_ind[name]])
-
         if self.FFD:
          
-            dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef.tocoo()
+            dPtdCoef = self.FFD.embeded_volumes[
+                self.pt_ind[name]].dPtdCoef.tocoo()
             # We have a slight problem...dPtdCoef only has the shape
             # functions, so it size Npt x Coef. We need a matrix of
             # size 3*Npt x 3*nCoef, where each non-zero entry of
@@ -717,11 +742,11 @@ set of points are used'
             # Extract IJV Triplet from dPtdCoef
             row = dPtdCoef.row
             col = dPtdCoef.col
-            data= dPtdCoef.data
+            data = dPtdCoef.data
 
-            new_row = zeros(3*len(row),'int')
-            new_col = zeros(3*len(row),'int')
-            new_data= zeros(3*len(row))
+            new_row = numpy.zeros(3*len(row), 'int')
+            new_col = numpy.zeros(3*len(row), 'int')
+            new_data = numpy.zeros(3*len(row))
             
             # Loop over each entry and expand:
             for i in xrange(len(row)):
@@ -738,7 +763,7 @@ set of points are used'
 
             # Create new matrix in coo-dinate format and convert to csr
             new_dPtdCoef = sparse.coo_matrix(
-                (new_data,(new_row,new_col)),shape=(Nrow,Ncol)).tocsr()
+                (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
 
             # Do Sparse Mat-Mat multiplaiction and resort indices
             self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
@@ -746,11 +771,11 @@ set of points are used'
          
             # ------------- OLD VERY SLOW IMPLEMENTATION -----------
          #    dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
-#             JT = sparse.lil_matrix((nDV,nPt*3))
+#             JT = sparse.lil_matrix((nDV, nPt*3))
 #             for i in xrange(nDV):
-#                 JT[i,0::3] = dPtdCoef.dot(J_temp[0::3,i])
-#                 JT[i,1::3] = dPtdCoef.dot(J_temp[1::3,i])
-#                 JT[i,2::3] = dPtdCoef.dot(J_temp[2::3,i])
+#                 JT[i, 0::3] = dPtdCoef.dot(J_temp[0::3, i])
+#                 JT[i, 1::3] = dPtdCoef.dot(J_temp[1::3, i])
+#                 JT[i, 2::3] = dPtdCoef.dot(J_temp[2::3, i])
 #             # end for
 #             self.JT = JT.tocsr()
 #             self.JT.sort_indices()
@@ -759,7 +784,7 @@ set of points are used'
 
         return 
 
-    def _attachedPtJacobian(self,scaled=True):
+    def _attachedPtJacobian(self, scaled=True):
         '''
         Compute the derivative of the the attached points
         '''
@@ -776,7 +801,7 @@ set of points are used'
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
 
-        Jacobian = zeros((self.nPtAttachFull*3,nDV))
+        Jacobian = numpy.zeros((self.nPtAttachFull*3, nDV))
 
         counter = 0
         for i in xrange(len(self.DV_listGlobal)):
@@ -786,23 +811,23 @@ set of points are used'
 
                 self.DV_listGlobal[i].value[j] += h
                 
-                deriv = oneoverh*imag(self.update_deriv()).flatten()
+                deriv = oneoverh*numpy.imag(self.update_deriv()).flatten()
 
                 if scaled:
                     # ptAttachInd is of length nPtAttach, but need to
                     # set the x-y-z coordinates here:
-                    numpy.put(Jacobian[0::3,counter],self.ptAttachInd,
+                    numpy.put(Jacobian[0::3, counter], self.ptAttachInd, 
                               deriv[0::3]*self.DV_listGlobal[i].range[j])
-                    numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
+                    numpy.put(Jacobian[1::3, counter], self.ptAttachInd, 
                               deriv[1::3]*self.DV_listGlobal[i].range[j])
-                    numpy.put(Jacobian[2::3,counter],self.ptAttachInd,
+                    numpy.put(Jacobian[2::3, counter], self.ptAttachInd, 
                               deriv[2::3]*self.DV_listGlobal[i].range[j])
                 else:
-                    numpy.put(Jacobian[0::3,counter],self.ptAttachInd,
+                    numpy.put(Jacobian[0::3, counter], self.ptAttachInd, 
                               deriv[0::3])
-                    numpy.put(Jacobian[1::3,counter],self.ptAttachInd,
+                    numpy.put(Jacobian[1::3, counter], self.ptAttachInd, 
                               deriv[1::3])
-                    numpy.put(Jacobian[2::3,counter],self.ptAttachInd,
+                    numpy.put(Jacobian[2::3, counter], self.ptAttachInd, 
                               deriv[2::3])
                 # end if
 
@@ -817,7 +842,7 @@ set of points are used'
 
         return Jacobian
 
-    def _localDVJacobian(self,scaled=True):
+    def _localDVJacobian(self, scaled=True):
         '''
         Return the derivative of the coefficients wrt the local design 
         variables
@@ -831,23 +856,23 @@ set of points are used'
         if nDV == 0:
             return None
 
-        Jacobian = sparse.lil_matrix((self.nPtAttachFull*3,nDV))
+        Jacobian = sparse.lil_matrix((self.nPtAttachFull*3, nDV))
         for i in xrange(len(self.DV_listLocal)):
             nVal = self.DV_listLocal[i].nVal
             for j in xrange(nVal):
                 pt_dv = self.DV_listLocal[i].coef_list[j] 
                 irow = pt_dv[0]*3 + pt_dv[1]
                 if not scaled:
-                    Jacobian[irow,j] = 1.0
+                    Jacobian[irow, j] = 1.0
                 else:
-                    Jacobian[irow,j] = self.DV_listLocal[i].range[j]
+                    Jacobian[irow, j] = self.DV_listLocal[i].range[j]
                 # end if
             # end for
         # end for
 
         return Jacobian
 
-    def addVariablesPyOpt(self,opt_prob):
+    def addVariablesPyOpt(self, opt_prob):
         '''
         Add the current set of global and local design variables to the opt_prob specified
         '''
@@ -858,28 +883,28 @@ set of points are used'
         for dvList in [self.DV_listGlobal, self.DV_listLocal]:
             for dv in dvList:
                 if dv.nVal > 1:
-                    low = zeros(dv.nVal)
-                    high= ones(dv.nVal)
-                    val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    low = numpy.zeros(dv.nVal)
+                    high = numpy.ones(dv.nVal)
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
                     opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
                                          value=val, lower=low, upper=high)
                 else:
                     low = 0.0
-                    high= 1.0
-                    val = (real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    high = 1.0
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
 
-                    opt_prob.addVar(dv.name, 'c', value=val,
-                                    lower=low,upper=high)
+                    opt_prob.addVar(dv.name, 'c', value=val, 
+                                    lower=low, upper=high)
                 # end
             # end
         # end
 
         return opt_prob
 
-    def checkDerivatives(self,name='default'):
+    def checkDerivatives(self, name='default'):
         '''Run a brute force FD check on ALL design variables'''
         print 'Computing Analytic Jacobian...'
-        self.computeTotalJacobian(name,scaled=False)
+        self.computeTotalJacobian(name, scaled=False)
         Jac = copy.deepcopy(self.JT)
         
         # Global Variables
@@ -894,7 +919,7 @@ set of points are used'
             for j in xrange(self.DV_listGlobal[i].nVal):
 
                 mpiPrint('========================================')
-                mpiPrint('      GlobalVar(%d),Value(%d)           '%(i,j))
+                mpiPrint('      GlobalVar(%d), Value(%d)           '%(i, j))
                 mpiPrint('========================================')
 
                 refVal = self.DV_listGlobal[i].value[j]
@@ -905,9 +930,11 @@ set of points are used'
                 deriv = (coordsph-coords0)/h
 
                 for ii in xrange(len(deriv)):
-                    relErr = (deriv[ii] - Jac[DVCount,ii])/(1e-16 + Jac[DVCount,ii])
-                    if abs(relErr) > 1e-1 and (abs(deriv[ii]) > 10*h or abs(Jac[DVCount,ii]) > 10*h):
-                        print ii,deriv[ii],Jac[DVCount,ii]
+                    relErr = (deriv[ii] - Jac[DVCount, ii])/(
+                        1e-16 + Jac[DVCount, ii])
+                    if abs(relErr) > 1e-1 and (
+                        abs(deriv[ii]) > 10*h or abs(Jac[DVCount, ii]) > 10*h):
+                        print ii, deriv[ii], Jac[DVCount, ii]
                     # end if
                 # end for
                 DVCount += 1
@@ -919,7 +946,7 @@ set of points are used'
             for j in xrange(self.DV_listLocal[i].nVal):
 
                 mpiPrint('========================================')
-                mpiPrint('      LocalVar(%d),Value(%d)           '%(i,j))
+                mpiPrint('      LocalVar(%d), Value(%d)           '%(i, j))
                 mpiPrint('========================================')
 
                 refVal = self.DV_listLocal[i].value[j]
@@ -930,9 +957,12 @@ set of points are used'
                 deriv = (coordsph-coords0)/h
 
                 for ii in xrange(len(deriv)):
-                    relErr = (deriv[ii] - Jac[DVCount,ii])/(1e-16 + Jac[DVCount,ii])
-                    if abs(relErr) > 1e-6 and (abs(deriv[ii]) > 1e-7 or abs(Jac[DVCount,ii]) > 1e-7):
-                        print ii,deriv[ii],Jac[DVCount,ii]
+                    relErr = (deriv[ii] - Jac[DVCount, ii])/(
+                        1e-16 + Jac[DVCount, ii])
+                    if abs(relErr) > 1e-6 and \
+                            (abs(deriv[ii]) > 1e-7 or\
+                                 abs(Jac[DVCount, ii]) > 1e-7):
+                        print ii, deriv[ii], Jac[DVCount, ii]
                     # end if
                 # end for
                 DVCount += 1
