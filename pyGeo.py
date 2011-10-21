@@ -236,7 +236,7 @@ class pyGeo():
         f = open(file_name, 'r')
         Ifile = []
         for line in f:
-            line = line.replace(';', ', ')  #This is a bit of a hack...
+            line = line.replace(';', ',')  #This is a bit of a hack...
             Ifile.append(line)
         f.close()
         
@@ -272,7 +272,7 @@ class pyGeo():
             para_offset = surf_list[isurf][0]+dir_offset+directory_lines-1 
 
             for i in xrange(surf_list[isurf][1]):
-                aux = Ifile[i+para_offset][0:69].split(', ')
+                aux = Ifile[i+para_offset][0:69].split(',')
                 for j in xrange(len(aux)-1):
                     data.append(float(aux[j]))
                 # end for
@@ -421,7 +421,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         # Now blend the knot vectors
-        new_knots = blendKnotVectors(knots, True)
+        new_knots = geo_utils.blendKnotVectors(knots, True)
 
         # Interpolate missing curves and set the new knots in the
         # cruve and recompue
@@ -986,7 +986,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
             # end for
             
             # Now blend all the knot vectors
-            new_knot_vec = blendKnotVectors(knot_vectors, False)
+            new_knot_vec = geo_utils.blendKnotVectors(knot_vectors, False)
             new_knot_vec_flip = (1-new_knot_vec)[::-1]
 
             counter = 0
