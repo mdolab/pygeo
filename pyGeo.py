@@ -459,7 +459,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 curves[i] = pySpline.curve(coef=coef, k=4, t=new_knots.copy())
             else:
                 curves[i].t = new_knots.copy()
-                curves[i].recompute(100)
+                curves[i].recompute(100, computeKnots=False)
         # end for
 
         # Rescale the thickness if required:
