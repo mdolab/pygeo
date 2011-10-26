@@ -1055,16 +1055,18 @@ offset.shape[0], Xsec, rot, must all have the same size'
         
         if coef == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeTecplotCoef(f)
-
+                pySpline.writeTecplot2D(
+                    f,'control_pts',self.surfs[isurf].coef)
+                
         # ----------------------------------
         #    Write out the Original Data
         # ----------------------------------
         
         if orig == True:
             for isurf in xrange(self.nSurf):
-                self.surfs[isurf]._writeTecplotOrigData(f)
-              
+                pySpline.writeTecplot2D(
+                    f,'orig_data',self.surfs[isurf].X)
+
         # -----------------------------------
         #    Write out The Surface Directions
         # -----------------------------------
