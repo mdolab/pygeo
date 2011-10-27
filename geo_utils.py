@@ -2038,9 +2038,10 @@ class BlockTopology(topology):
 
         return
 
-    def calcGlobalNumbering(self, sizes=None, volume_list=None):
+    def calcGlobalNumbering(self, sizes=None, volume_list=None, 
+                            greedyReorder=False):
         '''Internal function to calculate the global/local numbering
-        for each surface'''
+        for each volume'''
 
         if sizes != None:
             for i in xrange(len(sizes)):
@@ -2054,8 +2055,8 @@ class BlockTopology(topology):
                 self.edges[self.edge_link[i][6]].N = sizes[i][1]
                 self.edges[self.edge_link[i][7]].N = sizes[i][1]
 
-                self.edges[self.edge_link[i][8]].N = sizes[i][2]
-                self.edges[self.edge_link[i][9]].N = sizes[i][2]
+                self.edges[self.edge_link[i][8]].N  = sizes[i][2]
+                self.edges[self.edge_link[i][9]].N  = sizes[i][2]
                 self.edges[self.edge_link[i][10]].N = sizes[i][2]
                 self.edges[self.edge_link[i][11]].N = sizes[i][2]
             # end for
@@ -2136,7 +2137,7 @@ the list of volumes must be the same length'
                     # end for
                 # end if
             # end for
-        # end for
+        # end for (volume list)
 
         g_index = [ [] for i in xrange(counter)] # We must add [] for
                                                  # each global node
@@ -2230,6 +2231,7 @@ the list of volumes must be the same length'
                 g_index[node_index[cur_node]].append([ivol, i, j, k])
             # end if type
         # end for (volume loop)
+        
         # Now actually fill everything up
         for ii in xrange(len(volume_list)):
             ivol = volume_list[ii]
@@ -2239,14 +2241,15 @@ the list of volumes must be the same length'
             l_index.append(-1*np.ones((N, M, L), 'intc'))
 
             # DO the 6 planes
-            for i in xrange(N):
-                for j in xrange(M):
-                    for k in [0, L-1]:
+            for k in [0, L-1]:
+                for i in xrange(N):
+                    for j in xrange(M):
                         addNode(i, j, k, N, M, L)
-            for i in xrange(N):
-                for j in [0, M-1]:
+            for j in [0, M-1]:
+                for i in xrange(N):
                     for k in xrange(1, L-1):
                         addNode(i, j, k, N, M, L)
+
             for i in [0, N-1]:
                 for j in xrange(1, M-1):
                     for k in xrange(1, L-1):
@@ -2254,68 +2257,81 @@ the list of volumes must be the same length'
             
         # end for (ii)
 
-        full = True
-        if full: # Add the remainder
-            for ii in xrange(len(volume_list)):
-                ivol = volume_list[ii]
-                N = sizes[ii][0]
-                M = sizes[ii][1]
-                L = sizes[ii][2]
-                for i in xrange(1, N-1):
-                    for j in xrange(1, M-1):
-                        for k in xrange(1, L-1):
-                            l_index[ii][i, j, k] = counter
-                            g_index.append([[ivol, i, j, k]])
-                            counter += 1
-                        # end for
-                    # end for
-                # end for
-            # end for
-        # end if
-
-        # Reorder the indices with a greedy scheme
-            
-        new_indices = np.zeros(len(g_index), 'intc')
-        new_indices[:] = -1
-        new_g_index = [[] for i in xrange(len(g_index))]
-        counter = 0
-
-        # Re-order the l_index
+        # Add the remainder
         for ii in xrange(len(volume_list)):
             ivol = volume_list[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
             L = sizes[ii][2]
-            for i in xrange(N):
-                for j in xrange(M):
-                    for k in xrange(L):
-                        if new_indices[l_index[ii][i, j, k]] == -1:
-                            new_indices[l_index[ii][i, j, k]] = counter
-                            l_index[ii][i, j, k] = counter 
-                            counter += 1
-                        else:
-                            l_index[ii][i, j, k] = \
-                                new_indices[l_index[ii][i, j, k]]
-                        # end if
+
+            NN = sizes[ii][0]-2
+            MM = sizes[ii][1]-2
+            LL = sizes[ii][2]-2
+
+            to_add = NN*MM*LL
+            
+            l_index[ii][1:N-1,1:M-1,1:L-1] = \
+                np.arange(counter,counter+to_add).reshape((NN,MM,LL))
+
+            counter = counter + to_add
+            A = np.zeros((to_add,1,4),'intc')
+            A[:,0,0] = ivol
+            A[:,0,1:] = np.mgrid[1:N-1,1:M-1,1:L-1].transpose(
+                (1,2,3,0)).reshape((to_add,3))
+            
+            g_index.extend(A)
+
+        # end for
+
+        # Set the following as atributes
+        self.nGlobal = len(g_index)
+        self.g_index = g_index
+        self.l_index = l_index
+
+        if greedyReorder:
+
+            # Reorder the indices with a greedy scheme
+            new_indices = np.zeros(len(g_index), 'intc')
+            new_indices[:] = -1
+            new_g_index = [[] for i in xrange(len(g_index))]
+            counter = 0
+
+            # Re-order the l_index
+            for ii in xrange(len(volume_list)):
+                ivol = volume_list[ii]
+                N = sizes[ii][0]
+                M = sizes[ii][1]
+                L = sizes[ii][2]
+                for i in xrange(N):
+                    for j in xrange(M):
+                        for k in xrange(L):
+                            if new_indices[l_index[ii][i, j, k]] == -1:
+                                new_indices[l_index[ii][i, j, k]] = counter
+                                l_index[ii][i, j, k] = counter 
+                                counter += 1
+                            else:
+                                l_index[ii][i, j, k] = \
+                                    new_indices[l_index[ii][i, j, k]]
+                            # end if
+                        # end for
                     # end for
                 # end for
             # end for
-        # end for
-       
-        # Re-order the g_index
-        for ii in xrange(len(g_index)):
-            ivol  = g_index[ii][0][0]
-            i     = g_index[ii][0][1]
-            j     = g_index[ii][0][2]
-            k     = g_index[ii][0][3]
-            pt = l_index[ivol][i, j, k]
-            new_g_index[pt] = g_index[ii]
+
+            # Re-order the g_index
+            for ii in xrange(len(g_index)):
+                ivol  = g_index[ii][0][0]
+                i     = g_index[ii][0][1]
+                j     = g_index[ii][0][2]
+                k     = g_index[ii][0][3]
+                pt = l_index[ivol][i, j, k]
+                new_g_index[pt] = g_index[ii]
+                # end for
             # end for
-        # end for
             
-        self.nGlobal = len(g_index)
-        self.g_index = new_g_index
-        self.l_index = l_index
+            self.g_index = new_g_index
+            self.l_index = l_index
+        # end if (greedy reorder)
 
         return 
 
