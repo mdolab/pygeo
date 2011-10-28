@@ -507,9 +507,9 @@ offset.shape[0], Xsec, rot, must all have the same size'
             coef_top[:, i, 2] = 0
 
             coef_bot[:, i, 0] = scale[i]*(
-                bot_curves[i].coef[:, 0] - offset[i, 0])*scale[i]
+                bot_curves[i].coef[:, 0] - offset[i, 0])
             coef_bot[:, i, 1] = scale[i]*(
-                bot_curves[i].coef[:, 1] - offset[i, 1])*scale[i]
+                bot_curves[i].coef[:, 1] - offset[i, 1])
             coef_bot[:, i, 2] = 0
             
             for j in xrange(ncoef):
