@@ -10,8 +10,9 @@
 # provided.
 # =============================================================================
 
+import sys
 import numpy
-from mdo_import_helper import *
+from mdo_import_helper import import_modules, mpiPrint
 exec(import_modules('geo_utils','pySpline'))
 
 class DVConstraints(object):
@@ -57,14 +58,14 @@ class DVConstraints(object):
         self.thickConPtr.append(self.thickConPtr[-1] + nSpan*nChord)
 
         # Expand out lower and upper to make them the correct size
-        temp = atleast_2d(lower)
+        temp = numpy.atleast_2d(lower)
         if temp.shape[0] == nSpan and value.shape[1] == nChord:
             lower = temp
         else:
             lower = lower*numpy.ones((nSpan,nChord))
         # end if
                         
-        temp = atleast_2d(upper)
+        temp = numpy.atleast_2d(upper)
         if temp.shape[0] == nSpan and value.shape[1] == nChord:
             upper = temp.flatten()
         else:
@@ -72,7 +73,7 @@ class DVConstraints(object):
         # end if
 
         xmin,xmax = wing.getBounds()
-        scale = e_dist(xmin,xmax)
+        scale = geo_utils.e_dist(xmin,xmax)
         
         # Create mesh of itersections
 
@@ -86,7 +87,8 @@ class DVConstraints(object):
         span_s = numpy.linspace(0,1,nSpan)
         chord_s = numpy.linspace(0,1,nChord)
 
-        X = tfi_2d(le_s(span_s),te_s(span_s),root_s(chord_s),tip_s(chord_s))
+        X = geo_utils.tfi_2d(le_s(span_s),te_s(span_s),
+                             root_s(chord_s),tip_s(chord_s))
 
         p0 = []
         v1 = []
@@ -99,8 +101,8 @@ class DVConstraints(object):
             tu = surf.tu
             tv = surf.tv
             
-            u = fill_knots(tu,ku,level)
-            v = fill_knots(tv,kv,level)
+            u = geo_utils.fill_knots(tu,ku,level)
+            v = geo_utils.fill_knots(tv,kv,level)
 
             for i in xrange(len(u)-1):
                 for j in xrange(len(v)-1):
@@ -120,15 +122,17 @@ class DVConstraints(object):
                 # end for
             # end for
         # end for
-        p0 = array(p0)
-        v1 = array(v1)
-        v2 = array(v2)
+        p0 = numpy.array(p0)
+        v1 = numpy.array(v1)
+        v2 = numpy.array(v2)
 
         # Append the new coordinates to self.coords
         coord_offset = len(self.coords)
         D0_offset    = len(self.D0)
-        self.coords = numpy.append(self.coords,zeros((nSpan*nChord*2,3)),axis=0)
-        self.D0     = numpy.append(self.D0    ,zeros((nSpan*nChord    )),axis=0)
+        self.coords = numpy.append(self.coords,numpy.zeros(
+                    (nSpan*nChord*2,3)),axis=0)
+        self.D0     = numpy.append(self.D0    ,numpy.zeros(
+                    (nSpan*nChord    )),axis=0)
       
         for i in xrange(nSpan): 
             for j in xrange(nChord):
@@ -151,7 +155,7 @@ class DVConstraints(object):
 
                 up_vec = numpy.cross(u_vec,v_vec)*scale
 
-                up,down,fail = projectNode(X[i,j],up_vec,p0,v1,v2)
+                up,down,fail = geo_utils.projectNode(X[i,j],up_vec,p0,v1,v2)
                 if fail:
                     print 'Project Node failed'
                     sys.exit(0)
@@ -163,7 +167,7 @@ class DVConstraints(object):
                 coord_offset += 1
 
                 # Determine the distance between points
-                self.D0[D0_offset] = e_dist(up,down)
+                self.D0[D0_offset] = geo_utils.e_dist(up,down)
 
                 # The constraint will ALWAYS be set as a scaled value,
                 # however, it is possible that the user has specified
@@ -184,7 +188,6 @@ class DVConstraints(object):
         self.scaled.append(scaled)
 
         return
-
 
     def addLeTeCon(self,DVGeo,up_ind,low_ind):
         '''Add Leading Edge and Trailing Edge Constraints to the FFD
@@ -224,7 +227,7 @@ class DVConstraints(object):
             # Finally, unique the list to parse out duplicates. Note:
             # This sort may not be stable however, the order of the
             # LeTeCon list doens't matter
-            self.LeTeCon = unique(self.LeTeCon)
+            self.LeTeCon = geo_utils.unique(self.LeTeCon)
         else:
             mpiPrint('Warning: addLeTECon is only setup for FFDs')
         # end if
@@ -241,6 +244,8 @@ class DVConstraints(object):
         ''' Set the new set of coordinates'''
 
         self.coords = coords.copy()
+
+        return
 
     def addConstraintsPyOpt(self,opt_prob):
         ''' Add thickness contraints to pyOpt
@@ -264,11 +269,10 @@ class DVConstraints(object):
 
         return 
 
-
     def getLeTeConstraints(self,DVGeo):
         '''Evaluate the LeTe constraint using the current DVGeo opject'''
 
-        con = zeros(len(self.LeTeCon))
+        con = numpy.zeros(len(self.LeTeCon))
         for i in xrange(len(self.LeTeCon)):
             dv = self.LeTeCon[i][0]
             up = self.LeTeCon[i][1]
@@ -281,7 +285,7 @@ class DVConstraints(object):
     def getLeTeSensitivity(self,DVGeo,scaled=True):
         ndv = DVGeo._getNDV()
         nlete = len(self.LeTeCon)
-        dLeTedx = zeros([nlete,ndv])
+        dLeTedx = numpy.zeros([nlete,ndv])
 
         DVoffset = [DVGeo._getNDVGlobal()]
         # Generate offset lift of the number of local variables
@@ -306,11 +310,11 @@ class DVConstraints(object):
 
     def getThicknessConstraints(self):
         '''Return the current thickness constraint'''
-        D = zeros(self.D0.shape)
+        D = numpy.zeros(self.D0.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
             for i in xrange(self.thickConPtr[ii],self.thickConPtr[ii+1]):
-                D[i] = e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
+                D[i] = geo_utils.e_dist(self.coords[2*i,:],self.coords[2*i+1,:])
                 if self.scaled[ii]:
                     D[i]/=self.D0[i]
             # end for
@@ -327,15 +331,16 @@ class DVConstraints(object):
         '''
 
         nDV = DVGeo._getNDV()
-        dTdx = zeros((self.nThickCon,nDV))
-        dTdpt = zeros(self.coords.shape)
+        dTdx = numpy.zeros((self.nThickCon,nDV))
+        dTdpt = numpy.zeros(self.coords.shape)
 
         for ii in xrange(len(self.thickConPtr)-1):
             for i in xrange(self.thickConPtr[ii],self.thickConPtr[ii+1]):
 
                 dTdpt[:,:] = 0.0
 
-                p1b,p2b = e_dist_b(self.coords[2*i,:],self.coords[2*i+1,:])
+                p1b,p2b = geo_utils.e_dist_b(
+                    self.coords[2*i,:],self.coords[2*i+1,:])
         
                 dTdpt[2*i,:] = p1b
                 dTdpt[2*i+1,:] = p2b

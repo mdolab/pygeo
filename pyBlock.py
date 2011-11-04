@@ -569,7 +569,7 @@ class pyBlock():
         
         if orig == True:
             for ivol in xrange(self.nVol):
-                self.vols[ivol]._writeTecplotOrigData(f)
+                pySpline.writeTecplot3D(f,'orig',self.vols[ivol].X)
 
         # -------------------------------
         #    Write out the Control Points
@@ -577,7 +577,7 @@ class pyBlock():
         
         if coef == True:
             for ivol in xrange(self.nVol):
-                self.vols[ivol]._writeTecplotCoef(f)
+                pySpline.writeTecplot3D(f,'coef',self.vols[ivol].coef)
 
         # ---------------------------------------------
         #    Write out The Volume Labels
