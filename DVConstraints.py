@@ -256,7 +256,7 @@ class DVConstraints(object):
                 '''
         if self.nThickCon > 0:
             opt_prob.addConGroup(
-                'thickness_constraint',len(self.thickConLower), 'i', 
+                'thickCon',len(self.thickConLower), 'i', 
                 lower=self.thickConLower,upper=self.thickConUpper)
         # end if
 

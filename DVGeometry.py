@@ -497,24 +497,26 @@ class DVGeometry(object):
             # end if
         # end for
 
-        if self.FFD or self.Surface:
-            # Now run the local DVs
-            for i in xrange(len(self.DV_listLocal)):
-                self.DV_listLocal[i](new_pts)
-            # end for
-
         if self.FFD:
             temp = numpy.real(new_pts)
             self.FFD.coef = self.ptAttachFull.copy()
             numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, temp[:, 0])
             numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, temp[:, 1])
             numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, temp[:, 2])
+
+            for i in xrange(len(self.DV_listLocal)):
+                self.DV_listLocal[i](self.FFD.coef)
+            # end for
+
             self.FFD._updateVolumeCoef()
             coords = self.FFD.getAttachedPoints(self.pt_ind[name])
+
+
         elif self.Surface:
-            self.Surface.coef = numpy.real(new_pts)
-            self.Surface._updateSurfaceCoef()
-            coords = self.Surface.getSurfacePoints(0)
+            pass # Not implemented
+            #self.Surface.coef = numpy.real(new_pts)
+            #self.Surface._updateSurfaceCoef()
+            #coords = self.Surface.getSurfacePoints(0)
         else:
             coords = new_pts
         # end if
