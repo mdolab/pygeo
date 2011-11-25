@@ -2825,17 +2825,36 @@ def projectNode(pt, up_vec, p0, v1, v2):
     sol, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
     sol = sol.T
 
+    # Check to see if any of the solutions happen be identical. 
+  
+    if n_sol > 1:
+        new_sol = np.zeros_like(sol)
+        new_n_sol = 0
+        points = []
+        for i in xrange(n_sol):
+            points.append(sol[i, 3:6])
+
+        newPoints, link = pointReduce(points, node_tol=1e-12)
+        n_sol = len(newPoints)
+    else:
+        newPoints = []
+        for i in xrange(n_sol):
+            newPoints.append(sol[i, 3:6])
+    # end if
+  
+
     if n_sol == 0:
         fail = 2
         return None, None, fail
     elif n_sol == 1:
         fail = 1
-        return sol[0, 3:6],  None,  fail
+        return newPoints[0],  None,  fail
     elif n_sol == 2:
         fail = 0
+        
         # Determine the 'top' and 'bottom' solution
-        first  = sol[0, 3:6]
-        second = sol[1, 3:6]
+        first  = newPoints[0]
+        second = newPoints[1]
 
         if np.dot(first - pt, up_vec) >= np.dot(second - pt, up_vec):
             return first, second, fail
@@ -2846,10 +2865,10 @@ def projectNode(pt, up_vec, p0, v1, v2):
         # distance to the points that have been found.
         fail = -1
 
-        pmin = abs(np.dot(sol[:n_sol, 3:6] - pt, up_vec))
+        pmin = abs(np.dot(newPoints[:n_sol] - pt, up_vec))
         min_index = np.argsort(pmin)
         
-        return sol[min_index[0], 3:6], sol[min_index[1], 3:6], fail
+        return newPoints[min_index[0]], newPoints[min_index[1]], fail
 
 def projectNodePosOnly(pt, up_vec, p0, v1, v2):
     '''
