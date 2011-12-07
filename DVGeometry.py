@@ -749,15 +749,12 @@ class DVGeometry(object):
             new_row = numpy.zeros(3*len(row), 'int')
             new_col = numpy.zeros(3*len(row), 'int')
             new_data = numpy.zeros(3*len(row))
-            
+
             # Loop over each entry and expand:
-            for i in xrange(len(row)):
-                for j in xrange(3):
-                    new_row[3*i+j]  = row[i]*3 + j 
-                    new_col[3*i+j]  = col[i]*3 + j
-                    new_data[3*i+j] = data[i]
-                # end for
-            # end for
+            for j in xrange(3):
+                new_data[j::3] = data
+                new_row[j::3] = row*3 + j
+                new_col[j::3] = col*3 + j
                     
             # Size of New Matrix:
             Nrow = dPtdCoef.shape[0]*3
