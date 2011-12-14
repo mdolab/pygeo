@@ -45,7 +45,7 @@ except:
 # =============================================================================
 # Extension modules
 # =============================================================================
-from mdo_import_helper import import_modules, mpiPrint
+from mdo_import_helper import import_modules, mpiPrint, MPI
 exec(import_modules('geo_utils','pySpline'))
 import geo_utils, pySpline # not required, but pylint is happier
 
@@ -871,35 +871,43 @@ class pyBlock():
         u     = numpy.zeros(len(x0))
         v     = numpy.zeros(len(x0))
         w     = numpy.zeros(len(x0))
-        D     = numpy.zeros((len(x0),3))
+        D     = 1e10*numpy.ones((len(x0),3))
 
         # Starting list is just [0,1,2,...,nVol-1]
         vol_list = numpy.arange(self.nVol)
 
         for i in xrange(len(x0)):
-            for j in xrange(self.nVol):
-                iVol = vol_list[j]
-                u0,v0,w0,D0 = self.vols[iVol].projectPoint(
-                    x0[i],eps=eps,**kwargs)
 
-                # Evaluate new pt to get actual difference:
-                new_pt = self.vols[iVol](u0,v0,w0)
-                D0 = x0[i]-new_pt
+            for n_sub in xrange(1,10):
 
-                if (numpy.linalg.norm(D0) < eps*10):
-                    volID[i] = iVol
-                    u[i]     = u0
-                    v[i]     = v0
-                    w[i]     = w0
-                    D[i]     = D0
+                for j in xrange(self.nVol):
+                    iVol = vol_list[j]
+                    u0,v0,w0,D0 = self.vols[iVol].projectPoint(
+                        x0[i],eps=eps,n_sub=n_sub,**kwargs)
+                    solved = False
+                    # Evaluate new pt to get actual difference:
+                    new_pt = self.vols[iVol](u0,v0,w0)
+                    D0 = x0[i]-new_pt
+
+                    if (numpy.linalg.norm(D0) < eps*10):
+                        volID[i] = iVol
+                        u[i]     = u0
+                        v[i]     = v0
+                        w[i]     = w0
+                        D[i]     = D0
+                        solved = True
+                        break
+                    # end if
+                # end for
+
+                # Shuffle the order of the vol_list such that the last
+                # volume used (iVol or vol_list[j]) is at the start of the
+                # list and the remainder are shuflled towards the back
+                vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
+                
+                if solved:
                     break
-                # end if
             # end for
-
-            # Shuffle the order of the vol_list such that the last
-            # volume used (iVol or vol_list[j]) is at the start of the
-            # list and the remainder are shuflled towards the back
-            vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
         # end for
         
         # We are going to a an ACTUAL check of how well the points
@@ -928,6 +936,7 @@ class pyBlock():
         if counter > 0:
             print ' -> Warning: %d point(s) not projected to tolerance: \
 %g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
+
         return volID,u,v,w,D
 
     def getBounds(self):
