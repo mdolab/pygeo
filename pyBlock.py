@@ -930,6 +930,7 @@ class pyBlock():
                 counter += 1
             # end if
         # end for
+
         D_rms = numpy.sqrt(D_rms / len(x0))
       
         # Check to see if we have bad projections and print a warning:
