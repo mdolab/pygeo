@@ -343,6 +343,7 @@ class pyBlock():
             self.vols[ivol]._setFaceSurfaces()
             self.vols[ivol]._setEdgeCurves()
 
+        mpiPrint(' -> Fitting Finished...',self.NO_PRINT)
 
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
