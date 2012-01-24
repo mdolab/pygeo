@@ -161,7 +161,7 @@ class pyBlock():
 
         if 'FFD' in kwargs:
             if kwargs['FFD']:
-                # Assemble blocks directly
+                # Assemble blocks directly from the coefficients:
                 for ivol in xrange(nVol):
                     ku = min(4,sizes[ivol,0])
                     kv = min(4,sizes[ivol,1])
@@ -171,6 +171,11 @@ class pyBlock():
                             X=blocks[ivol],ku=ku,kv=kv,kw=kw,
                             no_print=self.NO_PRINT,
                             recompute=False))
+
+#                     self.vols.append(pySpline.volume(
+#                             ku=ku,kv=kv,kw=kw,coef=X,no_print=self.NO_PRINT,
+#                             tw=
+
                 # end for
                 self.nVol = len(self.vols)
                 return
@@ -878,7 +883,7 @@ class pyBlock():
 
         for i in xrange(len(x0)):
 
-            for n_sub in xrange(1,10):
+            for n_sub in xrange(1,5):
 
                 for j in xrange(self.nVol):
                     iVol = vol_list[j]
@@ -889,6 +894,10 @@ class pyBlock():
                     new_pt = self.vols[iVol](u0,v0,w0)
                     D0 = x0[i]-new_pt
 
+                    if numpy.linalg.norm(D0) < numpy.linalg.norm(D[i]):
+                        D[i] = numpy.linalg.norm(D0)
+                    # end if
+
                     if (numpy.linalg.norm(D0) < eps*10):
                         volID[i] = iVol
                         u[i]     = u0
@@ -898,6 +907,7 @@ class pyBlock():
                         solved = True
                         break
                     # end if
+
                 # end for
 
                 # Shuffle the order of the vol_list such that the last
