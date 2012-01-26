@@ -438,7 +438,7 @@ class DVGeometry(object):
         ''' Extract the coefficients for the selected reference
         axis. This should be used inside design variable functions'''
 
-        C = numpy.zeros((len(self.refAxis.topo.l_index[axisID]),3))
+        C = numpy.zeros((len(self.refAxis.topo.l_index[axisID]),3),self.coef.dtype)
  
         C[:,0] = numpy.take(self.coef[:,0],self.refAxis.topo.l_index[axisID])
         C[:,1] = numpy.take(self.coef[:,1],self.refAxis.topo.l_index[axisID])
@@ -582,7 +582,10 @@ class DVGeometry(object):
         new_pts = numpy.zeros((self.nPtAttach, 3), 'D')
 
         # Set all coef Values back to initial values
+        self._setInitialValues()
+        self._complexifyCoef()
 
+        # Step 1: Call all the design variables
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
         # end for
@@ -816,9 +819,7 @@ class DVGeometry(object):
         if nDV == 0:
             return None
 
-        self._setInitialValues()
-        self._complexifyCoef()
-
+      
         h = 1.0e-40j
         oneoverh = 1.0/1e-40
         # Just do a CS loop over the coef
@@ -928,6 +929,7 @@ class DVGeometry(object):
         '''Run a brute force FD check on ALL design variables'''
         print 'Computing Analytic Jacobian...'
         self.computeTotalJacobian(name, scaled=False)
+
         Jac = copy.deepcopy(self.JT)
         
         # Global Variables
@@ -955,9 +957,10 @@ class DVGeometry(object):
                 for ii in xrange(len(deriv)):
                     relErr = (deriv[ii] - Jac[DVCount, ii])/(
                         1e-16 + Jac[DVCount, ii])
-                    if abs(relErr) > 1e-6 and (
-                        abs(deriv[ii]) > 10*h or abs(Jac[DVCount, ii]) > 10*h):
-                        print ii, deriv[ii], Jac[DVCount, ii]
+                    absErr = deriv[ii] - Jac[DVCount,ii]
+
+                    if abs(relErr) > h and abs(absErr) > h:
+                        print ii, deriv[ii], Jac[DVCount, ii], relErr, absErr
                     # end if
                 # end for
                 DVCount += 1
@@ -982,10 +985,10 @@ class DVGeometry(object):
                 for ii in xrange(len(deriv)):
                     relErr = (deriv[ii] - Jac[DVCount, ii])/(
                         1e-16 + Jac[DVCount, ii])
-                    if abs(relErr) > 1e-6 and \
-                            (abs(deriv[ii]) > 1e-7 or\
-                                 abs(Jac[DVCount, ii]) > 1e-7):
-                        print ii, deriv[ii], Jac[DVCount, ii]
+                    absErr = deriv[ii] - Jac[DVCount,ii]
+
+                    if abs(relErr) > h and abs(absErr) > h:
+                        print ii, deriv[ii], Jac[DVCount, ii], relErr, absErr
                     # end if
                 # end for
                 DVCount += 1
