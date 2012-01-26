@@ -124,8 +124,6 @@ class DVConstraints(object):
 
         self.coords = numpy.append(self.coords, numpy.zeros(
                     (nSpan*nChord*2, 3)),axis=0)
-        #self.D0     = numpy.append(self.D0    , numpy.zeros(
-        #            (nSpan*nChord    )), axis=0)
         self.D0.extend(numpy.zeros(nSpan*nChord))
 
         # Generate all intersections:
@@ -168,17 +166,6 @@ class DVConstraints(object):
 
                 # Determine the distance between points
                 self.D0[D0_offset] = geo_utils.e_dist(up, down)
-
-                # The constraint will ALWAYS be set as a scaled value,
-                # however, it is possible that the user has specified
-                # individal values for each location. Therefore we
-                # will convert these absolute values to an equilivant
-                # scaled value. 
-                
-                if not scaled:
-                    lower[i, j] /= self.D0[D0_offset]
-                    upper[i, j] /= self.D0[D0_offset]
-                #end
                 D0_offset += 1
             # end for
         # end for
@@ -249,7 +236,6 @@ class DVConstraints(object):
         D0_offset    = len(self.D0)
         self.coords = numpy.append(self.coords, numpy.zeros((nCon*2, 3)),
                                    axis=0)
-        #self.D0     = numpy.append(self.D0, numpy.zeros(nCon),axis=0)
         self.D0.extend(numpy.zeros(nCon))
 
         # Generate all intersections:
@@ -274,16 +260,6 @@ class DVConstraints(object):
             # Determine the distance between points
             self.D0[D0_offset] = geo_utils.e_dist(up, down)
 
-            # The constraint will ALWAYS be set as a scaled value,
-            # however, it is possible that the user has specified
-            # individal values for each location. Therefore we
-            # will convert these absolute values to an equilivant
-            # scaled value. 
-                
-            if not scaled:
-                lower[i] /= self.D0[D0_offset]
-                upper[i] /= self.D0[D0_offset]
-            #end
             D0_offset += 1
         # end for
         
@@ -435,17 +411,6 @@ class DVConstraints(object):
         self.volumeConSizes.append([nSpan,nChord])
         V0_offset = len(self.V0)
         self.V0.append(self._evalVolume(V0_offset))
-
-        # The constraint will ALWAYS be set as a scaled value,
-        # however, it is possible that the user has specified
-        # individal values for each location. Therefore we
-        # will convert these absolute values to an equilivant
-        # scaled value. 
-                
-        if not scaled:
-            lower /= self.V0[V0_offset]
-            upper /= self.V0[V0_offset]
-        # end if
         
         # Finally add the thickness constraint values
         self.volumeConLower.append(lower)
@@ -652,15 +617,18 @@ class DVConstraints(object):
         thickness constraints are returned together...there is no
         disctinction between how they were added'''
         D = numpy.zeros(len(self.D0))
-
+        d_count = 0
         for ii in xrange(self.nThickCon):
             for i in xrange(self.thickConPtr[ii][0]/2, 
                             self.thickConPtr[ii][1]/2):
-                D[i] = geo_utils.e_dist(
+                D[d_count] = geo_utils.e_dist(
                     self.coords[2*i, :],self.coords[2*i+1, :])
                 if self.thickScaled[ii]:
-                    D[i]/=self.D0[i]
+                    D[d_count]/=self.D0[d_count]
+                # end if
+                d_count += 1
             # end for
+            
         # end for
 
         return D
@@ -674,9 +642,9 @@ class DVConstraints(object):
         '''
 
         nDV = DVGeo._getNDV()
-        dTdx = numpy.zeros((self.nThickCon, nDV))
+        dTdx = numpy.zeros((len(self.D0), nDV))
         dTdpt = numpy.zeros(self.coords.shape)
-
+        d_count = 0
         for ii in xrange(self.nThickCon):
             for i in xrange(self.thickConPtr[ii][0]/2, 
                             self.thickConPtr[ii][1]/2):
@@ -690,11 +658,12 @@ class DVConstraints(object):
                 dTdpt[2*i+1, :] = p2b
 
                 if self.thickScaled[ii]:
-                    dTdpt[2*i, :] /= self.D0[i]
-                    dTdpt[2*i+1, :] /= self.D0[i]
+                    dTdpt[2*i, :] /= self.D0[d_count]
+                    dTdpt[2*i+1, :] /= self.D0[d_count]
                 # end if
 
-                dTdx[i, :] = DVGeo.totalSensitivity(dTdpt, name=name)
+                dTdx[d_count, :] = DVGeo.totalSensitivity(dTdpt, name=name)
+                d_count += 1
             # end for
         # end for
 
