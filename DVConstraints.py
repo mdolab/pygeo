@@ -89,7 +89,7 @@ class DVConstraints(object):
 
         # Expand out lower and upper to make them the correct size
         temp = numpy.atleast_2d(lower)
-        if temp.shape[0] == nSpan and value.shape[1] == nChord:
+        if temp.shape[0] == nSpan and temp.shape[1] == nChord:
             lower = temp
         else:
             lower = lower*numpy.ones((nSpan, nChord))
@@ -103,13 +103,10 @@ class DVConstraints(object):
         # end if
 
         # Create mesh of itersections
-
-        root_line = [le_list[0], te_list[0]]
-        tip_line  = [le_list[-1], te_list[-1]]
-        le_s = pySpline.curve(X=le_list, k=2)
-        te_s = pySpline.curve(X=te_list, k=2)
-        root_s = pySpline.curve(X=[le_list[0], te_list[0]], k=2)
-        tip_s  = pySpline.curve(X=[le_list[-1], te_list[-1]], k=2)
+        le_s = pySpline.curve(X=le_list,k=2)
+        te_s = pySpline.curve(X=te_list,k=2)
+        root_s = pySpline.curve(X=[le_list[0],te_list[0]],k=2)
+        tip_s  = pySpline.curve(X=[le_list[-1],te_list[-1]],k=2)
 
         span_s = numpy.linspace(0, 1, nSpan)
         chord_s = numpy.linspace(0, 1, nChord)
