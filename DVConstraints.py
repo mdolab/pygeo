@@ -567,7 +567,6 @@ class DVConstraints(object):
 
         return
 
-
     def getCoordinates(self):
         ''' Return the current set of coordinates used in
         DVConstraints'''
@@ -617,7 +616,8 @@ class DVConstraints(object):
             dv = self.LeTeCon[i][0]
             up = self.LeTeCon[i][1]
             down = self.LeTeCon[i][2]
-            con[i] = DVGeo.DV_listLocal[dv].value[up] + DVGeo.DV_listLocal[dv].value[down]
+            con[i] = DVGeo.DV_listLocal[dv].value[up] + \
+                DVGeo.DV_listLocal[dv].value[down]
         # end for
 
         return con
@@ -803,6 +803,9 @@ class DVConstraints(object):
                 Volume += self._evalVolumeCube(coords)
             # end for
         # end for
+        if Volume < 0:
+            Volume = -Volume
+            self.flipVolume = True
 
         return Volume
 
@@ -902,6 +905,9 @@ class DVConstraints(object):
                 # end for
             # end for
         # end for
+
+        if self.flipVolume:
+            xd = -xd
 
         # Add into actual derivative array
         dVdpt = numpy.zeros_like(self.coords)
