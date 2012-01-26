@@ -931,7 +931,7 @@ class DVGeometry(object):
                 for ii in xrange(len(deriv)):
                     relErr = (deriv[ii] - Jac[DVCount, ii])/(
                         1e-16 + Jac[DVCount, ii])
-                    if abs(relErr) > 1e-1 and (
+                    if abs(relErr) > 1e-6 and (
                         abs(deriv[ii]) > 10*h or abs(Jac[DVCount, ii]) > 10*h):
                         print ii, deriv[ii], Jac[DVCount, ii]
                     # end if
