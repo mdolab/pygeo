@@ -203,7 +203,7 @@ class DVGeometry(object):
                     t=t, k=k, coef=numpy.ones((N, 1), 'd')))
         # end for
         
-            self.scale0 = copy.deepcopy(self.scale)
+        self.scale0 = copy.deepcopy(self.scale)
         self.scale_x0 = copy.deepcopy(self.scale)
         self.scale_y0 = copy.deepcopy(self.scale)
         self.scale_z0 = copy.deepcopy(self.scale)        
@@ -434,6 +434,29 @@ class DVGeometry(object):
 
         return nDV
 
+    def extractCoef(self, axisID):
+        ''' Extract the coefficients for the selected reference
+        axis. This should be used inside design variable functions'''
+
+        C = numpy.zeros((len(self.refAxis.topo.l_index[axisID]),3))
+ 
+        C[:,0] = numpy.take(self.coef[:,0],self.refAxis.topo.l_index[axisID])
+        C[:,1] = numpy.take(self.coef[:,1],self.refAxis.topo.l_index[axisID])
+        C[:,2] = numpy.take(self.coef[:,2],self.refAxis.topo.l_index[axisID])
+
+        return C
+
+    def restoreCoef(self, coef, axisID):
+        ''' Restore the coefficients for the selected reference
+        axis. This should be used inside design variable functions'''
+
+        # Reset
+        numpy.put(self.coef[:,0],self.refAxis.topo.l_index[axisID],coef[:,0])
+        numpy.put(self.coef[:,1],self.refAxis.topo.l_index[axisID],coef[:,1])
+        numpy.put(self.coef[:,2],self.refAxis.topo.l_index[axisID],coef[:,2])
+
+        return 
+
     def update(self, name="default"):
 
         '''This is pretty straight forward, perform the operations on
@@ -457,7 +480,8 @@ class DVGeometry(object):
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
-            
+        # end for
+
         self.refAxis.coef = self.coef
         self.refAxis._updateCurveCoef()
 
