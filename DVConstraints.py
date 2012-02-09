@@ -410,7 +410,20 @@ class DVConstraints(object):
 
         self.volumeConSizes.append([nSpan,nChord])
         V0_offset = len(self.V0)
-        self.V0.append(self._evalVolume(V0_offset))
+        axis = [0,0,0] # axis doesn't matter
+        V0,CG = self._evalVolume(V0_offset,axis)
+        self.V0.append(V0)
+
+        # The constraint will ALWAYS be set as a scaled value,
+        # however, it is possible that the user has specified
+        # individal values for each location. Therefore we
+        # will convert these absolute values to an equilivant
+        # scaled value. 
+                
+        if not scaled:
+            lower /= self.V0[V0_offset]
+            upper /= self.V0[V0_offset]
+        # end if
         
         # Finally add the thickness constraint values
         self.volumeConLower.append(lower)
@@ -618,6 +631,7 @@ class DVConstraints(object):
         disctinction between how they were added'''
         D = numpy.zeros(len(self.D0))
         d_count = 0
+
         for ii in xrange(self.nThickCon):
             for i in xrange(self.thickConPtr[ii][0]/2, 
                             self.thickConPtr[ii][1]/2):
@@ -674,8 +688,9 @@ class DVConstraints(object):
         constraints are lumped together and returned as a list'''
 
         Volume = []
+        axis = [0,0,0] # We don't care what the axis is
         for iVolCon in xrange(self.nVolumeCon):
-            V = self._evalVolume(iVolCon)
+            V, CG = self._evalVolume(iVolCon, axis)
             Volume.append(V)
             if self.volumeScaled[iVolCon]:
                 Volume[iVolCon]/= self.V0[iVolCon]
@@ -704,6 +719,24 @@ class DVConstraints(object):
    
         return dVdx
     
+    def getVolumeCG(self, axis):
+        '''Return the location of the CGs of each "volume" as indiced
+        by axis. axis=[1,0,0] would give x-axis CG location,
+        axis=[0,1,0] y-location and so on.'''
+
+        CG = []
+        for iVolCon in xrange(self.nVolumeCon):
+            V, cg = self._evalVolume(iVolCon, axis)
+            CG.append(cg/V)
+        # end for
+
+        return CG
+
+    # ------------------------------------------------------------
+    #            Verify and non-user callable functions
+    # -----------------------------------------------------------
+
+
     def verifyVolumeSensitivity(self):
         """ Do a FD check on the reverse mode volume sensitity calculation"""
 
@@ -740,7 +773,7 @@ class DVConstraints(object):
                     
         return
 
-    def _evalVolume(self, iVolCon):
+    def _evalVolume(self, iVolCon, axis):
 
         # Sizes
         nSpan = self.volumeConSizes[iVolCon][0]
@@ -755,6 +788,7 @@ class DVConstraints(object):
             [nSpan, nChord, 2, 3])
 
         Volume = 0.0
+        CG     = 0.0
         ind = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],
                [0,0,1],[1,0,1],[0,1,1],[1,1,1]]
 
@@ -766,14 +800,17 @@ class DVConstraints(object):
                     coords[ind[ii][0], ind[ii][1], ind[ii][2], :] = \
                         x[i+ind[ii][0], j+ind[ii][1], 0+ind[ii][2]]
                 # end for
-                Volume += self._evalVolumeCube(coords)
+                dV, xp = self._evalVolumeCube(coords)
+                Volume += dV
+                CG += numpy.dot(xp,axis)*dV
             # end for
         # end for
         if Volume < 0:
             Volume = -Volume
+            CG = -CG
             self.flipVolume = True
 
-        return Volume
+        return Volume, CG
 
     def _evalVolumeCube(self, x):
         # Evaluate the volume of a cube defined by coords:
@@ -823,7 +860,7 @@ class DVConstraints(object):
 
         Volume  = (1.0/6.0)*(vp1 + vp2 + vp3 + vp4 + vp5 + vp6)
 
-        return Volume
+        return Volume, [xp,yp,zp]
  
     def _evalVolumeDerivative(self, iVolCon):
         # Generate the derivative of the volume with respect to the

@@ -1830,6 +1830,36 @@ the list of surfaces must be the same length'
 
         return surfaces
 
+    def getFaceAndEdgeFromNodes(self, node1, node2):
+        '''Determine ONE face and edge that contains nodes n1 and
+        n2.'''
+        
+        print 'looking for:',node1,node2
+        for iface in xrange(self.nFace):
+            n0 = self.node_link[iface,0]
+            n1 = self.node_link[iface,1]
+            n2 = self.node_link[iface,2]
+            n3 = self.node_link[iface,3]
+
+            print n0,n1,n2,n3
+
+            if node1 in [n0,n1] and node2 in [n0,n1]:
+                # Found the edge:
+                return iface, 0
+            elif node1 in [n2,n3] and node2 in [n2,n3]:
+                return iface, 1
+            elif node1 in [n0,n2] and node2 in [n0,n2]:
+                return iface, 2
+            elif node1 in [n1,n3] and node2 in [n1,n3]:
+                return iface, 3
+
+
+            # end for
+        #end for
+        sys.exit(00)
+        return None, None
+
+
     def makeSizesConsistent(self, sizes, order):
         '''
         Take a given list of [Nu x Nv] for each surface and return
