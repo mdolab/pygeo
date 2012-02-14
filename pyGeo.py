@@ -408,7 +408,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         knots = []
         for i in xrange(len(xsections)):
             if xsections[i] is not None:
-                x, y = read_af2(xsections[i], blunt_te)
+                x, y = geo_utils.read_af2(xsections[i], blunt_te)
                 weights = numpy.ones(len(x))
                 weights[0] = -1
                 weights[-1] = -1
@@ -1162,10 +1162,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         #Note: Eventually we may want to put the CORRECT Data here
         f.write('                                                                        S      1\n')
-        f.write('1H, , 1H;, 7H128-000, 11H128-000.IGS, 9H{unknown}, 9H{unknown}, 16, 6, 15, 13, 15, G      1\n')
-        f.write('7H128-000, 1., 1, 4HINCH, 8, 0.016, 15H19970830.165254, 0.0001, 0.,             G      2\n')
-        f.write('21Hdennette@wiz-worx.com, 23HLegacy PDD AP Committee, 11, 3,               G      3\n')
-        f.write('13H920717.080000, 23HMIL-PRF-28000B0, CLASS 1;                            G      4\n')
+        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
+        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254, 0.0001,0.,            G      2\n')
+        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
+        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
         
         Dcount = 1
         Pcount = 1
