@@ -898,7 +898,7 @@ class DVConstraints(object):
                     for jj in xrange(3):
                         coords[ind[ii][0], ind[ii][1], ind[ii][2],jj] += 1e-40j
 
-                        Volume = self._evalVolumeCube(coords)
+                        Volume,xp = self._evalVolumeCube(coords)
 
                         xd[i+ind[ii][0],j+ind[ii][1],0+ind[ii][2],jj] += \
                             numpy.imag(Volume)/1e-40
