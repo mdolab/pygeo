@@ -31,18 +31,19 @@ y = [0,0,0]
 z = [0,2.5,10.58/2]
 rot_x = [0,0,0]
 rot_y = [0,0,0]
-rot_z = [0,0,0] 
+rot_z = [0,0,2] 
 
 offset = zeros((naf,2))
 
 wing = pyGeo.pyGeo('lifting_surface',xsections=airfoil_list,
                    scale=chord,offset=offset,x=x,y=y,z=z,
                    rot_x=rot_x,rot_y=rot_y,rot_z=rot_z,Nctl=Nctl,
-                   k_span=2,con_file='./geo_input/c172.con')
+                   k_span=2,con_file='./geo_input/c172.con',tip='rounded')
 
-wing.setSymmetry('xy')
+# wing.setSymmetry('xy')
 wing.writeTecplot('./geo_output/c172_geo.dat')
 wing.writeIGES('./geo_input/c172.igs')
+sys.exit(0)
 
 # Add the reference axis
 nsec = 3
