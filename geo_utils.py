@@ -178,7 +178,12 @@ def getCoordinatesFromFile(file_name):
 
 def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
-    return np.sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
+    if len(x1) == 3:
+        return np.sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
+    elif len(x1) == 2:
+        return np.sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2)
+    elif len(x1) == 1:
+        return np.abs(x1[0]-x2[0])
 
 def e_dist2D(x1, x2):
     '''Get the eculidean distance between two points'''

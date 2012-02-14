@@ -160,73 +160,68 @@ class pyBlock():
         # Note This doesn't actually fit the volumes...just produces
         # the parameterization and knot vectors
 
-        if 'FFD' in kwargs:
-            if kwargs['FFD']:
-                self.FFD = True
+        if 'FFD' in kwargs and kwargs['FFD']:
+            self.FFD = True
                 # Assemble blocks directly from the coefficients:
-                for ivol in xrange(nVol):
-                    ku = min(4,sizes[ivol,0])
-                    kv = min(4,sizes[ivol,1])
-                    kw = min(4,sizes[ivol,2])
 
-                #     self.vols.append(pySpline.volume(
-#                             X=blocks[ivol],ku=ku,kv=kv,kw=kw,
-#                             no_print=self.NO_PRINT,
-#                             recompute=False))
+            def uniform_knots(N,k):
+                knots = numpy.zeros(N+k)
+                knots[0:k-1] = 0.0 
+                knots[-k:] = 1.0
+                knots[k-1:-k+1] = numpy.linspace(0,1,N-k+2)
 
-                    # A unform knot vector is ok and we won't have to
-                    #propagate the vecotrs since they are by
-                    #construction symmetric
+                return knots
 
-                    def uniform_knots(N,k):
-                        knots = numpy.zeros(N+k)
-                        knots[0:k-1] = 0.0 
-                        knots[-k:] = 1.0
-                        knots[k-1:-k+1] = numpy.linspace(0,1,N-k+2)
-    
-                        return knots
+            for ivol in xrange(nVol):
+                ku = min(4,sizes[ivol,0])
+                kv = min(4,sizes[ivol,1])
+                kw = min(4,sizes[ivol,2])
+
+                # A unform knot vector is ok and we won't have to
+                #propagate the vecotrs since they are by
+                #construction symmetric
+
                     
-                    self.vols.append(pySpline.volume(
-                            ku=ku,kv=kv,kw=kw,coef=blocks[ivol],
-                            no_print=self.NO_PRINT,
-                            tu=uniform_knots(sizes[ivol,0],ku),
-                            tv=uniform_knots(sizes[ivol,1],kv),
-                            tw=uniform_knots(sizes[ivol,2],kw)))
+                self.vols.append(pySpline.volume(
+                        ku=ku,kv=kv,kw=kw,coef=blocks[ivol],
+                        no_print=self.NO_PRINT,
+                        tu=uniform_knots(sizes[ivol,0],ku),
+                        tv=uniform_knots(sizes[ivol,1],kv),
+                        tw=uniform_knots(sizes[ivol,2],kw)))
 
-                    # Generate dummy original data:
-                    U = numpy.zeros((3,3,3))
-                    V = numpy.zeros((3,3,3))
-                    W = numpy.zeros((3,3,3))
+                # Generate dummy original data:
+                U = numpy.zeros((3,3,3))
+                V = numpy.zeros((3,3,3))
+                W = numpy.zeros((3,3,3))
 
-                    for i in xrange(3):
-                        for j in xrange(3):
-                            for k in xrange(3):
-                                U[i,j,k] = float(i)/3
-                                V[i,j,k] = float(j)/3
-                                W[i,j,k] = float(k)/3
-                            # end for
+                for i in xrange(3):
+                    for j in xrange(3):
+                        for k in xrange(3):
+                            U[i,j,k] = float(i)/2
+                            V[i,j,k] = float(j)/2
+                            W[i,j,k] = float(k)/2
                         # end for
                     # end for
-
-                    self.vols[-1].X = self.vols[-1](U,V,W)
-                    self.vols[-1].orig_data = True
-                    self.vols[-1].Nu = 3
-                    self.vols[-1].Nv = 3
-                    self.vols[-1].Nw = 3
                 # end for
 
-                self.nVol = len(self.vols)
-                self._calcConnectivity(1e-4,1e-4)
-                nCtl = self.topo.nGlobal
-                self.coef = numpy.zeros((nCtl,3))
-                self._setVolumeCoef()
+                self.vols[-1].X = self.vols[-1](U,V,W)
 
-                for ivol in xrange(self.nVol):
-                    self.vols[ivol]._setFaceSurfaces()
-                    self.vols[ivol]._setEdgeCurves()
+                self.vols[-1].orig_data = True
+                self.vols[-1].Nu = 3
+                self.vols[-1].Nv = 3
+                self.vols[-1].Nw = 3
+            # end for
 
+            self.nVol = len(self.vols)
+            self._calcConnectivity(1e-4,1e-4)
+            nCtl = self.topo.nGlobal
+            self.coef = numpy.zeros((nCtl,3))
+            self._setVolumeCoef()
 
-            # end if
+            for ivol in xrange(self.nVol):
+                self.vols[ivol]._setFaceSurfaces()
+                self.vols[ivol]._setEdgeCurves()
+            # end for
         # end if
             
         else:
@@ -464,6 +459,7 @@ class pyBlock():
                           self.vols[ivol].Nctlw])
         self.topo.calcGlobalNumbering(sizes)
 
+        return
 
     def printConnectivity(self):
         '''
@@ -801,6 +797,7 @@ class pyBlock():
 # ----------------------------------------------------------------------    
     def _updateVolumeCoef(self):
         '''Copy the pyBlock list of control points back to the volumes'''
+        print 'Updating volume coef'
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.topo.g_index[ii])):
                 ivol  = self.topo.g_index[ii][jj][0]
