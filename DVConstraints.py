@@ -482,6 +482,176 @@ class DVConstraints(object):
 
         return
 
+    def addCurvatureConstraints(self, file_name, file_type='ascii',
+                                order='f', **kwargs):
+        exec(import_modules('pyGeo'))
+        # Use pyGeo to load the plot3d file 
+        geo = pyGeo.pyGeo('plot3d', no_print=True, file_name=file_name,
+                          file_type=file_type, order=order)
+
+        node_tol = kwargs.pop('node_tol', 1e-4)
+        edge_tol = kwargs.pop('edge_tol', 1e-4)
+        geo._calcConnectivity(node_tol, edge_tol)
+
+        # Generate the set of profile curves we want to deal
+        # with. Only use 4,5,6, and 7 
+        curves = []
+
+        nCurves = geo.surfs[4].Nv
+        
+        for i in xrange(nCurves):
+            
+            # Pluck out coordinates
+            X = numpy.zeros([0,3],'d')
+
+            X = numpy.append(X,geo.surfs[4].X[:,i,:],axis=0)
+            X = numpy.append(X,geo.surfs[5].X[1:,i,:],axis=0)
+            X = numpy.append(X,geo.surfs[6].X[1:,i,:],axis=0)
+            X = numpy.append(X,geo.surfs[7].X[1:,i,:],axis=0)
+
+            # Generate Curve Parameterication 
+            nx = len(X)
+            s = numpy.zeros(nx)
+            for i in xrange(nx-1):
+                s[i+1] = s[i] + geo_utils.e_dist(X[i+1],X[i])
+            # end for
+
+            # Normalize S
+            s /= s[-1]
+
+            curves.append({'X':X,'s':s,'n':len(X)})
+        
+        # end for
+
+        self.curves = curves
+
+        return
+
+    def getCurvatureCoordinates(self):
+        ''' Return the coordinates used for the curvature constraints'''
+        # Simply go through curves and v-stack them
+
+        # Count up number 'n'
+        n = 0
+        for icurve in xrange(len(self.curves)):
+            n += self.curves[icurve]['n']
+        
+        coords = numpy.zeros([n,3],'d')
+
+        i = 0
+        for icurve in xrange(len(self.curves)):
+            n = self.curves[icurve]['n']
+            coords[i:i+n] = self.curves[icurve]['X']
+            i += n
+        # end for
+        
+        return coords.copy()
+
+    def setCurvatureCoordinates(self, coords):
+
+        ''' Return the coordinates used for the curvature constraints'''
+        # Simply go through curves and v-stack them
+
+        # Count up number 'n'
+        n = 0
+        for icurve in xrange(len(self.curves)):
+            n += self.curves[icurve]['n']
+        
+        i = 0
+        for icurve in xrange(len(self.curves)):
+            n = self.curves[icurve]['n']
+            self.curves[icurve]['X'] = coords[i:i+n]
+            i += n
+        # end for
+        
+        return 
+
+    def getCurvatures(self,icurve):
+        '''Return the curvature for curve iCurve'''
+        
+        max_x = numpy.max(self.curves[icurve]['X'][:,0])
+        min_x = numpy.min(self.curves[icurve]['X'][:,0])
+        X = self.curves[icurve]['X']/(max_x-min_x) 
+        s = self.curves[icurve]['s']
+        k = self._computeCurvature(X,s)
+
+        return s,k
+
+    def getCurveCoordinates(self,icurve):
+        x = self.curves[icurve]['X'][:,0]
+        y = self.curves[icurve]['X'][:,1]
+        z = self.curves[icurve]['X'][:,2]
+
+        return x,y,z
+
+    def computeEnergy(self):
+        # Return the energy in each of the curves
+        
+        nCurve = len(self.curves)
+
+        energies = numpy.zeros(nCurve)
+        
+        for icurve in xrange(nCurve):
+        
+            max_x = numpy.max(self.curves[icurve]['X'][:,0])
+            min_x = numpy.min(self.curves[icurve]['X'][:,0])
+            X = self.curves[icurve]['X']/(max_x-min_x) 
+            s = self.curves[icurve]['s']
+            k = self._computeCurvature(X,s)
+            
+            # Perform the integration with midpoint rule
+            E = 0.0
+            for i in xrange(len(X)-1):
+                E += (s[i+1]-s[i])*(k[i+1]+k[i])*0.5
+
+            energies[icurve] = E
+
+        # end for
+
+        return  energies
+
+    def _computeCurvature(self, X, s): 
+        ''' Compute the norm of the curvature for points X with
+            parameterization 's'
+            '''
+
+        dX = self._computeD(X,s) 
+        ddX = self._computeD(dX,s)
+
+        k = numpy.zeros(len(X))
+
+        for i in xrange(len(X)):
+            k[i] = numpy.linalg.norm(ddX[i])
+        # end for
+
+        return k
+
+    def _computeD(self,c,s):
+
+        n = len(s)
+        dd = numpy.zeros_like(c)
+        delta_s = numpy.zeros_like(s)
+        D = numpy.zeros_like(c)
+
+        for i in xrange(1,n):
+            delta_s[i] = s[i]-s[i-1]
+            dd[i] = (c[i]-c[i-1])/delta_s[i]
+
+        for i in xrange(1,n-1):
+            alpha = delta_s[i]/(delta_s[i] + delta_s[i+1])
+            D[i] = (1-alpha)*dd[i] + alpha*dd[i+1]
+        # end for
+
+        D[0] = 2*dd[1] - D[1]
+        D[n-1] = 2*dd[-1] - D[-2]
+    
+        return D
+
+
+
+        
+
+
     def writeTecplot(self, fileName): 
         ''' This function write a visualization of the constraints to
         tecplot. The thickness and volume constraints are grouped
