@@ -797,7 +797,6 @@ class pyBlock():
 # ----------------------------------------------------------------------    
     def _updateVolumeCoef(self):
         '''Copy the pyBlock list of control points back to the volumes'''
-        print 'Updating volume coef'
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.topo.g_index[ii])):
                 ivol  = self.topo.g_index[ii][jj][0]
@@ -972,10 +971,11 @@ class pyBlock():
         # converged. We don't care about what the newton search thinks
         # is the error, we actually care about the distance between
         # the points and vol(u,v,w). We will compute the RMS error,
-        # the Max Error and the number of points worse than 10*eps.
+        # the Max Error and the number of points worse than 50*eps.
         counter = 0
         D_max = 0.0
         D_rms = 0.0
+        bad_pts = []
         for i in xrange(len(x0)):
             nrm = numpy.linalg.norm(D[i])
             if nrm > D_max:
@@ -986,7 +986,7 @@ class pyBlock():
             
             if nrm > eps*50:
                 counter += 1
-
+                bad_pts.append(x0[i])
             # end if
         # end for
 
@@ -996,6 +996,9 @@ class pyBlock():
         if counter > 0:
             print ' -> Warning: %d point(s) not projected to tolerance: \
 %g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
+            print 'List of Points is:'
+            for i in xrange(len(bad_pts)):
+                print bad_pts[i]
 
         return volID,u,v,w,D
 

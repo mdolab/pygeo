@@ -89,7 +89,7 @@ class DVGeometry(object):
         self.complex = kwargs.pop('complex', False)
 
         if Surface and FFD:
-            print 'DVGeometry can only use 1 of FFD or Surface'
+            print 'DVGeometry can only use FFD\'s or surfaces'
             sys.exit(1)
 
         self.Surface = None
@@ -112,7 +112,7 @@ class DVGeometry(object):
                 
                 # So...create ptAttachInd which are the indicies of
                 # self.FFD.coef that we are actually manipulating. If
-                # there's no vol_list, then this is just [0, 1, 2, ...N]
+                # there's no vol_list, then this is just [0, 1, 2, ...N-1]
                 self.ptAttachInd = []
                 self.ptAttachPtr = [0]
 
@@ -135,6 +135,7 @@ class DVGeometry(object):
                     self.ptAttachInd.extend(temp)
                     self.ptAttachPtr.append(len(self.ptAttachInd))
                 # end for
+
                 # Convert the ind list to an array
                 self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
             else:
@@ -309,9 +310,7 @@ class DVGeometry(object):
         N: The number of design variables added for this local Set
         '''
 
-        # Take the FFD or surface coef. We dont' have point selects
-        # setup yet, so just take everything in FFD.coef of
-        # Surface.coef
+        # Take the FFD or surface coef. 
 
         if self.FFD:
             if pointSelect is not None:
@@ -632,8 +631,8 @@ class DVGeometry(object):
         return new_pts
 
     def _complexifyCoef(self):
-       
-        # Convert coef to complex temporairly
+        '''Convert coef to complex terporarily'''
+
         for i in xrange(len(self.refAxis.curves)):
             self.rot_x[i].coef = self.rot_x[i].coef.astype('D')
             self.rot_y[i].coef = self.rot_y[i].coef.astype('D')
@@ -649,11 +648,10 @@ class DVGeometry(object):
 
         self.coef = self.coef.astype('D')
 
+        return
         
-
     def _unComplexifyCoef(self):
-       
-        # Convert coef to complex temporairly
+        '''Convert coef back to reals'''
         for i in xrange(len(self.refAxis.curves)):
             self.rot_x[i].coef = self.rot_x[i].coef.astype('d')
             self.rot_y[i].coef = self.rot_y[i].coef.astype('d')
@@ -995,8 +993,6 @@ class DVGeometry(object):
                 self.DV_listLocal[i].value[j] = refVal
             # end for
         # end for
-
-
 
     def printDesignVariables(self):
         
