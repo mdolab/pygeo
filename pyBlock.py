@@ -260,7 +260,7 @@ class pyBlock():
     
         return
 
-    def fitGlobal(self):
+    def fitGlobal(self,greedyReorder=False):
         mpiPrint(' ',self.NO_PRINT)
         mpiPrint('Global Fitting',self.NO_PRINT)
         nCtl = self.topo.nGlobal
@@ -274,7 +274,7 @@ class pyBlock():
         # end for
         
         # Get the Globaling number of the original data
-        orig_topo.calcGlobalNumbering(sizes) 
+        orig_topo.calcGlobalNumbering(sizes,greedyReorder=greedyReorder) 
         N = orig_topo.nGlobal
         mpiPrint(' -> Creating global point list',self.NO_PRINT)
         pts = numpy.zeros((N,3))
@@ -349,7 +349,7 @@ class pyBlock():
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
-    def doConnectivity(self,file_name=None,node_tol=1e-4,edge_tol=1e-4):
+    def doConnectivity(self,file_name=None,node_tol=1e-4,edge_tol=1e-4,greedyReorder=False):
         '''
         This is the only public edge connectivity function. 
         If file_name exists it loads the file OR it calculates the connectivity
@@ -383,7 +383,7 @@ class pyBlock():
         for ivol in xrange(self.nVol):
             sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
                               self.vols[ivol].Nctlw])
-        self.topo.calcGlobalNumbering(sizes)
+        self.topo.calcGlobalNumbering(sizes,greedyReorder=greedyReorder)
         return 
 
     def _calcConnectivity(self,node_tol,edge_tol):
