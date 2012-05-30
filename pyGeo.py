@@ -46,7 +46,7 @@ except:
 # =============================================================================
 
 from mdo_import_helper import import_modules, mpiPrint
-exec(import_modules('geo_utils', 'pySpline', 'csm_pre'))
+exec(import_modules('geo_utils', 'pySpline'))
 import geo_utils, pySpline # not required, but pylint is happier
 # =============================================================================
 # pyGeo class
@@ -127,6 +127,7 @@ class pyGeo():
         self.nSurf = None          # The total number of surfaces
         self.coef  = None          # The global (reduced) set of control
                                    # points
+        self.csm_pre = None
         # --------------------------------------------------------------
 
         if init_type == 'plot3d':
@@ -1310,6 +1311,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
         lie on the edges between surfaces. Often, these points must be used
         twice on two different surfaces for load/displacement transfer.        
         '''
+
+        if self.csm_pre is None:
+            exec(import_modules('csm_pre'))
+            self.csm_pre = csm_pre
         
         mpiPrint('Attaching a discrete surface to the Geometry Object...',
                  self.NO_PRINT)
