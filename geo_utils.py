@@ -827,6 +827,20 @@ def nodesFromFace(face):
     elif face == 5:
         return [2, 3, 6, 7]
 
+def edgesFromFace(face):
+    if face == 0:
+        return [0, 1, 2, 3]
+    elif face == 1:
+        return [4, 5, 6, 7]
+    elif face == 2:
+        return [2, 6, 8, 10]
+    elif face == 3:
+        return [3, 7, 9, 11]
+    elif face == 4:
+        return [0, 4, 8, 9]
+    elif face == 5:
+        return [1, 5, 10, 11]
+        
 # --------------------------------------------------------------
 #                  Knot Vector Manipulation Functions
 # --------------------------------------------------------------
