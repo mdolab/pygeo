@@ -310,7 +310,7 @@ class pyBlock():
     
         return
 
-    def fitGlobal(self):
+    def fitGlobal(self,greedyReorder=False):
         mpiPrint(' ',self.NO_PRINT)
         mpiPrint('Global Fitting',self.NO_PRINT)
         nCtl = self.topo.nGlobal
@@ -324,7 +324,7 @@ class pyBlock():
         # end for
         
         # Get the Globaling number of the original data
-        orig_topo.calcGlobalNumbering(sizes) 
+        orig_topo.calcGlobalNumbering(sizes,greedyReorder=greedyReorder) 
         N = orig_topo.nGlobal
         mpiPrint(' -> Creating global point list',self.NO_PRINT)
         pts = numpy.zeros((N,3))
@@ -393,12 +393,13 @@ class pyBlock():
             self.vols[ivol]._setFaceSurfaces()
             self.vols[ivol]._setEdgeCurves()
 
+        mpiPrint(' -> Fitting Finished...',self.NO_PRINT)
 
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
 
-    def doConnectivity(self,file_name=None,node_tol=1e-4,edge_tol=1e-4):
+    def doConnectivity(self,file_name=None,node_tol=1e-4,edge_tol=1e-4,greedyReorder=False):
         '''
         This is the only public edge connectivity function. 
         If file_name exists it loads the file OR it calculates the connectivity
@@ -432,7 +433,7 @@ class pyBlock():
         for ivol in xrange(self.nVol):
             sizes.append([self.vols[ivol].Nctlu,self.vols[ivol].Nctlv,
                               self.vols[ivol].Nctlw])
-        self.topo.calcGlobalNumbering(sizes)
+        self.topo.calcGlobalNumbering(sizes,greedyReorder=greedyReorder)
         return 
 
     def _calcConnectivity(self,node_tol,edge_tol):
@@ -797,7 +798,6 @@ class pyBlock():
 # ----------------------------------------------------------------------    
     def _updateVolumeCoef(self):
         '''Copy the pyBlock list of control points back to the volumes'''
-        #print 'Updating volume coef'
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.topo.g_index[ii])):
                 ivol  = self.topo.g_index[ii][jj][0]
@@ -972,10 +972,11 @@ class pyBlock():
         # converged. We don't care about what the newton search thinks
         # is the error, we actually care about the distance between
         # the points and vol(u,v,w). We will compute the RMS error,
-        # the Max Error and the number of points worse than 10*eps.
+        # the Max Error and the number of points worse than 50*eps.
         counter = 0
         D_max = 0.0
         D_rms = 0.0
+        bad_pts = []
         for i in xrange(len(x0)):
             nrm = numpy.linalg.norm(D[i])
             if nrm > D_max:
@@ -986,7 +987,7 @@ class pyBlock():
             
             if nrm > eps*50:
                 counter += 1
-
+                bad_pts.append(x0[i])
             # end if
         # end for
 
@@ -996,6 +997,9 @@ class pyBlock():
         if counter > 0:
             print ' -> Warning: %d point(s) not projected to tolerance: \
 %g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
+            print 'List of Points is:'
+            for i in xrange(len(bad_pts)):
+                print bad_pts[i]
 
         return volID,u,v,w,D
 
