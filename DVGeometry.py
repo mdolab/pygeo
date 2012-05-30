@@ -176,6 +176,7 @@ class DVGeometry(object):
         self.rot_x = []
         self.rot_y = []
         self.rot_z = []
+        self.rot_theta = []
         self.scale = []
         self.scale_x = []
         self.scale_y = []
@@ -191,6 +192,8 @@ class DVGeometry(object):
             self.rot_y.append(pySpline.curve(
                     t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
             self.rot_z.append(pySpline.curve(
+                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+            self.rot_theta.append(pySpline.curve(
                     t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
 
             self.scale.append(pySpline.curve(
@@ -512,7 +515,14 @@ class DVGeometry(object):
                 D = self.links_x[ipt]
                 rotM = self._getRotMatrix(rotX, rotY, rotZ)
                 D = numpy.dot(rotM, D)
-
+                
+                deriv = self.refAxis.curves[
+                    self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+                deriv[0] = 0.0
+                deriv /= numpy.linalg.norm(deriv) # Normalize
+                D = rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
+                        self.curveIDs[ipt]](self.links_s[ipt]))
+                
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
@@ -622,6 +632,13 @@ class DVGeometry(object):
                 rotM = self._getRotMatrix(rotX, rotY, rotZ)
                 D = numpy.dot(rotM, D)
 
+                deriv = self.refAxis.curves[
+                    self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+                deriv[0] = 0.0
+                deriv /= numpy.linalg.norm(deriv) # Normalize
+                D = rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
+                        self.curveIDs[ipt]](self.links_s[ipt]))
+
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
@@ -638,6 +655,7 @@ class DVGeometry(object):
             self.rot_x[i].coef = self.rot_x[i].coef.astype('D')
             self.rot_y[i].coef = self.rot_y[i].coef.astype('D')
             self.rot_z[i].coef = self.rot_z[i].coef.astype('D')
+            self.rot_theta[i].coef = self.rot_theta[i].coef.astype('D')
             
             self.scale[i].coef = self.scale[i].coef.astype('D')
             self.scale_x[i].coef = self.scale_x[i].coef.astype('D')
@@ -658,6 +676,7 @@ class DVGeometry(object):
             self.rot_x[i].coef = self.rot_x[i].coef.astype('d')
             self.rot_y[i].coef = self.rot_y[i].coef.astype('d')
             self.rot_z[i].coef = self.rot_z[i].coef.astype('d')
+            self.rot_theta[i].coef = self.rot_theta[i].coef.astype('d')
             
             self.scale[i].coef = self.scale[i].coef.astype('d')
             self.scale_x[i].coef = self.scale_x[i].coef.astype('d')
