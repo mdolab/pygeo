@@ -797,7 +797,7 @@ class pyBlock():
 # ----------------------------------------------------------------------    
     def _updateVolumeCoef(self):
         '''Copy the pyBlock list of control points back to the volumes'''
-        print 'Updating volume coef'
+        #print 'Updating volume coef'
         for ii in xrange(len(self.coef)):
             for jj in xrange(len(self.topo.g_index[ii])):
                 ivol  = self.topo.g_index[ii][jj][0]
