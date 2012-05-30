@@ -58,7 +58,8 @@ def rotVbyW(V, W, theta):
     
     c = np.cos(theta)
     s = np.sin(theta)
-    R = np.zeros((3, 3))
+    R = np.zeros((3, 3), type(theta))
+
     R[0, 0] = ux**2 + (1-ux**2)*c
     R[0, 1] = ux*uy*(1-c) - uz*s
     R[0, 2] = ux*uz*(1-c) + uy*s

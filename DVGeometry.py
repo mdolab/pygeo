@@ -499,7 +499,7 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= numpy.linalg.norm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
-                new_vec = rotVbyW(new_vec, deriv, self.rot_x[
+                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
                         self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
@@ -519,7 +519,7 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv[0] = 0.0
                 deriv /= numpy.linalg.norm(deriv) # Normalize
-                D = rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
+                D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
                         self.curveIDs[ipt]](self.links_s[ipt]))
                 
                 D[0] *= scale_x
@@ -614,7 +614,7 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= numpy.linalg.norm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
-                new_vec = rotVbyW(new_vec, deriv, self.rot_x[
+                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
                         self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
@@ -635,7 +635,7 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv[0] = 0.0
                 deriv /= numpy.linalg.norm(deriv) # Normalize
-                D = rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
+                D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
                         self.curveIDs[ipt]](self.links_s[ipt]))
 
                 D[0] *= scale_x
