@@ -6,6 +6,11 @@ import numpy as np
 import sys, os
 from mdo_import_helper import mpiPrint, MPI, import_modules
 
+# Set a (MUCH) larger recursion limit. For meshes with extremely large
+# numbers of blocs (> 5000) the recursive edge propagation may hit a
+# recursion limit. 
+sys.setrecursionlimit(10000)
+
 # --------------------------------------------------------------
 #                Rotation Functions
 # --------------------------------------------------------------
@@ -179,12 +184,7 @@ def getCoordinatesFromFile(file_name):
 
 def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
-    if len(x1) == 3:
-        return np.sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2 + (x1[2]-x2[2])**2)
-    elif len(x1) == 2:
-        return np.sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2)
-    elif len(x1) == 1:
-        return np.abs(x1[0]-x2[0])
+    return np.linalg.norm(x1-x2)
 
 def e_dist2D(x1, x2):
     '''Get the eculidean distance between two points'''
@@ -842,6 +842,87 @@ def edgesFromFace(face):
     elif face == 5:
         return [1, 5, 10, 11]
         
+def setNodeValue(arr, value, node_index):
+    # Set "value" in 3D array "arr" at node "node_index":
+    if node_index == 0:
+        arr[0,0,0] = value
+    elif node_index == 1:
+        arr[-1,0,0] = value
+    elif node_index == 2:
+        arr[0,-1,0] = value
+    elif node_index == 3:
+        arr[-1,-1,0] = value
+
+    if node_index == 4:
+        arr[0,0,-1] = value
+    elif node_index == 5:
+        arr[-1,0,-1] = value
+    elif node_index == 6:
+        arr[0,-1,-1] = value
+    elif node_index == 7:
+        arr[-1,-1,-1] = value
+    # end if
+
+    return arr
+
+def setEdgeValue(arr, values, dir, edge_index):
+
+    if dir == -1: # Reverse values
+        values = values[::-1]
+    # end if
+
+    if edge_index == 0:
+        arr[1:-1,0,0] = values
+    elif edge_index == 1:
+        arr[1:-1,-1,0] = values
+    elif edge_index == 2:
+        arr[0, 1:-1, 0] = values
+    elif edge_index == 3:
+        arr[-1, 1:-1, 0] = values
+
+    elif edge_index == 4:
+        arr[1:-1,0,-1] = values
+    elif edge_index == 5:
+        arr[1:-1,-1,-1] = values
+    elif edge_index == 6:
+        arr[0, 1:-1, -1] = values
+    elif edge_index == 7:
+        arr[-1, 1:-1, -1] = values
+
+    elif edge_index == 8:
+        arr[0,0,1:-1] = values
+    elif edge_index == 9:
+        arr[-1,0,1:-1] = values
+    elif edge_index == 10:
+        arr[0,-1,1:-1] = values
+    elif edge_index == 11:
+        arr[-1,-1,1:-1] = values
+    # end if
+
+    return arr
+    
+def setFaceValue(arr, values, face_dir, face_index):
+
+    # Orient the array first according to the dir:
+
+    values = orientArray(face_dir, values)
+
+    if face_index == 0:
+        arr[1:-1,1:-1,0] = values
+    elif face_index == 1:
+        arr[1:-1,1:-1,-1] = values
+    elif face_index == 2:
+        arr[0,1:-1,1:-1] = values
+    elif face_index == 3:
+        arr[-1,1:-1,1:-1] = values
+    elif face_index == 4:
+        arr[1:-1,0,1:-1] = values
+    elif face_index == 5:
+        arr[1:-1,-1,1:-1] = values
+    # end if
+    
+    return arr
+
 # --------------------------------------------------------------
 #                  Knot Vector Manipulation Functions
 # --------------------------------------------------------------
@@ -2103,11 +2184,10 @@ class BlockTopology(topology):
 
         return
 
-    def calcGlobalNumbering(self, sizes=None, volume_list=None, 
+    def calcGlobalNumbering(self, sizes=None, g_index=True, volume_list=None, 
                             greedyReorder=False):
         '''Internal function to calculate the global/local numbering
         for each volume'''
-
         if sizes != None:
             for i in xrange(len(sizes)):
                 self.edges[self.edge_link[i][0]].N = sizes[i][0]
@@ -2140,7 +2220,6 @@ class BlockTopology(topology):
         
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        g_index = []
         l_index = []
     
         assert len(sizes) == len(volume_list), 'Error: The list of sizes and \
@@ -2181,10 +2260,8 @@ the list of volumes must be the same length'
                             edge_index[edge][jj] = index
                         # end for
                     else:
-                        for jj in xrange(cur_size_e[iedge]-2):
-                            edge_index[edge][jj] = counter
-                            counter += 1
-                        # end for
+                        edge_index[edge][:] = np.arange(counter,counter+cur_size_e[iedge]-2)
+                        counter += cur_size_e[iedge]-2
                     # end if
                 # end if
             # end for
@@ -2194,164 +2271,80 @@ the list of volumes must be the same length'
                     face_index[face] = np.resize(face_index[face], 
                                                [cur_size_f[iface][0]-2, 
                                                 cur_size_f[iface][1]-2])
-                    for iii in xrange(cur_size_f[iface][0]-2):
-                        for jjj in xrange(cur_size_f[iface][1]-2):
-                            face_index[face][iii, jjj] = counter
-                            counter += 1
-                        # end for
-                    # end for
+                    N = cur_size_f[iface][0]-2
+                    M = cur_size_f[iface][1]-2
+                    face_index[face] = np.arange(counter,counter+N*M).reshape((N,M))
+                    counter += N*M
                 # end if
             # end for
         # end for (volume list)
 
-        g_index = [ [] for i in xrange(counter)] # We must add [] for
-                                                 # each global node
         l_index = []
 
-        def addNode(i, j, k, N, M, L):
-            type, number, index1, index2 = indexPosition3D(i, j, k, N, M, L)
-            
-            if type == 1:         # Face 
-
-                if number in [0, 1]:
-                    icount = i;imax = N
-                    jcount = j;jmax = M
-                elif number in [2, 3]:
-                    icount = j;imax = M
-                    jcount = k;jmax = L
-                elif number in [4, 5]:
-                    icount = i;imax = N
-                    jcount = k;jmax = L
-                # end if
-
-                if self.face_dir[ii][number] == 0:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        icount-1, jcount-1]
-                elif self.face_dir[ii][number] == 1:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        imax-icount-2, jcount-1]
-                elif self.face_dir[ii][number] == 2:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        icount-1, jmax-jcount-2]
-                elif self.face_dir[ii][number] == 3:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        imax-icount-2, jmax-jcount-2]
-                elif self.face_dir[ii][number] == 4:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        jcount-1, icount-1]
-                elif self.face_dir[ii][number] == 5:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        jmax-jcount-2, icount-1]
-                elif self.face_dir[ii][number] == 6:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        jcount-1, imax-icount-2]
-                elif self.face_dir[ii][number] == 7:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
-                        jmax-jcount-2, imax-icount-2]
-                    
-                l_index[ii][i, j, k] = cur_index
-                g_index[cur_index].append([ivol, i, j, k])
-                            
-            elif type == 2:         # Edge
-                        
-                if number in [0, 1, 4, 5]:
-                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][N-i-2]
-                    else:  
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][i-1]
-                    # end if
-                elif number in [2, 3, 6, 7]:
-                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][M-j-2]
-                    else:  
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][j-1]
-                    # end if
-                elif number in [8, 9, 10, 11]:
-                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][L-k-2]
-                    else:  
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][k-1]
-                    # end if
-                # end if
-                l_index[ii][i, j, k] = cur_index
-                g_index[cur_index].append([ivol, i, j, k])
-                            
-            elif type == 3:                  # Node
-                cur_node = self.node_link[ii][number]
-                l_index[ii][i, j, k] = node_index[cur_node]
-                g_index[node_index[cur_node]].append([ivol, i, j, k])
-            # end if type
-        # end for (volume loop)
-        
         # Now actually fill everything up
         for ii in xrange(len(volume_list)):
-            ivol = volume_list[ii]
+            iVol = volume_list[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
             L = sizes[ii][2]
             l_index.append(-1*np.ones((N, M, L), 'intc'))
 
-            # DO the 6 planes
-            for k in [0, L-1]:
-                for i in xrange(N):
-                    for j in xrange(M):
-                        addNode(i, j, k, N, M, L)
-            for j in [0, M-1]:
-                for i in xrange(N):
-                    for k in xrange(1, L-1):
-                        addNode(i, j, k, N, M, L)
+            # 8 Corners
+            for iNode in xrange(8):
+                cur_node = self.node_link[iVol][iNode]
+                l_index[ii] = setNodeValue(l_index[ii], node_index[cur_node], iNode)
+            # end for
 
-            for i in [0, N-1]:
-                for j in xrange(1, M-1):
-                    for k in xrange(1, L-1):
-                        addNode(i, j, k, N, M, L)
-            
-        # end for (ii)
+            # 12 Edges
+            for iEdge in xrange(12):
+                cur_edge = self.edge_link[iVol][iEdge]
+                edge_dir = self.edge_dir[iVol][iEdge]
+                l_index[ii] = setEdgeValue(l_index[ii], edge_index[cur_edge], 
+                                       edge_dir, iEdge)
+            # end for
 
-        # Add the remainder
-        for ii in xrange(len(volume_list)):
-            ivol = volume_list[ii]
-            N = sizes[ii][0]
-            M = sizes[ii][1]
-            L = sizes[ii][2]
+            # 6 Faces 
+            for iFace in xrange(6):
+                cur_face = self.face_link[iVol][iFace]
+                face_dir = self.face_dir[iVol][iFace]
+                l_index[ii] = setFaceValue(l_index[ii], face_index[cur_face],
+                                       face_dir, iFace)
+            # end for
 
-            NN = sizes[ii][0]-2
-            MM = sizes[ii][1]-2
-            LL = sizes[ii][2]-2
-
-            to_add = NN*MM*LL
+            # Interior
+            to_add = (N-2)*(M-2)*(L-2)
             
             l_index[ii][1:N-1,1:M-1,1:L-1] = \
-                np.arange(counter,counter+to_add).reshape((NN,MM,LL))
-
+                np.arange(counter,counter+to_add).reshape((N-2,M-2,L-2))
             counter = counter + to_add
-            A = np.zeros((to_add,1,4),'intc')
-            A[:,0,0] = ivol
-            A[:,0,1:] = np.mgrid[1:N-1,1:M-1,1:L-1].transpose(
-                (1,2,3,0)).reshape((to_add,3))
-            
-            g_index.extend(A)
 
         # end for
 
-        # Set the following as atributes
-        self.nGlobal = len(g_index)
+        if g_index:
+            # We must add [] for each global node
+            g_index = [ [] for i in xrange(counter)]
+        
+            for ii in xrange(len(volume_list)):
+                iVol = volume_list[ii]
+                N = sizes[ii][0]
+                M = sizes[ii][1]
+                L = sizes[ii][2]
+
+                for i in xrange(N):
+                    for j in xrange(M):
+                        for k in xrange(L):
+                            g_index[l_index[ii][i,j,k]].append([iVol,i,j,k])
+                        # end for
+                    # end for
+                # end for
+            # end for 
+        else:
+            g_index = None
+        # end if
+
+        self.nGlobal = counter
         self.g_index = g_index
-        self.l_index = l_index
+        self.l_index = l_index         
 
         if greedyReorder:
 
