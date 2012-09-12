@@ -2812,6 +2812,167 @@ the list of volumes must be the same length'
                     
         return l_index_halo
 
+
+    def calcUnstructNodes(self):
+        '''This function is used to determine nodes on edges of blocks
+        that are effectively UNSTRUCTURED. That is, they do have
+        precisely 6 neighbours, 2 in each of the i, j, and k
+        directions. This occurs on block boundaries and when there are
+        not exactly 4 faces around an edge or exactly 8 blocks around
+        a corner
+
+
+        The result of this function is a list of all unstructured
+        nodes and their (variable) number of neighbours (defined by
+        their global index value). This data can be used in a variety
+        of way depending on the application. For example, unstrctured
+        nodes may be taken as the average of their neighbours for
+        smoothing applications'''
+
+        # First get a list of all possible unstructured nodes:
+        possible_unstruct_nodes = []
+        for iVol in xrange(self.nVol):
+            # i edges: (full)
+            for i in xrange(self.l_index[iVol].shape[0]):
+                possible_unstruct_nodes.append(self.l_index[iVol][i,  0,  0])
+                possible_unstruct_nodes.append(self.l_index[iVol][i, -1,  0])
+                possible_unstruct_nodes.append(self.l_index[iVol][i,  0, -1])
+                possible_unstruct_nodes.append(self.l_index[iVol][i, -1, -1])
+            # end for
+
+            # j edges: (just internal ones)
+            for j in xrange(1,self.l_index[iVol].shape[1]-1):
+                possible_unstruct_nodes.append(self.l_index[iVol][0 , j,  0])
+                possible_unstruct_nodes.append(self.l_index[iVol][-1, j,  0])
+                possible_unstruct_nodes.append(self.l_index[iVol][ 0, j, -1])
+                possible_unstruct_nodes.append(self.l_index[iVol][-1, j, -1])
+            # end for
+
+            # j edges: (just internal ones)
+            for k in xrange(1,self.l_index[iVol].shape[2]-1):
+                possible_unstruct_nodes.append(self.l_index[iVol][0 , 0, k])
+                possible_unstruct_nodes.append(self.l_index[iVol][-1, 0, k])
+                possible_unstruct_nodes.append(self.l_index[iVol][ 0,-1, k])
+                possible_unstruct_nodes.append(self.l_index[iVol][-1,-1, k])
+            # end for
+        # end for
+
+        # Now get a unique set of these nodes:
+        print 'befoer:',len(possible_unstruct_nodes)
+        possible_unstruct_nodes = unique(possible_unstruct_nodes)
+        print 'after:',len(possible_unstruct_nodes)
+     
+        # We basically have the set of global indices along each of
+        # the edges
+
+        # For each possible unstruct node add empty []
+        neighbours = {}
+        for i in xrange(len(possible_unstruct_nodes)):
+            neighbours[possible_unstruct_nodes[i]] = []
+        print 'neighbours:'
+
+
+        # Now loop back over corners and edges (separately this time)
+        # and add the index of each of the neighbours. For edges there
+        # are exactly 4 neighbours per node per block, while for
+        # corners there are 3. 
+
+        for iVol in xrange(self.nVol):
+
+            block_shp = self.l_index[iVol].shape
+
+            # Corners:
+            for i in xrange(0,block_shp[0],block_shp[0]-1):
+                for j in xrange(0,block_shp[1],block_shp[1]-1):
+                    for k in xrange(0,block_shp[2],block_shp[2]-1):
+                        node_id = self.l_index[iVol][i,j,k]
+                        idelta = -1; jdelta = -1; kdelta = -1
+                        if i==0:
+                            idelta = 1
+                        if j==0:
+                            jdelta = 1
+                        if k == 0:
+                            kdelta = 1
+
+                        neighbours[node_id].append(self.l_index[iVol][i+idelta,j,k])
+                        neighbours[node_id].append(self.l_index[iVol][i,j+jdelta,k])
+                        neighbours[node_id].append(self.l_index[iVol][i,j,k+kdelta])
+                    # end for
+                # end for
+            # end for
+
+
+            # i edges: (internal)
+            for i in xrange(1,block_shp[0]-1):
+                for j in xrange(0,block_shp[1],block_shp[1]-1):
+                    for k in xrange(0,block_shp[2],block_shp[2]-1):
+                        node_id = self.l_index[iVol][i,j,k]
+                        jdelta = -1; kdelta = -1
+                        if j==0:
+                            jdelta = 1
+                        if k == 0:
+                            kdelta = 1
+
+                        neighbours[node_id].append(self.l_index[iVol][i+1,j,k])
+                        neighbours[node_id].append(self.l_index[iVol][i-1,j,k])
+                        neighbours[node_id].append(self.l_index[iVol][i  ,j+jdelta,k])
+                        neighbours[node_id].append(self.l_index[iVol][i  ,j,k+kdelta])
+
+            # j edges: (internal)
+            for j in xrange(1,block_shp[1]-1):
+                for i in xrange(0,block_shp[0],block_shp[0]-1):
+                    for k in xrange(0,block_shp[2],block_shp[2]-1):
+                        node_id = self.l_index[iVol][i,j,k]
+                        idelta = -1; kdelta = -1;
+                        if i==0:
+                            idelta = 1
+                        if k == 0:
+                            kdelta = 1
+
+                        neighbours[node_id].append(self.l_index[iVol][i,j+1,k])
+                        neighbours[node_id].append(self.l_index[iVol][i,j-1,k])
+                        neighbours[node_id].append(self.l_index[iVol][i+idelta,j,k])
+                        neighbours[node_id].append(self.l_index[iVol][i,j,k+kdelta])
+
+            # k edges: (internal)
+            for k in xrange(1,block_shp[2]-1):
+                for i in xrange(0,block_shp[0],block_shp[0]-1):
+                    for j in xrange(0,block_shp[1],block_shp[1]-1):
+                        node_id = self.l_index[iVol][i,j,k]
+                        idelta = -1; jdelta = -1
+                        if i==0:
+                            idelta = 1
+                        if j == 0:
+                            jdelta = 1
+
+                        neighbours[node_id].append(self.l_index[iVol][i,j,k+1])
+                        neighbours[node_id].append(self.l_index[iVol][i,j,k-1])
+                        neighbours[node_id].append(self.l_index[iVol][i+idelta,j,k])
+                        neighbours[node_id].append(self.l_index[iVol][i,j+jdelta,k])
+
+
+        # end for (vol loop)
+
+        # Now for each possible unstruct node, determine the number of
+        # unique neighbours
+        for i in neighbours.keys():
+            neighbours[i] = unique(neighbours[i])
+
+        # Now we can do one final pass where we check the number of
+        # unique neighbours if it is not exactly 6 it is unstructured
+        new_neighbours = []
+        for i in neighbours.keys():
+            if len(neighbours[i]) <> 6:
+                new_neighbours.append([i,neighbours[i]])
+            # end if
+        # end for
+        print '------------'
+        print len(new_neighbours)
+        print new_neighbours
+
+        return 
+
+
     def reOrder(self, reOrderList):
         '''This function takes as input a permutation list which is
         used to reorder the entities in the topology object'''
@@ -3280,6 +3441,155 @@ def fill_knots(t, k, level):
     # end for
     return new_t
 
+def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
+    '''
+    Project a point pt onto a triagnulated surface and return the patchID
+    and the u,v coordinates in that patch.
+
+    pt: The initial point
+    up_vec: The vector pointing in the search direction
+    p0: A numpy array of triangle origins
+    v1: A numpy array of the first triangle vectors
+    v2: A numpy array of the second triangle vectors
+    uu: An array containing u coordinates
+    vv: An array containing v coordinates
+    pid: An array containing pid values
+
+    ''' 
+
+    # Get the bounds of the geo object so we know what to scale by
+    import pySpline
+    fail = 0
+    if p0.shape[0] == 0:
+        fail = 2
+        return None, None, fail
+
+    tmp_sol,tmp_pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    tmp_sol = tmp_sol.T
+    tmp_pid -= 1
+    # Check to see if any of the solutions happen be identical. 
+  
+    points = []
+    for i in xrange(n_sol):
+        points.append(tmp_sol[i, 3:6])
+    # end for
+    if n_sol > 1:
+        tmp, link = pointReduce(points, node_tol=1e-12)
+        n_unique = np.max(link) + 1
+        points = np.zeros((n_unique,3))
+        uu = np.zeros(n_unique)
+        vv = np.zeros(n_unique)
+        pid = np.zeros(n_unique,'intc')
+
+        for i in xrange(n_sol):
+            points[link[i]] = tmp_sol[i, 3:6]
+            uu[link[i]] = tmp_sol[i, 1]
+            vv[link[i]] = tmp_sol[i, 2]
+            pid[link[i]] = tmp_pid[i]
+        # end for
+        n_sol = len(points)
+    else:
+        n_unique = 1
+        points = np.zeros((n_unique,3))
+        uu = np.zeros(n_unique)
+        vv = np.zeros(n_unique)
+        pid = np.zeros(n_unique,'intc')
+
+        points[0] = tmp_sol[0, 3:6]
+        uu[0] = tmp_sol[0,1]
+        vv[0] = tmp_sol[0, 2]
+        pid[0] = tmp_pid[0]
+    # end if
+
+
+    if n_sol == 0:
+        fail = 2
+        return None, None, fail
+    elif n_sol == 1:
+        fail = 1
+
+        first  = points[0]
+        first_patchID = PID[pid[0]]
+        first_u = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
+        first_v = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
+
+        return [first, first_patchID, first_u, first_v],  None,  fail
+    elif n_sol == 2:
+        fail = 0
+        
+        # Determine the 'top' and 'bottom' solution
+        first  = points[0]
+        second = points[1]
+
+        first_patchID = PID[pid[0]-1]
+        second_patchID = PID[pid[1]-1]
+
+        first_u = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
+        first_v = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
+
+        second_u = uv0[pid[1]][0] + uu[1]*(uv1[pid[1]][0] - uv0[pid[1]][0])
+        second_v = uv0[pid[1]][1] + vv[1]*(uv2[pid[1]][1] - uv0[pid[1]][1])
+        
+        if np.dot(first - pt, up_vec) >= np.dot(second - pt, up_vec):
+
+            return [first, first_patchID, first_u, first_v],\
+                [second, second_patchID, second_u, second_v], fail
+        else:
+            return [second, second_patchID, second_u, second_v],\
+                [first, first_patchID, first_u, first_v], fail
+
+    else:
+       
+        print 'This functionality is not implemtned in geo_utils yet'
+        sys.exit(1)
+        
+    # end if
+
+    return
+
+def projectNodePIDPosOnly(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
+
+    # Get the bounds of the geo object so we know what to scale by
+    import pySpline
+    fail = 0
+    if p0.shape[0] == 0:
+        fail = 1
+        return None, fail
+
+    sol, pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    sol = sol.T
+    pid -= 1
+
+    if n_sol == 0:
+        fail = 1
+        return None, fail
+    elif n_sol >= 1:
+        # Find the least positve solution
+        min_index = -1
+        d = 0.0
+        for k in xrange(n_sol):
+            dn = np.dot(sol[k, 3:6] - pt, up_vec)
+            if dn >= 0.0 and (min_index == -1 or dn < d):
+                min_index = k
+                d = dn
+        
+        if min_index >= 0:
+
+            patchID = PID[pid[min_index]]
+
+            u = uv0[pid[min_index]][0] + sol[min_index, 1]*\
+                (uv1[pid[min_index]][0] - uv0[pid[min_index]][0])
+
+            v = uv0[pid[min_index]][1] + sol[min_index, 2]*\
+                (uv2[pid[min_index]][1] - uv0[pid[min_index]][1])
+
+            return [sol[min_index, 3:6], patchID, u, v], fail
+        # end if
+    # end if
+
+    fail = 1
+    return None, fail
+
 def projectNode(pt, up_vec, p0, v1, v2):
     '''
     Project a point pt onto a triagnulated surface and return two
@@ -3299,7 +3609,7 @@ def projectNode(pt, up_vec, p0, v1, v2):
         fail = 2
         return None, None, fail
 
-    sol, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    sol,pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     # Check to see if any of the solutions happen be identical. 
@@ -3367,7 +3677,7 @@ def projectNodePosOnly(pt, up_vec, p0, v1, v2):
         fail = 1
         return None, fail
 
-    sol, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    sol, pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     if n_sol == 0:
@@ -3427,8 +3737,9 @@ def tfi_2d(e0, e1, e2, e3):
 
 def linear_edge(pt1, pt2, N):
     # Return N points along line from pt1 to pt2
-    pts = np.zeros((N, 3))
-
+    pts = np.zeros((N, len(pt1)))
+    pt1 = np.array(pt1)
+    pt2 = np.array(pt2)
     for i in xrange(N):
         pts[i] = float(i)/(N-1)*(pt2-pt1) + pt1
     return pts
