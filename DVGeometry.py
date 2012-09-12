@@ -208,10 +208,13 @@ class DVGeometry(object):
         # end for
         
         self.scale0 = copy.deepcopy(self.scale)
-        self.scale_x0 = copy.deepcopy(self.scale)
-        self.scale_y0 = copy.deepcopy(self.scale)
-        self.scale_z0 = copy.deepcopy(self.scale)        
-
+        self.scale_x0 = copy.deepcopy(self.scale_x)
+        self.scale_y0 = copy.deepcopy(self.scale_y)
+        self.scale_z0 = copy.deepcopy(self.scale_z)        
+        self.rot_x0 = copy.deepcopy(self.rot_x) 
+        self.rot_y0 = copy.deepcopy(self.rot_y)
+        self.rot_z0 = copy.deepcopy(self.rot_z)
+        self.rot_theta0 = copy.deepcopy(self.rot_theta)   
         # Next we will do the point/curve ray/projections. Note we
         # have to take into account the user's desired volume(s)/direction(s)
 
@@ -267,12 +270,15 @@ class DVGeometry(object):
     
     def _setInitialValues(self):
 
-        self.coef = copy.deepcopy(self.coef0).astype('D')
+        self.coef = copy.deepcopy(self.coef0)#.astype('D')
         self.scale = copy.deepcopy(self.scale0)
         self.scale_x = copy.deepcopy(self.scale_x0)
         self.scale_y = copy.deepcopy(self.scale_y0)
         self.scale_z = copy.deepcopy(self.scale_z0)      
-        
+        self.rot_x = copy.deepcopy(self.rot_x0) 
+        self.rot_y = copy.deepcopy(self.rot_y0)
+        self.rot_z = copy.deepcopy(self.rot_z0)
+        self.rot_theta = copy.deepcopy(self.rot_theta0)   
 
     def addGeoDVGlobal(self, dv_name, value, lower, upper, function, useit=True):
         '''Add a global design variable
@@ -749,8 +755,8 @@ class DVGeometry(object):
         ''' Return the total point jacobian in CSR format since we
         need this for TACS'''
 
-        if self.JT is not None and self.J_name == name: # Already computed
-            return
+        # if self.JT is not None and self.J_name == name: # Already computed
+        #     return
         
         # This is going to be DENSE in general -- does not depend on
         # name
@@ -839,6 +845,10 @@ class DVGeometry(object):
       
         h = 1.0e-40j
         oneoverh = 1.0/1e-40
+
+        #h = 1.0e-6
+        #oneoverh = 1.0/1e-6
+        #coordref = self.update_deriv().flatten()
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
 
@@ -853,6 +863,7 @@ class DVGeometry(object):
                 self.DV_listGlobal[i].value[j] += h
                 
                 deriv = oneoverh*numpy.imag(self.update_deriv()).flatten()
+                #deriv = oneoverh*(self.update_deriv().flatten()-coordref)
 
                 if scaled:
                     # ptAttachInd is of length nPtAttach, but need to
@@ -945,6 +956,10 @@ class DVGeometry(object):
     def checkDerivatives(self, name='default'):
         '''Run a brute force FD check on ALL design variables'''
         print 'Computing Analytic Jacobian...'
+        self.JT = None # J is no longer up to date
+        self.J_name = None # Name is no longer defined
+        self.J_attach = None
+        self.J_local = None
         self.computeTotalJacobian(name, scaled=False)
 
         Jac = copy.deepcopy(self.JT)
@@ -965,6 +980,7 @@ class DVGeometry(object):
                 mpiPrint('========================================')
 
                 refVal = self.DV_listGlobal[i].value[j]
+                
 
                 self.DV_listGlobal[i].value[j] += h
                 coordsph = self.update(name).flatten()
@@ -976,8 +992,9 @@ class DVGeometry(object):
                         1e-16 + Jac[DVCount, ii])
                     absErr = deriv[ii] - Jac[DVCount,ii]
 
-                    if abs(relErr) > h and abs(absErr) > h:
+                    if abs(relErr) > h*10 and abs(absErr) > h*10:
                         print ii, deriv[ii], Jac[DVCount, ii], relErr, absErr
+                       
                     # end if
                 # end for
                 DVCount += 1
