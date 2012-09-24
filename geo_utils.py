@@ -4261,3 +4261,444 @@ Using a linear type'%(edge_type[iedge]))
 
     return
  
+# 2D Doubly connected edge list implementation. 
+#Copyright 2008, Angel Yanguas-Gil
+
+class DCELEdge(object):
+    def __init__(self, v1, v2, X, PID, uv, tag):
+        # Create a representation of a surface edge that contains the
+        # required information to be able to construct a trimming
+        # curve on the orignal skin surfaces
+
+        self.X = X
+        self.PID = PID
+        self.uv = uv
+        self.tag = tag
+        self.v1 = v1
+        self.v2 = v2
+        if X is not None:
+            self.x1 = 0.5*(X[0,0] + X[0,1])
+            self.x2 = 0.5*(X[-1,0] + X[-1,1])
+        self.con = [v1,v2]
+    def __repr__(self):
+
+        str = 'v1: %f %f\nv2: %f %f'%(self.v1[0],self.v1[1],
+                                      self.v2[0],self.v2[1])
+        return str
+
+class DCELVertex:
+    """Minimal implementation of a vertex of a 2D dcel"""
+    
+    def __init__(self, uv, X):
+        self.x = uv[0]
+        self.y = uv[1]
+        self.X = X
+        self.hedgelist = []
+
+    def sortincident(self):
+
+        self.hedgelist.sort(self.hsort, reverse=True)
+
+    def hsort(self, h1, h2):
+        """Sorts two half edges counterclockwise"""
+
+        if h1.angle < h2.angle:
+            return -1
+        elif h1.angle > h2.angle:
+            return 1
+        else:
+            return 0
+
+
+class DCELHedge:
+    """Minimal implementation of a half-edge of a 2D dcel"""
+
+    def __init__(self,v1,v2,X,PID,uv,tag=None):
+        #The origin is defined as the vertex it points to
+        self.origin = v2
+        self.twin = None
+        self.face = None
+        self.sface = None
+        self.uv = uv
+        self.nexthedge = None
+        self.angle = hangle(v2.x-v1.x, v2.y-v1.y)
+        self.prevhedge = None
+        self.length = np.sqrt((v2.x-v1.x)**2 + (v2.y-v1.y)**2)
+        self.tag = tag
+
+
+class DCELFace:
+    """Implements a face of a 2D dcel"""
+
+    def __init__(self):
+        self.wedge = None
+        self.data = None
+        self.external = None
+        self.tag = 'EXTERNAL'
+
+    def area(self):
+        h = self.wedge
+        a = 0
+        while(not h.nexthedge is self.wedge):
+            p1 = h.origin
+            p2 = h.nexthedge.origin
+            a += p1.x*p2.y - p2.x*p1.y
+            h = h.nexthedge
+
+        p1 = h.origin
+        p2 = self.wedge.origin
+        a = (a + p1.x*p2.y - p2.x*p1.y)/2
+        return a
+
+    def centeroid(self):
+        h = self.wedge
+        center = np.zeros(2)
+        counter = 0
+        while(not h.nexthedge is self.wedge):
+            center += [h.origin.x,h.origin.y]
+            counter += 1
+            h = h.nexthedge
+        center /= counter
+        self.centeroid = center
+
+    def perimeter(self):
+        h = self.wedge
+        p = 0
+        while (not h.nexthedge is self.wedge):
+            p += h.length
+            h = h.nexthedge
+        return p
+
+    def vertexlist(self):
+        h = self.wedge
+        pl = [h.origin]
+        while(not h.nexthedge is self.wedge):
+            h = h.nexthedge
+            pl.append(h.origin)
+        return pl
+
+
+
+    def isinside(self, p):
+        """Determines whether a point is inside a face"""
+
+        h = self.wedge
+        inside = False
+        if lefton(h, p):
+            while(not h.nexthedge is self.wedge):
+                h = h.nexthedge
+                if not lefton(h, p):
+                    return False
+            return True
+        else:
+            return False
+
+
+class DCEL(object):
+    """
+    Implements a doubly-connected edge list
+    """
+
+    def __init__(self, vl=None, el=None, file_name=None):
+        self.vertices = []
+        self.hedges = []
+        self.faces = []
+        self.face_info = None
+        if vl is not None and el is not None:
+            self.vl = vl 
+            self.el = el
+            self.build_dcel()
+        else:
+            self.loadDCEL(file_name)
+            self.build_dcel()
+
+    def build_dcel(self):
+        """
+        Creates the dcel from the list of vertices and edges
+        """
+
+        # Do some pruning first:
+        self.vertices = self.vl
+        ii = 0
+        while ii < 1000: # Trim at most 1000 edges
+            ii += 1
+
+            mult = np.zeros(self.nvertices(),'intc')
+            for e in self.el:
+                mult[e.con[0]] += 1
+                mult[e.con[1]] += 1
+            # end for
+
+            mult_check = mult < 2
+
+            if np.any(mult_check):
+                
+                # We need to do a couple of things:
+                # 1. The bad vertices need to be removed from the vertex list
+                # 2. Remaning vertices must be renamed
+                # 3. Edges that reference deleted vertices must be popped
+                # 4. Remaining edges must have connectivity info updated
+
+                # First generate new mapping:
+                count = 0
+                mapping = -1*np.ones(self.nvertices(),'intc')
+                deleted_vertices = []
+                for i in xrange(self.nvertices()):
+                    if  mult_check[i]:
+                        self.vertices.pop(i-len(deleted_vertices)) # Vertex must be removed
+                        deleted_vertices.append(i)
+                    else:
+                        mapping[i] = count # Other wise get the mapping count:
+                        count += 1
+                    # end if
+                # end for
+             
+                # Now prune the edges:
+                nEdgeDeleted = 0
+                for i in xrange(len(self.el)):
+                    if self.el[i-nEdgeDeleted].con[0] in deleted_vertices or \
+                            self.el[i-nEdgeDeleted].con[1] in deleted_vertices:
+                        # Edge must be deleted
+                        self.el.pop(i-nEdgeDeleted)
+                        nEdgeDeleted += 1
+                    else:
+                        # Mapping needs to be updated:
+                        curCon = self.el[i-nEdgeDeleted].con
+                        self.el[i-nEdgeDeleted].con[0] = mapping[curCon[0]]
+                        self.el[i-nEdgeDeleted].con[1] = mapping[curCon[1]]
+                    # end if
+                # end for
+            else:
+                break
+            # end if
+        # end while
+
+#Step 2: hedge list creation. Assignment of twins and
+#vertices
+            
+        self.hedges = []
+        append_count = 0
+
+        for e in self.el:
+
+            h1 = DCELHedge(self.vertices[e.con[0]],
+                       self.vertices[e.con[1]],
+                       e.X, e.PID, e.uv, e.tag)
+            h2 = DCELHedge(self.vertices[e.con[1]],
+                       self.vertices[e.con[0]],
+                       e.X, e.PID, e.uv, e.tag)
+
+            h1.twin = h2
+            h2.twin = h1
+            self.vertices[e.con[1]].hedgelist.append(h1)
+            self.vertices[e.con[0]].hedgelist.append(h2)
+            append_count += 2
+            self.hedges.append(h2)
+            self.hedges.append(h1)
+
+    
+        #Step 3: Identification of next and prev hedges
+        for v in self.vertices:
+            v.sortincident()
+            l = len(v.hedgelist)
+           
+            for i in range(l-1):
+                v.hedgelist[i].nexthedge = v.hedgelist[i+1].twin
+                v.hedgelist[i+1].prevhedge = v.hedgelist[i]
+
+            v.hedgelist[l-1].nexthedge = v.hedgelist[0].twin
+            v.hedgelist[0].prevhedge = v.hedgelist[l-1]
+
+        #Step 4: Face assignment
+        provlist = self.hedges[:]
+        nf = 0
+        nh = len(self.hedges)
+
+        while nh > 0:
+            h = provlist.pop()
+            nh -= 1
+
+            #We check if the hedge already points to a face
+            if h.face == None:
+                f = DCELFace()
+                nf += 1
+                #We link the hedge to the new face
+                f.wedge = h
+                f.wedge.face = f
+                #And we traverse the boundary of the new face
+                while (not h.nexthedge is f.wedge):
+                    h = h.nexthedge
+                    h.face = f
+                self.faces.append(f)
+        #And finally we have to determine the external face
+        for f in self.faces:
+            f.external = f.area() < 0
+            f.centeroid()
+
+        if self.face_info is not None:
+            for i in xrange(len(self.face_info)):
+                self.faces[i].tag = self.face_info[i]
+
+    def writeTecplot(self, file_name):
+
+        f = open(file_name, 'w')
+        f.write ('VARIABLES = "X","Y"\n')
+        for i in xrange(len(self.el)):
+            f.write('Zone T=\"edge%d\" I=%d\n'%(i, 2))
+            f.write('DATAPACKING=POINT\n')
+            v1 = self.el[i].con[0]
+            v2 = self.el[i].con[1]
+        
+            f.write('%g %g\n'%(self.vl[v1].x,
+                               self.vl[v1].y))
+
+            f.write('%g %g\n'%(self.vl[v2].x,
+                               self.vl[v2].y))
+
+        f.close()
+    def findpoints(self, pl, onetoone=False):
+        """Given a list of points pl, returns a list of 
+        with the corresponding face each point belongs to and
+        None if it is outside the map.
+        
+        """
+        
+        ans = []
+        if onetoone:
+            fl = self.faces[:]
+            for p in pl:
+                found = False
+                for f in fl:
+                    if f.external:
+                        continue
+                    if f.isinside(p):
+                        fl.remove(f)
+                        found = True
+                        ans.append(f)
+                        break
+                if not found:
+                    ans.append(None)
+
+        else:
+            for p in pl:
+                found = False
+                for f in self.faces:
+                    if f.external:
+                        continue
+                    if f.isinside(p):
+                        found = True
+                        ans.append(f)
+                        break
+                if not found:
+                    ans.append(None)
+
+        return ans
+
+    def areas(self):
+        return [f.area() for f in self.faces if not f.external]
+
+    def perimeters(self):
+        return [f.perimeter() for f in self.faces if not f.external]
+
+    def nfaces(self):
+        return len(self.faces)
+
+    def nvertices(self):
+        return len(self.vertices)
+
+    def nedges(self):
+        return len(self.hedges)/2
+
+    def saveDCEL(self, file_name):
+
+        f = open(file_name,'w')
+        f.write('%d %d %d\n'%(
+                self.nvertices(), self.nedges(), self.nfaces()))
+        for i in xrange(self.nvertices()):
+            f.write('%g %g %g %g %g \n'%(
+                    self.vertices[i].x,self.vertices[i].y,
+                    self.vertices[i].X[0],
+                    self.vertices[i].X[1],
+                    self.vertices[i].X[2]))
+        # end for
+
+        for i in xrange(self.nedges()):
+            f.write('%d %d %g %g %g %g %g %g %s\n'%(
+                    self.el[i].con[0],self.el[i].con[1],
+                    self.el[i].x1[0],self.el[i].x1[1],self.el[i].x1[2],
+                    self.el[i].x2[0],self.el[i].x2[1],self.el[i].x2[2],
+                   self.el[i].tag))
+
+        for i in xrange(self.nfaces()):
+            f.write('%s\n'%(self.faces[i].tag))
+        # end for
+
+        f.close()
+        
+        return
+
+    def loadDCEL(self, file_name):
+
+        f = open(file_name,'r')
+        # Read sizes
+        tmp = f.readline().split()
+        nvertices = int(tmp[0])
+        nedges    = int(tmp[1])
+        nfaces    = int(tmp[2])
+
+        self.vl = []
+        self.el = []
+        self.face_info = []
+        for i in xrange(nvertices):
+            a = f.readline().split()
+            self.vl.append(DCELVertex([float(a[0]),float(a[1])],
+                                  np.array([float(a[2]),
+                                               float(a[3]),
+                                               float(a[4])])))
+        # end for
+
+        for i in xrange(nedges):
+            a = f.readline().split()
+            self.el.append(DCELEdge(int(a[0]),int(a[1]), None, None, None, a[8]))
+            self.el[-1].x1 = np.array([float(a[2]),float(a[3]),float(a[4])])
+            self.el[-1].x2 = np.array([float(a[5]),float(a[6]),float(a[7])])
+
+        for i in xrange(nfaces):
+            a = f.readline().split()
+            self.face_info.append(a[0])
+        # end for
+
+        f.close()
+        
+        return
+       
+
+#Misc. functions
+def area2(hedge, point):
+    """Determines the area of the triangle formed by a hedge and
+    an external point"""
+    
+    pa = hedge.twin.origin
+    pb=hedge.origin
+    pc=point
+    return (pb.x - pa.x)*(pc[1] - pa.y) - (pc[0] - pa.x)*(pb.y - pa.y)
+
+
+def lefton(hedge, point):
+    """Determines if a point is to the left of a hedge"""
+
+    return area2(hedge, point) >= 0
+
+
+def hangle(dx,dy):
+    """Determines the angle with respect to the x axis of a segment
+    of coordinates dx and dy
+    """
+
+    l = np.sqrt(dx*dx + dy*dy)
+  
+    if dy > 0:
+        return np.arccos(dx/l)
+    else:
+        return 2*np.pi - np.arccos(dx/l)
+
