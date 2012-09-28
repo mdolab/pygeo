@@ -1021,7 +1021,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def writeTecplot(self, file_name, orig=False, surfs=True, coef=True, 
                      directions=False, surf_labels=False, edge_labels=False, 
-                     node_labels=False, tecio=False):
+                     node_labels=False)
 
         '''Write the pyGeo Object to Tecplot dat file
         Required:
@@ -1040,7 +1040,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         # Open File and output header
         
-        f = pySpline.openTecplot(file_name, 3, tecio=tecio)
+        f = pySpline.openTecplot(file_name, 3)
 
         # --------------------------------------
         #    Write out the Interpolated Surfaces

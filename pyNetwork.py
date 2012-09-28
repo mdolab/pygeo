@@ -141,7 +141,7 @@ class pyNetwork():
 # ----------------------------------------------------------------------
 
     def writeTecplot(self,file_name,orig=False,curves=True,coef=True,
-                     curve_labels=False,node_labels=False,tecio=False):
+                     curve_labels=False,node_labels=False):
 
         '''Write the pyNetwork Object to Tecplot dat file
         Required:
@@ -156,7 +156,7 @@ class pyNetwork():
 
         # Open File and output header
         
-        f = pySpline.openTecplot(file_name,3,tecio=tecio)
+        f = pySpline.openTecplot(file_name,3)
 
         # --------------------------------------
         #    Write out the Interpolated Curves
