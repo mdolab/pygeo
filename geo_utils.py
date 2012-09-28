@@ -4389,19 +4389,39 @@ class DCELFace:
 
 
 
-    def isinside(self, p):
-        """Determines whether a point is inside a face"""
+    def isinside(self, P):
+        """Determines whether a point is inside a face using a
+        winding formula"""
+        pl = self.vertexlist()
+        V = []
+        for i in xrange(len(pl)):
+            V.append([pl[i].x,pl[i].y])
+        V.append([pl[0].x,pl[0].y])
 
-        h = self.wedge
-        inside = False
-        if lefton(h, p):
-            while(not h.nexthedge is self.wedge):
-                h = h.nexthedge
-                if not lefton(h, p):
-                    return False
-            return True
-        else:
+        wn = 0
+        # loop through all edges of the polygon
+        for i in range(len(V)-1):     # edge from V[i] to V[i+1]
+            if V[i][1] <= P[1]:        # start y <= P[1]
+                if V[i+1][1] > P[1]:     # an upward crossing
+                    if is_left(V[i], V[i+1], P) > 0: # P left of edge
+                        wn += 1           # have a valid up intersect
+                    # end if
+                # end if
+            else:                      # start y > P[1] (no test needed)
+                if V[i+1][1] <= P[1]:    # a downward crossing
+                    if is_left(V[i], V[i+1], P) < 0: # P right of edge
+                        wn -= 1           # have a valid down intersect
+                    # end if
+                # end if
+            # end if
+        # end for
+
+        if wn == 0:
             return False
+        else:
+            return True
+        # end if
+
 
 
 class DCEL(object):
@@ -4693,6 +4713,9 @@ def area2(hedge, point):
     pc=point
     return (pb.x - pa.x)*(pc[1] - pa.y) - (pc[0] - pa.x)*(pb.y - pa.y)
 
+
+def is_left(P0, P1, P2):
+    return (P1[0] - P0[0]) * (P2[1] - P0[1]) - (P2[0] - P0[0]) * (P1[1] - P0[1])
 
 def lefton(hedge, point):
     """Determines if a point is to the left of a hedge"""
