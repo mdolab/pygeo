@@ -1021,7 +1021,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
     def writeTecplot(self, file_name, orig=False, surfs=True, coef=True, 
                      directions=False, surf_labels=False, edge_labels=False, 
-                     node_labels=False)
+                     node_labels=False):
 
         '''Write the pyGeo Object to Tecplot dat file
         Required:
