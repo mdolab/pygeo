@@ -591,8 +591,8 @@ class pyBlock():
 # ----------------------------------------------------------------------    
 
     def writeTecplot(self,file_name,vols=True,coef=True,orig=False,
-                     vol_labels=False,edge_labels=False,node_labels=False,
-                     tecio=False):
+                     vol_labels=False,edge_labels=False,node_labels=False):
+
 
         '''Write the pyGeo Object to Tecplot dat file
         Required:
@@ -605,7 +605,7 @@ class pyBlock():
 
         # Open File and output header
         
-        f = pySpline.openTecplot(file_name,3,tecio=tecio)
+        f = pySpline.openTecplot(file_name,3)
 
         # --------------------------------------
         #    Write out the Interpolated Surfaces

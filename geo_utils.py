@@ -3486,12 +3486,14 @@ def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
         points = np.zeros((n_unique,3))
         uu = np.zeros(n_unique)
         vv = np.zeros(n_unique)
+        ss = np.zeros(n_unique)
         pid = np.zeros(n_unique,'intc')
 
         for i in xrange(n_sol):
             points[link[i]] = tmp_sol[i, 3:6]
             uu[link[i]] = tmp_sol[i, 1]
             vv[link[i]] = tmp_sol[i, 2]
+            ss[link[i]] = tmp_sol[i, 0]
             pid[link[i]] = tmp_pid[i]
         # end for
         n_sol = len(points)
@@ -3500,11 +3502,13 @@ def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
         points = np.zeros((n_unique,3))
         uu = np.zeros(n_unique)
         vv = np.zeros(n_unique)
+        ss = np.zeros(n_unique)
         pid = np.zeros(n_unique,'intc')
 
         points[0] = tmp_sol[0, 3:6]
-        uu[0] = tmp_sol[0,1]
+        uu[0] = tmp_sol[0, 1]
         vv[0] = tmp_sol[0, 2]
+        ss[0] = tmp_sol[0, 0]
         pid[0] = tmp_pid[0]
     # end if
 
@@ -3519,8 +3523,8 @@ def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
         first_patchID = PID[pid[0]]
         first_u = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
         first_v = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
-
-        return [first, first_patchID, first_u, first_v],  None,  fail
+        first_s = ss[0]
+        return [first, first_patchID, first_u, first_v, first_s],  None,  fail
     elif n_sol == 2:
         fail = 0
         
@@ -3533,17 +3537,19 @@ def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
 
         first_u = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
         first_v = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
+        first_s = ss[0]
 
         second_u = uv0[pid[1]][0] + uu[1]*(uv1[pid[1]][0] - uv0[pid[1]][0])
         second_v = uv0[pid[1]][1] + vv[1]*(uv2[pid[1]][1] - uv0[pid[1]][1])
-        
+        second_s = ss[1]
+
         if np.dot(first - pt, up_vec) >= np.dot(second - pt, up_vec):
 
-            return [first, first_patchID, first_u, first_v],\
-                [second, second_patchID, second_u, second_v], fail
+            return [first, first_patchID, first_u, first_v, first_s],\
+                [second, second_patchID, second_u, second_v, second_s], fail
         else:
-            return [second, second_patchID, second_u, second_v],\
-                [first, first_patchID, first_u, first_v], fail
+            return [second, second_patchID, second_u, second_v, second_s],\
+                [first, first_patchID, first_u, first_v, first_s], fail
 
     else:
        
