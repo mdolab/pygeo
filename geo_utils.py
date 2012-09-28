@@ -4356,16 +4356,20 @@ class DCELFace:
         a = (a + p1.x*p2.y - p2.x*p1.y)/2
         return a
 
-    def centeroid(self):
+    def centroid(self):
         h = self.wedge
         center = np.zeros(2)
-        counter = 0
+        center += [h.origin.x,h.origin.y]
+        counter = 1
         while(not h.nexthedge is self.wedge):
-            center += [h.origin.x,h.origin.y]
             counter += 1
             h = h.nexthedge
-        center /= counter
-        self.centeroid = center
+            center += [h.origin.x,h.origin.y]
+        # end while
+       
+        self.centroid = center/counter
+
+        return
 
     def perimeter(self):
         h = self.wedge
@@ -4539,7 +4543,7 @@ class DCEL(object):
         #And finally we have to determine the external face
         for f in self.faces:
             f.external = f.area() < 0
-            f.centeroid()
+            f.centroid()
 
         if self.face_info is not None:
             for i in xrange(len(self.face_info)):
