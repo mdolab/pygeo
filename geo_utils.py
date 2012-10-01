@@ -361,6 +361,8 @@ def pointReduce(points, node_tol=1e-4):
     # First 
     points = np.array(points)
     N = len(points)
+    if N == 0:
+        return points, None
     dists = []
     for ipt in xrange(N): 
         dists.append(np.sqrt(np.dot(points[ipt], points[ipt])))
@@ -418,6 +420,8 @@ def pointReduceBruteForce(points,  node_tol=1e-4):
 
     '''
     N = len(points)
+    if N == 0:
+        return points, None
     unique_points = [points[0]]
     link = [0]
     for i in xrange(1, N):
@@ -3595,8 +3599,9 @@ def projectNodePIDPosOnly(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
 
             v = uv0[pid[min_index]][1] + sol[min_index, 2]*\
                 (uv2[pid[min_index]][1] - uv0[pid[min_index]][1])
+            s = sol[min_index,0]
 
-            return [sol[min_index, 3:6], patchID, u, v], fail
+            return [sol[min_index, 3:6], patchID, u, v, s], fail
         # end if
     # end if
 
@@ -4326,6 +4331,7 @@ class DCELHedge:
         self.face = None
         self.sface = None
         self.uv = uv
+        self.PID = PID
         self.nexthedge = None
         self.angle = hangle(v2.x-v1.x, v2.y-v1.y)
         self.prevhedge = None
