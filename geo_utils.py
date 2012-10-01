@@ -4347,6 +4347,7 @@ class DCELFace:
         self.data = None
         self.external = None
         self.tag = 'EXTERNAL'
+        self.id = None
 
     def area(self):
         h = self.wedge
