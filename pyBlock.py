@@ -987,7 +987,7 @@ class pyBlock():
             
             if nrm > eps*50:
                 counter += 1
-                bad_pts.append(x0[i])
+                bad_pts.append([x0[i],D[i]])
             # end if
         # end for
 
@@ -997,9 +997,16 @@ class pyBlock():
         if counter > 0:
             print ' -> Warning: %d point(s) not projected to tolerance: \
 %g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
-            print 'List of Points is:'
+            print 'List of Points is: (pt, delta):'
             for i in xrange(len(bad_pts)):
-                print bad_pts[i]
+                print '[%12.5g %12.5g %12.5g] [%12.5g %12.5g %12.5g]'%(
+                    bad_pts[i][0][0],
+                    bad_pts[i][0][1],
+                    bad_pts[i][0][2],
+                    bad_pts[i][1][2],
+                    bad_pts[i][1][1],
+                    bad_pts[i][1][2])
+
 
         return volID,u,v,w,D
 
