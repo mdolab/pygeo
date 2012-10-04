@@ -934,7 +934,6 @@ class pyBlock():
                 u0,v0,w0,D0 = self.vols[iVol].projectPoint(
                     x0[i], eps=eps, Niter=200, **kwargs)
 
-                solved = False
                 # Evaluate new pt to get actual difference:
                 new_pt = self.vols[iVol](u0,v0,w0)
                 D0 = x0[i]-new_pt
@@ -949,7 +948,7 @@ class pyBlock():
                     v[i]     = v0
                     w[i]     = w0
                     D[i]     = D0
-                    solved = True
+                    break
                 # end if
 
             # end for
@@ -958,10 +957,6 @@ class pyBlock():
             # volume used (iVol or vol_list[j]) is at the start of the
             # list and the remainder are shuflled towards the back
             vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
-                
-            if solved:
-                break
-            # end if
         # end for
         
         # We are going to a an ACTUAL check of how well the points
