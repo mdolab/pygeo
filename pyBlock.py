@@ -938,12 +938,21 @@ class pyBlock():
                 new_pt = self.vols[iVol](u0,v0,w0)
                 D0 = x0[i]-new_pt
 
-                if (numpy.linalg.norm(D0) < eps*50):
+                # If the new distance is less than the previous best
+                # distance, set the volID, u,v,w, since this may be
+                # best we can do:
+                if numpy.linalg.norm(D0) < numpy.linalg.norm(D[i]):
                     volID[i] = iVol
                     u[i]     = u0
                     v[i]     = v0
                     w[i]     = w0
                     D[i]     = D0
+                    D[i] = D0
+                # end if
+
+                # Now, if D0 is close enough to our tolerance, we can
+                # exit the loop since we know we won't do any better
+                if (numpy.linalg.norm(D0) < eps*50):
                     break
                 # end if
 
