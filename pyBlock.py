@@ -938,10 +938,6 @@ class pyBlock():
                 new_pt = self.vols[iVol](u0,v0,w0)
                 D0 = x0[i]-new_pt
 
-                if numpy.linalg.norm(D0) < numpy.linalg.norm(D[i]):
-                    D[i] = numpy.linalg.norm(D0)
-                # end if
-
                 if (numpy.linalg.norm(D0) < eps*50):
                     volID[i] = iVol
                     u[i]     = u0
