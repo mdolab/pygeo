@@ -929,43 +929,39 @@ class pyBlock():
         vol_list = numpy.arange(self.nVol)
 
         for i in xrange(len(x0)):
+            for j in xrange(self.nVol):
+                iVol = vol_list[j]
+                u0,v0,w0,D0 = self.vols[iVol].projectPoint(
+                    x0[i], eps=eps, Niter=200, **kwargs)
 
-            for n_sub in xrange(1,10):
+                solved = False
+                # Evaluate new pt to get actual difference:
+                new_pt = self.vols[iVol](u0,v0,w0)
+                D0 = x0[i]-new_pt
 
-                for j in xrange(self.nVol):
-                    iVol = vol_list[j]
-                    u0,v0,w0,D0 = self.vols[iVol].projectPoint(
-                        x0[i],eps=eps,n_sub=n_sub,Niter=200,**kwargs)
+                if numpy.linalg.norm(D0) < numpy.linalg.norm(D[i]):
+                    D[i] = numpy.linalg.norm(D0)
+                # end if
 
-                    solved = False
-                    # Evaluate new pt to get actual difference:
-                    new_pt = self.vols[iVol](u0,v0,w0)
-                    D0 = x0[i]-new_pt
+                if (numpy.linalg.norm(D0) < eps*50):
+                    volID[i] = iVol
+                    u[i]     = u0
+                    v[i]     = v0
+                    w[i]     = w0
+                    D[i]     = D0
+                    solved = True
+                # end if
 
-                    if numpy.linalg.norm(D0) < numpy.linalg.norm(D[i]):
-                        D[i] = numpy.linalg.norm(D0)
-                    # end if
-
-                    if (numpy.linalg.norm(D0) < eps*50):
-                        volID[i] = iVol
-                        u[i]     = u0
-                        v[i]     = v0
-                        w[i]     = w0
-                        D[i]     = D0
-                        solved = True
-                        break
-                    # end if
-
-                # end for
-
-                # Shuffle the order of the vol_list such that the last
-                # volume used (iVol or vol_list[j]) is at the start of the
-                # list and the remainder are shuflled towards the back
-                vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
-                
-                if solved:
-                    break
             # end for
+
+            # Shuffle the order of the vol_list such that the last
+            # volume used (iVol or vol_list[j]) is at the start of the
+            # list and the remainder are shuflled towards the back
+            vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
+                
+            if solved:
+                break
+            # end if
         # end for
         
         # We are going to a an ACTUAL check of how well the points
