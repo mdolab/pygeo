@@ -24,7 +24,7 @@ History
 # Standard Python modules
 # =============================================================================
 
-import os, sys, copy
+import os, sys, copy, time
 
 # =============================================================================
 # External Python modules
@@ -91,7 +91,7 @@ class pyBlock():
         self.vols = []           # The list of volumes (pySpline volume)
         self.nVol = None         # The total number of volumessurfaces
         self.coef  = None        # The global (reduced) set of control pts
-        self.embeded_volumes = []
+        self.embeded_volumes = {}
         # --------------------------------------------------------------
 
         if init_type == 'plot3d':
@@ -825,14 +825,14 @@ class pyBlock():
 
         return 
 
-    def _calcdPtdCoef(self,index):
+    def _calcdPtdCoef(self, index):
         '''Calculate the (fixed) volume derivative of a discrete set of ponits'''
         volID = self.embeded_volumes[index].volID
         u       = self.embeded_volumes[index].u
         v       = self.embeded_volumes[index].v
         w       = self.embeded_volumes[index].w
         N       = self.embeded_volumes[index].N
-        mpiPrint('Calculating Volume %d Derivative for %d Points...'%(index,len(volID)),self.NO_PRINT)
+        mpiPrint('Calculating Volume %s Derivative for %d Points...'%(index,len(volID)),self.NO_PRINT)
 
         # Get the maximum k (ku or kv for each surface)
         kmax = 2
@@ -860,11 +860,11 @@ class pyBlock():
         col_ind = col_ind[:row_ptr[-1]]
         # Now make a sparse matrix
         self.embeded_volumes[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,len(self.coef)])
-        mpiPrint('  -> Finished Embeded Volume %d Derivative'%(index),self.NO_PRINT)
+        mpiPrint('  -> Finished Embeded Volume %s Derivative'%(index),self.NO_PRINT)
         
         return
 
-    def getAttachedPoints(self,index):
+    def getAttachedPoints(self, index):
         '''
         Return all the volume points for an embedded volume with index index
         Required:
@@ -873,15 +873,25 @@ class pyBlock():
             coordinates: an aray of the volume points
             '''
 
-        volID   = self.embeded_volumes[index].volID
-        u       = self.embeded_volumes[index].u
-        v       = self.embeded_volumes[index].v
-        w       = self.embeded_volumes[index].w
-        N       = self.embeded_volumes[index].N
+        volID = self.embeded_volumes[index].volID
+        u     = self.embeded_volumes[index].u
+        v     = self.embeded_volumes[index].v
+        w     = self.embeded_volumes[index].w
+        N     = self.embeded_volumes[index].N
+        mask  = self.embeded_volumes[index].mask
         coordinates = numpy.zeros((N,3))
 
-        for i in xrange(N):
-            coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
+        if mask is None:
+            for i in xrange(N):
+                coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
+            # end for
+        else:
+            for j in xrange(len(mask)):
+                i = mask[j]
+                coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
+                # end if
+            # end for
+        # end if
 
         return coordinates
 
@@ -889,21 +899,55 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def attachPoints(self,coordinates,*args,**kwargs):
-        '''Embed a set of coordinates into all volumes'''
+    def attachPoints(self, coordinates, index, *args, **kwargs):
+        '''Embed a set of coordinates into all volumes
 
+        coordintes: the coordinates
+        index: is a string name to identify the set of points
+        
+        '''
         # Project Points
-        volID,u,v,w,D = self.projectPoints(coordinates,*args,**kwargs)
-        self.embeded_volumes.append(embeded_volume(volID,u,v,w))
-
+        timeA = time.time()
+        volID,u,v,w,D = self.projectPoints(coordinates, *args, **kwargs)
+        self.embeded_volumes[index] = embeded_volume(volID, u, v, w)
+        timeB = time.time()
+        mpiPrint('Embedded %d points in %4.2f second: %4.0f coor/sec'%(
+                len(coordinates), timeB-timeA, len(coordinates)/(timeB-timeA)))
         return
+
+    def attachPointsInteriorOnly(self, coordinates, index, *args, **kwargs):
+        '''Embed a set of coordiante into all volume. Same as
+        attachPoints EXCEPT, if a point doesn't project correctly, it
+        is recorded and will be ignored when the points are
+        reevaluated. Therefore, it treats only points that are fully
+        inside the volume.'''
+
+        # Note we don't check errors here since we know many points
+        # won't be in the volume. 
+        volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False,
+                                               *args, **kwargs)
+
+        # Loop through the coordinates provided and determine which
+        # ones are ARE FULLY PROJECTED. These are the points that will
+        # be evalued when the points are returned
+        mask = []
+        for i in xrange(len(D)):
+            if numpy.linalg.norm(D[i]) < 50*1e-12: # Sufficiently
+                                                   # inside
+                mask.append(i)
+            # end if
+        # end for
+
+        self.embeded_volumes[index] = embeded_volume(volID, u, v, w, mask)
+        
+        return 
 
 
 # ----------------------------------------------------------------------
 #             Geometric Functions
 # ----------------------------------------------------------------------    
 
-    def projectPoints(self,x0,eps=1e-12,*args,**kwargs):
+    def projectPoints(self, x0, eps=1e-12, checkErrors=True, *args, **kwargs):
         '''Project a point into any one of the volumes. Returns 
         the volID,u,v,w,D of the point in volID or closest to it.
         
@@ -927,35 +971,33 @@ class pyBlock():
 
         # Starting list is just [0,1,2,...,nVol-1]
         vol_list = numpy.arange(self.nVol)
-
+        u0 = 0.0
+        v0 = 0.0
+        w0 = 0.0
+        
         for i in xrange(len(x0)):
             for j in xrange(self.nVol):
                 iVol = vol_list[j]
                 u0,v0,w0,D0 = self.vols[iVol].projectPoint(
-                    x0[i], eps=eps, Niter=200, **kwargs)
+                    x0[i], eps=eps, Niter=100, **kwargs)
 
-                # Evaluate new pt to get actual difference:
-                new_pt = self.vols[iVol](u0,v0,w0)
-                D0 = x0[i]-new_pt
-
+                D0_norm =numpy.linalg.norm(D0)
                 # If the new distance is less than the previous best
                 # distance, set the volID, u,v,w, since this may be
                 # best we can do:
-                if numpy.linalg.norm(D0) < numpy.linalg.norm(D[i]):
+                if D0_norm < numpy.linalg.norm(D[i]):
                     volID[i] = iVol
                     u[i]     = u0
                     v[i]     = v0
                     w[i]     = w0
                     D[i]     = D0
-                    D[i] = D0
                 # end if
 
                 # Now, if D0 is close enough to our tolerance, we can
                 # exit the loop since we know we won't do any better
-                if (numpy.linalg.norm(D0) < eps*50):
+                if (D0_norm < eps*50):
                     break
                 # end if
-
             # end for
 
             # Shuffle the order of the vol_list such that the last
@@ -964,45 +1006,47 @@ class pyBlock():
             vol_list = numpy.hstack([iVol,vol_list[:j],vol_list[j+1:]])
         # end for
         
-        # We are going to a an ACTUAL check of how well the points
-        # converged. We don't care about what the newton search thinks
-        # is the error, we actually care about the distance between
-        # the points and vol(u,v,w). We will compute the RMS error,
-        # the Max Error and the number of points worse than 50*eps.
-        counter = 0
-        D_max = 0.0
-        D_rms = 0.0
-        bad_pts = []
-        for i in xrange(len(x0)):
-            nrm = numpy.linalg.norm(D[i])
-            if nrm > D_max:
-                D_max = nrm
-            # end if
-
-            D_rms += nrm**2
+        # If desired check the errors and print warnings:
+        if checkErrors:
             
-            if nrm > eps*50:
-                counter += 1
-                bad_pts.append([x0[i],D[i]])
+            # Loop back through the points and determine which ones are
+            # bad (> 50*ep) and print them to the screen:
+            counter = 0
+            D_max = 0.0
+            D_rms = 0.0
+            bad_pts = []
+            for i in xrange(len(x0)):
+                nrm = numpy.linalg.norm(D[i])
+                if nrm > D_max:
+                    D_max = nrm
+                # end if
+
+                D_rms += nrm**2
+
+                if nrm > eps*50:
+                    counter += 1
+                    bad_pts.append([x0[i],D[i]])
+                # end if
+            # end for
+
+            D_rms = numpy.sqrt(D_rms / len(x0))
+
+            # Check to see if we have bad projections and print a warning:
+            if counter > 0:
+                print ' -> Warning: %d point(s) not projected to tolerance: \
+    %g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
+                print 'List of Points is: (pt, delta):'
+                for i in xrange(len(bad_pts)):
+                    print '[%12.5g %12.5g %12.5g] [%12.5g %12.5g %12.5g]'%(
+                        bad_pts[i][0][0],
+                        bad_pts[i][0][1],
+                        bad_pts[i][0][2],
+                        bad_pts[i][1][0],
+                        bad_pts[i][1][1],
+                        bad_pts[i][1][2])
+                # end for
             # end if
-        # end for
-
-        D_rms = numpy.sqrt(D_rms / len(x0))
-      
-        # Check to see if we have bad projections and print a warning:
-        if counter > 0:
-            print ' -> Warning: %d point(s) not projected to tolerance: \
-%g\n.  Max Error: %12.6g ; RMS Error: %12.6g'%(counter,eps,D_max,D_rms)
-            print 'List of Points is: (pt, delta):'
-            for i in xrange(len(bad_pts)):
-                print '[%12.5g %12.5g %12.5g] [%12.5g %12.5g %12.5g]'%(
-                    bad_pts[i][0][0],
-                    bad_pts[i][0][1],
-                    bad_pts[i][0][2],
-                    bad_pts[i][1][2],
-                    bad_pts[i][1][1],
-                    bad_pts[i][1][2])
-
+        # end if
 
         return volID,u,v,w,D
 
@@ -1026,7 +1070,7 @@ class pyBlock():
   
 class embeded_volume(object):
 
-    def __init__(self,volID,u,v,w):
+    def __init__(self, volID, u, v, w, mask=None):
         '''A Container class for a set of embeded volume points
         Requres:
             voliD list of the volume iD's for the points
@@ -1039,7 +1083,10 @@ class embeded_volume(object):
         self.N = len(self.u)
         self.dPtdCoef = None
         self.dPtdX    = None
+        self.mask     = mask
 
+        return
+        
 #==============================================================================
 # Class Test
 #==============================================================================
