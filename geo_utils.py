@@ -4287,9 +4287,12 @@ class DCELEdge(object):
         self.tag = tag
         self.v1 = v1
         self.v2 = v2
-        if X is not None:
+        if X is not None: 
             self.x1 = 0.5*(X[0,0] + X[0,1])
             self.x2 = 0.5*(X[-1,0] + X[-1,1])
+      
+        # end if
+
         self.con = [v1,v2]
     def __repr__(self):
 
@@ -4461,10 +4464,16 @@ class DCEL(object):
             self.vl = vl 
             self.el = el
             self.build_dcel()
-        else:
+        elif file_name is not None:
             self.loadDCEL(file_name)
             self.build_dcel()
+        else:
+            # The user is going to manually create the hedges and
+            # faces
+            pass
+        # end if
 
+            
     def build_dcel(self):
         """
         Creates the dcel from the list of vertices and edges

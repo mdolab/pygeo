@@ -288,14 +288,14 @@ class pyNetwork():
     def projectRays(self,points,axis,curves=None,*args,**kwargs):
         
         # Lets, cheat, do a point projection:
-        
+       
         curveID0,s0 = self.projectPoints(points)
-
+      
         D0 = numpy.zeros((len(s0),3),'d')
         for i in xrange(len(s0)):
             D0[i,:] = self.curves[curveID0[i]](s0[i])-points[i]
         # end for
-
+     
         if curves == None:
             curves = numpy.arange(self.nCurve)
         # end if
@@ -312,7 +312,8 @@ class pyNetwork():
                                     points[j]+axis*1.5*numpy.linalg.norm(D0[j]))
                 # end if
 
-                S[j,i],t,D[j,i,:] = self.curves[icurve].projectCurve(ray,Niter=2000)
+                S[j,i],t,D[j,i,:] = self.curves[icurve].projectCurve(
+                    ray, Niter=2000)
             # end for
         # end for
 
@@ -355,7 +356,7 @@ class pyNetwork():
             icurve = curves[i]
             S[:,i],D[:,i,:] = self.curves[icurve].projectPoint(points,*args,**kwargs)
         # end for
-
+        
         s = numpy.zeros(N)
         curveID = numpy.zeros(N,'intc')
 
@@ -373,6 +374,7 @@ class pyNetwork():
             # end for
             
         # end for
+     
         return curveID,s
 #==============================================================================
 # Class Test

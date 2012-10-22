@@ -15,8 +15,7 @@ exec(import_modules('geo_utils', 'pySpline', 'pyNetwork'))
 
 class DVGeometry(object):
     
-    def __init__(self, points, curves, FFD=None, Surface=None, 
-                 rot_type=0, *args, **kwargs):
+    def __init__(self, points, curves, FFD=None, rot_type=0, *args, **kwargs):
 
         ''' Create a DV Geometry module to handle all design variable
         manipulation 
@@ -31,11 +30,6 @@ class DVGeometry(object):
         FFD:    A pyBlock instance that is used in Free-form 
         deformation. Points are embedded inside the volume 
         and the ref axis then act on the FFD control points
-        Surface: A pyGeo instance for B-spline geometry. Points are 
-        projected onto the surface  and the ref axis then
-        operates on the control points of the surface. Since
-        this method CAN ONLY DO SURFACES it CANNOT be used 
-        for multidisciplinary optimization
 
         rot_type: integer 0-6 to determine the rotation order
         0 -> None   -> Intrinsic rotation, rot_x is roation about axis
@@ -62,19 +56,21 @@ class DVGeometry(object):
         self.DV_listLocal   = [] # Local Design Variable List
         self.DV_namesLocal  = {} # Names of Local Design Variables
 
+        # Flags to determine if this DVGeometry is a parent or child
+        self.isChild  = False
+        self.children = []
+
         # Points are the descrete points we must manipulate. We have
         # to be careful here, since this MAY be a list
         self.points = []
-        self.pt_ind = {}
         if isinstance(points, list):
             assert 'names' in kwargs, 'Names must be specified if more than\
  one set of points are used'
-            for i in xrange(len(points)):
-                self.points.append(points[i])
-                self.pt_ind[kwargs['names'][i]] = i
+            self.points = points
+            self.pt_names = kwargs['names']
         else:
             self.points = [points]
-            self.pt_ind['default'] = 0
+            self.pt_names = ['default']
         # end if
 
         self.rot_type = rot_type
@@ -87,84 +83,65 @@ class DVGeometry(object):
         self.J_local  = None
 
         self.complex = kwargs.pop('complex', False)
+        self.FFD = FFD
 
-        if Surface and FFD:
-            print 'DVGeometry can only use FFD\'s or surfaces'
-            sys.exit(1)
+        if 'vol_list' in kwargs:
+            # If the user has specified a vol_list, the curves
+            # should only act on some of the volumes. 
+            vol_list = kwargs['vol_list']
+            assert len(curves)==len(vol_list), \
+                'The length of vol_list and curves must be the same'
+            # The ptAttach list *MAY* be smaller than the full set
+            # of coordinates defining the FFD. Also, the user had
+            # told us WHICH volume(s) must be connected to WHICH
+            # Axis. It we put all these in a list there's a
+            # possibility the curve projects will break this
+            # association.
 
-        self.Surface = None
-        self.FFD     = None
-      
-        if FFD:
-            self.FFD = FFD
-            if 'vol_list' in kwargs:
-                # If the user has specified a vol_list, the curves
-                # should only act on some of the volumes. 
-                vol_list = kwargs['vol_list']
-                assert len(curves)==len(vol_list), \
-                    'The length of vol_list and curves must be the same'
-                # The ptAttach list *MAY* be smaller than the full set
-                # of coordinates defining the FFD. Also, the user had
-                # told us WHICH volume(s) must be connected to WHICH
-                # Axis. It we put all these in a list there's a
-                # possibility the curve projects will break this
-                # association.
-                
-                # So...create ptAttachInd which are the indicies of
-                # self.FFD.coef that we are actually manipulating. If
-                # there's no vol_list, then this is just [0, 1, 2, ...N-1]
-                self.ptAttachInd = []
-                self.ptAttachPtr = [0]
+            # So...create ptAttachInd which are the indicies of
+            # self.FFD.coef that we are actually manipulating. If
+            # there's no vol_list, then this is just [0, 1, 2, ...N-1]
+            self.ptAttachInd = []
+            self.ptAttachPtr = [0]
 
-                for ii in xrange(len(kwargs['vol_list'])):
-                    temp = []
-                    for iVol in kwargs['vol_list'][ii]:
-                        for i in xrange(self.FFD.vols[iVol].Nctlu):
-                            for j in xrange(self.FFD.vols[iVol].Nctlv):
-                                for k in xrange(self.FFD.vols[iVol].Nctlw):
-                                    temp.append(
-                                        self.FFD.topo.l_index[iVol][i, j, k])
+            for ii in xrange(len(kwargs['vol_list'])):
+                temp = []
+                for iVol in kwargs['vol_list'][ii]:
+                    for i in xrange(self.FFD.vols[iVol].Nctlu):
+                        for j in xrange(self.FFD.vols[iVol].Nctlv):
+                            for k in xrange(self.FFD.vols[iVol].Nctlw):
+                                temp.append(
+                                    self.FFD.topo.l_index[iVol][i, j, k])
 
 
-                                # end for
                             # end for
                         # end for
                     # end for
-                    # Uniuque the values we just added:
-                    temp = geo_utils.unique(temp)
-                    self.ptAttachInd.extend(temp)
-                    self.ptAttachPtr.append(len(self.ptAttachInd))
                 # end for
-
-                # Convert the ind list to an array
-                self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
-            else:
-                self.ptAttachInd = numpy.arange(len(self.FFD.coef))
-                self.ptAttachPtr = [0, len(self.FFD.coef)]
-            # end if
-     
-            # Take the subset of the FFD cofficients as what will be
-            # attached
-            self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
-            self.ptAttachFull = self.FFD.coef.copy()
-
-            # Project Points in to volume:
-            for i in xrange(len(self.points)):
-                self.FFD.attachPoints(self.points[i])
-                self.FFD._calcdPtdCoef(i)
+                # Uniuque the values we just added:
+                temp = geo_utils.unique(temp)
+                self.ptAttachInd.extend(temp)
+                self.ptAttachPtr.append(len(self.ptAttachInd))
             # end for
 
-        elif Surface:
-            print 'Not Done yet'
-            sys.exit(0)
-#             self.Surface = Surface
-#             self.ptAttach = self.Surface.coef()
-#             self.ptAttachFull = self.surface.coef.copy()
-#             self.Surface.attachSurface(self.points)
-#             self.Surface._calcdPtdCoef(0)
+            # Convert the ind list to an array
+            self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
         else:
-            self.ptAttach = points
+            self.ptAttachInd = numpy.arange(len(self.FFD.coef))
+            self.ptAttachPtr = [0, len(self.FFD.coef)]
         # end if
+     
+        # Take the subset of the FFD cofficients as what will be
+        # attached
+        self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
+        self.ptAttachFull = self.FFD.coef.copy()
+
+        # Project Points in to volume:
+        for i in xrange(len(self.points)):
+            if self.points[i] is not None:
+                self.FFD.attachPoints(self.points[i],self.pt_names[i])
+                self.FFD._calcdPtdCoef(self.pt_names[i])
+            # end for
 
         # Number of points attached to ref axis
         self.nPtAttach = len(self.ptAttach)
@@ -236,7 +213,7 @@ class DVGeometry(object):
 
         curveIDs = []
         s = []
-
+     
         for ii in xrange(len(self.ptAttachPtr)-1):
             pts_to_use = self.ptAttach[
                 self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1], :]
@@ -268,9 +245,42 @@ class DVGeometry(object):
 
         return
     
+    def addChild(self, childDVGeo):
+        '''Embed a child FFD into this object'''
+
+        # Flag the child DVGeo object as a child 
+        childDVGeo.isChild = True
+        
+        # First we need to extract the coef from the child FFD and ref
+        # axis and embed them into the parent and compute their
+        # derivatives
+
+        iChild = len(self.children)
+        self.FFD.attachPoints(childDVGeo.FFD.coef, 'child%d_coef'%(iChild))
+        self.FFD._calcdPtdCoef('child%d_coef'%(iChild))
+
+        self.FFD.attachPoints(childDVGeo.coef, 'child%d_axis'%(iChild))
+        self.FFD._calcdPtdCoef('child%d_axis'%(iChild))
+
+        # Now since the projection into the child domain was
+        # defferred, we need to do that now. This embedding is
+        # slightly different; we only care about the points that are
+        # fully inside the volume, all other points are ignored. 
+
+        # Loop over sets of points in the master and embed:
+        for i in xrange(len(self.points)):
+            childDVGeo.FFD.attachPointsInteriorOnly(
+                self.points[i], self.pt_names[i])
+            childDVGeo.FFD._calcdPtdCoef(self.pt_names[i])
+        # end fo
+
+        self.children.append(childDVGeo)
+
+        return
+
     def _setInitialValues(self):
 
-        self.coef = copy.deepcopy(self.coef0)#.astype('D')
+        self.coef = copy.deepcopy(self.coef0).astype('D')
         self.scale = copy.deepcopy(self.scale0)
         self.scale_x = copy.deepcopy(self.scale_x0)
         self.scale_y = copy.deepcopy(self.scale_y0)
@@ -279,8 +289,11 @@ class DVGeometry(object):
         self.rot_y = copy.deepcopy(self.rot_y0)
         self.rot_z = copy.deepcopy(self.rot_z0)
         self.rot_theta = copy.deepcopy(self.rot_theta0)   
+        
+        return
 
-    def addGeoDVGlobal(self, dv_name, value, lower, upper, function, useit=True):
+    def addGeoDVGlobal(self, dv_name, value, lower, upper, function, 
+                       useit=True):
         '''Add a global design variable
         Required:
         dv_name: a unquie name for this design variable (group)
@@ -319,21 +332,13 @@ class DVGeometry(object):
         N: The number of design variables added for this local Set
         '''
 
-        # Take the FFD or surface coef. 
-
-        if self.FFD:
-            if pointSelect is not None:
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
-            else:
-                ind = numpy.arange(self.nPtAttach)
-            # end if
-            self.DV_listLocal.append(
-                geo_utils.geoDVLocal(dv_name, lower, upper, axis, ind))
-            
-        if self.Surface:
-            self.DV_listLocal.append(geo_utils.geoDVLocal(\
-                    dv_name, lower, upper, axis, numpy.arange(
-                        len(self.Surface.coef))))
+        if pointSelect is not None:
+            pts, ind = pointSelect.getPoints(self.FFD.coef)
+        else:
+            ind = numpy.arange(self.nPtAttach)
+        # end if
+        self.DV_listLocal.append(
+            geo_utils.geoDVLocal(dv_name, lower, upper, axis, ind))
             
         self.DV_namesLocal[dv_name] = len(self.DV_listLocal)-1
 
@@ -400,6 +405,11 @@ class DVGeometry(object):
             self.J_local = None
         #endfor
 
+        # Now call setValues on the children. This way the
+        # variables will be set on the children
+        for child in self.children:
+            child.setValues(dvName, value, scaled)
+        # end for 
 
         return
 
@@ -431,6 +441,9 @@ class DVGeometry(object):
             nDV += self.DV_listGlobal[i].nVal
         # end for
         
+        for child in self.children:
+            nDV += child._getNDVGlobal()
+
         return nDV
 
     def _getNDVLocal(self):
@@ -439,6 +452,9 @@ class DVGeometry(object):
         for i in xrange(len(self.DV_listLocal)):
             nDV += self.DV_listLocal[i].nVal
         # end for
+
+        for child in self.children:
+            nDV += child._getNDVLocal()
 
         return nDV
 
@@ -474,6 +490,8 @@ class DVGeometry(object):
         '''
         
         # Set all coef Values back to initial values
+        if not self.isChild:
+            print 'setting init values'
         self._setInitialValues()
         
         # Step 1: Call all the design variables
@@ -536,29 +554,42 @@ class DVGeometry(object):
             # end if
         # end for
 
-        if self.FFD:
+        if not self.isChild:
             temp = numpy.real(new_pts)
             self.FFD.coef = self.ptAttachFull.copy()
             numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, temp[:, 0])
             numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, temp[:, 1])
             numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, temp[:, 2])
-
-            for i in xrange(len(self.DV_listLocal)):
-                self.DV_listLocal[i](self.FFD.coef)
-            # end for
-
-            self.FFD._updateVolumeCoef()
-            coords = self.FFD.getAttachedPoints(self.pt_ind[name])
-
-
-        elif self.Surface:
-            pass # Not implemented
-            #self.Surface.coef = numpy.real(new_pts)
-            #self.Surface._updateSurfaceCoef()
-            #coords = self.Surface.getSurfacePoints(0)
         else:
-            coords = new_pts
+
+            # Coeffients need to be set with delta values
+
+            temp = numpy.real(new_pts)
+            oldCoefLocations = self.FFD.coef.copy()
+
+            numpy.put(self.FFD.coef[:,0], self.ptAttachInd, temp[:, 0])
+            numpy.put(self.FFD.coef[:,1], self.ptAttachInd, temp[:, 1])
+            numpy.put(self.FFD.coef[:,2], self.ptAttachInd, temp[:, 2])
+
+            self.FFD.coef -= oldCoefLocations
         # end if
+
+        for i in xrange(len(self.DV_listLocal)):
+            self.DV_listLocal[i](self.FFD.coef)
+        # end for
+
+        self.FFD._updateVolumeCoef()
+        coords = self.FFD.getAttachedPoints(name)
+
+        # Now loop over the children set the FFD and refAxis control
+        # points as evaluated from the parent
+        for iChild in xrange(len(self.children)):
+            self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
+                'child%d_coef'%(iChild))
+            self.children[iChild].coef = self.FFD.getAttachedPoints(
+                'child%d_axis'%(iChild))
+            coords += self.children[iChild].update(name)
+
 
         if self.complex:
 
@@ -571,16 +602,10 @@ class DVGeometry(object):
             imag_part     = numpy.imag(tempCoef)
             imag_j = 1j
 
-            if self.FFD:
-                dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
-                for ii in xrange(3):
-                    coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
+            dPtdCoef = self.FFD.embeded_volumes[anme].dPtdCoef
+            for ii in xrange(3):
+                coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
 
-
-            elif self.Surface:
-                coords += imag_j*self.Surface.attached_surfaces[0].\
-                    dPtdCoef.dot(imag_part)
-             # end if   
             self._unComplexifyCoef()
 
         # end if
@@ -639,6 +664,7 @@ class DVGeometry(object):
 
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+             
                 deriv[0] = 0.0
                 deriv /= numpy.linalg.norm(deriv) # Normalize
                 D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
@@ -672,6 +698,10 @@ class DVGeometry(object):
 
         self.coef = self.coef.astype('D')
 
+#         for child in self.children:
+#             child._complexifyCoef()
+        # end for
+
         return
         
     def _unComplexifyCoef(self):
@@ -692,6 +722,11 @@ class DVGeometry(object):
 
         self.coef = self.coef.astype('d')
 
+#         for child in self.children:
+#             child._unComplexifyCoef()
+        # end for
+
+        return
 
     def totalSensitivity(self, dIdpt, comm=None, scaled=True, name='default'):
         '''This function takes the total derivative of an objective, 
@@ -727,7 +762,7 @@ class DVGeometry(object):
         J_temp = sparse.csr_matrix(J_temp)
 
         # Transpose of the point-coef jacobian:
-        dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
+        dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
 
         dIdcoef = numpy.zeros((self.nPtAttachFull*3))
         dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
@@ -736,12 +771,6 @@ class DVGeometry(object):
 
         # Now back to design variables:
         dIdx_local = J_temp.T.dot(dIdcoef)
-
-        # ---------------- OLD --------------------
-        # dIdx_local = self.JT.dot(dIdpt.flatten())
-        # dIdpt = numpy.numpy.zeros_like(self.points[self.pt_ind[name]])
-        # self.computeTotalJacobian(name, scaled)
-        # dIdx_local = self.JT.dot(dIdpt.flatten())
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -782,55 +811,39 @@ class DVGeometry(object):
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
         
-        if self.FFD:
-         
-            dPtdCoef = self.FFD.embeded_volumes[
-                self.pt_ind[name]].dPtdCoef.tocoo()
-            # We have a slight problem...dPtdCoef only has the shape
-            # functions, so it size Npt x Coef. We need a matrix of
-            # size 3*Npt x 3*nCoef, where each non-zero entry of
-            # dPtdCoef is replaced by value * 3x3 Identity matrix.
-
-            # Extract IJV Triplet from dPtdCoef
-            row = dPtdCoef.row
-            col = dPtdCoef.col
-            data = dPtdCoef.data
-
-            new_row = numpy.zeros(3*len(row), 'int')
-            new_col = numpy.zeros(3*len(row), 'int')
-            new_data = numpy.zeros(3*len(row))
-
-            # Loop over each entry and expand:
-            for j in xrange(3):
-                new_data[j::3] = data
-                new_row[j::3] = row*3 + j
-                new_col[j::3] = col*3 + j
+        dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef.tocoo()
+        # We have a slight problem...dPtdCoef only has the shape
+        # functions, so it size Npt x Coef. We need a matrix of
+        # size 3*Npt x 3*nCoef, where each non-zero entry of
+        # dPtdCoef is replaced by value * 3x3 Identity matrix.
+       
+        # Extract IJV Triplet from dPtdCoef
+        row = dPtdCoef.row
+        col = dPtdCoef.col
+        data = dPtdCoef.data
+        
+        new_row = numpy.zeros(3*len(row), 'int')
+        new_col = numpy.zeros(3*len(row), 'int')
+        new_data = numpy.zeros(3*len(row))
+        
+        # Loop over each entry and expand:
+        for j in xrange(3):
+            new_data[j::3] = data
+            new_row[j::3] = row*3 + j
+            new_col[j::3] = col*3 + j
                     
-            # Size of New Matrix:
-            Nrow = dPtdCoef.shape[0]*3
-            Ncol = dPtdCoef.shape[1]*3
+        # Size of New Matrix:
+        Nrow = dPtdCoef.shape[0]*3
+        Ncol = dPtdCoef.shape[1]*3
 
-            # Create new matrix in coo-dinate format and convert to csr
-            new_dPtdCoef = sparse.coo_matrix(
-                (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
+        # Create new matrix in coo-dinate format and convert to csr
+        new_dPtdCoef = sparse.coo_matrix(
+            (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
 
-            # Do Sparse Mat-Mat multiplaiction and resort indices
-            self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
-            self.JT.sort_indices()
+        # Do Sparse Mat-Mat multiplaiction and resort indices
+        self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
+        self.JT.sort_indices()
          
-            # ------------- OLD VERY SLOW IMPLEMENTATION -----------
-         #    dPtdCoef = self.FFD.embeded_volumes[self.pt_ind[name]].dPtdCoef
-#             JT = sparse.lil_matrix((nDV, nPt*3))
-#             for i in xrange(nDV):
-#                 JT[i, 0::3] = dPtdCoef.dot(J_temp[0::3, i])
-#                 JT[i, 1::3] = dPtdCoef.dot(J_temp[1::3, i])
-#                 JT[i, 2::3] = dPtdCoef.dot(J_temp[2::3, i])
-#             # end for
-#             self.JT = JT.tocsr()
-#             self.JT.sort_indices()
-            # ------------------------------------------------------
-        # end if
-
         return 
 
     def _attachedPtJacobian(self, scaled=True):
@@ -932,6 +945,7 @@ class DVGeometry(object):
         # We are going to do our own scaling here...since pyOpt can't
         # do it...
 
+        # Add design variables from the master:
         for dvList in [self.DV_listGlobal, self.DV_listLocal]:
             for dv in dvList:
                 if dv.nVal > 1:
@@ -947,9 +961,14 @@ class DVGeometry(object):
 
                     opt_prob.addVar(dv.name, 'c', value=val, 
                                     lower=low, upper=high)
-                # end
-            # end
-        # end
+                # end if
+            # end for
+        # end for
+
+        # Add variables for children
+        for child in self.children:
+            child.addVariablespyOpt(opt_prob)
+        # end for
 
         return opt_prob
 
@@ -980,7 +999,6 @@ class DVGeometry(object):
                 mpiPrint('========================================')
 
                 refVal = self.DV_listGlobal[i].value[j]
-                
 
                 self.DV_listGlobal[i].value[j] += h
                 coordsph = self.update(name).flatten()
@@ -994,7 +1012,6 @@ class DVGeometry(object):
 
                     if abs(relErr) > h*10 and abs(absErr) > h*10:
                         print ii, deriv[ii], Jac[DVCount, ii], relErr, absErr
-                       
                     # end if
                 # end for
                 DVCount += 1
@@ -1045,3 +1062,9 @@ class DVGeometry(object):
                 mpiPrint('%20.15f'%(dl.value[i]))
             # end for
         # end for
+    
+        for child in self.children:
+            child.printDesignVariables()
+        # end for
+
+        return
