@@ -858,8 +858,10 @@ class pyBlock():
         # Now we can crop out any additional values in col_ptr and vals
         vals    = vals[:row_ptr[-1]]
         col_ind = col_ind[:row_ptr[-1]]
-        # Now make a sparse matrix
-        self.embeded_volumes[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),shape=[N,len(self.coef)])
+        # Now make a sparse matrix iff we actually have coordinates
+        if N > 0:
+            self.embeded_volumes[index].dPtdCoef = sparse.csr_matrix((vals,col_ind,row_ptr),
+                                                                     shape=[N,len(self.coef)])
         mpiPrint('  -> Finished Embeded Volume %s Derivative'%(index),self.NO_PRINT)
         
         return
@@ -1028,8 +1030,11 @@ class pyBlock():
                     bad_pts.append([x0[i],D[i]])
                 # end if
             # end for
-
-            D_rms = numpy.sqrt(D_rms / len(x0))
+            if len(x0) > 0:
+                D_rms = numpy.sqrt(D_rms / len(x0))
+            else:
+                D_rms = None
+            # end if
 
             # Check to see if we have bad projections and print a warning:
             if counter > 0:
