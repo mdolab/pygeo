@@ -137,6 +137,7 @@ class DVGeometry(object):
         self.ptAttachFull = self.FFD.coef.copy()
 
         # Project Points in to volume:
+
         for i in xrange(len(self.points)):
             if self.points[i] is not None:
                 self.FFD.attachPoints(self.points[i],self.pt_names[i])
@@ -481,18 +482,17 @@ class DVGeometry(object):
 
         return 
 
-    def update(self, name="default"):
+    def update(self, name="default", childDelta=True):
 
         '''This is pretty straight forward, perform the operations on
         the ref axis according to the design variables, then return
         the list of points provided. It is up to the user to know what
         to do with the points
         '''
-        
+
         # Set all coef Values back to initial values
         if not self.isChild:
-            print 'setting init values'
-        self._setInitialValues()
+            self._setInitialValues()
         
         # Step 1: Call all the design variables
 
@@ -570,8 +570,9 @@ class DVGeometry(object):
             numpy.put(self.FFD.coef[:,0], self.ptAttachInd, temp[:, 0])
             numpy.put(self.FFD.coef[:,1], self.ptAttachInd, temp[:, 1])
             numpy.put(self.FFD.coef[:,2], self.ptAttachInd, temp[:, 2])
-
-            self.FFD.coef -= oldCoefLocations
+            if childDelta:
+                self.FFD.coef -= oldCoefLocations
+            # end if
         # end if
 
         for i in xrange(len(self.DV_listLocal)):
@@ -588,7 +589,7 @@ class DVGeometry(object):
                 'child%d_coef'%(iChild))
             self.children[iChild].coef = self.FFD.getAttachedPoints(
                 'child%d_axis'%(iChild))
-            coords += self.children[iChild].update(name)
+            coords += self.children[iChild].update(name, childDelta)
 
 
         if self.complex:
@@ -603,8 +604,11 @@ class DVGeometry(object):
             imag_j = 1j
 
             dPtdCoef = self.FFD.embeded_volumes[anme].dPtdCoef
-            for ii in xrange(3):
-                coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
+            if dPtdCoef is not None:
+                for ii in xrange(3):
+                    coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
+                # end for
+            # end if
 
             self._unComplexifyCoef()
 
@@ -765,9 +769,11 @@ class DVGeometry(object):
         dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
 
         dIdcoef = numpy.zeros((self.nPtAttachFull*3))
-        dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
-        dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
-        dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
+        if dPtdCoef is not None:
+            dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
+            dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
+            dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
+        # end if
 
         # Now back to design variables:
         dIdx_local = J_temp.T.dot(dIdcoef)
@@ -971,6 +977,38 @@ class DVGeometry(object):
         # end for
 
         return opt_prob
+
+    def writeTecplot(self, file_name):
+        '''Write the (deformed) current state of the FFD's to a file
+        including the children'''
+
+        # Name here doesn't matter, just take the first one
+        self.update(self.pt_names[0], childDelta=False)
+
+        f = pySpline.openTecplot(file_name, 3)
+        vol_counter = 0
+        # Write master volumes:
+        vol_counter += self._writeVols(f, vol_counter)
+
+        # Write children volumes:
+        for iChild in xrange(len(self.children)):
+            vol_counter += self.children[iChild]._writeVols(f, vol_counter)
+        # end for
+
+        pySpline.closeTecplot(f)
+
+        self.update(self.pt_names[0], childDelta=True) 
+
+
+        return
+
+    def _writeVols(self, handle, vol_counter):
+        for i in xrange(len(self.FFD.vols)):
+            pySpline.writeTecplot3D(handle, 'vol%d'%i, self.FFD.vols[i].coef)
+            vol_counter += 1
+        # end for
+
+        return vol_counter
 
     def checkDerivatives(self, name='default'):
         '''Run a brute force FD check on ALL design variables'''
