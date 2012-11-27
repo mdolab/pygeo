@@ -1107,9 +1107,10 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
                 corners[3] = kwargs['pt3']
             # end if
 
-            X = np.reshape(corners, [2, 2, 3])
+            X=corners
+
             exec(import_modules('pySpline'))
-            self.box = pySpline.bilinear_surface(X=X)
+            self.box = pySpline.bilinear_surface(X)
             self.type = 'box'
         elif type == 'list':
             self.box = None
@@ -1126,7 +1127,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
         ind_list = []
         if self.type == 'box':
             for i in xrange(len(points)):
-                u0, v0, D, converged = self.box.projectPoint(points[i])
+                u0, v0, D = self.box.projectPoint(points[i])
                 if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: #Its Inside
                     pt_list.append(points[i])
                     ind_list.append(i)

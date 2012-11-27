@@ -411,19 +411,9 @@ class DVConstraints(object):
         self.volumeConSizes.append([nSpan,nChord])
         V0_offset = len(self.V0)
         axis = [0,0,0] # axis doesn't matter
-        V0,CG = self._evalVolume(V0_offset,axis)
+        pAxis = [0,0,0] # axis doesn't matter
+        V0,CG,A = self._evalVolume(V0_offset,axis,pAxis)
         self.V0.append(V0)
-
-        # The constraint will ALWAYS be set as a scaled value,
-        # however, it is possible that the user has specified
-        # individal values for each location. Therefore we
-        # will convert these absolute values to an equilivant
-        # scaled value. 
-                
-        if not scaled:
-            lower /= self.V0[V0_offset]
-            upper /= self.V0[V0_offset]
-        # end if
         
         # Finally add the thickness constraint values
         self.volumeConLower.append(lower)
@@ -859,8 +849,9 @@ class DVConstraints(object):
 
         Volume = []
         axis = [0,0,0] # We don't care what the axis is
+        pAxis = [0,0,0] # We don't care what the axis is
         for iVolCon in xrange(self.nVolumeCon):
-            V, CG = self._evalVolume(iVolCon, axis)
+            V, CG, A = self._evalVolume(iVolCon, axis,pAxis)
             Volume.append(V)
             if self.volumeScaled[iVolCon]:
                 Volume[iVolCon]/= self.V0[iVolCon]
@@ -895,12 +886,65 @@ class DVConstraints(object):
         axis=[0,1,0] y-location and so on.'''
 
         CG = []
+        pAxis = [0,0,0] # We don't care what the pAxis is
         for iVolCon in xrange(self.nVolumeCon):
-            V, cg = self._evalVolume(iVolCon, axis)
+            V, cg, A = self._evalVolume(iVolCon, axis, pAxis)
             CG.append(cg/V)
         # end for
 
         return CG
+
+    def getVolumeCGSensitivity(self, DVGeo, axis, name=None):
+
+        '''Return the derivative of all the volume CG values. We pass
+        in the DVGeo object so this function returns the final DV jacobian
+        '''
+
+        nDV = DVGeo._getNDV()
+        dCGdx = numpy.zeros((self.nVolumeCon, nDV))
+        pAxis = [0,0,0] # We don't care what the pAxis is
+        timeA = time.time()
+        for iVolCon in xrange(self.nVolumeCon):
+            V, cg, A = self._evalVolume(iVolCon, axis, pAxis)
+            dVdpt = self._evalVolumeDerivative(iVolCon)
+            dCGdpt = self._evalVolumeCGDerivative(iVolCon,axis)
+            dCGndpt = dCGdpt/V-(cg/V**2)*dVdpt
+
+            dCGdx[iVolCon, :] = DVGeo.totalSensitivity(dCGndpt, name=name)
+        # end for
+   
+        return dCGdx
+
+
+    def getVolumeArea(self,pAxis):
+        '''Return the bottom plane area of the volume.'''
+
+        A = []
+        axis = [0.0,0.0,0.0]
+        for iVolCon in xrange(self.nVolumeCon):
+            V, cg, a = self._evalVolume(iVolCon, axis,pAxis)
+            A.append(a)
+        # end for
+
+        return A
+
+    def getVolumeAreaSensitivity(self, DVGeo, pAxis, name=None):
+
+        '''Return the derivative of all the volume area values. We pass
+        in the DVGeo object so this function returns the final DV jacobian
+        '''
+
+        nDV = DVGeo._getNDV()
+        dAdx = numpy.zeros((self.nVolumeCon, nDV))
+        timeA = time.time()
+        for iVolCon in xrange(self.nVolumeCon):
+            dAdpt = self._evalVolumeAreaDerivative(iVolCon,pAxis)
+           
+            dAdx[iVolCon, :] = DVGeo.totalSensitivity(dAdpt, name=name)
+        # end for
+   
+        return dAdx
+
 
     # ------------------------------------------------------------
     #            Verify and non-user callable functions
@@ -943,7 +987,83 @@ class DVConstraints(object):
                     
         return
 
-    def _evalVolume(self, iVolCon, axis):
+    def verifyVolumeCGSensitivity(self,axis):
+        """ Do a FD check on the reverse mode volume sensitity calculation"""
+
+        CG0 = self.getVolumeCG(axis)
+        h = 1e-4
+        pAxis = [0,0,0] # We don't care what the pAxis is
+
+
+        for iVolCon in xrange(self.nVolumeCon):
+
+            mpiPrint("----------------------------------------------")
+            mpiPrint(" Checking derivative of Volume CG Constraint %d"%(iVolCon))
+            mpiPrint("----------------------------------------------")
+            
+            V, cg, A = self._evalVolume(iVolCon, axis, pAxis)
+            dVdpt = self._evalVolumeDerivative(iVolCon)
+            dCGdpt = self._evalVolumeCGDerivative(iVolCon,axis)
+            dCGndpt = dCGdpt/V-(cg/V**2)*dVdpt
+           
+            dCGndpt2 = numpy.zeros_like(dCGndpt)
+
+            # Blindy loop over coefficients:
+            for i in xrange(len(self.coords)):
+                for idim in xrange(3):
+                    self.coords[i,idim] += h
+
+                    CGph = self.getVolumeCG(axis)
+                    dCGndpt2[i,idim] = (CGph[iVolCon]-CG0[iVolCon])/h
+
+                    self.coords[i,idim] -= h
+                    mpiPrint('pt %d, idim %d: %f %f'%(
+                            i,idim,dCGndpt[i,idim],dCGndpt2[i,idim]))
+
+                # end for
+            # end for
+        # end for
+                    
+        return
+
+    def verifyVolumeAreaSensitivity(self,pAxis):
+        """ Do a FD check on the reverse mode volume sensitity calculation"""
+
+        A0 = self.getVolumeArea(pAxis)
+        h = 1e-4
+        axis = [0,0,0] # We don't care what the axis is
+
+
+        for iVolCon in xrange(self.nVolumeCon):
+
+            mpiPrint("----------------------------------------------")
+            mpiPrint(" Checking derivative of Volume CG Constraint %d"%(iVolCon))
+            mpiPrint("----------------------------------------------")
+            
+            dAdpt = self._evalVolumeAreaDerivative(iVolCon,pAxis)
+           
+            dAdpt2 = numpy.zeros_like(dAdpt)
+
+            # Blindy loop over coefficients:
+            for i in xrange(len(self.coords)):
+                for idim in xrange(3):
+                    self.coords[i,idim] += h
+
+                    Aph = self.getVolumeArea(pAxis)
+                    dAdpt2[i,idim] = (Aph[iVolCon]-A0[iVolCon])/h
+
+                    self.coords[i,idim] -= h
+                    mpiPrint('pt %d, idim %d: %f %f'%(
+                            i,idim,dAdpt[i,idim],dAdpt2[i,idim]))
+
+                # end for
+            # end for
+        # end for
+                    
+        return
+
+
+    def _evalVolume(self, iVolCon, axis,pAxis):
 
         # Sizes
         nSpan = self.volumeConSizes[iVolCon][0]
@@ -957,6 +1077,7 @@ class DVConstraints(object):
         x = self.coords[istart:iend].flatten().reshape(
             [nSpan, nChord, 2, 3])
 
+        Area = 0.0
         Volume = 0.0
         CG     = 0.0
         ind = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],
@@ -971,16 +1092,37 @@ class DVConstraints(object):
                         x[i+ind[ii][0], j+ind[ii][1], 0+ind[ii][2]]
                 # end for
                 dV, xp = self._evalVolumeCube(coords)
+                dA = self._evalVolumeArea(coords,pAxis)
+                Area += dA
                 Volume += dV
+                
                 CG += numpy.dot(xp,axis)*dV
             # end for
         # end for
+        
         if Volume < 0:
             Volume = -Volume
             CG = -CG
             self.flipVolume = True
 
-        return Volume, CG
+        return Volume, CG, Area
+
+    def _evalVolumeArea(self,x,pAxis):
+        # Evaluate the Area of the bottom surface. Because of the projection 
+        # method, this area should be the same for top and bottom
+
+        i=1; j=1; k=1;
+        l=0; m=0; n=0;
+
+        pAxis = numpy.array(pAxis)/numpy.linalg.norm(pAxis)
+
+        v1 = x[i,j,n,:]-x[l,m,n,:]
+        v2 = x[l, j,n,:]-x[i,m,n,:]
+        s =((1.0)/(2.0))*numpy.cross(v1, v2)
+        sProj = numpy.sqrt(numpy.dot(pAxis,s)**2)
+        #sTotal = numpy.sqrt(s[0]**2 + s[1]**2 + s[2]**2)
+        #print 's',sTotal
+        return sProj
 
     def _evalVolumeCube(self, x):
         # Evaluate the volume of a cube defined by coords:
@@ -1087,6 +1229,119 @@ class DVConstraints(object):
         dVdpt[istart:iend,:] = xd.reshape([nSpan*nChord*2, 3])
 
         return dVdpt
+
+    def _evalVolumeCGDerivative(self, iVolCon,axis):
+        # Generate the derivative of the volume with respect to the
+        # coordinates:
+
+        # We will use CS since its easy and exact:
+
+        # Sizes
+        nSpan = self.volumeConSizes[iVolCon][0]
+        nChord = self.volumeConSizes[iVolCon][1]
+
+        # Extract the coordinates:
+        istart = self.volumeConPtr[iVolCon][0]
+        iend   = self.volumeConPtr[iVolCon][1]
+
+        # x is the structured set of coordinates
+        x = self.coords[istart:iend].flatten().reshape([nSpan, nChord, 2, 3])
+        xd = numpy.zeros_like(x)
+
+        ind = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],
+               [0,0,1],[1,0,1],[0,1,1],[1,1,1]]
+        coords = numpy.zeros((2,2,2,3),'D')
+
+        for j in xrange(nChord-1):
+            for i in xrange(nSpan-1):
+
+                # Extract Coordinates
+                for ii in xrange(8):
+                    coords[ind[ii][0], ind[ii][1], ind[ii][2], :] = \
+                        x[i+ind[ii][0], j+ind[ii][1], 0+ind[ii][2]]
+                # end for
+                    
+                # CS loop over coordinates:
+                for ii in xrange(8):
+                    for jj in xrange(3):
+                        coords[ind[ii][0], ind[ii][1], ind[ii][2],jj] += 1e-40j
+
+                        Volume,xp = self._evalVolumeCube(coords)
+                        dCG = numpy.dot(xp,axis)*Volume
+                        xd[i+ind[ii][0],j+ind[ii][1],0+ind[ii][2],jj] += \
+                            numpy.imag(dCG)/1e-40
+
+                        coords[ind[ii][0], ind[ii][1], ind[ii][2],jj] -= 1e-40j
+                    # end for
+                # end for
+            # end for
+        # end for
+
+        if self.flipVolume:
+            xd = -xd
+
+        # Add into actual derivative array
+        dCGdpt = numpy.zeros_like(self.coords)
+        dCGdpt[istart:iend,:] = xd.reshape([nSpan*nChord*2, 3])
+
+        return dCGdpt
+
+    def _evalVolumeAreaDerivative(self, iVolCon,pAxis):
+        # Generate the derivative of the volume with respect to the
+        # coordinates:
+
+        # We will use CS since its easy and exact:
+
+        # Sizes
+        nSpan = self.volumeConSizes[iVolCon][0]
+        nChord = self.volumeConSizes[iVolCon][1]
+
+        # Extract the coordinates:
+        istart = self.volumeConPtr[iVolCon][0]
+        iend   = self.volumeConPtr[iVolCon][1]
+
+        # x is the structured set of coordinates
+        x = self.coords[istart:iend].flatten().reshape([nSpan, nChord, 2, 3])
+        xd = numpy.zeros_like(x)
+
+        ind = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],
+               [0,0,1],[1,0,1],[0,1,1],[1,1,1]]
+        coords = numpy.zeros((2,2,2,3),'D')
+
+        for j in xrange(nChord-1):
+            for i in xrange(nSpan-1):
+
+                # Extract Coordinates
+                for ii in xrange(8):
+                    coords[ind[ii][0], ind[ii][1], ind[ii][2], :] = \
+                        x[i+ind[ii][0], j+ind[ii][1], 0+ind[ii][2]]
+                # end for
+                    
+                # CS loop over coordinates:
+                for ii in xrange(8):
+                    for jj in xrange(3):
+                        coords[ind[ii][0], ind[ii][1], ind[ii][2],jj] += 1e-40j
+
+                        A = self._evalVolumeArea(coords,pAxis)
+
+                        xd[i+ind[ii][0],j+ind[ii][1],0+ind[ii][2],jj] += \
+                            numpy.imag(A)/1e-40
+
+                        coords[ind[ii][0], ind[ii][1], ind[ii][2],jj] -= 1e-40j
+                    # end for
+                # end for
+            # end for
+        # end for
+
+
+        # Add into actual derivative array
+        dAdpt = numpy.zeros_like(self.coords)
+        dAdpt[istart:iend,:] = xd.reshape([nSpan*nChord*2, 3])
+
+        return dAdpt
+
+
+
 
     def _volpym(self, xa, ya, za, xb, yb, zb, xc, yc, zc, xd, yd, zd,
                 xp, yp, zp):
