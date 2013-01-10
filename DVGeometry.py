@@ -928,16 +928,18 @@ class DVGeometry(object):
             return None
 
         Jacobian = sparse.lil_matrix((self.nPtAttachFull*3, nDV))
+        iDVLocal = 0
         for i in xrange(len(self.DV_listLocal)):
             nVal = self.DV_listLocal[i].nVal
             for j in xrange(nVal):
                 pt_dv = self.DV_listLocal[i].coef_list[j] 
                 irow = pt_dv[0]*3 + pt_dv[1]
                 if not scaled:
-                    Jacobian[irow, j] = 1.0
+                    Jacobian[irow, iDVLocal] = 1.0
                 else:
-                    Jacobian[irow, j] = self.DV_listLocal[i].range[j]
+                    Jacobian[irow, iDVLocal] = self.DV_listLocal[i].range[j]
                 # end if
+                iDVLocal += 1
             # end for
         # end for
 
