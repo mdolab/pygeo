@@ -975,7 +975,7 @@ class DVGeometry(object):
 
         # Add variables for children
         for child in self.children:
-            child.addVariablespyOpt(opt_prob)
+            child.addVariablesPyOpt(opt_prob)
         # end for
 
         return opt_prob
