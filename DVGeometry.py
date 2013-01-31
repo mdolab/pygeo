@@ -414,6 +414,42 @@ class DVGeometry(object):
 
         return
 
+    def getValues(self,scaled=True):
+        ''' 
+        This is the generic get values function. It returns the current values
+        of the DVgeometry design variables
+        '''
+        
+        # initialize a dictionary for the DVs
+        DVDict = {}
+
+        # loop over the globalDVs
+        for key in self.DV_namesGlobal:
+            dv_val =self.DV_listGlobal[self.DV_namesGlobal[key]].value
+            if scaled:
+                dv_val = (dv_val-self.DV_listGlobal[self.DV_namesGlobal[key]].lower)/self.DV_listGlobal[self.DV_namesGlobal[key]].range
+            # end
+            DVDict[key] = dv_val
+        # end
+        
+        # and now the local DVs
+        for key in self.DV_namesLocal:
+            dv_val =self.DV_listLocal[self.DV_namesLocal[key]].value
+            if scaled:
+                dv_val = (dv_val-self.DV_listLocal[self.DV_namesLocal[key]].lower)/self.DV_listLocal[self.DV_namesLocal[key]].range
+            # end if
+            DVDict[key] = dv_val
+        # end for
+
+        # Now call getValues on the children. This way the
+        # returned dictionary will include the variables from
+        # the children
+        for child in self.children:
+            DVDict.update(child.getValues(scaled))
+        # end for 
+
+        return DVDict
+
     def _getRotMatrix(self, rotX, rotY, rotZ):
         if self.rot_type == 1:
             D = numpy.dot(rotZ, numpy.dot(rotY, rotX))
