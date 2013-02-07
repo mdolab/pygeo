@@ -611,7 +611,7 @@ class DVConstraints(object):
         k = numpy.zeros(len(X))
 
         for i in xrange(len(X)):
-            k[i] = numpy.linalg.norm(ddX[i])
+            k[i] = geo_utils.euclidean_norm(ddX[i])
         # end for
 
         return k
@@ -1114,7 +1114,7 @@ class DVConstraints(object):
         i=1; j=1; k=1;
         l=0; m=0; n=0;
 
-        pAxis = numpy.array(pAxis)/numpy.linalg.norm(pAxis)
+        pAxis = numpy.array(pAxis)/geo_utils.euclidean_norm(pAxis)
 
         v1 = x[i,j,n,:]-x[l,m,n,:]
         v2 = x[l, j,n,:]-x[i,m,n,:]

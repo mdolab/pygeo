@@ -86,6 +86,24 @@ def rotVbyW(V, W, theta):
 
     return np.dot(R, V)
 
+ # -------------------------------------------------------------
+ #               Norm Functions
+ # -------------------------------------------------------------
+
+def euclidean_norm(in_vec):
+    '''
+    perform the euclidean 2 norm of the vector in_vec
+    required because linalg.norm() provides incorrect results for 
+    CS derivatives.
+    '''
+    in_vec = numpy.array(in_vec)
+    temp = 0.0
+    for i in xrange(in_vec.shape[0]):
+        temp += in_vec[i]**2
+    # end
+    return np.sqrt(temp)
+    
+
  # --------------------------------------------------------------
  #                I/O Functions
  # --------------------------------------------------------------
@@ -229,7 +247,7 @@ def getCoordinatesFromFile(file_name):
 
 def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
-    return np.linalg.norm(x1-x2)
+    return euclidean_norm(x1-x2)#np.linalg.norm(x1-x2)
 
 def e_dist2D(x1, x2):
     '''Get the eculidean distance between two points'''
@@ -3865,8 +3883,8 @@ def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
 
     U = 0.5*(vec[0]+vec[1])
     V = 0.5*(vec[2]+vec[3])
-    u = U/np.linalg.norm(U)
-    v = V/np.linalg.norm(V)
+    u = U/euclidean_norm(U)
+    v = V/euclidean_norm(V)
 
     mid  = np.average(pts, axis=0)
 

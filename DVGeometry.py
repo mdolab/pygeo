@@ -240,7 +240,7 @@ class DVGeometry(object):
                     self.refAxis.curves[self.curveIDs[i]](s[i]))
             deriv = self.refAxis.curves[
                 self.curveIDs[i]].getDerivative(self.links_s[i])
-            deriv /= numpy.linalg.norm(deriv) # Normalize
+            deriv /= geo_utils.euclidean_norm(deriv) # Normalize
             self.links_n.append(numpy.cross(deriv, self.links_x[-1]))
         # end for
 
@@ -557,7 +557,7 @@ class DVGeometry(object):
             if self.rot_type == 0:
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                deriv /= numpy.linalg.norm(deriv) # Normalize
+                deriv /= geo_utils.euclidean_norm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
                 new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
                         self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
@@ -578,7 +578,7 @@ class DVGeometry(object):
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv[0] = 0.0
-                deriv /= numpy.linalg.norm(deriv) # Normalize
+                deriv /= geo_utils.euclidean_norm(deriv) # Normalize
                 D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
                         self.curveIDs[ipt]](self.links_s[ipt]))
                 
@@ -639,7 +639,7 @@ class DVGeometry(object):
             imag_part     = numpy.imag(tempCoef)
             imag_j = 1j
 
-            dPtdCoef = self.FFD.embeded_volumes[anme].dPtdCoef
+            dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
             if dPtdCoef is not None:
                 for ii in xrange(3):
                     coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
@@ -683,14 +683,13 @@ class DVGeometry(object):
             if self.rot_type == 0:
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                deriv /= numpy.linalg.norm(deriv) # Normalize
+                deriv /= geo_utils.euclidean_norm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
                 new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
                         self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
             # end if
             else:
-
                 rotX = geo_utils.rotxM(self.rot_x[
                         self.curveIDs[ipt]](self.links_s[ipt]))
                 rotY = geo_utils.rotyM(self.rot_y[
@@ -704,9 +703,9 @@ class DVGeometry(object):
 
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-             
                 deriv[0] = 0.0
-                deriv /= numpy.linalg.norm(deriv) # Normalize
+                deriv /= geo_utils.euclidean_norm(deriv) # Normalize
+
                 D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
                         self.curveIDs[ipt]](self.links_s[ipt]))
 
@@ -831,6 +830,7 @@ class DVGeometry(object):
         
         # This is going to be DENSE in general -- does not depend on
         # name
+        
         if self.J_attach is None:
             self.J_attach = self._attachedPtJacobian(scaled=scaled)
            
@@ -901,9 +901,9 @@ class DVGeometry(object):
         h = 1.0e-40j
         oneoverh = 1.0/1e-40
 
-        #h = 1.0e-6
-        #oneoverh = 1.0/1e-6
-        #coordref = self.update_deriv().flatten()
+        # h = 1.0e-6
+        # oneoverh = 1.0/1e-6
+        # coordref = self.update_deriv().flatten()
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
 
@@ -1056,7 +1056,7 @@ class DVGeometry(object):
         self.J_attach = None
         self.J_local = None
         self.computeTotalJacobian(name, scaled=False)
-
+       
         Jac = copy.deepcopy(self.JT)
         
         # Global Variables
@@ -1066,6 +1066,7 @@ class DVGeometry(object):
                  
         coords0 = self.update(name).flatten()
         h = 1e-6
+
         DVCount = 0
         for i in xrange(len(self.DV_listGlobal)):
             for j in xrange(self.DV_listGlobal[i].nVal):
@@ -1077,6 +1078,7 @@ class DVGeometry(object):
                 refVal = self.DV_listGlobal[i].value[j]
 
                 self.DV_listGlobal[i].value[j] += h
+
                 coordsph = self.update(name).flatten()
 
                 deriv = (coordsph-coords0)/h
