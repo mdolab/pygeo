@@ -96,7 +96,7 @@ def euclidean_norm(in_vec):
     required because linalg.norm() provides incorrect results for 
     CS derivatives.
     '''
-    in_vec = numpy.array(in_vec)
+    in_vec = np.array(in_vec)
     temp = 0.0
     for i in xrange(in_vec.shape[0]):
         temp += in_vec[i]**2
