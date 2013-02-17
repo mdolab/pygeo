@@ -4285,7 +4285,13 @@ class DCELEdge(object):
         self.X = X
         self.PID = PID
         self.uv = uv
-        self.tag = tag
+        tmp = tag.split('-')
+        self.tag = tmp[0]
+        if len(tmp) > 1:
+            self.seg = tmp[1]
+        else:
+            self.seg = None
+        # end if
         self.v1 = v1
         self.v2 = v2
         if X is not None: 
@@ -4300,6 +4306,10 @@ class DCELEdge(object):
         str = 'v1: %f %f\nv2: %f %f'%(self.v1[0],self.v1[1],
                                       self.v2[0],self.v2[1])
         return str
+
+    def midPt(self):
+        #return [0.5*(self.v1.x + self.v2.x), 0.5*(self.v1.y + self.v2.y)]
+        return 0.5*self.x1 + 0.5*self.x2
 
 class DCELVertex:
     """Minimal implementation of a vertex of a 2D dcel"""
@@ -4717,8 +4727,8 @@ class DCEL(object):
             a = f.readline().split()
             self.vl.append(DCELVertex([float(a[0]),float(a[1])],
                                   np.array([float(a[2]),
-                                               float(a[3]),
-                                               float(a[4])])))
+                                            float(a[3]),
+                                            float(a[4])])))
         # end for
 
         for i in xrange(nedges):

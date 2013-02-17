@@ -767,16 +767,22 @@ class DVGeometry(object):
 
         # Transpose of the point-coef jacobian:
         dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
-
-        dIdcoef = numpy.zeros((self.nPtAttachFull*3))
+        
         if dPtdCoef is not None:
-            dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
-            dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
-            dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
-        # end if
+            dIdcoef = numpy.zeros((self.nPtAttachFull*3))
+            if dPtdCoef is not None:
+                dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
+                dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
+                dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
+            # end if
 
-        # Now back to design variables:
-        dIdx_local = J_temp.T.dot(dIdcoef)
+            # Now back to design variables:
+            dIdx_local = J_temp.T.dot(dIdcoef)
+        else:
+            # This is an array of zeros of length the number of design
+            # variables
+            dIdx_local = numpy.zeros(self._getNDV(), 'd')
+        # end if
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -817,39 +823,41 @@ class DVGeometry(object):
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
         
-        dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef.tocoo()
-        # We have a slight problem...dPtdCoef only has the shape
-        # functions, so it size Npt x Coef. We need a matrix of
-        # size 3*Npt x 3*nCoef, where each non-zero entry of
-        # dPtdCoef is replaced by value * 3x3 Identity matrix.
-       
-        # Extract IJV Triplet from dPtdCoef
-        row = dPtdCoef.row
-        col = dPtdCoef.col
-        data = dPtdCoef.data
-        
-        new_row = numpy.zeros(3*len(row), 'int')
-        new_col = numpy.zeros(3*len(row), 'int')
-        new_data = numpy.zeros(3*len(row))
-        
-        # Loop over each entry and expand:
-        for j in xrange(3):
-            new_data[j::3] = data
-            new_row[j::3] = row*3 + j
-            new_col[j::3] = col*3 + j
-                    
-        # Size of New Matrix:
-        Nrow = dPtdCoef.shape[0]*3
-        Ncol = dPtdCoef.shape[1]*3
+        if self.FFD.embeded_volumes[name].dPtdCoef is not None:
+            dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef.tocoo()
+            # We have a slight problem...dPtdCoef only has the shape
+            # functions, so it size Npt x Coef. We need a matrix of
+            # size 3*Npt x 3*nCoef, where each non-zero entry of
+            # dPtdCoef is replaced by value * 3x3 Identity matrix.
 
-        # Create new matrix in coo-dinate format and convert to csr
-        new_dPtdCoef = sparse.coo_matrix(
-            (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
+            # Extract IJV Triplet from dPtdCoef
+            row = dPtdCoef.row
+            col = dPtdCoef.col
+            data = dPtdCoef.data
 
-        # Do Sparse Mat-Mat multiplaiction and resort indices
-        self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
-        self.JT.sort_indices()
-         
+            new_row = numpy.zeros(3*len(row), 'int')
+            new_col = numpy.zeros(3*len(row), 'int')
+            new_data = numpy.zeros(3*len(row))
+
+            # Loop over each entry and expand:
+            for j in xrange(3):
+                new_data[j::3] = data
+                new_row[j::3] = row*3 + j
+                new_col[j::3] = col*3 + j
+
+            # Size of New Matrix:
+            Nrow = dPtdCoef.shape[0]*3
+            Ncol = dPtdCoef.shape[1]*3
+
+            # Create new matrix in coo-dinate format and convert to csr
+            new_dPtdCoef = sparse.coo_matrix(
+                (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
+
+            # Do Sparse Mat-Mat multiplaiction and resort indices
+            self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
+            self.JT.sort_indices()
+        else:
+            self.JT = None
         return 
 
     def _attachedPtJacobian(self, scaled=True):
