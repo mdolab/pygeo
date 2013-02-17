@@ -86,6 +86,24 @@ def rotVbyW(V, W, theta):
 
     return np.dot(R, V)
 
+ # -------------------------------------------------------------
+ #               Norm Functions
+ # -------------------------------------------------------------
+
+def euclidean_norm(in_vec):
+    '''
+    perform the euclidean 2 norm of the vector in_vec
+    required because linalg.norm() provides incorrect results for 
+    CS derivatives.
+    '''
+    in_vec = np.array(in_vec)
+    temp = 0.0
+    for i in xrange(in_vec.shape[0]):
+        temp += in_vec[i]**2
+    # end
+    return np.sqrt(temp)
+    
+
  # --------------------------------------------------------------
  #                I/O Functions
  # --------------------------------------------------------------
@@ -114,7 +132,9 @@ def writeValues(handle, values, dtype, binary=False):
     # end if
     return 
 
-def read_af2(filename, blunt_te=False, blunt_scale=0.1):
+def read_af2(filename, blunt_te=False, blunt_taper_range=0.1, 
+             blunt_thickness=.002):
+
     ''' Load the airfoil file of type file_type'''
     f = open(filename, 'r')
     line  = f.readline() # Read (and ignore) the first line
@@ -137,34 +157,70 @@ def read_af2(filename, blunt_te=False, blunt_scale=0.1):
     x = r[:, 0]
     y = r[:, 1]
     npt = len(x)
+
+    # There are 4 possibilites we have to deal with: 
+    # a. Given a sharp TE -- User wants a sharp TE
+    # b. Given a sharp TE -- User wants a blunt TE
+    # c. Given a blunt TE -- User wants a sharp TE
+    # d. Given a blunt TE -- User wants a blunt TE 
+    #    (possibly with different TE thickness)
+
     # Check for blunt TE:
-    if blunt_te == False:
+    if blunt_te is False:
         if y[0] != y[-1]:
             mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
-            mpiPrint('Merging to a point over final %f ...'%(blunt_scale))
+            mpiPrint('Merging to a point over final %f ...'%(blunt_taper_range))
             yavg = 0.5*(y[0] + y[-1])
             xavg = 0.5*(x[0] + x[-1])
             y_top = y[0]
             y_bot = y[-1]
             x_top = x[0]
             x_bot = x[-1]
+
             # Indices on the TOP surface of the wing
-            indices = np.where(x[0:npt/2]>=(1-blunt_scale))[0]
+            indices = np.where(x[0:npt/2]>=(1-blunt_taper_range))[0]
             for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (x[0]-blunt_scale))/blunt_scale
+                fact = (x[indices[i]]- (x[0]-blunt_taper_range))/blunt_taper_range
                 y[indices[i]] = y[indices[i]]- fact*(y_top-yavg)
                 x[indices[i]] = x[indices[i]]- fact*(x_top-xavg)
+
             # Indices on the BOTTOM surface of the wing
-            indices = np.where(x[npt/2:]>=(1-blunt_scale))[0]
+            indices = np.where(x[npt/2:]>=(1-blunt_taper_range))[0]
             indices = indices + npt/2
                     
             for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (x[-1]-blunt_scale))/blunt_scale
+                fact = (x[indices[i]]- (x[-1]-blunt_taper_range))/blunt_taper_range
                 y[indices[i]] = y[indices[i]]- fact*(y_bot-yavg)
                 x[indices[i]] = x[indices[i]]- fact*(x_bot-xavg)
             # end for
         # end if
+    elif blunt_te is True:
+        # Since we will be rescaling the TE regardless, the sharp TE
+        # case and the case where the TE is already blunt can be
+        # handled in the same manner
+
+        # Set the new TE values:
+        y[0] = 0.5*blunt_thickness
+        y[-1] = -0.5*blunt_thickness
+        x_break = 1.0-blunt_taper_range
+
+        # Rescale upper surface:
+        for i in xrange(1,npt/2):
+            if x[i] > x_break:
+                s = (x[i]-x_break)/blunt_taper_range
+                y[i] += s*0.5*blunt_thickness
+            # end if
+        # end for
+
+        # Rescale lower surface:
+        for i in xrange(npt/2,npt-1):
+            if x[i] > x_break:
+                s = (x[i]-x_break)/blunt_taper_range
+                y[i] -= s*0.5*blunt_thickness
+            # end if
+        # end for
     # end if
+            
     return x, y
 
 def getCoordinatesFromFile(file_name):
@@ -191,7 +247,7 @@ def getCoordinatesFromFile(file_name):
 
 def e_dist(x1, x2):
     '''Get the eculidean distance between two points'''
-    return np.linalg.norm(x1-x2)
+    return euclidean_norm(x1-x2)#np.linalg.norm(x1-x2)
 
 def e_dist2D(x1, x2):
     '''Get the eculidean distance between two points'''
@@ -3827,8 +3883,8 @@ def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
 
     U = 0.5*(vec[0]+vec[1])
     V = 0.5*(vec[2]+vec[3])
-    u = U/np.linalg.norm(U)
-    v = V/np.linalg.norm(V)
+    u = U/euclidean_norm(U)
+    v = V/euclidean_norm(V)
 
     mid  = np.average(pts, axis=0)
 

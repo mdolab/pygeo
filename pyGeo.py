@@ -403,13 +403,20 @@ offset.shape[0], Xsec, rot, must all have the same size'
             blunt_te = False
         # end if
 
-
         # Load in and fit them all 
         curves = []
         knots = []
+        blunt_thickness_physical = kwargs.pop('te_height',.008)
         for i in xrange(len(xsections)):
             if xsections[i] is not None:
-                x, y = geo_utils.read_af2(xsections[i], blunt_te)
+                if blunt_te:                    
+                    blunt_thickness = blunt_thickness_physical/scale[i]
+                else:
+                    blunt_thickness = None # Not necessary if sharp TE
+                # end if
+
+                x, y = geo_utils.read_af2(xsections[i], blunt_te,
+                                          blunt_thickness=blunt_thickness)
                 weights = numpy.ones(len(x))
                 weights[0] = -1
                 weights[-1] = -1
@@ -420,7 +427,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 curves.append(None)
             # end if
         # end for
-
+     
         # Now blend the knot vectors
         new_knots = geo_utils.blendKnotVectors(knots, True)
 
@@ -462,6 +469,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 curves[i].t = new_knots.copy()
                 curves[i].recompute(100, computeKnots=False)
         # end for
+
+        if 'tip' in kwargs:
+            if kwargs['tip'].lower() == 'pinched':
+                # Just zero out the last section in y
+                if curves[-1] is not None:
+                    curves[-1].coef[:,1] = 0
 
         # Rescale the thickness if required:
         if 'thickness' in kwargs:
