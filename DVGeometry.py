@@ -123,7 +123,6 @@ class DVGeometry(object):
 
         self.ptAttachInd = []
         self.ptAttachPtr = [0]
-        print 'coef_mask',coef_mask
         for ii in xrange(len(vol_list)):
             temp = []
             for iVol in vol_list[ii]:
@@ -150,8 +149,6 @@ class DVGeometry(object):
 
         # Take the subset of the FFD cofficients as what will be
         # attached
-        print 'self.ptAttachInd', self.ptAttachInd
-
         self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
         self.ptAttachFull = self.FFD.coef.copy()
 
@@ -159,8 +156,6 @@ class DVGeometry(object):
         self.nPtAttach = len(self.ptAttach)
         self.nPtAttachFull = len(self.ptAttachFull)
         
-        print 'attach, full:',self.nPtAttach, self.nPtAttachFull
-
         # New setup splines for the rotations
         self.rot_x = []
         self.rot_y = []
