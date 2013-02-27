@@ -462,6 +462,31 @@ class pyBlock():
 
         return
 
+#     def getAttachedFaces(self):
+#         ''' Return a boolean array of size nVolx6 where the entry is
+#         True if the face is matched to another and False otherwise'''
+
+#         # Loop over all faces and add 1 to each unique face
+#         faceAttached = numpy.zeros((nVol,6),dtype=bool)
+#         for iVol in xrange(self.nVol):
+#             for iFace in xrange(6):
+#                 face_count[self.topo.face_link[iVol,iFace]] += 1
+#             # end for
+#         # end for
+
+#         # Now loop back over and if there was more than one face added
+#         # to the unique face, set faceAttached to True for thatf face
+#         face_count = numpy.zeros(self.topo.nFace)
+#         for iVol in xrange(self.nVol):
+#             for iFace in xrange(6):
+#                 if face_count[self.topo.face_link[iVol,iFace]] > 1:
+#                     faceAttached[iVo, iFace] = True
+#                 # end if
+#             # end for
+#         # end for
+                
+#         return faceAttached
+
     def printConnectivity(self):
         '''
         Print the connectivity to the screen
@@ -901,49 +926,109 @@ class pyBlock():
 #             Embeded Geometry Functions
 # ----------------------------------------------------------------------    
 
-    def attachPoints(self, coordinates, index, *args, **kwargs):
+    def attachPoints(self, coordinates, index, interiorOnly=False,
+                     *args, **kwargs):
         '''Embed a set of coordinates into all volumes
 
         coordintes: the coordinates
         index: is a string name to identify the set of points
         
         '''
+        eps = 1e-12
+        # Generate coef_mask regardless
+        coef_mask = []
+        for iVol in xrange(self.nVol):
+            coef_mask.append(numpy.zeros((self.vols[iVol].Nctlu, 
+                                          self.vols[iVol].Nctlv, 
+                                          self.vols[iVol].Nctlw), dtype=bool))
+
         # Project Points
         timeA = time.time()
-        volID,u,v,w,D = self.projectPoints(coordinates, *args, **kwargs)
-        self.embeded_volumes[index] = embeded_volume(volID, u, v, w)
+        if not interiorOnly:
+            volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=True,
+                                               *args, **kwargs)
+            self.embeded_volumes[index] = embeded_volume(volID, u, v, w)
+        else:
+            volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=False,
+                                               *args, **kwargs)
+            
+            # Determine a characteric 'length', r_star based on FFD size
+            Xmin, Xmax = self.getBounds()
+            r_star = min(abs(Xmax[0] - Xmin[0]), 
+                         abs(Xmax[1] - Xmin[1]), 
+                     abs(Xmax[2] - Xmin[2]))
+            
+            mask = []
+            for i in xrange(len(D)):
+                Dnrm = numpy.linalg.norm(D[i])
+                if Dnrm < 50*eps: # Sufficiently inside
+                    mask.append(i)
+                else:
+                    # Determine if the points NOT in the volume are within
+                    # r_star. If they are, flag the face and the on
+                    # inside of that face in coef_mask as True
+                    if Dnrm < r_star:
+                        if v[i] > eps and v[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
+                            if u[i] < eps:
+                                print 'u_min'
+                                coef_mask[volID[i]][0, :, :] = True
+                                coef_mask[volID[i]][1, :, :] = True
+                            elif u[i] > 1-eps:
+                                print 'u_max'
+                                coef_mask[volID[i]][-1, :, :] = True
+                                coef_mask[volID[i]][-2, :, :] = True
+                            # end if
+                        elif u[i] > eps and u[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
+                            if v[i] < eps:
+                                print 'v_min'
+                                coef_mask[volID[i]][:, 0, :] = True
+                                coef_mask[volID[i]][:, 1, :] = True
+                            elif v[i] > 1-eps:
+                                print 'v_max'
+                                coef_mask[volID[i]][:, -1, :] = True
+                                coef_mask[volID[i]][:, -2, :] = True
+                            # end if
+                        elif u[i] > eps and u[i] < 1-eps and v[i] > eps and v[i] < 1-eps:
+                            if w[i] < eps:
+                                print 'w_min'
+                                coef_mask[volID[i]][:, :, 0] = True
+                                coef_mask[volID[i]][:, :, 1] = True
+                            elif w[i] > 1-eps:
+                                print 'w_max'
+                                coef_mask[volID[i]][:, :, -1] = True
+                                coef_mask[volID[i]][:, :, -2] = True
+                            # end if
+                        # end if
+                    # end if
+                # end if
+            # end for
+            print coef_mask
+            # Now that we have the mask we can create the embedded volume
+            self.embeded_volumes[index] = embeded_volume(volID, u, v, w, mask)
+        # end if
+
         timeB = time.time()
         mpiPrint('Embedded %d points in %4.2f second: %4.0f coor/sec'%(
                 len(coordinates), timeB-timeA, len(coordinates)/(timeB-timeA)))
-        return
 
-    def attachPointsInteriorOnly(self, coordinates, index, *args, **kwargs):
-        '''Embed a set of coordiante into all volume. Same as
-        attachPoints EXCEPT, if a point doesn't project correctly, it
-        is recorded and will be ignored when the points are
-        reevaluated. Therefore, it treats only points that are fully
-        inside the volume.'''
+        # Finally we need to convert coef_mask to the flatten global
+        # coef type:
 
-        # Note we don't check errors here since we know many points
-        # won't be in the volume. 
-        volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False,
-                                               *args, **kwargs)
-
-        # Loop through the coordinates provided and determine which
-        # ones are ARE FULLY PROJECTED. These are the points that will
-        # be evalued when the points are returned
-        mask = []
-        for i in xrange(len(D)):
-            if numpy.linalg.norm(D[i]) < 50*1e-12: # Sufficiently
-                                                   # inside
-                mask.append(i)
-            # end if
+        tmp = numpy.zeros(len(self.coef), dtype=bool)
+        for iVol in xrange(self.nVol):
+            for i in xrange(coef_mask[iVol].shape[0]):
+                for j in xrange(coef_mask[iVol].shape[1]):
+                    for k in xrange(coef_mask[iVol].shape[2]):
+                        ind = self.topo.l_index[iVol][i,j,k]
+                        if coef_mask[iVol][i,j,k] == True:
+                            tmp[ind] = True
+                        # end if
+                    # end for
+                # end for
+            # end for
         # end for
 
-        self.embeded_volumes[index] = embeded_volume(volID, u, v, w, mask)
-        
-        return 
-
+        return tmp
 
 # ----------------------------------------------------------------------
 #             Geometric Functions
@@ -1071,7 +1156,7 @@ class pyBlock():
             # end for
         # end for
 
-        return Xmin,Xmax
+        return Xmin, Xmax
   
 class embeded_volume(object):
 
