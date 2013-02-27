@@ -4753,12 +4753,20 @@ class DCEL(object):
         # end for
 
         for i in xrange(self.nedges()):
-            f.write('%d %d %g %g %g %g %g %g %s\n'%(
-                    self.el[i].con[0],self.el[i].con[1],
-                    self.el[i].x1[0],self.el[i].x1[1],self.el[i].x1[2],
-                    self.el[i].x2[0],self.el[i].x2[1],self.el[i].x2[2],
-                   self.el[i].tag))
-
+            if self.el[i].seg is not None:
+                f.write('%d %d %g %g %g %g %g %g %s-%s\n'%(
+                        self.el[i].con[0],self.el[i].con[1],
+                        self.el[i].x1[0],self.el[i].x1[1],self.el[i].x1[2],
+                        self.el[i].x2[0],self.el[i].x2[1],self.el[i].x2[2],
+                        self.el[i].tag, self.el[i].seg))
+            else:
+                f.write('%d %d %g %g %g %g %g %g %s\n'%(
+                        self.el[i].con[0],self.el[i].con[1],
+                        self.el[i].x1[0],self.el[i].x1[1],self.el[i].x1[2],
+                        self.el[i].x2[0],self.el[i].x2[1],self.el[i].x2[2],
+                        self.el[i].tag))
+            # end if
+                
         for i in xrange(self.nfaces()):
             f.write('%s\n'%(self.faces[i].tag))
         # end for
