@@ -775,6 +775,8 @@ class DVGeometry(object):
             
         # end if
 
+        return new_pts
+
     def _complexifyCoef(self):
         '''Convert coef to complex terporarily'''
 
@@ -943,6 +945,10 @@ class DVGeometry(object):
             # Do Sparse Mat-Mat multiplaiction and resort indices
             self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
             self.JT.sort_indices()
+            for iChild in xrange(len(self.children)):
+                self.children[iChild].computeTotalJacobian(name, scaled)
+                self.JT+=self.children[iChild].JT
+            # end
         else:
             self.JT = None
         return 
