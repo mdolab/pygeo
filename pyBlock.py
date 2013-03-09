@@ -878,7 +878,14 @@ class pyBlock():
             kinc = self.vols[volID[i]].ku*self.vols[volID[i]].kv*self.vols[volID[i]].kw
             vals,col_ind = self.vols[volID[i]]._getBasisPt(\
                 u[i],v[i],w[i],vals,row_ptr[i],col_ind,self.topo.l_index[volID[i]])
+
             row_ptr.append(row_ptr[-1] + kinc)
+            if self.embeded_volumes[index].mask is not None:
+                if not i in self.embeded_volumes[index].mask:
+                    # Kill the values we just added
+                    vals[row_ptr[-2]:row_ptr[-1]] = 0.0
+                # end if
+            # end if
 
         # Now we can crop out any additional values in col_ptr and vals
         vals    = vals[:row_ptr[-1]]
@@ -907,7 +914,7 @@ class pyBlock():
         N     = self.embeded_volumes[index].N
         mask  = self.embeded_volumes[index].mask
         coordinates = numpy.zeros((N,3))
-
+        #print 'Mask',index,mask
         if mask is None:
             for i in xrange(N):
                 coordinates[i] = self.vols[volID[i]].getValue(u[i],v[i],w[i])
@@ -943,73 +950,77 @@ class pyBlock():
                                           self.vols[iVol].Nctlw), dtype=bool))
 
         # Project Points
-        timeA = time.time()
-        if not interiorOnly:
-            volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=True,
-                                               *args, **kwargs)
-            self.embeded_volumes[index] = embeded_volume(volID, u, v, w)
-        else:
-            volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=False,
-                                               *args, **kwargs)
-            
-            # Determine a characteric 'length', r_star based on FFD size
-            Xmin, Xmax = self.getBounds()
-            r_star = min(abs(Xmax[0] - Xmin[0]), 
-                         abs(Xmax[1] - Xmin[1]), 
-                     abs(Xmax[2] - Xmin[2]))
-            
-            mask = []
-            for i in xrange(len(D)):
-                Dnrm = numpy.linalg.norm(D[i])
-                if Dnrm < 50*eps: # Sufficiently inside
-                    mask.append(i)
-                else:
-                    # Determine if the points NOT in the volume are within
-                    # r_star. If they are, flag the face and the on
-                    # inside of that face in coef_mask as True
-                    if Dnrm < r_star:
-                        if v[i] > eps and v[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
-                            if u[i] < eps:
-                                print 'u_min'
-                                coef_mask[volID[i]][0, :, :] = True
-                                coef_mask[volID[i]][1, :, :] = True
-                            elif u[i] > 1-eps:
-                                print 'u_max'
-                                coef_mask[volID[i]][-1, :, :] = True
-                                coef_mask[volID[i]][-2, :, :] = True
-                            # end if
-                        elif u[i] > eps and u[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
-                            if v[i] < eps:
-                                print 'v_min'
-                                coef_mask[volID[i]][:, 0, :] = True
-                                coef_mask[volID[i]][:, 1, :] = True
-                            elif v[i] > 1-eps:
-                                print 'v_max'
-                                coef_mask[volID[i]][:, -1, :] = True
-                                coef_mask[volID[i]][:, -2, :] = True
-                            # end if
-                        elif u[i] > eps and u[i] < 1-eps and v[i] > eps and v[i] < 1-eps:
-                            if w[i] < eps:
-                                print 'w_min'
-                                coef_mask[volID[i]][:, :, 0] = True
-                                coef_mask[volID[i]][:, :, 1] = True
-                            elif w[i] > 1-eps:
-                                print 'w_max'
-                                coef_mask[volID[i]][:, :, -1] = True
-                                coef_mask[volID[i]][:, :, -2] = True
+        if not coordinates==None:
+            timeA = time.time()
+            if not interiorOnly:
+                volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=True,
+                                                   *args, **kwargs)
+                self.embeded_volumes[index] = embeded_volume(volID, u, v, w)
+            else:
+                volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=False,
+                                                   *args, **kwargs)
+
+                # Determine a characteric 'length', r_star based on FFD size
+                Xmin, Xmax = self.getBounds()
+                r_star = min(abs(Xmax[0] - Xmin[0]), 
+                             abs(Xmax[1] - Xmin[1]), 
+                         abs(Xmax[2] - Xmin[2]))
+
+                mask = []
+                for i in xrange(len(D)):
+                    Dnrm = numpy.linalg.norm(D[i])
+                    #print 'DNRm',Dnrm, Dnrm < 50*eps
+                    if Dnrm < 50*eps: # Sufficiently inside
+                        mask.append(i)
+                    else:
+                        # Determine if the points NOT in the volume are within
+                        # r_star. If they are, flag the face and the on
+                        # inside of that face in coef_mask as True
+                        if Dnrm < r_star:
+                            if v[i] > eps and v[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
+                                if u[i] < eps:
+                                    #print 'u_min'
+                                    coef_mask[volID[i]][0, :, :] = True
+                                    coef_mask[volID[i]][1, :, :] = True
+                                elif u[i] > 1-eps:
+                                    #print 'u_max'
+                                    coef_mask[volID[i]][-1, :, :] = True
+                                    coef_mask[volID[i]][-2, :, :] = True
+                                # end if
+                            elif u[i] > eps and u[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
+                                if v[i] < eps:
+                                    #print 'v_min'
+                                    coef_mask[volID[i]][:, 0, :] = True
+                                    coef_mask[volID[i]][:, 1, :] = True
+                                elif v[i] > 1-eps:
+                                    #print 'v_max'
+                                    coef_mask[volID[i]][:, -1, :] = True
+                                    coef_mask[volID[i]][:, -2, :] = True
+                                # end if
+                            elif u[i] > eps and u[i] < 1-eps and v[i] > eps and v[i] < 1-eps:
+                                if w[i] < eps:
+                                    #print 'w_min'
+                                    coef_mask[volID[i]][:, :, 0] = True
+                                    coef_mask[volID[i]][:, :, 1] = True
+                                elif w[i] > 1-eps:
+                                    #print 'w_max'
+                                    coef_mask[volID[i]][:, :, -1] = True
+                                    coef_mask[volID[i]][:, :, -2] = True
+                                # end if
                             # end if
                         # end if
                     # end if
-                # end if
-            # end for
-            print coef_mask
-            # Now that we have the mask we can create the embedded volume
-            self.embeded_volumes[index] = embeded_volume(volID, u, v, w, mask)
-        # end if
+                # end for
+#                print coef_mask
+                # Now that we have the mask we can create the embedded volume
+#                print 'mask,set',index,mask
+                self.embeded_volumes[index] = embeded_volume(volID, u, v, w, mask)
+            # end if
 
-        timeB = time.time()
-        mpiPrint('Embedded %d points in %4.2f second: %4.0f coor/sec'%(
-                len(coordinates), timeB-timeA, len(coordinates)/(timeB-timeA)))
+            timeB = time.time()
+            mpiPrint('Embedded %d points in %4.2f second: %4.0f coor/sec'%(
+                    len(coordinates), timeB-timeA, len(coordinates)/(timeB-timeA)))
+        # end
 
         # Finally we need to convert coef_mask to the flatten global
         # coef type:
