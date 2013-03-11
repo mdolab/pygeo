@@ -718,6 +718,8 @@ class DVGeometry(object):
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
+                #print 'basept',numpy.imag(base_pt)
+                #print 'coef',numpy.imag(self.FFD.coef[self.ptAttachInd[ipt],:])
             # end for
         # end if
 
@@ -1092,21 +1094,31 @@ class DVGeometry(object):
 
             for i in xrange(self.dXrefdXdvg.shape[1]):
                 
-
-                self.coef = self.coef.astype('D')
+                self._complexifyCoef()
+                # self.coef = self.coef.astype('D')
                 self.coef[:,0] +=  self.dXrefdXdvg[0::3, i]*h
                 self.coef[:,1] +=  self.dXrefdXdvg[1::3, i]*h
                 self.coef[:,2] +=  self.dXrefdXdvg[2::3, i]*h
+                #print 'dxref',self.dXrefdXdvg[:,i]
                 self.refAxis.coef = self.coef.copy()
                 self.refAxis._updateCurveCoef()
-                
+                #print 'refAxiscoef',numpy.imag(self.refAxis.coef )
                 self.FFD.coef = self.FFD.coef.astype('D')
-                numpy.put(self.FFD.coef[:,0], self.ptAttachInd,
-                          self.dCcdXdvg[0::3, i])
-                numpy.put(self.FFD.coef[:,1], self.ptAttachInd,
-                          self.dCcdXdvg[1::3, i])
-                numpy.put(self.FFD.coef[:,2], self.ptAttachInd,
-                          self.dCcdXdvg[2::3, i])
+                tmp1 =numpy.zeros_like(self.FFD.coef,dtype='D')
+                # numpy.put(self.FFD.coef[:,0], self.ptAttachInd,
+                #           self.dCcdXdvg[0::3, i])
+                # numpy.put(self.FFD.coef[:,1], self.ptAttachInd,
+                #           self.dCcdXdvg[1::3, i])
+                # numpy.put(self.FFD.coef[:,2], self.ptAttachInd,
+                #           self.dCcdXdvg[2::3, i])
+                numpy.put(tmp1[:,0], self.ptAttachInd,
+                          self.dCcdXdvg[0::3, i]*h)
+                numpy.put(tmp1[:,1], self.ptAttachInd,
+                          self.dCcdXdvg[1::3, i]*h)
+                numpy.put(tmp1[:,2], self.ptAttachInd,
+                          self.dCcdXdvg[2::3, i]*h)
+
+                self.FFD.coef+=tmp1
 
                 new_pts_child = self.update_deriv()
                             
@@ -1120,7 +1132,7 @@ class DVGeometry(object):
                 numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2])
 
                 
-                Jacobian[:, i] += oneoverh*numpy.imag(tmp2)
+                Jacobian[:, i] += oneoverh*numpy.imag(tmp2)-self.dCcdXdvg[:,i]
                 self.coef = self.coef.astype('d')
                 self.FFD.coef = self.FFD.coef.astype('d')
 
