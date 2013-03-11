@@ -717,8 +717,6 @@ class DVGeometry(object):
             self.links_x = self.links_x.astype('D')
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
-
-
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
             # end for
         # end if
@@ -756,6 +754,7 @@ class DVGeometry(object):
                         self.curveIDs[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
+             
                 rotM = self._getRotMatrix(rotX, rotY, rotZ)
                 D = numpy.dot(rotM, D)
 
@@ -816,6 +815,8 @@ class DVGeometry(object):
             # self.children[iChild].coef[:,2] +=  dXrefdXdvg[2::3]*h
             #self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
             #self.children[iChild].refAxis._updateCurveCoef()
+
+           
         # end if
 
         return new_pts
@@ -933,7 +934,7 @@ class DVGeometry(object):
         
         # This is going to be DENSE in general -- does not depend on
         # name
-        
+
         if self.J_attach is None:
             self.J_attach = self._attachedPtJacobian(scaled=scaled)
 
@@ -991,6 +992,15 @@ class DVGeometry(object):
             self.JT.sort_indices()
 
             for iChild in xrange(len(self.children)):
+                
+                # reset control points on child for child link derivatives
+                self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
+                    'child%d_coef'%(iChild))
+
+                self.children[iChild].coef = self.FFD.getAttachedPoints(
+                    'child%d_axis'%(iChild))
+                self.children[iChild].refAxis.coef =  self.children[iChild].coef.copy()
+                self.children[iChild].refAxis._updateCurveCoef()
                 self.children[iChild].computeTotalJacobian(name, scaled)
 
                 self.JT = self.JT+self.children[iChild].JT
@@ -1110,8 +1120,9 @@ class DVGeometry(object):
                 numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2])
 
                 
-                Jacobian[:, i] += oneoverh*numpy.imag(tmp2) #- self.dCcdXdvg[:, i]#
+                Jacobian[:, i] += oneoverh*numpy.imag(tmp2)
                 self.coef = self.coef.astype('d')
+                self.FFD.coef = self.FFD.coef.astype('d')
 
         self._unComplexifyCoef()
 
