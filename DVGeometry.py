@@ -574,7 +574,6 @@ class DVGeometry(object):
         if self.isChild:
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
-
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
             # end for
         # end if
@@ -701,7 +700,6 @@ class DVGeometry(object):
             self._unComplexifyCoef()
 
         # end if
-                        
         return coords
 
     def update_deriv(self,iDV=0):
@@ -1050,67 +1048,262 @@ class DVGeometry(object):
         return
 
     def totalSensitivity(self, dIdpt, comm=None, scaled=True, name='default'):
-        '''This function takes the total derivative of an objective, 
-        I, with respect the points controlled on this processor. We
-        take the transpose prodducts and mpi_allreduce them to get the
-        resulting value on each processor.  Note we DO NOT want to run
-        computeTotalJacobian as this forms the dPt/dXdv jacobian which
-        is unnecessary and SLOW!
-        '''
+        # '''This function takes the total derivative of an objective, 
+        # I, with respect the points controlled on this processor. We
+        # take the transpose prodducts and mpi_allreduce them to get the
+        # resulting value on each processor.  Note we DO NOT want to run
+        # computeTotalJacobian as this forms the dPt/dXdv jacobian which
+        # is unnecessary and SLOW!
+        # '''
 
-        # This is going to be DENSE in general -- does not depend on
-        # name
-        if self.J_attach is None:
-            self.J_attach = self._attachedPtJacobian(scaled=scaled)
+        # # This is going to be DENSE in general -- does not depend on
+        # # name
+        # if self.J_attach is None:
+        #     self.J_attach = self._attachedPtJacobian(scaled=scaled)
            
-        # This is the sparse jacobian for the local DVs that affect
-        # Control points directly.
-        if self.J_local is None:
-            self.J_local = self._localDVJacobian(scaled=scaled)
+        # # This is the sparse jacobian for the local DVs that affect
+        # # Control points directly.
+        # if self.J_local is None:
+        #     self.J_local = self._localDVJacobian(scaled=scaled)
          
-        # HStack em'
-        # Three different possibilities: 
-        if self.J_attach is not None and self.J_local is None:
-            J_temp = self.J_attach
-        elif self.J_local is not None and self.J_attach is None:
-            J_temp = self.J_local
-        else:
-            J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
-        # end if
+        # # HStack em'
+        # # Three different possibilities: 
+        # if self.J_attach is not None and self.J_local is None:
+        #     J_temp = self.J_attach
+        # elif self.J_local is not None and self.J_attach is None:
+        #     J_temp = self.J_local
+        # else:
+        #     J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
+        # # end if
 
-        # Convert J_temp to CSR Matrix
-        J_temp = sparse.csr_matrix(J_temp)
+        # # Convert J_temp to CSR Matrix
+        # J_temp = sparse.csr_matrix(J_temp)
 
-        # Transpose of the point-coef jacobian:
-        dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
+        # # Transpose of the point-coef jacobian:
+        # dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
         
-        if dPtdCoef is not None:
-            dIdcoef = numpy.zeros((self.nPtAttachFull*3))
-            if dPtdCoef is not None:
-                dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
-                dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
-                dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
-            # end if
+        # if dPtdCoef is not None:
+        #     dIdcoef = numpy.zeros((self.nPtAttachFull*3))
+        #     if dPtdCoef is not None:
+        #         dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
+        #         dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
+        #         dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
+        #     # end if
 
-            # Now back to design variables:
-            dIdx_local = J_temp.T.dot(dIdcoef)
-        else:
-            # This is an array of zeros of length the number of design
-            # variables
-            dIdx_local = numpy.zeros(self._getNDV(), 'd')
+        #     # Now back to design variables:
+        #     dIdx_local = J_temp.T.dot(dIdcoef)
+        # else:
+        #     # This is an array of zeros of length the number of design
+        #     # variables
+        #     dIdx_local = numpy.zeros(self._getNDV(), 'd')
+        # # end if
+
+        # if comm: # If we have a comm, globaly reduce with sum
+        #     dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        # else:
+        #     dIdx = dIdx_local
+        # # end if
+
+        # for iChild in xrange(len(self.children)):
+        #      # reset control points on child for child link derivatives
+        #     self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
+        #         'child%d_coef'%(iChild))
+            
+        #     self.children[iChild].coef = self.FFD.getAttachedPoints(
+        #         'child%d_axis'%(iChild))
+        #     self.children[iChild].refAxis.coef =  self.children[iChild].coef.copy()
+        #     self.children[iChild].refAxis._updateCurveCoef()
+        #     dIdx += self.children[iChild].totalSensitivity(dIdpt, comm, scaled, name)
+        # # end for
+        
+        self.computeTotalJacobian(name,scaled)
+        print 'shapes',self.JT.shape,dIdpt.shape
+        dIdx = self.JT.dot(dIdpt.reshape(self.JT.shape[1]))
+
+        return dIdx
+
+    def totalSensitivityFD(self, dIdpt, comm=None, scaled=True, name='default',nDV_T = None,DVParent=0):
+        '''This function takes the total derivative of an objective, 
+        I, with respect the points controlled on this processor using FD.
+        We take the transpose prodducts and mpi_allreduce them to get the
+        resulting value on each processor. Note that this function is slow
+        and should eventually be replaced by an analytic version.
+        '''
+        if self.isChild:
+            refFFDCoef = copy.copy(self.FFD.coef)
         # end if
 
-        if comm: # If we have a comm, globaly reduce with sum
-            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        coords0 = self.update(name).flatten()
+
+        h = 1e-6
+        
+        # count up number of DVs
+        nDV = self._getNDVGlobal() 
+        if nDV_T==None:
+            nDV_T = self._getNDV()
+        # end
+        dIdx = numpy.zeros(nDV_T)
+        if self.isChild:
+            #nDVSummed = self.dXrefdXdvg.shape[1]
+            DVCount=DVParent#nDVSummed-nDV
+            DVLocalCount = DVParent+nDV
         else:
-            dIdx = dIdx_local
+            #nDVSummed = nDV
+            DVCount=0
+            DVLocalCount = nDV
         # end if
 
+        for i in xrange(len(self.DV_listGlobal)):
+            print 'GlobalVar',i,DVCount
+            for j in xrange(self.DV_listGlobal[i].nVal):
+                if self.isChild:
+                    self.FFD.coef=  refFFDCoef.copy()
+                # end if
+
+                refVal = self.DV_listGlobal[i].value[j]
+
+                self.DV_listGlobal[i].value[j] += h
+
+                coordsph = self.update(name).flatten()
+
+                deriv = (coordsph-coords0)/h
+                dIdx[DVCount]=numpy.dot(dIdpt.flatten(),deriv)
+                DVCount += 1
+                self.DV_listGlobal[i].value[j] = refVal
+            # end for
+        # end for
+        DVparent=DVCount
+        
+        for i in xrange(len(self.DV_listLocal)):
+            print 'LocalVar',i,DVLocalCount
+            for j in xrange(self.DV_listLocal[i].nVal):
+
+                refVal = self.DV_listLocal[i].value[j]
+
+                self.DV_listLocal[i].value[j] += h
+                coordsph = self.update(name).flatten()
+
+                deriv = (coordsph-coords0)/h
+                dIdx[DVLocalCount]=numpy.dot(dIdpt.flatten(),deriv)
+                DVLocaLCount += 1
+                self.DV_listLocal[i].value[j] = refVal
+            # end for
+        # end for
+        # reset coords
+        self.update(name)
         for iChild in xrange(len(self.children)):
-            dIdx += self.children[iChild].totalSensitivity(dIdpt, comm, scaled, name)
+            
+            self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
+                'child%d_coef'%(iChild))
+            
+            self.children[iChild].coef = self.FFD.getAttachedPoints(
+                'child%d_axis'%(iChild))
+            self.children[iChild].refAxis.coef =  self.children[iChild].coef.copy()
+            self.children[iChild].refAxis._updateCurveCoef()
+        # end
+
+        for child in self.children:
+            print 'calling child',child
+            dIdx+=child.totalSensitivityFD(dIdpt, comm, scaled, name,nDV_T,DVParent)
         # end for
 
         return dIdx
+
+    def computeTotalJacobianFD(self, comm=None, scaled=True, name='default',nDV_T = None,DVParent=0):
+        '''This function takes the total derivative of an objective, 
+        I, with respect the points controlled on this processor using FD.
+        We take the transpose prodducts and mpi_allreduce them to get the
+        resulting value on each processor. Note that this function is slow
+        and should eventually be replaced by an analytic version.
+        '''
+        if self.isChild:
+            refFFDCoef = copy.copy(self.FFD.coef)
+        # end if
+
+        coords0 = self.update(name).flatten()
+
+        h = 1e-6
+        
+        # count up number of DVs
+        nDV = self._getNDVGlobal() 
+        if nDV_T==None:
+            nDV_T = self._getNDV()
+        # end
+        dPtdx = numpy.zeros([coords0.shape[0],nDV_T])
+        if self.isChild:
+            #nDVSummed = self.dXrefdXdvg.shape[1]
+            DVCount=DVParent#nDVSummed-nDV
+            DVLocalCount = DVParent+nDV
+        else:
+            #nDVSummed = nDV
+            DVCount=0
+            DVLocalCount = nDV
+        # end if
+
+        for i in xrange(len(self.DV_listGlobal)):
+            print 'GlobalVar',i,DVCount
+            for j in xrange(self.DV_listGlobal[i].nVal):
+                if self.isChild:
+                    self.FFD.coef=  refFFDCoef.copy()
+                # end if
+
+                refVal = self.DV_listGlobal[i].value[j]
+
+                self.DV_listGlobal[i].value[j] += h
+
+                coordsph = self.update(name).flatten()
+
+                deriv = (coordsph-coords0)/h
+                if scaled:
+                    dPtdx[:,DVCount]=deriv*self.DV_listGlobal[i].range[j]
+                else:
+                    dPtdx[:,DVCount]=deriv
+                # end
+                DVCount += 1
+                self.DV_listGlobal[i].value[j] = refVal
+            # end for
+        # end for
+        DVParent=DVCount
+        
+        for i in xrange(len(self.DV_listLocal)):
+            print 'LocalVar',i,DVLocalCount
+            for j in xrange(self.DV_listLocal[i].nVal):
+
+                refVal = self.DV_listLocal[i].value[j]
+
+                self.DV_listLocal[i].value[j] += h
+                coordsph = self.update(name).flatten()
+
+                deriv = (coordsph-coords0)/h
+                if scaled:
+                    dPtdx[:,DVLocalCount]=deriv*self.DV_listGlobal[i].range[j]
+                else:
+                    dPtdx[:,DVLocalCount]=deriv
+                # end
+                DVLocaLCount += 1
+                self.DV_listLocal[i].value[j] = refVal
+            # end for
+        # end for
+        
+        # reset coords
+        self.update(name)
+        for iChild in xrange(len(self.children)):
+            
+            self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
+                'child%d_coef'%(iChild))
+            
+            self.children[iChild].coef = self.FFD.getAttachedPoints(
+                'child%d_axis'%(iChild))
+            self.children[iChild].refAxis.coef =  self.children[iChild].coef.copy()
+            self.children[iChild].refAxis._updateCurveCoef()
+        # end
+        for child in self.children:
+            print 'calling child',child#,child.computeTotalJacobianFD(comm, scaled, name,nDV_T,DVParent)
+            dPtdx+=child.computeTotalJacobianFD(comm, scaled, name,nDV_T,DVParent)
+        # end for
+
+        return dPtdx
+
 
     def computeTotalJacobian(self, name='default', scaled=True):
         ''' Return the total point jacobian in CSR format since we
