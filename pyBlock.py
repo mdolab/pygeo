@@ -1018,23 +1018,23 @@ one volume')
                     # end if
 
                     if 'iLow' in faceFreeze:
-                        coef_mask[volID[i]][0, :, :] = True
-                        coef_mask[volID[i]][1, :, :] = True
+                        coef_mask[0][0, :, :] = True
+                        coef_mask[0][1, :, :] = True
                     elif 'iHigh' in faceFreeze:
-                        coef_mask[volID[i]][-1, :, :] = True
-                        coef_mask[volID[i]][-2, :, :] = True
+                        coef_mask[0][-1, :, :] = True
+                        coef_mask[0][-2, :, :] = True
                     elif 'jLow' in faceFreeze:
-                        coef_mask[volID[i]][:, 0, :] = True
-                        coef_mask[volID[i]][:, 1, :] = True
+                        coef_mask[0][:, 0, :] = True
+                        coef_mask[0][:, 1, :] = True
                     elif 'jHigh' in faceFreeze:
-                        coef_mask[volID[i]][:, -1, :] = True
-                        coef_mask[volID[i]][:, -2, :] = True
+                        coef_mask[0][:, -1, :] = True
+                        coef_mask[0][:, -2, :] = True
                     elif 'kLow' in faceFreeze:
-                        coef_mask[volID[i]][:, :, 0] = True
-                        coef_mask[volID[i]][:, :, 1] = True
+                        coef_mask[0][:, :, 0] = True
+                        coef_mask[0][:, :, 1] = True
                     elif 'kHigh' in faceFreeze:
-                        coef_mask[volID[i]][:, :, -1] = True
-                        coef_mask[volID[i]][:, :, -2] = True
+                        coef_mask[0][:, :, -1] = True
+                        coef_mask[0][:, :, -2] = True
                     # end if
                 # end if
 
