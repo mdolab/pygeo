@@ -64,7 +64,8 @@ def rotVbyW(V, W, theta):
     c = np.cos(theta)
     s = np.sin(theta)
     if np.array(theta).dtype==np.dtype('D') or \
-            np.array(W).dtype==np.dtype('D'):
+            np.array(W).dtype==np.dtype('D') or \
+            np.array(V).dtype==np.dtype('D'):
         dtype='D'
     else:
         dtype='d'
