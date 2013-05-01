@@ -1016,6 +1016,11 @@ class pyBlock():
 one volume')
                         sys.exit(1)
                     # end if
+                    mask = []
+                    for i in xrange(len(D)):
+                        Dnrm = numpy.linalg.norm(D[i])
+                        if Dnrm < 50*eps: # Sufficiently inside
+                            mask.append(i)
 
                     if 'iLow' in faceFreeze:
                         coef_mask[0][0, :, :] = True
