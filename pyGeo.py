@@ -427,7 +427,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 curves.append(None)
             # end if
         # end for
-     
+
         # Now blend the knot vectors
         new_knots = geo_utils.blendKnotVectors(knots, True)
 
@@ -556,11 +556,43 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 coef=coef_bot, ku=4, kv=k_span, tu=bot_curves[0].t, tv=temp.t))
 
         if blunt_te:
-            coef = numpy.zeros((len(xsections), 2, 3), 'd')
-            coef[:, 0, :] = coef_top[0, :, :]
-            coef[:, 1, :] = coef_bot[0, :, :]
-            self.surfs.append(pySpline.surface(
-                    coef=coef, ku=k_span, kv=2, tu=temp.t, tv=[0, 0, 1, 1]))
+            
+            if not 'roundedTE' in kwargs:
+                coef = numpy.zeros((len(xsections), 2, 3), 'd')
+                coef[:, 0, :] = coef_top[0, :, :]
+                coef[:, 1, :] = coef_bot[0, :, :]
+                self.surfs.append(pySpline.surface(
+                        coef=coef, ku=k_span, kv=2, tu=temp.t, tv=[0, 0, 1, 1]))
+            else:
+                # Do a rounded TE instead...similar to rounded wingtip
+                if 'te_scale' in kwargs:
+                    te_scale = kwargs['te_scale']
+                else:
+                    te_scale = .75
+                # end if
+
+                coef = numpy.zeros((len(xsections), 4, 3), 'd')
+                coef[:, 0, :] = coef_top[0, :, :]
+                coef[:, 3, :] = coef_bot[0, :, :]
+
+                # We need to get the tangent for the top and bottom
+                # surface, multiply by a scaling factor and this gives
+                # us the two inner rows of control points
+            
+                for j in xrange((len(xsections))):
+                    proj_top = (coef_top[0, j]-coef_top[1, j])
+                    proj_bot = (coef_bot[0, j]-coef_bot[1, j])
+                    proj_top /= numpy.linalg.norm(proj_top)
+                    proj_bot /= numpy.linalg.norm(proj_bot)
+                    cur_te_thick = numpy.linalg.norm(coef_top[0, j] - coef_bot[0,j])
+                    coef[j, 1] = coef[j, 0] + proj_top*0.5*cur_te_thick*te_scale
+                    coef[j, 2] = coef[j, 3] + proj_bot*0.5*cur_te_thick*te_scale
+                # end for
+                    
+                self.surfs.append(pySpline.surface(
+                        coef=coef, ku=k_span, kv=4, tu=temp.t, 
+                        tv=[0, 0, 0, 0, 1, 1, 1, 1]))
+            # endif
 
         self.nSurf =  len(self.surfs)
 
@@ -656,13 +688,38 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
                 if blunt_te: # We need to put in the little-ity-bity
                              # surface at the tip trailing edge
-                    coef = numpy.zeros((4, 2, 3), 'd')
-                    coef[:, 0] = coef_top_tip[0, :]
-                    coef[:, 1] = coef_bot_tip[0, :]
+                    if not 'roundedTE' in kwargs:
+                        coef = numpy.zeros((4, 2, 3), 'd')
+                        coef[:, 0] = coef_top_tip[0, :]
+                        coef[:, 1] = coef_bot_tip[0, :]
 
-                    self.surfs.append(pySpline.surface(
-                            coef=coef, ku=4, kv=2, 
-                            tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1]))
+                        self.surfs.append(pySpline.surface(
+                                coef=coef, ku=4, kv=2, 
+                                tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1]))
+                    else:
+                        coef = numpy.zeros((4, 4, 3), 'd')
+                        coef[:, 0] = coef_top_tip[0, :]
+                        coef[:, 3] = coef_bot_tip[0, :]
+                        
+                        # We will actually recompute the coefficents
+                        # on the last sections since we need to do a
+                        # couple of more for this surface
+
+                        for i in xrange(4):
+                            proj_top = (coef_top_tip[0, i] - coef_top_tip[1, i])
+                            proj_bot = (coef_bot_tip[0, i] - coef_bot_tip[1, i])
+                            proj_top /= numpy.linalg.norm(proj_top)
+                            proj_bot /= numpy.linalg.norm(proj_bot)
+                            cur_te_thick = numpy.linalg.norm(coef_top_tip[0, i] - coef_bot_tip[0, i])
+                            coef[i, 1] = coef[i, 0] + proj_top*0.5*cur_te_thick*te_scale
+                            coef[i, 2] = coef[i, 3] + proj_bot*0.5*cur_te_thick*te_scale
+
+                        self.surfs.append(pySpline.surface(
+                                coef=coef, ku=4, kv=4, 
+                                tu=[0, 0, 0, 0, 1, 1, 1, 1], 
+                                tv=[0, 0, 0, 0, 1, 1, 1, 1]))
+                    # end if
+
                     self.nSurf += 1
 
             elif kwargs['tip'].lower() == 'flat':
