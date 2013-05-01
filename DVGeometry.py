@@ -101,7 +101,7 @@ class DVGeometry(object):
         for i in xrange(len(self.points)):
             if self.isChild:
                 coef_mask = self.FFD.attachPoints(
-                    self.points[i],self.pt_names[i], interiorOnly=True)
+                    self.points[i],self.pt_names[i], interiorOnly=True, **kwargs)
             else:
                 coef_mask = self.FFD.attachPoints(
                     self.points[i],self.pt_names[i], interiorOnly=False)
