@@ -974,8 +974,8 @@ class pyBlock():
                         mask.append(i)
                     else:
                         # Determine if the points NOT in the volume are within
-                        # r_star. If they are, flag the face and the on
-                        # inside of that face in coef_mask as True
+                        # r_star. If they are, flag the face and the layer 
+                        # one inside of that face in coef_mask as True
                         if Dnrm < r_star:
                             if v[i] > eps and v[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
                                 if u[i] < eps:

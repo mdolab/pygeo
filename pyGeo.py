@@ -410,7 +410,10 @@ offset.shape[0], Xsec, rot, must all have the same size'
         for i in xrange(len(xsections)):
             if xsections[i] is not None:
                 if blunt_te:                    
-                    blunt_thickness = blunt_thickness_physical/scale[i]
+                    if type(blunt_thickness_physical)==float:
+                        blunt_thickness = blunt_thickness_physical/scale[i]
+                    else:
+                        blunt_thickness = blunt_thickness_physical[i]/scale[i]
                 else:
                     blunt_thickness = None # Not necessary if sharp TE
                 # end if
