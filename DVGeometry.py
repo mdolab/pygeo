@@ -101,7 +101,7 @@ class DVGeometry(object):
         for i in xrange(len(self.points)):
             if self.isChild:
                 coef_mask = self.FFD.attachPoints(
-                    self.points[i],self.pt_names[i], interiorOnly=True)
+                    self.points[i],self.pt_names[i], interiorOnly=True, **kwargs)
             else:
                 coef_mask = self.FFD.attachPoints(
                     self.points[i],self.pt_names[i], interiorOnly=False)
@@ -1187,7 +1187,6 @@ class DVGeometry(object):
         # end
 
         for child in self.children:
-            print 'calling child',child
             dIdx+=child.totalSensitivityFD(dIdpt, comm, scaled, name,nDV_T,DVParent)
         # end for
 
@@ -1225,7 +1224,6 @@ class DVGeometry(object):
         # end if
 
         for i in xrange(len(self.DV_listGlobal)):
-            print 'GlobalVar',i,DVCount
             for j in xrange(self.DV_listGlobal[i].nVal):
                 if self.isChild:
                     self.FFD.coef=  refFFDCoef.copy()
@@ -1250,7 +1248,6 @@ class DVGeometry(object):
         DVParent=DVCount
         
         for i in xrange(len(self.DV_listLocal)):
-            print 'LocalVar',i,DVLocalCount
             for j in xrange(self.DV_listLocal[i].nVal):
 
                 refVal = self.DV_listLocal[i].value[j]
@@ -1282,7 +1279,7 @@ class DVGeometry(object):
             self.children[iChild].refAxis._updateCurveCoef()
         # end
         for child in self.children:
-            print 'calling child',child#,child.computeTotalJacobianFD(comm, scaled, name,nDV_T,DVParent)
+
             dPtdx+=child.computeTotalJacobianFD(comm, scaled, name,nDV_T,DVParent)
         # end for
 
@@ -1380,17 +1377,17 @@ class DVGeometry(object):
         '''
         Compute the derivative of the the attached points
         '''
-
-        nDV = self._getNDVGlobal() 
-        if nDV == 0:
-            return None
-      
+        nDV = self._getNDVGlobal()
+    
         if self.dXrefdXdvg is not None:
             nDVSummed = self.dXrefdXdvg.shape[1]
         else:
             nDVSummed = nDV
-            self.ranges=None
+            self.rangeg=None
         # end if
+
+        if nDVSummed == 0:
+            return None
 
         h = 1.0e-40j
         oneoverh = 1.0/1e-40
@@ -1400,65 +1397,68 @@ class DVGeometry(object):
         # coordref = self.update_deriv().flatten()
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
+        if nDV <> 0:
+            Jacobian = numpy.zeros((self.nPtAttachFull*3, nDV))
 
-        Jacobian = numpy.zeros((self.nPtAttachFull*3, nDV))
+            # Create the storage arrays for the information that must be
+            # passed to the children
 
-        # Create the storage arrays for the information that must be
-        # passed to the children
+            for iChild in xrange(len(self.children)):
+                N = self.FFD.embeded_volumes['child%d_axis'%(iChild)].N
+                self.children[iChild].dXrefdXdvg = numpy.zeros((N*3, nDV))
 
-        for iChild in xrange(len(self.children)):
-            N = self.FFD.embeded_volumes['child%d_axis'%(iChild)].N
-            self.children[iChild].dXrefdXdvg = numpy.zeros((N*3, nDV))
+                N = self.FFD.embeded_volumes['child%d_coef'%(iChild)].N
+                self.children[iChild].dCcdXdvg = numpy.zeros((N*3, nDV))
+                self.children[iChild].rangeg = numpy.zeros(nDV)
 
-            N = self.FFD.embeded_volumes['child%d_coef'%(iChild)].N
-            self.children[iChild].dCcdXdvg = numpy.zeros((N*3, nDV))
-            self.children[iChild].ranges = numpy.zeros(nDV)
+            iDV = 0
+            for i in xrange(len(self.DV_listGlobal)):
+                nVal = self.DV_listGlobal[i].nVal
+                for j in xrange(nVal):
 
-        iDV = 0
-        for i in xrange(len(self.DV_listGlobal)):
+                    refVal = self.DV_listGlobal[i].value[j]
 
-            nVal = self.DV_listGlobal[i].nVal
-            for j in xrange(nVal):
+                    self.DV_listGlobal[i].value[j] += h
 
-                refVal = self.DV_listGlobal[i].value[j]
+                    deriv = oneoverh*numpy.imag(self.update_deriv(iDV,h,oneoverh)).flatten()
+                    #deriv = oneoverh*(self.update_deriv().flatten()-coordref)
 
-                self.DV_listGlobal[i].value[j] += h
-                
-                deriv = oneoverh*numpy.imag(self.update_deriv(iDV,h,oneoverh)).flatten()
-                #deriv = oneoverh*(self.update_deriv().flatten()-coordref)
-                
-                if scaled:
-                    # ptAttachInd is of length nPtAttach, but need to
-                    # set the x-y-z coordinates here:
-                    numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
-                              deriv[0::3]*self.DV_listGlobal[i].range[j])
-                    numpy.put(Jacobian[1::3, iDV], self.ptAttachInd, 
-                              deriv[1::3]*self.DV_listGlobal[i].range[j])
-                    numpy.put(Jacobian[2::3, iDV], self.ptAttachInd, 
-                              deriv[2::3]*self.DV_listGlobal[i].range[j])
-                    # save the global DV Ranges for the children
-                    if self.ranges==None:
-                        for iChild in xrange(len(self.children)):
-                            self.children[iChild].ranges[iDV]=self.DV_listGlobal[i].range[j]
-                        # end
+                    if scaled:
+                        # ptAttachInd is of length nPtAttach, but need to
+                        # set the x-y-z coordinates here:
+                        numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
+                                  deriv[0::3]*self.DV_listGlobal[i].range[j])
+                        numpy.put(Jacobian[1::3, iDV], self.ptAttachInd, 
+                                  deriv[1::3]*self.DV_listGlobal[i].range[j])
+                        numpy.put(Jacobian[2::3, iDV], self.ptAttachInd, 
+                                  deriv[2::3]*self.DV_listGlobal[i].range[j])
+                        # save the global DV Ranges for the children
+                        if self.rangeg==None:
+                            for iChild in xrange(len(self.children)):
+                                self.children[iChild].rangeg[iDV]=self.DV_listGlobal[i].range[j]
+                            # end for
+                        else:
+                            for iChild in xrange(len(self.children)):
+                                self.children[iChild].rangeg[iDV]=self.rangeg[iDV]
+                            # end for
+                        # end if
                     else:
-                        for iChild in xrange(len(self.children)):
-                            self.children[iChild].ranges[iDV]=self.ranges[iDV]
-                    # end
-                else:
-                    numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
-                              deriv[0::3])
-                    numpy.put(Jacobian[1::3, iDV], self.ptAttachInd, 
-                              deriv[1::3])
-                    numpy.put(Jacobian[2::3, iDV], self.ptAttachInd, 
-                              deriv[2::3])
-                # end if
+                        numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
+                                  deriv[0::3])
+                        numpy.put(Jacobian[1::3, iDV], self.ptAttachInd, 
+                                  deriv[1::3])
+                        numpy.put(Jacobian[2::3, iDV], self.ptAttachInd, 
+                                  deriv[2::3])
+                    # end if
 
-                iDV += 1
+                    iDV += 1
 
-                self.DV_listGlobal[i].value[j] = refVal
+                    self.DV_listGlobal[i].value[j] = refVal
+                # end for
             # end for
-        # end for
+        else:
+            Jacobian = None
+        # end if
 
         if self.dXrefdXdvg is not None:
             # we are now on a child. Add in dependence passed from parent
@@ -1490,9 +1490,9 @@ class DVGeometry(object):
                 if scaled:
                     # ptAttachInd is of length nPtAttach, but need to
                     # set the x-y-z coordinates here:
-                    numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0]*self.ranges[iDV])
-                    numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1]*self.ranges[iDV])
-                    numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2]*self.ranges[iDV])
+                    numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0]*self.rangeg[iDV])
+                    numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1]*self.rangeg[iDV])
+                    numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2]*self.rangeg[iDV])
                 else:
                     numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
                     numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
@@ -1502,17 +1502,14 @@ class DVGeometry(object):
                 for index in self.ptAttachInd:
                     for j in xrange(3):
                         idx = index*3+j
-
                         if scaled:
-                            tmp3[idx]=self.dCcdXdvg[idx,iDV]*self.ranges[iDV]
+                            tmp3[idx]=self.dCcdXdvg[idx,iDV]*self.rangeg[iDV]
                         else:
                             tmp3[idx]=self.dCcdXdvg[idx,iDV]
                         # end
                     # end
                 # end
                 Jacobian[:, iDV] += oneoverh*numpy.imag(tmp2)-tmp3
-
-
                 self.coef = self.coef.astype('d')
                 self.FFD.coef = self.FFD.coef.astype('d')
 
@@ -1623,58 +1620,145 @@ class DVGeometry(object):
         
         # This is relatively straight forward, since the matrix is
         # entirely one's or zeros
-
         nDV = self._getNDVLocal()
-        if nDV == 0:
-            return None
-      
+
         if self.dXrefdXdvl is not None:
             nDVSummed = self.dXrefdXdvl.shape[1]
         else:
             nDVSummed = nDV
+            self.rangel = None
         # end if
         
-        if nDV == 0:
+        if nDVSummed == 0:
             return None
+        h = 1.0e-40j
+        oneoverh = 1.0/1e-40
 
-        Jacobian = sparse.lil_matrix((self.nPtAttachFull*3, nDV))
-        iDVLocal = 0
-        for i in xrange(len(self.DV_listLocal)):
-            nVal = self.DV_listLocal[i].nVal
-            for j in xrange(nVal):
-                pt_dv = self.DV_listLocal[i].coef_list[j] 
-                irow = pt_dv[0]*3 + pt_dv[1]
-                if not scaled:
-                    Jacobian[irow, iDVLocal] = 1.0
-                else:
-                    Jacobian[irow, iDVLocal] = self.DV_listLocal[i].range[j]
-                # end if
-                iDVLocal += 1
+        if nDV <> 0:
+            Jacobian = sparse.lil_matrix((self.nPtAttachFull*3, nDV))
+            # Create the storage arrays for the information that must be
+            # passed to the children
+
+            for iChild in xrange(len(self.children)):
+                N = self.FFD.embeded_volumes['child%d_axis'%(iChild)].N
+                self.children[iChild].dXrefdXdvl = numpy.zeros((N*3, nDV))
+
+                N = self.FFD.embeded_volumes['child%d_coef'%(iChild)].N
+                self.children[iChild].dCcdXdvl = numpy.zeros((N*3, nDV))
+                self.children[iChild].rangel = numpy.zeros(nDV)
             # end for
-        # end for
 
-        if self.dXrefdXdvl is not None:
-            temp = numpy.zeros((self.nPtAttachFull*3, nDVSummed))
-            temp[:, nDVSummed - nDV:] = Jacobian
-            Jacobian = temp
+            iDVLocal = 0
+            for i in xrange(len(self.DV_listLocal)):
+                nVal = self.DV_listLocal[i].nVal
+                for j in xrange(nVal):
 
-            for i in xrange(self.dXrefdXdvl.shape[1]):
-                
-                self.coef = self.children[iChild].coef.astype('D')
-                self.coef +=  numpy.imag(self.dXrefdXdvl[:, iDV])
+                    pt_dv = self.DV_listLocal[i].coef_list[j] 
+                    irow = pt_dv[0]*3 + pt_dv[1]
+                    if not scaled:
+                        Jacobian[irow, iDVLocal] = 1.0
+                    else:
+                        Jacobian[irow, iDVLocal] = self.DV_listLocal[i].range[j]
+                    # end if
 
-                new_pts_child = self.update_deriv()
+                    for iChild in xrange(len(self.children)):
+
+                        dXrefdCoef = self.FFD.embeded_volumes['child%d_axis'%(iChild)].dPtdCoef
+                        dCcdCoef   = self.FFD.embeded_volumes['child%d_coef'%(iChild)].dPtdCoef
             
-                tmp2 = numpy.zeros(self.FFD.coef.shape,dtype='D')
-                numpy.put(tmp2[:, 0], self.ptAttachInd, new_pts_child[:,0])
-                numpy.put(tmp2[:, 1], self.ptAttachInd, new_pts_child[:,1])
-                numpy.put(tmp2[:, 2], self.ptAttachInd, new_pts_child[:,2])
-            
-                Jacobian[:, i] = numpy.imag(tmp2 - self.dCoefdXdvl)
+                        tmp = numpy.zeros(self.FFD.coef.shape,dtype='D')
+                        
+                        tmp[pt_dv[0],pt_dv[1]] = 1.0
+
+                        dXrefdXdvl = numpy.zeros((dXrefdCoef.shape[0]*3),'D')
+                        dCcdXdvl   = numpy.zeros((dCcdCoef.shape[0]*3),'D')
+
+                        dXrefdXdvl[0::3] = dXrefdCoef.dot(tmp[:, 0])
+                        dXrefdXdvl[1::3] = dXrefdCoef.dot(tmp[:, 1])
+                        dXrefdXdvl[2::3] = dXrefdCoef.dot(tmp[:, 2])
+
+                        dCcdXdvl[0::3] = dCcdCoef.dot(tmp[:, 0])
+                        dCcdXdvl[1::3] = dCcdCoef.dot(tmp[:, 1])
+                        dCcdXdvl[2::3] = dCcdCoef.dot(tmp[:, 2])
+
+                        self.children[iChild].dXrefdXdvl[:, iDVLocal] = dXrefdXdvl
+                        self.children[iChild].dCcdXdvl[:, iDVLocal] = dCcdXdvl
+                    # end for
+                    if scaled:
+                        if self.rangel is None:
+                            for iChild in xrange(len(self.children)):
+                                self.children[iChild].rangel[iDVLocal] = self.DV_listLocal[i].range[j]
+                            # end for
+                        else:
+                            for iChild in xrange(len(self.children)):
+                                self.children[iChild].rangel[iDVLocal] = self.rangel[iDVLocal]
+                            # end for
+                        # end if
+                    # end if
+                    iDVLocal += 1
+                # end for
             # end for
+        else:
+            Jacobian = None
         # end if
 
-        return Jacobian
+        if self.dXrefdXdvl is not None:
+            #temp = sparse.lil_matrix((self.nPtAttachFull*3, nDVSummed))
+            temp = numpy.zeros((self.nPtAttachFull*3, nDVSummed))
+            if Jacobian is not None:
+                temp[:, nDVSummed - nDV:] = Jacobian
+            # end if 
+            Jacobian = temp
+
+            for iDV in xrange(self.dXrefdXdvl.shape[1]):
+                self._complexifyCoef()
+                self.coef[:,0] +=  self.dXrefdXdvl[0::3, iDV]*h
+                self.coef[:,1] +=  self.dXrefdXdvl[1::3, iDV]*h
+                self.coef[:,2] +=  self.dXrefdXdvl[2::3, iDV]*h
+
+                self.refAxis.coef = self.coef.copy()
+                self.refAxis._updateCurveCoef()
+
+                self.FFD.coef = self.FFD.coef.astype('D')
+                tmp1 =numpy.zeros_like(self.FFD.coef,dtype='D')
+                tmp1[:,0] = self.dCcdXdvl[0::3, iDV]*h
+                tmp1[:,1] = self.dCcdXdvl[1::3, iDV]*h
+                tmp1[:,2] = self.dCcdXdvl[2::3, iDV]*h
+
+                self.FFD.coef+=tmp1
+
+                new_pts_child = self.update_deriv(iDV, h, oneoverh)
+                tmp2 = numpy.zeros(self.nPtAttachFull*3,dtype='D')
+                if scaled:
+                    # ptAttachInd is of length nPtAttach, but need to
+                    # set the x-y-z coordinates here:
+                    numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0]*self.rangel[iDV])
+                    numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1]*self.rangel[iDV])
+                    numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2]*self.rangel[iDV])
+                else:
+                    numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
+                    numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
+                    numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2])
+                # end
+                tmp3 = numpy.zeros(self.nPtAttachFull*3,dtype='d')
+                for index in self.ptAttachInd:
+                    for j in xrange(3):
+                        idx = index*3+j
+                        if scaled:
+                            tmp3[idx]=self.dCcdXdvl[idx,iDV]*self.rangel[iDV]
+                        else:
+                            tmp3[idx]=self.dCcdXdvl[idx,iDV]
+                        # end
+                    # end
+                # end
+                Jacobian[:, iDV] = Jacobian[:, iDV] + oneoverh*numpy.imag(tmp2)-tmp3
+                self.coef = self.coef.astype('d')
+                self.FFD.coef = self.FFD.coef.astype('d')
+            # end for
+        # end if
+        self._unComplexifyCoef()
+                              
+        return sparse.csr_matrix(Jacobian)
 
     def addVariablesPyOpt(self, opt_prob):
         '''

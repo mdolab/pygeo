@@ -934,7 +934,7 @@ class pyBlock():
 # ----------------------------------------------------------------------    
 
     def attachPoints(self, coordinates, index, interiorOnly=False,
-                     *args, **kwargs):
+                     faceFreeze=None,*args, **kwargs):
         '''Embed a set of coordinates into all volumes
 
         coordintes: the coordinates
@@ -959,61 +959,92 @@ class pyBlock():
             else:
                 volID,u,v,w,D = self.projectPoints(coordinates, checkErrors=False,
                                                    *args, **kwargs)
+                if faceFreeze is None: # Do the "auto" freezing algorithm:
 
-                # Determine a characteric 'length', r_star based on FFD size
-                Xmin, Xmax = self.getBounds()
-                r_star = min(abs(Xmax[0] - Xmin[0]), 
-                             abs(Xmax[1] - Xmin[1]), 
-                         abs(Xmax[2] - Xmin[2]))
+                    # Determine a characteric 'length', r_star based on FFD size
+                    Xmin, Xmax = self.getBounds()
+                    r_star = min(abs(Xmax[0] - Xmin[0]), 
+                                 abs(Xmax[1] - Xmin[1]), 
+                                 abs(Xmax[2] - Xmin[2]))
+                    
+                    mask = []
+                    for i in xrange(len(D)):
+                        Dnrm = numpy.linalg.norm(D[i])
 
-                mask = []
-                for i in xrange(len(D)):
-                    Dnrm = numpy.linalg.norm(D[i])
-                    #print 'DNRm',Dnrm, Dnrm < 50*eps
-                    if Dnrm < 50*eps: # Sufficiently inside
-                        mask.append(i)
-                    else:
-                        # Determine if the points NOT in the volume are within
-                        # r_star. If they are, flag the face and the layer 
-                        # one inside of that face in coef_mask as True
-                        if Dnrm < r_star:
-                            if v[i] > eps and v[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
-                                if u[i] < eps:
-                                    #print 'u_min'
-                                    coef_mask[volID[i]][0, :, :] = True
-                                    coef_mask[volID[i]][1, :, :] = True
-                                elif u[i] > 1-eps:
-                                    #print 'u_max'
-                                    coef_mask[volID[i]][-1, :, :] = True
-                                    coef_mask[volID[i]][-2, :, :] = True
-                                # end if
-                            elif u[i] > eps and u[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
-                                if v[i] < eps:
-                                    #print 'v_min'
-                                    coef_mask[volID[i]][:, 0, :] = True
-                                    coef_mask[volID[i]][:, 1, :] = True
-                                elif v[i] > 1-eps:
-                                    #print 'v_max'
-                                    coef_mask[volID[i]][:, -1, :] = True
-                                    coef_mask[volID[i]][:, -2, :] = True
-                                # end if
-                            elif u[i] > eps and u[i] < 1-eps and v[i] > eps and v[i] < 1-eps:
-                                if w[i] < eps:
-                                    #print 'w_min'
-                                    coef_mask[volID[i]][:, :, 0] = True
-                                    coef_mask[volID[i]][:, :, 1] = True
-                                elif w[i] > 1-eps:
-                                    #print 'w_max'
-                                    coef_mask[volID[i]][:, :, -1] = True
-                                    coef_mask[volID[i]][:, :, -2] = True
+                        if Dnrm < 50*eps: # Sufficiently inside
+                            mask.append(i)
+                        else:
+                            # Determine if the points NOT in the volume are within
+                            # r_star. If they are, flag the face and the on
+                            # inside of that face in coef_mask as True
+                            if Dnrm < r_star:
+                                if v[i] > eps and v[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
+                                    if u[i] < eps:
+                                        coef_mask[volID[i]][0, :, :] = True
+                                        coef_mask[volID[i]][1, :, :] = True
+                                    elif u[i] > 1-eps:
+                                        coef_mask[volID[i]][-1, :, :] = True
+                                        coef_mask[volID[i]][-2, :, :] = True
+                                    # end if
+                                elif u[i] > eps and u[i] < 1-eps and w[i] > eps and w[i] < 1-eps:
+                                    if v[i] < eps:
+                                        coef_mask[volID[i]][:, 0, :] = True
+                                        coef_mask[volID[i]][:, 1, :] = True
+                                    elif v[i] > 1-eps:
+                                        coef_mask[volID[i]][:, -1, :] = True
+                                        coef_mask[volID[i]][:, -2, :] = True
+                                    # end if
+                                elif u[i] > eps and u[i] < 1-eps and v[i] > eps and v[i] < 1-eps:
+                                    if w[i] < eps:
+                                        coef_mask[volID[i]][:, :, 0] = True
+                                        coef_mask[volID[i]][:, :, 1] = True
+                                    elif w[i] > 1-eps:
+                                        coef_mask[volID[i]][:, :, -1] = True
+                                        coef_mask[volID[i]][:, :, -2] = True
+                                    # end if
                                 # end if
                             # end if
                         # end if
+                    # end for
+                else: # Use faceFreeze to freeze sepcified faces:
+
+                    # Only let the user do this for one volume. You
+                    # will most likely not get what you expect for
+                    # multiple volumes:
+                    if self.nVol > 1: 
+                        mpiPrint('Error: faceFreeze option can only be used with child FFD\'s with \
+one volume')
+                        sys.exit(1)
                     # end if
-                # end for
-#                print coef_mask
+                    mask = []
+                    for i in xrange(len(D)):
+                        Dnrm = numpy.linalg.norm(D[i])
+                        if Dnrm < 50*eps: # Sufficiently inside
+                            mask.append(i)
+
+                    if 'iLow' in faceFreeze:
+                        coef_mask[0][0, :, :] = True
+                        coef_mask[0][1, :, :] = True
+                    elif 'iHigh' in faceFreeze:
+                        coef_mask[0][-1, :, :] = True
+                        coef_mask[0][-2, :, :] = True
+                    elif 'jLow' in faceFreeze:
+                        coef_mask[0][:, 0, :] = True
+                        coef_mask[0][:, 1, :] = True
+                    elif 'jHigh' in faceFreeze:
+                        coef_mask[0][:, -1, :] = True
+                        coef_mask[0][:, -2, :] = True
+                    elif 'kLow' in faceFreeze:
+                        coef_mask[0][:, :, 0] = True
+                        coef_mask[0][:, :, 1] = True
+                    elif 'kHigh' in faceFreeze:
+                        coef_mask[0][:, :, -1] = True
+                        coef_mask[0][:, :, -2] = True
+                    # end if
+                # end if
+
                 # Now that we have the mask we can create the embedded volume
-#                print 'mask,set',index,mask
+
                 self.embeded_volumes[index] = embeded_volume(volID, u, v, w, mask)
             # end if
 
