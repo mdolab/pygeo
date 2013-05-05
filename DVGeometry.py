@@ -1795,6 +1795,70 @@ class DVGeometry(object):
 
         return opt_prob
 
+    def addGlobalVariablesPyOpt(self, opt_prob):
+        '''
+        Add only the global variable to pyopt
+        '''
+
+        # Add design variables from the master:
+        for dvList in [self.DV_listGlobal]:
+            for dv in dvList:
+                if dv.nVal > 1:
+                    low = numpy.zeros(dv.nVal)
+                    high = numpy.ones(dv.nVal)
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
+                                         value=val, lower=low, upper=high)
+                else:
+                    low = 0.0
+                    high = 1.0
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVar(dv.name, 'c', value=val, 
+                                    lower=low, upper=high)
+                # end if
+            # end for
+        # end for
+
+        # Add variables for children
+        for child in self.children:
+            child.addGlobalVariablesPyOpt(opt_prob)
+        # end for
+
+        return opt_prob
+
+    def addLocalVariablesPyOpt(self, opt_prob):
+        '''
+        Add only the local variable to pyopt
+        '''
+
+        # Add design variables from the master:
+        for dvList in [self.DV_listGlobal]:
+            for dv in dvList:
+                if dv.nVal > 1:
+                    low = numpy.zeros(dv.nVal)
+                    high = numpy.ones(dv.nVal)
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
+                                         value=val, lower=low, upper=high)
+                else:
+                    low = 0.0
+                    high = 1.0
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVar(dv.name, 'c', value=val, 
+                                    lower=low, upper=high)
+                # end if
+            # end for
+        # end for
+
+        # Add variables for children
+        for child in self.children:
+            child.addLocalVariablesPyOpt(opt_prob)
+        # end for
+
+        return opt_prob
+
     def writeTecplot(self, file_name):
         '''Write the (deformed) current state of the FFD's to a file
         including the children'''
