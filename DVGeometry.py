@@ -1833,7 +1833,7 @@ class DVGeometry(object):
         '''
 
         # Add design variables from the master:
-        for dvList in [self.DV_listGlobal]:
+        for dvList in [self.DV_listLocal]:
             for dv in dvList:
                 if dv.nVal > 1:
                     low = numpy.zeros(dv.nVal)
