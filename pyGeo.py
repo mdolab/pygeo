@@ -407,22 +407,13 @@ must be supplied for blunt_te option')
             # end if
         # end for
 
-        # Before we continue the user may want to artifically scale
-        # the thickness of the sections. This is useful when a
-        # different airfoil thickness is desired than the actual
-        # airfoil coordinates. 
-
-        if thickness is not None:
-            thickness = numpy.atleast_1d(thickness)
-            if len(thickness) == 1:
-                thickness = numpy.ones(len(thickness))*thickness
-            for i in xrange(N):
-                if curves[i] is not None:
-                    # Only scale the interior control points; not the first and last
-                    curves[i].coef[1:-1,1] *= thickness
-                # end if
-            # end for
-        # end if
+        # If we want a pinched tip will will zero everything here.
+        if tip == 'pinched':
+            # Just zero out the last section in y
+            if curves[-1] is not None:
+                curves[-1].coef[:,1] = 0
+            # end if
+        # endif
 
         # If we are fitting curves, blend knot vectors and recompute
         if Nctl is not None:
@@ -435,7 +426,6 @@ must be supplied for blunt_te option')
             # end for
         else:
             # Otherwise do knot inserions
-
             orig_knots = [None for i in xrange(N)]
             for i in xrange(N):
                 if curves[i] is not None:
@@ -445,22 +435,24 @@ must be supplied for blunt_te option')
 
             # Now for each section go back and insert the required knots
             for i in xrange(N):
+                mpiPrint('Inserting knots for curve %d'%(i))
                 if curves[i] is not None:
                     for j in xrange(N):
                         if curves[j] is not None:
                             if i<>j:
                                # Add the knots from curve[j] to curve[i]
-                                for jj in xrange(len(curves[j].t)):
+                                for jj in xrange(len(orig_knots[j])):
 
                                     found = False
-                                    for jjj in xrange(len(orig_knots[i])):
-                                        if abs(curves[j].t[jj] - orig_knots[i][jjj]) < 1e-12:
+                                    for ii in xrange(len(orig_knots[i])):
+                                        if abs(orig_knots[j][jj] - orig_knots[i][ii]) < 1e-12:
                                             found=True
+                                            break
                                         # end if
                                     # end for
 
                                     if not found:
-                                        curves[i].insertKnot(curves[j].t[jj], 1)
+                                        curves[i].insertKnot(orig_knots[j][jj], 1)
                                     # end if
                                 # end for
                             # end if
@@ -470,14 +462,18 @@ must be supplied for blunt_te option')
 
             # Finally force ALL curve to have PRECISELY identical knots
             for i in xrange(len(xsections)):
-                curves[i].t = curves[0].t.copy()
+                if curves[i] is not None:
+                    curves[i].t = curves[0].t.copy()
             # end for
+            new_knots = curves[0].t.copy()
         # end if
 
         # Generate a curve from X just for the paramterization
-        Xcurve = pySpline.curve(X=Xsec, k=2)
+        Xcurve = pySpline.curve(X=Xsec, k=k_span)
 
         # Now blend the missing sections
+        mpiPrint('Interpolating missing sections ...')
+
         for i in xrange(len(xsections)):
             if xsections[i] is None:
                 # Fist two cuves bounding this unknown one:
@@ -505,10 +501,24 @@ must be supplied for blunt_te option')
                 coef = curves[istart].coef*(1-alpha) + \
                     curves[iend].coef*(alpha)
 
-                curves[i] = pySpline.curve(coef=coef, k=4, t=curves[istart].t.copy)
+                curves[i] = pySpline.curve(coef=coef, k=4, t=new_knots.copy())
             # end if
         # end for
-                    
+
+        # Before we continue the user may want to artifically scale
+        # the thickness of the sections. This is useful when a
+        # different airfoil thickness is desired than the actual
+        # airfoil coordinates. 
+
+        if thickness is not None:
+            thickness = numpy.atleast_1d(thickness)
+            if len(thickness) == 1:
+                thickness = numpy.ones(len(thickness))*thickness
+            for i in xrange(N):
+                # Only scale the interior control points; not the first and last
+                curves[i].coef[1:-1,1] *= thickness[i]
+            # end for
+        # end if         
         # Now split each curve at u_split which roughly coorsponds to LE
         top_curves = []
         bot_curves = []
@@ -527,6 +537,7 @@ must be supplied for blunt_te option')
         knots_top = top_curves[0].t.copy()
         knots_bot = bot_curves[0].t.copy()
 
+        mpiPrint('Symmetrizing Knot Vectors ...' )
         eps = 1e-12
         for i in xrange(len(knots_top)):
             # Check if knots_top[i] is not in knots_bot to within eps
@@ -560,9 +571,6 @@ must be supplied for blunt_te option')
             # end if
         # end for
 
-     
-
-
         # We now have symmetrized knot vectors for the upper and lower
         # surfaces. We will copy the vectors to make sure they are
         # precisely the same:
@@ -575,7 +583,7 @@ must be supplied for blunt_te option')
         ncoef = top_curves[0].Nctl
         coef_top = numpy.zeros((ncoef, len(xsections), 3))
         coef_bot = numpy.zeros((ncoef, len(xsections), 3))
-        
+
         for i in xrange(len(xsections)):
             # Scale, rotate and translate the coefficients
             coef_top[:, i, 0] = scale[i]*(
@@ -617,6 +625,8 @@ must be supplied for blunt_te option')
         self.surfs.append(pySpline.surface(
                 coef=coef_bot, ku=4, kv=k_span, tu=bot_curves[0].t, tv=Xcurve.t))
 
+        mpiPrint('Computing TE surfaces ...')
+
         if blunt_te:
             if not rounded_te:
                 coef = numpy.zeros((len(xsections), 2, 3), 'd')
@@ -642,14 +652,15 @@ must be supplied for blunt_te option')
                     coef[j, 1] = coef[j, 0] + proj_top*0.5*cur_te_thick*te_scale
                     coef[j, 2] = coef[j, 3] + proj_bot*0.5*cur_te_thick*te_scale
                 # end for
-                    
+
                 self.surfs.append(pySpline.surface(
                         coef=coef, ku=k_span, kv=4, tu=Xcurve.t,
                         tv=[0, 0, 0, 0, 1, 1, 1, 1]))
             # endif
-
+        # end if
         self.nSurf =  len(self.surfs)
 
+        mpiPrint('Computing Tip surfaces ...')
         # # Add on additional surfaces if required for a rounded pinch tip
         if tip == 'rounded':
 
@@ -700,7 +711,7 @@ must be supplied for blunt_te option')
             # end for
 
             # Modify for square_te_tip... taper over last 20%
-            if square_te_tip:
+            if square_te_tip and not rounded_te:
                 tip_dist = geo_utils.e_dist(tip_line[0], tip_line[-1])
                 
                 for j in xrange(ncoef): # Going from back to front:
@@ -767,7 +778,6 @@ must be supplied for blunt_te option')
                     # We will actually recompute the coefficents
                     # on the last sections since we need to do a
                     # couple of more for this surface
-
                     for i in xrange(4):
                         proj_top = (coef_top_tip[0, i] - coef_top_tip[1, i])
                         proj_bot = (coef_bot_tip[0, i] - coef_bot_tip[1, i])
@@ -784,6 +794,8 @@ must be supplied for blunt_te option')
                     self.nSurf += 1
                 # end if
             # end if blunt_te
+        elif tip == 'pinched':
+            pass
         else:
             mpiPrint('No tip specified')
         # end if
