@@ -24,13 +24,11 @@ History
 # =============================================================================
 # Standard Python modules
 # =============================================================================
-
 import os, sys, copy
 
 # =============================================================================
 # External Python modules
 # =============================================================================
-
 import numpy
 
 try:
@@ -44,17 +42,16 @@ except:
 # =============================================================================
 # Extension modules
 # =============================================================================
-
 from mdo_import_helper import import_modules, mpiPrint
 exec(import_modules('geo_utils', 'pySpline'))
-import geo_utils, pySpline # not required, but pylint is happier
+
 # =============================================================================
 # pyGeo class
 # =============================================================================
 
 class pyGeo():
 	
-    def __init__(self, init_type, *args, **kwargs):
+    def __init__(self, init_type, no_print=False,*args, **kwargs):
         
         '''Create an instance of the geometry object. The initialization type, 
         init_type, specifies what type of initialization will be
@@ -69,11 +66,9 @@ class pyGeo():
         'plot3d', file_name = 'file_name.xyz' : Load in a plot3D
         surface patches and use them to create splined surfaces
  
-
         'iges', file_name = 'file_name.igs': Load the surface patches
         from an iges file to create splined surfaes.
 
-        
         'lifting_surface', <arguments listed below>
 
          Mandatory Arguments:
@@ -90,37 +85,20 @@ class pyGeo():
               k_span   : The spline order in span-wise direction
               con_file : The file name for the con file
         
-        'acdt_geo', acdt_geo=object : Load in a pyGeometry object and
-        use the aircraft components to create surfaces.
-        '''
+         '''
         
         # First thing to do is to check if we want totally silent
         # operation i.e. no print statments
-        if 'no_print' in kwargs:
-            self.NO_PRINT = kwargs['no_print']
-        else:
-            self.NO_PRINT = False
-        # end if
+        self.NO_PRINT = no_print
         self.init_type = init_type
         mpiPrint(' ', self.NO_PRINT)
-        mpiPrint('------------------------------------------------', 
-                 self.NO_PRINT)
+        mpiPrint('-'*48, self.NO_PRINT)
+        
         mpiPrint('pyGeo Initialization Type is: %s'%(init_type), 
                  self.NO_PRINT)
-        mpiPrint('------------------------------------------------', 
-                 self.NO_PRINT)
+        mpiPrint('-'*48, self.NO_PRINT)
 
         #------------------- pyGeo Class Atributes -----------------
-
-        self.DV_listGlobal  = []   # Global Design Variable List
-        self.DV_listNormal  = []   # Normal Design Variable List
-        self.DV_listLocal   = []   # Local Design Variable List
-        self.DV_namesGlobal = {}   # Names of Global Design Variables
-        self.DV_namesNormal = {}   # Names of Normal Design Variables
-        self.DV_namesLocal  = {}   # Names of Local Design Variables
-        self.dCoefdX  = None       # Derivative of control points wrt
-                                   # design variables
-        self.attached_surfaces = []# A list of the attached surface objects
         self.topo = None           # The topology of the surfaces
         self.surfs = []            # The list of surface (pySpline surf)
                                    # objects
@@ -136,13 +114,11 @@ class pyGeo():
             self._readIges(*args, **kwargs)
         elif init_type == 'lifting_surface':
             self._init_lifting_surface(*args, **kwargs)
-        elif init_type == 'acdt_geo':
-            self._init_acdt_geo(*args, **kwargs)
         elif init_type == 'create':  # Don't do anything 
             pass
         else:
             mpiPrint('Unknown init type. Valid Init types are \'plot3d\', \
-\'iges\', \'lifting_surface\' and \'acdt_geo\'')
+\'iges\' and \'lifting_surface\'')
             sys.exit(0)
 
         return
@@ -151,17 +127,13 @@ class pyGeo():
 #               Initialization Type Functions
 # ----------------------------------------------------------------------------
 
-    def _readPlot3D(self, **kwargs):
+    def _readPlot3D(self, file_name, file_type='ascii', order='f'):
+        '''Load a plot3D file and create the splines to go with each patch
 
-        '''Load a plot3D file and create the splines to go with each patch'''
-        assert 'file_name' in kwargs, 'file_name must be specified for plot3d'
-        assert 'file_type' in kwargs, 'file_type must be specified as\
- \'binary\' or \'ascii\''
-        assert 'order'     in kwargs, 'order must be specified as\
- \'f\' or \'c\''
-        file_name = kwargs['file_name']        
-        file_type = kwargs['file_type']
-        order     = kwargs['order']
+        file_name: Required string for file
+        file_type: 'ascii' or 'binary'
+        order: 'f' for fortran ordering (usual), 'c' for c ordering
+        '''
         mpiPrint(' ', self.NO_PRINT)
         if file_type == 'ascii':
             mpiPrint('Loading ascii plot3D file: %s ...'%(file_name),
@@ -220,12 +192,13 @@ class pyGeo():
 
         # Now create a list of spline surface objects:
         self.surfs = []
+
         # Note This doesn't actually fit the surfaces...just produces
         # the parameterization and knot vectors
         self.nSurf = nSurf
         for isurf in xrange(self.nSurf):
             self.surfs.append(pySpline.surface(X=surfs[isurf], ku=4, kv=4, 
-                                              Nctlu=4, Nctlv=4, 
+                                               Nctlu=4, Nctlv=4, 
                                                no_print=self.NO_PRINT))
         # end for
         return     
@@ -246,14 +219,14 @@ class pyGeo():
         directory_lines = int((Ifile[-1][17:24]))
         parameter_lines = int((Ifile[-1][25:32]))
 
-        # Now we know how many lines we have to deal 
-
+        # Now we know how many lines we have to deal with
         dir_offset  = start_lines + general_lines
         para_offset = dir_offset + directory_lines
 
         surf_list = []
         # Directory lines is ALWAYS a multiple of 2
         for i in xrange(directory_lines/2): 
+            # 128 is bspline surface type
             if int(Ifile[2*i + dir_offset][0:8]) == 128:
                 start = int(Ifile[2*i + dir_offset][8:16])
                 num_lines = int(Ifile[2*i + 1 + dir_offset][24:32])
@@ -322,9 +295,8 @@ class pyGeo():
             if not tv[-1] == 1.0:
                 tv /= tv[-1]
 
-            self.surfs.append(pySpline.surface(ku=ku, kv=kv, tu=tu, tv=tv, 
-                                               coef=coef, 
-                                               no_print=self.NO_PRINT))
+            self.surfs.append(pySpline.surface(
+                ku=ku, kv=kv, tu=tu, tv=tv, coef=coef, no_print=self.NO_PRINT))
 
             # Generate dummy data for connectivity to work
             u = numpy.linspace(0, 1, 3)
@@ -337,90 +309,97 @@ class pyGeo():
          
         return 
 
-    def _init_lifting_surface(self, **kwargs):
-
-        assert 'xsections' in kwargs and 'scale' in kwargs \
-            and 'offset' in kwargs, \
-               '\'xsections\', \'offset\' and \'scale\' must be specified\
- as kwargs'
-        xsections = kwargs['xsections']
-        scale     = kwargs['scale']
-        offset    = kwargs['offset']
-
-        assert 'X' in kwargs or ('x' in kwargs and 'y' in kwargs and\
- 'z' in kwargs), \
-'X must be specified (coordinates of positions) or x, y, z must be specified'
-
-        if 'X' in kwargs:
-            Xsec = numpy.array(kwargs['X'])
-        else:
-            Xsec = numpy.vstack([kwargs['x'], kwargs['y'], kwargs['z']]).T
-        # end if
+    def _init_lifting_surface(self, xsections, X=None, x=None, y=None, z=None, 
+                              rot=None, rot_x=None, rot_y=None, rot_z=None, 
+                              scale=None, offset=None, Nctl=None, k_span=3, 
+                              te_height=None, te_height_scaled=None, thickness=None,
+                              blunt_te=False, rounded_te=False, square_te_tip=True,
+                              te_scale=0.75, tip='rounded', tip_scale=0.25, 
+                              le_offset=.001,
+                              te_offset=.001, span_tang=0.5, up_tang=0.5, **kwargs):
+        ''' Create a lifting surface by distributing the cross
+        sections defined in xsection according to 'X'. Optional
+        arguments are as follows:
         
-        if 'rot' in kwargs:
-            rot = numpy.array(kwargs['rot'])
+        Supply either: 
+        X: Nx3 array of coordinates of each cross section
+          or
+        x,y,z: Three arrays of length N for each coordiante
+
+        Supply either:
+        rot: Nx3 array of x-y-z rotations of each cross section
+           or
+        rot_x, rot_y, rot_z: Three arrays of length N of each rotation
+
+        scale: list of length xsections to scale each section
+
+        offset: list of length xsections to offset each section in its
+                unscaled coordinate frame
+        '''
+        
+        if X is not None:
+            Xsec = numpy.array(X)
         else:
-            rot = numpy.vstack([kwargs['rot_x'], kwargs['rot_y'], 
-                                kwargs['rot_z']]).T          
+            # We have to use x,y,z
+            Xsec = numpy.vstack([x,y,z]).T
+        # end if
+        N = len(Xsec)
+
+        if rot is not None:
+            rot = numpy.array(rot)
+        else:
+            if rot_x is None:
+                rot_x = numpy.zeros(N)
+            if rot_y is None:
+                rot_y = numpy.zeros(N)
+            if rot_z is None:
+                rot_z = numpy.zeros(N)
+            rot = numpy.vstack([rot_x,rot_y,rot_z]).T
         # end if
 
-        if not len(xsections)==len(scale)==offset.shape[0]:
-            print 'The length of input data is inconsistent. xsections, scale, \
-offset.shape[0], Xsec, rot, must all have the same size'
-            print 'xsections:', len(xsections)
-            print 'scale:', len(scale)
-            print 'offset:', offset.shape[0]
-            print 'Xsec:', Xsec.shape[0]
-            print 'rot:', rot.shape[0]
-            sys.exit(1)
-        # end if
-        if 'Nctl' in kwargs:
-            Nctl = kwargs['Nctl']*2+1
-        else:
-            Nctl = 27
-        # end if
-        if 'k_span' in kwargs:
-            k_span = kwargs['k_span']
-        else:
-            k_span = 3
-            if len(Xsec) == 2:
-                k_span = 2
-            # end if
+        if offset is None:
+            offset = numpy.zeros((N,2))
 
-        if 'con_file' in kwargs:
-            con_file = kwargs['con_file']
-        else:
-            mpiPrint('con_file not specified. Using default.con')
-            con_file = 'default.con'
+        if scale is None:
+            scale = numpy.ones(N)
+
+        # Limit k_span to 2 if we only have two cross section
+        if len(Xsec) == 2:
+            k_span = 2
         # end if
             
-        if 'blunt_te' in kwargs:
-            if kwargs['blunt_te']:
-                blunt_te = True
-            else:
-                blunt_te = False
+        if blunt_te:
+            if te_height is None and te_height_scaled is None:
+                mpiPrint('Eror: te_height OR te_height_scaled \
+must be supplied for blunt_te option')
+                sys.exit(1)
+            if te_height:
+                te_height = numpy.atleast_1d(te_height)
+                if len(te_height) == 1:
+                    te_height = numpy.ones(N)*te_height
+                te_height /= scale
+
+            if te_height_scaled:
+                te_height = numpy.atleast_1d(te_height_scaled)
+                if len(te_height) == 1:
+                    te_height = numpy.ones(N)*te_height
         else:
-            blunt_te = False
-        # end if
+            te_height = [None for i in xrange(N)]
 
         # Load in and fit them all 
         curves = []
         knots = []
-        blunt_thickness_physical = kwargs.pop('te_height',.008)
         for i in xrange(len(xsections)):
             if xsections[i] is not None:
-                if blunt_te:                    
-                    blunt_thickness = blunt_thickness_physical/scale[i]
-                else:
-                    blunt_thickness = None # Not necessary if sharp TE
-                # end if
-
-                x, y = geo_utils.read_af2(xsections[i], blunt_te,
-                                          blunt_thickness=blunt_thickness)
+                x, y = geo_utils.read_af2(xsections[i], blunt_te, blunt_thickness=te_height[i])
                 weights = numpy.ones(len(x))
                 weights[0] = -1
                 weights[-1] = -1
-                c = pySpline.curve(x=x, y=y, Nctl=Nctl, k=4, weights=weights)
+                if Nctl is not None:
+                    c = pySpline.curve(x=x, y=y, Nctl=Nctl, k=4, weights=weights)
+                else:
+                    c = pySpline.curve(x=x, y=y, local_interp=True)
+                # end if
                 curves.append(c)
                 knots.append(c.t)
             else:
@@ -428,15 +407,77 @@ offset.shape[0], Xsec, rot, must all have the same size'
             # end if
         # end for
 
-        # Now blend the knot vectors
-        new_knots = geo_utils.blendKnotVectors(knots, True)
+        # Before we continue the user may want to artifically scale
+        # the thickness of the sections. This is useful when a
+        # different airfoil thickness is desired than the actual
+        # airfoil coordinates. 
 
-        # Interpolate missing curves and set the new knots in the
-        # cruve and recompue
+        if thickness is not None:
+            thickness = numpy.atleast_1d(thickness)
+            if len(thickness) == 1:
+                thickness = numpy.ones(len(thickness))*thickness
+            for i in xrange(N):
+                if curves[i] is not None:
+                    # Only scale the interior control points; not the first and last
+                    curves[i].coef[1:-1,1] *= thickness
+                # end if
+            # end for
+        # end if
+
+        # If we are fitting curves, blend knot vectors and recompute
+        if Nctl is not None:
+            new_knots = geo_utils.blendKnotVectors(knots, True)
+            for i in xrange(len(xsections)):
+                if curves[i] is not None:
+                    curves[i].t = new_knots.copy()
+                    curves[i].recompute(100, computeKnots=False)
+                # end if
+            # end for
+        else:
+            # Otherwise do knot inserions
+
+            orig_knots = [None for i in xrange(N)]
+            for i in xrange(N):
+                if curves[i] is not None:
+                    orig_knots[i] = curves[i].t.copy()
+                # end if
+            # end for
+
+            # Now for each section go back and insert the required knots
+            for i in xrange(N):
+                if curves[i] is not None:
+                    for j in xrange(N):
+                        if curves[j] is not None:
+                            if i<>j:
+                               # Add the knots from curve[j] to curve[i]
+                                for jj in xrange(len(curves[j].t)):
+
+                                    found = False
+                                    for jjj in xrange(len(orig_knots[i])):
+                                        if abs(curves[j].t[jj] - orig_knots[i][jjj]) < 1e-12:
+                                            found=True
+                                        # end if
+                                    # end for
+
+                                    if not found:
+                                        curves[i].insertKnot(curves[j].t[jj], 1)
+                                    # end if
+                                # end for
+                            # end if
+                    # end for
+                # end if
+            # end for
+
+            # Finally force ALL curve to have PRECISELY identical knots
+            for i in xrange(len(xsections)):
+                curves[i].t = curves[0].t.copy()
+            # end for
+        # end if
 
         # Generate a curve from X just for the paramterization
         Xcurve = pySpline.curve(X=Xsec, k=2)
 
+        # Now blend the missing sections
         for i in xrange(len(xsections)):
             if xsections[i] is None:
                 # Fist two cuves bounding this unknown one:
@@ -464,49 +505,72 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 coef = curves[istart].coef*(1-alpha) + \
                     curves[iend].coef*(alpha)
 
-                curves[i] = pySpline.curve(coef=coef, k=4, t=new_knots.copy())
-            else:
-                curves[i].t = new_knots.copy()
-                curves[i].recompute(100, computeKnots=False)
+                curves[i] = pySpline.curve(coef=coef, k=4, t=curves[istart].t.copy)
+            # end if
         # end for
-
-        if 'tip' in kwargs:
-            if kwargs['tip'].lower() == 'pinched':
-                # Just zero out the last section in y
-                if curves[-1] is not None:
-                    curves[-1].coef[:,1] = 0
-
-        # Rescale the thickness if required:
-        if 'thickness' in kwargs:
-            thickness = kwargs['thickness']
-            assert len(thickness) == len(xsections), 'Length of thickness\
- array is not correct'
-            # Thickness is treated as absolute, so the scaling factor
-            # depend on the actual thickness which we must estimate
-
-            # Evaluate each curve 150 points and get max-y and min-y
-            s = numpy.linspace(0, 1, 150)
-            
-            for i in xrange(len(xsections)):
-                vals = curves[i](s)
-                max_y = numpy.max(vals[:, 1])
-                min_y = numpy.min(vals[:, 1])
-                cur_thick = max_y - min_y
-                curves[i].coef[:, 1] *= thickness[i]/cur_thick
-            # end for
-        # end if
                     
         # Now split each curve at u_split which roughly coorsponds to LE
-        u_split = new_knots[(Nctl+4-1)/2]
         top_curves = []
         bot_curves = []
+        u_split = curves[0].t[(curves[0].Nctl+4-1)/2]
+
         for i in xrange(len(xsections)):
             c1, c2 = curves[i].splitCurve(u_split)
             top_curves.append(c1)
             c2.reverse()
             bot_curves.append(c2)
         # end for
-   
+    
+        # Note that the number of control points on the upper and
+        # lower surface MAY not be the same. We can fix this by doing
+        # more knot insersions. 
+        knots_top = top_curves[0].t.copy()
+        knots_bot = bot_curves[0].t.copy()
+
+        eps = 1e-12
+        for i in xrange(len(knots_top)):
+            # Check if knots_top[i] is not in knots_bot to within eps
+            found = False
+            for j in xrange(len(knots_bot)):
+                if abs(knots_top[i] - knots_bot[j]) < eps:
+                    found=True
+                # end if
+            # end for
+            if not found:
+                # Add to all section
+                for ii in xrange(len(xsections)):
+                            bot_curves[ii].insertKnot(knots_top[i], 1)
+                # end for
+            # end if
+        # end for
+
+        for i in xrange(len(knots_bot)):
+            # Check if knots_bot[i] is not in knots_top to within eps
+            found = False
+            for j in xrange(len(knots_top)):
+                if abs(knots_bot[i] - knots_top[j]) < eps:
+                    found=True
+                # end if
+            # end for
+            if not found:
+                # Add to all section
+                for ii in xrange(len(xsections)):
+                    top_curves[ii].insertKnot(knots_bot[i], 1)
+                # end for
+            # end if
+        # end for
+
+     
+
+
+        # We now have symmetrized knot vectors for the upper and lower
+        # surfaces. We will copy the vectors to make sure they are
+        # precisely the same:
+        for i in xrange(len(xsections)):
+            top_curves[i].t = top_curves[0].t.copy()
+            bot_curves[i].t = top_curves[0].t.copy()
+        # end for
+
         # Now we can set the surfaces
         ncoef = top_curves[0].Nctl
         coef_top = numpy.zeros((ncoef, len(xsections), 3))
@@ -533,7 +597,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
                                                     rot[i, 0]*numpy.pi/180)
                 coef_top[j, i, :] = geo_utils.rotyV(coef_top[j, i, :], 
                                                     rot[i, 1]*numpy.pi/180)
-                
+
                 coef_bot[j, i, :] = geo_utils.rotzV(coef_bot[j, i, :], 
                                                     rot[i, 2]*numpy.pi/180)
                 coef_bot[j, i, :] = geo_utils.rotxV(coef_bot[j, i, :], 
@@ -547,30 +611,20 @@ offset.shape[0], Xsec, rot, must all have the same size'
             coef_bot[:, i, :] += Xsec[i, :]
         # end for
 
-        # Now we can add the two surfaces
-        temp = pySpline.curve(X=Xsec, k=k_span)
-    
+        # Set the two main surfaces
         self.surfs.append(pySpline.surface(
-                coef=coef_top, ku=4, kv=k_span, tu=top_curves[0].t, tv=temp.t))
+                coef=coef_top, ku=4, kv=k_span, tu=top_curves[0].t, tv=Xcurve.t))
         self.surfs.append(pySpline.surface(
-                coef=coef_bot, ku=4, kv=k_span, tu=bot_curves[0].t, tv=temp.t))
+                coef=coef_bot, ku=4, kv=k_span, tu=bot_curves[0].t, tv=Xcurve.t))
 
         if blunt_te:
-            
-            if not 'roundedTE' in kwargs:
+            if not rounded_te:
                 coef = numpy.zeros((len(xsections), 2, 3), 'd')
                 coef[:, 0, :] = coef_top[0, :, :]
                 coef[:, 1, :] = coef_bot[0, :, :]
                 self.surfs.append(pySpline.surface(
-                        coef=coef, ku=k_span, kv=2, tu=temp.t, tv=[0, 0, 1, 1]))
+                        coef=coef, ku=k_span, kv=2, tu=Xcurve.t, tv=[0, 0, 1, 1]))
             else:
-                # Do a rounded TE instead...similar to rounded wingtip
-                if 'te_scale' in kwargs:
-                    te_scale = kwargs['te_scale']
-                else:
-                    te_scale = .75
-                # end if
-
                 coef = numpy.zeros((len(xsections), 4, 3), 'd')
                 coef[:, 0, :] = coef_top[0, :, :]
                 coef[:, 3, :] = coef_bot[0, :, :]
@@ -590,141 +644,149 @@ offset.shape[0], Xsec, rot, must all have the same size'
                 # end for
                     
                 self.surfs.append(pySpline.surface(
-                        coef=coef, ku=k_span, kv=4, tu=temp.t, 
+                        coef=coef, ku=k_span, kv=4, tu=Xcurve.t,
                         tv=[0, 0, 0, 0, 1, 1, 1, 1]))
             # endif
 
         self.nSurf =  len(self.surfs)
 
-        # Add on additional surfaces if required for a rounded pinch tip
-        if 'tip' in kwargs:
-            if kwargs['tip'].lower() == 'rounded':
+        # # Add on additional surfaces if required for a rounded pinch tip
+        if tip == 'rounded':
 
-                if 'tip_scale' in kwargs:
-                    tip_scale = kwargs['tip_scale']
-                else:
-                    tip_scale = 0.25
-                # end if
+            # Generate the midpoint of the coefficients
+            mid_pts = numpy.zeros([ncoef, 3])
+            up_vec  = numpy.zeros([ncoef, 3])
+            ds_norm = numpy.zeros([ncoef, 3])
+            for j in xrange(ncoef):
+                mid_pts[j] = 0.5*(coef_top[j, -1] + coef_bot[j, -1])
+                up_vec[j]  = (coef_top[j, -1] - coef_bot[j, -1])
+                ds = 0.5*((coef_top[j, -1]-coef_top[j, -2]) + (
+                        coef_bot[j, -1]-coef_bot[j, -2]))
+                ds_norm[j] = ds/numpy.linalg.norm(ds)
+            # end for
 
-                if 'le_offset' in kwargs:
-                    le_offset = kwargs['le_offset']
-                else:
-                    le_offset = scale[-1]*0.001 # Take .1% of tip chord 
-                # end if
+            # Generate "average" projection Vector
+            proj_vec = numpy.zeros((ncoef, 3), 'd')
+            for j in xrange(ncoef):
+                offset = te_offset + (float(j)/(ncoef-1))*(
+                    le_offset-te_offset)
+                proj_vec[j] = ds_norm[j]*(numpy.linalg.norm(
+                        up_vec[j]*tip_scale + offset))
 
-                if 'te_offset' in kwargs:
-                    te_offset = kwargs['te_offset']
-                else:
-                    te_offset = scale[-1]*0.002 # Take .2% of tip chord 
-                # end if
+            # Generate the tip "line"
+            tip_line = numpy.zeros([ncoef, 3])
+            for j in xrange(ncoef):
+                tip_line[j] =  mid_pts[j] + proj_vec[j]
+            # end for
 
-                if 'span_tang' in kwargs:
-                    span_tang = kwargs['span_tang']
-                else:
-                    span_tang = 0.5
-                # end if
+            # Generate a k=4 (cubic) surface
+            coef_top_tip = numpy.zeros([ncoef, 4, 3])
+            coef_bot_tip = numpy.zeros([ncoef, 4, 3])
 
-                if 'up_tang' in kwargs:
-                    up_tang = kwargs['up_tang']
-                else:
-                    up_tang = 0.5
-                # end if
+            for j in xrange(ncoef):
+                coef_top_tip[j, 0] = coef_top[j, -1]
+                coef_top_tip[j, 1] = coef_top[j, -1] + \
+                    proj_vec[j]*span_tang
+                coef_top_tip[j, 2] = tip_line[j] + \
+                    up_tang*up_vec[j]
+                coef_top_tip[j, 3] = tip_line[j]
 
-                # Generate the midpoint of the coefficients
-                mid_pts = numpy.zeros([ncoef, 3])
-                up_vec  = numpy.zeros([ncoef, 3])
-                ds_norm = numpy.zeros([ncoef, 3])
-                for j in xrange(ncoef):
-                    mid_pts[j] = 0.5*(coef_top[j, -1] + coef_bot[j, -1])
-                    up_vec[j]  = (coef_top[j, -1] - coef_bot[j, -1])
-                    ds = 0.5*((coef_top[j, -1]-coef_top[j, -2]) + (
-                            coef_bot[j, -1]-coef_bot[j, -2]))
-                    ds_norm[j] = ds/numpy.linalg.norm(ds)
-                # end for
+                coef_bot_tip[j, 0] = coef_bot[j, -1]
+                coef_bot_tip[j, 1] = coef_bot[j, -1] + \
+                    proj_vec[j]*span_tang
+                coef_bot_tip[j, 2] = tip_line[j] - \
+                    up_tang*up_vec[j]
+                coef_bot_tip[j, 3] = tip_line[j]
+            # end for
 
-                # Generate "average" projection Vector
-                proj_vec = numpy.zeros((ncoef, 3), 'd')
-                for j in xrange(ncoef):
-                    offset = te_offset + (float(j)/(ncoef-1))*(
-                        le_offset-te_offset)
-                    proj_vec[j] = ds_norm[j]*(numpy.linalg.norm(
-                            up_vec[j]*tip_scale + offset))
+            # Modify for square_te_tip... taper over last 20%
+            if square_te_tip:
+                tip_dist = geo_utils.e_dist(tip_line[0], tip_line[-1])
+                
+                for j in xrange(ncoef): # Going from back to front:
+                    fraction = geo_utils.e_dist(tip_line[j], tip_line[0]) / tip_dist
+                    if fraction < 0.10:
+                        fact = (1-fraction/0.10)**2
+                        omfact = 1.0-fact
+                        coef_top_tip[j, 1] = (
+                            fact*((5.0/6.0)*coef_top_tip[j,0] + (1.0/6.0)*coef_bot_tip[j,0]) +
+                            omfact*coef_top_tip[j,1])
+                        coef_top_tip[j, 2] = (
+                            fact*((4.0/6.0)*coef_top_tip[j,0] + (2.0/6.0)*coef_bot_tip[j,0]) + 
+                            omfact*coef_top_tip[j,2])
+                        coef_top_tip[j, 3] = (
+                            fact*((1.0/2.0)*coef_top_tip[j,0] + (1.0/2.0)*coef_bot_tip[j,0]) + 
+                            omfact*coef_top_tip[j,3])
 
-                # Generate the tip "line"
-                tip_line = numpy.zeros([ncoef, 3])
-                for j in xrange(ncoef):
-                    tip_line[j] =  mid_pts[j] + proj_vec[j]
-                # end for
-
-                # Generate a k=4 (cubic) surface
-                coef_top_tip = numpy.zeros([ncoef, 4, 3])
-                coef_bot_tip = numpy.zeros([ncoef, 4, 3])
-
-                for j in xrange(ncoef):
-                    coef_top_tip[j, 0] = coef_top[j, -1]
-                    coef_top_tip[j, 1] = coef_top[j, -1] + \
-                        proj_vec[j]*span_tang
-                    coef_top_tip[j, 2] = tip_line[j] + \
-                        up_tang*up_vec[j]
-                    coef_top_tip[j, 3] = tip_line[j]
-
-                    coef_bot_tip[j, 0] = coef_bot[j, -1]
-                    coef_bot_tip[j, 1] = coef_bot[j, -1] + \
-                        proj_vec[j]*span_tang
-                    coef_bot_tip[j, 2] = tip_line[j] - \
-                        up_tang*up_vec[j]
-                    coef_bot_tip[j, 3] = tip_line[j]
-                # end for
-
-                surf_top_tip = pySpline.surface(
-                    coef=coef_top_tip, ku=4, kv=4, tu=top_curves[0].t, 
-                    tv=[0, 0, 0, 0, 1, 1, 1, 1])
-                surf_bot_tip = pySpline.surface(
-                    coef=coef_bot_tip, ku=4, kv=4, tu=bot_curves[0].t, 
-                    tv=[0, 0, 0, 0, 1, 1, 1, 1])
-                self.surfs.append(surf_top_tip)
-                self.surfs.append(surf_bot_tip)
-                self.nSurf += 2
-
-                if blunt_te: # We need to put in the little-ity-bity
-                             # surface at the tip trailing edge
-                    if not 'roundedTE' in kwargs:
-                        coef = numpy.zeros((4, 2, 3), 'd')
-                        coef[:, 0] = coef_top_tip[0, :]
-                        coef[:, 1] = coef_bot_tip[0, :]
-
-                        self.surfs.append(pySpline.surface(
-                                coef=coef, ku=4, kv=2, 
-                                tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1]))
-                    else:
-                        coef = numpy.zeros((4, 4, 3), 'd')
-                        coef[:, 0] = coef_top_tip[0, :]
-                        coef[:, 3] = coef_bot_tip[0, :]
-                        
-                        # We will actually recompute the coefficents
-                        # on the last sections since we need to do a
-                        # couple of more for this surface
-
-                        for i in xrange(4):
-                            proj_top = (coef_top_tip[0, i] - coef_top_tip[1, i])
-                            proj_bot = (coef_bot_tip[0, i] - coef_bot_tip[1, i])
-                            proj_top /= numpy.linalg.norm(proj_top)
-                            proj_bot /= numpy.linalg.norm(proj_bot)
-                            cur_te_thick = numpy.linalg.norm(coef_top_tip[0, i] - coef_bot_tip[0, i])
-                            coef[i, 1] = coef[i, 0] + proj_top*0.5*cur_te_thick*te_scale
-                            coef[i, 2] = coef[i, 3] + proj_bot*0.5*cur_te_thick*te_scale
-
-                        self.surfs.append(pySpline.surface(
-                                coef=coef, ku=4, kv=4, 
-                                tu=[0, 0, 0, 0, 1, 1, 1, 1], 
-                                tv=[0, 0, 0, 0, 1, 1, 1, 1]))
+                        coef_bot_tip[j, 1] = (
+                            fact*((1.0/6.0)*coef_top_tip[j,0] + (5.0/6.0)*coef_bot_tip[j,0]) +
+                            omfact*coef_bot_tip[j,1])
+                        coef_bot_tip[j, 2] = (
+                            fact*((2.0/6.0)*coef_top_tip[j,0] + (4.0/6.0)*coef_bot_tip[j,0]) + 
+                            omfact*coef_bot_tip[j,2])
+                        coef_bot_tip[j, 3] = (
+                            fact*((1.0/2.0)*coef_top_tip[j,0] + (1.0/2.0)*coef_bot_tip[j,0]) + 
+                            omfact*coef_bot_tip[j,3])
                     # end if
-
-                    self.nSurf += 1
-
-            elif kwargs['tip'].lower() == 'flat':
-                mpiPrint('Flat tip is not implemented yet')
+                # end for
             # end if
+
+            surf_top_tip = pySpline.surface(
+                coef=coef_top_tip, ku=4, kv=4, tu=top_curves[0].t, 
+                tv=[0, 0, 0, 0, 1, 1, 1, 1])
+            surf_bot_tip = pySpline.surface(
+                coef=coef_bot_tip, ku=4, kv=4, tu=bot_curves[0].t, 
+                tv=[0, 0, 0, 0, 1, 1, 1, 1])
+            self.surfs.append(surf_top_tip)
+            self.surfs.append(surf_bot_tip)
+            self.nSurf += 2
+
+            if blunt_te: 
+                # This is the small surface at the trailing edge
+                # tip. There are a couple of different things that can
+                # happen: If we rounded TE we MUST have a
+                # rounded-spherical-like surface (second piece of code
+                # below). Otherwise we only have a surface if
+                # square_te_tip is false in which case a flat curved
+                # surface results. 
+
+                if not rounded_te and not square_te_tip:
+                    coef = numpy.zeros((4, 2, 3), 'd')
+                    coef[:, 0] = coef_top_tip[0, :]
+                    coef[:, 1] = coef_bot_tip[0, :]
+
+                    self.surfs.append(pySpline.surface(
+                            coef=coef, ku=4, kv=2, 
+                            tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1]))
+                    self.nSurf += 1
+                elif rounded_te:
+                    coef = numpy.zeros((4, 4, 3), 'd')
+                    coef[:, 0] = coef_top_tip[0, :]
+                    coef[:, 3] = coef_bot_tip[0, :]
+
+                    # We will actually recompute the coefficents
+                    # on the last sections since we need to do a
+                    # couple of more for this surface
+
+                    for i in xrange(4):
+                        proj_top = (coef_top_tip[0, i] - coef_top_tip[1, i])
+                        proj_bot = (coef_bot_tip[0, i] - coef_bot_tip[1, i])
+                        proj_top /= numpy.linalg.norm(proj_top)
+                        proj_bot /= numpy.linalg.norm(proj_bot)
+                        cur_te_thick = numpy.linalg.norm(coef_top_tip[0, i] - coef_bot_tip[0, i])
+                        coef[i, 1] = coef[i, 0] + proj_top*0.5*cur_te_thick*te_scale
+                        coef[i, 2] = coef[i, 3] + proj_bot*0.5*cur_te_thick*te_scale
+
+                    self.surfs.append(pySpline.surface(
+                            coef=coef, ku=4, kv=4, 
+                            tu=[0, 0, 0, 0, 1, 1, 1, 1], 
+                            tv=[0, 0, 0, 0, 1, 1, 1, 1]))
+                    self.nSurf += 1
+                # end if
+            # end if blunt_te
+        else:
+            mpiPrint('No tip specified')
+        # end if
 
         # Cheat and make "original data" so that the edge connectivity works
         u = numpy.linspace(0, 1, 3)
@@ -738,96 +800,12 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         self._calcConnectivity(1e-6, 1e-6)
-        self.topo.writeConnectivity(con_file)
-
         sizes = []
         for isurf in xrange(self.nSurf):
             sizes.append([self.surfs[isurf].Nctlu, self.surfs[isurf].Nctlv])
         self.topo.calcGlobalNumbering(sizes)
 
         self._setSurfaceCoef()
-
-        return
-
-    def _init_acdt_geo(self, ac):
-        '''Create a list of pyGeo objects coorsponding to the pyACDT
-        geometry specified in ac'''
-        exec(import_modules('pyGeometry_liftingsurface_c', 
-                            'pyGeometry_bodysurface'))
-
-        self.nSurf = 0
-
-        print 'ac', len(ac)
-        for i in xrange(len(ac)):
-            print 'Processing Component: %s'% (ac[i].Name)
-            # Determine Type -> Lifting Surface or Body Surface
-            if isinstance(ac[i], BodySurface):
-                nSubComp = len(ac[i])
-                for j in xrange(nSubComp):
-                    [m, n] = ac[i][j].Surface_x.shape
-                    N = (n+1)/2
-                    X = numpy.zeros((m, N, 3))
-                    X[:, :, 0] = ac[i][j].Surface_x[:, N-1:]
-                    X[:, :, 1] = ac[i][j].Surface_y[:, N-1:]
-                    X[:, :, 2] = ac[i][j].Surface_z[:, N-1:]
-
-                    self.surfs.append(pySpline.surface(
-                            ku=4, kv=4, X=X, recompute=True))
-                    self.nSurf += 1
-                # end for (subcomp)
-
-            elif isinstance(ac[i], LiftingSurface):
-                
-                nSubComp = len(ac[i])
-                [m, n] = ac[i][0].Surface_x.shape
-            
-                X = numpy.zeros((nSubComp+1, n, 3))
-                for j in xrange(nSubComp):
-                    [m, n] = ac[i][j].Surface_x.shape
-                    N = (n-1)/2
-                   
-                    if j == 0:
-                        X[j, 0:N+1, 0] = ac[i][j].Surface_x[0, 0:N+1][::-1]
-                        X[j, 0:N+1, 1] = ac[i][j].Surface_z[0, 0:N+1][::-1]
-                        X[j, 0:N+1, 2] = ac[i][j].Surface_y[0, 0:N+1][::-1]
-                        X[j, N:, 0] = ac[i][j].Surface_x[0, N:][::-1]
-                        X[j, N:, 1] = ac[i][j].Surface_z[0, N:][::-1]
-                        X[j, N:, 2] = ac[i][j].Surface_y[0, N:][::-1]
-                    else:
-                        X[j, 0:N+1, 0] = 0.5*(
-                            ac[i][j-1].Surface_x[1, 0:N+1][::-1]+\
-                                ac[i][j].Surface_x[0, 0:N+1][::-1])
-                        X[j, 0:N+1, 1] = 0.5*(
-                            ac[i][j-1].Surface_z[1, 0:N+1][::-1]+\
-                                ac[i][j].Surface_y[0, 0:N+1][::-1])
-                        X[j, 0:N+1, 2] = 0.5*(
-                            ac[i][j-1].Surface_y[1, 0:N+1][::-1]+\
-                                ac[i][j].Surface_z[0, 0:N+1][::-1])
-                        X[j, N:, 0] = 0.5*(
-                            ac[i][j-1].Surface_x[1, N:][::-1]+\
-                                ac[i][j].Surface_x[0, N:][::-1])
-                        X[j, N:, 1] = 0.5*(
-                            ac[i][j-1].Surface_z[1, N:][::-1]+\
-                                ac[i][j].Surface_y[0, N:][::-1])
-                        X[j, N:, 2] = 0.5*(
-                            ac[i][j-1].Surface_y[1, N:][::-1]+\
-                                ac[i][j].Surface_z[0, N:][::-1])
-                    # end if
-                    if  j == nSubComp-1:
-                        X[j+1, 0:N+1, 0] = ac[i][j].Surface_x[m-1, 0:N+1][::-1]
-                        X[j+1, 0:N+1, 1] = ac[i][j].Surface_z[m-1, 0:N+1][::-1]
-                        X[j+1, 0:N+1, 2] = ac[i][j].Surface_y[m-1, 0:N+1][::-1]
-                        X[j+1, N:, 0] = ac[i][j].Surface_x[m-1, N:][::-1]
-                        X[j+1, N:, 1] = ac[i][j].Surface_z[m-1, N:][::-1]
-                        X[j+1, N:, 2] = ac[i][j].Surface_y[m-1, N:][::-1]
-                    # end if
-                # end for (sub Comp)
-                
-                self.surfs.append(pySpline.surface(ku=2, kv=3, X=X, 
-                                                   Nctlu=nSubComp+1, Nctlv=n/2))
-                self.nSurf += 1
-            # end if (lifting/body type)
-        # end if (Comp Loop)
 
         return
 
@@ -1116,7 +1094,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         #    Write out the Interpolated Surfaces
         # --------------------------------------
         
-        if surfs == True:
+        if surfs:
             for isurf in xrange(self.nSurf):
                 self.surfs[isurf]._writeTecplotSurface(f)
 
@@ -1124,7 +1102,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         #    Write out the Control Points
         # -------------------------------
         
-        if coef == True:
+        if coef:
             for isurf in xrange(self.nSurf):
                 pySpline.writeTecplot2D(
                     f,'control_pts',self.surfs[isurf].coef)
@@ -1133,7 +1111,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         #    Write out the Original Data
         # ----------------------------------
         
-        if orig == True:
+        if orig:
             for isurf in xrange(self.nSurf):
                 pySpline.writeTecplot2D(
                     f,'orig_data',self.surfs[isurf].X)
@@ -1142,7 +1120,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         #    Write out The Surface Directions
         # -----------------------------------
 
-        if directions == True:
+        if directions:
             for isurf in xrange(self.nSurf):
                 self.surfs[isurf]._writeDirections(f, isurf)
             # end for
@@ -1154,7 +1132,7 @@ offset.shape[0], Xsec, rot, must all have the same size'
         (dirName, fileName) = os.path.split(file_name)
         (fileBaseName, fileExtension)=os.path.splitext(fileName)
 
-        if surf_labels == True:
+        if surf_labels:
             # Split the filename off
             label_filename = dirName+'./'+fileBaseName+'.surf_labels.dat'
             f2 = open(label_filename, 'w')
@@ -1171,20 +1149,20 @@ offset.shape[0], Xsec, rot, must all have the same size'
             f2.close()
         # end if 
 
-#         if edge_labels == True:
-#             # Split the filename off
-#             label_filename = dirName+'./'+fileBaseName+'edge_labels.dat'
-#             f2 = open(label_filename, 'w')
-#             for iedge in xrange(self.topo.nEdge):
-#                 surfaces =  self.topo.getSurfaceFromEdge(iedge)
-#                 pt = self.surfs[surfaces[0][0]].edge_curves[surfaces[0][1]](0.5)
-#                 text_string = 'TEXT CS=GRID3D X=%f, Y=%f, Z=%f, T=\"E%d\"\n'%(pt[0], pt[1], pt[2], iedge)
-#                 f2.write('%s'%(text_string))
-#             # end for
-#             f2.close()
-#         # end if
+        if edge_labels:
+            # Split the filename off
+            label_filename = dirName+'./'+fileBaseName+'edge_labels.dat'
+            f2 = open(label_filename, 'w')
+            for iedge in xrange(self.topo.nEdge):
+                surfaces =  self.topo.getSurfaceFromEdge(iedge)
+                pt = self.surfs[surfaces[0][0]].edge_curves[surfaces[0][1]](0.5)
+                text_string = 'TEXT CS=GRID3D X=%f, Y=%f, Z=%f, T=\"E%d\"\n'%(pt[0], pt[1], pt[2], iedge)
+                f2.write('%s'%(text_string))
+            # end for
+            f2.close()
+        # end if
         
-        if node_labels == True:
+        if node_labels:
             # First we need to figure out where the corners actually *are*
             n_nodes = len(geo_utils.unique(self.topo.node_link.flatten()))
             node_coord = numpy.zeros((n_nodes, 3))
@@ -1290,220 +1268,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
 
         return 
 
-    def _calcdPtdCoef(self, index):
-        '''Calculate the (fixed) surface derivative of a discrete set
-        of ponits'''
-
-        patchID = self.attached_surfaces[index].patchID
-        u       = self.attached_surfaces[index].u
-        v       = self.attached_surfaces[index].v
-        N       = self.attached_surfaces[index].N
-        mpiPrint('Calculating Surface %d Derivative for %d Points...' %(
-                index, len(patchID)), self.NO_PRINT)
-
-        # Get the maximum k (ku or kv for each surface)
-        kmax = 2
-        for isurf in xrange(self.nSurf):
-            if self.surfs[isurf].ku > kmax:
-                kmax = self.surfs[isurf].ku
-            if self.surfs[isurf].kv > kmax:
-                kmax = self.surfs[isurf].kv
-            # end if
-        # end for
-        nnz = 3*N*kmax*kmax
-        vals = numpy.zeros(nnz)
-        row_ptr = [0]
-        col_ind = numpy.zeros(nnz, 'intc')
-        for i in xrange(N):
-            kinc = self.surfs[patchID[i]].ku*self.surfs[patchID[i]].kv
-            #print 'i:', i, u[i], v[i], row_ptr[3*i]
-            vals, col_ind = self.surfs[patchID[i]]._getBasisPt(\
-                u[i], v[i], vals, row_ptr[3*i], col_ind, self.topo.l_index[
-                    patchID[i]])
-            row_ptr.append(row_ptr[-1] + kinc)
-            row_ptr.append(row_ptr[-1] + kinc)
-            row_ptr.append(row_ptr[-1] + kinc)
-
-        # Now we can crop out any additional values in col_ptr and vals
-        vals    = vals[:row_ptr[-1]]
-        col_ind = col_ind[:row_ptr[-1]]
-        # Now make a sparse matrix
-        self.attached_surfaces[index].dPtdCoef = sparse.csr_matrix(
-            (vals, col_ind, row_ptr), shape=[3*N, 3*len(self.coef)])
-        mpiPrint('  -> Finished Attached Surface %d Derivative'%(index),
-                 self.NO_PRINT)
-
-        return
-
-    def getAttachedPoints(self, index):
-        '''
-        Return all the surface points for attached surface with index index
-        Required:
-            index: the index for attached surface
-        Returns:
-            coordinates: an aray of the surface points
-            '''
-
-        patchID = self.attached_surfaces[index].patchID
-        u       = self.attached_surfaces[index].u
-        v       = self.attached_surfaces[index].v
-        N       = self.attached_surfaces[index].N
-        coordinates = numpy.zeros((N, 3))
-        for i in xrange(N):
-            coordinates[i] = self.surfs[patchID[i]].getValue(u[i], v[i])
-
-        return coordinates
-
-    # ----------------------------------------------------------------------
-    #                              Utility Functions 
-    # ----------------------------------------------------------------------
-
-    def attachPoints(self, coordinates, patch_list=None, Nu=20, Nv=20,
-                     force_domain=True):
-
-        '''Attach a list of surface points to either all the pyGeo surfaces
-        of a subset of the list of surfaces provided by patch_list.
-
-        Required:
-             coordinates   :  a nPtsx3 numpy array
-        Optional
-             patch_list    :  list of patches to locate next to nodes, 
-                              None means all patches will be used
-             Nu, Nv         :  parameters that control the temporary
-                              discretization of each surface     
-             force_domain  : Force the u/v values to be in the 0->1 range
-             
-        Returns:
-            None: The surface is added the attached_surface list
-
-        Modified by GJK to include a search on a subset of surfaces.
-        This is useful for associating points in a mesh where points may
-        lie on the edges between surfaces. Often, these points must be used
-        twice on two different surfaces for load/displacement transfer.        
-        '''
-
-        if self.csm_pre is None:
-            exec(import_modules('csm_pre'))
-            self.csm_pre = csm_pre
-        
-        mpiPrint('Attaching a discrete surface to the Geometry Object...',
-                 self.NO_PRINT)
-
-        if patch_list == None:
-            patch_list = range(self.nSurf)
-        # end
-
-        nPts = len(coordinates)
-        
-        # Now make the 'FE' Grid from the sufaces.
-        patches = len(patch_list)
-        
-        nelem    = patches * (Nu-1)*(Nv-1)
-        nnode    = patches * Nu *Nv
-        conn     = numpy.zeros((4, nelem), int)
-        xyz      = numpy.zeros((3, nnode))
-        elemtype = 4*numpy.ones(nelem) # All Quads
-        
-        counter = 0
-        for n in xrange(patches):
-            isurf = patch_list[n]
-            
-            u = numpy.linspace(self.surfs[isurf].umin, 
-                               self.surfs[isurf].umax, Nu)
-            v = numpy.linspace(self.surfs[isurf].vmin, 
-                               self.surfs[isurf].vmax, Nv)
-            [U, V] = numpy.meshgrid(u, v)
-
-            temp = self.surfs[isurf].getValue(U, V)
-            for idim in xrange(self.surfs[isurf].nDim):
-                xyz[idim, n*Nu*Nv:(n+1)*Nu*Nv]= temp[:, :, idim].flatten()
-            # end for
-
-            # Now do connectivity info
-           
-            for j in xrange(Nv-1):
-                for i in xrange(Nu-1):
-                    conn[0, counter] = Nu*Nv*n + (j  )*Nu + i     + 1
-                    conn[1, counter] = Nu*Nv*n + (j  )*Nu + i + 1 + 1 
-                    conn[2, counter] = Nu*Nv*n + (j+1)*Nu + i + 1 + 1
-                    conn[3, counter] = Nu*Nv*n + (j+1)*Nu + i     + 1
-                    counter += 1
-                # end for
-            # end for
-        # end for
-
-        # Now run the csm_pre command 
-        mpiPrint('  -> Running CSM_PRE...', self.NO_PRINT)
-
-        [dist, nearest_elem, uvw, base_coord, weightt, weightr] = \
-            csm_pre.csm_pre(coordinates.T, xyz, conn, elemtype)
-
-        # All we need from this is the nearest_elem array and the uvw array
-
-        # First we back out what patch nearest_elem belongs to:
-        patchID = (nearest_elem-1) / ((Nu-1)*(Nv-1))  # Integer Division
-
-        # Next we need to figure out what is the actual UV coordinate 
-        # on the given surface
-
-        uv = numpy.zeros((nPts, 2))
-        
-        for i in xrange(nPts):
-
-            # Local Element
-            local_elem = (nearest_elem[i]-1) - patchID[i]*(Nu-1)*(Nv-1)
-            #print local_elem
-            # Find out what its row/column index is
-
-            #row = int(floor(local_elem / (Nu-1.0)))  # Integer Division
-            row = local_elem / (Nu-1)
-            col = numpy.mod(local_elem, (Nu-1)) 
-
-            #print nearest_elem[i], local_elem, row, col
-
-            u_local = uvw[0, i]
-            v_local = uvw[1, i]
-
-            if ( force_domain ):
-                if u_local > 1.0:
-                    u_local = 1.0
-                elif u_local < 0.0:
-                    u_local = 0.0
-                # end
-
-                if v_local > 1.0:
-                    v_local = 1.0
-                elif v_local < 0.0:
-                    v_local = 0.0
-                # end
-            # end
-            
-            uv[i, 0] =  u_local/(Nu-1)+ col/(Nu-1.0)
-            uv[i, 1] =  v_local/(Nv-1)+ row/(Nv-1.0)
-
-        # end for
-
-        # Now go back through and adjust the patchID to the element list
-        for i in xrange(nPts):
-            patchID[i] = patch_list[patchID[i]]
-        # end
-
-        # Now we can do a secondary newton search on the actual surface
-        diff = numpy.zeros(nPts)
-        for i in xrange(nPts):
-            uv[i, 0], uv[i, 1], D = self.surfs[patchID[i]].projectPoint(
-                coordinates[i], u=uv[i, 0], v=uv[i, 1])
-            diff[i] = D[0]**2 + D[1]**2 + D[2] **2
-        # Release the tree - otherwise fortran will get upset
-        csm_pre.release_adt()
-        mpiPrint('  -> Done Surface Attachment', self.NO_PRINT)
-        mpiPrint('  -> RMS Error : %f'%(numpy.sqrt(sum(diff)/nPts)),
-                 self.NO_PRINT)
-        mpiPrint('  -> Max Error : %f'%(numpy.sqrt(max(diff))),
-                 self.NO_PRINT)
-
-        self.attached_surfaces.append(attached_surface(patchID, uv))
-  
     def getBounds(self, surfs=None):
         '''Deterine the extents of (a part of) the surfaces
         Required:
@@ -1621,21 +1385,6 @@ offset.shape[0], Xsec, rot, must all have the same size'
         # end for
 
         return u, v, patchID
-
-class attached_surface(object):
-
-    def __init__(self, patchID, u, v):
-        '''A Container class for an attached surface
-        Requires: 
-            PatchID list of patch ID's for points
-            uv: list of the uv points
-        '''
-        self.patchID = patchID
-        self.u = numpy.array(u)
-        self.v = numpy.array(v)
-        self.N = len(self.u)
-        self.dPtdCoef = None
-        self.dPtdX    = None
 
 #==============================================================================
 # Class Test
