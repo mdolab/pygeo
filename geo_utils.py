@@ -1586,7 +1586,7 @@ class CurveTopology(topology):
                 self.edge_dir[iedge][0] = 1
             else:
                 self.edges.append(edge(n2, n1, 0, 0, 0, iedge, 2))
-                self.edge_dir[iedge][1] = -1
+                self.edge_dir[iedge][0] = -1
             # end if
         # end for
         self.nDG = self.nEdge
