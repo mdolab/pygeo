@@ -60,7 +60,8 @@ class DVGeometry(object):
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild  = child
         self.children = []
-
+        self.iChild = None
+        self.nChildren = None
         # Points are the discrete points we must manipulate. We have
         # to be careful here, since this MAY be a list
         self.points = []
@@ -273,10 +274,11 @@ class DVGeometry(object):
             return
         # end if
 
-        # Etract the coef from the child FFD and ref axis and embed
+        # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
 
         iChild = len(self.children)
+        childDVGeo.iChild=iChild
         self.FFD.attachPoints(childDVGeo.FFD.coef, 'child%d_coef'%(iChild))
         self.FFD._calcdPtdCoef('child%d_coef'%(iChild))
 
@@ -804,7 +806,7 @@ class DVGeometry(object):
 
             self.children[iChild].dXrefdXdvg[:, iDV] = dXrefdXdvg
             self.children[iChild].dCcdXdvg[:, iDV] = dCcdXdvg
-           
+            self.children[iChild].nChildren = len(self.children)
         # end if
 
         return new_pts
@@ -1384,6 +1386,18 @@ class DVGeometry(object):
         else:
             nDVSummed = nDV
             self.rangeg=None
+            iDV = 0
+            for i in xrange(len(self.DV_listGlobal)):
+                nVal = self.DV_listGlobal[i].nVal
+                for j in xrange(nVal):
+                    iDV+=1
+                # end
+            # end
+            for iChild in xrange(len(self.children)):
+                self.children[iChild].startDVg=iDV
+                childnDV = self.children[iChild]._getNDVGlobal()
+                iDV+=childnDV
+            # end
         # end if
 
         if nDVSummed == 0:
@@ -1463,7 +1477,10 @@ class DVGeometry(object):
         if self.dXrefdXdvg is not None:
             # we are now on a child. Add in dependence passed from parent
             temp = numpy.zeros((self.nPtAttachFull*3, nDVSummed))
-            temp[:, nDVSummed - nDV:] = Jacobian
+            startIdx = self.startDVg#nDVSummed-self.nChildren+self.iChild
+            endIdx = startIdx+nDV#nDVSummed-self.nChildren+self.iChild+nDV
+            #temp[:, nDVSummed - nDV:] = Jacobian
+            temp[:, startIdx:endIdx] = Jacobian
 
             Jacobian = temp
 
@@ -1627,6 +1644,18 @@ class DVGeometry(object):
         else:
             nDVSummed = nDV
             self.rangel = None
+            iDV = 0
+            for i in xrange(len(self.DV_listLocal)):
+                nVal = self.DV_listLocal[i].nVal
+                for j in xrange(nVal):
+                    iDV+=1
+                # end
+            # end
+            for iChild in xrange(len(self.children)):
+                self.children[iChild].startDVl=iDV
+                childnDV = self.children[iChild]._getNDVLocal()
+                iDV+=childnDV
+            # end
         # end if
         
         if nDVSummed == 0:
@@ -1706,7 +1735,10 @@ class DVGeometry(object):
             #temp = sparse.lil_matrix((self.nPtAttachFull*3, nDVSummed))
             temp = numpy.zeros((self.nPtAttachFull*3, nDVSummed))
             if Jacobian is not None:
-                temp[:, nDVSummed - nDV:] = Jacobian
+                startIdx = self.startDVl#nDVSummed-self.nChildren+self.iChild
+                endIdx = startIdx+nDV#nDVSummed-self.nChildren+self.iChild+nDV
+                temp[:, startIdx:endIdx] = Jacobian
+                #temp[:, nDVSummed - nDV:] = Jacobian
             # end if 
             Jacobian = temp
 
