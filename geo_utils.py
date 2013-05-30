@@ -64,7 +64,8 @@ def rotVbyW(V, W, theta):
     c = np.cos(theta)
     s = np.sin(theta)
     if np.array(theta).dtype==np.dtype('D') or \
-            np.array(W).dtype==np.dtype('D'):
+            np.array(W).dtype==np.dtype('D') or \
+            np.array(V).dtype==np.dtype('D'):
         dtype='D'
     else:
         dtype='d'
@@ -199,24 +200,25 @@ def read_af2(filename, blunt_te=False, blunt_taper_range=0.1,
         # case and the case where the TE is already blunt can be
         # handled in the same manner
 
+        # Get the current thickness 
+        curThick = y[0] - y[-1]
+        midPt = y[0] + y[-1]
         # Set the new TE values:
-        y[0] = 0.5*blunt_thickness
-        y[-1] = -0.5*blunt_thickness
         x_break = 1.0-blunt_taper_range
 
         # Rescale upper surface:
-        for i in xrange(1,npt/2):
+        for i in xrange(0,npt/2):
             if x[i] > x_break:
                 s = (x[i]-x_break)/blunt_taper_range
-                y[i] += s*0.5*blunt_thickness
+                y[i] += s*0.5*(blunt_thickness-curThick)
             # end if
         # end for
 
         # Rescale lower surface:
-        for i in xrange(npt/2,npt-1):
+        for i in xrange(npt/2,npt):
             if x[i] > x_break:
                 s = (x[i]-x_break)/blunt_taper_range
-                y[i] -= s*0.5*blunt_thickness
+                y[i] -= s*0.5*(blunt_thickness-curThick)
             # end if
         # end for
     # end if
@@ -1584,7 +1586,7 @@ class CurveTopology(topology):
                 self.edge_dir[iedge][0] = 1
             else:
                 self.edges.append(edge(n2, n1, 0, 0, 0, iedge, 2))
-                self.edge_dir[iedge][1] = -1
+                self.edge_dir[iedge][0] = -1
             # end if
         # end for
         self.nDG = self.nEdge
