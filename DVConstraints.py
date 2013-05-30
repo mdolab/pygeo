@@ -410,8 +410,8 @@ class DVConstraints(object):
 
         self.volumeConSizes.append([nSpan,nChord])
         V0_offset = len(self.V0)
-        axis = [0,0,0] # axis doesn't matter
-        pAxis = [0,0,0] # axis doesn't matter
+        axis = [0,0,1.0] # axis doesn't matter
+        pAxis = [0,0,1.0] # axis doesn't matter
         V0,CG,A = self._evalVolume(V0_offset,axis,pAxis)
         self.V0.append(V0)
         
@@ -848,8 +848,8 @@ class DVConstraints(object):
         constraints are lumped together and returned as a list'''
 
         Volume = []
-        axis = [0,0,0] # We don't care what the axis is
-        pAxis = [0,0,0] # We don't care what the axis is
+        axis = [0,0,1.0] # We don't care what the axis is
+        pAxis = [0,0,1.0] # We don't care what the axis is
         for iVolCon in xrange(self.nVolumeCon):
             V, CG, A = self._evalVolume(iVolCon, axis,pAxis)
             Volume.append(V)
@@ -1082,7 +1082,6 @@ class DVConstraints(object):
         CG     = 0.0
         ind = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],
                [0,0,1],[1,0,1],[0,1,1],[1,1,1]]
-
         coords = numpy.zeros((2,2,2,3))
         for j in xrange(nChord-1):
             for i in xrange(nSpan-1):
@@ -1113,7 +1112,7 @@ class DVConstraints(object):
 
         i=1; j=1; k=1;
         l=0; m=0; n=0;
-
+        
         pAxis = numpy.array(pAxis)/geo_utils.euclidean_norm(pAxis)
 
         v1 = x[i,j,n,:]-x[l,m,n,:]
