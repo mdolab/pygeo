@@ -378,7 +378,8 @@ class DVGeometry(object):
                 vals_to_set = numpy.atleast_1d(dv_dict[key]).astype('D')
                 assert len(vals_to_set) == self.DV_listGlobal[
                     self.DV_namesGlobal[key]].nVal, \
-                    'Incorrect number of design variables for DV: %s'%(key)
+                    'Incorrect number of design variables for DV: %s\nExpecting %d variables\
+ received %d variabes'%(key,self.DV_listGlobal[self.DV_namesGlobal[key]].nVal, len(vals_to_set))
                 if scaled:
                     vals_to_set = vals_to_set * \
                         self.DV_listGlobal[self.DV_namesGlobal[key]].range +\
