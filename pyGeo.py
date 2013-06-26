@@ -407,14 +407,6 @@ must be supplied for blunt_te option')
             # end if
         # end for
 
-        # If we want a pinched tip will will zero everything here.
-        if tip == 'pinched':
-            # Just zero out the last section in y
-            if curves[-1] is not None:
-                curves[-1].coef[:,1] = 0
-            # end if
-        # endif
-
         # If we are fitting curves, blend knot vectors and recompute
         if Nctl is not None:
             new_knots = geo_utils.blendKnotVectors(knots, True)
@@ -424,6 +416,15 @@ must be supplied for blunt_te option')
                     curves[i].recompute(100, computeKnots=False)
                 # end if
             # end for
+
+            # If we want a pinched tip will will zero everything here.
+            if tip == 'pinched':
+            # Just zero out the last section in y
+                if curves[-1] is not None:
+                    print 'zeroing tip'
+                    curves[-1].coef[:,1] = 0
+                # end if
+            # endif
         else:
             # Otherwise do knot inserions
             orig_knots = [None for i in xrange(N)]
