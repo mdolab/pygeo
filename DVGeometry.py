@@ -1017,20 +1017,20 @@ class DVGeometry(object):
     def _unComplexifyCoef(self):
         '''Convert coef back to reals'''
         for i in xrange(len(self.refAxis.curves)):
-            self.rot_x[i].coef = self.rot_x[i].coef.astype('d')
-            self.rot_y[i].coef = self.rot_y[i].coef.astype('d')
-            self.rot_z[i].coef = self.rot_z[i].coef.astype('d')
-            self.rot_theta[i].coef = self.rot_theta[i].coef.astype('d')
+            self.rot_x[i].coef = self.rot_x[i].coef.real.astype('d')
+            self.rot_y[i].coef = self.rot_y[i].coef.real.astype('d')
+            self.rot_z[i].coef = self.rot_z[i].coef.real.astype('d')
+            self.rot_theta[i].coef = self.rot_theta[i].coef.real.astype('d')
             
-            self.scale[i].coef = self.scale[i].coef.astype('d')
-            self.scale_x[i].coef = self.scale_x[i].coef.astype('d')
-            self.scale_y[i].coef = self.scale_y[i].coef.astype('d')
-            self.scale_z[i].coef = self.scale_z[i].coef.astype('d')
+            self.scale[i].coef = self.scale[i].coef.real.astype('d')
+            self.scale_x[i].coef = self.scale_x[i].coef.real.astype('d')
+            self.scale_y[i].coef = self.scale_y[i].coef.real.astype('d')
+            self.scale_z[i].coef = self.scale_z[i].coef.real.astype('d')
             self.refAxis.curves[i].coef = \
-                self.refAxis.curves[i].coef.astype('d')
+                self.refAxis.curves[i].coef.real.astype('d')
         # end for
 
-        self.coef = self.coef.astype('d')
+        self.coef = self.coef.real.astype('d')
 
         return
 
