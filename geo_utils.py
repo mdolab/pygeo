@@ -4087,7 +4087,7 @@ class geoDVLocal(object):
         '''When the object is called, apply the design variable values to 
         coefficients'''
         for i in xrange(self.nVal):
-            coef[self.coef_list[i, 0], self.coef_list[i, 1]] += self.value[i]
+            coef[self.coef_list[i, 0], self.coef_list[i, 1]] += self.value[i].real
         # end for
       
         return coef
