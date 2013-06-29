@@ -1119,7 +1119,7 @@ one volume')
                     u[i]     = u0
                     v[i]     = v0
                     w[i]     = w0
-                    D[i]     = D0
+                    D[i]     = D0.real
                 # end if
 
                 # Now, if D0 is close enough to our tolerance, we can
