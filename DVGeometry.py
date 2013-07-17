@@ -1738,7 +1738,7 @@ class DVGeometry(object):
             if Jacobian is not None:
                 startIdx = self.startDVl#nDVSummed-self.nChildren+self.iChild
                 endIdx = startIdx+nDV#nDVSummed-self.nChildren+self.iChild+nDV
-                temp[:, startIdx:endIdx] = Jacobian
+                temp[:, startIdx:endIdx] = Jacobian.todense()
                 #temp[:, nDVSummed - nDV:] = Jacobian
             # end if 
             Jacobian = temp
