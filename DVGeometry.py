@@ -1034,7 +1034,7 @@ class DVGeometry(object):
 
         return
 
-    def totalSensitivity(self, dIdpt, comm=None, scaled=True, name='default'):
+    def totalSensitivity(self, dIdpt, comm=None, scaled=True, name='default', child=False, nDVStore=0):
         '''This function takes the total derivative of an objective, 
         I, with respect the points controlled on this processor. We
         take the transpose prodducts and mpi_allreduce them to get the
@@ -1069,6 +1069,12 @@ class DVGeometry(object):
         # Transpose of the point-coef jacobian:
         dPtdCoef = self.FFD.embeded_volumes[name].dPtdCoef
         
+        # Store or retreive nDV
+        if child:
+            nDV = nDVStore
+        else:
+            nDV = self._getNDV()
+
         if dPtdCoef is not None:
             dIdcoef = numpy.zeros((self.nPtAttachFull*3))
             if dPtdCoef is not None:
@@ -1082,7 +1088,7 @@ class DVGeometry(object):
         else:
             # This is an array of zeros of length the number of design
             # variables
-            dIdx_local = numpy.zeros(self._getNDV(), 'd')
+            dIdx_local = numpy.zeros(nDV, 'd')
         # end if
 
         if comm: # If we have a comm, globaly reduce with sum
@@ -1100,7 +1106,7 @@ class DVGeometry(object):
                 'child%d_axis'%(iChild))
             self.children[iChild].refAxis.coef =  self.children[iChild].coef.copy()
             self.children[iChild].refAxis._updateCurveCoef()
-            dIdx += self.children[iChild].totalSensitivity(dIdpt, comm, scaled, name)
+            dIdx += self.children[iChild].totalSensitivity(dIdpt, comm, scaled, name, True, nDV)
         # end for
         
         # self.computeTotalJacobian(name,scaled)
