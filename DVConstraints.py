@@ -64,7 +64,7 @@ class DVConstraints(object):
         '''
         Inputs:
 
-        wing: a pyGeo object representing the wing
+        wing: a pyGeo object representing the wing OR a list containing arrays [p0, v1, v2]
 
         le_list: A list defining the "leading edge" or start of the domain
 
@@ -116,7 +116,13 @@ class DVConstraints(object):
                              root_s(chord_s), tip_s(chord_s))
 
         # Generate discrete surface data for intersections:
-        p0,v1,v2 = self._generateDiscreteSurface(wing)
+        if type(wing) == list:
+            p0 = numpy.array(wing[0])
+            v1 = numpy.array(wing[1])
+            v2 = numpy.array(wing[2])
+        else:
+            p0,v1,v2 = self._generateDiscreteSurface(wing)
+        # end if
 
         # Append the new coordinates to self.coords
         coord_offset = len(self.coords)
@@ -155,6 +161,7 @@ class DVConstraints(object):
 
                 if fail:
                     print 'DVConstraints: Project Node failed. Cannot continue'
+                    print 'Bad Node is:',X[i,j]
                     sys.exit(0)
                 # end if
 
@@ -185,7 +192,7 @@ class DVConstraints(object):
         '''
         Inputs:
 
-        wing: a pyGeo object representing the wing
+        wing: a pyGeo object representing the wing OR a list containing arrays [p0, v1, v2]
 
         pt_list: A list defining the poly line where constraint is to
         be applied
@@ -229,7 +236,13 @@ class DVConstraints(object):
         X = constr_line(s)
 
         # Generate discrete surface data for intersections:
-        p0,v1,v2 = self._generateDiscreteSurface(wing)
+        if type(wing) == list:
+            p0 = numpy.array(wing[0])
+            v1 = numpy.array(wing[1])
+            v2 = numpy.array(wing[2])
+        else:
+            p0,v1,v2 = self._generateDiscreteSurface(wing)
+        # end if
 
         # Append the new coordinates to self.coords
         coord_offset = len(self.coords)
@@ -277,7 +290,7 @@ class DVConstraints(object):
         p0 = []
         v1 = []
         v2 = []
-        level = 0
+        level = 1
         for isurf in xrange(wing.nSurf):
             surf = wing.surfs[isurf]
             ku = surf.ku
@@ -318,7 +331,7 @@ class DVConstraints(object):
         '''
         Inputs:
 
-        wing: a pyGeo object representing the wing
+        wing: a pyGeo object representing the wing OR a list containing arrays [p0, v1, v2]
 
         le_list: A list defining the "leading edge" or start of the domain
 
@@ -358,7 +371,13 @@ class DVConstraints(object):
                              root_s(chord_s), tip_s(chord_s))
 
         # Generate discrete surface data for intersections:
-        p0,v1,v2 = self._generateDiscreteSurface(wing)
+        if type(wing) == list:
+            p0 = numpy.array(wing[0])
+            v1 = numpy.array(wing[1])
+            v2 = numpy.array(wing[2])
+        else:
+            p0,v1,v2 = self._generateDiscreteSurface(wing)
+        # end if
 
         # Append the new coordinates to self.coords
         coord_offset = len(self.coords)
@@ -394,6 +413,7 @@ class DVConstraints(object):
 
                 if fail:
                     print 'DVConstraints: Project Node failed. Cannot continue'
+                    print 'Bad Node:',X[i,j]
                     sys.exit(0)
                 # end if
 
