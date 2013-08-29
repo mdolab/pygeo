@@ -461,6 +461,15 @@ must be supplied for blunt_te option')
                 # end if
             # end for
 
+            # If we want a pinched tip will will zero everything here.
+            if tip == 'pinched':
+            # Just zero out the last section in y
+                if curves[-1] is not None:
+                    print 'zeroing tip'
+                    curves[-1].coef[:,1] = 0
+                # end if
+            # endif
+
             # Finally force ALL curve to have PRECISELY identical knots
             for i in xrange(len(xsections)):
                 if curves[i] is not None:
