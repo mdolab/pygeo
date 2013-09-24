@@ -5,4 +5,5 @@ import DVGeometry
 import DVConstraints
 import geo_utils
 
-__all__ = ['pyGeo','pyBlock','pyNetwork','DVGeometry','DVConstraints']
+__all__ = ['pyGeo', 'pyBlock', 'pyNetwork', 'DVGeometry', 'DVConstraints',
+           'geo_utils']
