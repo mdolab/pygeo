@@ -225,15 +225,15 @@ def read_af2(filename, blunt_te=False, blunt_taper_range=0.1,
             
     return x, y
 
-def getCoordinatesFromFile(file_name):
+def getCoordinatesFromFile(fileName):
     '''Get a list of coordinates from a file - useful for testing
     Required:
-        file_name: filename for file
+        fileName: filename for file
     Returns:
         coordinates: list of coordinates
     '''
 
-    f = open(file_name, 'r')
+    f = open(fileName, 'r')
     coordinates = []
     for line in f:
         aux = line.split()
@@ -1392,10 +1392,10 @@ f1dir|f2dir|f3dir|f4dir|f5dir|')
         # end if
         return
 
-    def writeConnectivity(self, file_name):
-        '''Write the full edge connectivity to a file file_name'''
+    def writeConnectivity(self, fileName):
+        '''Write the full edge connectivity to a file fileName'''
        
-        f = open(file_name, 'w')
+        f = open(fileName, 'w')
         f.write('%4d  %4d  %4d   %4d  %4d\n'%(
                 self.nNode, self.nEdge, self.nFace, self.nVol, self.nDG))
         f.write('Design Group |  Number\n')
@@ -1446,13 +1446,13 @@ f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
         # end if
         return
 
-    def readConnectivity(self, file_name):
-        '''Read the full edge connectivity from a file file_name'''
+    def readConnectivity(self, fileName):
+        '''Read the full edge connectivity from a file fileName'''
         # We must be able to populate the following:
         #nNode, nEdge, nFace,nVol,node_link,edge_link,
         # face_link,edge_dir,face_dir
 
-        f = open(file_name, 'r')
+        f = open(fileName, 'r')
         aux = f.readline().split()
         self.nNode = int(aux[0])
         self.nEdge = int(aux[1])
@@ -4524,7 +4524,7 @@ class DCEL(object):
     Implements a doubly-connected edge list
     """
 
-    def __init__(self, vl=None, el=None, file_name=None):
+    def __init__(self, vl=None, el=None, fileName=None):
         self.vertices = []
         self.hedges = []
         self.faces = []
@@ -4533,8 +4533,8 @@ class DCEL(object):
             self.vl = vl 
             self.el = el
             self.build_dcel()
-        elif file_name is not None:
-            self.loadDCEL(file_name)
+        elif fileName is not None:
+            self.loadDCEL(fileName)
             self.build_dcel()
         else:
             # The user is going to manually create the hedges and
@@ -4671,9 +4671,9 @@ class DCEL(object):
             for i in xrange(len(self.face_info)):
                 self.faces[i].tag = self.face_info[i]
 
-    def writeTecplot(self, file_name):
+    def writeTecplot(self, fileName):
 
-        f = open(file_name, 'w')
+        f = open(fileName, 'w')
         f.write ('VARIABLES = "X","Y"\n')
         for i in xrange(len(self.el)):
             f.write('Zone T=\"edge%d\" I=%d\n'%(i, 2))
@@ -4741,9 +4741,9 @@ class DCEL(object):
     def nedges(self):
         return len(self.hedges)/2
 
-    def saveDCEL(self, file_name):
+    def saveDCEL(self, fileName):
 
-        f = open(file_name,'w')
+        f = open(fileName,'w')
         f.write('%d %d %d\n'%(
                 self.nvertices(), self.nedges(), self.nfaces()))
         for i in xrange(self.nvertices()):
@@ -4777,9 +4777,9 @@ class DCEL(object):
         
         return
 
-    def loadDCEL(self, file_name):
+    def loadDCEL(self, fileName):
 
-        f = open(file_name,'r')
+        f = open(fileName,'r')
         # Read sizes
         tmp = f.readline().split()
         nvertices = int(tmp[0])
@@ -4845,3 +4845,76 @@ def hangle(dx,dy):
     else:
         return 2*np.pi - np.arccos(dx/l)
 
+# --------------------- Polygon geometric functions -----------------
+
+
+def areaPoly(nodes):
+    # Return the area of the polygon. Note that the input need not be
+    # strictly a polygon, (closed curve in 2 dimensions.) The approach
+    # we take here is to find the centroid, then sum the area of the
+    # 3d triangles. THIS APPROACH ONLY WORKS FOR CONVEX POLYGONS!
+
+    c = np.average(nodes, axis=0)
+    area = 0.0
+    for ii in xrange(len(nodes)):
+        xi = nodes[ii]
+        xip1 = nodes[np.mod(ii+1, len(nodes))]
+        area = area + 0.5*np.linalg.norm(np.cross(xi-c,xip1-c))
+    # end for
+        
+    return np.abs(area)
+
+def volumePoly(lowerNodes, upperNodes):
+    # Compute the volume of a 'polyhedreon' defined by a loop of nodes
+    # on the 'bottom' and a loop on the 'top'. Like areaPoly, we use
+    # the centroid to split the polygon into triangles. THIS ONLY
+    # WORKS FOR CONVEX POLYGONS
+
+    lc = np.average(lowerNodes, axis=0)
+    uc = np.average(upperNodes, axis=0)
+    volume = 0.0
+    ln = len(lowerNodes)
+    n =  np.zeros((6,3))
+    for ii in xrange(len(lowerNodes)):
+        # Each "wedge" can be sub-divided to 3 tetrahedra
+
+        # The following indices define the decomposition into three
+        # tetra hedrea
+        
+        # 3 5 4 1
+        # 5 2 1 0
+        # 0 3 1 5
+
+        #      3 +-----+ 5
+        #        |\   /|
+        #        | \ / |
+        #        |  + 4|
+        #        |  |  |
+        #      0 +--|--+ 2
+        #        \  |  /
+        #         \ | /
+        #          \|/
+        #           + 1
+        n[0] = lowerNodes[ii]
+        n[1] = lc
+        n[2] = lowerNodes[np.mod(ii+1, ln)]
+
+        n[3] = upperNodes[ii]
+        n[4] = uc
+        n[5] = upperNodes[np.mod(ii+1, ln)]
+        volume += volTetra([n[3],n[5],n[4],n[1]])
+        volume += volTetra([n[5],n[2],n[1],n[0]])
+        volume += volTetra([n[0],n[3],n[1],n[5]])
+    # end for
+        
+    return volume
+
+def volTetra(nodes):
+    # Compute volume of tetrahedra given by 4 nodes 
+    a = nodes[1] - nodes[0]
+    b = nodes[2] - nodes[0]
+    c = nodes[3] - nodes[0]
+    # Scalar triple product
+    V = (1.0/6.0)*np.linalg.norm(np.dot(a, np.cross(b,c)))
+
+    return V
