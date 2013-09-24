@@ -35,9 +35,9 @@ import numpy
 # Extension modules
 # =============================================================================
 
-from mdo_import_helper import mpiPrint, import_modules
-exec(import_modules('pySpline','geo_utils'))
-import geo_utils, pySpline # not required, but pylint is happier
+from mdo_import_helper import mpiPrint
+from pyspline import pySpline
+import geo_utils
 
 # =============================================================================
 # pyNetwork Class

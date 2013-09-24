@@ -10,8 +10,10 @@
 import sys, copy
 import numpy
 from scipy import sparse
-from mdo_import_helper import MPI, mpiPrint, import_modules
-exec(import_modules('geo_utils', 'pySpline', 'pyNetwork'))
+from mdo_import_helper import MPI, mpiPrint
+import geo_utils
+from pyspline import pySpline
+
 
 class DVGeometry(object):
     
