@@ -42,8 +42,9 @@ except:
 # =============================================================================
 # Extension modules
 # =============================================================================
-from mdo_import_helper import import_modules, mpiPrint
-exec(import_modules('geo_utils', 'pySpline'))
+from mdo_import_helper import  mpiPrint
+from pyspline import pySpline
+import geo_utils
 
 # =============================================================================
 # pyGeo class

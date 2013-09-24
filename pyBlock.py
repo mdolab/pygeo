@@ -45,9 +45,9 @@ except:
 # =============================================================================
 # Extension modules
 # =============================================================================
-from mdo_import_helper import import_modules, mpiPrint, MPI
-exec(import_modules('geo_utils','pySpline'))
-import geo_utils, pySpline # not required, but pylint is happier
+from mdo_import_helper import mpiPrint, MPI
+from pyspline import pySpline
+import geo_utils
 
 # =============================================================================
 # pyBlock class

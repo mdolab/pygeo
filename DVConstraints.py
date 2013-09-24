@@ -29,8 +29,9 @@ optimization problem is also provided.
 '''
 import sys, time
 import numpy
-from mdo_import_helper import import_modules, mpiPrint
-exec(import_modules('geo_utils', 'pySpline'))
+from mdo_import_helper import mpiPrint
+import geo_utils
+from pyspline import pySpline
 
 class DVConstraints(object):
 

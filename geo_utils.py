@@ -4,7 +4,7 @@
 
 import numpy as np
 import sys, os
-from mdo_import_helper import mpiPrint, MPI, import_modules
+from mdo_import_helper import mpiPrint
 
 # Set a (MUCH) larger recursion limit. For meshes with extremely large
 # numbers of blocs (> 5000) the recursive edge propagation may hit a
@@ -1167,7 +1167,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
             X=corners
 
-            exec(import_modules('pySpline'))
+            from pySpline import pyspline
             self.box = pySpline.bilinear_surface(X)
             self.type = 'box'
         elif type == 'list':
