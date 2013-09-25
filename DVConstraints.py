@@ -31,7 +31,7 @@ import sys, time
 import numpy
 from mdo_import_helper import mpiPrint
 import geo_utils
-from pyspline import pySpline
+import pyspline as ps
 
 class DVConstraints(object):
 
@@ -104,10 +104,10 @@ class DVConstraints(object):
         # end if
 
         # Create mesh of itersections
-        le_s = pySpline.curve(X=le_list,k=2)
-        te_s = pySpline.curve(X=te_list,k=2)
-        root_s = pySpline.curve(X=[le_list[0],te_list[0]],k=2)
-        tip_s  = pySpline.curve(X=[le_list[-1],te_list[-1]],k=2)
+        le_s = ps.pySpline.curve(X=le_list,k=2)
+        te_s = ps.pySpline.curve(X=te_list,k=2)
+        root_s = ps.pySpline.curve(X=[le_list[0],te_list[0]],k=2)
+        tip_s  = ps.pySpline.curve(X=[le_list[-1],te_list[-1]],k=2)
 
         span_s = numpy.linspace(0, 1, nSpan)
         chord_s = numpy.linspace(0, 1, nChord)
@@ -232,7 +232,7 @@ class DVConstraints(object):
         # end if
 
         # Create mesh of itersections
-        constr_line = pySpline.curve(X=pt_list,k=2)
+        constr_line = ps.pySpline.curve(X=pt_list,k=2)
         s = numpy.linspace(0,1,nCon)
         X = constr_line(s)
 
@@ -359,10 +359,10 @@ class DVConstraints(object):
         # Create mesh of itersections
         root_line = [le_list[0], te_list[0]]
         tip_line  = [le_list[-1], te_list[-1]]
-        le_s = pySpline.curve(X=le_list, k=2)
-        te_s = pySpline.curve(X=te_list, k=2)
-        root_s = pySpline.curve(X=[le_list[0], te_list[0]], k=2)
-        tip_s  = pySpline.curve(X=[le_list[-1], te_list[-1]], k=2)
+        le_s = ps.pySpline.curve(X=le_list, k=2)
+        te_s = ps.pySpline.curve(X=te_list, k=2)
+        root_s = ps.pySpline.curve(X=[le_list[0], te_list[0]], k=2)
+        tip_s  = ps.pySpline.curve(X=[le_list[-1], te_list[-1]], k=2)
 
         span_s = numpy.linspace(0, 1, nSpan)
         chord_s = numpy.linspace(0, 1, nChord)

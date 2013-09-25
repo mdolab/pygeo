@@ -43,7 +43,7 @@ except:
 # Extension modules
 # =============================================================================
 from mdo_import_helper import  mpiPrint
-from pyspline import pySpline
+import pyspline as ps
 import geo_utils
 
 # =============================================================================
@@ -198,7 +198,7 @@ class pyGeo():
         # the parameterization and knot vectors
         self.nSurf = nSurf
         for isurf in xrange(self.nSurf):
-            self.surfs.append(pySpline.surface(X=surfs[isurf], ku=4, kv=4, 
+            self.surfs.append(ps.pySpline.surface(X=surfs[isurf], ku=4, kv=4, 
                                                Nctlu=4, Nctlv=4, 
                                                no_print=self.NO_PRINT))
         # end for
@@ -296,7 +296,7 @@ class pyGeo():
             if not tv[-1] == 1.0:
                 tv /= tv[-1]
 
-            self.surfs.append(pySpline.surface(
+            self.surfs.append(ps.pySpline.surface(
                 ku=ku, kv=kv, tu=tu, tv=tv, coef=coef, no_print=self.NO_PRINT))
 
             # Generate dummy data for connectivity to work
@@ -397,9 +397,9 @@ must be supplied for blunt_te option')
                 weights[0] = -1
                 weights[-1] = -1
                 if Nctl is not None:
-                    c = pySpline.curve(x=x, y=y, Nctl=Nctl, k=4, weights=weights)
+                    c = ps.pySpline.curve(x=x, y=y, Nctl=Nctl, k=4, weights=weights)
                 else:
-                    c = pySpline.curve(x=x, y=y, local_interp=True)
+                    c = ps.pySpline.curve(x=x, y=y, local_interp=True)
                 # end if
                 curves.append(c)
                 knots.append(c.t)
@@ -480,7 +480,7 @@ must be supplied for blunt_te option')
         # end if
 
         # Generate a curve from X just for the paramterization
-        Xcurve = pySpline.curve(X=Xsec, k=k_span)
+        Xcurve = ps.pySpline.curve(X=Xsec, k=k_span)
 
         # Now blend the missing sections
         mpiPrint('Interpolating missing sections ...')
@@ -512,7 +512,7 @@ must be supplied for blunt_te option')
                 coef = curves[istart].coef*(1-alpha) + \
                     curves[iend].coef*(alpha)
 
-                curves[i] = pySpline.curve(coef=coef, k=4, t=new_knots.copy())
+                curves[i] = ps.pySpline.curve(coef=coef, k=4, t=new_knots.copy())
             # end if
         # end for
 
@@ -631,9 +631,9 @@ must be supplied for blunt_te option')
         # end for
 
         # Set the two main surfaces
-        self.surfs.append(pySpline.surface(
+        self.surfs.append(ps.pySpline.surface(
                 coef=coef_top, ku=4, kv=k_span, tu=top_curves[0].t, tv=Xcurve.t))
-        self.surfs.append(pySpline.surface(
+        self.surfs.append(ps.pySpline.surface(
                 coef=coef_bot, ku=4, kv=k_span, tu=bot_curves[0].t, tv=Xcurve.t))
 
         mpiPrint('Computing TE surfaces ...')
@@ -643,7 +643,7 @@ must be supplied for blunt_te option')
                 coef = numpy.zeros((len(xsections), 2, 3), 'd')
                 coef[:, 0, :] = coef_top[0, :, :]
                 coef[:, 1, :] = coef_bot[0, :, :]
-                self.surfs.append(pySpline.surface(
+                self.surfs.append(ps.pySpline.surface(
                         coef=coef, ku=k_span, kv=2, tu=Xcurve.t, tv=[0, 0, 1, 1]))
             else:
                 coef = numpy.zeros((len(xsections), 4, 3), 'd')
@@ -664,7 +664,7 @@ must be supplied for blunt_te option')
                     coef[j, 2] = coef[j, 3] + proj_bot*0.5*cur_te_thick*te_scale
                 # end for
 
-                self.surfs.append(pySpline.surface(
+                self.surfs.append(ps.pySpline.surface(
                         coef=coef, ku=k_span, kv=4, tu=Xcurve.t,
                         tv=[0, 0, 0, 0, 1, 1, 1, 1]))
             # endif
@@ -753,10 +753,10 @@ must be supplied for blunt_te option')
                 # end for
             # end if
 
-            surf_top_tip = pySpline.surface(
+            surf_top_tip = ps.pySpline.surface(
                 coef=coef_top_tip, ku=4, kv=4, tu=top_curves[0].t, 
                 tv=[0, 0, 0, 0, 1, 1, 1, 1])
-            surf_bot_tip = pySpline.surface(
+            surf_bot_tip = ps.pySpline.surface(
                 coef=coef_bot_tip, ku=4, kv=4, tu=bot_curves[0].t, 
                 tv=[0, 0, 0, 0, 1, 1, 1, 1])
             self.surfs.append(surf_top_tip)
@@ -777,7 +777,7 @@ must be supplied for blunt_te option')
                     coef[:, 0] = coef_top_tip[0, :]
                     coef[:, 1] = coef_bot_tip[0, :]
 
-                    self.surfs.append(pySpline.surface(
+                    self.surfs.append(ps.pySpline.surface(
                             coef=coef, ku=4, kv=2, 
                             tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1]))
                     self.nSurf += 1
@@ -798,7 +798,7 @@ must be supplied for blunt_te option')
                         coef[i, 1] = coef[i, 0] + proj_top*0.5*cur_te_thick*te_scale
                         coef[i, 2] = coef[i, 3] + proj_bot*0.5*cur_te_thick*te_scale
 
-                    self.surfs.append(pySpline.surface(
+                    self.surfs.append(ps.pySpline.surface(
                             coef=coef, ku=4, kv=4, 
                             tu=[0, 0, 0, 0, 1, 1, 1, 1], 
                             tv=[0, 0, 0, 0, 1, 1, 1, 1]))
@@ -1111,7 +1111,7 @@ must be supplied for blunt_te option')
 
         # Open File and output header
         
-        f = pySpline.openTecplot(file_name, 3)
+        f = ps.pySpline.openTecplot(file_name, 3)
 
         # --------------------------------------
         #    Write out the Interpolated Surfaces
@@ -1127,7 +1127,7 @@ must be supplied for blunt_te option')
         
         if coef:
             for isurf in xrange(self.nSurf):
-                pySpline.writeTecplot2D(
+                ps.pySpline.writeTecplot2D(
                     f,'control_pts',self.surfs[isurf].coef)
                 
         # ----------------------------------
@@ -1136,7 +1136,7 @@ must be supplied for blunt_te option')
         
         if orig:
             for isurf in xrange(self.nSurf):
-                pySpline.writeTecplot2D(
+                ps.pySpline.writeTecplot2D(
                     f,'orig_data',self.surfs[isurf].X)
 
         # -----------------------------------
@@ -1218,7 +1218,7 @@ must be supplied for blunt_te option')
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()
-        pySpline.closeTecplot(f)
+        ps.pySpline.closeTecplot(f)
         
         return
 
@@ -1278,7 +1278,7 @@ must be supplied for blunt_te option')
         return
 
     def _setSurfaceCoef(self):
-        '''Set the surface coef list from the pySpline surfaces'''
+        '''Set the surface coef list from the pyspline surfaces'''
         self.coef = numpy.zeros((self.topo.nGlobal, 3))
         for isurf in xrange(self.nSurf):
             surf = self.surfs[isurf]
