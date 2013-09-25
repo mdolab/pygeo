@@ -46,7 +46,7 @@ except:
 # Extension modules
 # =============================================================================
 from mdo_import_helper import mpiPrint, MPI
-from pyspline import pySpline
+import pyspline as ps
 import geo_utils
 
 # =============================================================================
@@ -182,7 +182,7 @@ class pyBlock():
                 #construction symmetric
 
                     
-                self.vols.append(pySpline.volume(
+                self.vols.append(ps.pySpline.volume(
                         ku=ku,kv=kv,kw=kw,coef=blocks[ivol],
                         no_print=self.NO_PRINT,
                         tu=uniform_knots(sizes[ivol,0],ku),
@@ -226,7 +226,7 @@ class pyBlock():
             
         else:
             for ivol in xrange(nVol):
-                self.vols.append(pySpline.volume(
+                self.vols.append(ps.pySpline.volume(
                         X=blocks[ivol],ku=4,kv=4,kw=4,
                         Nctlu=4,Nctlv=4,Nctlw=4,
                         no_print=self.NO_PRINT,
@@ -268,7 +268,7 @@ class pyBlock():
             coef= geo_utils.readNValues(
                 f,inits[0]*inits[1]*inits[2]*3,'float',binary).reshape(
                 [inits[0],inits[1],inits[2],3])
-            self.vols.append(pySpline.volume(\
+            self.vols.append(ps.pySpline.volume(\
                     Nctlu=inits[0],Nctlv=inits[1],Nctlw=inits[2],ku=inits[3],
                     kv=inits[4],kw=inits[5],tu=tu,tv=tv,tw=tw,coef=coef))
         # end for
@@ -301,7 +301,7 @@ class pyBlock():
         # the parameterization and knot vectors
 
         for ivol in xrange(nzones):
-            vols.append(pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,
+            vols.append(ps.pySpline.volume(X=blocks[ivol],ku=2,kv=2,kw=2,
                                         Nctlu=2,Nctlv=2,Nctlw=2,
                                         no_print=self.NO_PRINT,
                                         recompute=False,faceBCs=BCs[ivol]))
@@ -630,7 +630,7 @@ class pyBlock():
 
         # Open File and output header
         
-        f = pySpline.openTecplot(file_name,3)
+        f = ps.pySpline.openTecplot(file_name,3)
 
         # --------------------------------------
         #    Write out the Interpolated Surfaces
@@ -646,7 +646,7 @@ class pyBlock():
         
         if orig == True:
             for ivol in xrange(self.nVol):
-                pySpline.writeTecplot3D(f,'orig',self.vols[ivol].X)
+                ps.pySpline.writeTecplot3D(f,'orig',self.vols[ivol].X)
 
         # -------------------------------
         #    Write out the Control Points
@@ -654,7 +654,7 @@ class pyBlock():
         
         if coef == True:
             for ivol in xrange(self.nVol):
-                pySpline.writeTecplot3D(f,'coef',self.vols[ivol].coef)
+                ps.pySpline.writeTecplot3D(f,'coef',self.vols[ivol].coef)
 
         # ---------------------------------------------
         #    Write out The Volume Labels
@@ -719,7 +719,7 @@ class pyBlock():
             f2.close()
         # end if
 
-        pySpline.closeTecplot(f)
+        ps.pySpline.closeTecplot(f)
         return
 
     def writeBvol(self,file_name,binary=False):

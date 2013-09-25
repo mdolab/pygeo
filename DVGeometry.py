@@ -11,9 +11,8 @@ import sys, copy
 import numpy
 from scipy import sparse
 from mdo_import_helper import MPI, mpiPrint
-import geo_utils
-from pyspline import pySpline
-
+import geo_utils, pyNetwork
+import pyspline as ps
 
 class DVGeometry(object):
     
@@ -182,22 +181,22 @@ class DVGeometry(object):
             t = self.refAxis.curves[i].t
             k = self.refAxis.curves[i].k
             N = len(self.refAxis.curves[i].coef)
-            self.rot_x.append(pySpline.curve(
+            self.rot_x.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
-            self.rot_y.append(pySpline.curve(
+            self.rot_y.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
-            self.rot_z.append(pySpline.curve(
+            self.rot_z.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
-            self.rot_theta.append(pySpline.curve(
+            self.rot_theta.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
 
-            self.scale.append(pySpline.curve(
+            self.scale.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.ones((N, 1), 'd')))
-            self.scale_x.append(pySpline.curve(
+            self.scale_x.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.ones((N, 1), 'd')))
-            self.scale_y.append(pySpline.curve(
+            self.scale_y.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.ones((N, 1), 'd')))
-            self.scale_z.append(pySpline.curve(
+            self.scale_z.append(ps.pySpline.curve(
                     t=t, k=k, coef=numpy.ones((N, 1), 'd')))
         # end for
         
@@ -1907,7 +1906,7 @@ class DVGeometry(object):
         # Name here doesn't matter, just take the first one
         self.update(self.pt_names[0], childDelta=False)
 
-        f = pySpline.openTecplot(file_name, 3)
+        f = ps.pySpline.openTecplot(file_name, 3)
         vol_counter = 0
         # Write master volumes:
         vol_counter += self._writeVols(f, vol_counter)
@@ -1917,7 +1916,7 @@ class DVGeometry(object):
             vol_counter += self.children[iChild]._writeVols(f, vol_counter)
         # end for
 
-        pySpline.closeTecplot(f)
+        ps.pySpline.closeTecplot(f)
 
         self.update(self.pt_names[0], childDelta=True) 
 
@@ -1925,7 +1924,7 @@ class DVGeometry(object):
 
     def _writeVols(self, handle, vol_counter):
         for i in xrange(len(self.FFD.vols)):
-            pySpline.writeTecplot3D(handle, 'vol%d'%i, self.FFD.vols[i].coef)
+            ps.pySpline.writeTecplot3D(handle, 'vol%d'%i, self.FFD.vols[i].coef)
             vol_counter += 1
         # end for
 

@@ -36,7 +36,7 @@ import numpy
 # =============================================================================
 
 from mdo_import_helper import mpiPrint
-from pyspline import pySpline
+import pyspline as ps
 import geo_utils
 
 # =============================================================================
@@ -156,7 +156,7 @@ class pyNetwork():
 
         # Open File and output header
         
-        f = pySpline.openTecplot(file_name,3)
+        f = ps.pySpline.openTecplot(file_name,3)
 
         # --------------------------------------
         #    Write out the Interpolated Curves
@@ -233,7 +233,7 @@ class pyNetwork():
                 f2.write('%s'%(text_string))
             # end for 
             f2.close()
-        pySpline.closeTecplot(f)
+        ps.pySpline.closeTecplot(f)
         
         return
 
@@ -308,7 +308,7 @@ class pyNetwork():
         for i in xrange(len(curves)):
             icurve = curves[i]
             for j in xrange(N):
-                ray = pySpline.line(points[j]-axis*1.5*numpy.linalg.norm(D0[j]),
+                ray = ps.pySpline.line(points[j]-axis*1.5*numpy.linalg.norm(D0[j]),
                                     points[j]+axis*1.5*numpy.linalg.norm(D0[j]))
                 # end if
 
