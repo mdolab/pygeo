@@ -4039,12 +4039,20 @@ class geoDVGlobal(object):
 
         return
 
-    def __call__(self, ref_axis):
+    def __call__(self, geo):
 
         '''When the object is called, actually apply the function'''
         # Run the user-supplied function
-        return self.function(self.value, ref_axis)
+        d = np.dtype(complex)
 
+        # If the geo object is complex, which is indicated by .coef
+        # being complex, run with complex numbers. Otherwise, convert
+        # to real before calling. This eliminates casting warnings. 
+        if geo.coef.dtype == d:
+            return self.function(self.value, geo)
+        else:
+            return self.function(np.real(self.value), geo)
+        # end if
 
 class geoDVLocal(object):
      
@@ -4524,7 +4532,9 @@ class DCEL(object):
     Implements a doubly-connected edge list
     """
 
-    def __init__(self, vl=None, el=None, fileName=None):
+    def __init__(self, vl=None, el=None, fileName=None, file_name=None):
+        if file_name is not None:
+            fileName = file_name
         self.vertices = []
         self.hedges = []
         self.faces = []
