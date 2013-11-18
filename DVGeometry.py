@@ -67,6 +67,11 @@ class DVGeometry(object):
         self.pt_names = []
         self.rot_type = rot_type
         self.complex = kwargs.pop('complex', False)
+        if self.complex:
+            self.dtype = 'D'
+        else:
+            self.dtype = 'd'
+        # end if
         self.FFD = FFD
 
         # Jacobians:
@@ -114,30 +119,30 @@ class DVGeometry(object):
         self.scale_y = []
         self.scale_z = []
         self.coef = self.refAxis.coef # pointer
-        self.coef0 = self.coef.copy()
+        self.coef0 = self.coef.copy().astype(self.dtype)
         for i in xrange(len(self.refAxis.curves)):
             t = self.refAxis.curves[i].t
             k = self.refAxis.curves[i].k
             N = len(self.refAxis.curves[i].coef)
             self.rot_x.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.zeros((N, 1), self.dtype)))
             self.rot_y.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.zeros((N, 1), self.dtype)))
             self.rot_z.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.zeros((N, 1), self.dtype)))
             self.rot_theta.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.zeros((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.zeros((N, 1), self.dtype)))
 
             self.scale.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.ones((N, 1), self.dtype)))
             self.scale_x.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.ones((N, 1), self.dtype)))
             self.scale_y.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.ones((N, 1), self.dtype)))
             self.scale_z.append(ps.pySpline.curve(
-                    t=t, k=k, coef=numpy.ones((N, 1), 'd')))
+                    t=t, k=k, coef=numpy.ones((N, 1), self.dtype)))
         # end for
-        
+
         self.scale0 = copy.deepcopy(self.scale)
         self.scale_x0 = copy.deepcopy(self.scale_x)
         self.scale_y0 = copy.deepcopy(self.scale_y)
@@ -145,7 +150,8 @@ class DVGeometry(object):
         self.rot_x0 = copy.deepcopy(self.rot_x) 
         self.rot_y0 = copy.deepcopy(self.rot_y)
         self.rot_z0 = copy.deepcopy(self.rot_z)
-        self.rot_theta0 = copy.deepcopy(self.rot_theta)   
+        self.rot_theta0 = copy.deepcopy(self.rot_theta)
+
         # Next we will do the point/curve ray/projections. Note we
         # have to take into account the user's desired volume(s)/direction(s)
 
@@ -164,20 +170,13 @@ class DVGeometry(object):
             self.axis = None
         # end if
 
-
-    def _initPart2(self, coef_mask):
-            
-        # So...create ptAttachInd which are the indicies of
-        # self.FFD.coef that we are actually manipulating. If
-
-        return
-
     def addPointSet(self, points, ptName, **kwargs):
         ''' Embed a set of points ((N,3) array) with name 'ptName'
         into the DVGeometry object'''
                 # Points are the discrete points we must manipulate. We have
         # to be careful here, since this MAY be a list
 
+        points = numpy.array(points).real.astype('d')
         self.points.append(points)
         self.pt_names.append(ptName)
 
@@ -219,8 +218,8 @@ class DVGeometry(object):
 
         # Take the subset of the FFD cofficients as what will be
         # attached
-        self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
-        self.ptAttachFull = self.FFD.coef.copy()
+        self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0).real
+        self.ptAttachFull = self.FFD.coef.copy().real
 
         # Number of points attached to ref axis
         self.nPtAttach = len(self.ptAttach)
@@ -228,19 +227,19 @@ class DVGeometry(object):
         
         curveIDs = []
         s = []
-     
+
         for ii in xrange(len(self.ptAttachPtr)-1):
             pts_to_use = self.ptAttach[
                 self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1], :]
             pts_to_use = self.ptAttach
             if self.axis is not None:
+
                 ids, s0 = self.refAxis.projectRays(
                     pts_to_use, self.axis)#, curves=[ii])
             else:
                 ids, s0 = self.refAxis.projectPoints(
                     pts_to_use)#, curves=[ii])
             # end for
-
             curveIDs.extend(ids)
             s.extend(s0)
         # end for
@@ -374,6 +373,10 @@ class DVGeometry(object):
 
         # To make the setting generic below, we will simply "up cast"
         # the single DVname as a string, and dvName in a list to a dictionary.
+
+        # Coefficients must be complexifed from here on if complex
+        if self.complex:
+            self._complexifyCoef()
 
         if type(dvName) == str:
             dv_dict = {dvName:value}
@@ -583,7 +586,7 @@ class DVGeometry(object):
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
             # end for
         # end if
-        
+
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
@@ -998,6 +1001,7 @@ class DVGeometry(object):
 
     def _complexifyCoef(self):
         '''Convert coef to complex terporarily'''
+
         for i in xrange(len(self.refAxis.curves)):
             self.rot_x[i].coef = self.rot_x[i].coef.astype('D')
             self.rot_y[i].coef = self.rot_y[i].coef.astype('D')
@@ -1018,6 +1022,7 @@ class DVGeometry(object):
         
     def _unComplexifyCoef(self):
         '''Convert coef back to reals'''
+
         for i in xrange(len(self.refAxis.curves)):
             self.rot_x[i].coef = self.rot_x[i].coef.real.astype('d')
             self.rot_y[i].coef = self.rot_y[i].coef.real.astype('d')
