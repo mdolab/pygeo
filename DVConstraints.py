@@ -736,33 +736,62 @@ class DVConstraints(object):
 
         return
 
-    def addConstraintsPyOpt(self, opt_prob):
+    def addConstraintsPyOpt(self, opt_prob, thickConName='thickCon', 
+                            volumeConName='volumeCon', LeTeConName='LeTeCon'):
         ''' Add thickness contraints to pyOpt
         
          Input: opt_prob -> optimization problem
-                lower    -> Fraction of initial thickness allowed
-                upper    -> Fraction of upper thickness allowed
+                thickConName -> Override default pyopt name for thickness constraints
+                volumeConName -> Override default pyopt name for volume constraints
+                LeTeConName -> Overwrite default pyopt name for LeTe Constraints
                 '''
         if self.nThickCon > 0:
             opt_prob.addConGroup(
-                'thickCon', len(self.thickConLower), 'i', 
+                thickConName, len(self.thickConLower), 'i', 
                 lower=self.thickConLower, upper=self.thickConUpper)
         # end if
 
         if self.nVolumeCon > 0:
             opt_prob.addConGroup(
-                'volumeCon', len(self.volumeConLower), 'i',
+                volumeConName, len(self.volumeConLower), 'i',
                 lower=self.volumeConLower, upper=self.volumeConUpper)
         # end if
 
         if self.LeTeCon:
-            # We can just add them individualy
-            for i in xrange(len(self.LeTeCon)):
-                opt_prob.addCon('LeTeCon%d'%(i), 'i', lower=0.0, upper=0.0)
-            # end for
+            opt_prob.addConGroup(LeTeConName, len(self.LeTeCon), 'i', 
+                                 lower=0.0, upper=0.0)
         # end if
 
         return 
+
+    def evalConstraints(self, fcon, DVGeo, thickConName='thickCon', 
+                        volumeConName='volumeCon', LeTeConName='LeTeCon'):
+        ''' Evaluate all the constraints that this object has and set
+        them in the supplied fcon dictionary'''
+        
+        if self.nThickCon > 0:
+            fcon[thickConName] = self.getThicknessConstraints()
+        if self.nVolumeCon > 0:
+            fcon[volumeConName] = self.getVolumeConstraints()
+        if self.LeTeCon:
+            fcon[LeTeConName] = self.getLeTeConstraints(DVGeo)
+        
+        return
+
+    def evalJacobianConstraints(self, gcon, DVGeo, wrt='geo', thickConName='thickCon', 
+                        volumeConName='volumeCon', LeTeConName='LeTeCon'):
+        ''' Evaluate the jacobian of the constraints this object
+        has. These constraints only depend on geometric
+        variables, so we can set them directly in dictionary gcon'''
+        
+        if self.nThickCon > 0:
+            gcon[thickConName] = {wrt:self.getThicknessSensitivity(DVGeo, 'con')}
+        if self.nVolumeCon > 0:
+            gcon[volumeConName] = {wrt:self.getVolumeSensitivity(DVGeo, 'con')}
+        if self.LeTeCon:
+            gcon[LeTeConName] = {wrt:self.getLeTeSensitivity(DVGeo)}
+            
+        return
 
     def getLeTeConstraints(self, DVGeo):
         '''Evaluate the LeTe constraint using the current DVGeo opject'''
@@ -835,7 +864,6 @@ class DVConstraints(object):
         appropriate jacobian.
         
         '''
-
         nDV = DVGeo._getNDV()
         dTdx = numpy.zeros((len(self.D0), nDV))
         dTdpt = numpy.zeros(self.coords.shape)
