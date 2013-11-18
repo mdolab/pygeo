@@ -16,7 +16,7 @@ import pyspline as ps
 
 class DVGeometry(object):
     
-    def __init__(self, points, curves, FFD=None, rot_type=0, child=False, 
+    def __init__(self, curves, FFD=None, rot_type=0, child=False, 
                  *args, **kwargs):
 
         ''' Create a DV Geometry module to handle all design variable
@@ -63,19 +63,8 @@ class DVGeometry(object):
         self.children = []
         self.iChild = None
         self.nChildren = None
-        # Points are the discrete points we must manipulate. We have
-        # to be careful here, since this MAY be a list
         self.points = []
-        if isinstance(points, list):
-            assert 'names' in kwargs, 'Names must be specified if more than\
- one set of points are used'
-            self.points = points
-            self.pt_names = kwargs['names']
-        else:
-            self.points = [points]
-            self.pt_names = ['default']
-        # end if
-
+        self.pt_names = []
         self.rot_type = rot_type
         self.complex = kwargs.pop('complex', False)
         self.FFD = FFD
@@ -99,24 +88,11 @@ class DVGeometry(object):
         self.refAxis = pyNetwork.pyNetwork(curves, *args, **kwargs)
         self.refAxis.doConnectivity()
    
-        # Project Points in to volume
-        for i in xrange(len(self.points)):
-            if self.isChild:
-                coef_mask = self.FFD.attachPoints(
-                    self.points[i],self.pt_names[i], interiorOnly=True, **kwargs)
-            else:
-                coef_mask = self.FFD.attachPoints(
-                    self.points[i],self.pt_names[i], interiorOnly=False)
-            # end if
-            self.FFD._calcdPtdCoef(self.pt_names[i])
-        # end for
-
-
         if 'vol_list' in kwargs:
             # If the user has specified a vol_list, the curves
             # should only act on some of the volumes. 
-            vol_list = kwargs['vol_list']
-            assert len(curves)==len(vol_list), \
+            self.vol_list = kwargs['vol_list']
+            assert len(curves)==len(self.vol_list), \
                 'The length of vol_list and curves must be the same'
             # The ptAttach list *MAY* be smaller than the full set
             # of coordinates defining the FFD. Also, the user had
@@ -125,47 +101,9 @@ class DVGeometry(object):
             # possibility the curve projects will break this
             # association.
         else:
-            vol_list = [numpy.arange(self.FFD.nVol) for i in range(len(curves))]
+            self.vol_list = [numpy.arange(self.FFD.nVol) for i in range(len(curves))]
         # end if
 
-        # So...create ptAttachInd which are the indicies of
-        # self.FFD.coef that we are actually manipulating. If
-
-        self.ptAttachInd = []
-        self.ptAttachPtr = [0]
-        for ii in xrange(len(vol_list)):
-            temp = []
-            for iVol in vol_list[ii]:
-                for i in xrange(self.FFD.vols[iVol].Nctlu):
-                    for j in xrange(self.FFD.vols[iVol].Nctlv):
-                        for k in xrange(self.FFD.vols[iVol].Nctlw):
-                            ind = self.FFD.topo.l_index[iVol][i, j, k]
-                            if coef_mask[ind] == False:
-                                temp.append(ind)
-                            # end if
-                        # end for
-                    # end for
-                # end for
-            # end for
-
-            # Unique the values we just added:
-            temp = geo_utils.unique(temp)
-            self.ptAttachInd.extend(temp)
-            self.ptAttachPtr.append(len(self.ptAttachInd))
-        # end for
-
-        # Convert the ind list to an array
-        self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
-
-        # Take the subset of the FFD cofficients as what will be
-        # attached
-        self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
-        self.ptAttachFull = self.FFD.coef.copy()
-
-        # Number of points attached to ref axis
-        self.nPtAttach = len(self.ptAttach)
-        self.nPtAttachFull = len(self.ptAttachFull)
-        
         # New setup splines for the rotations
         self.rot_x = []
         self.rot_y = []
@@ -221,12 +159,73 @@ class DVGeometry(object):
             else:
                 axis = kwargs['axis']
             # end if
-            axis = numpy.array(axis)
-            axis = numpy.array([1, 0, 0])
+            self.axis = numpy.array(axis)
         else:
-            axis = None
+            self.axis = None
         # end if
 
+
+    def _initPart2(self, coef_mask):
+            
+        # So...create ptAttachInd which are the indicies of
+        # self.FFD.coef that we are actually manipulating. If
+
+        return
+
+    def addPointSet(self, points, ptName, **kwargs):
+        ''' Embed a set of points ((N,3) array) with name 'ptName'
+        into the DVGeometry object'''
+                # Points are the discrete points we must manipulate. We have
+        # to be careful here, since this MAY be a list
+
+        self.points.append(points)
+        self.pt_names.append(ptName)
+
+        # Project the last set of points into the volume
+        if self.isChild:
+            coef_mask = self.FFD.attachPoints(
+                self.points[-1],self.pt_names[-1], interiorOnly=True, **kwargs)
+        else:
+            coef_mask = self.FFD.attachPoints(
+                self.points[-1],self.pt_names[-1], interiorOnly=False)
+        # end if
+        self.FFD._calcdPtdCoef(self.pt_names[-1])
+
+        self.ptAttachInd = []
+        self.ptAttachPtr = [0]
+        for ii in xrange(len(self.vol_list)):
+            temp = []
+            for iVol in self.vol_list[ii]:
+                for i in xrange(self.FFD.vols[iVol].Nctlu):
+                    for j in xrange(self.FFD.vols[iVol].Nctlv):
+                        for k in xrange(self.FFD.vols[iVol].Nctlw):
+                            ind = self.FFD.topo.l_index[iVol][i, j, k]
+                            if coef_mask[ind] == False:
+                                temp.append(ind)
+                            # end if
+                        # end for
+                    # end for
+                # end for
+            # end for
+
+            # Unique the values we just added:
+            temp = geo_utils.unique(temp)
+            self.ptAttachInd.extend(temp)
+            self.ptAttachPtr.append(len(self.ptAttachInd))
+        # end for
+
+        # Convert the ind list to an array
+        self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
+
+        # Take the subset of the FFD cofficients as what will be
+        # attached
+        self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0)
+        self.ptAttachFull = self.FFD.coef.copy()
+
+        # Number of points attached to ref axis
+        self.nPtAttach = len(self.ptAttach)
+        self.nPtAttachFull = len(self.ptAttachFull)
+        
         curveIDs = []
         s = []
      
@@ -234,9 +233,9 @@ class DVGeometry(object):
             pts_to_use = self.ptAttach[
                 self.ptAttachPtr[ii]:self.ptAttachPtr[ii+1], :]
             pts_to_use = self.ptAttach
-            if axis is not None:
+            if self.axis is not None:
                 ids, s0 = self.refAxis.projectRays(
-                    pts_to_use, axis)#, curves=[ii])
+                    pts_to_use, self.axis)#, curves=[ii])
             else:
                 ids, s0 = self.refAxis.projectPoints(
                     pts_to_use)#, curves=[ii])
@@ -261,6 +260,7 @@ class DVGeometry(object):
         # end for
         self.links_x = numpy.array(self.links_x)
         self.links_s = numpy.array(self.links_s)
+
         return
     
     def addChild(self, childDVGeo):
@@ -293,7 +293,7 @@ class DVGeometry(object):
 
     def _setInitialValues(self):
 
-        self.coef = copy.deepcopy(self.coef0).astype('D')
+        self.coef = copy.deepcopy(self.coef0)
         self.scale = copy.deepcopy(self.scale0)
         self.scale_x = copy.deepcopy(self.scale_x0)
         self.scale_y = copy.deepcopy(self.scale_y0)
@@ -489,6 +489,9 @@ class DVGeometry(object):
         '''
         return self._getNDVGlobal() + self._getNDVLocal()
 
+    def getNDV(self):
+        return self._getNDV()
+
     def _getNDVGlobal(self):
         nDV = 0
         for i in xrange(len(self.DV_listGlobal)):
@@ -570,7 +573,6 @@ class DVGeometry(object):
         
         # Step 1: Call all the design variables
         if self.complex:
-            self._complexifyCoef()
             new_pts = numpy.zeros((self.nPtAttach, 3), 'D')
         else:
             new_pts = numpy.zeros((self.nPtAttach, 3), 'd')
@@ -581,7 +583,7 @@ class DVGeometry(object):
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
             # end for
         # end if
-
+        
         # Run Global Design Vars
         for i in xrange(len(self.DV_listGlobal)):
             self.DV_listGlobal[i](self)
@@ -996,7 +998,6 @@ class DVGeometry(object):
 
     def _complexifyCoef(self):
         '''Convert coef to complex terporarily'''
-
         for i in xrange(len(self.refAxis.curves)):
             self.rot_x[i].coef = self.rot_x[i].coef.astype('D')
             self.rot_y[i].coef = self.rot_y[i].coef.astype('D')
@@ -1816,14 +1817,14 @@ class DVGeometry(object):
                     high = numpy.ones(dv.nVal)
                     val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
                     opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
-                                         value=val, lower=low, upper=high)
+                                         value=val, lower=low, upper=high, varSet='geo')
                 else:
                     low = 0.0
                     high = 1.0
                     val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
 
                     opt_prob.addVar(dv.name, 'c', value=val, 
-                                    lower=low, upper=high)
+                                    lower=low, upper=high, varSet='geo')
                 # end if
             # end for
         # end for
