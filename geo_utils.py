@@ -4048,7 +4048,7 @@ class geoDVGlobal(object):
         # If the geo object is complex, which is indicated by .coef
         # being complex, run with complex numbers. Otherwise, convert
         # to real before calling. This eliminates casting warnings. 
-        if geo.coef.dtype == d:
+        if geo.coef.dtype == d or geo.complex:
             return self.function(self.value, geo)
         else:
             return self.function(np.real(self.value), geo)
