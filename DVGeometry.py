@@ -68,7 +68,7 @@ class DVGeometry(object):
         self.rot_type = rot_type
         self.complex = kwargs.pop('complex', False)
         self.FFD = FFD
-
+        self.varSet = None
         # Jacobians:
         # self.JT: Total transpose jacobian for self.J_name
         self.JT = None
@@ -1801,13 +1801,16 @@ class DVGeometry(object):
                               
         return sparse.csr_matrix(Jacobian)
 
-    def addVariablesPyOpt(self, opt_prob):
+    def addVariablesPyOpt(self, opt_prob, varSet='geo'):
         '''
         Add the current set of global and local design variables to the opt_prob specified
         '''
 
         # We are going to do our own scaling here...since pyOpt can't
         # do it...
+
+        # save the varSet name this object used:
+        self.varSet = varSet
 
         # Add design variables from the master:
         for dvList in [self.DV_listGlobal, self.DV_listLocal]:
@@ -1817,14 +1820,14 @@ class DVGeometry(object):
                     high = numpy.ones(dv.nVal)
                     val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
                     opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
-                                         value=val, lower=low, upper=high, varSet='geo')
+                                         value=val, lower=low, upper=high, varSet=varSet)
                 else:
                     low = 0.0
                     high = 1.0
                     val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
 
                     opt_prob.addVar(dv.name, 'c', value=val, 
-                                    lower=low, upper=high, varSet='geo')
+                                    lower=low, upper=high, varSet=varSet)
                 # end if
             # end for
         # end for

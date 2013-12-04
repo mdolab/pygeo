@@ -736,7 +736,7 @@ class DVConstraints(object):
 
         return
 
-    def addConstraintsPyOpt(self, opt_prob, thickConName='thickCon', 
+    def addConstraintsPyOpt(self, opt_prob, geoName=None, thickConName='thickCon', 
                             volumeConName='volumeCon', LeTeConName='LeTeCon'):
         ''' Add thickness contraints to pyOpt
         
@@ -745,21 +745,28 @@ class DVConstraints(object):
                 volumeConName -> Override default pyopt name for volume constraints
                 LeTeConName -> Overwrite default pyopt name for LeTe Constraints
                 '''
+        if geoName is None:
+            # Use pygeo default
+            wrt = ['geo']
+        else:
+            wrt = [geoName]
+        # end if
+        
         if self.nThickCon > 0:
             opt_prob.addConGroup(
                 thickConName, len(self.thickConLower), 'i', 
-                lower=self.thickConLower, upper=self.thickConUpper)
+                lower=self.thickConLower, upper=self.thickConUpper, wrt=wrt)
         # end if
 
         if self.nVolumeCon > 0:
             opt_prob.addConGroup(
                 volumeConName, len(self.volumeConLower), 'i',
-                lower=self.volumeConLower, upper=self.volumeConUpper)
+                lower=self.volumeConLower, upper=self.volumeConUpper, wrt=wrt)
         # end if
 
         if self.LeTeCon:
             opt_prob.addConGroup(LeTeConName, len(self.LeTeCon), 'i', 
-                                 lower=0.0, upper=0.0)
+                                 lower=0.0, upper=0.0, wrt=wrt)
         # end if
 
         return 
