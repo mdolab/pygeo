@@ -2,7 +2,7 @@
 #         Extension modules
 # ======================================================================
 import numpy
-import geo_utils
+from . import geo_utils
 from pyspline import pySpline
 from collections import OrderedDict
 
