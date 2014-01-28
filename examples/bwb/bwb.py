@@ -8,8 +8,8 @@ from pyspline import pySpline
 naf = 20
 n0012 = 'naca0012.dat'
 
-airfoil_list = [n0012 for i in xrange(naf)]
-for i in xrange(1,naf-1):
+airfoil_list = [n0012 for i in range(naf)]
+for i in range(1,naf-1):
     airfoil_list[i] = None
 
 # Use the digitize it data for the planform:

@@ -1,21 +1,19 @@
-# =============================================================================
-# DVGeometry Deals with all the details of taking user supplied design
-# variables and mapping it to the descrete surfaces on the CFD and FEA
-# disciplines. In the case of the FE discipline, ALL the FE nodes are
-# included (distributed in a volume) and as such this currently only
-# works with Free Form Deformation Volumes that can deal with these
-# spactialy distributed points. 
-# =============================================================================
-
+"""
+ DVGeometry Deals with all the details of taking user supplied design
+ variables and mapping it to the descrete surfaces on the CFD and FEA
+ disciplines. In the case of the FE discipline, ALL the FE nodes are
+ included (distributed in a volume) and as such this currently only
+ works with Free Form Deformation Volumes that can deal with these
+ spactialy distributed points.
+"""
+from __future__ import print_function
 import copy
 from collections import OrderedDict
 import numpy
 from scipy import sparse
 from mpi4py import MPI
 from pyspline import pySpline
-from pyNetwork import pyNetwork
-from pyBlock import pyBlock
-import geo_utils
+from . import pyNetwork, pyBlock, geo_utils
 
 class DVGeometry(object):
     """
@@ -341,10 +339,10 @@ specified for a call to addRefAxis')
 
         # Make sure the DVGeo being added is flaged as a child:
         if childDVGeo.isChild is False:
-            print '='*80
-            print 'Error: Trying to add a child FFD that has NOT been'
-            print 'created as a child. This operation is illegal.'
-            print '='*80
+            print('='*80)
+            print('Error: Trying to add a child FFD that has NOT been')
+            print('created as a child. This operation is illegal.')
+            print('='*80)
             return
         # end if
 
@@ -780,7 +778,7 @@ specified for a call to addRefAxis')
             
         if self.complex:
             if len(self.children) > 0:
-                print ' Warning: Complex step NOT TESTED with children yet'
+                print(' Warning: Complex step NOT TESTED with children yet')
             # end if
 
             tempCoef = self.ptAttachFull.copy().astype('D')
@@ -1065,7 +1063,6 @@ specified for a call to addRefAxis')
         # end if
 
         for i in xrange(len(self.DV_listGlobal)):
-            print 'GlobalVar',i,DVCount
             for j in xrange(self.DV_listGlobal[i].nVal):
                 if self.isChild:
                     self.FFD.coef=  refFFDCoef.copy()
@@ -1086,7 +1083,6 @@ specified for a call to addRefAxis')
         DVparent=DVCount
         
         for i in xrange(len(self.DV_listLocal)):
-            print 'LocalVar',i,DVLocalCount
             for j in xrange(self.DV_listLocal[i].nVal):
 
                 refVal = self.DV_listLocal[i].value[j]
@@ -1329,7 +1325,7 @@ specified for a call to addRefAxis')
         # coordref = self.update_deriv().flatten()
         # Just do a CS loop over the coef
         # First sum the actual number of globalDVs
-        if nDV <> 0:
+        if nDV != 0:
             Jacobian = numpy.zeros((self.nPtAttachFull*3, nDV))
 
             # Create the storage arrays for the information that must be
@@ -1465,7 +1461,7 @@ specified for a call to addRefAxis')
         h = 1.0e-40j
         oneoverh = 1.0/1e-40
 
-        if nDV <> 0:
+        if nDV != 0:
             Jacobian = sparse.lil_matrix((self.nPtAttachFull*3, nDV))
             # Create the storage arrays for the information that must be
             # passed to the children
@@ -1683,7 +1679,7 @@ specified for a call to addRefAxis')
             name of the point set to check
         """
 
-        print 'Computing Analytic Jacobian...'
+        print('Computing Analytic Jacobian...')
         self.JT = None # J is no longer up to date
         self.J_name = None # Name is no longer defined
         self.J_attach = None
@@ -1694,9 +1690,9 @@ specified for a call to addRefAxis')
         Jac = copy.deepcopy(self.JT)
         
         # Global Variables
-        mpiPrint('========================================')
-        mpiPrint('             Global Variables           ')
-        mpiPrint('========================================')
+        print('========================================')
+        print('             Global Variables           ')
+        print('========================================')
                  
         if self.isChild:
             refFFDCoef = copy.copy(self.FFD.coef)
@@ -1717,9 +1713,9 @@ specified for a call to addRefAxis')
         for i in xrange(len(self.DV_listGlobal)):
             for j in xrange(self.DV_listGlobal[i].nVal):
 
-                mpiPrint('========================================')
-                mpiPrint('      GlobalVar(%d), Value(%d)           '%(i, j))
-                mpiPrint('========================================')
+                print('========================================')
+                print('      GlobalVar(%d), Value(%d)           '%(i, j))
+                print('========================================')
 
                 if self.isChild:
                     self.FFD.coef=  refFFDCoef.copy()
@@ -1740,7 +1736,7 @@ specified for a call to addRefAxis')
                     absErr = deriv[ii] - Jac[DVCount,ii]
 
                     if abs(relErr) > h*10 and abs(absErr) > h*10:
-                        print ii, deriv[ii], Jac[DVCount, ii], relErr, absErr
+                        print(ii, deriv[ii], Jac[DVCount, ii], relErr, absErr)
                     # end if
                 # end for
                 DVCount += 1
@@ -1751,9 +1747,9 @@ specified for a call to addRefAxis')
         for i in xrange(len(self.DV_listLocal)):
             for j in xrange(self.DV_listLocal[i].nVal):
 
-                mpiPrint('========================================')
-                mpiPrint('      LocalVar(%d), Value(%d)           '%(i, j))
-                mpiPrint('========================================')
+                print('========================================')
+                print('      LocalVar(%d), Value(%d)           '%(i, j))
+                print('========================================')
 
                 refVal = self.DV_listLocal[i].value[j]
 
@@ -1768,7 +1764,7 @@ specified for a call to addRefAxis')
                     absErr = deriv[ii] - Jac[DVCount,ii]
 
                     if abs(relErr) > h and abs(absErr) > h:
-                        print ii, deriv[ii], Jac[DVCount, ii], relErr, absErr
+                        print(ii, deriv[ii], Jac[DVCount, ii], relErr, absErr)
                     # end if
                 # end for
                 DVCount += 1
@@ -1786,14 +1782,14 @@ specified for a call to addRefAxis')
         Print a formatted list of design variables to the screen
         """
         for dg in self.DV_listGlobal:
-            mpiPrint('%s'%(dg.name))
+            print('%s'%(dg.name))
             for i in xrange(dg.nVal):
-                mpiPrint('%20.15f'%(dg.value[i]))
+                print('%20.15f'%(dg.value[i]))
   
         for dl in self.DV_listLocal:
-            mpiPrint('%s'%(dl.name))
+            print('%s'%(dl.name))
             for i in xrange(dl.nVal):
-                mpiPrint('%20.15f'%(dl.value[i]))
+                print('%20.15f'%(dl.value[i]))
     
         for child in self.children:
             child.printDesignVariables()
