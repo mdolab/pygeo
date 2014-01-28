@@ -1,11 +1,12 @@
+from __future__ import print_function
+from __future__ import division
 # =============================================================================
-# Utility Functions for Use in pyGeo
+# Utility Functions for Use in pyNetwork, pyGeo, pyBlock, DVGeometry,
+# and pyLayout
 # =============================================================================
-
 import numpy as np
 import sys, os
-from mdo_import_helper import mpiPrint
-
+from pyspline import pySpline
 # Set a (MUCH) larger recursion limit. For meshes with extremely large
 # numbers of blocs (> 5000) the recursive edge propagation may hit a
 # recursion limit. 
@@ -14,49 +15,47 @@ sys.setrecursionlimit(10000)
 # --------------------------------------------------------------
 #                Rotation Functions
 # --------------------------------------------------------------
-
 def rotxM(theta):
-    '''Return x rotation matrix'''
+    """Return x rotation matrix"""
     theta = theta*np.pi/180
     M = [[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], \
              [0, np.sin(theta), np.cos(theta)]]
     return M
 
 def rotyM(theta):
-    ''' Return y rotation matrix'''
+    """ Return y rotation matrix"""
     theta = theta*np.pi/180
     M = [[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], \
              [-np.sin(theta), 0, np.cos(theta)]]
     return M
 
 def rotzM(theta):
-    ''' Return z rotation matrix'''
+    """ Return z rotation matrix"""
     theta = theta*np.pi/180
     M = [[np.cos(theta), -np.sin(theta), 0], \
              [np.sin(theta), np.cos(theta), 0],[0, 0, 1]]
     return M
 
 def rotxV(x, theta):
-    ''' Rotate a coordinate in the local x frame'''
+    """ Rotate a coordinate in the local x frame"""
     M = [[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], \
              [0, np.sin(theta), np.cos(theta)]]
     return np.dot(M, x)
 
 def rotyV(x, theta):
-    '''Rotate a coordinate in the local y frame'''
+    """Rotate a coordinate in the local y frame"""
     M = [[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], \
              [-np.sin(theta), 0, np.cos(theta)]]
     return np.dot(M, x)
 
 def rotzV(x, theta):
-    '''Roate a coordinate in the local z frame'''
+    """Roate a coordinate in the local z frame"""
     M = [[np.cos(theta), -np.sin(theta), 0], \
              [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
     return np.dot(M, x)
 
 def rotVbyW(V, W, theta):
-    ''' Rotate a vector V, about an axis W by angle theta'''
-
+    """ Rotate a vector V, about an axis W by angle theta"""
     ux = W[0]
     uy = W[1]
     uz = W[2]
@@ -66,11 +65,10 @@ def rotVbyW(V, W, theta):
     if np.array(theta).dtype==np.dtype('D') or \
             np.array(W).dtype==np.dtype('D') or \
             np.array(V).dtype==np.dtype('D'):
-        dtype='D'
+        dtype = 'D'
     else:
-        dtype='d'
-    #end
-    #print 'theta',theta,W,dtype
+        dtype = 'd'
+  
     R = np.zeros((3, 3), dtype)
 
     R[0, 0] = ux**2 + (1-ux**2)*c
@@ -91,29 +89,28 @@ def rotVbyW(V, W, theta):
  #               Norm Functions
  # -------------------------------------------------------------
 
-def euclidean_norm(in_vec):
-    '''
-    perform the euclidean 2 norm of the vector in_vec
+def euclideanNorm(inVec):
+    """
+    perform the euclidean 2 norm of the vector inVec
     required because linalg.norm() provides incorrect results for 
     CS derivatives.
-    '''
-    in_vec = np.array(in_vec)
+    """
+    inVec = np.array(inVec)
     temp = 0.0
-    for i in xrange(in_vec.shape[0]):
-        temp += in_vec[i]**2
-    # end
+    for i in range(inVec.shape[0]):
+        temp += inVec[i]**2
+ 
     return np.sqrt(temp)
     
-
  # --------------------------------------------------------------
  #                I/O Functions
  # --------------------------------------------------------------
 
 def readNValues(handle, N, dtype, binary=False, sep=' '):
-    '''Read N values of dtype 'float' or 'int' from file handle'''
-    if binary == True:
+    """Read N values of dtype 'float' or 'int' from file handle"""
+    if binary:
         sep = ""
-    # end if
+
     if dtype == 'int':
         values = np.fromfile(handle, dtype='int', count=N, sep=sep)
     else:
@@ -121,7 +118,7 @@ def readNValues(handle, N, dtype, binary=False, sep=' '):
     return values
 
 def writeValues(handle, values, dtype, binary=False):
-    '''Read N values of type 'float' or 'int' from file handle'''
+    """Read N values of type 'float' or 'int' from file handle"""
     if binary:
         values.tofile(handle)
     else:
@@ -129,22 +126,17 @@ def writeValues(handle, values, dtype, binary=False):
             values.tofile(handle, sep=" ", format="%f")
         elif dtype == 'int':
             values.tofile(handle, sep=" ", format="%d")
-        # end if
-    # end if
-    return 
 
-def read_af2(filename, blunt_te=False, blunt_taper_range=0.1, 
-             blunt_thickness=.002):
-
-    ''' Load the airfoil file of type file_type'''
-    f = open(filename, 'r')
+def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, 
+             bluntThickness=.002):
+    """ Load the airfoil file"""
+    f = open(fileName, 'r')
     line  = f.readline() # Read (and ignore) the first line
     r = []
     try:
         r.append([float(s) for s in line.split()])
     except:
         r = []
-    # end if
 
     while 1:
         line = f.readline()
@@ -153,10 +145,10 @@ def read_af2(filename, blunt_te=False, blunt_taper_range=0.1,
         if line.isspace():
             break # blank line
         r.append([float(s) for s in line.split()])
-    # end while
-    r = np.array(r)
-    x = r[:, 0]
-    y = r[:, 1]
+ 
+    rr = np.array(r)
+    x = rr[:, 0]
+    y = rr[:, 1]
     npt = len(x)
 
     # There are 4 possibilites we have to deal with: 
@@ -167,78 +159,72 @@ def read_af2(filename, blunt_te=False, blunt_taper_range=0.1,
     #    (possibly with different TE thickness)
 
     # Check for blunt TE:
-    if blunt_te is False:
+    if bluntTe is False:
         if y[0] != y[-1]:
-            mpiPrint('Blunt Trailing Edge on airfoil: %s'%(filename))
-            mpiPrint('Merging to a point over final %f ...'%(blunt_taper_range))
-            yavg = 0.5*(y[0] + y[-1])
-            xavg = 0.5*(x[0] + x[-1])
-            y_top = y[0]
-            y_bot = y[-1]
-            x_top = x[0]
-            x_bot = x[-1]
+            print('Blunt Trailing Edge on airfoil: %s'%(fileName))
+            print('Merging to a point over final %f ...'%(bluntTaperRange))
+            yAvg = 0.5*(y[0] + y[-1])
+            xAvg = 0.5*(x[0] + x[-1])
+            yTop = y[0]
+            yBot = y[-1]
+            xTop = x[0]
+            xBot = x[-1]
 
             # Indices on the TOP surface of the wing
-            indices = np.where(x[0:npt/2]>=(1-blunt_taper_range))[0]
-            for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (x[0]-blunt_taper_range))/blunt_taper_range
-                y[indices[i]] = y[indices[i]]- fact*(y_top-yavg)
-                x[indices[i]] = x[indices[i]]- fact*(x_top-xavg)
+            indices = np.where(x[0:npt//2]>=(1-bluntTaperRange))[0]
+            for i in range(len(indices)):
+                fact = (x[indices[i]]- (x[0]-bluntTaperRange))/bluntTaperRange
+                y[indices[i]] = y[indices[i]]- fact*(yTop-yAvg)
+                x[indices[i]] = x[indices[i]]- fact*(xTop-xAvg)
 
             # Indices on the BOTTOM surface of the wing
-            indices = np.where(x[npt/2:]>=(1-blunt_taper_range))[0]
-            indices = indices + npt/2
+            indices = np.where(x[npt//2:]>=(1-bluntTaperRange))[0]
+            indices = indices + npt//2
                     
-            for i in xrange(len(indices)):
-                fact = (x[indices[i]]- (x[-1]-blunt_taper_range))/blunt_taper_range
-                y[indices[i]] = y[indices[i]]- fact*(y_bot-yavg)
-                x[indices[i]] = x[indices[i]]- fact*(x_bot-xavg)
-            # end for
-        # end if
-    elif blunt_te is True:
+            for i in range(len(indices)):
+                fact = (x[indices[i]]- (x[-1]-bluntTaperRange))/bluntTaperRange
+                y[indices[i]] = y[indices[i]]- fact*(yBot-yAvg)
+                x[indices[i]] = x[indices[i]]- fact*(xBot-xAvg)
+
+    elif bluntTe is True:
         # Since we will be rescaling the TE regardless, the sharp TE
         # case and the case where the TE is already blunt can be
         # handled in the same manner
 
         # Get the current thickness 
         curThick = y[0] - y[-1]
-        midPt = y[0] + y[-1]
+
         # Set the new TE values:
-        x_break = 1.0-blunt_taper_range
+        xBreak = 1.0-bluntTaperRange
 
         # Rescale upper surface:
-        for i in xrange(0,npt/2):
-            if x[i] > x_break:
-                s = (x[i]-x_break)/blunt_taper_range
-                y[i] += s*0.5*(blunt_thickness-curThick)
-            # end if
-        # end for
+        for i in range(0,npt//2):
+            if x[i] > xBreak:
+                s = (x[i]-xBreak)/bluntTaperRange
+                y[i] += s*0.5*(bluntThickness-curThick)
 
         # Rescale lower surface:
-        for i in xrange(npt/2,npt):
-            if x[i] > x_break:
-                s = (x[i]-x_break)/blunt_taper_range
-                y[i] -= s*0.5*(blunt_thickness-curThick)
-            # end if
-        # end for
-    # end if
+        for i in range(npt//2,npt):
+            if x[i] > xBreak:
+                s = (x[i]-xBreak)/bluntTaperRange
+                y[i] -= s*0.5*(bluntThickness-curThick)
             
     return x, y
 
 def getCoordinatesFromFile(fileName):
-    '''Get a list of coordinates from a file - useful for testing
+    """Get a list of coordinates from a file - useful for testing
     Required:
         fileName: filename for file
     Returns:
         coordinates: list of coordinates
-    '''
+    """
 
     f = open(fileName, 'r')
     coordinates = []
     for line in f:
         aux = line.split()
         coordinates.append([float(aux[0]), float(aux[1]), float(aux[2])])
-    # end for
+
     f.close()
     coordinates = np.transpose(np.array(coordinates))
 
@@ -247,15 +233,15 @@ def getCoordinatesFromFile(fileName):
 #            Working with Edges Function
 # --------------------------------------------------------------
 
-def e_dist(x1, x2):
-    '''Get the eculidean distance between two points'''
-    return euclidean_norm(x1-x2)#np.linalg.norm(x1-x2)
+def eDist(x1, x2):
+    """Get the eculidean distance between two points"""
+    return euclideanNorm(x1-x2)#np.linalg.norm(x1-x2)
 
-def e_dist2D(x1, x2):
-    '''Get the eculidean distance between two points'''
+def eDist2D(x1, x2):
+    """Get the eculidean distance between two points"""
     return np.sqrt((x1[0]-x2[0])**2 + (x1[1]-x2[1])**2)
 
-def e_dist_b(x1, x2):
+def eDist_b(x1, x2):
     x1b = 0.0
     x2b = 0.0
     db  = 1.0
@@ -266,7 +252,7 @@ def e_dist_b(x1, x2):
     else:
         tempb = db/(2.0*np.sqrt(
                 (x1[0]-x2[0])**2+(x1[1]-x2[1])**2+(x1[2]-x2[2])**2))
-    # end if
+
     tempb0 = 2*(x1[0]-x2[0])*tempb
     tempb1 = 2*(x1[1]-x2[1])*tempb
     tempb2 = 2*(x1[2]-x2[2])*tempb
@@ -283,21 +269,6 @@ def e_dist_b(x1, x2):
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions
 # --------------------------------------------------------------
-
-def flatten(l, ltypes=(list, tuple)):
-    ltype = type(l)
-    l = list(l)
-    i = 0
-    while i < len(l):
-        while isinstance(l[i], ltypes):
-            if not l[i]:
-                l.pop(i)
-                i -= 1
-                break
-            else:
-                l[i:i + 1] = l[i]
-        i += 1
-    return ltype(l)
 
 def unique(s):
     """Return a list of the elements in s, but without duplicates.
@@ -333,9 +304,9 @@ def unique(s):
         for x in s:
             u[x] = 1
     except TypeError:
-        del u  # move on to the next method
+        pass
     else:
-        return u.keys()
+        return list(u.keys())
 
     # We can't hash all the elements.  Second fastest is to sort,
     # which brings the equal elements together; then duplicates are
@@ -349,7 +320,7 @@ def unique(s):
         t = list(s)
         t.sort()
     except TypeError:
-        del t  # move on to the next method
+        pass
     else:
         assert n > 0
         last = t[0]
@@ -369,8 +340,8 @@ def unique(s):
             u.append(x)
     return u
 
-def unique_index(s, s_hash=None):
-    '''
+def uniqueIndex(s, sHash=None):
+    """
     This function is based on unique
 
     The idea is to take a list s, and reduce it as per unique.
@@ -379,14 +350,14 @@ def unique_index(s, s_hash=None):
     the same size as the original s, and points to where it ends up in
     the the reduced list
 
-    if s_hash is not specified for sorting, s is used
+    if sHash is not specified for sorting, s is used
 
-    '''
-    if s_hash != None:
-        ind = np.argsort(np.argsort(s_hash))
+    """
+    if sHash != None:
+        ind = np.argsort(np.argsort(sHash))
     else:
         ind = np.argsort(np.argsort(s))
-    # end if
+
     n = len(s)
     t = list(s)
     t.sort()
@@ -401,20 +372,18 @@ def unique_index(s, s_hash=None):
             lasti += 1
         else:
             diff[i] = True
-        # end if
         i += 1
-    # end while
-    b = np.where(diff == True)[0]
-    for i in xrange(n):
+
+    b = np.where(diff)[0]
+    for i in range(n):
         ind[i] -= b.searchsorted(ind[i], side='right')
-    # end for
 
     return t[:lasti], ind
 
-def pointReduce(points, node_tol=1e-4):
-    '''Given a list of N points in ndim space, with possible
+def pointReduce(points, nodeTol=1e-4):
+    """Given a list of N points in ndim space, with possible
     duplicates, return a list of the unique points AND a pointer list
-    for the original points to the reduced set'''
+    for the original points to the reduced set"""
 
     # First 
     points = np.array(points)
@@ -422,101 +391,95 @@ def pointReduce(points, node_tol=1e-4):
     if N == 0:
         return points, None
     dists = []
-    for ipt in xrange(N): 
+    for ipt in range(N): 
         dists.append(np.sqrt(np.dot(points[ipt], points[ipt])))
-    # end for
+
     temp = np.array(dists)
     temp.sort()
     ind = np.argsort(dists)
     i = 0
     cont = True
-    new_points = []
+    newPoints = []
     link = np.zeros(N, 'intc')
-    link_counter = 0
+    linkCounter = 0
    
     while cont:
         cont2 = True
-        temp_ind = []
+        tempInd = []
         j = i
         while cont2:
-            if abs(dists[ind[i]]-dists[ind[j]])<node_tol:
-                temp_ind.append(ind[j])
+            if abs(dists[ind[i]]-dists[ind[j]])<nodeTol:
+                tempInd.append(ind[j])
                 j = j + 1
                 if j == N: # Overrun check
                     cont2 = False
-                # end if
             else:
                 cont2 = False
-            #end if
-        # end while
-        sub_points = [] # Copy of the list of sub points with the dists
-        for ii in xrange(len(temp_ind)):
-            sub_points.append(points[temp_ind[ii]])
+
+        subPoints = [] # Copy of the list of sub points with the dists
+        for ii in range(len(tempInd)):
+            subPoints.append(points[tempInd[ii]])
 
         # Brute Force Search them 
-        sub_unique_pts, sub_link = pointReduceBruteForce(sub_points, node_tol)
-        new_points.extend(sub_unique_pts)
+        subUniquePts, subLink = pointReduceBruteForce(subPoints, nodeTol)
+        newPoints.extend(subUniquePts)
 
-        for ii in xrange(len(temp_ind)):
-            link[temp_ind[ii]] = sub_link[ii] + link_counter
-        # end if
-        link_counter += max(sub_link) + 1
+        for ii in range(len(tempInd)):
+            link[tempInd[ii]] = subLink[ii] + linkCounter
+
+        linkCounter += max(subLink) + 1
 
         i = j - 1 + 1
         if i == N:
             cont = False
-        # end if
-    # end while
-    return np.array(new_points), np.array(link)
 
-def pointReduceBruteForce(points,  node_tol=1e-4):
-    '''Given a list of N points in ndim space, with possible
+    return np.array(newPoints), np.array(link)
+
+def pointReduceBruteForce(points,  nodeTol=1e-4):
+    """Given a list of N points in ndim space, with possible
     duplicates, return a list of the unique points AND a pointer list
     for the original points to the reduced set
 
     BRUTE FORCE VERSION
 
-    '''
+    """
     N = len(points)
     if N == 0:
         return points, None
-    unique_points = [points[0]]
+    uniquePoints = [points[0]]
     link = [0]
-    for i in xrange(1, N):
-        found_it = False
-        for j in xrange(len(unique_points)):
-            if e_dist(points[i], unique_points[j]) < node_tol:
+    for i in range(1, N):
+        foundIt = False
+        for j in range(len(uniquePoints)):
+            if eDist(points[i], uniquePoints[j]) < nodeTol:
                 link.append(j)
-                found_it = True
+                foundIt = True
                 break
-            # end if
-        # end for
-        if not found_it:
-            unique_points.append(points[i])
+
+        if not foundIt:
+            uniquePoints.append(points[i])
             link.append(j+1)
-        # end if
-    # end for
-    return np.array(unique_points), np.array(link)
+
+    return np.array(uniquePoints), np.array(link)
 
 def edgeOrientation(e1, e2):
-    '''Compare two edge orientations. Basically if the two nodes are
+    """Compare two edge orientations. Basically if the two nodes are
     in the same order return 1 if they are in opposite order, return
-    1'''
+    1"""
     
     if [e1[0], e1[1]] == [e2[0], e2[1]]:
         return 1
     elif [e1[1], e1[0]] == [e2[0], e2[1]]:
         return -1
     else:
-        mpiPrint('Error with edgeOrientation: Not possible.')
-        mpiPrint('Orientation 1 [%d %d]'%(e1[0], e1[1]))
-        mpiPrint('Orientation 2 [%d %d]'%(e2[0], e2[1]))
+        print('Error with edgeOrientation: Not possible.')
+        print('Orientation 1 [%d %d]'%(e1[0], e1[1]))
+        print('Orientation 2 [%d %d]'%(e2[0], e2[1]))
         sys.exit(0)
-    # end if
 
 def faceOrientation(f1, f2):
-    '''Compare two face orientations f1 and f2 and return the
-    transform to get f1 back to f2'''
+    """Compare two face orientations f1 and f2 and return the
+    transform to get f1 back to f2"""
     
     if [f1[0], f1[1], f1[2], f1[3]] == [f2[0], f2[1], f2[2], f2[3]]:
         return 0
@@ -535,76 +498,74 @@ def faceOrientation(f1, f2):
     elif [f1[0], f1[1], f1[2], f1[3]] == [f2[3], f2[1], f2[2], f2[0]]:
         return 7
     else:
-        mpiPrint('Error with faceOrientation: Not possible.')
-        mpiPrint('Orientation 1 [%d %d %d %d]'%(f1[0], f1[1], f1[2], f1[3]))
-        mpiPrint('Orientation 2 [%d %d %d %d]'%(f2[0], f2[1], f2[2], f2[3]))
+        print('Error with faceOrientation: Not possible.')
+        print('Orientation 1 [%d %d %d %d]'%(f1[0], f1[1], f1[2], f1[3]))
+        print('Orientation 2 [%d %d %d %d]'%(f2[0], f2[1], f2[2], f2[3]))
         sys.exit(0)
 
 def quadOrientation(pt1, pt2):
-    '''Given two sets of 4 points in ndim space, pt1 and pt2,
+    """Given two sets of 4 points in ndim space, pt1 and pt2,
     determine the orientation of pt2 wrt pt1
     This works for both exact quads and "loosely" oriented quads
-    .'''
+    ."""
     dist = np.zeros((4, 4))
-    for i in xrange(4):
-        for j in xrange(4):
-            dist[i, j] = e_dist(pt1[i], pt2[j])
-        # end for
-    # end for
+    for i in range(4):
+        for j in range(4):
+            dist[i, j] = eDist(pt1[i], pt2[j])
 
     # Now compute the 8 distances for the 8 possible orientation
-    sum_dist = np.zeros(8)
+    sumDist = np.zeros(8)
     # corners = [0, 1, 2, 3]
-    sum_dist[0] = dist[0, 0] + dist[1, 1] + dist[2, 2] + dist[3, 3] 
+    sumDist[0] = dist[0, 0] + dist[1, 1] + dist[2, 2] + dist[3, 3] 
     # corners = [1, 0, 3, 2]
-    sum_dist[1] = dist[0, 1] + dist[1, 0] + dist[2, 3] + dist[3, 2] 
+    sumDist[1] = dist[0, 1] + dist[1, 0] + dist[2, 3] + dist[3, 2] 
     # corners = [2, 3, 0, 1]
-    sum_dist[2] = dist[0, 2] + dist[1, 3] + dist[2, 0] + dist[3, 1] 
+    sumDist[2] = dist[0, 2] + dist[1, 3] + dist[2, 0] + dist[3, 1] 
     # corners = [3, 2, 1, 0]
-    sum_dist[3] = dist[0, 3] + dist[1, 2] + dist[2, 1] + dist[3, 0] 
+    sumDist[3] = dist[0, 3] + dist[1, 2] + dist[2, 1] + dist[3, 0] 
     # corners = [0, 2, 1, 3]
-    sum_dist[4] = dist[0, 0] + dist[1, 2] + dist[2, 1] + dist[3, 3] 
+    sumDist[4] = dist[0, 0] + dist[1, 2] + dist[2, 1] + dist[3, 3] 
     # corners = [2, 0, 3, 1]
-    sum_dist[5] = dist[0, 2] + dist[1, 0] + dist[2, 3] + dist[3, 1] 
+    sumDist[5] = dist[0, 2] + dist[1, 0] + dist[2, 3] + dist[3, 1] 
     # corners = [1, 3, 0, 2]
-    sum_dist[6] = dist[0, 1] + dist[1, 3] + dist[2, 0] + dist[3, 2] 
+    sumDist[6] = dist[0, 1] + dist[1, 3] + dist[2, 0] + dist[3, 2] 
     # corners = [3, 1, 2, 0]
-    sum_dist[7] = dist[0, 3] + dist[1, 1] + dist[2, 2] + dist[3, 0] 
+    sumDist[7] = dist[0, 3] + dist[1, 1] + dist[2, 2] + dist[3, 0] 
 
-    index = sum_dist.argmin()
+    index = sumDist.argmin()
 
     return index
 
-def orientArray(index, in_array):
-    '''Take an input array in_array, and rotate/flip according to the index
-    output from quadOrientation'''
+def orientArray(index, inArray):
+    """Take an input array inArray, and rotate/flip according to the index
+    output from quadOrientation"""
 
     if index == 0:
-        out_array = in_array.copy()
+        outArray = inArray.copy()
     elif index == 1:
-        out_array = rotateCCW(in_array)
-        out_array = rotateCCW(out_array)
-        out_array = reverseRows(out_array)
+        outArray = rotateCCW(inArray)
+        outArray = rotateCCW(outArray)
+        outArray = reverseRows(outArray)
     elif index == 2:
-        out_array = reverseRows(in_array)
+        outArray = reverseRows(inArray)
     elif index == 3:
-        out_array = rotateCCW(in_array) # Verified working
-        out_array = rotateCCW(out_array)
+        outArray = rotateCCW(inArray) # Verified working
+        outArray = rotateCCW(outArray)
     elif index == 4:
-        out_array = rotateCW(in_array)
-        out_array = reverseRows(out_array)
+        outArray = rotateCW(inArray)
+        outArray = reverseRows(outArray)
     elif index == 5:
-        out_array = rotateCCW(in_array)
+        outArray = rotateCCW(inArray)
     elif index == 6:
-        out_array = rotateCW(in_array)
+        outArray = rotateCW(inArray)
     elif index == 7:
-        out_array = rotateCCW(in_array)
-        out_array = reverseRows(out_array)
+        outArray = rotateCCW(inArray)
+        outArray = reverseRows(outArray)
         
-    return out_array
+    return outArray
 
 def directionAlongSurface(surface, line):
-    '''Determine the dominate (u or v) direction of line along surface'''
+    """Determine the dominate (u or v) direction of line along surface"""
     # Now Do two tests: Take N points in u and test N groups
     # against dn and take N points in v and test the N groups
     # again
@@ -613,65 +574,57 @@ def directionAlongSurface(surface, line):
     sn = np.linspace(0, 1, N)
     dn = np.zeros((N, 3))
     s = np.linspace(0, 1, N)
-    for i in xrange(N):
+    for i in range(N):
         dn[i, :] = line.getDerivative(sn[i])
-    # end for
-
-    u_dot_tot = 0
-    for i in xrange(N):
-        for n in xrange(N):
+ 
+    uDotTot = 0
+    for i in range(N):
+        for n in range(N):
             du, dv = surface.getDerivative(s[i], s[n])
-            u_dot_tot += np.dot(du, dn[n, :])
-        # end for
-    # end for
-
-    v_dot_tot = 0
-    for j in xrange(N):
-        for n in xrange(N):
+            uDotTot += np.dot(du, dn[n, :])
+ 
+    vDotTot = 0
+    for j in range(N):
+        for n in range(N):
             du, dv = surface.getDerivative(s[n], s[j])
-            v_dot_tot += np.dot(dv, dn[n, :])
-        # end for
-    # end for
+            vDotTot += np.dot(dv, dn[n, :])
 
-    if abs(u_dot_tot) > abs(v_dot_tot):
+    if abs(uDotTot) > abs(vDotTot):
         # Its along u now get 
-        if u_dot_tot >= 0: 
+        if uDotTot >= 0: 
             return 0 # U same direction
         else:
             return 1 # U opposite direction
     else:
-        if v_dot_tot >= 0:
+        if vDotTot >= 0:
             return 2 # V same direction
         else:
             return 3 # V opposite direction
-        # end if
-    # end if 
 
 def curveDirection(curve1, curve2):
-    '''Determine if the direction of curve 1 is basically in the same
+    """Determine if the direction of curve 1 is basically in the same
     direction as curve2. Return 1 for same direction, -1 for opposite
-    direction'''
+    direction"""
 
     N = 4
     s = np.linspace(0, 1, N)
     tot = 0
-    d_forward = 0
-    d_backward = 0
-    for i in xrange(N):
+    dForward = 0
+    dBackward = 0
+    for i in range(N):
         tot += np.dot(curve1.getDerivative(s[i]), curve2.getDerivative(s[i]))
-        d_forward += e_dist(curve1.getValue(s[i]), curve2.getValue(s[i]))
-        d_backward += e_dist(curve1.getValue(s[i]), curve2.getValue(s[N-i-1]))
-    # end for
+        dForward += eDist(curve1.getValue(s[i]), curve2.getValue(s[i]))
+        dBackward += eDist(curve1.getValue(s[i]), curve2.getValue(s[N-i-1]))
 
     if tot > 0:
-        return tot, d_forward
+        return tot, dForward
     else:
-        return tot, d_backward
+        return tot, dBackward
 
 def indexPosition1D(i, N):
-    '''This function is a generic function which determines if index
+    """This function is a generic function which determines if index
     over a list of length N is an interior point or node 0 or node 1.
-    '''
+    """
     if i > 0 and i < N-1: # Interior
         return 0, None
     elif i == 0: # Node 0
@@ -680,7 +633,7 @@ def indexPosition1D(i, N):
         return 1, 1
 
 def indexPosition2D(i, j, N, M):
-    '''This function is a generic function which determines if for a grid
+    """This function is a generic function which determines if for a grid
     of data NxM with index i going 0->N-1 and j going 0->M-1, it
     determines if i,j is on the interior, on an edge or on a corner
 
@@ -689,7 +642,7 @@ def indexPosition2D(i, j, N, M):
     edge: this is the edge number if type==1
     node: this is the node number if type==2 
     index: this is the value index along the edge of interest -- 
-    only defined for edges'''
+    only defined for edges"""
 
     if i > 0 and i < N - 1 and j > 0 and j < M-1: # Interior
         return 0, None, None, None
@@ -711,7 +664,7 @@ def indexPosition2D(i, j, N, M):
         return 2, None, 3, None
 
 def indexPosition3D(i, j, k, N, M, L):
-    '''This function is a generic function which determines if for a
+    """This function is a generic function which determines if for a
     3dgrid of data NxMXL with index i going 0->N-1 and j going 0->M-1
     k going 0->L-1, it determines if i,j,k is on the interior, on a
     face, on an edge or on a corner
@@ -727,7 +680,7 @@ def indexPosition3D(i, j, k, N, M, L):
         of interest OR edge of interest
     index2: this is the value index along 1st dir the face
         of interest
-        '''
+        """
     
     # Note to interior->Faces->Edges->Nodes to minimize number of if checks
 
@@ -795,7 +748,7 @@ def indexPosition3D(i, j, k, N, M, L):
 # --------------------------------------------------------------
 
 def edgeFromNodes(n1, n2):
-    '''Return the edge coorsponding to nodes n1, n2'''
+    """Return the edge coorsponding to nodes n1, n2"""
     if (n1 == 0 and n2 == 1) or (n1 == 1 and n2 == 0):
         return 0
     elif (n1 == 0 and n2 == 2) or (n1 == 2 and n2 == 0):
@@ -806,7 +759,7 @@ def edgeFromNodes(n1, n2):
         return 1
 
 def edgesFromNode(n):
-    ''' Return the two edges coorsponding to node n'''
+    """ Return the two edges coorsponding to node n"""
     if n == 0:
         return 0, 2
     if n == 1:
@@ -817,8 +770,8 @@ def edgesFromNode(n):
         return 1, 3
 
 def edgesFromNodeIndex(n, N, M):
-    ''' Return the two edges coorsponding to node n AND return the index
-of the node on the edge according to the size (N, M)'''
+    """ Return the two edges coorsponding to node n AND return the index
+of the node on the edge according to the size (N, M)"""
     if n == 0:
         return 0, 2, 0, 0
     if n == 1:
@@ -829,34 +782,7 @@ of the node on the edge according to the size (N, M)'''
         return 1, 3, N-1, M-1
 
 def nodesFromEdge(edge):
-    '''Return the nodes on either edge of a standard edge'''
-    if edge == 0:
-        return 0, 1
-    elif edge == 1:
-        return 2, 3
-    elif edge == 2:
-        return 0, 2
-    elif edge == 3:
-        return 1, 3
-    elif edge == 4:
-        return 4, 5
-    elif edge == 5:
-        return 6, 7
-    elif edge == 6:
-        return 4, 6
-    elif edge == 7:
-        return 5, 7
-    elif edge == 8:
-        return 0, 4
-    elif edge == 9:
-        return 1, 5
-    elif edge == 10:
-        return 2, 6
-    elif edge == 11:
-        return 3, 7
-
-def nodesFromEdge(edge):
-    '''Return the nodes on either edge of a standard edge'''
+    """Return the nodes on either edge of a standard edge"""
     if edge == 0:
         return 0, 1
     elif edge == 1:
@@ -911,181 +837,171 @@ def edgesFromFace(face):
     elif face == 5:
         return [1, 5, 10, 11]
         
-def setNodeValue(arr, value, node_index):
-    # Set "value" in 3D array "arr" at node "node_index":
-    if node_index == 0:
+def setNodeValue(arr, value, nodeIndex):
+    # Set "value" in 3D array "arr" at node "nodeIndex":
+    if nodeIndex == 0:
         arr[0,0,0] = value
-    elif node_index == 1:
+    elif nodeIndex == 1:
         arr[-1,0,0] = value
-    elif node_index == 2:
+    elif nodeIndex == 2:
         arr[0,-1,0] = value
-    elif node_index == 3:
+    elif nodeIndex == 3:
         arr[-1,-1,0] = value
 
-    if node_index == 4:
+    if nodeIndex == 4:
         arr[0,0,-1] = value
-    elif node_index == 5:
+    elif nodeIndex == 5:
         arr[-1,0,-1] = value
-    elif node_index == 6:
+    elif nodeIndex == 6:
         arr[0,-1,-1] = value
-    elif node_index == 7:
+    elif nodeIndex == 7:
         arr[-1,-1,-1] = value
-    # end if
 
     return arr
 
-def setEdgeValue(arr, values, dir, edge_index):
+def setEdgeValue(arr, values, dir, edgeIndex):
 
     if dir == -1: # Reverse values
         values = values[::-1]
-    # end if
-
-    if edge_index == 0:
+  
+    if edgeIndex == 0:
         arr[1:-1,0,0] = values
-    elif edge_index == 1:
+    elif edgeIndex == 1:
         arr[1:-1,-1,0] = values
-    elif edge_index == 2:
+    elif edgeIndex == 2:
         arr[0, 1:-1, 0] = values
-    elif edge_index == 3:
+    elif edgeIndex == 3:
         arr[-1, 1:-1, 0] = values
 
-    elif edge_index == 4:
+    elif edgeIndex == 4:
         arr[1:-1,0,-1] = values
-    elif edge_index == 5:
+    elif edgeIndex == 5:
         arr[1:-1,-1,-1] = values
-    elif edge_index == 6:
+    elif edgeIndex == 6:
         arr[0, 1:-1, -1] = values
-    elif edge_index == 7:
+    elif edgeIndex == 7:
         arr[-1, 1:-1, -1] = values
 
-    elif edge_index == 8:
+    elif edgeIndex == 8:
         arr[0,0,1:-1] = values
-    elif edge_index == 9:
+    elif edgeIndex == 9:
         arr[-1,0,1:-1] = values
-    elif edge_index == 10:
+    elif edgeIndex == 10:
         arr[0,-1,1:-1] = values
-    elif edge_index == 11:
+    elif edgeIndex == 11:
         arr[-1,-1,1:-1] = values
-    # end if
 
     return arr
     
-def setFaceValue(arr, values, face_dir, face_index):
+def setFaceValue(arr, values, faceDir, faceIndex):
 
     # Orient the array first according to the dir:
 
-    values = orientArray(face_dir, values)
+    values = orientArray(faceDir, values)
 
-    if face_index == 0:
+    if faceIndex == 0:
         arr[1:-1,1:-1,0] = values
-    elif face_index == 1:
+    elif faceIndex == 1:
         arr[1:-1,1:-1,-1] = values
-    elif face_index == 2:
+    elif faceIndex == 2:
         arr[0,1:-1,1:-1] = values
-    elif face_index == 3:
+    elif faceIndex == 3:
         arr[-1,1:-1,1:-1] = values
-    elif face_index == 4:
+    elif faceIndex == 4:
         arr[1:-1,0,1:-1] = values
-    elif face_index == 5:
+    elif faceIndex == 5:
         arr[1:-1,-1,1:-1] = values
-    # end if
-    
+      
     return arr
 
-def setFaceValue2(arr, values, face_dir, face_index):
+def setFaceValue2(arr, values, faceDir, faceIndex):
 
     # Orient the array first according to the dir:
 
-    values = orientArray(face_dir, values)
+    values = orientArray(faceDir, values)
 
-    if face_index == 0:
+    if faceIndex == 0:
         arr[1:-1,1:-1,0] = values
-    elif face_index == 1:
+    elif faceIndex == 1:
         arr[1:-1,1:-1,-1] = values
-    elif face_index == 2:
+    elif faceIndex == 2:
         arr[0,1:-1,1:-1] = values
-    elif face_index == 3:
+    elif faceIndex == 3:
         arr[-1,1:-1,1:-1] = values
-    elif face_index == 4:
+    elif faceIndex == 4:
         arr[1:-1,0,1:-1] = values
-    elif face_index == 5:
+    elif faceIndex == 5:
         arr[1:-1,-1,1:-1] = values
-    # end if
     
     return arr
 
-def getFaceValue(arr, face_index, offset):
-    # Return the values from 'arr' on face_index with offset of offset:
+def getFaceValue(arr, faceIndex, offset):
+    # Return the values from 'arr' on faceIndex with offset of offset:
 
-    if   face_index == 0:
+    if   faceIndex == 0:
         values = arr[:,:,offset]
-    elif face_index == 1:
+    elif faceIndex == 1:
         values = arr[:,:,-1-offset]
-    elif face_index == 2:
+    elif faceIndex == 2:
         values = arr[offset,:,:]
-    elif face_index == 3:
+    elif faceIndex == 3:
         values = arr[-1-offset,:,:]
-    elif face_index == 4:
+    elif faceIndex == 4:
         values = arr[:,offset,:]
-    elif face_index == 5:
+    elif faceIndex == 5:
         values = arr[:,-1-offset,:]
-    # end if
-
+  
     return values.copy()
 
 # --------------------------------------------------------------
 #                  Knot Vector Manipulation Functions
 # --------------------------------------------------------------
     
-def blendKnotVectors(knot_vectors, sym):
-    '''Take in a list of knot vectors and average them'''
+def blendKnotVectors(knotVectors, sym):
+    """Take in a list of knot vectors and average them"""
 
-    nVec = len(knot_vectors)
+    nVec = len(knotVectors)
  
     if sym: # Symmetrize each knot vector first
-        for i in xrange(nVec):
-            cur_knot_vec = knot_vectors[i].copy()
-            if np.mod(len(cur_knot_vec), 2) == 1: #its odd
-                mid = (len(cur_knot_vec) -1)/2
-                beg1 = cur_knot_vec[0:mid]
-                beg2 = (1-cur_knot_vec[mid+1:])[::-1]
+        for i in range(nVec):
+            curKnotVec = knotVectors[i].copy()
+            if np.mod(len(curKnotVec), 2) == 1: #its odd
+                mid = (len(curKnotVec) -1)//2
+                beg1 = curKnotVec[0:mid]
+                beg2 = (1-curKnotVec[mid+1:])[::-1]
                 # Average
                 beg = 0.5*(beg1+beg2)
-                cur_knot_vec[0:mid] = beg
-                cur_knot_vec[mid+1:] = (1-beg)[::-1]
-                cur_knot_vec[mid] = 0.5
+                curKnotVec[0:mid] = beg
+                curKnotVec[mid+1:] = (1-beg)[::-1]
+                curKnotVec[mid] = 0.5
             else: # its even
-                mid = len(cur_knot_vec)/2
-                beg1 = cur_knot_vec[0:mid]
-                beg2 = (1-cur_knot_vec[mid:])[::-1]
+                mid = len(curKnotVec)//2
+                beg1 = curKnotVec[0:mid]
+                beg2 = (1-curKnotVec[mid:])[::-1]
                 beg = 0.5*(beg1+beg2)
-                cur_knot_vec[0:mid] = beg
-                cur_knot_vec[mid:] = (1-beg)[::-1]
-            # end if
-            knot_vectors[i] = cur_knot_vec
-        # end for
-    # end if
-
-    # Now average them all
+                curKnotVec[0:mid] = beg
+                curKnotVec[mid:] = (1-beg)[::-1]
+          
+            knotVectors[i] = curKnotVec
    
-    new_knot_vec = np.zeros(len(knot_vectors[0]))
-    for i in xrange(nVec):
-        new_knot_vec += knot_vectors[i]
-    # end if
+    # Now average them all
+    newKnotVec = np.zeros(len(knotVectors[0]))
+    for i in range(nVec):
+        newKnotVec += knotVectors[i]
 
-    new_knot_vec /= nVec
-    return new_knot_vec
+    newKnotVec = newKnotVec / nVec
+    return newKnotVec
 
-class point_select(object):
+class PointSelect(object):
 
-    def __init__(self, type, *args, **kwargs):
+    def __init__(self, psType, *args, **kwargs):
 
-        '''Initialize a control point selection class. There are several ways
+        """Initialize a control point selection class. There are several ways
         to initialize this class depending on the 'type' qualifier:
 
         Inputs:
         
-        type: string which inidicates the initialization type:
+        psType: string which inidicates the initialization type:
         
         'x': Define two corners (pt1=,pt2=) on a plane parallel to the
         x=0 plane
@@ -1101,24 +1017,23 @@ class point_select(object):
 
         'list': Define the indices of a list that will be used to
         extract the points
-
-        '''
+        """
         
-        if type == 'x' or type == 'y' or type == 'z':
+        if psType == 'x' or psType == 'y' or psType == 'z':
             assert 'pt1' in kwargs and 'pt2' in kwargs, 'Error:, two points \
 must be specified with initialization type x,y, or z. Points are specified \
 with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
 
-        elif type == 'quad':
+        elif psType == 'quad':
             assert 'pt1' in kwargs and 'pt2' in kwargs and 'pt3' in kwargs \
                 and 'pt4' in kwargs, 'Error:, four points \
 must be specified with initialization type quad. Points are specified \
 with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
             
-        # end if
+
         corners = np.zeros([4, 3])
-        if type in ['x', 'y', 'z', 'corners']:
-            if type == 'x':
+        if psType in ['x', 'y', 'z', 'corners']:
+            if psType == 'x':
                 corners[0] = kwargs['pt1']
 
                 corners[1][1] = kwargs['pt2'][1]
@@ -1131,7 +1046,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
                 corners[:, 0] = 0.5*(kwargs['pt1'][0] + kwargs['pt2'][0])
 
-            elif type == 'y':
+            elif psType == 'y':
                 corners[0] = kwargs['pt1']
 
                 corners[1][0] = kwargs['pt2'][0]
@@ -1144,7 +1059,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
                 corners[:, 1] = 0.5*(kwargs['pt1'][1] + kwargs['pt2'][1])
 
-            elif type == 'z':
+            elif psType == 'z':
                 corners[0] = kwargs['pt1']
 
                 corners[1][0] = kwargs['pt2'][0]
@@ -1157,18 +1072,16 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
                 corners[:, 2] = 0.5*(kwargs['pt1'][2] + kwargs['pt2'][2])
 
-            elif type == 'quad':
+            elif psType == 'quad':
                 corners[0] = kwargs['pt1']
                 corners[1] = kwargs['pt2']
                 corners[2] = kwargs['pt4'] # Note the switch here from
                                            # CC orientation
                 corners[3] = kwargs['pt3']
-            # end if
 
-            X=corners
+            X = corners
 
-            from pySpline import pyspline
-            self.box = pySpline.bilinear_surface(X)
+            self.box = pySpline.bilinearSurface(X)
             self.type = 'box'
         elif type == 'list':
             self.box = None
@@ -1177,31 +1090,29 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
         return
 
-    def getPoints(self,  points):
+    def getPoints(self, points):
 
-        '''Take in a list of points and return the ones that statify
-        the point select class.'''
-        pt_list = []
-        ind_list = []
+        """Take in a list of points and return the ones that statify
+        the point select class."""
+        ptList = []
+        indList = []
         if self.type == 'box':
-            for i in xrange(len(points)):
+            for i in range(len(points)):
                 u0, v0, D = self.box.projectPoint(points[i])
                 if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1: #Its Inside
-                    pt_list.append(points[i])
-                    ind_list.append(i)
-                # end if
-            # end for
-        elif self.type == 'list':
-            for i in xrange(len(self.indices)):
-                pt_list.append(points[self.indices[i]])
-            # end for
-            ind_list = self.indices.copy()
-        # end if
-        
-        return pt_list, ind_list
+                    ptList.append(points[i])
+                    indList.append(i)
 
-class topology(object):
-    '''
+        elif self.type == 'list':
+            for i in range(len(self.indices)):
+                ptList.append(points[self.indices[i]])
+
+            indList = self.indices.copy()
+        
+        return ptList, indList
+
+class Topology(object):
+    """
     The base topology class from which the BlockTopology,
     SurfaceTology and CuveTopology classes inherit from
     
@@ -1230,85 +1141,90 @@ class topology(object):
         mVolEnt: The number of volumes per entity. For curves it's 0,
         for surfaces, 0 and for volumnes, 1
 
-        node_link: The array of size nEnt x mNodesEnt which points
+        nodeLink: The array of size nEnt x mNodesEnt which points
                    to the node for each entity
-        edge_link: The array of size nEnt x mEdgeEnt which points
+        edgeLink: The array of size nEnt x mEdgeEnt which points
                    to the edge for each edge of entity
-        face_link: The array of size nEnt x mFaceEnt which points to 
+        faceLink: The array of size nEnt x mFaceEnt which points to 
                    the face of each face on an entity
 
-        edge_dir:  The array of size nEnt x mEdgeEnt which detrmines
+        edgeDir:  The array of size nEnt x mEdgeEnt which detrmines
                    if the intrinsic direction of this edge is
                    opposite of the direction as recorded in the
-                   edge list. edge_dir[entity#][#] = 1 means same direction;
+                   edge list. edgeDir[entity#][#] = 1 means same direction;
                    -1 is opposite direction.
                   
-        face_dir:  The array of size nFace x 6 which determines the 
+        faceDir:  The array of size nFace x 6 which determines the 
                    intrinsic direction of this face. It is one of 0->7
                    
-        l_index:   The local->global list of arrays for each volue
-        g_index:   The global->local list points for the entire topology
+        lIndex:   The local->global list of arrays for each volue
+        gIndex:   The global->local list points for the entire topology
         edges:     The list of edge objects defining the topology
         simple    : A flag to determine of this is a "simple" topology 
                    which means there are NO degernate Edges, 
                    NO multiple edges sharing the same nodes and NO 
                    edges which loop back and have the same nodes
                    MUST BE SIMPLE
-    '''
+    """
 
     def __init__(self):
         # Not sure what should go here...
-        return
-    def _calcDGs(self, edges, edge_link, edge_link_sorted, edge_link_ind):
 
-        dg_counter = -1
-        for i in xrange(self.nEdge):
+        self.nVol = None; self.nFace = None; self.nEdge = None
+        self.nNode = None; self.nExt = None
+        self.mNodeEnt = None; self.mEdgeEnt = None; self.mFaceEnt = None
+        self.nodeLink = None; self.edgeLink = None; self.faceLink = None 
+        self.edgeDir = None; self.faceDir = None
+        self.lIndex = None; self.gIndex = None
+        self.edges = None; self.simple = None
+        self.topoType = None
+        
+    def _calcDGs(self, edges, edgeLink, edgeLinkSorted, edgeLinkInd):
+
+        dgCounter = -1
+        for i in range(self.nEdge):
             if edges[i][2] == -1: # Not set yet
-                dg_counter += 1
-                edges[i][2] = dg_counter
-                self._addDGEdge(i, edges, edge_link, 
-                                edge_link_sorted, edge_link_ind)
-            # end if
-        # end for
-        self.nDG = dg_counter + 1
-   
-    def _addDGEdge(self, i, edges, edge_link, edge_link_sorted, edge_link_ind):
-        left  = edge_link_sorted.searchsorted(i, side='left')
-        right = edge_link_sorted.searchsorted(i, side='right')
-        res   = edge_link_ind[slice(left, right)]
+                dgCounter += 1
+                edges[i][2] = dgCounter
+                self._addDGEdge(i, edges, edgeLink, 
+                                edgeLinkSorted, edgeLinkInd)
 
-        for j in xrange(len(res)):
-            ient = res[j]/self.mEdgeEnt #Integer Division
+        self.nDG = dgCounter + 1
+   
+    def _addDGEdge(self, i, edges, edgeLink, edgeLinkSorted, edgeLinkInd):
+        left  = edgeLinkSorted.searchsorted(i, side='left')
+        right = edgeLinkSorted.searchsorted(i, side='right')
+        res   = edgeLinkInd[slice(left, right)]
+
+        for j in range(len(res)):
+            ient = res[j]//self.mEdgeEnt 
             iedge = np.mod(res[j], self.mEdgeEnt)
 
             pEdges = self._getParallelEdges(iedge)
             oppositeEdges = []
-            for iii in xrange(len(pEdges)):
+            for iii in range(len(pEdges)):
                 oppositeEdges.append(
-                    edge_link[self.mEdgeEnt*ient + pEdges[iii]])
+                    edgeLink[self.mEdgeEnt*ient + pEdges[iii]])
             
-            for ii in xrange(len(pEdges)):
+            for ii in range(len(pEdges)):
                 if edges[oppositeEdges[ii]][2] == -1:
                     edges[oppositeEdges[ii]][2] = edges[i][2]
                     if not edges[oppositeEdges[ii]][0] == \
                             edges[oppositeEdges[ii]][1]:
                         self._addDGEdge(oppositeEdges[ii], edges, 
-                                        edge_link, edge_link_sorted, 
-                                        edge_link_ind)
-                # end if
-            # end if
-        # end for
+                                        edgeLink, edgeLinkSorted, 
+                                        edgeLinkInd)
 
     def _getParallelEdges(self, iedge):
-        '''Return parallel edges for surfaces and volumes'''
+        """Return parallel edges for surfaces and volumes"""
 
-        if self.topo_type == 'surface':
+        if self.topoType == 'surface':
             if iedge == 0: return [1]
             if iedge == 1: return [0]
             if iedge == 2: return [3]
             if iedge == 3: return [2]
 
-        if self.topo_type == 'volume':
+        if self.topoType == 'volume':
             if iedge == 0: 
                 return [1, 4, 5]
             if iedge == 1: 
@@ -1333,124 +1249,112 @@ class topology(object):
                 return [8, 9, 11]
             if iedge == 11: 
                 return [8, 9, 10]
-        if self.topo_type == 'curve':
+        if self.topoType == 'curve':
             return None
 
     def printConnectivity(self):
-        '''Print the Edge Connectivity to the screen'''
+        """Print the Edge Connectivity to the screen"""
 
-        mpiPrint('-----------------------------------------------\
+        print('-----------------------------------------------\
 -------------------------')
-        mpiPrint('%4d  %4d  %4d  %4d  %4d '%(
+        print('%4d  %4d  %4d  %4d  %4d '%(
                 self.nNode, self.nEdge, self.nFace, self.nVol, self.nDG))
-        N_list = self._getDGList()
-        mpiPrint('Design Group | Number')
-        for i in xrange(self.nDG):
-            mpiPrint('%5d        | %5d       '%(i, N_list[i]))
-        # end for
+        nList = self._getDGList()
+        print('Design Group | Number')
+        for i in range(self.nDG):
+            print('%5d        | %5d       '%(i, nList[i]))
 
         # Always have edges!
-        mpiPrint('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|\
+        print('Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|\
    DG   |  N     |')
-        for i in xrange(len(self.edges)):
-            self.edges[i].write_info(i, sys.stdout)
-        # end for
+        for i in range(len(self.edges)):
+            self.edges[i].writeInfo(i, sys.stdout)
 
-        print '%9s Num |'% (self.topo_type), 
-        for i in xrange(self.mNodeEnt):
-            print ' n%2d|'% (i), 
-        for i in xrange(self.mEdgeEnt):
-            print ' e%2d|'% (i), 
-        print ' ' # Get New line
+        print('%9s Num |'% (self.topoType),) 
+        for i in range(self.mNodeEnt):
+            print(' n%2d|'% (i),)
+        for i in range(self.mEdgeEnt):
+            print(' e%2d|'% (i), )
+        print(' ')# Get New line
             
-        for i in xrange(self.nEnt):
-            print ' %5d        |'% (i), 
-            for j in xrange(self.mNodeEnt):
-                print '%4d|'%self.node_link[i][j], 
-            # end for
-            for j in xrange(self.mEdgeEnt):
-                print '%4d|'% (self.edge_link[i][j]*self.edge_dir[i][j]), 
-            # end for
-            print ' '
-        # end for
+        for i in range(self.nEnt):
+            print(' %5d        |'% (i),)
+            for j in range(self.mNodeEnt):
+                print('%4d|'%self.nodeLink[i][j],)
+
+            for j in range(self.mEdgeEnt):
+                print('%4d|'% (self.edgeLink[i][j]*self.edgeDir[i][j]),)
+            print(' ')
+
         print('----------------------------------------------------\
 --------------------')
 
-        if self.topo_type == 'volume':
-            mpiPrint('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|\
+        if self.topoType == 'volume':
+            print('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|\
 f1dir|f2dir|f3dir|f4dir|f5dir|')
-            for i in xrange(self.nVol):
-                mpiPrint(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|\
+            for i in range(self.nVol):
+                print(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|\
 %5d|%5d|%5d|%5d|'\
-                             %(i, self.face_link[i][0], self.face_link[i][1], 
-                               self.face_link[i][2], self.face_link[i][3], 
-                               self.face_link[i][3], self.face_link[i][5], 
-                               self.face_dir[i][0], self.face_dir[i][1], 
-                               self.face_dir[i][2], self.face_dir[i][3], 
-                               self.face_dir[i][4], self.face_dir[i][5])) 
-            # end for
-        # end if
-        return
+                             %(i, self.faceLink[i][0], self.faceLink[i][1], 
+                               self.faceLink[i][2], self.faceLink[i][3], 
+                               self.faceLink[i][3], self.faceLink[i][5], 
+                               self.faceDir[i][0], self.faceDir[i][1], 
+                               self.faceDir[i][2], self.faceDir[i][3], 
+                               self.faceDir[i][4], self.faceDir[i][5])) 
 
     def writeConnectivity(self, fileName):
-        '''Write the full edge connectivity to a file fileName'''
+        """Write the full edge connectivity to a file fileName"""
        
         f = open(fileName, 'w')
         f.write('%4d  %4d  %4d   %4d  %4d\n'%(
                 self.nNode, self.nEdge, self.nFace, self.nVol, self.nDG))
         f.write('Design Group |  Number\n')
             # Write out the design groups and their number parameter
-        N_list = self._getDGList()
-        for i in xrange(self.nDG):
-            f.write('%5d        | %5d       \n'%(i, N_list[i]))
-        # end for
+        nList = self._getDGList()
+        for i in range(self.nDG):
+            f.write('%5d        | %5d       \n'%(i, nList[i]))
 
         f.write('Edge Number    |   n0  |   n1  |  Cont | Degen |\
  Intsct|   DG   |  N     |\n')
-        for i in xrange(len(self.edges)):
-            self.edges[i].write_info(i, f)
-        # end for
+        for i in range(len(self.edges)):
+            self.edges[i].writeInfo(i, f)
 
-        f.write('%9s Num |'%(self.topo_type))
-        for i in xrange(self.mNodeEnt):
+        f.write('%9s Num |'%(self.topoType))
+        for i in range(self.mNodeEnt):
             f.write(' n%2d|'%(i))
-        for i in xrange(self.mEdgeEnt):
+        for i in range(self.mEdgeEnt):
             f.write(' e%2d|'%(i))
         f.write('\n')
 
-        for i in xrange(self.nEnt):
+        for i in range(self.nEnt):
             f.write(' %5d        |'%(i))
-            for j in xrange(self.mNodeEnt):
-                f.write('%4d|'%self.node_link[i][j])
-            # end for
-            for j in xrange(self.mEdgeEnt):
-                f.write('%4d|'%(self.edge_link[i][j]*self.edge_dir[i][j]))
-            # end for
-            f.write('\n')
-        # end for
+            for j in range(self.mNodeEnt):
+                f.write('%4d|'%self.nodeLink[i][j])
 
-        if self.topo_type == 'volume':
+            for j in range(self.mEdgeEnt):
+                f.write('%4d|'%(self.edgeLink[i][j]*self.edgeDir[i][j]))
+
+            f.write('\n')
+
+        if self.topoType == 'volume':
 
             f.write('Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |\
 f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
-            for i in xrange(self.nVol):
+            for i in range(self.nVol):
                 f.write(' %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|\
-%5d|%5d|%5d|%5d|%5d|\n'% (i, self.face_link[i][0], self.face_link[i][1], 
-                          self.face_link[i][2], self.face_link[i][3], 
-                          self.face_link[i][4], self.face_link[i][5], 
-                          self.face_dir[i][0], self.face_dir[i][1], 
-                          self.face_dir[i][2], self.face_dir[i][3], 
-                          self.face_dir[i][4], self.face_dir[i][5])) 
-            # end for
+%5d|%5d|%5d|%5d|%5d|\n'% (i, self.faceLink[i][0], self.faceLink[i][1], 
+                          self.faceLink[i][2], self.faceLink[i][3], 
+                          self.faceLink[i][4], self.faceLink[i][5], 
+                          self.faceDir[i][0], self.faceDir[i][1], 
+                          self.faceDir[i][2], self.faceDir[i][3], 
+                          self.faceDir[i][4], self.faceDir[i][5])) 
             f.close()
-        # end if
-        return
 
     def readConnectivity(self, fileName):
-        '''Read the full edge connectivity from a file fileName'''
+        """Read the full edge connectivity from a file fileName"""
         # We must be able to populate the following:
-        #nNode, nEdge, nFace,nVol,node_link,edge_link,
-        # face_link,edge_dir,face_dir
+        #nNode, nEdge, nFace,nVol,nodeLink,edgeLink,
+        # faceLink,edgeDir,faceDir
 
         f = open(fileName, 'r')
         aux = f.readline().split()
@@ -1461,738 +1365,618 @@ f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n')
         self.nDG   = int(aux[4])
         self.edges = []
         
-        if self.topo_type == 'volume':
+        if self.topoType == 'volume':
             self.nEnt = self.nVol
-        elif self.topo_type == 'surface':
+        elif self.topoType == 'surface':
             self.nEnt = self.nFace
-        elif self.topo_type == 'curve':
+        elif self.topoType == 'curve':
             self.nEnt = self.nEdge
-        # end if
 
         f.readline() # This is the header line so ignore
 
-        N_list = np.zeros(self.nDG, 'intc')
-        for i in xrange(self.nDG):
+        nList = np.zeros(self.nDG, 'intc')
+        for i in range(self.nDG):
             aux = f.readline().split('|')
-            N_list[i] = int(aux[1])
-        # end for
+            nList[i] = int(aux[1])
 
         f.readline() # Second Header line
 
-        for i in xrange(self.nEdge):
+        for i in range(self.nEdge):
             aux = f.readline().split('|')
-            self.edges.append(edge(int(aux[1]), int(aux[2]), int(aux[3]), 
+            self.edges.append(Edge(int(aux[1]), int(aux[2]), int(aux[3]), 
                                    int(aux[4]), int(aux[5]), int(aux[6]), 
                                    int(aux[7])))
-        # end for
+
         f.readline() # This is the third header line so ignore
 
-        self.edge_link = np.zeros((self.nEnt, self.mEdgeEnt), 'intc')
-        self.node_link = np.zeros((self.nEnt, self.mNodeEnt), 'intc')
-        self.edge_dir  = np.zeros((self.nEnt, self.mEdgeEnt), 'intc')
+        self.edgeLink = np.zeros((self.nEnt, self.mEdgeEnt), 'intc')
+        self.nodeLink = np.zeros((self.nEnt, self.mNodeEnt), 'intc')
+        self.edgeDir  = np.zeros((self.nEnt, self.mEdgeEnt), 'intc')
         
-        for i in xrange(self.nEnt):
+        for i in range(self.nEnt):
             aux = f.readline().split('|')
-            for j in xrange(self.mNodeEnt):
-                self.node_link[i][j] = int(aux[j+1])
-            for j in xrange(self.mEdgeEnt):
-                self.edge_dir[i][j]  = np.sign(int(aux[j+1+self.mNodeEnt]))
-                self.edge_link[i][j] = int(
-                    aux[j+1+self.mNodeEnt])*self.edge_dir[i][j]
+            for j in range(self.mNodeEnt):
+                self.nodeLink[i][j] = int(aux[j+1])
+            for j in range(self.mEdgeEnt):
+                self.edgeDir[i][j]  = np.sign(int(aux[j+1+self.mNodeEnt]))
+                self.edgeLink[i][j] = int(
+                    aux[j+1+self.mNodeEnt])*self.edgeDir[i][j]
 
-            # end for
-        # end for
-
-        if self.topo_type == 'volume':
+        if self.topoType == 'volume':
             f.readline() # This the fourth header line so ignore
 
-            self.face_link = np.zeros((self.nVol, 6), 'intc')
-            self.face_dir  = np.zeros((self.nVol, 6), 'intc')
-            for ivol in xrange(self.nVol):
+            self.faceLink = np.zeros((self.nVol, 6), 'intc')
+            self.faceDir  = np.zeros((self.nVol, 6), 'intc')
+            for ivol in range(self.nVol):
                 aux = f.readline().split('|')
-                self.face_link[ivol] = [int(aux[i]) for i in xrange(1, 7)]
-                self.face_dir[ivol]  = [int(aux[i]) for i in xrange(7, 13)]
-            # end for
-        # end if
+                self.faceLink[ivol] = [int(aux[i]) for i in range(1, 7)]
+                self.faceDir[ivol]  = [int(aux[i]) for i in range(7, 13)]
       
-        # Set the N_list to the edges
-        for iedge in xrange(self.nEdge):
-            self.edges[iedge].N = N_list[self.edges[iedge].dg]
+        # Set the nList to the edges
+        for iedge in range(self.nEdge):
+            self.edges[iedge].N = nList[self.edges[iedge].dg]
             
         return
 
     def _getDGList(self):
-        '''After calcGlobalNumbering is called with the size
+        """After calcGlobalNumbering is called with the size
         parameters, we can now produce a list of length ndg with the
-        each entry coorsponing to the number N associated with that DG'''
+        each entry coorsponing to the number N associated with that DG"""
 
         # This can be run in linear time...just loop over each edge
         # and add to dg list
-        N_list = np.zeros(self.nDG, 'intc')
-        for iedge in xrange(self.nEdge):
-            N_list[self.edges[iedge].dg] = self.edges[iedge].N
-        # end for
+        nList = np.zeros(self.nDG, 'intc')
+        for iedge in range(self.nEdge):
+            nList[self.edges[iedge].dg] = self.edges[iedge].N
             
-        return N_list
+        return nList
 
-
-
-
-class CurveTopology(topology):
-    '''
+class CurveTopology(Topology):
+    """
     See topology class for more information
-    '''
+    """
     def __init__(self, coords=None, file=None):
-        '''Initialize the class with data required to compute the topology'''
-        topology.__init__(self)
+        """Initialize the class with data required to compute the topology"""
+        Topology.__init__(self)
         self.mNodeEnt = 2
         self.mEdgeEnt = 1
         self.mfaceEnt = 0
         self.mVolEnt  = 0
         self.nVol = 0
         self.nFace = 0
-        self.topo_type = 'curve'
-        self.g_index = None
-        self.l_index = None
+        self.topoType = 'curve'
+        self.gIndex = None
+        self.lIndex = None
         self.nGlobal = None
         if file != None:
             self.readConnectivity(file)
             return
-        # end if
         
         self.edges = None
         self.simple = True
 
         # Must have curves
         # Get the end points of each curve
-
         self.nEdge = len(coords)
         coords = coords.reshape((self.nEdge*2, 3))
-        node_list, self.node_link = pointReduce(coords)
-        self.node_link = self.node_link.reshape((self.nEdge, 2))
-        self.nNode = len(node_list)
+        nodeList, self.nodeLink = pointReduce(coords)
+        self.nodeLink = self.nodeLink.reshape((self.nEdge, 2))
+        self.nNode = len(nodeList)
         self.edges = []
-        self.edge_link = np.zeros((self.nEdge, 1), 'intc')
-        for iedge in xrange(self.nEdge):
-            self.edge_link[iedge][0] = iedge
-        # end for
-        self.edge_dir  = np.zeros((self.nEdge, 1), 'intc')
+        self.edgeLink = np.zeros((self.nEdge, 1), 'intc')
+        for iedge in range(self.nEdge):
+            self.edgeLink[iedge][0] = iedge
 
-        for iedge in xrange(self.nEdge):
-            n1 = self.node_link[iedge][0]
-            n2 = self.node_link[iedge][1]
+        self.edgeDir  = np.zeros((self.nEdge, 1), 'intc')
+
+        for iedge in range(self.nEdge):
+            n1 = self.nodeLink[iedge][0]
+            n2 = self.nodeLink[iedge][1]
             if n1 < n2:
-                self.edges.append(edge(n1, n2, 0, 0, 0, iedge, 2))
-                self.edge_dir[iedge][0] = 1
+                self.edges.append(Edge(n1, n2, 0, 0, 0, iedge, 2))
+                self.edgeDir[iedge][0] = 1
             else:
-                self.edges.append(edge(n2, n1, 0, 0, 0, iedge, 2))
-                self.edge_dir[iedge][0] = -1
-            # end if
-        # end for
+                self.edges.append(Edge(n2, n1, 0, 0, 0, iedge, 2))
+                self.edgeDir[iedge][0] = -1
+
         self.nDG = self.nEdge
         self.nEnt = self.nEdge
         return
 
-    def calcGlobalNumbering(self, sizes, curve_list=None):
-        '''Internal function to calculate the global/local numbering
-        for each curve'''
-        for i in xrange(len(sizes)):
-            self.edges[self.edge_link[i][0]].N = sizes[i]
-        # end for
-        if curve_list == None:
-            curve_list = range(self.nEdge)
-        # end if
+    def calcGlobalNumbering(self, sizes, curveList=None):
+        """Internal function to calculate the global/local numbering
+        for each curve"""
+        for i in range(len(sizes)):
+            self.edges[self.edgeLink[i][0]].N = sizes[i]
+
+        if curveList == None:
+            curveList = np.arange(self.nEdge)
         
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        l_index = []
+        lIndex = []
 
-        assert len(sizes) == len(curve_list), 'Error: The list of sizes and \
+        assert len(sizes) == len(curveList), 'Error: The list of sizes and \
 the list of surfaces must be the same length'
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
-        node_index = np.arange(self.nNode)
-        counter = len(node_index)
-        edge_index = [ [] for i in xrange(len(self.edges))]
+        nodeIndex = np.arange(self.nNode)
+        counter = len(nodeIndex)
+        edgeIndex = [ [] for i in range(len(self.edges))]
      
         # Assign unique numbers to the edges
-
-        for ii in xrange(len(curve_list)):
-            cur_size = [sizes[ii]]
-            icurve = curve_list[ii]
-            for iedge in xrange(1):
-                edge = self.edge_link[ii][iedge]
+        for ii in range(len(curveList)):
+            curSize = [sizes[ii]]
+            icurve = curveList[ii]
+            for iedge in range(1):
+                edge = self.edgeLink[ii][iedge]
                     
-                if edge_index[edge] == []:# Not added yet
-                    for jj in xrange(cur_size[iedge]-2):
-                        edge_index[edge].append(counter)
+                if edgeIndex[edge] == []:# Not added yet
+                    for jj in range(curSize[iedge]-2):
+                        edgeIndex[edge].append(counter)
                         counter += 1
-                    # end for
-                # end if
-            # end for
-        # end for
 
-        g_index = [ [] for i in xrange(counter)] # We must add [] for
+        gIndex = [ [] for i in range(counter)] # We must add [] for
                                                  # each global node
 
-        for ii in xrange(len(curve_list)):
-            icurve = curve_list[ii]
+        for ii in range(len(curveList)):
+            icurve = curveList[ii]
             N = sizes[ii]
-            l_index.append(-1*np.ones(N, 'intc'))
+            lIndex.append(-1*np.ones(N, 'intc'))
 
-            for i in xrange(N):
-                type, node = indexPosition1D(i, N)
+            for i in range(N):
+                _type, node = indexPosition1D(i, N)
 
-                if type == 1: # Node
-                    cur_node = self.node_link[ii][node]
-                    l_index[ii][i] = node_index[cur_node]
-                    g_index[node_index[cur_node]].append([icurve, i])
+                if _type == 1: # Node
+                    curNode = self.nodeLink[ii][node]
+                    lIndex[ii][i] = nodeIndex[curNode]
+                    gIndex[nodeIndex[curNode]].append([icurve, i])
                 else:
-                    if self.edge_dir[ii][0] == -1:
-                        cur_index = edge_index[self.edge_link[ii][0]][N-i-2]
+                    if self.edgeDir[ii][0] == -1:
+                        curIndex = edgeIndex[self.edgeLink[ii][0]][N-i-2]
                     else:
-                        cur_index = edge_index[self.edge_link[ii][0]][i-1]
-                    # end if
-                    l_index[ii][i] = cur_index
-                    g_index[cur_index].append([icurve, i])
-                # end if
-            # end for
-        # end for
-        self.nGlobal = len(g_index)
-        self.g_index = g_index
-        self.l_index = l_index
+                        curIndex = edgeIndex[self.edgeLink[ii][0]][i-1]
+
+                    lIndex[ii][i] = curIndex
+                    gIndex[curIndex].append([icurve, i])
+
+        self.nGlobal = len(gIndex)
+        self.gIndex = gIndex
+        self.lIndex = lIndex
         
         return 
 
-
-class SurfaceTopology(topology):
-    '''
+class SurfaceTopology(Topology):
+    """
     See topology class for more information
-    '''
-    def __init__(self, coords=None, face_con=None, file=None, node_tol=1e-4,
-                 edge_tol=1e-4):
-        '''Initialize the class with data required to compute the topology'''
-        topology.__init__(self)
+    """
+    def __init__(self, coords=None, faceCon=None, fileName=None, nodeTol=1e-4,
+                 edgeTol=1e-4):
+        """Initialize the class with data required to compute the topology"""
+        Topology.__init__(self)
         self.mNodeEnt = 4
         self.mEdgeEnt = 4
         self.mfaceEnt = 1
         self.mVolEnt  = 0
         self.nVol = 0
-        self.topo_type = 'surface'
-        self.g_index = None
-        self.l_index = None
+        self.topoType = 'surface'
+        self.gIndex = None
+        self.lIndex = None
         self.nGlobal = None
-        if file != None:
-            self.readConnectivity(file)
+        if fileName != None:
+            self.readConnectivity(fileName)
             return
-        # end if
         
         self.edges = None
-        self.face_index = None
+        self.faceIndex = None
         self.simple = False
 
-        if not face_con == None: 
-            face_con = np.array(face_con)
+        if not faceCon == None: 
+            faceCon = np.array(faceCon)
             midpoints = None
-            self.nFace = len(face_con)
+            self.nFace = len(faceCon)
             self.nEnt = self.nFace
             self.simple = True
             # Check to make sure nodes are sequential
-            self.nNode = len(unique(face_con.flatten()))
-            if self.nNode != max(face_con.flatten())+1:
+            self.nNode = len(unique(faceCon.flatten()))
+            if self.nNode != max(faceCon.flatten())+1:
                 # We don't have sequential nodes
-                mpiPrint("Error: Nodes are not sequential")
+                print("Error: Nodes are not sequential")
                 sys.exit(1)
-            # end if
             
             edges = []
-            edge_hash = []
-            for iface in xrange(self.nFace):
+            edgeHash = []
+            for iface in range(self.nFace):
                 #             n1                ,n2               ,dg,n,degen
-                edges.append([face_con[iface][0], face_con[iface][1], -1, 0, 0])
-                edges.append([face_con[iface][2], face_con[iface][3], -1, 0, 0])
-                edges.append([face_con[iface][0], face_con[iface][2], -1, 0, 0])
-                edges.append([face_con[iface][1], face_con[iface][3], -1, 0, 0])
-            # end for
-            edge_dir = np.ones(len(edges), 'intc')
-            for iedge in xrange(self.nFace*4):
+                edges.append([faceCon[iface][0], faceCon[iface][1], -1, 0, 0])
+                edges.append([faceCon[iface][2], faceCon[iface][3], -1, 0, 0])
+                edges.append([faceCon[iface][0], faceCon[iface][2], -1, 0, 0])
+                edges.append([faceCon[iface][1], faceCon[iface][3], -1, 0, 0])
+
+            edgeDir = np.ones(len(edges), 'intc')
+            for iedge in range(self.nFace*4):
                 if edges[iedge][0] > edges[iedge][1]:
                     temp = edges[iedge][0]
                     edges[iedge][0] = edges[iedge][1]
                     edges[iedge][1] = temp
-                    edge_dir[iedge] = -1
-                # end if
-                edge_hash.append(
-                    edges[iedge][0]*4*self.nFace + edges[iedge][1])
-            # end for
+                    edgeDir[iedge] = -1
 
-            edges, edge_link = unique_index(edges, edge_hash)
+                edgeHash.append(
+                    edges[iedge][0]*4*self.nFace + edges[iedge][1])
+
+            edges, edgeLink = uniqueIndex(edges, edgeHash)
 
             self.nEdge = len(edges)
-            self.edge_link = np.array(edge_link).reshape((self.nFace, 4))
-            self.node_link = np.array(face_con)
-            self.edge_dir  = np.array(edge_dir).reshape((self.nFace, 4))
+            self.edgeLink = np.array(edgeLink).reshape((self.nFace, 4))
+            self.nodeLink = np.array(faceCon)
+            self.edgeDir  = np.array(edgeDir).reshape((self.nFace, 4))
 
-            edge_link_sorted = np.sort(edge_link)
-            edge_link_ind    = np.argsort(edge_link)
+            edgeLinkSorted = np.sort(edgeLink)
+            edgeLinkInd    = np.argsort(edgeLink)
 
         elif not coords == None:
             self.nFace = len(coords)
             self.nEnt  = self.nFace
             # We can use the pointReduce algorithim on the nodes
-            node_list, node_link = pointReduce(
-                coords[:, 0:4, :].reshape((self.nFace*4, 3)), node_tol)
-            node_link = node_link.reshape((self.nFace, 4))
+            nodeList, nodeLink = pointReduce(
+                coords[:, 0:4, :].reshape((self.nFace*4, 3)), nodeTol)
+            nodeLink = nodeLink.reshape((self.nFace, 4))
           
             # Next Calculate the EDGE connectivity. -- This is Still
             # Brute Force
 
             edges = []
             midpoints = []
-            edge_link = -1*np.ones(self.nFace*4, 'intc')
-            edge_dir  = np.zeros((self.nFace, 4), 'intc')
+            edgeLink = -1*np.ones(self.nFace*4, 'intc')
+            edgeDir  = np.zeros((self.nFace, 4), 'intc')
 
-            for iface in xrange(self.nFace):
-                for iedge in xrange(4):
+            for iface in range(self.nFace):
+                for iedge in range(4):
                     n1, n2 = nodesFromEdge(iedge)
-                    n1 = node_link[iface][n1]
-                    n2 = node_link[iface][n2] 
+                    n1 = nodeLink[iface][n1]
+                    n2 = nodeLink[iface][n2] 
                     midpoint = coords[iface][iedge + 4]
                     if len(edges) == 0:
                         edges.append([n1, n2, -1, 0, 0])
                         midpoints.append(midpoint)
-                        edge_link[4*iface + iedge] = 0
-                        edge_dir [iface][iedge] = 1
+                        edgeLink[4*iface + iedge] = 0
+                        edgeDir [iface][iedge] = 1
                     else:
-                        found_it = False
-                        for i in xrange(len(edges)):
+                        foundIt = False
+                        for i in range(len(edges)):
                             if [n1, n2] == edges[i][0:2] and n1 != n2:
-                                if e_dist(midpoint, midpoints[i]) < edge_tol:
-                                    edge_link[4*iface + iedge] = i
-                                    edge_dir [iface][iedge] = 1
-                                    found_it = True
-                                # end if
+                                if eDist(midpoint, midpoints[i]) < edgeTol:
+                                    edgeLink[4*iface + iedge] = i
+                                    edgeDir [iface][iedge] = 1
+                                    foundIt = True
+
                             elif [n2, n1] == edges[i][0:2] and n1 != n2:
-                                if e_dist(midpoint, midpoints[i]) < edge_tol:
-                                    edge_link[4*iface + iedge] = i
-                                    edge_dir[iface][iedge] = -1
-                                    found_it = True
-                                # end if
-                            # end if
+                                if eDist(midpoint, midpoints[i]) < edgeTol:
+                                    edgeLink[4*iface + iedge] = i
+                                    edgeDir[iface][iedge] = -1
+                                    foundIt = True
                         # end for
 
                         # We went all the way though the list so add
                         # it at end and return index
-                        if not found_it:
+                        if not foundIt:
                             edges.append([n1, n2, -1, 0, 0])
                             midpoints.append(midpoint)
-                            edge_link[4*iface + iedge] = i+1
-                            edge_dir [iface][iedge] = 1
-                    # end if
-                # end for
-            # end for
+                            edgeLink[4*iface + iedge] = i+1
+                            edgeDir [iface][iedge] = 1
+            # end for (iFace)
 
             self.nEdge = len(edges)
-            self.edge_link = np.array(edge_link).reshape((self.nFace, 4))
-            self.node_link = np.array(node_link)
-            self.nNode = len(unique(self.node_link.flatten()))
-            self.edge_dir = edge_dir
+            self.edgeLink = np.array(edgeLink).reshape((self.nFace, 4))
+            self.nodeLink = np.array(nodeLink)
+            self.nNode = len(unique(self.nodeLink.flatten()))
+            self.edgeDir = edgeDir
 
-            edge_link_sorted = np.sort(edge_link.flatten())
-            edge_link_ind    = np.argsort(edge_link.flatten())
-
+            edgeLinkSorted = np.sort(edgeLink.flatten())
+            edgeLinkInd    = np.argsort(edgeLink.flatten())
         # end if
-            
+        
         # Next Calculate the Design Group Information
-        self._calcDGs(edges, edge_link, edge_link_sorted, edge_link_ind)
+        self._calcDGs(edges, edgeLink, edgeLinkSorted, edgeLinkInd)
 
         # Set the edge ojects
         self.edges = []
-        for i in xrange(self.nEdge): # Create the edge objects
+        for i in range(self.nEdge): # Create the edge objects
             if midpoints: # If they exist
                 if edges[i][0] == edges[i][1] and \
-                        e_dist(midpoints[i], node_list[edges[i][0]]) < node_tol:
-                    self.edges.append(edge(edges[i][0], edges[i][1], 
+                        eDist(midpoints[i], nodeList[edges[i][0]]) < nodeTol:
+                    self.edges.append(Edge(edges[i][0], edges[i][1], 
                                            0, 1, 0, edges[i][2], edges[i][3]))
                 else:
-                    self.edges.append(edge(edges[i][0], edges[i][1], 
+                    self.edges.append(Edge(edges[i][0], edges[i][1], 
                                            0, 0, 0, edges[i][2], edges[i][3]))
-                # end if
             else:
-                self.edges.append(edge(edges[i][0], edges[i][1], 
+                self.edges.append(Edge(edges[i][0], edges[i][1], 
                                        0, 0, 0, edges[i][2], edges[i][3]))
-            # end if
-        # end for
 
-        return
+    def calcGlobalNumberingDummy(self, sizes, surfaceList=None):
+        """Internal function to calculate the global/local numbering
+        for each surface"""
+        for i in range(len(sizes)):
+            self.edges[self.edgeLink[i][0]].N = sizes[i][0]
+            self.edges[self.edgeLink[i][1]].N = sizes[i][0]
+            self.edges[self.edgeLink[i][2]].N = sizes[i][1]
+            self.edges[self.edgeLink[i][3]].N = sizes[i][1]
 
-    def calcGlobalNumberingDummy(self, sizes, surface_list=None):
-        '''Internal function to calculate the global/local numbering
-        for each surface'''
-        for i in xrange(len(sizes)):
-            self.edges[self.edge_link[i][0]].N = sizes[i][0]
-            self.edges[self.edge_link[i][1]].N = sizes[i][0]
-            self.edges[self.edge_link[i][2]].N = sizes[i][1]
-            self.edges[self.edge_link[i][3]].N = sizes[i][1]
-
-        if surface_list == None:
-            surface_list = range(0, self.nFace)
-        # end if
+        if surfaceList == None:
+            surfaceList = np.arange(0, self.nFace)
         
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        g_index = []
-        l_index = []
-
-        assert len(sizes) == len(surface_list), 'Error: The list of sizes and \
+        assert len(sizes) == len(surfaceList), 'Error: The list of sizes and \
 the list of surfaces must be the same length'
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
-        node_index = np.arange(self.nNode)
-        counter = len(node_index)
-        edge_index = [ [] for i in xrange(len(self.edges))]
+        nodeIndex = np.arange(self.nNode)
+        counter = len(nodeIndex)
+        edgeIndex = [ [] for i in range(len(self.edges))]
      
         # Assign unique numbers to the edges
+        for ii in range(len(surfaceList)):
+            iSurf = surfaceList[ii]
+            curSize = [sizes[iSurf][0], sizes[iSurf][0],
+                       sizes[iSurf][1], sizes[iSurf][1]]
 
-        for ii in xrange(len(surface_list)):
-            cur_size = [sizes[ii][0], sizes[ii][0], sizes[ii][1], sizes[ii][1]]
-            isurf = surface_list[ii]
-            for iedge in xrange(4):
-                edge = self.edge_link[ii][iedge]
+            for iedge in range(4):
+                edge = self.edgeLink[ii][iedge]
                     
-                if edge_index[edge] == []:# Not added yet
+                if edgeIndex[edge] == []:# Not added yet
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
-                        index = node_index[self.edges[edge].n1]
-                        for jj in xrange(cur_size[iedge]-2):
-                            edge_index[edge].append(index)
-                        # end for
+                        index = nodeIndex[self.edges[edge].n1]
+                        for jj in range(curSize[iedge]-2):
+                            edgeIndex[edge].append(index)
                     else:
-                        for jj in xrange(cur_size[iedge]-2):
-                            edge_index[edge].append(counter)
+                        for jj in range(curSize[iedge]-2):
+                            edgeIndex[edge].append(counter)
                             counter += 1
-                        # end for
-                    # end if
-                # end if
-            # end for
-        # end for
      
-        g_index = [ [] for i in xrange(counter)] # We must add [] for
-                                                 # each global node
-        l_index = []
-
+        lIndex = []
         # Now actually fill everything up
+        for ii in range(len(surfaceList)):
+            isurf = surfaceList[ii]
+            N = sizes[iSurf][0]
+            M = sizes[iSurf][1]
+            lIndex.append(-1*np.ones((N, M), 'intc'))
 
-        for ii in xrange(len(surface_list)):
-            isurf = surface_list[ii]
-            N = sizes[ii][0]
-            M = sizes[ii][1]
-            l_index.append(-1*np.ones((N, M), 'intc'))
-        # end for
-        self.l_index = l_index
+        self.lIndex = lIndex
 
-        return
+    def calcGlobalNumbering(self, sizes, surfaceList=None):
+        """Internal function to calculate the global/local numbering
+        for each surface"""
+        for i in range(len(sizes)):
+            self.edges[self.edgeLink[i][0]].N = sizes[i][0]
+            self.edges[self.edgeLink[i][1]].N = sizes[i][0]
+            self.edges[self.edgeLink[i][2]].N = sizes[i][1]
+            self.edges[self.edgeLink[i][3]].N = sizes[i][1]
 
-    def calcGlobalNumbering(self, sizes, surface_list=None):
-        '''Internal function to calculate the global/local numbering
-        for each surface'''
-        for i in xrange(len(sizes)):
-            self.edges[self.edge_link[i][0]].N = sizes[i][0]
-            self.edges[self.edge_link[i][1]].N = sizes[i][0]
-            self.edges[self.edge_link[i][2]].N = sizes[i][1]
-            self.edges[self.edge_link[i][3]].N = sizes[i][1]
-
-        if surface_list == None:
-            surface_list = range(0, self.nFace)
-        # end if
+        if surfaceList == None:
+            surfaceList = np.arange(0, self.nFace)
         
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        g_index = []
-        l_index = []
+        gIndex = []
+        lIndex = []
 
-        assert len(sizes) == len(surface_list), 'Error: The list of sizes and \
+        assert len(sizes) == len(surfaceList), 'Error: The list of sizes and \
 the list of surfaces must be the same length'
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
-        node_index = np.arange(self.nNode)
-        counter = len(node_index)
-        edge_index = [ [] for i in xrange(len(self.edges))]
+        nodeIndex = np.arange(self.nNode)
+        counter = len(nodeIndex)
+        edgeIndex = [ [] for i in range(len(self.edges))]
      
         # Assign unique numbers to the edges
-
-        for ii in xrange(len(surface_list)):
-            cur_size = [sizes[ii][0], sizes[ii][0], sizes[ii][1], sizes[ii][1]]
-            isurf = surface_list[ii]
-            for iedge in xrange(4):
-                edge = self.edge_link[ii][iedge]
+        for ii in range(len(surfaceList)):
+            curSize = [sizes[ii][0], sizes[ii][0], sizes[ii][1], sizes[ii][1]]
+            isurf = surfaceList[ii]
+            for iedge in range(4):
+                edge = self.edgeLink[ii][iedge]
                     
-                if edge_index[edge] == []:# Not added yet
+                if edgeIndex[edge] == []:# Not added yet
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
-                        index = node_index[self.edges[edge].n1]
-                        for jj in xrange(cur_size[iedge]-2):
-                            edge_index[edge].append(index)
-                        # end for
+                        index = nodeIndex[self.edges[edge].n1]
+                        for jj in range(curSize[iedge]-2):
+                            edgeIndex[edge].append(index)
                     else:
-                        for jj in xrange(cur_size[iedge]-2):
-                            edge_index[edge].append(counter)
+                        for jj in range(curSize[iedge]-2):
+                            edgeIndex[edge].append(counter)
                             counter += 1
-                        # end for
-                    # end if
-                # end if
-            # end for
-        # end for
-     
-        g_index = [ [] for i in xrange(counter)] # We must add [] for
+                  
+        gIndex = [ [] for i in range(counter)] # We must add [] for
                                                  # each global node
-        l_index = []
-
+        lIndex = []
         # Now actually fill everything up
-
-        for ii in xrange(len(surface_list)):
-            isurf = surface_list[ii]
+        for ii in range(len(surfaceList)):
+            isurf = surfaceList[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
-            l_index.append(-1*np.ones((N, M), 'intc'))
+            lIndex.append(-1*np.ones((N, M), 'intc'))
 
-            for i in xrange(N):
-                for j in xrange(M):
+            for i in range(N):
+                for j in range(M):
                     
-                    type, edge, node, index = indexPosition2D(i, j, N, M)
+                    _type, edge, node, index = indexPosition2D(i, j, N, M)
 
-                    if type == 0:           # Interior
-                        l_index[ii][i, j] = counter
-                        g_index.append([[isurf, i, j]])
+                    if _type == 0:           # Interior
+                        lIndex[ii][i, j] = counter
+                        gIndex.append([[isurf, i, j]])
                         counter += 1
-                    elif type == 1:         # Edge
-                       
+                    elif _type == 1:         # Edge
                         if edge in [0, 1]:
                             # Its a reverse dir
-                            if self.edge_dir[ii][edge] == -1:
-                                cur_index = edge_index[
-                                    self.edge_link[ii][edge]][N-i-2]
+                            if self.edgeDir[ii][edge] == -1:
+                                curIndex = edgeIndex[
+                                    self.edgeLink[ii][edge]][N-i-2]
                             else:  
-                                cur_index = edge_index[
-                                    self.edge_link[ii][edge]][i-1]
-                            # end if
+                                curIndex = edgeIndex[
+                                    self.edgeLink[ii][edge]][i-1]
                         else: # edge in [2, 3]
                             # Its a reverse dir
-                            if self.edge_dir[ii][edge] == -1: 
-                                cur_index = edge_index[
-                                    self.edge_link[ii][edge]][M-j-2]
+                            if self.edgeDir[ii][edge] == -1: 
+                                curIndex = edgeIndex[
+                                    self.edgeLink[ii][edge]][M-j-2]
                             else:  
-                                cur_index = edge_index[
-                                    self.edge_link[ii][edge]][j-1]
-                            # end if
-                        # end if
-                        l_index[ii][i, j] = cur_index
-                        g_index[cur_index].append([isurf, i, j])
+                                curIndex = edgeIndex[
+                                    self.edgeLink[ii][edge]][j-1]
+                        lIndex[ii][i, j] = curIndex
+                        gIndex[curIndex].append([isurf, i, j])
                             
                     else:                  # Node
-                        cur_node = self.node_link[ii][node]
-                        l_index[ii][i, j] = node_index[cur_node]
-                        g_index[node_index[cur_node]].append([isurf, i, j])
-                    # end for
-                # end for (j)
-            # end for (i)
-        # end for (ii)
-
+                        curNode = self.nodeLink[ii][node]
+                        lIndex[ii][i, j] = nodeIndex[curNode]
+                        gIndex[nodeIndex[curNode]].append([isurf, i, j])
+        # end for (surface loop)
+        
         # Reorder the indices with a greedy scheme
-
-        new_indices = np.zeros(len(g_index), 'intc')
-        new_indices[:] = -1
-        new_g_index = [[] for i in xrange(len(g_index))]
+        newIndices = np.zeros(len(gIndex), 'intc')
+        newIndices[:] = -1
+        newGIndex = [[] for i in range(len(gIndex))]
         counter = 0
 
-        # Re-order the l_index
-        for ii in xrange(len(surface_list)):
-            isurf = surface_list[ii]
+        # Re-order the lIndex
+        for ii in range(len(surfaceList)):
+            isurf = surfaceList[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
-            for i in xrange(N):
-                for j in xrange(M):
-                    if new_indices[l_index[ii][i, j]] == -1:
-                        new_indices[l_index[ii][i, j]] = counter
-                        l_index[ii][i, j] = counter 
+            for i in range(N):
+                for j in range(M):
+                    if newIndices[lIndex[ii][i, j]] == -1:
+                        newIndices[lIndex[ii][i, j]] = counter
+                        lIndex[ii][i, j] = counter 
                         counter += 1
                     else:
-                        l_index[ii][i, j] = new_indices[l_index[ii][i, j]]
-                    # end if
-                # end for
-            # end for
-        # end for
+                        lIndex[ii][i, j] = newIndices[lIndex[ii][i, j]]
        
-        # Re-order the g_index
-        for ii in xrange(len(g_index)):
-            isurf = g_index[ii][0][0]
-            i     = g_index[ii][0][1]
-            j     = g_index[ii][0][2]
-            pt = l_index[isurf][i, j]
-            new_g_index[pt] = g_index[ii]
-            # end for
-        # end for
+        # Re-order the gIndex
+        for ii in range(len(gIndex)):
+            isurf = gIndex[ii][0][0]
+            i     = gIndex[ii][0][1]
+            j     = gIndex[ii][0][2]
+            pt = lIndex[isurf][i, j]
+            newGIndex[pt] = gIndex[ii]
             
-        self.nGlobal = len(g_index)
-        self.g_index = new_g_index
-        self.l_index = l_index
+        self.nGlobal = len(gIndex)
+        self.gIndex = newGIndex
+        self.lIndex = lIndex
         
         return 
 
     def getSurfaceFromEdge(self,  edge):
-        '''Determine the surfaces and their edge_link index that
-        points to edge iedge'''
+        """Determine the surfaces and their edgeLink index that
+        points to edge iedge"""
         # Its not efficient but it works - scales with Nface not constant
         surfaces = []
-        for isurf in xrange(self.nFace):
-            for iedge in xrange(4):
-                if self.edge_link[isurf][iedge] == edge:
+        for isurf in range(self.nFace):
+            for iedge in range(4):
+                if self.edgeLink[isurf][iedge] == edge:
                     surfaces.append([isurf, iedge])
-                # end if
-            # end for
-        # end for
 
         return surfaces
 
-    def getFaceAndEdgeFromNodes(self, node1, node2):
-        '''Determine ONE face and edge that contains nodes n1 and
-        n2.'''
-        
-        print 'looking for:',node1,node2
-        for iface in xrange(self.nFace):
-            n0 = self.node_link[iface,0]
-            n1 = self.node_link[iface,1]
-            n2 = self.node_link[iface,2]
-            n3 = self.node_link[iface,3]
-
-            print n0,n1,n2,n3
-
-            if node1 in [n0,n1] and node2 in [n0,n1]:
-                # Found the edge:
-                return iface, 0
-            elif node1 in [n2,n3] and node2 in [n2,n3]:
-                return iface, 1
-            elif node1 in [n0,n2] and node2 in [n0,n2]:
-                return iface, 2
-            elif node1 in [n1,n3] and node2 in [n1,n3]:
-                return iface, 3
-
-
-            # end for
-        #end for
-        sys.exit(00)
-        return None, None
-
-
     def makeSizesConsistent(self, sizes, order):
-        '''
+        """
         Take a given list of [Nu x Nv] for each surface and return
         the sizes list such that all sizes are consistent
 
         prescedence is given according to the order list: 0 is highest
         prescedence,  1 is next highest ect.
-        '''
+        """
 
         # First determine how many "order" loops we have
         nloops = max(order)+1
-        edge_number = -1*np.ones(self.nDG, 'intc')
-        for iedge in xrange(self.nEdge):
+        edgeNumber = -1*np.ones(self.nDG, 'intc')
+        for iedge in range(self.nEdge):
             self.edges[iedge].N = -1
-        # end for
     
-        for iloop in xrange(nloops):
-            for iface in xrange(self.nFace):
+        for iloop in range(nloops):
+            for iface in range(self.nFace):
                 if order[iface] == iloop: # Set this edge
-                    for iedge in xrange(4):
-                        dg = self.edges[self.edge_link[iface][iedge]].dg
-                        if edge_number[dg] == -1:
+                    for iedge in range(4):
+                        dg = self.edges[self.edgeLink[iface][iedge]].dg
+                        if edgeNumber[dg] == -1:
                             if iedge in [0, 1]:
-                                edge_number[dg] = sizes[iface][0]
+                                edgeNumber[dg] = sizes[iface][0]
                             else:
-                                edge_number[dg] = sizes[iface][1]
-                            # end if
-                        # end if
-                    # end if
-                # end for
-            # end for
-        # end for
+                                edgeNumber[dg] = sizes[iface][1]
 
         # Now re-populate the sizes:
-        for iface in xrange(self.nFace):
+        for iface in range(self.nFace):
             for i in [0, 1]:
-                dg = self.edges[self.edge_link[iface][i*2]].dg
-                sizes[iface][i] = edge_number[dg]
-            # end for
-        # end for
-
+                dg = self.edges[self.edgeLink[iface][i*2]].dg
+                sizes[iface][i] = edgeNumber[dg]
+  
         # And return the number of elements on each actual edge
         nEdge = []
-        for iedge in xrange(self.nEdge):
-            self.edges[iedge].N = edge_number[self.edges[iedge].dg]
-            nEdge.append(edge_number[self.edges[iedge].dg])
-        # end if
+        for iedge in range(self.nEdge):
+            self.edges[iedge].N = edgeNumber[self.edges[iedge].dg]
+            nEdge.append(edgeNumber[self.edges[iedge].dg])
 
         return sizes, nEdge
 
-class BlockTopology(topology):
-    '''
+class BlockTopology(Topology):
+    """
     See Topology base class for more information
-    '''
+    """
 
-    def __init__(self, coords=None, node_tol=1e-4, edge_tol=1e-4, file=None):
-        '''Initialize the class with data required to compute the topology'''
+    def __init__(self, coords=None, nodeTol=1e-4, edgeTol=1e-4, fileName=None):
+        """Initialize the class with data required to compute the topology"""
         
-        topology.__init__(self)
+        Topology.__init__(self)
         self.mNodeEnt = 8
         self.mEdgeEnt = 12
         self.mFaceEnt = 6
         self.mVolEnt  = 1
-        self.topo_type = 'volume'
-        self.g_index = None
-        self.l_index = None
+        self.topoType = 'volume'
+        self.gIndex = None
+        self.lIndex = None
         self.nGlobal = None
-        if file != None:
-            self.readConnectivity(file)
+        if fileName != None:
+            self.readConnectivity(fileName)
             return
-        # end if
-
+  
         coords = np.atleast_2d(coords)
         nVol = len(coords)
 
         if coords.shape[1] == 8: # Just the corners are given --- Just
                                  # put in np.zeros for the edge and face
                                  # mid points
-            temp = np.zeros((nvol, (8 + 12 + 6), 3))
+            temp = np.zeros((nVol, (8 + 12 + 6), 3))
             temp[:, 0:8, :] = coords
             coords = temp.copy()
-        # end if
-
+   
         # ----------------------------------------------------------
         #                     Unique Nodes
         # ----------------------------------------------------------
 
         # Do the pointReduce Agorithm on the corners
-        un, node_link = pointReduce(coords[:, 0:8, :].reshape((nVol*8, 3)))
-        node_link = node_link.reshape((nVol, 8))
+        un, nodeLink = pointReduce(coords[:, 0:8, :].reshape((nVol*8, 3)),
+                                   nodeTol=nodeTol)
+        nodeLink = nodeLink.reshape((nVol, 8))
          
         # ----------------------------------------------------------
         #                     Unique Edges
         # ----------------------------------------------------------
- 
-        # Now determine the unique edges:
-        edge_objs = []
-        orig_edges = []
-        for ivol in xrange(nVol):
-            for iedge in xrange(12):
+         # Now determine the unique edges:
+        edgeObjs = []
+        origEdges = []
+        for ivol in range(nVol):
+            for iedge in range(12):
                 # Node number on volume
                 n1, n2 = nodesFromEdge(iedge)
 
                 # Actual Global Node Number
-                n1 = node_link[ivol][n1]
-                n2 = node_link[ivol][n2]
+                n1 = nodeLink[ivol][n1]
+                n2 = nodeLink[ivol][n2]
 
                 # Midpoint
                 midpoint = coords[ivol][iedge + 8]
@@ -2200,213 +1984,193 @@ class BlockTopology(topology):
                 # Sorted Nodes:
                 ns = sorted([n1, n2])
         
-                # Append the new edge_cmp Object
-                edge_objs.append(edge_cmp_object(
-                        ns[0], ns[1], n1, n2, midpoint, edge_tol))
+                # Append the new edgeCmp Object
+                edgeObjs.append(EdgeCmpObject(
+                        ns[0], ns[1], n1, n2, midpoint, edgeTol))
 
                 # Keep track of original edge orientation---needed for
                 # face direction
-                orig_edges.append([n1, n2])
-            # end for
-        # end for
-                    
+                origEdges.append([n1, n2])
+           
         # Generate unique set of edges
-        unique_edge_objs,  edge_link = unique_index(edge_objs)
+        uniqueEdgeObjs,  edgeLink = uniqueIndex(edgeObjs)
 
-        edge_dir = []
-        for i in xrange(len(edge_objs)): # This is nVol * 12
-            edge_dir.append(edgeOrientation(
-                    orig_edges[i], unique_edge_objs[edge_link[i]].nodes))
-        # end for
-
+        edgeDir = []
+        for i in range(len(edgeObjs)): # This is nVol * 12
+            edgeDir.append(edgeOrientation(
+                    origEdges[i], uniqueEdgeObjs[edgeLink[i]].nodes))
         # ----------------------------------------------------------
         #                     Unique Faces
         # ----------------------------------------------------------
 
-        face_objs = []
-        orig_faces = []
-        for ivol in xrange(nVol):
-            for iface in xrange(6):
+        faceObjs = []
+        origFaces = []
+        for ivol in range(nVol):
+            for iface in range(6):
                 # Node number on volume
                 n1, n2, n3, n4 = nodesFromFace(iface)
 
                 # Actual Global Node Number
-                n1 = node_link[ivol][n1]
-                n2 = node_link[ivol][n2] 
-                n3 = node_link[ivol][n3]
-                n4 = node_link[ivol][n4] 
+                n1 = nodeLink[ivol][n1]
+                n2 = nodeLink[ivol][n2] 
+                n3 = nodeLink[ivol][n3]
+                n4 = nodeLink[ivol][n4] 
                 
                 # Midpoint --> May be [0, 0, 0] -> This is OK
                 midpoint = coords[ivol][iface + 8 + 12]
                 
                 # Sort the nodes before they go into the faceObject
                 ns = sorted([n1, n2, n3, n4])
-                face_objs.append(face_cmp_object(ns[0], ns[1], ns[2], ns[3], 
+                faceObjs.append(FaceCmpObject(ns[0], ns[1], ns[2], ns[3], 
                                                  n1, n2, n3, n4, 
                                                  midpoint, 1e-4))
                 # Keep track of original face orientation---needed for
                 # face direction
-                orig_faces.append([n1, n2, n3, n4])
-            # end for
-        # end for
+                origFaces.append([n1, n2, n3, n4])
                     
         # Generate unique set of faces
-        unique_face_objs, face_link = unique_index(face_objs)
+        uniqueFaceObjs, faceLink = uniqueIndex(faceObjs)
 
-        face_dir = []
-        face_dir_rev = []
-        for i in xrange(len(face_objs)): # This is nVol * 12
-            face_dir.append(faceOrientation(
-                    unique_face_objs[face_link[i]].nodes, orig_faces[i]))
-            face_dir_rev.append(faceOrientation(
-                    orig_faces[i], unique_face_objs[face_link[i]].nodes))
-        # end for
-
+        faceDir = []
+        faceDirRev = []
+        for i in range(len(faceObjs)): # This is nVol * 12
+            faceDir.append(faceOrientation(
+                    uniqueFaceObjs[faceLink[i]].nodes, origFaces[i]))
+            faceDirRev.append(faceOrientation(
+                    origFaces[i], uniqueFaceObjs[faceLink[i]].nodes))
+   
         # --------- Set the Requried Data for this class ------------
         self.nNode = len(un)
-        self.nEdge = len(unique_edge_objs)
-        self.nFace = len(unique_face_objs)
+        self.nEdge = len(uniqueEdgeObjs)
+        self.nFace = len(uniqueFaceObjs)
         self.nVol  = len(coords)
         self.nEnt  = self.nVol
 
-        self.node_link = node_link
-        self.edge_link = np.array(edge_link).reshape((nVol, 12))
-        self.face_link = np.array(face_link).reshape((nVol, 6))
+        self.nodeLink = nodeLink
+        self.edgeLink = np.array(edgeLink).reshape((nVol, 12))
+        self.faceLink = np.array(faceLink).reshape((nVol, 6))
 
-        self.edge_dir  = np.array(edge_dir).reshape((nVol, 12))
-        self.face_dir  = np.array(face_dir).reshape((nVol, 6))
-        self.face_dir_rev  = np.array(face_dir_rev).reshape((nVol, 6))
+        self.edgeDir  = np.array(edgeDir).reshape((nVol, 12))
+        self.faceDir  = np.array(faceDir).reshape((nVol, 6))
+        self.faceDirRev  = np.array(faceDirRev).reshape((nVol, 6))
 
         # Next Calculate the Design Group Information
-        edge_link_sorted = np.sort(edge_link.flatten())
-        edge_link_ind    = np.argsort(edge_link.flatten())
+        edgeLinkSorted = np.sort(edgeLink.flatten())
+        edgeLinkInd    = np.argsort(edgeLink.flatten())
 
         ue = []
-        for i in xrange(len(unique_edge_objs)):
-            ue.append([unique_edge_objs[i].nodes[0], 
-                       unique_edge_objs[i].nodes[1], -1, 0, 0])
-        # end for
+        for i in range(len(uniqueEdgeObjs)):
+            ue.append([uniqueEdgeObjs[i].nodes[0], 
+                       uniqueEdgeObjs[i].nodes[1], -1, 0, 0])
 
-        self._calcDGs(ue, edge_link, edge_link_sorted, edge_link_ind)
+        self._calcDGs(ue, edgeLink, edgeLinkSorted, edgeLinkInd)
         
         # Set the edge ojects
         self.edges = []
-        for i in xrange(self.nEdge): # Create the edge objects
-            self.edges.append(edge(
+        for i in range(self.nEdge): # Create the edge objects
+            self.edges.append(Edge(
                     ue[i][0], ue[i][1], 0, 0, 0, ue[i][2], ue[i][3]))
-        # end for
-
+            
         return
     
-    def calcGlobalNumbering(self, sizes=None, volume_list=None, 
-                            greedyReorder=False,g_index=True):
-        '''Internal function to calculate the global/local numbering
-        for each volume'''
+    def calcGlobalNumbering(self, sizes=None, volumeList=None, 
+                            greedyReorder=False,gIndex=True):
+        """Internal function to calculate the global/local numbering
+        for each volume"""
 
         if sizes != None:
-            for i in xrange(len(sizes)):
-                self.edges[self.edge_link[i][0]].N = sizes[i][0]
-                self.edges[self.edge_link[i][1]].N = sizes[i][0]
-                self.edges[self.edge_link[i][4]].N = sizes[i][0]
-                self.edges[self.edge_link[i][5]].N = sizes[i][0]
+            for i in range(len(sizes)):
+                self.edges[self.edgeLink[i][0]].N = sizes[i][0]
+                self.edges[self.edgeLink[i][1]].N = sizes[i][0]
+                self.edges[self.edgeLink[i][4]].N = sizes[i][0]
+                self.edges[self.edgeLink[i][5]].N = sizes[i][0]
 
-                self.edges[self.edge_link[i][2]].N = sizes[i][1]
-                self.edges[self.edge_link[i][3]].N = sizes[i][1]
-                self.edges[self.edge_link[i][6]].N = sizes[i][1]
-                self.edges[self.edge_link[i][7]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][2]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][3]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][6]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][7]].N = sizes[i][1]
 
-                self.edges[self.edge_link[i][8]].N  = sizes[i][2]
-                self.edges[self.edge_link[i][9]].N  = sizes[i][2]
-                self.edges[self.edge_link[i][10]].N = sizes[i][2]
-                self.edges[self.edge_link[i][11]].N = sizes[i][2]
-            # end for
+                self.edges[self.edgeLink[i][8]].N  = sizes[i][2]
+                self.edges[self.edgeLink[i][9]].N  = sizes[i][2]
+                self.edges[self.edgeLink[i][10]].N = sizes[i][2]
+                self.edges[self.edgeLink[i][11]].N = sizes[i][2]
         else: # N is already set in the edge objects, use them
             sizes = np.zeros((self.nVol, 3), 'intc')
-            for ivol in xrange(self.nVol):
-                sizes[ivol][0] = self.edges[self.edge_link[ivol][0]].N
-                sizes[ivol][1] = self.edges[self.edge_link[ivol][2]].N
-                sizes[ivol][2] = self.edges[self.edge_link[ivol][8]].N
-            # end for
-        # end if
+            for ivol in range(self.nVol):
+                sizes[ivol][0] = self.edges[self.edgeLink[ivol][0]].N
+                sizes[ivol][1] = self.edges[self.edgeLink[ivol][2]].N
+                sizes[ivol][2] = self.edges[self.edgeLink[ivol][8]].N
 
-        if volume_list == None:
-            volume_list = range(0, self.nVol)
-        # end if
+        if volumeList == None:
+            volumeList = np.arange(0, self.nVol)
         
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        g_index = []
-        l_index = []
+        gIndex = []
+        lIndex = []
     
-        assert len(sizes) == len(volume_list), 'Error: The list of sizes and \
+        assert len(sizes) == len(volumeList), 'Error: The list of sizes and \
 the list of volumes must be the same length'
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
-        node_index = np.arange(self.nNode)
-        counter = len(node_index)
+        nodeIndex = np.arange(self.nNode)
+        counter = len(nodeIndex)
 
-        edge_index = [ np.empty((0), 'intc') for i in xrange(self.nEdge)]
-        face_index = [ np.empty((0, 0), 'intc') for i in xrange(self.nFace)]
+        edgeIndex = [ np.empty((0), 'intc') for i in range(self.nEdge)]
+        faceIndex = [ np.empty((0, 0), 'intc') for i in range(self.nFace)]
         # Assign unique numbers to the edges
 
-        for ii in xrange(len(volume_list)):
-            cur_size_e = [sizes[ii][0], sizes[ii][0], sizes[ii][1], 
+        for ii in range(len(volumeList)):
+            curSizeE = [sizes[ii][0], sizes[ii][0], sizes[ii][1], 
                           sizes[ii][1], sizes[ii][0], sizes[ii][0], 
                           sizes[ii][1], sizes[ii][1], sizes[ii][2], 
                           sizes[ii][2], sizes[ii][2], sizes[ii][2]]  
 
-            cur_size_f = [[sizes[ii][0], sizes[ii][1]], 
+            curSizeF = [[sizes[ii][0], sizes[ii][1]], 
                           [sizes[ii][0], sizes[ii][1]], 
                           [sizes[ii][1], sizes[ii][2]], 
                           [sizes[ii][1], sizes[ii][2]], 
                           [sizes[ii][0], sizes[ii][2]], 
                           [sizes[ii][0], sizes[ii][2]]]
 
-            ivol = volume_list[ii]
-            for iedge in xrange(12):
-                edge = self.edge_link[ii][iedge]
-                if edge_index[edge].shape == (0, ):# Not added yet
-                    edge_index[edge] = np.resize(
-                        edge_index[edge], cur_size_e[iedge]-2)
+            ivol = volumeList[ii]
+            for iedge in range(12):
+                edge = self.edgeLink[ii][iedge]
+                if edgeIndex[edge].shape == (0, ):# Not added yet
+                    edgeIndex[edge] = np.resize(
+                        edgeIndex[edge], curSizeE[iedge]-2)
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
-                        index = node_index[self.edges[edge].n1]
-                        for jj in xrange(cur_size_e[iedge]-2):
-                            edge_index[edge][jj] = index
-                        # end for
+                        index = nodeIndex[self.edges[edge].n1]
+                        for jj in range(curSizeE[iedge]-2):
+                            edgeIndex[edge][jj] = index
                     else:
-                        for jj in xrange(cur_size_e[iedge]-2):
-                            edge_index[edge][jj] = counter
+                        for jj in range(curSizeE[iedge]-2):
+                            edgeIndex[edge][jj] = counter
                             counter += 1
-                        # end for
-                    # end if
-                # end if
-            # end for
-            for iface in xrange(6):
-                face = self.face_link[ii][iface]
-                if face_index[face].shape == (0, 0):
-                    face_index[face] = np.resize(face_index[face], 
-                                               [cur_size_f[iface][0]-2, 
-                                                cur_size_f[iface][1]-2])
-                    for iii in xrange(cur_size_f[iface][0]-2):
-                        for jjj in xrange(cur_size_f[iface][1]-2):
-                            face_index[face][iii, jjj] = counter
+                   
+            for iface in range(6):
+                face = self.faceLink[ii][iface]
+                if faceIndex[face].shape == (0, 0):
+                    faceIndex[face] = np.resize(faceIndex[face], 
+                                               [curSizeF[iface][0]-2, 
+                                                curSizeF[iface][1]-2])
+                    for iii in range(curSizeF[iface][0]-2):
+                        for jjj in range(curSizeF[iface][1]-2):
+                            faceIndex[face][iii, jjj] = counter
                             counter += 1
-                        # end for
-                    # end for
-                # end if
-            # end for
+                   
         # end for (volume list)
 
-        g_index = [ [] for i in xrange(counter)] # We must add [] for
+        gIndex = [ [] for i in range(counter)] # We must add [] for
                                                  # each global node
-        l_index = []
+        lIndex = []
 
         def addNode(i, j, k, N, M, L):
-            type, number, index1, index2 = indexPosition3D(i, j, k, N, M, L)
+            _type, number, index1, index2 = indexPosition3D(i, j, k, N, M, L)
             
-            if type == 1:         # Face 
+            if _type == 1:         # Face 
 
                 if number in [0, 1]:
                     icount = i;imax = N
@@ -2417,109 +2181,105 @@ the list of volumes must be the same length'
                 elif number in [4, 5]:
                     icount = i;imax = N
                     jcount = k;jmax = L
-                # end if
-
-                if self.face_dir[ii][number] == 0:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+          
+                if self.faceDir[ii][number] == 0:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         icount-1, jcount-1]
-                elif self.face_dir[ii][number] == 1:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 1:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         imax-icount-2, jcount-1]
-                elif self.face_dir[ii][number] == 2:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 2:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         icount-1, jmax-jcount-2]
-                elif self.face_dir[ii][number] == 3:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 3:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         imax-icount-2, jmax-jcount-2]
-                elif self.face_dir[ii][number] == 4:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 4:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         jcount-1, icount-1]
-                elif self.face_dir[ii][number] == 5:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 5:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         jmax-jcount-2, icount-1]
-                elif self.face_dir[ii][number] == 6:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 6:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         jcount-1, imax-icount-2]
-                elif self.face_dir[ii][number] == 7:
-                    cur_index = face_index[
-                        self.face_link[ii][number]][
+                elif self.faceDir[ii][number] == 7:
+                    curIndex = faceIndex[
+                        self.faceLink[ii][number]][
                         jmax-jcount-2, imax-icount-2]
                     
-                l_index[ii][i, j, k] = cur_index
-                g_index[cur_index].append([ivol, i, j, k])
+                lIndex[ii][i, j, k] = curIndex
+                gIndex[curIndex].append([ivol, i, j, k])
                             
-            elif type == 2:         # Edge
+            elif _type == 2:         # Edge
                         
                 if number in [0, 1, 4, 5]:
-                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][N-i-2]
+                    if self.edgeDir[ii][number] == -1: # Its a reverse dir
+                        curIndex = \
+                            edgeIndex[self.edgeLink[ii][number]][N-i-2]
                     else:  
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][i-1]
-                    # end if
+                        curIndex = \
+                            edgeIndex[self.edgeLink[ii][number]][i-1]
+                  
                 elif number in [2, 3, 6, 7]:
-                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][M-j-2]
+                    if self.edgeDir[ii][number] == -1: # Its a reverse dir
+                        curIndex = \
+                            edgeIndex[self.edgeLink[ii][number]][M-j-2]
                     else:  
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][j-1]
-                    # end if
+                        curIndex = \
+                            edgeIndex[self.edgeLink[ii][number]][j-1]
+                 
                 elif number in [8, 9, 10, 11]:
-                    if self.edge_dir[ii][number] == -1: # Its a reverse dir
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][L-k-2]
+                    if self.edgeDir[ii][number] == -1: # Its a reverse dir
+                        curIndex = \
+                            edgeIndex[self.edgeLink[ii][number]][L-k-2]
                     else:  
-                        cur_index = \
-                            edge_index[self.edge_link[ii][number]][k-1]
-                    # end if
-                # end if
-                l_index[ii][i, j, k] = cur_index
-                g_index[cur_index].append([ivol, i, j, k])
+                        curIndex = \
+                            edgeIndex[self.edgeLink[ii][number]][k-1]
+               
+                lIndex[ii][i, j, k] = curIndex
+                gIndex[curIndex].append([ivol, i, j, k])
                             
-            elif type == 3:                  # Node
-                cur_node = self.node_link[ii][number]
-                l_index[ii][i, j, k] = node_index[cur_node]
-                g_index[node_index[cur_node]].append([ivol, i, j, k])
-            # end if type
+            elif _type == 3:                  # Node
+                curNode = self.nodeLink[ii][number]
+                lIndex[ii][i, j, k] = nodeIndex[curNode]
+                gIndex[nodeIndex[curNode]].append([ivol, i, j, k])
+     
         # end for (volume loop)
         
         # Now actually fill everything up
-        for ii in xrange(len(volume_list)):
-            ivol = volume_list[ii]
+        for ii in range(len(volumeList)):
+            ivol = volumeList[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
             L = sizes[ii][2]
-            l_index.append(-1*np.ones((N, M, L), 'intc'))
+            lIndex.append(-1*np.ones((N, M, L), 'intc'))
 
             # DO the 6 planes
             for k in [0, L-1]:
-                for i in xrange(N):
-                    for j in xrange(M):
+                for i in range(N):
+                    for j in range(M):
                         addNode(i, j, k, N, M, L)
             for j in [0, M-1]:
-                for i in xrange(N):
-                    for k in xrange(1, L-1):
+                for i in range(N):
+                    for k in range(1, L-1):
                         addNode(i, j, k, N, M, L)
 
             for i in [0, N-1]:
-                for j in xrange(1, M-1):
-                    for k in xrange(1, L-1):
+                for j in range(1, M-1):
+                    for k in range(1, L-1):
                         addNode(i, j, k, N, M, L)
-            
-        # end for (ii)
-
+   
         # Add the remainder
-        for ii in xrange(len(volume_list)):
-            ivol = volume_list[ii]
+        for ii in range(len(volumeList)):
+            ivol = volumeList[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
             L = sizes[ii][2]
@@ -2528,545 +2288,265 @@ the list of volumes must be the same length'
             MM = sizes[ii][1]-2
             LL = sizes[ii][2]-2
 
-            to_add = NN*MM*LL
+            toAdd = NN*MM*LL
             
-            l_index[ii][1:N-1,1:M-1,1:L-1] = \
-                np.arange(counter,counter+to_add).reshape((NN,MM,LL))
+            lIndex[ii][1:N-1,1:M-1,1:L-1] = \
+                np.arange(counter,counter+toAdd).reshape((NN,MM,LL))
 
-            counter = counter + to_add
-            A = np.zeros((to_add,1,4),'intc')
+            counter = counter + toAdd
+            A = np.zeros((toAdd,1,4),'intc')
             A[:,0,0] = ivol
             A[:,0,1:] = np.mgrid[1:N-1,1:M-1,1:L-1].transpose(
-                (1,2,3,0)).reshape((to_add,3))
-            
-            g_index.extend(A)
-
-        # end for
+                (1,2,3,0)).reshape((toAdd,3))
+            gIndex.extend(A)
 
         # Set the following as atributes
-        self.nGlobal = len(g_index)
-        self.g_index = g_index
-        self.l_index = l_index
+        self.nGlobal = len(gIndex)
+        self.gIndex = gIndex
+        self.lIndex = lIndex
 
         if greedyReorder:
 
             # Reorder the indices with a greedy scheme
-            new_indices = np.zeros(len(g_index), 'intc')
-            new_indices[:] = -1
-            new_g_index = [[] for i in xrange(len(g_index))]
+            newIndices = np.zeros(len(gIndex), 'intc')
+            newIndices[:] = -1
+            newGIndex = [[] for i in range(len(gIndex))]
             counter = 0
 
-            # Re-order the l_index
-            for ii in xrange(len(volume_list)):
-                ivol = volume_list[ii]
+            # Re-order the lIndex
+            for ii in range(len(volumeList)):
+                ivol = volumeList[ii]
                 N = sizes[ii][0]
                 M = sizes[ii][1]
                 L = sizes[ii][2]
-                for i in xrange(N):
-                    for j in xrange(M):
-                        for k in xrange(L):
-                            if new_indices[l_index[ii][i, j, k]] == -1:
-                                new_indices[l_index[ii][i, j, k]] = counter
-                                l_index[ii][i, j, k] = counter 
+                for i in range(N):
+                    for j in range(M):
+                        for k in range(L):
+                            if newIndices[lIndex[ii][i, j, k]] == -1:
+                                newIndices[lIndex[ii][i, j, k]] = counter
+                                lIndex[ii][i, j, k] = counter 
                                 counter += 1
                             else:
-                                l_index[ii][i, j, k] = \
-                                    new_indices[l_index[ii][i, j, k]]
-                            # end if
-                        # end for
-                    # end for
-                # end for
-            # end for
-
-            # Re-order the g_index
-            for ii in xrange(len(g_index)):
-                ivol  = g_index[ii][0][0]
-                i     = g_index[ii][0][1]
-                j     = g_index[ii][0][2]
-                k     = g_index[ii][0][3]
-                pt = l_index[ivol][i, j, k]
-                new_g_index[pt] = g_index[ii]
-                # end for
-            # end for
+                                lIndex[ii][i, j, k] = \
+                                    newIndices[lIndex[ii][i, j, k]]
+                         
+            # Re-order the gIndex
+            for ii in range(len(gIndex)):
+                ivol  = gIndex[ii][0][0]
+                i     = gIndex[ii][0][1]
+                j     = gIndex[ii][0][2]
+                k     = gIndex[ii][0][3]
+                pt = lIndex[ivol][i, j, k]
+                newGIndex[pt] = gIndex[ii]
             
-            self.g_index = new_g_index
-            self.l_index = l_index
+            self.gIndex = newGIndex
+            self.lIndex = lIndex
         # end if (greedy reorder)
 
         return 
 
-    def calcGlobalNumbering2(self, sizes=None, g_index=True, volume_list=None, 
+    def calcGlobalNumbering2(self, sizes=None, gIndex=True, volumeList=None, 
                            greedyReorder=False):
-        '''Internal function to calculate the global/local numbering
-        for each volume'''
+        """Internal function to calculate the global/local numbering
+        for each volume"""
         if sizes != None:
-            for i in xrange(len(sizes)):
-                self.edges[self.edge_link[i][0]].N = sizes[i][0]
-                self.edges[self.edge_link[i][1]].N = sizes[i][0]
-                self.edges[self.edge_link[i][4]].N = sizes[i][0]
-                self.edges[self.edge_link[i][5]].N = sizes[i][0]
+            for i in range(len(sizes)):
+                self.edges[self.edgeLink[i][0]].N = sizes[i][0]
+                self.edges[self.edgeLink[i][1]].N = sizes[i][0]
+                self.edges[self.edgeLink[i][4]].N = sizes[i][0]
+                self.edges[self.edgeLink[i][5]].N = sizes[i][0]
 
-                self.edges[self.edge_link[i][2]].N = sizes[i][1]
-                self.edges[self.edge_link[i][3]].N = sizes[i][1]
-                self.edges[self.edge_link[i][6]].N = sizes[i][1]
-                self.edges[self.edge_link[i][7]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][2]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][3]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][6]].N = sizes[i][1]
+                self.edges[self.edgeLink[i][7]].N = sizes[i][1]
 
-                self.edges[self.edge_link[i][8]].N  = sizes[i][2]
-                self.edges[self.edge_link[i][9]].N  = sizes[i][2]
-                self.edges[self.edge_link[i][10]].N = sizes[i][2]
-                self.edges[self.edge_link[i][11]].N = sizes[i][2]
-            # end for
+                self.edges[self.edgeLink[i][8]].N  = sizes[i][2]
+                self.edges[self.edgeLink[i][9]].N  = sizes[i][2]
+                self.edges[self.edgeLink[i][10]].N = sizes[i][2]
+                self.edges[self.edgeLink[i][11]].N = sizes[i][2]
         else: # N is already set in the edge objects, use them
             sizes = np.zeros((self.nVol, 3), 'intc')
-            for ivol in xrange(self.nVol):
-                sizes[ivol][0] = self.edges[self.edge_link[ivol][0]].N
-                sizes[ivol][1] = self.edges[self.edge_link[ivol][2]].N
-                sizes[ivol][2] = self.edges[self.edge_link[ivol][8]].N
-            # end for
-        # end if
-
-        if volume_list == None:
-            volume_list = range(0, self.nVol)
-        # end if
+            for ivol in range(self.nVol):
+                sizes[ivol][0] = self.edges[self.edgeLink[ivol][0]].N
+                sizes[ivol][1] = self.edges[self.edgeLink[ivol][2]].N
+                sizes[ivol][2] = self.edges[self.edgeLink[ivol][8]].N
+       
+        if volumeList == None:
+            volumeList = np.arange(0, self.nVol)
         
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        l_index = []
+        lIndex = []
     
-        assert len(sizes) == len(volume_list), 'Error: The list of sizes and \
+        assert len(sizes) == len(volumeList), 'Error: The list of sizes and \
 the list of volumes must be the same length'
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
-        node_index = np.arange(self.nNode)
-        counter = len(node_index)
+        nodeIndex = np.arange(self.nNode)
+        counter = len(nodeIndex)
 
-        edge_index = [ np.empty((0), 'intc') for i in xrange(self.nEdge)]
-        face_index = [ np.empty((0, 0), 'intc') for i in xrange(self.nFace)]
+        edgeIndex = [ np.empty((0), 'intc') for i in range(self.nEdge)]
+        faceIndex = [ np.empty((0, 0), 'intc') for i in range(self.nFace)]
         # Assign unique numbers to the edges
 
-        for ii in xrange(len(volume_list)):
-            cur_size_e = [sizes[ii][0], sizes[ii][0], sizes[ii][1], 
+        for ii in range(len(volumeList)):
+            curSizeE = [sizes[ii][0], sizes[ii][0], sizes[ii][1], 
                           sizes[ii][1], sizes[ii][0], sizes[ii][0], 
                           sizes[ii][1], sizes[ii][1], sizes[ii][2], 
                           sizes[ii][2], sizes[ii][2], sizes[ii][2]]  
 
-            cur_size_f = [[sizes[ii][0], sizes[ii][1]], 
+            curSizeF = [[sizes[ii][0], sizes[ii][1]], 
                           [sizes[ii][0], sizes[ii][1]], 
                           [sizes[ii][1], sizes[ii][2]], 
                           [sizes[ii][1], sizes[ii][2]], 
                           [sizes[ii][0], sizes[ii][2]], 
                           [sizes[ii][0], sizes[ii][2]]]
 
-            ivol = volume_list[ii]
-            for iedge in xrange(12):
-                edge = self.edge_link[ii][iedge]
-                if edge_index[edge].shape == (0, ):# Not added yet
-                    edge_index[edge] = np.resize(
-                        edge_index[edge], cur_size_e[iedge]-2)
+            ivol = volumeList[ii]
+            for iedge in range(12):
+                edge = self.edgeLink[ii][iedge]
+                if edgeIndex[edge].shape == (0, ):# Not added yet
+                    edgeIndex[edge] = np.resize(
+                        edgeIndex[edge], curSizeE[iedge]-2)
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
-                        index = node_index[self.edges[edge].n1]
-                        for jj in xrange(cur_size_e[iedge]-2):
-                            edge_index[edge][jj] = index
-                        # end for
+                        index = nodeIndex[self.edges[edge].n1]
+                        for jj in range(curSizeE[iedge]-2):
+                            edgeIndex[edge][jj] = index
                     else:
-                        edge_index[edge][:] = np.arange(counter,counter+cur_size_e[iedge]-2)
-                        counter += cur_size_e[iedge]-2
-                    # end if
-                # end if
-            # end for
-            for iface in xrange(6):
-                face = self.face_link[ii][iface]
-                if face_index[face].shape == (0, 0):
-                    face_index[face] = np.resize(face_index[face], 
-                                               [cur_size_f[iface][0]-2, 
-                                                cur_size_f[iface][1]-2])
-                    N = cur_size_f[iface][0]-2
-                    M = cur_size_f[iface][1]-2
-                    face_index[face] = np.arange(counter,counter+N*M).reshape((N,M))
+                        edgeIndex[edge][:] = np.arange(counter,counter+curSizeE[iedge]-2)
+                        counter += curSizeE[iedge]-2
+                  
+            for iface in range(6):
+                face = self.faceLink[ii][iface]
+                if faceIndex[face].shape == (0, 0):
+                    faceIndex[face] = np.resize(faceIndex[face], 
+                                               [curSizeF[iface][0]-2, 
+                                                curSizeF[iface][1]-2])
+                    N = curSizeF[iface][0]-2
+                    M = curSizeF[iface][1]-2
+                    faceIndex[face] = np.arange(counter,counter+N*M).reshape((N,M))
                     counter += N*M
-                # end if
-            # end for
         # end for (volume list)
 
-        l_index = []
+        lIndex = []
 
         # Now actually fill everything up
-        for ii in xrange(len(volume_list)):
-            iVol = volume_list[ii]
+        for ii in range(len(volumeList)):
+            iVol = volumeList[ii]
             N = sizes[ii][0]
             M = sizes[ii][1]
             L = sizes[ii][2]
-            l_index.append(-1*np.ones((N, M, L), 'intc'))
+            lIndex.append(-1*np.ones((N, M, L), 'intc'))
 
             # 8 Corners
-            for iNode in xrange(8):
-                cur_node = self.node_link[iVol][iNode]
-                l_index[ii] = setNodeValue(l_index[ii], node_index[cur_node], iNode)
-            # end for
+            for iNode in range(8):
+                curNode = self.nodeLink[iVol][iNode]
+                lIndex[ii] = setNodeValue(lIndex[ii], nodeIndex[curNode], iNode)
 
             # 12 Edges
-            for iEdge in xrange(12):
-                cur_edge = self.edge_link[iVol][iEdge]
-                edge_dir = self.edge_dir[iVol][iEdge]
-                l_index[ii] = setEdgeValue(l_index[ii], edge_index[cur_edge], 
-                                       edge_dir, iEdge)
-            # end for
-
+            for iEdge in range(12):
+                curEdge = self.edgeLink[iVol][iEdge]
+                edgeDir = self.edgeDir[iVol][iEdge]
+                lIndex[ii] = setEdgeValue(lIndex[ii], edgeIndex[curEdge], 
+                                       edgeDir, iEdge)
             # 6 Faces 
-            for iFace in xrange(6):
-                cur_face = self.face_link[iVol][iFace]
-                face_dir = self.face_dir_rev[iVol][iFace]
-                l_index[ii] = setFaceValue(l_index[ii], face_index[cur_face],
-                                       face_dir, iFace)
-            # end for
-
+            for iFace in range(6):
+                curFace = self.faceLink[iVol][iFace]
+                faceDir = self.faceDirRev[iVol][iFace]
+                lIndex[ii] = setFaceValue(lIndex[ii], faceIndex[curFace],
+                                       faceDir, iFace)
             # Interior
-            to_add = (N-2)*(M-2)*(L-2)
+            toAdd = (N-2)*(M-2)*(L-2)
             
-            l_index[ii][1:N-1,1:M-1,1:L-1] = \
-                np.arange(counter,counter+to_add).reshape((N-2,M-2,L-2))
-            counter = counter + to_add
-
+            lIndex[ii][1:N-1,1:M-1,1:L-1] = \
+                np.arange(counter,counter+toAdd).reshape((N-2,M-2,L-2))
+            counter = counter + toAdd
         # end for
 
-        if g_index:
+        if gIndex:
             # We must add [] for each global node
-            g_index = [ [] for i in xrange(counter)]
+            gIndex = [ [] for i in range(counter)]
         
-            for ii in xrange(len(volume_list)):
-                iVol = volume_list[ii]
+            for ii in range(len(volumeList)):
+                iVol = volumeList[ii]
                 N = sizes[ii][0]
                 M = sizes[ii][1]
                 L = sizes[ii][2]
 
-                for i in xrange(N):
-                    for j in xrange(M):
-                        for k in xrange(L):
-                            g_index[l_index[ii][i,j,k]].append([iVol,i,j,k])
-                        # end for
-                    # end for
-                # end for
-            # end for 
+                for i in range(N):
+                    for j in range(M):
+                        for k in range(L):
+                            gIndex[lIndex[ii][i,j,k]].append([iVol,i,j,k])
         else:
-            g_index = None
-        # end if
-
+            gIndex = None
+     
         self.nGlobal = counter
-        self.g_index = g_index
-        self.l_index = l_index         
+        self.gIndex = gIndex
+        self.lIndex = lIndex         
 
         if greedyReorder:
 
             # Reorder the indices with a greedy scheme
-            new_indices = np.zeros(len(g_index), 'intc')
-            new_indices[:] = -1
-            new_g_index = [[] for i in xrange(len(g_index))]
+            newIndices = np.zeros(len(gIndex), 'intc')
+            newIndices[:] = -1
+            newGIndex = [[] for i in range(len(gIndex))]
             counter = 0
 
-            # Re-order the l_index
-            for ii in xrange(len(volume_list)):
-                ivol = volume_list[ii]
+            # Re-order the lIndex
+            for ii in range(len(volumeList)):
+                ivol = volumeList[ii]
                 N = sizes[ii][0]
                 M = sizes[ii][1]
                 L = sizes[ii][2]
-                for i in xrange(N):
-                    for j in xrange(M):
-                        for k in xrange(L):
-                            if new_indices[l_index[ii][i, j, k]] == -1:
-                                new_indices[l_index[ii][i, j, k]] = counter
-                                l_index[ii][i, j, k] = counter 
+                for i in range(N):
+                    for j in range(M):
+                        for k in range(L):
+                            if newIndices[lIndex[ii][i, j, k]] == -1:
+                                newIndices[lIndex[ii][i, j, k]] = counter
+                                lIndex[ii][i, j, k] = counter 
                                 counter += 1
                             else:
-                                l_index[ii][i, j, k] = \
-                                    new_indices[l_index[ii][i, j, k]]
-                            # end if
-                        # end for
-                    # end for
-                # end for
-            # end for
-
-            # Re-order the g_index
-            for ii in xrange(len(g_index)):
-                ivol  = g_index[ii][0][0]
-                i     = g_index[ii][0][1]
-                j     = g_index[ii][0][2]
-                k     = g_index[ii][0][3]
-                pt = l_index[ivol][i, j, k]
-                new_g_index[pt] = g_index[ii]
-                # end for
-            # end for
-            
-            self.g_index = new_g_index
-            self.l_index = l_index
+                                lIndex[ii][i, j, k] = \
+                                    newIndices[lIndex[ii][i, j, k]]
+                     
+            # Re-order the gIndex
+            for ii in range(len(gIndex)):
+                ivol  = gIndex[ii][0][0]
+                i     = gIndex[ii][0][1]
+                j     = gIndex[ii][0][2]
+                k     = gIndex[ii][0][3]
+                pt = lIndex[ivol][i, j, k]
+                newGIndex[pt] = gIndex[ii]
+             
+            self.gIndex = newGIndex
+            self.lIndex = lIndex
         # end if (greedy reorder)
 
         return 
 
-    def calcHaloIndices(self, sizes, volume_list=None):
-        '''This function is used to compute the indices of halo nodes
-        for the 3D topology class'''
-
-        if self.l_index is None:
-            print 'Erorr: Numbering must first be computed with calcGlobalNumbering'
-            sys.exit(1)
-        # end if
-
-        if volume_list == None:
-            volume_list = range(0, self.nVol)
-        # end if 
-
-        # We assume our l_index data has been correctly setup. We will
-        # now craete l_index_halo with the extra space for nodes:
-
-        l_index_halo = []
-
-        for ii in xrange(len(volume_list)):
-            N = sizes[ii][0]
-            M = sizes[ii][1]
-            L = sizes[ii][2]
-            l_index_halo.append(-1*np.ones((N+2, M+2, L+2), 'intc'))
-            l_index_halo[ii][1:-1,1:-1,1:-1] = self.l_index[ii]
-        # end for
-
-        # Generate a face->Volume mapping. There can be at most 2
-        # Faces connected to each other:
-        face_mapping = -1*np.ones((self.nFace,2,2),'intc')
-        for iVol in xrange(self.nVol):
-            for iFace in xrange(6):
-                uFace = self.face_link[iVol][iFace]
-
-                # Try setting in first:
-                if face_mapping[uFace,0,0] == -1:
-                    face_mapping[uFace,0] = [iVol,iFace]
-                elif face_mapping[uFace,1,0] == -1:
-                    face_mapping[uFace,1] = [iVol,iFace]
-                else:
-                    print 'Error: More than 2 faces connected together!'
-                    sys.exit(10)
-                # end if
-            # end for
-        # end for
-
-        # First do the direct node halos: These are the plane of nodes
-        # one level deep from the face connection:
-
-        for ii in xrange(len(volume_list)):
-            iVol = volume_list[ii]
-         
-            # 6 Faces 
-            for iFace in xrange(6):
-                uFace = self.face_link[iVol][iFace]
-                face_dir = self.face_dir[iVol][iFace]
-                values = None
-                # Get the block and face its (possibly) connected to:
-                for jj in xrange(2):
-                    if face_mapping[uFace,jj,0] <> -1 and \
-                            face_mapping[uFace,jj,0] <> iVol:
-                      
-                        oVol = face_mapping[uFace,jj,0]
-                        oFace = face_mapping[uFace,jj,1]
-                        values = getFaceValue(self.l_index[oVol], oFace, 1)
-
-                        values = orientArray(
-                            self.face_dir[oVol][oFace],values.copy())
-                    # end if
-                # end for
-              
-                if values is not None:
-                    l_index_halo[ii] = setFaceValue2(l_index_halo[ii], 
-                                                    values, face_dir, iFace)
-
-            # end for
-                    
-        return l_index_halo
-
-
-    def calcUnstructNodes(self):
-        '''This function is used to determine nodes on edges of blocks
-        that are effectively UNSTRUCTURED. That is, they do have
-        precisely 6 neighbours, 2 in each of the i, j, and k
-        directions. This occurs on block boundaries and when there are
-        not exactly 4 faces around an edge or exactly 8 blocks around
-        a corner
-
-
-        The result of this function is a list of all unstructured
-        nodes and their (variable) number of neighbours (defined by
-        their global index value). This data can be used in a variety
-        of way depending on the application. For example, unstrctured
-        nodes may be taken as the average of their neighbours for
-        smoothing applications'''
-
-        # First get a list of all possible unstructured nodes:
-        possible_unstruct_nodes = []
-        for iVol in xrange(self.nVol):
-            # i edges: (full)
-            for i in xrange(self.l_index[iVol].shape[0]):
-                possible_unstruct_nodes.append(self.l_index[iVol][i,  0,  0])
-                possible_unstruct_nodes.append(self.l_index[iVol][i, -1,  0])
-                possible_unstruct_nodes.append(self.l_index[iVol][i,  0, -1])
-                possible_unstruct_nodes.append(self.l_index[iVol][i, -1, -1])
-            # end for
-
-            # j edges: (just internal ones)
-            for j in xrange(1,self.l_index[iVol].shape[1]-1):
-                possible_unstruct_nodes.append(self.l_index[iVol][0 , j,  0])
-                possible_unstruct_nodes.append(self.l_index[iVol][-1, j,  0])
-                possible_unstruct_nodes.append(self.l_index[iVol][ 0, j, -1])
-                possible_unstruct_nodes.append(self.l_index[iVol][-1, j, -1])
-            # end for
-
-            # j edges: (just internal ones)
-            for k in xrange(1,self.l_index[iVol].shape[2]-1):
-                possible_unstruct_nodes.append(self.l_index[iVol][0 , 0, k])
-                possible_unstruct_nodes.append(self.l_index[iVol][-1, 0, k])
-                possible_unstruct_nodes.append(self.l_index[iVol][ 0,-1, k])
-                possible_unstruct_nodes.append(self.l_index[iVol][-1,-1, k])
-            # end for
-        # end for
-
-        # Now get a unique set of these nodes:
-        print 'befoer:',len(possible_unstruct_nodes)
-        possible_unstruct_nodes = unique(possible_unstruct_nodes)
-        print 'after:',len(possible_unstruct_nodes)
-     
-        # We basically have the set of global indices along each of
-        # the edges
-
-        # For each possible unstruct node add empty []
-        neighbours = {}
-        for i in xrange(len(possible_unstruct_nodes)):
-            neighbours[possible_unstruct_nodes[i]] = []
-        print 'neighbours:'
-
-
-        # Now loop back over corners and edges (separately this time)
-        # and add the index of each of the neighbours. For edges there
-        # are exactly 4 neighbours per node per block, while for
-        # corners there are 3. 
-
-        for iVol in xrange(self.nVol):
-
-            block_shp = self.l_index[iVol].shape
-
-            # Corners:
-            for i in xrange(0,block_shp[0],block_shp[0]-1):
-                for j in xrange(0,block_shp[1],block_shp[1]-1):
-                    for k in xrange(0,block_shp[2],block_shp[2]-1):
-                        node_id = self.l_index[iVol][i,j,k]
-                        idelta = -1; jdelta = -1; kdelta = -1
-                        if i==0:
-                            idelta = 1
-                        if j==0:
-                            jdelta = 1
-                        if k == 0:
-                            kdelta = 1
-
-                        neighbours[node_id].append(self.l_index[iVol][i+idelta,j,k])
-                        neighbours[node_id].append(self.l_index[iVol][i,j+jdelta,k])
-                        neighbours[node_id].append(self.l_index[iVol][i,j,k+kdelta])
-                    # end for
-                # end for
-            # end for
-
-
-            # i edges: (internal)
-            for i in xrange(1,block_shp[0]-1):
-                for j in xrange(0,block_shp[1],block_shp[1]-1):
-                    for k in xrange(0,block_shp[2],block_shp[2]-1):
-                        node_id = self.l_index[iVol][i,j,k]
-                        jdelta = -1; kdelta = -1
-                        if j==0:
-                            jdelta = 1
-                        if k == 0:
-                            kdelta = 1
-
-                        neighbours[node_id].append(self.l_index[iVol][i+1,j,k])
-                        neighbours[node_id].append(self.l_index[iVol][i-1,j,k])
-                        neighbours[node_id].append(self.l_index[iVol][i  ,j+jdelta,k])
-                        neighbours[node_id].append(self.l_index[iVol][i  ,j,k+kdelta])
-
-            # j edges: (internal)
-            for j in xrange(1,block_shp[1]-1):
-                for i in xrange(0,block_shp[0],block_shp[0]-1):
-                    for k in xrange(0,block_shp[2],block_shp[2]-1):
-                        node_id = self.l_index[iVol][i,j,k]
-                        idelta = -1; kdelta = -1;
-                        if i==0:
-                            idelta = 1
-                        if k == 0:
-                            kdelta = 1
-
-                        neighbours[node_id].append(self.l_index[iVol][i,j+1,k])
-                        neighbours[node_id].append(self.l_index[iVol][i,j-1,k])
-                        neighbours[node_id].append(self.l_index[iVol][i+idelta,j,k])
-                        neighbours[node_id].append(self.l_index[iVol][i,j,k+kdelta])
-
-            # k edges: (internal)
-            for k in xrange(1,block_shp[2]-1):
-                for i in xrange(0,block_shp[0],block_shp[0]-1):
-                    for j in xrange(0,block_shp[1],block_shp[1]-1):
-                        node_id = self.l_index[iVol][i,j,k]
-                        idelta = -1; jdelta = -1
-                        if i==0:
-                            idelta = 1
-                        if j == 0:
-                            jdelta = 1
-
-                        neighbours[node_id].append(self.l_index[iVol][i,j,k+1])
-                        neighbours[node_id].append(self.l_index[iVol][i,j,k-1])
-                        neighbours[node_id].append(self.l_index[iVol][i+idelta,j,k])
-                        neighbours[node_id].append(self.l_index[iVol][i,j+jdelta,k])
-
-
-        # end for (vol loop)
-
-        # Now for each possible unstruct node, determine the number of
-        # unique neighbours
-        for i in neighbours.keys():
-            neighbours[i] = unique(neighbours[i])
-
-        # Now we can do one final pass where we check the number of
-        # unique neighbours if it is not exactly 6 it is unstructured
-        new_neighbours = []
-        for i in neighbours.keys():
-            if len(neighbours[i]) <> 6:
-                new_neighbours.append([i,neighbours[i]])
-            # end if
-        # end for
-        print '------------'
-        print len(new_neighbours)
-        print new_neighbours
-
-        return 
-
-
     def reOrder(self, reOrderList):
-        '''This function takes as input a permutation list which is
-        used to reorder the entities in the topology object'''
+        """This function takes as input a permutation list which is
+        used to reorder the entities in the topology object"""
         
         # Class atributates that possible need to be modified
-        for i in xrange(8):
-            self.node_link[:, i] = self.node_link[:, i].take(reOrderList)
-        # end for
+        for i in range(8):
+            self.nodeLink[:, i] = self.nodeLink[:, i].take(reOrderList)
 
-        for i in xrange(12):
-            self.edge_link[:, i] = self.edge_link[:, i].take(reOrderList)
-            self.edge_dir[:, i] = self.edge_dir[:, i].take(reOrderList)
+        for i in range(12):
+            self.edgeLink[:, i] = self.edgeLink[:, i].take(reOrderList)
+            self.edgeDir[:, i] = self.edgeDir[:, i].take(reOrderList)
 
-        # end for
-
-        for i in xrange(6):
-            self.face_link[:, i] = self.face_link[:, i].take(reOrderList)
-            self.face_dir[:, i] = self.face_dir[:, i].take(reOrderList)
-        # end for
+        for i in range(6):
+            self.faceLink[:, i] = self.faceLink[:, i].take(reOrderList)
+            self.faceDir[:, i] = self.faceDir[:, i].take(reOrderList)
         
         return
 
-class edge(object):
-    '''A class for edge objects'''
+class Edge(object):
+    """A class for edge objects"""
 
     def __init__(self, n1, n2, cont, degen, intersect, dg, N):
         self.n1        = n1        # Integer for node 1
@@ -3079,26 +2559,26 @@ class edge(object):
         self.dg        = dg        # Design Group index
         self.N         = N         # Number of control points for this edge
         
-    def write_info(self, i, handle):
+    def writeInfo(self, i, handle):
         handle.write('  %5d        | %5d | %5d | %5d | %5d | %5d |\
   %5d |  %5d |\n'\
                      %(i, self.n1, self.n2, self.cont, self.degen, 
                        self.intersect, self.dg, self.N))
 
 
-class edge_cmp_object(object):
-    '''A temporary class for sorting edge objects'''
+class EdgeCmpObject(object):
+    """A temporary class for sorting edge objects"""
 
-    def __init__(self, n1, n2, n1o, n2o, mid_pt, tol):
+    def __init__(self, n1, n2, n1o, n2o, midPt, tol):
         self.n1 = n1
         self.n2 = n2
         self.nodes = [n1o, n2o]
-        self.mid_pt = mid_pt
+        self.midPt = midPt
         self.tol = tol
 
     def __repr__(self):
-        return 'Node1: %d Node2: %d Mid_pt: %f %f %f'% (
-            self.n1, self.n2, self.mid_pt[0], self.mid_pt[1], self.mid_pt[2])
+        return 'Node1: %d Node2: %d MidPt: %f %f %f'% (
+            self.n1, self.n2, self.midPt[0], self.midPt[1], self.midPt[2])
 
     def __cmp__(self, other):
         # This function should return :
@@ -3107,84 +2587,44 @@ class edge_cmp_object(object):
         #  1 if self > other
 
         # Basically we want to make three comparisons: n1, n2 and the
-        # mid_pt Its (substantially) faster if we break before all 3
+        # midPt Its (substantially) faster if we break before all 3
         # comparisons are done
         
-        n1_cmp = cmp(self.n1, other.n1)
-        if n1_cmp: # n1_cmp is non-zero so return with the result
-            return n1_cmp
+        n1Cmp = cmp(self.n1, other.n1)
+        if n1Cmp: # n1Cmp is non-zero so return with the result
+            return n1Cmp
 
-        n2_cmp = cmp(self.n2, other.n2)
+        n2Cmp = cmp(self.n2, other.n2)
 
-        if n2_cmp: # n2_cmp is non-zero so return 
-            return n2_cmp
+        if n2Cmp: # n2Cmp is non-zero so return 
+            return n2Cmp
 
-        x_cmp = cmp(self.mid_pt[0], other .mid_pt[0])
-        y_cmp = cmp(self.mid_pt[1], other .mid_pt[1])
-        z_cmp = cmp(self.mid_pt[2], other .mid_pt[2])
+        xCmp = cmp(self.midPt[0], other .midPt[0])
+        yCmp = cmp(self.midPt[1], other .midPt[1])
+        zCmp = cmp(self.midPt[2], other .midPt[2])
         
-        if e_dist(self.mid_pt, other.mid_pt) < self.tol:
-            mid_cmp = 0
+        if eDist(self.midPt, other.midPt) < self.tol:
+            midCmp = 0
         else:
-            mid_cmp = x_cmp or y_cmp or z_cmp
-        # end if
+            midCmp = xCmp or yCmp or zCmp
+  
+        return midCmp
 
-        return mid_cmp
+class FaceCmpObject(object):
+    """A temporary class for sorting edge objects"""
 
-# EXPLICT FORMULATION
-#         if self.n1 < other.n1:
-#             return -1
-#         elif self.n1 > other.n1:
-#             return 1
-#         else: # self.n1 and other .n1 are the same
-#             if self.n2 < other.n2:
-#                 return -1
-#             elif self.n2 > other.n2:
-#                 return 1
-#             else: # n1 and n2 are equal:
-                
-#                 # Next we will sort by x, y and then z coordiante
-                
-#                 if e_dist(self.mid_pt, other.mid_pt) < self.tol:
-#                     return 0 # Object are the same
-#                 else:
-                    
-#                     if self.mid_pt[0] < other.mid_pt[0]:
-#                         return -1
-#                     elif self.mid_pt[0] > other.mid_pt[0]:
-#                         return 1
-#                     else:
-#                         if self.mid_pt[1] < other.mid_pt[1]:
-#                             return -1
-#                         elif self.mid_pt[1] > other.mid_pt[1]:
-#                             return 1
-#                         else:
-#                             if self.mid_pt[2] < other.mid_pt[2]:
-#                                 return -1
-#                             elif self.mid_pt[2] > other.mid_pt[2]:
-#                                 return 1
-#                             # end if
-#                         # end if
-#                     # end if
-#                 # end if
-#             # end if
-#         # end if
-
-class face_cmp_object(object):
-    '''A temporary class for sorting edge objects'''
-
-    def __init__(self, n1, n2, n3, n4, n1o, n2o, n3o, n4o, mid_pt, tol):
+    def __init__(self, n1, n2, n3, n4, n1o, n2o, n3o, n4o, midPt, tol):
         self.n1 = n1
         self.n2 = n2
         self.n3 = n3
         self.n4 = n4
         self.nodes = [n1o, n2o, n3o, n4o]
-        self.mid_pt = mid_pt
+        self.midPt = midPt
         self.tol = tol
 
     def __repr__(self):
-        return 'Node1: %d Node2: %d Mid_pt: %f %f %f'% (
-            self.n1, self.n2, self.mid_pt[0], self.mid_pt[1], self.mid_pt[2])
+        return 'Node1: %d Node2: %d MidPt: %f %f %f'% (
+            self.n1, self.n2, self.midPt[0], self.midPt[1], self.midPt[2])
 
     def __cmp__(self, other):
         # This function should return :
@@ -3193,97 +2633,88 @@ class face_cmp_object(object):
         #  1 if self > other
 
         # Basically we want to make three comparisons: n1, n2, n3, n4 and the
-        # mid_pt Its (substantially) faster if we break before all 
+        # midPt Its (substantially) faster if we break before all 
         # comparisons are done
         
-        n1_cmp = cmp(self.n1, other.n1)
-        if n1_cmp: # n1_cmp is non-zero so return with the result
-            return n1_cmp
+        n1Cmp = cmp(self.n1, other.n1)
+        if n1Cmp: # n1Cmp is non-zero so return with the result
+            return n1Cmp
 
-        n2_cmp = cmp(self.n2, other.n2)
+        n2Cmp = cmp(self.n2, other.n2)
 
-        if n2_cmp: # n2_cmp is non-zero so return 
-            return n2_cmp
+        if n2Cmp: # n2Cmp is non-zero so return 
+            return n2Cmp
 
-        n3_cmp = cmp(self.n3, other.n3)
-        if n3_cmp: # n3_cmp is non-zero so return
-            return n3_cmp
+        n3Cmp = cmp(self.n3, other.n3)
+        if n3Cmp: # n3Cmp is non-zero so return
+            return n3Cmp
 
-        n4_cmp = cmp(self.n4, other.n4)
-        if n4_cmp: # n4_cmp is non-zero so return
-            return n4_cmp
+        n4Cmp = cmp(self.n4, other.n4)
+        if n4Cmp: # n4Cmp is non-zero so return
+            return n4Cmp
 
         # Finally do mid-pt calc
-        x_cmp = cmp(self.mid_pt[0], other .mid_pt[0])
-        y_cmp = cmp(self.mid_pt[1], other .mid_pt[1])
-        z_cmp = cmp(self.mid_pt[2], other .mid_pt[2])
+        xCmp = cmp(self.midPt[0], other .midPt[0])
+        yCmp = cmp(self.midPt[1], other .midPt[1])
+        zCmp = cmp(self.midPt[2], other .midPt[2])
         
-        if e_dist(self.mid_pt, other.mid_pt) < self.tol:
-            mid_cmp = 0
+        if eDist(self.midPt, other.midPt) < self.tol:
+            midCmp = 0
         else:
-            mid_cmp = x_cmp or y_cmp or z_cmp
-        # end if
+            midCmp = xCmp or yCmp or zCmp
 
-        return mid_cmp
-
-
+        return midCmp
 
 # --------------------------------------------------------------
 #                Array Rotation and Flipping Functions
 # --------------------------------------------------------------
 
-def rotateCCW(input):
-    '''Rotate the input array 90 degrees CCW'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = np.empty([cols, rows], input.dtype)
+def rotateCCW(inArray):
+    """Rotate the inArray array 90 degrees CCW"""
+    rows = inArray.shape[0]
+    cols = inArray.shape[1]
+    output = np.empty([cols, rows], inArray.dtype)
  
-    for row in xrange(rows):
-        for col in xrange(cols):
-            output[cols-col-1][row] = input[row][col]
-        # end for
-    # end for
-
+    for row in range(rows):
+        for col in range(cols):
+            output[cols-col-1][row] = inArray[row][col]
+  
     return output
 
-def rotateCW(input):
-    '''Rotate the input array 90 degrees CW'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = np.empty([cols, rows], input.dtype)
+def rotateCW(inArray):
+    """Rotate the inArray array 90 degrees CW"""
+    rows = inArray.shape[0]
+    cols = inArray.shape[1]
+    output = np.empty([cols, rows], inArray.dtype)
  
-    for row in xrange(rows):
-        for col in xrange(cols):
-            output[col][rows-row-1] = input[row][col]
-        # end for
-    # end for
-
+    for row in range(rows):
+        for col in range(cols):
+            output[col][rows-row-1] = inArray[row][col]
+  
     return output
 
-def reverseRows(input):
-    '''Flip Rows (horizontally)'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = np.empty([rows, cols], input.dtype)
-    for row in xrange(rows):
-        output[row] = input[row][::-1].copy()
-    # end for
-
+def reverseRows(inArray):
+    """Flip Rows (horizontally)"""
+    rows = inArray.shape[0]
+    cols = inArray.shape[1]
+    output = np.empty([rows, cols], inArray.dtype)
+    for row in range(rows):
+        output[row] = inArray[row][::-1].copy()
+ 
     return output
 
-def reverseCols(input):
-    '''Flip Cols (vertically)'''
-    rows = input.shape[0]
-    cols = input.shape[1]
-    output = np.empty([rows, cols], input.dtype)
-    for col in xrange(cols):
-        output[:, col] = input[:, col][::-1].copy()
-    # end for
-
+def reverseCols(inArray):
+    """Flip Cols (vertically)"""
+    rows = inArray.shape[0]
+    cols = inArray.shape[1]
+    output = np.empty([rows, cols], inArray.dtype)
+    for col in range(cols):
+        output[:, col] = inArray[:, col][::-1].copy()
+ 
     return output
 
 def getBiLinearMap(edge0, edge1, edge2, edge3):
-    '''Get the UV coordinates on a square defined from spacing on the edges'''
+    """Get the UV coordinates on a square defined from spacing on the edges"""
 
     assert len(edge0)==len(edge1), 'Error, getBiLinearMap:\
  The len of edge0 and edge1 are not the same'
@@ -3307,28 +2738,24 @@ def getBiLinearMap(edge0, edge1, edge2, edge3):
     UV[-1, :, 0] = 1.0
     UV[-1, :, 1] = edge3
    
-    for i in xrange(1, N-1):
+    for i in range(1, N-1):
         x1 = edge0[i]
         y1 = 0.0
 
         x2 = edge1[i]
         y2 = 1.0
 
-        for j in xrange(1, M-1):
+        for j in range(1, M-1):
             x3 = 0
             y3 = edge2[j]
-
             x4 = 1.0
             y4 = edge3[j]
+            UV[i, j] = calcIntersection(x1, y1, x2, y2, x3, y3, x4, y4)
 
-            UV[i, j] = calc_intersection(x1, y1, x2, y2, x3, y3, x4, y4)
-            
-        # end for
-    # end for
   
     return UV
 
-def calc_intersection(x1, y1, x2, y2, x3, y3, x4, y4):
+def calcIntersection(x1, y1, x2, y2, x3, y3, x4, y4):
     # Calc the intersection between two line segments defined by
     # (x1,y1) to (x2,y2) and (x3,y3) to (x4,y4)
 
@@ -3339,185 +2766,26 @@ def calc_intersection(x1, y1, x2, y2, x3, y3, x4, y4):
 
     return xi, yi
 
-def checkInput(input, input_name, data_type, data_rank, data_shape=None):
-    '''This is a generic function to check the data type and sizes of
-    inputs in functions where the user must supply proper
-    values. Since Python does not do type checking on Inputs, this is
-    required
-
-    input: The input argument
-
-    input_name: A stringo with the arguments name to be used in an 
-                output error message
-
-    data_type: The requested numpy data type. Up-casting will be done
-               automatically, warnings will be issued if downcasting or 
-               doing a float to int conversion etc. A value of None 
-               indicates the data_type is not be checked.
-
-    rank     : The desired rank of the array. It is 0 for scalars, 1 for 
-               vectors, 2 for matrices etc. 
-
-    data_shape: The required shape of the data. A value of 0 indicates
-                a scalar. 1D arrays are specified with a value =>
-                1. Higher dimensional arrays sizes are specified with
-                a list such as [dim0,dim1,...,dimN]. A value of None
-                indicates the data shape is not to be checked
-          
-    Output : Returns the input value iff it conforms to the specified 
-             data_type and data_shape. Execption is raised otherwise. 
-             
-''' 
-
-    # Checking the depth is the first and easiest thing to do.
-    rank = checkRank(input)
-    if not(rank == data_rank):
-        if data_rank == 0:
-            mpiPrint('Error: \'%s\' must be a scalar, rank=0.\
- Input of rank %d was given.'%(input_name, rank))
-            sys.exit(0)
-        elif data_rank == 1:
-            mpiPrint('Error: \'%s\' must be a vector, rank=1.\
- Input of rank %d was given.'%(input_name, rank))
-            sys.exit(0)
-        elif data_rank == 2:
-            mpiPrint('Error: \'%s\' must be a matrix,  rank=2.\
- Input of rank %d was given.'%(input_name, rank))
-            sys.exit(0)
-        else:
-            mpiPrint('Error: \'%s\' must be of rank %d.\
- Input of rank %d was given.'%(input_name, data_rank, rank))
-            sys.exit(0)
-        # end if
-    # end if
-
-    # Now we know the rank is what we expect it to be
-
-    if rank == 0: #Scalar Case
-        if data_type == None: # No need to check type and data_shape
-                              # is irrelevant
-            return input
-        # end if
-
-        input_type = type(input)
-
-        if data_type == complex: # We can upcast-ANYthing to complex
-            input = complex(input)
-        elif data_type == float:
-            if isinstance(input, complex):
-                mpiPrint('Error: \'%s\' must be a given a \'float\' value,\
- not a \'%s\' value'%(input_name, input_type.__name__))
-                sys.exit(0)
-            else:
-                input = float(input)
-            # end if
-        elif data_type == int:
-            if isinstance(input, (complex, float)):
-                mpiPrint('Error: \'%s\' must be a given a \'int\' value,\
- not a \'%s\' value'%(input_name, input_type.__name__))
-                sys.exit(0)
-            else:
-                input = int(input)
-            # end if
-        elif data_type == bool:
-            if isinstance(input, (complex, float, int)):
-                mpiPrint('Error: \'%s\' must be a given a \'bool\' value,\
- not a \'%s\' value'%(input_name, input_type.__name__))
-                sys.exit(0)
-            else:
-                input = bool(input)
-            # end if
-        # end if
-
-        return input
-    else: # We have array-like objects
-        try:
-            input = np.array(input)
-        except:
-            mpiPrint('Error: Rank>1 object must be cast-able to\
- numpy array for checkInput to work')
-        # end try
-
-        if not(data_type == None): # Now check the data type
-            if rank == 1: 
-                test_val = input[0]
-            if rank == 2: 
-                test_val = input[0][0]
-            if rank == 3: 
-                test_val = input[0][0][0]
-            if rank == 4: 
-                test_val = input[0][0][0][0]
-            if rank == 5: 
-                test_val = input[0][0][0][0][0]
-
-            input_type = type(test_val)
-
-            if data_type == complex: # We can upcast-ANYthing to complex
-                input = input.astype('D')
-            elif data_type == float:
-                if isinstance(test_val, complex):
-                    mpiPrint('Error: \'%s\' must be of type \'float\',\
- not type \'%s\'.'%(input_name, input_type.__name__))
-                    sys.exit(0)
-                else:
-                    input = input.astype('d')
-                # end if
-            elif data_type == int:
-                if isinstance(test_val, (complex, float)):
-                    mpiPrint('Error: \'%s\' must be of type \'int\',\
- not type \'%s\'.'%(input_name, input_type.__name__))
-                    sys.exit(0)
-                else:
-                    input = input.astype('intc')
-                # end if
-            elif data_type == bool:
-                if isinstance(test_val, (complex, float, int)):
-                    mpiPrint('Error: \'%s\' must be of type \'bool\',\
- not type \'%s\'.'%(input_name, input_type.__name__))
-                    sys.exit(0)
-                else:
-                    input = input.astype('bool')
-                # end if
-            # end if
-        # end if
-
-        if not(data_shape) == None:
-            # Check the size of each rank
-            if isinstance(data_shape, int): # Make sure data_shape is iterable
-                data_shape = np.array([data_shape])
-            # end if
-
-            array_shape = input.shape
-            for irank in xrange(rank):
-                if not(array_shape[irank] == data_shape[irank]):
-                    mpiPrint('Error: \'%s\' must have a length of %d\
- in rank %d, not %d.'% (input_name, data_shape[irank], irank, 
-                        array_shape[irank]))
-                    sys.exit(0)
-                # end if
-            # end for
-        # end if
-
-        return input # If we made it to the end, just return input
-    # end if
-
-def fill_knots(t, k, level):
+def fillKnots(t, k, level):
     t = t[k-1:-k+1] # Strip out the np.zeros
-    new_t = np.zeros(len(t) + (len(t)-1)*level)
+    newT = np.zeros(len(t) + (len(t)-1)*level)
     start = 0 
-    for i in xrange(len(t)-1):
-        new_t[start:start+level+2] = np.linspace(t[i], t[i+1], level+2)
-        start += level + 1
-    # end for
-    return new_t
+    for i in range(len(t)-1):
+        tmp = np.linspace(t[i], t[i+1], level+2)
+        for j in range(level+2):
+            newT[start + j] = tmp[j]
 
-def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
-    '''
+        start += level + 1
+ 
+    return newT
+
+def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
+    """
     Project a point pt onto a triagnulated surface and return the patchID
     and the u,v coordinates in that patch.
 
     pt: The initial point
-    up_vec: The vector pointing in the search direction
+    upVec: The vector pointing in the search direction
     p0: A numpy array of triangle origins
     v1: A numpy array of the first triangle vectors
     v2: A numpy array of the second triangle vectors
@@ -3525,202 +2793,187 @@ def projectNodePID(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
     vv: An array containing v coordinates
     pid: An array containing pid values
 
-    ''' 
+    """ 
 
     # Get the bounds of the geo object so we know what to scale by
-    import pySpline
+
     fail = 0
     if p0.shape[0] == 0:
         fail = 2
         return None, None, fail
 
-    tmp_sol,tmp_pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
-    tmp_sol = tmp_sol.T
-    tmp_pid -= 1
+    tmpSol,tmpPid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    tmpSol = tmpSol.T
+    tmpPid -= 1
+
     # Check to see if any of the solutions happen be identical. 
-  
     points = []
-    for i in xrange(n_sol):
-        points.append(tmp_sol[i, 3:6])
-    # end for
-    if n_sol > 1:
-        tmp, link = pointReduce(points, node_tol=1e-12)
-        n_unique = np.max(link) + 1
-        points = np.zeros((n_unique,3))
-        uu = np.zeros(n_unique)
-        vv = np.zeros(n_unique)
-        ss = np.zeros(n_unique)
-        pid = np.zeros(n_unique,'intc')
+    for i in range(nSol):
+        points.append(tmpSol[i, 3:6])
+   
+    if nSol > 1:
+        tmp, link = pointReduce(points, nodeTol=1e-12)
+        nUnique = np.max(link) + 1
+        points = np.zeros((nUnique,3))
+        uu = np.zeros(nUnique)
+        vv = np.zeros(nUnique)
+        ss = np.zeros(nUnique)
+        pid = np.zeros(nUnique,'intc')
 
-        for i in xrange(n_sol):
-            points[link[i]] = tmp_sol[i, 3:6]
-            uu[link[i]] = tmp_sol[i, 1]
-            vv[link[i]] = tmp_sol[i, 2]
-            ss[link[i]] = tmp_sol[i, 0]
-            pid[link[i]] = tmp_pid[i]
-        # end for
-        n_sol = len(points)
+        for i in range(nSol):
+            points[link[i]] = tmpSol[i, 3:6]
+            uu[link[i]] = tmpSol[i, 1]
+            vv[link[i]] = tmpSol[i, 2]
+            ss[link[i]] = tmpSol[i, 0]
+            pid[link[i]] = tmpPid[i]
+      
+        nSol = len(points)
     else:
-        n_unique = 1
-        points = np.zeros((n_unique,3))
-        uu = np.zeros(n_unique)
-        vv = np.zeros(n_unique)
-        ss = np.zeros(n_unique)
-        pid = np.zeros(n_unique,'intc')
+        nUnique = 1
+        points = np.zeros((nUnique,3))
+        uu = np.zeros(nUnique)
+        vv = np.zeros(nUnique)
+        ss = np.zeros(nUnique)
+        pid = np.zeros(nUnique,'intc')
 
-        points[0] = tmp_sol[0, 3:6]
-        uu[0] = tmp_sol[0, 1]
-        vv[0] = tmp_sol[0, 2]
-        ss[0] = tmp_sol[0, 0]
-        pid[0] = tmp_pid[0]
-    # end if
-
-
-    if n_sol == 0:
+        points[0] = tmpSol[0, 3:6]
+        uu[0] = tmpSol[0, 1]
+        vv[0] = tmpSol[0, 2]
+        ss[0] = tmpSol[0, 0]
+        pid[0] = tmpPid[0]
+  
+    if nSol == 0:
         fail = 2
         return None, None, fail
-    elif n_sol == 1:
+    elif nSol == 1:
         fail = 1
 
         first  = points[0]
-        first_patchID = PID[pid[0]]
-        first_u = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
-        first_v = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
-        first_s = ss[0]
-        return [first, first_patchID, first_u, first_v, first_s],  None,  fail
-    elif n_sol == 2:
+        firstPatchID = PID[pid[0]]
+        firstU = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
+        firstV = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
+        firstS = ss[0]
+        return [first, firstPatchID, firstU, firstV, firstS],  None,  fail
+    elif nSol == 2:
         fail = 0
         
         # Determine the 'top' and 'bottom' solution
         first  = points[0]
         second = points[1]
 
-        first_patchID = PID[pid[0]-1]
-        second_patchID = PID[pid[1]-1]
+        firstPatchID = PID[pid[0]-1]
+        secondPatchID = PID[pid[1]-1]
 
-        first_u = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
-        first_v = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
-        first_s = ss[0]
+        firstU = uv0[pid[0]][0] + uu[0]*(uv1[pid[0]][0] - uv0[pid[0]][0])
+        firstV = uv0[pid[0]][1] + vv[0]*(uv2[pid[0]][1] - uv0[pid[0]][1])
+        firstS = ss[0]
 
-        second_u = uv0[pid[1]][0] + uu[1]*(uv1[pid[1]][0] - uv0[pid[1]][0])
-        second_v = uv0[pid[1]][1] + vv[1]*(uv2[pid[1]][1] - uv0[pid[1]][1])
-        second_s = ss[1]
+        secondU = uv0[pid[1]][0] + uu[1]*(uv1[pid[1]][0] - uv0[pid[1]][0])
+        secondV = uv0[pid[1]][1] + vv[1]*(uv2[pid[1]][1] - uv0[pid[1]][1])
+        secondS = ss[1]
 
-        if np.dot(first - pt, up_vec) >= np.dot(second - pt, up_vec):
+        if np.dot(first - pt, upVec) >= np.dot(second - pt, upVec):
 
-            return [first, first_patchID, first_u, first_v, first_s],\
-                [second, second_patchID, second_u, second_v, second_s], fail
+            return [first, firstPatchID, firstU, firstV, firstS],\
+                [second, secondPatchID, secondU, secondV, secondS], fail
         else:
-            return [second, second_patchID, second_u, second_v, second_s],\
-                [first, first_patchID, first_u, first_v, first_s], fail
+            return [second, secondPatchID, secondU, secondV, secondS],\
+                [first, firstPatchID, firstU, firstV, firstS], fail
 
     else:
-       
-        print 'This functionality is not implemtned in geo_utils yet'
+        print('This functionality is not implemtned in geoUtils yet')
         sys.exit(1)
-        
-    # end if
+ 
 
-    return
-
-def projectNodePIDPosOnly(pt, up_vec, p0, v1, v2, uv0, uv1, uv2, PID):
+def projectNodePIDPosOnly(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
 
     # Get the bounds of the geo object so we know what to scale by
-    import pySpline
+
     fail = 0
     if p0.shape[0] == 0:
         fail = 1
         return None, fail
 
-    sol, pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
     pid -= 1
 
-    if n_sol == 0:
+    if nSol == 0:
         fail = 1
         return None, fail
-    elif n_sol >= 1:
+    elif nSol >= 1:
         # Find the least positve solution
-        min_index = -1
+        minIndex = -1
         d = 0.0
-        for k in xrange(n_sol):
-            dn = np.dot(sol[k, 3:6] - pt, up_vec)
-            if dn >= 0.0 and (min_index == -1 or dn < d):
-                min_index = k
+        for k in range(nSol):
+            dn = np.dot(sol[k, 3:6] - pt, upVec)
+            if dn >= 0.0 and (minIndex == -1 or dn < d):
+                minIndex = k
                 d = dn
         
-        if min_index >= 0:
+        if minIndex >= 0:
+            patchID = PID[pid[minIndex]]
+            u = uv0[pid[minIndex]][0] + sol[minIndex, 1]*\
+                (uv1[pid[minIndex]][0] - uv0[pid[minIndex]][0])
 
-            patchID = PID[pid[min_index]]
-
-            u = uv0[pid[min_index]][0] + sol[min_index, 1]*\
-                (uv1[pid[min_index]][0] - uv0[pid[min_index]][0])
-
-            v = uv0[pid[min_index]][1] + sol[min_index, 2]*\
-                (uv2[pid[min_index]][1] - uv0[pid[min_index]][1])
-            s = sol[min_index,0]
-
-            return [sol[min_index, 3:6], patchID, u, v, s], fail
-        # end if
-    # end if
-
+            v = uv0[pid[minIndex]][1] + sol[minIndex, 2]*\
+                (uv2[pid[minIndex]][1] - uv0[pid[minIndex]][1])
+            s = sol[minIndex,0]
+            tmp = [sol[minIndex,3], sol[minIndex,4], sol[minIndex,5]]
+            return [tmp, patchID, u, v, s], fail
+        
     fail = 1
     return None, fail
 
-def projectNode(pt, up_vec, p0, v1, v2):
-    '''
+def projectNode(pt, upVec, p0, v1, v2):
+    """
     Project a point pt onto a triagnulated surface and return two
     intersections.
 
     pt: The initial point
-    up_vec: The vector pointing in the search direction
+    upVec: The vector pointing in the search direction
     p0: A numpy array of triangle origins
     v1: A numpy array of the first triangle vectors
     v2: A numpy array of the second triangle vectors
-    '''
+    """
 
     # Get the bounds of the geo object so we know what to scale by
-    import pySpline
+
     fail = 0
     if p0.shape[0] == 0:
         fail = 2
         return None, None, fail
 
-    sol,pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    sol,pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     # Check to see if any of the solutions happen be identical. 
-  
-    if n_sol > 1:
-        new_sol = np.zeros_like(sol)
-        new_n_sol = 0
+    if nSol > 1:
         points = []
-        for i in xrange(n_sol):
+        for i in range(nSol):
             points.append(sol[i, 3:6])
 
-        newPoints, link = pointReduce(points, node_tol=1e-12)
-        n_sol = len(newPoints)
+        newPoints, link = pointReduce(points, nodeTol=1e-12)
+        nSol = len(newPoints)
     else:
         newPoints = []
-        for i in xrange(n_sol):
+        for i in range(nSol):
             newPoints.append(sol[i, 3:6])
-    # end if
-  
-
-    if n_sol == 0:
+ 
+    if nSol == 0:
         fail = 2
         return None, None, fail
-    elif n_sol == 1:
+    elif nSol == 1:
         fail = 1
         return newPoints[0],  None,  fail
-    elif n_sol == 2:
+    elif nSol == 2:
         fail = 0
         
         # Determine the 'top' and 'bottom' solution
         first  = newPoints[0]
         second = newPoints[1]
 
-        if np.dot(first - pt, up_vec) >= np.dot(second - pt, up_vec):
+        if np.dot(first - pt, upVec) >= np.dot(second - pt, upVec):
             return first, second, fail
         else:
             return second, first, fail
@@ -3729,53 +2982,52 @@ def projectNode(pt, up_vec, p0, v1, v2):
         # distance to the points that have been found.
         fail = -1
 
-        pmin = abs(np.dot(newPoints[:n_sol] - pt, up_vec))
-        min_index = np.argsort(pmin)
+        pmin = abs(np.dot(newPoints[:nSol] - pt, upVec))
+        minIndex = np.argsort(pmin)
         
-        return newPoints[min_index[0]], newPoints[min_index[1]], fail
+        return newPoints[minIndex[0]], newPoints[minIndex[1]], fail
 
-def projectNodePosOnly(pt, up_vec, p0, v1, v2):
-    '''
+def projectNodePosOnly(pt, upVec, p0, v1, v2):
+    """
     Project a point pt onto a triagnulated surface and the solution
     that is the closest in the positive direction (as defined by
-    up_vec).
+    upVec).
 
     pt: The initial point
-    up_vec: The vector pointing in the search direction
+    upVec: The vector pointing in the search direction
     p0: A numpy array of triangle origins
     v1: A numpy array of the first triangle vectors
     v2: A numpy array of the second triangle vectors
-    '''
+    """
 
     # Get the bounds of the geo object so we know what to scale by
-    import pySpline
+
     fail = 0
     if p0.shape[0] == 0:
         fail = 1
         return None, fail
 
-    sol, pid, n_sol = pySpline.pyspline.line_plane(pt, up_vec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
-
-    if n_sol == 0:
+  
+    if nSol == 0:
         fail = 1
         return None, fail
-    elif n_sol >= 1:
+    elif nSol >= 1:
         # Find the least positve solution
-        min_index = -1
+        minIndex = -1
         d = 0.0
-        for k in xrange(n_sol):
-            dn = np.dot(sol[k, 3:6] - pt, up_vec)
-            if dn >= 0.0 and (min_index == -1 or dn < d):
-                min_index = k
+        for k in range(nSol):
+            dn = np.dot(sol[k, 3:6] - pt, upVec)
+            if dn >= 0.0 and (minIndex == -1 or dn < d):
+                minIndex = k
                 d = dn
         
-        if min_index >= 0:
-            return sol[min_index, 3:6], fail
+        if minIndex >= 0:
+            return sol[minIndex][3:6], fail
 
     fail = 1
     return None, fail
-
 
 def tfi_2d(e0, e1, e2, e3):
     # Input
@@ -3783,9 +3035,9 @@ def tfi_2d(e0, e1, e2, e3):
     # e1: Nodes along edge 1. Size Nu x 3
     # e0: Nodes along edge 2. Size Nv x 3
     # e1: Nodes along edge 3. Size Nv x 3
-    import pySpline
+
     try:
-        X = pySpline.pyspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
+        X = pySpline.libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
     except:
      
         Nu = len(e0)
@@ -3800,34 +3052,24 @@ def tfi_2d(e0, e1, e2, e3):
 
         X = np.zeros((Nu, Nv, 3))
 
-        for i in xrange(Nu):
-            for j in xrange(Nv):
+        for i in range(Nu):
+            for j in range(Nv):
                 X[i, j] = (1-V[j])*e0[i] + V[j]*e1[i] +\
                     (1-U[i])*e2[j] + U[i]*e3[j] - \
                     (U[i]*V[j]*e1[-1] + U[i]*(1-V[j])*e0[-1] +\
                          V[j]*(1-U[i])*e1[0] + (1-U[i])*(1-V[j])*e0[0])
-            # end for
-        # end for
-    # end try
-
     return X
 
-def linear_edge(pt1, pt2, N):
+def linearEdge(pt1, pt2, N):
     # Return N points along line from pt1 to pt2
     pts = np.zeros((N, len(pt1)))
     pt1 = np.array(pt1)
     pt2 = np.array(pt2)
-    for i in xrange(N):
+    for i in range(N):
         pts[i] = float(i)/(N-1)*(pt2-pt1) + pt1
     return pts
 
-def checkRank(input):
-    if not(hasattr(input, '__iter__')):
-        return 0
-    else:
-        return 1 + checkRank(input[0])
-
-def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
+def splitQuad(e0, e1, e2, e3, alpha, beta, NO):
     # This function takes the coordinates of a quad patch, and
     # creates an O-grid inside the quad making 4 quads and leaving
     # a hole in the center whose size is determined by alpha and
@@ -3871,10 +3113,10 @@ def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
 
     # First generate edge lengths
     l = np.zeros(4)
-    l[0] = e_dist(pts[0], pts[1])
-    l[1] = e_dist(pts[2], pts[3])
-    l[2] = e_dist(pts[0], pts[2])
-    l[3] = e_dist(pts[1], pts[3])
+    l[0] = eDist(pts[0], pts[1])
+    l[1] = eDist(pts[2], pts[3])
+    l[2] = eDist(pts[0], pts[2])
+    l[3] = eDist(pts[1], pts[3])
 
     # Vector along edges 0->3
     vec = np.zeros((4, 3))
@@ -3885,19 +3127,19 @@ def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
 
     U = 0.5*(vec[0]+vec[1])
     V = 0.5*(vec[2]+vec[3])
-    u = U/euclidean_norm(U)
-    v = V/euclidean_norm(V)
+    u = U/euclideanNorm(U)
+    v = V/euclideanNorm(V)
 
     mid  = np.average(pts, axis=0)
 
-    u_bar = 0.5*(l[0]+l[1])*alpha
-    v_bar = 0.5*(l[2]+l[3])*beta
+    uBar = 0.5*(l[0]+l[1])*alpha
+    vBar = 0.5*(l[2]+l[3])*beta
 
-    aspect = u_bar/v_bar
+    aspect = uBar/vBar
    
     if aspect < 1: # its higher than wide, logically roate the element
         v, u = u, -v
-        v_bar, u_bar = u_bar, v_bar
+        vBar, uBar = uBar, vBar
         alpha, beta = beta, alpha
         Nv, Nu = Nu, Nv
 
@@ -3918,9 +3160,8 @@ def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
         E2 = e2.copy()
         E3 = e3.copy()
         PTS = pts.copy()
-    # end if
 
-    rect_corners = np.zeros((4, 3))
+    rectCorners = np.zeros((4, 3))
 
     # These are the output pactch object
     P0 = np.zeros((Nu, 4, 3), 'd') 
@@ -3928,416 +3169,296 @@ def split_quad(e0, e1, e2, e3, alpha, beta, N_O):
     P2 = np.zeros((Nv, 4, 3), 'd') 
     P3 = np.zeros((Nv, 4, 3), 'd') 
 
-    rad = v_bar*beta
-    rect_len = u_bar-2*rad
-    if rect_len < 0:
-        rect_len = 0
-    # end if
+    rad = vBar*beta
+    rectLen = uBar-2*rad
+    if rectLen < 0:
+        rectLen = 0.0
+
     # Determine 4 corners of rectangular part
-
-    rect_corners[0] = mid-u*(rect_len/2)-np.sin(np.pi/4)*\
+    rectCorners[0] = mid-u*(rectLen/2)-np.sin(np.pi/4)*\
         rad*v-np.cos(np.pi/4)*rad*u
-    rect_corners[1] = mid+u*(rect_len/2)-np.sin(np.pi/4)*\
+    rectCorners[1] = mid+u*(rectLen/2)-np.sin(np.pi/4)*\
         rad*v+np.cos(np.pi/4)*rad*u
-    rect_corners[2] = mid-u*(rect_len/2)+np.sin(np.pi/4)*\
+    rectCorners[2] = mid-u*(rectLen/2)+np.sin(np.pi/4)*\
         rad*v-np.cos(np.pi/4)*rad*u
-    rect_corners[3] = mid+u*(rect_len/2)+np.sin(np.pi/4)*\
+    rectCorners[3] = mid+u*(rectLen/2)+np.sin(np.pi/4)*\
         rad*v+np.cos(np.pi/4)*rad*u
 
-    arc_len = np.pi*rad/2 + rect_len # Two quarter circles straight line
-    eighth_arc = 0.25*np.pi*rad
+    arcLen = np.pi*rad/2 + rectLen # Two quarter circles straight line
+    eighthArc = 0.25*np.pi*rad
     # We have to distribute Nu-2 nodes over this arc-length
-    spacing = arc_len/(Nu-1)
+    spacing = arcLen/(Nu-1)
 
-    bot_edge = np.zeros((Nu, 3), 'd')
-    top_edge = np.zeros((Nu, 3), 'd')
-    bot_edge[0] = rect_corners[0]
-    bot_edge[-1] = rect_corners[1]
-    top_edge[0] = rect_corners[2]
-    top_edge[-1] = rect_corners[3]
-    for i in xrange(Nu-2):
-        dist_along_arc = (i+1)*spacing
-        if dist_along_arc < eighth_arc:
-            theta = dist_along_arc/rad # Angle in radians
-            bot_edge[i+1] = mid-u*(rect_len/2) - \
+    botEdge = np.zeros((Nu, 3), 'd')
+    topEdge = np.zeros((Nu, 3), 'd')
+    botEdge[0] = rectCorners[0]
+    botEdge[-1] = rectCorners[1]
+    topEdge[0] = rectCorners[2]
+    topEdge[-1] = rectCorners[3]
+    for i in range(Nu-2):
+        distAlongArc = (i+1)*spacing
+        if distAlongArc < eighthArc:
+            theta = distAlongArc/rad # Angle in radians
+            botEdge[i+1] = mid-u*(rectLen/2) - \
                 np.sin(theta+np.pi/4)*rad*v - np.cos(theta+np.pi/4)*rad*u
-            top_edge[i+1] = mid-u*(rect_len/2) + \
+            topEdge[i+1] = mid-u*(rectLen/2) + \
                 np.sin(theta+np.pi/4)*rad*v - np.cos(theta+np.pi/4)*rad*u
-        elif dist_along_arc > rect_len+eighth_arc:
-            theta = (dist_along_arc-rect_len-eighth_arc)/rad
-            bot_edge[i+1] = mid+u*(rect_len/2) + \
+        elif distAlongArc > rectLen+eighthArc:
+            theta = (distAlongArc-rectLen-eighthArc)/rad
+            botEdge[i+1] = mid+u*(rectLen/2) + \
                 np.sin(theta)*rad*u - np.cos(theta)*rad*v
-            top_edge[i+1] = mid+u*(rect_len/2) + \
+            topEdge[i+1] = mid+u*(rectLen/2) + \
                 np.sin(theta)*rad*u + np.cos(theta)*rad*v
         else:
-            top_edge[i+1] = mid -u*rect_len/2 + rad*v + \
-                (dist_along_arc-eighth_arc)*u 
-            bot_edge[i+1] = mid -u*rect_len/2 - rad*v + \
-                (dist_along_arc-eighth_arc)*u 
+            topEdge[i+1] = mid -u*rectLen/2 + rad*v + \
+                (distAlongArc-eighthArc)*u 
+            botEdge[i+1] = mid -u*rectLen/2 - rad*v + \
+                (distAlongArc-eighthArc)*u 
 
-    # end for
-
-    left_edge = np.zeros((Nv, 3), 'd')
-    right_edge = np.zeros((Nv, 3), 'd')
+    leftEdge = np.zeros((Nv, 3), 'd')
+    rightEdge = np.zeros((Nv, 3), 'd')
     theta = np.linspace(-np.pi/4, np.pi/4, Nv)
 
-    for i in xrange(Nv):
-        left_edge[i]  = mid-u*(rect_len/2) + \
+    for i in range(Nv):
+        leftEdge[i]  = mid-u*(rectLen/2) + \
             np.sin(theta[i])*rad*v - np.cos(theta[i])*rad*u
-        right_edge[i] = mid+u*(rect_len/2) + \
+        rightEdge[i] = mid+u*(rectLen/2) + \
             np.sin(theta[i])*rad*v + np.cos(theta[i])*rad*u
-    # end if
 
     # Do the corner edges
-    c0 = linear_edge(PTS[0], rect_corners[0], N_O)
-    c1 = linear_edge(PTS[1], rect_corners[1], N_O)
-    c2 = linear_edge(PTS[2], rect_corners[2], N_O)
-    c3 = linear_edge(PTS[3], rect_corners[3], N_O)
+    c0 = linearEdge(PTS[0], rectCorners[0], NO)
+    c1 = linearEdge(PTS[1], rectCorners[1], NO)
+    c2 = linearEdge(PTS[2], rectCorners[2], NO)
+    c3 = linearEdge(PTS[3], rectCorners[3], NO)
 
     # Now we can finally do the pactches
-
-    P0 = tfi_2d(E0, bot_edge, c0, c1)
-    P1 = tfi_2d(E1, top_edge, c2, c3)
-    P2 = tfi_2d(E2, left_edge, c0, c2)
-    P3 = tfi_2d(E3, right_edge, c1, c3)
+    P0 = tfi_2d(E0, botEdge, c0, c1)
+    P1 = tfi_2d(E1, topEdge, c2, c3)
+    P2 = tfi_2d(E2, leftEdge, c0, c2)
+    P3 = tfi_2d(E3, rightEdge, c1, c3)
 
     if aspect < 1:
         return P3, P2, P0[::-1, :, :], P1[::-1, :, :]
     else:
         return P0, P1, P2, P3
-    # end if
-  
-class geoDVGlobal(object):
-     
-    def __init__(self, dv_name, value, lower, upper, function, useit=True):
-        
-        '''Create a geometric design variable (or design variable group)
-        See addGeoDVGloabl in pyGeo for more information
-        '''
-
-        self.name = dv_name
-        self.value = np.atleast_1d(np.array(value)).astype('D')
-        self.nVal = len(self.value)
-
-        low = np.atleast_1d(np.array(lower))
-        if len(low) == self.nVal:
-            self.lower = low
-        else:
-            self.lower = np.ones(self.nVal)*lower
-        # end if
-
-        high = np.atleast_1d(np.array(upper))
-        if len(high) == self.nVal:
-            self.upper = high
-        else:
-            self.upper = np.ones(self.nVal)*upper
-        # end if
-
-        self.range    = self.upper-self.lower
-        self.function = function
-        self.useit    = useit
-
-        return
-
-    def __call__(self, geo):
-
-        '''When the object is called, actually apply the function'''
-        # Run the user-supplied function
-        d = np.dtype(complex)
-
-        # If the geo object is complex, which is indicated by .coef
-        # being complex, run with complex numbers. Otherwise, convert
-        # to real before calling. This eliminates casting warnings. 
-        if geo.coef.dtype == d or geo.complex:
-            return self.function(self.value, geo)
-        else:
-            return self.function(np.real(self.value), geo)
-        # end if
-
-class geoDVLocal(object):
-     
-    def __init__(self, dv_name, lower, upper, axis, coef_list, useit=True):
-        
-        '''Create a set of gemoetric design variables whcih change the shape
-        of a surface surface_id. Local design variables change the surface
-        in all three axis.
-        See addGeoDVLOcal for more information
-        '''
-        N = len(axis)
-
-        self.nVal = len(coef_list)*N
-        self.value = np.zeros(self.nVal, 'D')
-        self.name = dv_name
-        self.lower = lower*np.ones(self.nVal)
-        self.upper = upper*np.ones(self.nVal)
-        self.range    = self.upper-self.lower
-       
-        self.coef_list = np.zeros((self.nVal, 2), 'intc')
-        j = 0
-
-        for i in xrange(len(coef_list)):
-            if 'x' in axis.lower():
-                self.coef_list[j] = [coef_list[i], 0]
-                j += 1
-            elif 'y' in axis.lower():
-                self.coef_list[j] = [coef_list[i], 1]
-                j += 1
-            elif 'z' in axis.lower():
-                self.coef_list[j] = [coef_list[i], 2]
-                j += 1
-            # end if
-        # end for
-        
-        return
-
-    def __call__(self, coef):
-
-        '''When the object is called, apply the design variable values to 
-        coefficients'''
-        for i in xrange(self.nVal):
-            coef[self.coef_list[i, 0], self.coef_list[i, 1]] += self.value[i].real
-        # end for
-      
-        return coef
-
     
-def createTriPanMesh(geo, tripan_file, wake_file,
-                     specs_file=None, default_size=0.1):
-    '''
+def createTriPanMesh(geo, tripanFile, wakeFile,
+                     specsFile=None, defaultSize=0.1):
+    """
     Create a TriPan mesh from a pyGeo object.
 
     geo:          The pyGeo object
-    tripan_file:  The name of the TriPan File
-    wake_file:    The name of the wake file
-    specs_file:   The specification of panels/edge and edge types
-    default_size: If no specs_file is given, attempt to make edges with
-    default_size-length panels
+    tripanFile:  The name of the TriPan File
+    wakeFile:    The name of the wake file
+    specsFile:   The specification of panels/edge and edge types
+    defaultSize: If no specsFile is given, attempt to make edges with
+    defaultSize-length panels
     
     This cannot be run in parallel!
-    '''
+    """
     
     # Use the topology of the entire geo object
     topo = geo.topo
 
-    n_edge = topo.nEdge
-    n_face = topo.nFace
+    nEdge = topo.nEdge
+    nFace = topo.nFace
     
     # Face orientation
-    face_orientation = [1]*n_face
-    # edge_number == number of panels along a given edge
-    edge_number = -1*np.ones(n_edge, 'intc')
-    # edge_type == what type of parametrization to use along an edge
-    edge_type   = ['linear']*n_edge
-    wake_edges = []
-    wake_dir   = []
+    faceOrientation = [1]*nFace
+    # edgeNumber == number of panels along a given edge
+    edgeNumber = -1*np.ones(nEdge, 'intc')
+    # edgeType == what type of parametrization to use along an edge
+    edgeType   = ['linear']*nEdge
+    wakeEdges = []
+    wakeDir   = []
 
-    if specs_file:
-        f = open(specs_file, 'r')
+    if specsFile:
+        f = open(specsFile, 'r')
         line = f.readline().split()
-        if int(line[0]) != n_face:
-            mpiPrint('Number of faces do not match in specs file')
-        if int(line[1]) != n_edge:
-            mpiPrint('Number of edges do not match in specs file')
+        if int(line[0]) != nFace:
+            print('Number of faces do not match in specs file')
+        if int(line[1]) != nEdge:
+            print('Number of edges do not match in specs file')
         # Discard a line
         f.readline()
         # Read in the face info
-        for iface in xrange(n_face):
+        for iface in range(nFace):
             aux = f.readline().split()
-            face_orientation[iface] = int(aux[1])
+            faceOrientation[iface] = int(aux[1])
         f.readline()
         # Read in the edge info
-        for iedge in xrange(n_edge):
+        for iedge in range(nEdge):
             aux = f.readline().split()
-            edge_number[iedge] = int(aux[1])
-            edge_type[iedge] = aux[2]
+            edgeNumber[iedge] = int(aux[1])
+            edgeType[iedge] = aux[2]
             if int(aux[5]) > 0:
-                wake_edges.append(iedge)
-                wake_dir.append(1)
+                wakeEdges.append(iedge)
+                wakeDir.append(1)
             elif int(aux[5]) < 0:
-                wake_edges.append(iedge)
-                wake_dir.append(-1)
-            # end if
-        # end for
+                wakeEdges.append(iedge)
+                wakeDir.append(-1)
         f.close()
     else:
-        default_size = float(default_size)
+        defaultSize = float(defaultSize)
         # First Get the default number on each edge
     
-        for iface in xrange(n_face):
-            for iedge in xrange(4):
+        for iface in range(nFace):
+            for iedge in range(4):
                 # First check if we even have to do it
-                if edge_number[topo.edge_link[iface][iedge]] == -1:
+                if edgeNumber[topo.edgeLink[iface][iedge]] == -1:
                     # Get the physical length of the edge
-                    edge_length = \
-                        geo.surfs[iface].edge_curves[iedge].getLength()
+                    edgeLength = \
+                        geo.surfs[iface].edgeCurves[iedge].getLength()
 
-                    # Using default_size calculate the number of panels 
+                    # Using defaultSize calculate the number of panels 
                     # along this edge
-                    edge_number[topo.edge_link[iface][iedge]] = \
-                        int(np.floor(edge_length/default_size))+2
-                # end if
-            # end for
-        # end for
+                    edgeNumber[topo.edgeLink[iface][iedge]] = \
+                        int(np.floor(edgeLength/defaultSize))+2
     # end if
     
     # Create the sizes Geo for the make consistent function
     sizes = []
-    order = [0]*n_face
-    for iface in xrange(n_face):
-        sizes.append([edge_number[topo.edge_link[iface][0]], 
-                      edge_number[topo.edge_link[iface][2]]])
-    # end for
-    sizes, edge_number = topo.makeSizesConsistent(sizes, order)
+    order = [0]*nFace
+    for iface in range(nFace):
+        sizes.append([edgeNumber[topo.edgeLink[iface][0]], 
+                      edgeNumber[topo.edgeLink[iface][2]]])
+
+    sizes, edgeNumber = topo.makeSizesConsistent(sizes, order)
 
     # Now we need to get the edge parameter spacing for each edge
-    topo.calcGlobalNumbering(sizes) # This gets g_index,l_index and counter
+    topo.calcGlobalNumbering(sizes) # This gets gIndex,lIndex and counter
 
     # Now calculate the intrinsic spacing for each edge:
-    edge_para = []
-    for iedge in xrange(n_edge):
-        if edge_type[iedge] == 'linear':
-            spacing = np.linspace(0.0, 1.0, edge_number[iedge])
-            edge_para.append(spacing)
-        elif edge_type[iedge] == 'cos':
+    edgePara = []
+    for iedge in range(nEdge):
+        if edgeType[iedge] == 'linear':
+            spacing = np.linspace(0.0, 1.0, edgeNumber[iedge])
+            edgePara.append(spacing)
+        elif edgeType[iedge] == 'cos':
             spacing = 0.5*(1.0 - np.cos(np.linspace(
-                        0, np.pi, edge_number[iedge])))
-            edge_para.append(spacing)
-        elif edge_type[iedge] == 'hyperbolic':
-            x = np.linspace(0.0, 1.0, edge_number[iedge])
+                        0, np.pi, edgeNumber[iedge])))
+            edgePara.append(spacing)
+        elif edgeType[iedge] == 'hyperbolic':
+            x = np.linspace(0.0, 1.0, edgeNumber[iedge])
             beta = 1.8
             spacing = x - beta*x*(x - 1.0)*(x - 0.5)
-            edge_para.append(spacing)
+            edgePara.append(spacing)
         else:
-            mpiPrint('Warning: Edge type %s not understood. \
-Using a linear type'%(edge_type[iedge]))
-            edge_para.append(0, 1, edge_number[iedge])
-        # end if
-    # end for
-
+            print('Warning: Edge type %s not understood. \
+Using a linear type'%(edgeType[iedge]))
+            edgePara.append(np.linspace(0, 1, edgeNumber[iedge]))
+  
     # Get the number of panels
-    n_panels = 0
-    n_nodes = len(topo.g_index)
-    for iface in xrange(n_face):
-        n_panels += (sizes[iface][0]-1)*(sizes[iface][1]-1)        
-    # end for
+    nPanels = 0
+    nNodes = len(topo.gIndex)
+    for iface in range(nFace):
+        nPanels += (sizes[iface][0]-1)*(sizes[iface][1]-1)        
 
     # Open the outputfile
-    fp = open(tripan_file, 'w')
+    fp = open(tripanFile, 'w')
 
     # Write he number of points and panels
-    fp.write('%5d %5d\n'%(n_nodes, n_panels))
+    fp.write('%5d %5d\n'%(nNodes, nPanels))
    
     # Output the Points First
     UV = []
-    for iface in xrange(n_face):
-        uv = getBiLinearMap(edge_para[topo.edge_link[iface][0]],
-                            edge_para[topo.edge_link[iface][1]],
-                            edge_para[topo.edge_link[iface][2]],
-                            edge_para[topo.edge_link[iface][3]])
-        UV.append(uv)
+    for iface in range(nFace):
+        UV.append(getBiLinearMap(
+            edgePara[topo.edgeLink[iface][0]],
+            edgePara[topo.edgeLink[iface][1]],
+            edgePara[topo.edgeLink[iface][2]],
+            edgePara[topo.edgeLink[iface][3]]))
 
-    # end for
-    
-    for ipt in xrange(len(topo.g_index)):
-        iface = topo.g_index[ipt][0][0]
-        i     = topo.g_index[ipt][0][1]
-        j     = topo.g_index[ipt][0][2]
+    for ipt in range(len(topo.gIndex)):
+        iface = topo.gIndex[ipt][0][0]
+        i     = topo.gIndex[ipt][0][1]
+        j     = topo.gIndex[ipt][0][2]
         pt = geo.surfs[iface].getValue(UV[iface][i, j][0],  UV[iface][i, j][1])
         fp.write( '%12.10e %12.10e %12.10e \n'%(pt[0], pt[1], pt[2]))
-    # end for
-
+  
     # Output the connectivity Next
-    for iface in xrange(n_face):
-        if face_orientation[iface] >= 0:
-            for i in xrange(sizes[iface][0]-1):
-                for j in xrange(sizes[iface][1]-1):
-                    fp.write('%d %d %d %d \n'%(topo.l_index[iface][i, j], 
-                                               topo.l_index[iface][i+1, j], 
-                                               topo.l_index[iface][i+1, j+1], 
-                                               topo.l_index[iface][i, j+1]))
+    for iface in range(nFace):
+        if faceOrientation[iface] >= 0:
+            for i in range(sizes[iface][0]-1):
+                for j in range(sizes[iface][1]-1):
+                    fp.write('%d %d %d %d \n'%(topo.lIndex[iface][i, j], 
+                                               topo.lIndex[iface][i+1, j], 
+                                               topo.lIndex[iface][i+1, j+1], 
+                                               topo.lIndex[iface][i, j+1]))
         else:
-            for i in xrange(sizes[iface][0]-1):
-                for j in xrange(sizes[iface][1]-1):
-                    fp.write('%d %d %d %d \n'%(topo.l_index[iface][i, j], 
-                                               topo.l_index[iface][i, j+1], 
-                                               topo.l_index[iface][i+1, j+1], 
-                                               topo.l_index[iface][i+1, j]))
+            for i in range(sizes[iface][0]-1):
+                for j in range(sizes[iface][1]-1):
+                    fp.write('%d %d %d %d \n'%(topo.lIndex[iface][i, j], 
+                                               topo.lIndex[iface][i, j+1], 
+                                               topo.lIndex[iface][i+1, j+1], 
+                                               topo.lIndex[iface][i+1, j]))
 
-            # end for
-        # end for
-    # end for
     fp.write('\n')
     fp.close()
 
     # Output the wake file
-    fp = open(wake_file,  'w')
-    fp.write('%d\n'%(len(wake_edges)))
-    print 'wake_edges:', wake_edges
+    fp = open(wakeFile,  'w')
+    fp.write('%d\n'%(len(wakeEdges)))
+    print('wakeEdges:', wakeEdges)
 
-    for k in xrange(len(wake_edges)):
+    for k in range(len(wakeEdges)):
         # Get a surface/edge for this edge
-        surfaces = topo.getSurfaceFromEdge(wake_edges[k])
+        surfaces = topo.getSurfaceFromEdge(wakeEdges[k])
         iface = surfaces[0][0]
         iedge = surfaces[0][1]
         if iedge == 0:
-            indices = topo.l_index[iface][:, 0]
+            indices = topo.lIndex[iface][:, 0]
         elif iedge == 1:
-            indices = topo.l_index[iface][:, -1]
+            indices = topo.lIndex[iface][:, -1]
         elif iedge == 2:
-            indices = topo.l_index[iface][0, :]
+            indices = topo.lIndex[iface][0, :]
         elif iedge == 3:
-            indices = topo.l_index[iface][-1, :]
-        # end if
+            indices = topo.lIndex[iface][-1, :]
         
         fp.write('%d\n'%(len(indices)))
 
-        if wake_dir[k] > 0:
-            for i in xrange(len(indices)):
+        if wakeDir[k] > 0:
+            for i in range(len(indices)):
                 # A constant in TriPan to indicate projected wake
-                te_node_type = 3 
-                fp.write('%d %d\n'%(indices[i],  te_node_type))
+                teNodeType = 3 
+                fp.write('%d %d\n'%(indices[i],  teNodeType))
         else:
-            for i in xrange(len(indices)):
-                te_node_type = 3 
-                fp.write('%d %d\n'%(indices[len(indices)-1-i], te_node_type))
-        # end for
+            for i in range(len(indices)):
+                teNodeType = 3 
+                fp.write('%d %d\n'%(indices[len(indices)-1-i], teNodeType))
     # end for
-
     fp.close()
 
     # Write out the default specFile
-    if specs_file == None:
-        (dirName, fileName) = os.path.split(tripan_file)
+    if specsFile == None:
+        (dirName, fileName) = os.path.split(tripanFile)
         (fileBaseName, fileExtension) = os.path.splitext(fileName)
         if dirName != '':
-            new_specs_file = dirName+'/'+fileBaseName+'.specs'
+            newSpecsFile = dirName+'/'+fileBaseName+'.specs'
         else:
-            new_specs_file = fileBaseName+'.specs'
-        # end if
-        specs_file = new_specs_file
+            newSpecsFile = fileBaseName+'.specs'
 
-    if not os.path.isfile(specs_file):
-        f = open(specs_file, 'w')
-        f.write('%d %d Number of faces and number of edges\n'%(n_face, n_edge))
+        specsFile = newSpecsFile
+
+    if not os.path.isfile(specsFile):
+        f = open(specsFile, 'w')
+        f.write('%d %d Number of faces and number of edges\n'%(nFace, nEdge))
         f.write('Face number   Normal (1 for regular, -1 for\
  reversed orientation\n')
-        for iface in xrange(n_face):
-            f.write('%d %d\n'%(iface, face_orientation[iface]))
+        for iface in range(nFace):
+            f.write('%d %d\n'%(iface, faceOrientation[iface]))
         f.write('Edge Number #Node Type     Start Space   End Space\
    WakeEdge\n') 
-        for iedge in xrange(n_edge):
-            if iedge in wake_edges:
+        for iedge in range(nEdge):
+            if iedge in wakeEdges:
                 f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
-                        iedge, edge_number[iedge], edge_type[iedge],
+                        iedge, edgeNumber[iedge], edgeType[iedge],
                         .1, .1, 1))
             else:
                 f.write( '  %4d    %5d %10s %10.4f %10.4f  %1d \n'%(\
-                        iedge, edge_number[iedge], edge_type[iedge],
+                        iedge, edgeNumber[iedge], edgeType[iedge],
                         .1, .1, 0))
-            # end if
         f.close()
-
-    return
  
 # 2D Doubly connected edge list implementation. 
 #Copyright 2008, Angel Yanguas-Gil
@@ -4357,21 +3478,20 @@ class DCELEdge(object):
             self.seg = tmp[1]
         else:
             self.seg = None
-        # end if
+
         self.v1 = v1
         self.v2 = v2
         if X is not None: 
             self.x1 = 0.5*(X[0,0] + X[0,1])
             self.x2 = 0.5*(X[-1,0] + X[-1,1])
-      
-        # end if
 
         self.con = [v1,v2]
+        
     def __repr__(self):
 
-        str = 'v1: %f %f\nv2: %f %f'%(self.v1[0],self.v1[1],
-                                      self.v2[0],self.v2[1])
-        return str
+        str1 = 'v1: %f %f\nv2: %f %f'% (self.v1[0],self.v1[1],
+                                        self.v2[0],self.v2[1])
+        return str1
 
     def midPt(self):
         #return [0.5*(self.v1.x + self.v2.x), 0.5*(self.v1.y + self.v2.y)]
@@ -4440,7 +3560,7 @@ class DCELFace:
 
         p1 = h.origin
         p2 = self.wedge.origin
-        a = (a + p1.x*p2.y - p2.x*p1.y)/2
+        a = (a + p1.x*p2.y - p2.x*p1.y)/2.0
         return a
 
     def calcCentroid(self):
@@ -4452,11 +3572,8 @@ class DCELFace:
             counter += 1
             h = h.nexthedge
             center += [h.origin.x,h.origin.y]
-        # end while
        
         self.centroid = center/counter
-
-        return
 
     def calcSpatialCentroid(self):
 
@@ -4468,11 +3585,8 @@ class DCELFace:
             counter += 1
             h = h.nexthedge
             center += h.origin.X
-        # end while
        
         self.spatialCentroid = center/counter
-
-        return 
 
     def perimeter(self):
         h = self.wedge
@@ -4497,7 +3611,7 @@ class DCELFace:
         winding formula"""
         pl = self.vertexlist()
         V = []
-        for i in xrange(len(pl)):
+        for i in range(len(pl)):
             V.append([pl[i].x,pl[i].y])
         V.append([pl[0].x,pl[0].y])
 
@@ -4506,54 +3620,40 @@ class DCELFace:
         for i in range(len(V)-1):     # edge from V[i] to V[i+1]
             if V[i][1] <= P[1]:        # start y <= P[1]
                 if V[i+1][1] > P[1]:     # an upward crossing
-                    if is_left(V[i], V[i+1], P) > 0: # P left of edge
+                    if isLeft(V[i], V[i+1], P) > 0: # P left of edge
                         wn += 1           # have a valid up intersect
-                    # end if
-                # end if
             else:                      # start y > P[1] (no test needed)
                 if V[i+1][1] <= P[1]:    # a downward crossing
-                    if is_left(V[i], V[i+1], P) < 0: # P right of edge
+                    if isLeft(V[i], V[i+1], P) < 0: # P right of edge
                         wn -= 1           # have a valid down intersect
-                    # end if
-                # end if
-            # end if
-        # end for
-
         if wn == 0:
             return False
         else:
             return True
-        # end if
-
-
 
 class DCEL(object):
     """
     Implements a doubly-connected edge list
     """
 
-    def __init__(self, vl=None, el=None, fileName=None, file_name=None):
-        if file_name is not None:
-            fileName = file_name
+    def __init__(self, vl=None, el=None, fileName=None):
         self.vertices = []
         self.hedges = []
         self.faces = []
-        self.face_info = None
+        self.faceInfo = None
         if vl is not None and el is not None:
             self.vl = vl 
             self.el = el
-            self.build_dcel()
+            self.buildDcel()
         elif fileName is not None:
             self.loadDCEL(fileName)
-            self.build_dcel()
+            self.buildDcel()
         else:
             # The user is going to manually create the hedges and
             # faces
             pass
-        # end if
-
             
-    def build_dcel(self):
+    def buildDcel(self):
         """
         Creates the dcel from the list of vertices and edges
         """
@@ -4568,11 +3668,10 @@ class DCEL(object):
             for e in self.el:
                 mult[e.con[0]] += 1
                 mult[e.con[1]] += 1
-            # end for
 
-            mult_check = mult < 2
+            multCheck = mult < 2
 
-            if np.any(mult_check):
+            if np.any(multCheck):
                 
                 # We need to do a couple of things:
                 # 1. The bad vertices need to be removed from the vertex list
@@ -4583,22 +3682,21 @@ class DCEL(object):
                 # First generate new mapping:
                 count = 0
                 mapping = -1*np.ones(self.nvertices(),'intc')
-                deleted_vertices = []
-                for i in xrange(self.nvertices()):
-                    if  mult_check[i]:
-                        self.vertices.pop(i-len(deleted_vertices)) # Vertex must be removed
-                        deleted_vertices.append(i)
+                deletedVertices = []
+                for i in range(self.nvertices()):
+                    if  multCheck[i]:
+                        # Vertex must be removed
+                        self.vertices.pop(i-len(deletedVertices))
+                        deletedVertices.append(i)
                     else:
                         mapping[i] = count # Other wise get the mapping count:
                         count += 1
-                    # end if
-                # end for
              
                 # Now prune the edges:
                 nEdgeDeleted = 0
-                for i in xrange(len(self.el)):
-                    if self.el[i-nEdgeDeleted].con[0] in deleted_vertices or \
-                            self.el[i-nEdgeDeleted].con[1] in deleted_vertices:
+                for i in range(len(self.el)):
+                    if self.el[i-nEdgeDeleted].con[0] in deletedVertices or \
+                            self.el[i-nEdgeDeleted].con[1] in deletedVertices:
                         # Edge must be deleted
                         self.el.pop(i-nEdgeDeleted)
                         nEdgeDeleted += 1
@@ -4607,18 +3705,16 @@ class DCEL(object):
                         curCon = self.el[i-nEdgeDeleted].con
                         self.el[i-nEdgeDeleted].con[0] = mapping[curCon[0]]
                         self.el[i-nEdgeDeleted].con[1] = mapping[curCon[1]]
-                    # end if
-                # end for
             else:
                 break
-            # end if
+
         # end while
 
 #Step 2: hedge list creation. Assignment of twins and
 #vertices
             
         self.hedges = []
-        append_count = 0
+        appendCount = 0
 
         for e in self.el:
 
@@ -4633,7 +3729,7 @@ class DCEL(object):
             h2.twin = h1
             self.vertices[e.con[1]].hedgelist.append(h1)
             self.vertices[e.con[0]].hedgelist.append(h2)
-            append_count += 2
+            appendCount += 2
             self.hedges.append(h2)
             self.hedges.append(h1)
 
@@ -4677,15 +3773,15 @@ class DCEL(object):
             f.calcCentroid()
             f.calcSpatialCentroid()
 
-        if self.face_info is not None:
-            for i in xrange(len(self.face_info)):
-                self.faces[i].tag = self.face_info[i]
+        if self.faceInfo is not None:
+            for i in range(len(self.faceInfo)):
+                self.faces[i].tag = self.faceInfo[i]
 
     def writeTecplot(self, fileName):
 
         f = open(fileName, 'w')
         f.write ('VARIABLES = "X","Y"\n')
-        for i in xrange(len(self.el)):
+        for i in range(len(self.el)):
             f.write('Zone T=\"edge%d\" I=%d\n'%(i, 2))
             f.write('DATAPACKING=POINT\n')
             v1 = self.el[i].con[0]
@@ -4749,22 +3845,21 @@ class DCEL(object):
         return len(self.vertices)
 
     def nedges(self):
-        return len(self.hedges)/2
+        return len(self.hedges)//2
 
     def saveDCEL(self, fileName):
 
         f = open(fileName,'w')
         f.write('%d %d %d\n'%(
                 self.nvertices(), self.nedges(), self.nfaces()))
-        for i in xrange(self.nvertices()):
+        for i in range(self.nvertices()):
             f.write('%g %g %g %g %g \n'%(
                     self.vertices[i].x,self.vertices[i].y,
                     self.vertices[i].X[0],
                     self.vertices[i].X[1],
                     self.vertices[i].X[2]))
-        # end for
 
-        for i in xrange(self.nedges()):
+        for i in range(self.nedges()):
             if self.el[i].seg is not None:
                 f.write('%d %d %g %g %g %g %g %g %s-%s\n'%(
                         self.el[i].con[0],self.el[i].con[1],
@@ -4777,15 +3872,10 @@ class DCEL(object):
                         self.el[i].x1[0],self.el[i].x1[1],self.el[i].x1[2],
                         self.el[i].x2[0],self.el[i].x2[1],self.el[i].x2[2],
                         self.el[i].tag))
-            # end if
                 
-        for i in xrange(self.nfaces()):
+        for i in range(self.nfaces()):
             f.write('%s\n'%(self.faces[i].tag))
-        # end for
-
         f.close()
-        
-        return
 
     def loadDCEL(self, fileName):
 
@@ -4798,30 +3888,25 @@ class DCEL(object):
 
         self.vl = []
         self.el = []
-        self.face_info = []
-        for i in xrange(nvertices):
+        self.faceInfo = []
+        for i in range(nvertices):
             a = f.readline().split()
             self.vl.append(DCELVertex([float(a[0]),float(a[1])],
-                                  np.array([float(a[2]),
-                                            float(a[3]),
-                                            float(a[4])])))
-        # end for
+                                      np.array([float(a[2]),
+                                                float(a[3]),
+                                                float(a[4])])))
 
-        for i in xrange(nedges):
+        for i in range(nedges):
             a = f.readline().split()
             self.el.append(DCELEdge(int(a[0]),int(a[1]), None, None, None, a[8]))
             self.el[-1].x1 = np.array([float(a[2]),float(a[3]),float(a[4])])
             self.el[-1].x2 = np.array([float(a[5]),float(a[6]),float(a[7])])
 
-        for i in xrange(nfaces):
+        for i in range(nfaces):
             a = f.readline().split()
-            self.face_info.append(a[0])
-        # end for
+            self.faceInfo.append(a[0])
 
         f.close()
-        
-        return
-       
 
 #Misc. functions
 def area2(hedge, point):
@@ -4829,12 +3914,12 @@ def area2(hedge, point):
     an external point"""
     
     pa = hedge.twin.origin
-    pb=hedge.origin
-    pc=point
+    pb = hedge.origin
+    pc = point
     return (pb.x - pa.x)*(pc[1] - pa.y) - (pc[0] - pa.x)*(pb.y - pa.y)
 
 
-def is_left(P0, P1, P2):
+def isLeft(P0, P1, P2):
     return (P1[0] - P0[0]) * (P2[1] - P0[1]) - (P2[0] - P0[0]) * (P1[1] - P0[1])
 
 def lefton(hedge, point):
@@ -4866,11 +3951,10 @@ def areaPoly(nodes):
 
     c = np.average(nodes, axis=0)
     area = 0.0
-    for ii in xrange(len(nodes)):
+    for ii in range(len(nodes)):
         xi = nodes[ii]
         xip1 = nodes[np.mod(ii+1, len(nodes))]
         area = area + 0.5*np.linalg.norm(np.cross(xi-c,xip1-c))
-    # end for
         
     return np.abs(area)
 
@@ -4885,7 +3969,7 @@ def volumePoly(lowerNodes, upperNodes):
     volume = 0.0
     ln = len(lowerNodes)
     n =  np.zeros((6,3))
-    for ii in xrange(len(lowerNodes)):
+    for ii in range(len(lowerNodes)):
         # Each "wedge" can be sub-divided to 3 tetrahedra
 
         # The following indices define the decomposition into three
@@ -4915,7 +3999,6 @@ def volumePoly(lowerNodes, upperNodes):
         volume += volTetra([n[3],n[5],n[4],n[1]])
         volume += volTetra([n[5],n[2],n[1],n[0]])
         volume += volTetra([n[0],n[3],n[1],n[5]])
-    # end for
         
     return volume
 
