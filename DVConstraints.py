@@ -753,19 +753,20 @@ class DVConstraints(object):
         # end if
         
         if self.nThickCon > 0:
+            print 'lower',type(self.thickConLower),thickConName
             opt_prob.addConGroup(
-                thickConName, len(self.thickConLower), 'i', 
+                thickConName, len(self.thickConLower), 
                 lower=self.thickConLower, upper=self.thickConUpper, wrt=wrt)
         # end if
 
         if self.nVolumeCon > 0:
             opt_prob.addConGroup(
-                volumeConName, len(self.volumeConLower), 'i',
+                volumeConName, len(self.volumeConLower), 
                 lower=self.volumeConLower, upper=self.volumeConUpper, wrt=wrt)
         # end if
 
         if self.LeTeCon:
-            opt_prob.addConGroup(LeTeConName, len(self.LeTeCon), 'i', 
+            opt_prob.addConGroup(LeTeConName, len(self.LeTeCon),
                                  lower=0.0, upper=0.0, wrt=wrt)
         # end if
 
