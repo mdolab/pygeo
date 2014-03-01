@@ -358,7 +358,7 @@ class DVConstraints(object):
         """
 
         # Create mesh of itersections
-        constr_line = pySpline.curve(X=ptList, k=2)
+        constr_line = pySpline.Curve(X=ptList, k=2)
         s = numpy.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = numpy.zeros((nCon, 2, 3))
@@ -665,10 +665,10 @@ class DVConstraints(object):
         """
                 
         # Create mesh of itersections
-        le_s = pySpline.curve(X=leList, k=2)
-        te_s = pySpline.curve(X=teList, k=2)
-        root_s = pySpline.curve(X=[leList[0], teList[0]], k=2)
-        tip_s  = pySpline.curve(X=[leList[-1], teList[-1]], k=2)
+        le_s = pySpline.Curve(X=leList, k=2)
+        te_s = pySpline.Curve(X=teList, k=2)
+        root_s = pySpline.Curve(X=[leList[0], teList[0]], k=2)
+        tip_s  = pySpline.Curve(X=[leList[-1], teList[-1]], k=2)
 
         # Generate parametric distances
         span_s = numpy.linspace(0.0, 1.0, nSpan)
