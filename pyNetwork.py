@@ -1,67 +1,36 @@
-"""
-pyNetwork
-
-pyNetwork is the 1 dimensional analog of pyGeo (surfaces 2D) and
-pyBlock (volumes 3D)
-
-The idea is a "network" is a collection of 1D splines that are
-connected in some manner. This module provides facility for dealing
-with such structures.
-
-Copyright (c) 2010-2014 by G. Kenway
-All rights reserved. Not to be used for commercial purposes.
-Revision: 1.0   $Date: 07/07/2010$
-
-Developers:
------------
-Gaetan Kenway (GKK)
-
-History
--------
-	v. 1.0 - Initial Class Creation (GKK, 2010)
-"""
+# ======================================================================
+#         Imports
+# ======================================================================
 from __future__ import print_function
 from __future__ import division
-
-# =============================================================================
-# Standard Python modules
-# =============================================================================
 import os
-
-# =============================================================================
-# External Python modules
-# =============================================================================
 import numpy
-
-# =============================================================================
-# Extension modules
-# =============================================================================
 from pyspline import pySpline
 from .geo_utils import CurveTopology
 
-# =============================================================================
-# pyNetwork Class
-# =============================================================================
 class pyNetwork():
-        
-    """ Create an instance of the network geometry class. 
+    """
+    A class for manipulating a collection of curve objects.
+    
+    pyNetwork is the 1 dimensional analog of pyGeo (surfaces 2D) and
+    pyBlock (volumes 3D). The idea is that a 'network' is a collection
+    of 1D splines that are connected in some manner. This module
+    provides facility for dealing with such structures.
 
     Parameters
     ----------
     curves : list of pySpline.Curve objects
         Individual curves to form the network.
-
         """
 	
     def __init__(self, curves):
-
         self.curves = curves    
         self.nCurve = len(curves)
         self.topo = None
         self.coef = None
-        self.doConnectivity()
+        self._doConnectivity()
         
-    def doConnectivity(self):
+    def _doConnectivity(self):
         """
         Compute the connectivity of the set of curve objects.
         """
@@ -83,10 +52,6 @@ class pyNetwork():
             ii     = self.topo.gIndex[i][0][1]
             self.coef[i] = self.curves[icurve].coef[ii]
    
-    def printConnectivity(self):
-        """Print the Edge connectivity to the screen"""
-        self.topo.printConnectivity()
-  
 # ----------------------------------------------------------------------
 #               Curve Writing Output Functions
 # ----------------------------------------------------------------------
@@ -184,12 +149,13 @@ class pyNetwork():
                 self.curves[icurve].coef[i] = self.coef[ii]
 
     def getBounds(self, curves=None):
-        """Determine the extents of the set of curves
+        """Determine the extents of the set of curves.
 
         Parameters
         ----------
         curves : list
-            Optional list of curve objects to include.
+            Optional list of the indices of the curve objects to
+            include.
             
         Returns
         -------
@@ -225,6 +191,7 @@ class pyNetwork():
         """ Given a set of points and a vector defining a direction,
         i.e. a ray, determine the minimum distance between these rays
         and any of the curves this object has. 
+
         Parameters
         ----------
         points : array
@@ -339,12 +306,4 @@ class pyNetwork():
                     curveID[i] = curves[j]
              
         return curveID, s
-#==============================================================================
-# Class Test
-#==============================================================================
-if __name__ == '__main__':
-	
-    # Run a Simple Test Case
-    print('Testing pyGeo...')
-    print('No tests implemented yet...')
-
+    
