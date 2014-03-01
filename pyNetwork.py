@@ -57,11 +57,11 @@ class pyNetwork():
 
         self.curves = curves    
         self.nCurve = len(curves)
-        self._doConnectivity()
         self.topo = None
         self.coef = None
+        self.doConnectivity()
         
-    def _doConnectivity(self):
+    def doConnectivity(self):
         """
         Compute the connectivity of the set of curve objects.
         """
@@ -74,7 +74,7 @@ class pyNetwork():
 
         sizes = []
         for icurve in range(self.nCurve):
-            sizes.append(self.curves[icurve].Nctl)
+            sizes.append(self.curves[icurve].nCtl)
         self.topo.calcGlobalNumbering(sizes)
 
         self.coef = numpy.zeros((self.topo.nGlobal, 3))
@@ -133,7 +133,7 @@ class pyNetwork():
             labelFilename = dirName+'./'+fileBaseName+'.curve_labels.dat'
             f2 = open(labelFilename, 'w')
             for icurve in range(self.nCurve):
-                mid = numpy.floor(self.curves[icurve].Nctl/2)
+                mid = numpy.floor(self.curves[icurve].nCtl/2)
                 textString = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d,T=\"S%d\"\n'% (
                     self.curves[icurve].coef[mid, 0],
                     self.curves[icurve].coef[mid, 1],

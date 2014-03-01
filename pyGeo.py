@@ -50,7 +50,7 @@ class Error(Exception):
                 i += len(word)+1
         msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
         print(msg)
-        Exception.__init__()
+        Exception.__init__(self)
         
 class pyGeo():
         
@@ -1102,32 +1102,32 @@ class pyGeo():
             File name of iges file. Should have .igs extension. 
             """
         f = open(fileName, 'w')
-
+      
         #Note: Eventually we may want to put the CORRECT Data here
         f.write('                                                                        S      1\n')
-        f.write('1H, , 1H;, 7H128-000, 11H128-000.IGS, 9H{unknown}, 9H{unknown}, 16, 6, 15, 13, 15, G      1\n')
-        f.write('7H128-000, 1., 1, 4HINCH, 8, 0.016, 15H19970830.165254, 0.0001, 0.,            G      2\n')
-        f.write('21Hdennette@wiz-worx.com, 23HLegacy PDD AP Committee, 11, 3,               G      3\n')
-        f.write('13H920717.080000, 23HMIL-PRF-28000B0, CLASS 1;                            G      4\n')
+        f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
+        f.write('7H128-000,1.,1,4HINCH,8,0.016,15H19970830.165254, 0.0001,0.,            G      2\n')
+        f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
+        f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
         
         Dcount = 1
         Pcount = 1
 
-        for isurf in range(self.nSurf):
+        for isurf in xrange(self.nSurf):
             Pcount, Dcount = self.surfs[isurf].writeIGES_directory( \
                 f, Dcount, Pcount)
 
         Pcount  = 1
         counter = 1
 
-        for isurf in range(self.nSurf):
+        for isurf in xrange(self.nSurf):
             Pcount, counter = self.surfs[isurf].writeIGES_parameters(\
                 f, Pcount, counter)
 
         # Write the terminate statment
         f.write('S%7dG%7dD%7dP%7d%40sT%6s1\n'%(1, 4, Dcount-1, counter-1, ' ', ' '))
         f.close()
-        
+
 # ----------------------------------------------------------------------
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
