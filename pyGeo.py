@@ -1,31 +1,8 @@
-"""
-pyGeo
-
-pyGeo is a (fairly) complete geometry surfacing engine. It performs
-multiple functions including producing surfaces from cross sections, 
-fitting surfaces and has built-in design variable handling. The actual
-b-spline surfaces are of the pySpline surface type. See the individual
-functions for additional information
-
-Copyright (c) 2009 by G. Kenway
-All rights reserved. Not to be used for commercial purposes.
-Revision: 1.0   $Date: 26/05/2009$
-
-
-Developers:
------------
-- Gaetan Kenway (GKK)
-- Graeme Kennedy (GJK)
-
-History
--------
-	v. 1.0 - Initial Class Creation (GKK, 2009)
-"""
+# ======================================================================
+#         Imports
+# ======================================================================
 from __future__ import print_function
-
-# ======================================================================
-#         Extension modules
-# ======================================================================
+from __future__ import division
 import os, copy
 import numpy
 from scipy import sparse
@@ -53,25 +30,23 @@ class Error(Exception):
         Exception.__init__(self)
         
 class pyGeo():
-        
-    """Create an instance of the geometry object. The initialization type, 
-    initType, specifies what type of initialization will be
-    used. There are currently 3 initialization types: plot3d, 
-    iges, and liftingSurface
+    """
+    pyGeo is a (fairly) complete geometry surfacing engine. It
+    performs multiple functions including producing surfaces from
+    cross sections and globally fitting surfaces. The actual b-spline
+    surfaces are of the pySpline Surface type.
+
+    The initialization type, initType, specifies what type of
+    initialization will be used. There are currently 3 initialization
+    types: plot3d, iges, and liftingSurface
 
     Parameters
     ----------
-
     initType : str, {'plot3d', 'iges', 'liftingSurface'}
         A key word defining how this geo object will be defined. 
-
     fileName : str
         Used for 'plot3d' and 'iges' only. Name of file to load.
-        
-    The remainder of the options are for the lifting surface
-    generation:
-
-    xsections : list of filename
+    xsections : list of filenames
         List of the cross section coordinate files. Length = N
     scale : list or array
         List of the scaling factors (chord) for cross sections.
@@ -84,18 +59,14 @@ class pyGeo():
     x, y, z : list or array
         If Xsec is not given, x,y,z arrays each of length N can
         be given individually.
-
     rot : List or array
         List of x-y-z rotations to apply to cross sections. Length = N
-
     rotX, rotY, rotZ : list or arrays
         Indvidual lists of x,y, and z rotations. Each of length N
-
     nCtl : int
         Number of control points to use for fitting. If it is None, local
         interpolation is performed which typicaly yields better results, if
         a small number of sections are used. 
-
     kSpan : int
         The spline order in span-wise direction. 2 for linear, 3 for quadratic
         and 4 for cubic
@@ -816,8 +787,6 @@ class pyGeo():
         print(' -> Setting Surface Coefficients...')
         self._updateSurfaceCoef()
 	
-        return
-
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
 # ----------------------------------------------------------------------    
@@ -1159,7 +1128,7 @@ class pyGeo():
         Parameters
         ----------
         surfs : list or array
-            Indices of surface defining subset for which to get the bounding
+            Indices of surfaces defining subset for which to get the bounding
             box
             
         Returns
@@ -1207,7 +1176,6 @@ class pyGeo():
         Returns
         -------
         Try it and see!
-
         
         Notes 
         -----
@@ -1292,14 +1260,3 @@ class pyGeo():
                     patchID[i] = surfs[j]
 
         return u, v, patchID
-
-#==============================================================================
-# Class Test
-#==============================================================================
-if __name__ == '__main__':
-	
-    # Run a Simple Test Case
-    print('Testing pyGeo...')
-    print('No tests implemented yet...')
-
- 

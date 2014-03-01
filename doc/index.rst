@@ -15,8 +15,11 @@ the following modules:
 .. toctree::
    :maxdepth: 2
 
-   DVConstraints.rst
-   DVGeometry.rst
+   DVConstraints
+   DVGeometry
+   pyNetwork
+   pyGeo
+   pyBlock
 
 Indices and tables
 ==================

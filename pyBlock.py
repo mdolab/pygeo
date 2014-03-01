@@ -1,32 +1,14 @@
-"""
-pyBlock
-
-pyBlock is a (fairly) complete volume geometry engine. It performs
-multiple functions including fitting volumes and mesh warping volumes. 
-The actual b-spline volumes are of the pySpline volume type. See the individual
-functions for additional information
-
-Copyright (c) 2010 by G. Kenway
-All rights reserved. Not to be used for commercial purposes.
-Revision: 1.0   $Date: 11/03/2010$
-
-
-Developers:
------------
-Gaetan Kenway (GKK)
-"""
+# ======================================================================
+#         Imports
+# ======================================================================
 from __future__ import print_function
 from __future__ import division
-
-# ======================================================================
-#         Extension modules
-# ======================================================================
 import os, copy
 import numpy
-from pyspline import pySpline
-from .geo_utils import readNValues, BlockTopology, blendKnotVectors
 from scipy import sparse
 from scipy.sparse import linalg
+from pyspline import pySpline
+from .geo_utils import readNValues, BlockTopology, blendKnotVectors
 
 class Error(Exception):
     """
@@ -49,16 +31,20 @@ class Error(Exception):
         
 class pyBlock():
     """
-    Create an instance of the pyBlcok object. Currently, pyBlock can
-    only be created from plot3d files.
+    pyBlock represents a collection of pySpline Volume objects. 
 
+    It performs several functions including fitting and point
+    projections.  The actual b-spline volumes are of the pySpline
+    Volume type.
+    
     Parameters
     ----------
     initType : str
        Initialization type. Only 'plot3d' is currently available.
 
     fileName : str
-       Filename of the plot3d file to be loaded
+       Filename of the plot3d file to be loaded. Should have a .fmt or
+       .xyz extension. Also must be in ASCII format. 
 
     FFD : bool
        Flag to indicate that this object is to be created as an FFD.
@@ -194,7 +180,8 @@ class pyBlock():
     def fitGlobal(self, greedyReorder=False):
         """
         Determine the set of b-spline coefficients that best fits the
-        set of volumes in the global sense.
+        set of volumes in the global sense. This is *required* for
+        non-FFD creation. 
 
         Parameters
         ----------
@@ -457,8 +444,8 @@ class pyBlock():
                      volLabels=False, edgeLabels=False, nodeLabels=False):
         """Write a tecplot visualation of the pyBlock object. 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         fileName : str
             Filename of tecplot file. Should have a .dat extension
 
@@ -879,7 +866,6 @@ class pyBlock():
             Flag to print out the error is points have not been projected
             to tolerance eps. 
         nIter : int
-
             Maximum number of Newton ieterations to perform. The
             default of 100 should be sufficient for points that
             **actually** lie inside the volume, except for
@@ -1015,11 +1001,3 @@ class EmbeddedVolume(object):
         self.dPtdCoef = None
         self.dPtdX    = None
         self.mask     = mask
-
-#==============================================================================
-# Class Test
-#==============================================================================
-if __name__ == '__main__':
-    print('Testing pyBlock...')
-    print('No tests implemented yet...')
-

@@ -3941,8 +3941,6 @@ def hangle(dx,dy):
         return 2*np.pi - np.arccos(dx/l)
 
 # --------------------- Polygon geometric functions -----------------
-
-
 def areaPoly(nodes):
     # Return the area of the polygon. Note that the input need not be
     # strictly a polygon, (closed curve in 2 dimensions.) The approach
