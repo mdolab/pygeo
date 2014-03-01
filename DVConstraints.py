@@ -1,5 +1,5 @@
 # ======================================================================
-#         Extension modules
+#         Imports
 # ======================================================================
 from __future__ import print_function
 import numpy
@@ -29,29 +29,30 @@ class Error(Exception):
 class DVConstraints(object):
     """
     DVConstraints provides a convenient way of defining geometric
-    constrints for WINGS. This can be very convient for a constrained
+    constraints for WINGS. This can be very useful for a constrained
     aerodynamic or aerostructural optimization. Three types of
     constraints are supported:
 
     1. Thickness 'tooth-pick' constraints: Thickness constraints are
-    enforced at specific locations. A relative or absolute
-    minumum/maximum thickness can be specified. Two variants are
-    supplied: a '2d' variant for thickness constraints over an area such
-    as a spar box and a '1d' variant for thickness constraints along a
-    line 
+       enforced at specific locations. A relative or absolute
+       minimum/maximum thickness can be specified. Two variants are
+       supplied: a '2d' variant for thickness constraints over an area
+       such as a spar box :func:`addThicknessConstraints2D` and a '1d'
+       variant for thickness constraints along a (poly) line
+       :func:`addThicknessConstraints1D`.
 
     2. Volume constraint: This computes and enforces a volume constraint
-    over the specified domain. The input is identical to the '2d'
-    thickness constraints.
+       over the specified domain. The input is identical to the '2d'
+       thickness constraints. See :func:`addVolumeConstraint`.
     
     3. LE/TE Constraints: These geometric constraints are required when
-    using FFD volumes with shape variables. The leading and trailing
-    edges must be fixed wrt the shape variabes so these enforce that the
-    coefficients on the leading edge can only move in equal and opposite
-    directions
-
+       using FFD volumes with shape variables. The leading and trailing
+       edges must be fixed wrt the shape variables so these enforce that the
+       coefficients on the leading edge can only move in equal and opposite
+       directions
+       
     Analytic sensitivity information is computed for all functions and a
-    facility for adding the constrints automatically to a pyOpt
+    facility for adding the constraints automatically to a pyOptSparse
     optimization problem is also provided.
     """
   
@@ -105,10 +106,9 @@ class DVConstraints(object):
 
     def setDVGeo(self, DVGeo):
         """
-        Set the DVGeometry object that will manipulate 'geometry' in
-        this object. Note that DVConstraints doesn't **strictly** need
-        a DVGeometry object set, but if optimization is desired it is
-        required.
+        Set the DVGeometry object that will manipulate this object.
+        Note that DVConstraints doesn't **strictly** need a DVGeometry
+        object set, but if optimization is desired it is required.
 
         Parameters
         ----------
@@ -277,13 +277,29 @@ class DVConstraints(object):
                                   scale=1.0, name=None,
                                   addToPyOpt=False):
         """
-        Add a set of thickness constraint, that are oriented along a
-        poly-line given by ptList.
+        Add a set of thickness constraints oriented along a poly-line.
+
+        See below for a schematic::
+
+          Planform view of the wing: The '+' are the (three dimensional)
+          points that are supplied in ptList:
+
+          Physical extent of wing            
+                                   \         
+          __________________________\_________
+          |                  +               |   
+          |                -/                |
+          |                /                 |
+          | +-------+-----+                  | 
+          |              4-points defining   |
+          |              poly-line           |
+          |                                  |
+          |__________________________________/
+
 
         Parameters
         ----------
-
-        ptList: list or array of size (N x 3) where N >=2
+        ptList : list or array of size (N x 3) where N >=2
             The list of points forming a poly-line along which the
             thickness constraints will be added. 
 
@@ -333,7 +349,7 @@ class DVConstraints(object):
             you have multiple DVCon objects and the constriant names
             need to be distinguished **or** you are using this set of
             thickness constraints for something other than a direct
-            constraint in pyOpt.
+            constraint in pyOptSparse.
             
         addToPyOpt : bool
             Normally this should be left at the default of True. If
@@ -348,17 +364,15 @@ class DVConstraints(object):
         coords = numpy.zeros((nCon, 2, 3))
         # Project all the points
         for i in range(nCon):
-
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
                 X[i], axis, self.p0, self.v1, self.v2)
             if fail:
                 raise Error('There was an error projecting a node \
- at (%f, %f, %f) with normal (%f, %f, %f).'%(X[i, 0], X[i, 1], X[i, 2],
-                                             axis[0], axis[1], axis[2]))
+                 at (%f, %f, %f) with normal (%f, %f, %f).'% ( 
+                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
             coords[i, 0] = up
             coords[i, 1] = down
-        # end for
 
         # Create the thickness constraint object:
         coords = coords.reshape((nCon*2, 3))
@@ -405,7 +419,6 @@ class DVConstraints(object):
         Parameters
         ----------
         leList : list or array
-
            A list or array of points (size should be (Nx3) where N is
            at least 2) defining the 'leading edge' or the start of the
            domain
@@ -442,7 +455,6 @@ class DVConstraints(object):
               volume. lower and upper refer to the physical volumes. 
 
         scale : float 
-
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -529,7 +541,8 @@ class DVConstraints(object):
 
     def addConstraintsPyOpt(self, optProb):
         """
-        Add all constraints to the optProb object:
+        Add all constraints to the optProb object. Only constraints
+        the that have the addToPyOpt flags are actually added. 
 
         Parameters
         ----------
@@ -551,7 +564,7 @@ class DVConstraints(object):
     def evalFunctions(self, funcs):
         """
         Evaluate all the 'functions' that this object has. Of course,
-        these functions are actually just the desired constraint
+        these functions are usually just the desired constraint
         values. These values will be set directly into the funcs
         dictionary.
 
@@ -588,9 +601,9 @@ class DVConstraints(object):
             
     def writeTecplot(self, fileName): 
         """
-        This function writes a visualization file for all the
-        currently added constraints to a tecplotVolume. This is useful
-        for publication purposes as well as determine if the
+        This function writes a visualization file for constraints. All
+        currently added constraints are written to a tecplot. This is
+        useful for publication purposes as well as determine if the
         constraints are *actually* what the user expects them to be.
 
         Parameters
@@ -692,8 +705,9 @@ class DVConstraints(object):
 
                 if fail:
                     raise Error('There was an error projecting a node \
- at (%f, %f, %f) with normal (%f, %f, %f).'%(X[i, j, 0], X[i, j, 1], X[i, j, 2],
-                                             upVec[0], upVec[1], upVec[2]))
+                     at (%f, %f, %f) with normal (%f, %f, %f).'% (
+                            X[i, j, 0], X[i, j, 1], X[i, j, 2],
+                            upVec[0], upVec[1], upVec[2]))
                 coords[i, j, 0] = up
                 coords[i, j, 1] = down
 

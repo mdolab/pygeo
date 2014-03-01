@@ -1,13 +1,7 @@
-"""
- DVGeometry Deals with all the details of taking user supplied design
- variables and mapping it to the descrete surfaces on the CFD and FEA
- disciplines. In the case of the FE discipline, ALL the FE nodes are
- included (distributed in a volume) and as such this currently only
- works with Free Form Deformation Volumes that can deal with these
- spactialy distributed points.
-"""
+# ======================================================================
+#         Imports
+# ======================================================================
 from __future__ import print_function
-import copy
 from collections import OrderedDict
 import numpy
 from scipy import sparse
@@ -36,6 +30,13 @@ class Error(Exception):
         
 class DVGeometry(object):
     """
+    DVGeometry Deals with all the details of taking user supplied design
+    variables and mapping it to the descrete surfaces on the CFD and FEA
+    disciplines. In the case of the FE discipline, ALL the FE nodes are
+    included (distributed in a volume) and as such this currently only
+    works with Free Form Deformation Volumes that can deal with these
+    spactialy distributed points.
+
     Create a DV Geometry module to handle all design variable
     manipulation
 
@@ -75,7 +76,6 @@ class DVGeometry(object):
             self.dtype = 'D'
         else:
             self.dtype = 'd'
-        # end if
 
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case aditional pyBlock options
@@ -102,9 +102,8 @@ class DVGeometry(object):
 
         # The default variable set name is geo. 
         self.varSet = 'geo'
-        return 
-
-    def addRefAxis(self, name, curve=None,  xFraction=None, volumes=None, rotType=5,
+  
+    def addRefAxis(self, name, curve=None, xFraction=None, volumes=None, rotType=5,
                    axis='x'):
         """
         This function is used to add a 'reference' axis to the
@@ -202,11 +201,10 @@ class DVGeometry(object):
                                'rotType':rotType, 'axis':axis}
             nAxis = len(curve.coef)
         elif xFraction is not None:
-            raise ValueError('xFraction specification is not coded yet.')
+            raise Error('xFraction specification is not coded yet.')
         else:
-            raise ValueError('One of \'curve\' or \'xFraction\' must be \
-specified for a call to addRefAxis')
-        # end if
+            raise Error('One of \'curve\' or \'xFraction\' must be \
+            specified for a call to addRefAxis')
 
         return nAxis
 
@@ -216,7 +214,6 @@ specified for a call to addRefAxis')
         the user has added one at a time. This will create the
         internal pyNetwork object
         """
-
         curves = []
         for axis in self.axis:
             curves.append(self.axis[axis]['curve'])
@@ -253,7 +250,6 @@ specified for a call to addRefAxis')
             self.scale_x[key] = pySpline.curve(t=t, k=k, coef=o.copy())
             self.scale_y[key] = pySpline.curve(t=t, k=k, coef=o.copy())
             self.scale_z[key] = pySpline.curve(t=t, k=k, coef=o.copy())
-        # end for
 
         # Need to keep track of initail scale values
         self.scale0 = self.scale.copy()
@@ -264,7 +260,6 @@ specified for a call to addRefAxis')
         self.rot_y0 = self.rot_y.copy()
         self.rot_z0 = self.rot_z.copy()
         self.rot_theta0 = self.rot_theta.copy()
-
    
     def addPointSet(self, points, ptName, origConfig=True, **kwargs):
         """ Embed a set of points ((N,3) array) with name 'ptName'
@@ -382,7 +377,6 @@ specified for a call to addRefAxis')
             print('created as a child. This operation is illegal.')
             print('='*80)
             return
-        # end if
 
         # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
@@ -398,8 +392,6 @@ specified for a call to addRefAxis')
         # Add the child to the parent and return
         self.children.append(childDVGeo)
 
-        return
-
     def _setInitialValues(self):
         self.coef = copy.deepcopy(self.coef0)
         self.scale = copy.deepcopy(self.scale0)
@@ -410,9 +402,7 @@ specified for a call to addRefAxis')
         self.rot_y = copy.deepcopy(self.rot_y0)
         self.rot_z = copy.deepcopy(self.rot_z0)
         self.rot_theta = copy.deepcopy(self.rot_theta0)   
-        
-        return
-
+      
     def addGeoDVGlobal(self, dvName, value, func, lower=None, upper=None,
                        scale=1.0):
         """
@@ -521,7 +511,6 @@ specified for a call to addRefAxis')
         else:
             # Just take'em all
             ind = numpy.arange(len(self.FFD.coef))
-        # end if
         
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper,
                                                scale, axis, ind)
@@ -555,7 +544,6 @@ specified for a call to addRefAxis')
                                   len(vals_to_set)))
 
                 self.DV_listGlobal[key].value = vals_to_set
-            # end if
             
             if key in self.DV_listLocal:
                 vals_to_set = numpy.atleast_1d(dvDict[key])
@@ -571,7 +559,6 @@ specified for a call to addRefAxis')
             self.J_name = None 
             self.J_attach = None
             self.J_local = None
-        # end for
 
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
@@ -581,8 +568,6 @@ specified for a call to addRefAxis')
         # variables will be set on the children
         for child in self.children:
             child.setValues(dvDict)
-
-        return
 
     def getValues(self):
         """
@@ -626,7 +611,7 @@ specified for a call to addRefAxis')
             D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
         elif rotType == 6:
             D = numpy.dot(rotX, numpy.dot(rotY, rotZ))
-        # end if
+
         return D
 
     def _getNDV(self):
@@ -705,11 +690,12 @@ specified for a call to addRefAxis')
         """ Extract the coefficients for the selected reference
         axis. This should be used inside design variable functions"""
 
-        C = numpy.zeros((len(self.refAxis.topo.lIndex[axisID]),3),self.coef.dtype)
+        C = numpy.zeros((len(self.refAxis.topo.lIndex[axisID]), 3), 
+                        self.coef.dtype)
  
-        C[:,0] = numpy.take(self.coef[:,0],self.refAxis.topo.lIndex[axisID])
-        C[:,1] = numpy.take(self.coef[:,1],self.refAxis.topo.lIndex[axisID])
-        C[:,2] = numpy.take(self.coef[:,2],self.refAxis.topo.lIndex[axisID])
+        C[:, 0] = numpy.take(self.coef[:, 0], self.refAxis.topo.lIndex[axisID])
+        C[:, 1] = numpy.take(self.coef[:, 1], self.refAxis.topo.lIndex[axisID])
+        C[:, 2] = numpy.take(self.coef[:, 2], self.refAxis.topo.lIndex[axisID])
 
         return C
 
@@ -721,8 +707,6 @@ specified for a call to addRefAxis')
         numpy.put(self.coef[:,0],self.refAxis.topo.lIndex[axisID],coef[:,0])
         numpy.put(self.coef[:,1],self.refAxis.topo.lIndex[axisID],coef[:,1])
         numpy.put(self.coef[:,2],self.refAxis.topo.lIndex[axisID],coef[:,2])
-
-        return 
 
     def update(self, ptSetName, childDelta=True):
         """This is pretty straight forward, perform the operations on
@@ -742,13 +726,11 @@ specified for a call to addRefAxis')
             new_pts = numpy.zeros((self.nPtAttach, 3), 'D')
         else:
             new_pts = numpy.zeros((self.nPtAttach, 3), 'd')
-        # end if
+
         if self.isChild:
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
-            # end for
-        # end if
 
         # Run Global Design Vars
         for key in self.DV_listGlobal:
@@ -774,7 +756,7 @@ specified for a call to addRefAxis')
                 new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
                         self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
-            # end if
+
             else:
                 rotX = geo_utils.rotxM(self.rot_x[
                         self.curveIDNames[ipt]](self.links_s[ipt]))
@@ -800,9 +782,6 @@ specified for a call to addRefAxis')
 
                 new_pts[ipt] = base_pt + D*scale
 
-            # end if
-        # end for
-
         if not self.isChild:
             temp = numpy.real(new_pts)
             self.FFD.coef = self.ptAttachFull.copy()
@@ -820,8 +799,6 @@ specified for a call to addRefAxis')
 
             if childDelta:
                 self.FFD.coef -= oldCoefLocations
-            # end if
-        # end if
 
         for key in self.DV_listLocal:
             self.DV_listLocal[key](self.FFD.coef)
@@ -864,12 +841,8 @@ specified for a call to addRefAxis')
             if dPtdCoef is not None:
                 for ii in xrange(3):
                     coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
-                # end for
-            # end if
 
             self._unComplexifyCoef()
-
-        # end if
 
         # Finally flag this pointSet as being up to date:
         self.updated[ptSetName] = True
@@ -900,7 +873,6 @@ specified for a call to addRefAxis')
         # Set all coef Values back to initial values
         if not self.isChild:
             self._setInitialValues()
-        # end if
 
         self._complexifyCoef()
 
@@ -909,8 +881,6 @@ specified for a call to addRefAxis')
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
                 self.links_x[ipt]=self.FFD.coef[self.ptAttachInd[ipt],:]-base_pt
-            # end for
-        # end if
 
         # Step 1: Call all the design variables
         for key in self.DV_listGlobal:
@@ -963,8 +933,6 @@ specified for a call to addRefAxis')
                 D[2] *= scale_z
 
                 new_pts[ipt] = base_pt + D*scale
-            # end if
-        # end for
 
         # set the forward effect of the global design vars in each child
         for iChild in xrange(len(self.children)):
@@ -995,7 +963,6 @@ specified for a call to addRefAxis')
             self.children[iChild].dXrefdXdvg[:, iDV] = dXrefdXdvg
             self.children[iChild].dCcdXdvg[:, iDV] = dCcdXdvg
             self.children[iChild].nChildren = len(self.children)
-        # end if
 
         return new_pts
 
@@ -1065,7 +1032,6 @@ specified for a call to addRefAxis')
             J_temp = self.J_local
         else:
             J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
-        # end if
 
         # Convert J_temp to CSR Matrix
         J_temp = sparse.csr_matrix(J_temp)
@@ -1085,7 +1051,6 @@ specified for a call to addRefAxis')
                 dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
                 dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
                 dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
-            # end if
 
             # Now back to design variables:
             dIdx_local = J_temp.T.dot(dIdcoef)
@@ -1093,13 +1058,11 @@ specified for a call to addRefAxis')
             # This is an array of zeros of length the number of design
             # variables
             dIdx_local = numpy.zeros(nDV, 'd')
-        # end if
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
         else:
             dIdx = dIdx_local
-        # end if
 
         for iChild in xrange(len(self.children)):
              # reset control points on child for child link derivatives
@@ -1112,7 +1075,6 @@ specified for a call to addRefAxis')
             self.children[iChild].refAxis._updateCurveCoef()
             dIdx += self.children[iChild].totalSensitivity(dIdpt, comm, ptSetName,
                                                            True, nDV)
-        # end for
         
         # self.computeTotalJacobian(name)
         # #print 'shapes',self.JT.shape,dIdpt.shape
@@ -1318,7 +1280,6 @@ specified for a call to addRefAxis')
             J_temp = sparse.lil_matrix(self.J_local)
         else:
             J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
-        # end if
 
         # This is the FINAL Jacobian for the current geometry
         # point. We need this to be a sparse matrix for TACS. 
@@ -1372,13 +1333,9 @@ specified for a call to addRefAxis')
                 self.children[iChild].computeTotalJacobian(ptSetName)
 
                 self.JT = self.JT + self.children[iChild].JT
-                
-            # end
-
         else:
             self.JT = None
-        return 
-
+   
     def _attachedPtJacobian(self):
         """
         Compute the derivative of the the attached points
@@ -1400,8 +1357,6 @@ specified for a call to addRefAxis')
                 self.children[iChild].startDVg=iDV
                 childnDV = self.children[iChild]._getNDVGlobal()
                 iDV+=childnDV
-            # end
-        # end if
 
         if nDVSummed == 0:
             return None
@@ -1451,21 +1406,16 @@ specified for a call to addRefAxis')
                     if self.rangeg==None:
                         for iChild in xrange(len(self.children)):
                             self.children[iChild].rangeg[iDV]=self.DV_listGlobal[key].scale[j]
-                        # end for
                     else:
                         for iChild in xrange(len(self.children)):
                             self.children[iChild].rangeg[iDV]=self.rangeg[iDV]
-                        # end for
-                    # end if
 
                     iDV += 1
 
                     self.DV_listGlobal[key].value[j] = refVal
-                # end for
-            # end for
+
         else:
             Jacobian = None
-        # end if
 
         if self.dXrefdXdvg is not None:
             # we are now on a child. Add in dependence passed from parent
@@ -1506,8 +1456,7 @@ specified for a call to addRefAxis')
                     for j in xrange(3):
                         idx = index*3+j
                         tmp3[idx]=self.dCcdXdvg[idx,iDV]
-                    # end
-                # end
+
                 Jacobian[:, iDV] += oneoverh*numpy.imag(tmp2)-tmp3
                 self.coef = self.coef.astype('d')
                 self.FFD.coef = self.FFD.coef.astype('d')
@@ -1536,14 +1485,11 @@ specified for a call to addRefAxis')
                 nVal = self.DV_listLocal[key].nVal
                 for j in xrange(nVal):
                     iDV+=1
-                # end
-            # end
+
             for iChild in xrange(len(self.children)):
                 self.children[iChild].startDVl=iDV
                 childnDV = self.children[iChild]._getNDVLocal()
                 iDV+=childnDV
-            # end
-        # end if
         
         if nDVSummed == 0:
             return None
@@ -1562,7 +1508,6 @@ specified for a call to addRefAxis')
                 N = self.FFD.embededVolumes['child%d_coef'%(iChild)].N
                 self.children[iChild].dCcdXdvl = numpy.zeros((N*3, nDV))
                 self.children[iChild].rangel = numpy.zeros(nDV)
-            # end for
 
             iDVLocal = 0
             for key in self.DV_listLocal:
@@ -1575,7 +1520,6 @@ specified for a call to addRefAxis')
                         Jacobian[irow, iDVLocal] = 1.0
                     else:
                         Jacobian[irow, iDVLocal] = self.DV_listLocal[key].scale[j]
-                    # end if
 
                     for iChild in xrange(len(self.children)):
 
@@ -1599,24 +1543,20 @@ specified for a call to addRefAxis')
 
                         self.children[iChild].dXrefdXdvl[:, iDVLocal] = dXrefdXdvl
                         self.children[iChild].dCcdXdvl[:, iDVLocal] = dCcdXdvl
-                    # end for
+
                     if scaled:
                         if self.rangel is None:
                             for iChild in xrange(len(self.children)):
                                 self.children[iChild].rangel[iDVLocal] = self.DV_listLocal[key].scale[j]
-                            # end for
                         else:
                             for iChild in xrange(len(self.children)):
                                 self.children[iChild].rangel[iDVLocal] = self.rangel[iDVLocal]
-                            # end for
-                        # end if
-                    # end if
+
                     iDVLocal += 1
                 # end for
             # end for
         else:
             Jacobian = None
-        # end if
 
         if self.dXrefdXdvl is not None:
             #temp = sparse.lil_matrix((self.nPtAttachFull*3, nDVSummed))
@@ -1626,7 +1566,7 @@ specified for a call to addRefAxis')
                 endIdx = startIdx+nDV#nDVSummed-self.nChildren+self.iChild+nDV
                 temp[:, startIdx:endIdx] = Jacobian.todense()
                 #temp[:, nDVSummed - nDV:] = Jacobian
-            # end if 
+
             Jacobian = temp
 
             for iDV in xrange(self.dXrefdXdvl.shape[1]):
@@ -1658,7 +1598,7 @@ specified for a call to addRefAxis')
                     numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
                     numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
                     numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2])
-                # end
+
                 tmp3 = numpy.zeros(self.nPtAttachFull*3,dtype='d')
                 for index in self.ptAttachInd:
                     for j in xrange(3):
@@ -1667,14 +1607,11 @@ specified for a call to addRefAxis')
                             tmp3[idx]=self.dCcdXdvl[idx,iDV]*self.rangel[iDV]
                         else:
                             tmp3[idx]=self.dCcdXdvl[idx,iDV]
-                        # end
-                    # end
-                # end
+
                 Jacobian[:, iDV] = Jacobian[:, iDV] + oneoverh*numpy.imag(tmp2)-tmp3
                 self.coef = self.coef.astype('d')
                 self.FFD.coef = self.FFD.coef.astype('d')
-            # end for
-        # end if
+
         self._unComplexifyCoef()
                               
         return sparse.csr_matrix(Jacobian)
@@ -1734,7 +1671,6 @@ specified for a call to addRefAxis')
         # Write children volumes:
         for iChild in xrange(len(self.children)):
             vol_counter += self.children[iChild]._writeVols(f, vol_counter)
-        # end for
 
         pySpline.closeTecplot(f)
 
@@ -1746,7 +1682,6 @@ specified for a call to addRefAxis')
         for i in xrange(len(self.FFD.vols)):
             pySpline.writeTecplot3D(handle, 'vol%d'%i, self.FFD.vols[i].coef)
             vol_counter += 1
-        # end for
 
         return vol_counter
 
@@ -1777,7 +1712,7 @@ specified for a call to addRefAxis')
                  
         if self.isChild:
             refFFDCoef = copy.copy(self.FFD.coef)
-        # end if
+
         coords0 = self.update(name).flatten()
 
         h = 1e-6
@@ -1789,7 +1724,7 @@ specified for a call to addRefAxis')
         else:
             nDVSummed = nDV
             DVCount=0
-        # end if
+
         #        DVCount = 0
         for key in self.DV_listGlobal:
             for j in xrange(self.DV_listGlobal[key].nVal):
@@ -1800,7 +1735,6 @@ specified for a call to addRefAxis')
 
                 if self.isChild:
                     self.FFD.coef=  refFFDCoef.copy()
-                # end if
 
                 refVal = self.DV_listGlobal[key].value[j]
 
@@ -1818,8 +1752,7 @@ specified for a call to addRefAxis')
 
                     if abs(relErr) > h*10 and abs(absErr) > h*10:
                         print(ii, deriv[ii], Jac[DVCount, ii], relErr, absErr)
-                    # end if
-                # end for
+
                 DVCount += 1
                 self.DV_listGlobal[key].value[j] = refVal
             # end for
@@ -1846,8 +1779,7 @@ specified for a call to addRefAxis')
 
                     if abs(relErr) > h and abs(absErr) > h:
                         print(ii, deriv[ii], Jac[DVCount, ii], relErr, absErr)
-                    # end if
-                # end for
+
                 DVCount += 1
                 self.DV_listLocal[key].value[j] = refVal
             # end for
@@ -1855,8 +1787,6 @@ specified for a call to addRefAxis')
 
         for child in self.children:
             child.checkDerivatives(name)
-        # end for
-        return
 
     def printDesignVariables(self):
         """
@@ -1956,7 +1886,6 @@ class geoDVLocal(object):
         coefficients"""
         for i in xrange(self.nVal):
             coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
-        # end for
       
         return coef
 
