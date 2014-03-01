@@ -45,7 +45,7 @@ class Error(Exception):
                 i += len(word)+1
         msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
         print(msg)
-        Exception.__init__()
+        Exception.__init__(self)
         
 class pyBlock():
     """
@@ -190,6 +190,7 @@ class pyBlock():
             self.nVol = len(self.vols)
         # end if (FFD Check)
 
+        
     def fitGlobal(self, greedyReorder=False):
         """
         Determine the set of b-spline coefficients that best fits the
@@ -734,7 +735,7 @@ class pyBlock():
         kwargs : dict
             kwargs pass through to the actual projectPoints() function
         """
-    
+
         # Generate coefMask regardless
         coefMask = []
         for iVol in range(self.nVol):
@@ -912,6 +913,7 @@ class pyBlock():
                 # best we can do:
                 if D0Norm < numpy.linalg.norm(D[i]):
                     volID[i] = iVol
+
                     u[i] = u0
                     v[i] = v0
                     w[i] = w0

@@ -1,14 +1,34 @@
 # ======================================================================
 #         Extension modules
 # ======================================================================
+from __future__ import print_function
 import numpy
 from . import geo_utils
 from pyspline import pySpline
 from collections import OrderedDict
 
+class Error(Exception):
+    """
+    Format the error message in a box to make it clear this
+    was a expliclty raised exception.
+    """
+    def __init__(self, message):
+        msg = '\n+'+'-'*78+'+'+'\n' + '| pyBlock Error: '
+        i = 16
+        for word in message.split():
+            if len(word) + i + 1 > 78: # Finish line and start new one
+                msg += ' '*(78-i)+'|\n| ' + word + ' '
+                i = 1 + len(word)+1
+            else:
+                msg += word + ' '
+                i += len(word)+1
+        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+        print(msg)
+        Exception.__init__(self)
+
 class DVConstraints(object):
     """
-    DVConstraints provides a convient way of defining geometric
+    DVConstraints provides a convenient way of defining geometric
     constrints for WINGS. This can be very convient for a constrained
     aerodynamic or aerostructural optimization. Three types of
     constraints are supported:
@@ -45,8 +65,11 @@ class DVConstraints(object):
         self.LeTeCon = OrderedDict()
         self.volumeCGCon = OrderedDict()
         self.volumeAreaCon = OrderedDict()
-      
-        return
+        self.DVGeo = None
+        # Data for the discrete surface
+        self.p0 = None
+        self.v1 = None
+        self.v2 = None
 
     def setSurface(self, surf):
         """
@@ -74,12 +97,11 @@ class DVConstraints(object):
         """
         
         if type(surf) == list:
-            self.p0 = numpy.array(wing[0])
-            self.v1 = numpy.array(wing[1])
-            self.v2 = numpy.array(wing[2])
+            self.p0 = numpy.array(surf[0])
+            self.v1 = numpy.array(surf[1])
+            self.v2 = numpy.array(surf[2])
         else:
-            self.p0, self.v1, self.v2 = self._generateDiscreteSurface(wing)
-        # end if
+            self._generateDiscreteSurface(surf)
 
     def setDVGeo(self, DVGeo):
         """
@@ -232,25 +254,24 @@ class DVConstraints(object):
         >>> DVCon.addThicknessConstraints2D(leList, teList, 10, 3, 
                                 lower=1.0, scaled=True)
         """
-        upper = self._convertTo2D(upper, nSpan, nChord)
-        lower = self._convertTo2D(lower, nSpan, nChord)
-        scale = self._convertTo2D(scale, nSpan, nChord)
+        upper = self._convertTo2D(upper, nSpan, nChord).flatten()
+        lower = self._convertTo2D(lower, nSpan, nChord).flatten()
+        scale = self._convertTo2D(scale, nSpan, nChord).flatten()
+
         coords = self._generateIntersections(leList, teList, nSpan, nChord)
 
         # Create the thickness constraint object:
-        coords = coords.reshape((nSpan*nChord*2,3))
+        coords = coords.reshape((nSpan*nChord*2, 3))
 
         # Create a name 
         if name is None:
-            conName = 'thickness_constraints_%d'%(len(self.thickCon))
+            conName = 'thickness_constraints_%d'% len(self.thickCon)
         else:
             conName = name
         self.thickCon[conName] = ThicknessConstraint(
-            conName, coords, lower, upper, scale, scaled, scale, self.DVGeo,
+            conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
         
-        return 
-
     def addThicknessConstraints1D(self, ptList, nCon, axis, 
                                   lower=1.0, upper=3.0, scaled=True,
                                   scale=1.0, name=None,
@@ -321,20 +342,20 @@ class DVConstraints(object):
         """
 
         # Create mesh of itersections
-        constr_line = pySpline.curve(X=pt_list,k=2)
-        s = numpy.linspace(0,1,nCon)
+        constr_line = pySpline.curve(X=ptList, k=2)
+        s = numpy.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = numpy.zeros((nCon, 2, 3))
         # Project all the points
-        for i in xrange(nCon):
+        for i in range(nCon):
 
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], axis, p0, v1, v2)
+                X[i], axis, self.p0, self.v1, self.v2)
             if fail:
                 raise Error('There was an error projecting a node \
- at (%f, %f, %f) with normal (%f, %f, %f).'%(X[i,j][0], X[i,j][1], X[i,j][2],
-                                             up_vec[0], up_vec[1], up_vec[2]))
+ at (%f, %f, %f) with normal (%f, %f, %f).'%(X[i, 0], X[i, 1], X[i, 2],
+                                             axis[0], axis[1], axis[2]))
             coords[i, 0] = up
             coords[i, 1] = down
         # end for
@@ -342,14 +363,12 @@ class DVConstraints(object):
         # Create the thickness constraint object:
         coords = coords.reshape((nCon*2, 3))
         if name is None:
-            conName = 'thickness_constraints_%d'%(len(self.thickCon))
+            conName = 'thickness_constraints_%d'% len(self.thickCon)
         else:
             conName = name
         self.thickCon[conName] = ThicknessConstraint(
             conName, coords, lower, upper, scale, scaled, scale, self.DVGeo,
             addToPyOpt)
-
-        return
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -449,67 +468,64 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
-
-            
             """
 
         if name is None:
-            conName = 'volume_constraint_%d'%(len(self.volumeCon))
+            conName = 'volume_constraint_%d'% len(self.volumeCon)
         else:
             conName = name
 
         coords = self._generateIntersections(leList, teList, nSpan, nChord)
+        coords = coords.reshape((nSpan*nChord*2, 3))
+
         # Finally add the volume constraint object
         self.volumeCon[conName] = VolumeConstraint(
-            conName, coords, lower, upper, scaled, scale,
+            conName, nSpan, nChord, coords, lower, upper, scaled, scale,
             self.DVGeo, addToPyOpt)
 
-        return
 
-    def addLeTeCon(self, up_ind, low_ind):
-        """Add Leading Edge and Trailing Edge Constraints to the FFD
-        at the indiceis defined by up_ind and low_ind"""
+    # def addLeTeCon(self, up_ind, low_ind):
+    #     """Add Leading Edge and Trailing Edge Constraints to the FFD
+    #     at the indiceis defined by up_ind and low_ind"""
 
-        assert len(up_ind) == len(low_ind),  'up_ind and low_ind are\
- not the same length'
-
+    #     if self.DVGeo is None:
+    #         raise Error('A DVGeometry object must be set with setDVGeo()\
+    #         before this function can be called')
+    #     if len(up_ind) != len(low_ind):
+    #         raise Error('The upInd and lowInd lengths are not the same!')
      
-        # Check to see if we have local design variables in DVGeo
-        if len(DVGeo.DV_listLocal) == 0:
-            geo_utils.mpiPrint('Warning: Trying to add Le/Te Constraint when no local variables found')
-        # end if
+    #     # Check to see if we have local design variables in DVGeo
+    #     if len(self.DVGeo.DV_listLocal) == 0:
+    #         print('Warning: Trying to add Le/Te Constraint \
+    #         when no local variables found')
 
-        # Loop over each set of Local Design Variables
-        for i in xrange(len(DVGeo.DV_listLocal)):
+    #     # Loop over each set of Local Design Variables
+    #     for i in range(len(self.DVGeo.DV_listLocal)):
 
-            # We will assume that each GeoDVLocal only moves on
-            # 1,2, or 3 coordinate directions (but not mixed)
-            temp = DVGeo.DV_listLocal[i].coef_list
-            for j in xrange(len(up_ind)): # Try to find this index
-                                          # in the coef_list
-                up = None
-                down = None
-                for k in xrange(len(temp)):
-                    if temp[k][0] == up_ind[j]:
-                        up = k
-                    # end if
-                    if temp[k][0] == low_ind[j]:
-                        down = k
-                    # end for
-                # end for
-                # If we haven't found up AND down do nothing
-                if up is not None and down is not None:
-                    self.LeTeCon.append([i, up, down])
-                # end if
-            # end for
-        # end for
+    #         # We will assume that each GeoDVLocal only moves on
+    #         # 1,2, or 3 coordinate directions (but not mixed)
+    #         temp = self.DVGeo.DV_listLocal[i].coef_list
+    #         for j in range(len(up_ind)): # Try to find this index
+    #                                       # in the coef_list
+    #             up = None
+    #             down = None
+    #             for k in range(len(temp)):
+    #                 if temp[k][0] == up_ind[j]:
+    #                     up = k
+    #                 # end if
+    #                 if temp[k][0] == low_ind[j]:
+    #                     down = k
+    #                 # end for
+    #             # end for
+    #             # If we haven't found up AND down do nothing
+    #             # if up is not None and down is not None:
+    #             #     self.LeTeCon.append([i, up, down])
+    #             # end if
 
-        # Finally, unique the list to parse out duplicates. Note:
-        # This sort may not be stable however, the order of the
-        # LeTeCon list doens't matter
-        self.LeTeCon = geo_utils.unique(self.LeTeCon)
-
-        return
+    #     # Finally, unique the list to parse out duplicates. Note:
+    #     # This sort may not be stable however, the order of the
+    #     # LeTeCon list doens't matter
+    #     self.LeTeCon = geo_utils.unique(self.LeTeCon)
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -528,11 +544,9 @@ class DVConstraints(object):
         for key in self.thickCon:
             self.thickCon[key].addConstraintsPyOpt(optProb)
         for key in self.volumeCon:
-            self.volumneCon[key].addConstraintsPyOpt(optProb)
+            self.volumeCon[key].addConstraintsPyOpt(optProb)
         for key in self.LeTeCon:
             self.LeTeCon[key].addConstraintsPyOpt(optProb)
-
-        return 
 
     def evalFunctions(self, funcs):
         """
@@ -548,29 +562,30 @@ class DVConstraints(object):
         """
 
         for key in self.thickCon:
-            self.thickCon[key].evalFunctions(func)
+            self.thickCon[key].evalFunctions(funcs)
         for key in self.volumeCon:
-            self.volumneCon[key].evalFunctions(func)
+            self.volumeCon[key].evalFunctions(funcs)
         for key in self.LeTeCon:
-            self.LeTeCon[key].evalFunctions(func)
+            self.LeTeCon[key].evalFunctions(funcs)
                     
-        return
-
     def evalFunctionsSens(self, funcsSens):
         """
         Evaluate the derivative of all the 'funcitons' that this
         object has. These functions are just the constraint values.
         Thse values will be set directly in the funcSens dictionary.
+
+        Parameters
+        ----------
+        funcSens : dict
+            Dictionary into which the sensitivities are added. 
         """
         for key in self.thickCon:
-            self.thickCon[key].evalFunctionsSens(funcSens)
+            self.thickCon[key].evalFunctionsSens(funcsSens)
         for key in self.volumeCon:
-            self.volumneCon[key].evalFunctionsSens(funcSens)
+            self.volumeCon[key].evalFunctionsSens(funcsSens)
         for key in self.LeTeCon:
-            self.LeTeCon[key].evalFunctionsSens(funcSens)
+            self.LeTeCon[key].evalFunctionsSens(funcsSens)
             
-        return
-
     def writeTecplot(self, fileName): 
         """
         This function writes a visualization file for all the
@@ -593,10 +608,7 @@ class DVConstraints(object):
             self.thickCon[key].writeTecplot(f)
         for key in self.volumeCon:
             self.volumeCon[key].writeTecplot(f)
-            
         f.close()
-
-        return
 
     def _convertTo2D(self, value, dim1, dim2):
         """
@@ -606,29 +618,29 @@ class DVConstraints(object):
         """
 
         if numpy.isscalar:
-            return value*numpy.ones((dim1,dim2))
+            return value*numpy.ones((dim1, dim2))
         else:
             temp = numpy.atleast_2d(value)
-            if temp.shape[0] == dim1 and tmp.shape[1] == dim2:
+            if temp.shape[0] == dim1 and temp.shape[1] == dim2:
                 return value
             else:
-                raise ValueError('The size of the 2D array was the incorret shape')
+                raise Error('The size of the 2D array was the incorret shape')
                     
     def _convertTo1D(self, value, dim1):
         """
         Generic function to process 'value'. In the end, it must be
-        array of size ndim1. value is already that shape, excellent,
+        array of size dim1. value is already that shape, excellent,
         otherwise, a scalar will be 'upcast' to that size
         """
 
         if numpy.isscalar:
-            return value*numpy.ones(ndim1)
+            return value*numpy.ones(dim1)
         else:
             temp = numpy.atleast_1d(value)
             if temp.shape[0] == dim1:
                 return value
             else:
-                raise ValueError('The size of the 1D array was the incorret shape')
+                raise Error('The size of the 1D array was the incorret shape')
     
     def _generateIntersections(self, leList, teList, nSpan, nChord):
         """
@@ -654,40 +666,36 @@ class DVConstraints(object):
                              root_s(chord_s), tip_s(chord_s))
         coords = numpy.zeros((nSpan, nChord, 2, 3))
         # Generate all intersections:
-        for i in xrange(nSpan): 
-            for j in xrange(nChord):
+        for i in range(nSpan): 
+            for j in range(nChord):
                 # Generate the 'up_vec' from taking the cross product
                 # across a quad
                 if i == 0:
-                    u_vec = X[i+1, j]-X[i, j]
+                    uVec = X[i+1, j]-X[i, j]
                 elif i == nSpan - 1:
-                    u_vec = X[i, j] - X[i-1, j]
+                    uVec = X[i, j] - X[i-1, j]
                 else:
-                    u_vec = X[i+1, j] - X[i-1, j]
-                # end if
+                    uVec = X[i+1, j] - X[i-1, j]
 
                 if j == 0:
-                    v_vec = X[i, j+1]-X[i, j]
+                    vVec = X[i, j+1]-X[i, j]
                 elif j == nChord - 1:
-                    v_vec = X[i, j] - X[i, j-1]
+                    vVec = X[i, j] - X[i, j-1]
                 else:
-                    v_vec = X[i, j+1] - X[i, j-1]
-                # end if
-
-                up_vec = numpy.cross(u_vec, v_vec)
+                    vVec = X[i, j+1] - X[i, j-1]
+                    
+                upVec = numpy.cross(uVec, vVec)
                 
                 # Project actual node:
                 up, down, fail = geo_utils.projectNode(
-                    X[i,j], up_vec, p0, v1, v2)
+                    X[i ,j], upVec, self.p0, self.v1, self.v2)
 
                 if fail:
                     raise Error('There was an error projecting a node \
- at (%f, %f, %f) with normal (%f, %f, %f).'%(X[i,j][0], X[i,j][1], X[i,j][2],
-                                             up_vec[0], up_vec[1], up_vec[2]))
+ at (%f, %f, %f) with normal (%f, %f, %f).'%(X[i, j, 0], X[i, j, 1], X[i, j, 2],
+                                             upVec[0], upVec[1], upVec[2]))
                 coords[i, j, 0] = up
                 coords[i, j, 1] = down
-            # end for
-        # end for
 
         return coords
 
@@ -703,7 +711,7 @@ class DVConstraints(object):
         v1 = []
         v2 = []
         level = 1
-        for isurf in xrange(wing.nSurf):
+        for isurf in range(wing.nSurf):
             surf = wing.surfs[isurf]
             ku = surf.ku
             kv = surf.kv
@@ -713,8 +721,8 @@ class DVConstraints(object):
             u = geo_utils.fill_knots(tu, ku, level)
             v = geo_utils.fill_knots(tv, kv, level)
 
-            for i in xrange(len(u)-1):
-                for j in xrange(len(v)-1):
+            for i in range(len(u)-1):
+                for j in range(len(v)-1):
                     P0 = surf(u[i  ], v[j  ])
                     P1 = surf(u[i+1], v[j  ])
                     P2 = surf(u[i  ], v[j+1])
@@ -728,14 +736,9 @@ class DVConstraints(object):
                     v1.append(P2-P3)
                     v2.append(P1-P3)
 
-                # end for
-            # end for
-        # end for
-        p0 = numpy.array(p0)
-        v1 = numpy.array(v1)
-        v2 = numpy.array(v2)
-
-        return p0,v1,v2
+        self.p0 = numpy.array(p0)
+        self.v1 = numpy.array(v1)
+        self.v2 = numpy.array(v2)
 
 class ThicknessConstraint(object):
     """
@@ -747,7 +750,7 @@ class ThicknessConstraint(object):
 
     def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
                  addToPyOpt):
-        self.name
+        self.name = name
         self.coords = coords
         self.nCon = len(self.coords)/2
         self.lower = lower
@@ -762,9 +765,10 @@ class ThicknessConstraint(object):
         self.DVGeo.addPointSet(self.coords, self.name)
         
         # Now get the reference lengths
-        self.D0 = numpy.zeros(nCon)
-        for i in xrange(nCon):
-            D0[i] = numpy.linalg.norm(self.coords[2*i] - self.coords[2*i+1])
+        self.D0 = numpy.zeros(self.nCon)
+        for i in range(self.nCon):
+            self.D0[i] = numpy.linalg.norm(
+                self.coords[2*i] - self.coords[2*i+1])
 
     def evalFunctions(self, funcs):
         """
@@ -778,7 +782,7 @@ class ThicknessConstraint(object):
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name)
         D = numpy.zeros(self.nCon)
-        for i in xrange(self.nCon):
+        for i in range(self.nCon):
             D[i] = numpy.linalg.norm(self.coords[2*i] - self.coords[2*i+1])
             if self.scaled:
                 D[i] /= self.D0[i]
@@ -795,23 +799,25 @@ class ThicknessConstraint(object):
             Dictionary to place function values
         """
 
-        nDV = self.DVGeo._getNDV()
-        dTdx = numpy.zeros(self.nCon, nDV)
-        dTdpt = numpy.zeros(self.coords.shape)
-        for i in xrange(self.nCon):
-            dTdpt[:, :] = 0.0
-            p1b, p2b = geo_utils.e_dist_b(
-                self.coords[2*i, :], self.coords[2*i+1, :])
-        
-            dTdpt[2*i  , :] = p1b
-            dTdpt[2*i+1, :] = p2b
+        nDV = self.DVGeo.getNDV()
+        dTdx = numpy.zeros((self.nCon, nDV))
+        if nDV > 0:
+            dTdpt = numpy.zeros(self.coords.shape)
+            for i in range(self.nCon):
+                dTdpt[:, :] = 0.0
+                p1b, p2b = geo_utils.eDist_b(
+                    self.coords[2*i, :], self.coords[2*i+1, :])
 
-            if self.scaled:
-                dTdpt[2*i  , :] /= self.D0[i]
-                dTdpt[2*i+1, :] /= self.D0[i]
+                dTdpt[2*i  , :] = p1b
+                dTdpt[2*i+1, :] = p2b
 
-            dTdx[i, :] = self.DVGeo.totalSensitivity(dTdpt, name=self.name)
-        # end for
+                if self.scaled:
+                    dTdpt[2*i  , :] /= self.D0[i]
+                    dTdpt[2*i+1, :] /= self.D0[i]
+
+                dTdx[i, :] = self.DVGeo.totalSensitivity(
+                    dTdpt, ptSetName=self.name)
+
         funcsSens[self.name] = {self.DVGeo.varSet:dTdx}
 
     def addConstraintsPyOpt(self, optProb):
@@ -834,18 +840,24 @@ class ThicknessConstraint(object):
             self.nCon*2, self.nCon))
         handle.write("DATAPACKING=POINT\n")
         
-        for i in xrange(self.nCon*2):
-            handle.write('%g %g %g\n'%(self.coords[i,0],
-                                       self.coords[i,1],
-                                       self.coords[i,2]))
-        for i in xrange(self.nCon):
-            handle.write('%d %d\n'%(2*i+1,2*i+2))
+        for i in range(self.nCon*2):
+            handle.write('%g %g %g\n'%(self.coords[i, 0],
+                                       self.coords[i, 1],
+                                       self.coords[i, 2]))
+        for i in range(self.nCon):
+            handle.write('%d %d\n'%(2*i+1, 2*i+2))
 
 class VolumeConstraint(object):
+    """
+    This class is used to represet a single volume constraint. The
+    parameter list is explained in the addVolumeConstaint() of
+    the DVConstraints class
+    """
 
-    def __init__(name, nSpan, nChord, coords, lower, upper, scaled,
+    def __init__(self, name, nSpan, nChord, coords, lower, upper, scaled,
                  scale, DVGeo, addToPyOpt):
-        self.name
+
+        self.name = name
         self.nSpan = nSpan
         self.nChord = nChord
         self.coords = coords
@@ -858,7 +870,7 @@ class VolumeConstraint(object):
         self.flipVolume = False
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVvGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name)
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
@@ -874,7 +886,6 @@ class VolumeConstraint(object):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name)
-
         V = self.evalVolume()
         if self.scaled:
             V /= self.V0
@@ -890,12 +901,16 @@ class VolumeConstraint(object):
         funcsSens : dict
             Dictionary to place function values
         """
-        dVdPt = self.evalVolumeSens()
-        if self.scaled:
-            dVdPt /= self.V0
+        nDV = self.DVGeo.getNDV()
+        dVdx = numpy.zeros((1, nDV))
+        if nDV > 0:
+            dVdPt = self.evalVolumeSens()
+            if self.scaled:
+                dVdPt /= self.V0
 
-        # Now compute the DVGeo total sensitivity:
-        dVdx = DVGeo.totalSensitivity(dVdPt, name=self.name)
+            # Now compute the DVGeo total sensitivity:
+            dVdx = self.DVGeo.totalSensitivity(dVdPt, self.name)
+            
         funcsSens[self.name] = {self.DVGeo.varSet:dVdx}
 
     def addConstraintsPyOpt(self, optProb):
@@ -917,12 +932,12 @@ class VolumeConstraint(object):
         handle.write("ZONE T=\"%s\" I=%d J=%d K=%d\n"%(
             self.name, self.nSpan, self.nChord, 2))
         handle.write("DATAPACKING=POINT\n")
-        for k in xrange(2):
-            for j in xrange(self.nChord):
-                for i in xrange(self.nSpan):
-                    f.write('%f %f %f\n'%(x[i, j, k, 0],
-                                          x[i, j, k, 1],
-                                          x[i, j, k, 2]))
+        for k in range(2):
+            for j in range(self.nChord):
+                for i in range(self.nSpan):
+                    handle.write('%f %f %f\n'%(x[i, j, k, 0],
+                                               x[i, j, k, 1],
+                                               x[i, j, k, 2]))
 
     def evalVolume(self):
         """
@@ -930,16 +945,16 @@ class VolumeConstraint(object):
         """
         Volume = 0.0
         x = self.coords.reshape((self.nSpan, self.nChord, 2, 3))
-        for j in xrange(nChord-1):
-            for i in xrange(nSpan-1):
+        for j in range(self.nChord-1):
+            for i in range(self.nSpan-1):
                 Volume += self.evalVolumeHex(
                     x[i, j, 0], x[i+1, j, 0], x[i, j+1, 0], x[i+1, j+1, 0],
                     x[i, j, 1], x[i+1, j, 1], x[i, j+1, 1], x[i+1, j+1, 1])
-        
+               
         if Volume < 0:
             Volume = -Volume
             self.flipVolume = True
-
+      
         return Volume
 
     def evalVolumeSens(self):
@@ -949,8 +964,8 @@ class VolumeConstraint(object):
         """
         x = self.coords.reshape((self.nSpan, self.nChord, 2, 3))
         xb = numpy.zeros_like(x)
-        for j in xrange(nChord-1):
-            for i in xrange(nSpan-1):
+        for j in range(self.nChord-1):
+            for i in range(self.nSpan-1):
                 self.evalVolumeHex_b(
                     x[i, j, 0], x[i+1, j, 0], x[i, j+1, 0], x[i+1, j+1, 0],
                     x[i, j, 1], x[i+1, j, 1], x[i, j+1, 1], x[i+1, j+1, 1],
@@ -978,7 +993,7 @@ class VolumeConstraint(object):
             Array of defining the coordinates of the volume
         """
         
-        p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7])
+        p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
         V = 0.0
         V += self.volpym(x0, x1, x3, x2, p)
         V += self.volpym(x0, x2, x4, x6, p)
@@ -1022,7 +1037,8 @@ class VolumeConstraint(object):
             Derivatives of the volume wrt the points. 
         """
 
-        p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7])
+        p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
+        pb = numpy.zeros(3)
         self.volpym_b(x0, x1, x3, x2, p, x0b, x1b, x3b, x2b, pb)
         self.volpym_b(x0, x2, x4, x6, p, x0b, x2b, x4b, x6b, pb)
         self.volpym_b(x0, x4, x5, x1, p, x0b, x4b, x5b, x1b, pb)
@@ -1039,8 +1055,6 @@ class VolumeConstraint(object):
         x5b += pb
         x6b += pb
         x7b += pb
-
-        return
     
     def volpym_b(self, a, b, c, d, p, ab, bb, cb, db, pb):
         """
@@ -1050,107 +1064,78 @@ class VolumeConstraint(object):
         points.
         """
         fourth = 1.0/4.0
-        volumeb = 1.0
-        tempb = ((a[1]-c[1])*(b[2]-d[2])-(a[2]-c[2])*(b[1]-d[1]))*volumeb
+        volpymb = 1.0
+        tempb = ((a[1]-c[1])*(b[2]-d[2])-(a[2]-c[2])*(b[1]-d[1]))*volpymb
         tempb0 = -(fourth*tempb)
-        tempb1 = (p[0]-fourth*(a[0]+b[0]+c[0]+d[0]))*volumeb
-        tempb2 = ((a[2]-c[2])*(b[0]-d[0])-(a[0]-c[0])*(b[2]-d[2]))*volumeb
-        tempb3 = -(fourth*tempb2)
-        tempb4 = (p[1]-fourth*(a[1]+b[1]+c[1]+d[1]))*volumeb
-        tempb5 = ((a[0]-c[0])*(b[1]-d[1])-(a[1]-c[1])*(b[0]-d[0]))*volumeb
-        tempb6 = -(fourth*tempb5)
-        tempb7 = (p[2]-fourth*(a[2]+b[2]+c[2]+d[2]))*volumeb
+        tempb1 = (p[0]-fourth*(a[0]+b[0]+c[0]+d[0]))*volpymb
+        tempb2 = (b[2]-d[2])*tempb1
+        tempb3 = (a[1]-c[1])*tempb1
+        tempb4 = -((b[1]-d[1])*tempb1)
+        tempb5 = -((a[2]-c[2])*tempb1)
+        tempb6 = ((a[2]-c[2])*(b[0]-d[0])-(a[0]-c[0])*(b[2]-d[2]))*volpymb
+        tempb7 = -(fourth*tempb6)
+        tempb8 = (p[1]-fourth*(a[1]+b[1]+c[1]+d[1]))*volpymb
+        tempb9 = (b[0]-d[0])*tempb8
+        tempb10 = (a[2]-c[2])*tempb8
+        tempb11 = -((b[2]-d[2])*tempb8)
+        tempb12 = -((a[0]-c[0])*tempb8)
+        tempb13 = ((a[0]-c[0])*(b[1]-d[1])-(a[1]-c[1])*(b[0]-d[0]))*volpymb
+        tempb14 = -(fourth*tempb13)
+        tempb15 = (p[2]-fourth*(a[2]+b[2]+c[2]+d[2]))*volpymb
+        tempb16 = (b[1]-d[1])*tempb15
+        tempb17 = (a[0]-c[0])*tempb15
+        tempb18 = -((b[0]-d[0])*tempb15)
+        tempb19 = -((a[1]-c[1])*tempb15)
         pb[0] = pb[0] + tempb
-        ab[0] = ab[0] + (b[1]-d[1])*tempb7 - (b[2]-d[2])*tempb4 + tempb0
-        bb[0] = bb[0] + (a[2]-c[2])*tempb4 - (a[2]-c[1])*tempb7 + tempb0
-        cb[0] = cb[0] + (b[2]-d[2])*tempb4 - (b[1]-d[1])*tempb7 + tempb0
-        db[0] = db[0] + (a[1]-c[1])*tempb7 - (a[2]-c[2])*tempb4 + tempb0
-        ab[1] = ab[1] + tempb3 - (b[0]-d[0])*tempb7 + (b[2]-d[2])*tempb1
-        cb[1] = cb[1] + (b[0]-d[0])*tempb7 + tempb3 - (b[2]-d[2])*tempb1
-        bb[2] = bb[2] + tempb6 - (a[0]-c[0])*tempb4 + (a[1]-c[1])*tempb1
-        db[2] = db[2] + tempb6 + (a[0]-c[0])*tempb4 - (a[1]-c[1])*tempb1
-        ab[2] = ab[2] + tempb6 + (b[0]-d[0])*tempb4 - (b[1]-d[1])*tempb1
-        cb[2] = cb[2] + tempb6 - (b[0]-d[0])*tempb4 + (b[1]-d[1])*tempb1
-        bb[1] = bb[1] + (a[0]-c[0])*tempb7 + tempb3 - (a[2]-c[2])*tempb1
-        db[1] = db[1] + tempb3 - (a[0]-c[0])*tempb7 + (a[2]-c[2])*tempb1
-        pb[1] = pb[1] + tempb2
-        pb[2] = pb[2] + tempb5
+        ab[0] = ab[0] + tempb16 + tempb11 + tempb0
+        bb[0] = bb[0] + tempb19 + tempb10 + tempb0
+        cb[0] = cb[0] + tempb0 - tempb11 - tempb16
+        db[0] = db[0] + tempb0 - tempb10 - tempb19
+        ab[1] = ab[1] + tempb18 + tempb7 + tempb2
+        cb[1] = cb[1] + tempb7 - tempb18 - tempb2
+        bb[2] = bb[2] + tempb14 + tempb12 + tempb3
+        db[2] = db[2] + tempb14 - tempb12 - tempb3
+        ab[2] = ab[2] + tempb14 + tempb9 + tempb4
+        cb[2] = cb[2] + tempb14 - tempb9 - tempb4
+        bb[1] = bb[1] + tempb17 + tempb7 + tempb5
+        db[1] = db[1] + tempb7 - tempb17 - tempb5
+        pb[1] = pb[1] + tempb6
+        pb[2] = pb[2] + tempb13
 
-        return
+# # --------------------------------------------------------------------------------
+#     def _getLeTeConstraints(self):
+#         """Evaluate the LeTe constraint using the current DVGeo opject"""
 
-class VolumeCGConstraint(VolumeConstraint):
+#         con = numpy.zeros(len(self.LeTeCon))
+#         for i in range(len(self.LeTeCon)):
+#             dv = self.LeTeCon[i][0]
+#             up = self.LeTeCon[i][1]
+#             down = self.LeTeCon[i][2]
+#             con[i] = self.DVGeo.DV_listLocal[dv].value[up] + \
+#                 DVGeo.DV_listLocal[dv].value[down]
+#         # end for
 
-    def __init__(name, nSpan, nChord, coords, lower, upper, scaled,
-                 scale, DVGeo, addToPyOpt):
+#         return con
 
-        pass
-    def evalFunctions(self, funcs):
-        """
-        Evaluate the function this object has and place in the funcs dictionary
+#     def _getLeTeSensitivity(self):
+#         ndv = self.DVGeo._getNDV()
+#         nlete = len(self.LeTeCon)
+#         dLeTedx = numpy.zeros([nlete, ndv])
 
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary to place function values
-        """
-        # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name)
+#         DVoffset = [self.DVGeo._getNDVGlobal()]
+#         # Generate offset lift of the number of local variables
+#         for i in range(len(self.DVGeo.DV_listLocal)):
+#             DVoffset.append(DVoffset[-1] + self.DVGeo.DV_listLocal[i].nVal)
 
-        V = self.evalVolumeGS()
+#         for i in range(len(self.LeTeCon)):
+#             # Set the two values a +1 and -1 or (+range - range if scaled)
+#             dv = self.LeTeCon[i][0]
+#             up = self.LeTeCon[i][1]
+#             down = self.LeTeCon[i][2]
+#             dLeTedx[i, DVoffset[dv] + up  ] =  1.0
+#             dLeTedx[i, DVoffset[dv] + down] =  1.0
+#         # end for
 
-
-    def evalFunctionsSens(self, funcsSens):
-        """
-        Evaluate the sensitivity of the functions this object has and
-        place in the funcsSens dictionary
-
-        Parameters
-        ----------
-        funcsSens : dict
-            Dictionary to place function values
-        """
-        dVdPt = self.evalVolumeSens()
-        if self.scaled:
-            dVdPt /= self.V0
-
-        # Now compute the DVGeo total sensitivity:
-        dVdx = DVGeo.totalSensitivity(dVdPt, name=self.name)
-        funcsSens[self.name] = {self.DVGeo.varSet:dVdx}
-
-# --------------------------------------------------------------------------------
-    def _getLeTeConstraints(self):
-        """Evaluate the LeTe constraint using the current DVGeo opject"""
-
-        con = numpy.zeros(len(self.LeTeCon))
-        for i in xrange(len(self.LeTeCon)):
-            dv = self.LeTeCon[i][0]
-            up = self.LeTeCon[i][1]
-            down = self.LeTeCon[i][2]
-            con[i] = self.DVGeo.DV_listLocal[dv].value[up] + \
-                DVGeo.DV_listLocal[dv].value[down]
-        # end for
-
-        return con
-
-    def _getLeTeSensitivity(self):
-        ndv = self.DVGeo._getNDV()
-        nlete = len(self.LeTeCon)
-        dLeTedx = numpy.zeros([nlete, ndv])
-
-        DVoffset = [self.DVGeo._getNDVGlobal()]
-        # Generate offset lift of the number of local variables
-        for i in xrange(len(self.DVGeo.DV_listLocal)):
-            DVoffset.append(DVoffset[-1] + self.DVGeo.DV_listLocal[i].nVal)
-
-        for i in xrange(len(self.LeTeCon)):
-            # Set the two values a +1 and -1 or (+range - range if scaled)
-            dv = self.LeTeCon[i][0]
-            up = self.LeTeCon[i][1]
-            down = self.LeTeCon[i][2]
-            dLeTedx[i, DVoffset[dv] + up  ] =  1.0
-            dLeTedx[i, DVoffset[dv] + down] =  1.0
-        # end for
-
-        return dLeTedx
+#         return dLeTedx
 
  
