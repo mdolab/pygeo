@@ -48,7 +48,7 @@ class pyNetwork():
 
     Parameters
     ----------
-    curves : list of pySpline.curve objects
+    curves : list of pySpline.Curve objects
         Individual curves to form the network.
 
         """
@@ -236,7 +236,7 @@ class pyNetwork():
             An optional list of curve indices to you. If not given, all
             curve objects are used.
         kwargs : dict
-            Keyword arguments passed to pySpline.curve.projectCurve() function
+            Keyword arguments passed to pySpline.Curve.projectCurve() function
 
         Returns
         -------

@@ -142,7 +142,7 @@ class pyBlock():
                 # propagate the vectors since they are by
                 # construction symmetric
                     
-                self.vols.append(pySpline.volume(
+                self.vols.append(pySpline.Volume(
                     ku=ku, kv=kv, kw=kw, coef=blocks[ivol], 
                     tu=uniformKnots(sizes[ivol, 0], ku), 
                     tv=uniformKnots(sizes[ivol, 1], kv), 
@@ -183,7 +183,7 @@ class pyBlock():
             # Note This doesn't actually fit the volumes...just produces
             # the parameterization and knot vectors
             for ivol in range(nVol):
-                self.vols.append(pySpline.volume(
+                self.vols.append(pySpline.Volume(
                     X=blocks[ivol], ku=4, kv=4, kw=4, 
                     nCtlu=4, nCtlv=4, nCtlw=4, 
                     recompute=False))
