@@ -822,45 +822,6 @@ class ThicknessConstraint(object):
                 p1b, p2b = geo_utils.eDist_b(
                     self.coords[2*i, :], self.coords[2*i+1, :])
 
-                dTdpt[2*i  , :] = p1b
-                dTdpt[2*i+1, :] = p2b
-
-                if self.scaled:
-                    dTdpt[2*i  , :] /= self.D0[i]
-                    dTdpt[2*i+1, :] /= self.D0[i]
-
-                dTdx[i, :] = self.DVGeo.totalSensitivity(
-                    dTdpt, ptSetName=self.name)
-
-        funcsSens[self.name] = {self.DVGeo.varSet:dTdx}
-
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=[self.DVGeo.varSet])
-
-    def writeTecplot(self, handle):
-        """
-        Write the visualization of this set of thickness constraints
-        to the open file handle
-        """
-
-        handle.write("ZONE T=\"%s\"\n"%(self.name))
-        handle.write("Nodes=%d, Elements=%d, ZONETYPE=FELineSeg\n"%(
-            self.nCon*2, self.nCon))
-        handle.write("DATAPACKING=POINT\n")
-        
-        for i in range(self.nCon*2):
-            handle.write('%g %g %g\n'%(self.coords[i, 0],
-                                       self.coords[i, 1],
-                                       self.coords[i, 2]))
-        for i in range(self.nCon):
-            handle.write('%d %d\n'%(2*i+1, 2*i+2))
-
 class VolumeConstraint(object):
     """
     This class is used to represet a single volume constraint. The
