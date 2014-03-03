@@ -822,6 +822,593 @@ class ThicknessConstraint(object):
                 p1b, p2b = geo_utils.eDist_b(
                     self.coords[2*i, :], self.coords[2*i+1, :])
 
+<<<<<<< local
+<<<<<<< local
+        nSpan: The number of span-wise points
+     
+        Lower: The low range for the thickness constraint
+        
+        Upper: The upper bound for the thickness constraint
+
+        Scaled: True if constraint value is to be scaled by inital
+        thickness. Scale=True and lower=1.0 will constraint to
+        original volume. If an absolute volume is required, set
+        lower to desired value and sclae=False.
+        '''
+        
+        self.volumeConPtr.append([len(self.coords),
+                                  len(self.coords) + nSpan*nChord*2])
+
+        # Create mesh of itersections
+        root_line = [le_list[0], te_list[0]]
+        tip_line  = [le_list[-1], te_list[-1]]
+        le_s = ps.pySpline.curve(X=le_list, k=2)
+        te_s = ps.pySpline.curve(X=te_list, k=2)
+        root_s = ps.pySpline.curve(X=[le_list[0], te_list[0]], k=2)
+        tip_s  = ps.pySpline.curve(X=[le_list[-1], te_list[-1]], k=2)
+
+        span_s = numpy.linspace(0, 1, nSpan)
+        chord_s = numpy.linspace(0, 1, nChord)
+        
+        # Generate a 2D region of intersections
+        X = geo_utils.tfi_2d(le_s(span_s), te_s(span_s),
+                             root_s(chord_s), tip_s(chord_s))
+
+        # Generate discrete surface data for intersections:
+        if type(wing) == list:
+            p0 = numpy.array(wing[0])
+            v1 = numpy.array(wing[1])
+            v2 = numpy.array(wing[2])
+        else:
+            p0,v1,v2 = self._generateDiscreteSurface(wing)
+        # end if
+
+        # Append the new coordinates to self.coords
+        coord_offset = len(self.coords)
+        self.coords = numpy.append(self.coords, numpy.zeros(
+                (nSpan*nChord*2, 3)),axis=0)
+
+        # Generate all intersections:
+        for i in xrange(nSpan): 
+            for j in xrange(nChord):
+                # Generate the 'up_vec' from taking the cross product
+                # across a quad
+                if i == 0:
+                    u_vec = X[i+1, j]-X[i, j]
+                elif i == nSpan - 1:
+                    u_vec = X[i, j] - X[i-1, j]
+                else:
+                    u_vec = X[i+1, j] - X[i-1, j]
+                # end if
+
+                if j == 0:
+                    v_vec = X[i, j+1]-X[i, j]
+                elif j == nChord - 1:
+                    v_vec = X[i, j] - X[i, j-1]
+                else:
+                    v_vec = X[i, j+1] - X[i, j-1]
+                # end if
+
+                up_vec = numpy.cross(u_vec, v_vec)
+                
+                # Project actual node:
+                up, down, fail = geo_utils.projectNode(
+                    X[i,j], up_vec, p0, v1, v2)
+
+                if fail:
+                    print 'DVConstraints: Project Node failed. Cannot continue'
+                    print 'Bad Node:',X[i,j]
+                    sys.exit(0)
+                # end if
+
+                self.coords[coord_offset, :] = up
+                coord_offset += 1
+
+                self.coords[coord_offset, :] = down
+                coord_offset += 1
+            # end for
+        # end for
+
+        # Evaluate the thickness based on these points to get the
+        # initial reference volume
+
+        self.volumeConSizes.append([nSpan,nChord])
+        V0_offset = len(self.V0)
+        axis = [0,0,1.0] # axis doesn't matter
+        pAxis = [0,0,1.0] # axis doesn't matter
+        V0,CG,A = self._evalVolume(V0_offset,axis,pAxis)
+        self.V0.append(V0)
+        
+        # Finally add the thickness constraint values
+        self.volumeConLower.append(lower)
+        self.volumeConUpper.append(upper)
+        self.nVolumeCon += 1
+        self.volumeScaled.append(scaled)
+
+
+        return
+
+    def addLeTeCon(self, DVGeo, up_ind, low_ind):
+        '''Add Leading Edge and Trailing Edge Constraints to the FFD
+        at the indiceis defined by up_ind and low_ind'''
+
+        assert len(up_ind) == len(low_ind),  'up_ind and low_ind are\
+ not the same length'
+
+        if DVGeo.FFD: # Only Setup for FFD's currently
+            # Check to see if we have local design variables in DVGeo
+            if len(DVGeo.DV_listLocal) == 0:
+                mpiPrint('Warning: Trying to add Le/Te Constraint when no local variables found')
+            # end if
+
+            # Loop over each set of Local Design Variables
+            for i in xrange(len(DVGeo.DV_listLocal)):
+                
+                # We will assume that each GeoDVLocal only moves on
+                # 1,2, or 3 coordinate directions (but not mixed)
+                temp = DVGeo.DV_listLocal[i].coef_list
+                for j in xrange(len(up_ind)): # Try to find this index
+                                              # in the coef_list
+                    up = None
+                    down = None
+                    for k in xrange(len(temp)):
+                        if temp[k][0] == up_ind[j]:
+                            up = k
+                        # end if
+                        if temp[k][0] == low_ind[j]:
+                            down = k
+                        # end for
+                    # end for
+                    # If we haven't found up AND down do nothing
+                    if up is not None and down is not None:
+                        self.LeTeCon.append([i, up, down])
+                    # end if
+                # end for
+            # end for
+            
+            # Finally, unique the list to parse out duplicates. Note:
+            # This sort may not be stable however, the order of the
+            # LeTeCon list doens't matter
+            self.LeTeCon = geo_utils.unique(self.LeTeCon)
+        else:
+            mpiPrint('Warning: addLeTECon is only setup for FFDs')
+        # end if
+
+        return
+
+    def addCurvatureConstraints(self, file_name, file_type='ascii',
+                                order='f', **kwargs):
+        exec(import_modules('pyGeo'))
+        # Use pyGeo to load the plot3d file 
+        geo = pyGeo.pyGeo('plot3d', no_print=True, file_name=file_name,
+                          file_type=file_type, order=order)
+
+        node_tol = kwargs.pop('node_tol', 1e-4)
+        edge_tol = kwargs.pop('edge_tol', 1e-4)
+        geo._calcConnectivity(node_tol, edge_tol)
+
+        # Generate the set of profile curves we want to deal
+        # with. Only use 4,5,6, and 7 
+        curves = []
+
+        nCurves = geo.surfs[4].Nv
+        
+        for i in xrange(nCurves):
+            
+            # Pluck out coordinates
+            X = numpy.zeros([0,3],'d')
+
+            X = numpy.append(X,geo.surfs[4].X[:,i,:],axis=0)
+            X = numpy.append(X,geo.surfs[5].X[1:,i,:],axis=0)
+            X = numpy.append(X,geo.surfs[6].X[1:,i,:],axis=0)
+            X = numpy.append(X,geo.surfs[7].X[1:,i,:],axis=0)
+
+            # Generate Curve Parameterication 
+            nx = len(X)
+            s = numpy.zeros(nx)
+            for i in xrange(nx-1):
+                s[i+1] = s[i] + geo_utils.e_dist(X[i+1],X[i])
+            # end for
+
+            # Normalize S
+            s /= s[-1]
+
+            curves.append({'X':X,'s':s,'n':len(X)})
+        
+        # end for
+
+        self.curves = curves
+
+        return
+
+    def getCurvatureCoordinates(self):
+        ''' Return the coordinates used for the curvature constraints'''
+        # Simply go through curves and v-stack them
+
+        # Count up number 'n'
+        n = 0
+        for icurve in xrange(len(self.curves)):
+            n += self.curves[icurve]['n']
+        
+        coords = numpy.zeros([n,3],'d')
+
+        i = 0
+        for icurve in xrange(len(self.curves)):
+            n = self.curves[icurve]['n']
+            coords[i:i+n] = self.curves[icurve]['X']
+            i += n
+        # end for
+        
+        return coords.copy()
+
+    def setCurvatureCoordinates(self, coords):
+
+        ''' Return the coordinates used for the curvature constraints'''
+        # Simply go through curves and v-stack them
+
+        # Count up number 'n'
+        n = 0
+        for icurve in xrange(len(self.curves)):
+            n += self.curves[icurve]['n']
+        
+        i = 0
+        for icurve in xrange(len(self.curves)):
+            n = self.curves[icurve]['n']
+            self.curves[icurve]['X'] = coords[i:i+n]
+            i += n
+        # end for
+        
+        return 
+
+    def getCurvatures(self,icurve):
+        '''Return the curvature for curve iCurve'''
+        
+        max_x = numpy.max(self.curves[icurve]['X'][:,0])
+        min_x = numpy.min(self.curves[icurve]['X'][:,0])
+        X = self.curves[icurve]['X']/(max_x-min_x) 
+        s = self.curves[icurve]['s']
+        k = self._computeCurvature(X,s)
+
+        return s,k
+
+    def getCurveCoordinates(self,icurve):
+        x = self.curves[icurve]['X'][:,0]
+        y = self.curves[icurve]['X'][:,1]
+        z = self.curves[icurve]['X'][:,2]
+
+        return x,y,z
+
+    def computeEnergy(self):
+        # Return the energy in each of the curves
+        
+        nCurve = len(self.curves)
+
+        energies = numpy.zeros(nCurve)
+        
+        for icurve in xrange(nCurve):
+        
+            max_x = numpy.max(self.curves[icurve]['X'][:,0])
+            min_x = numpy.min(self.curves[icurve]['X'][:,0])
+            X = self.curves[icurve]['X']/(max_x-min_x) 
+            s = self.curves[icurve]['s']
+            k = self._computeCurvature(X,s)
+            
+            # Perform the integration with midpoint rule
+            E = 0.0
+            for i in xrange(len(X)-1):
+                E += (s[i+1]-s[i])*(k[i+1]+k[i])*0.5
+
+            energies[icurve] = E
+
+        # end for
+
+        return  energies
+
+    def _computeCurvature(self, X, s): 
+        ''' Compute the norm of the curvature for points X with
+            parameterization 's'
+            '''
+
+        dX = self._computeD(X,s) 
+        ddX = self._computeD(dX,s)
+
+        k = numpy.zeros(len(X))
+
+        for i in xrange(len(X)):
+            k[i] = geo_utils.euclidean_norm(ddX[i])
+        # end for
+
+        return k
+
+    def _computeD(self,c,s):
+
+        n = len(s)
+        dd = numpy.zeros_like(c)
+        delta_s = numpy.zeros_like(s)
+        D = numpy.zeros_like(c)
+
+        for i in xrange(1,n):
+            delta_s[i] = s[i]-s[i-1]
+            dd[i] = (c[i]-c[i-1])/delta_s[i]
+
+        for i in xrange(1,n-1):
+            alpha = delta_s[i]/(delta_s[i] + delta_s[i+1])
+            D[i] = (1-alpha)*dd[i] + alpha*dd[i+1]
+        # end for
+
+        D[0] = 2*dd[1] - D[1]
+        D[n-1] = 2*dd[-1] - D[-2]
+    
+        return D
+
+
+
+        
+
+
+    def writeTecplot(self, fileName): 
+        ''' This function write a visualization of the constraints to
+        tecplot. The thickness and volume constraints are grouped
+        accordng to how they were added for easy identificaton in tecplot
+
+        Input: fileName: Name of tecplot filename
+        '''
+        
+        f = open(fileName,'w')
+        f.write("TITLE = \"DVConstraints Data\"\n")
+        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
+
+        # Write out the thickness constraints first:
+        for ii in xrange(self.nThickCon):
+            nNodes = self.thickConPtr[ii][1] - self.thickConPtr[ii][0]
+            nElem = nNodes/2
+            # Write a fe line segment zone:
+            f.write("ZONE T=\"ThickCon_%d\"\n"%(ii))
+            f.write("Nodes=%d, Elements=%d, ZONETYPE=FELineSeg\n"%(
+                    nNodes,nElem))
+            f.write("DATAPACKING=POINT\n")
+
+            for i in xrange(self.thickConPtr[ii][0], self.thickConPtr[ii][1]):
+                f.write('%f %f %f\n'%(self.coords[i,0],
+                                      self.coords[i,1],
+                                      self.coords[i,2]))
+            # end for
+            for i in xrange(nElem):
+                f.write('%d %d\n'%(2*i+1,2*i+2))
+            # end for
+        # end for
+
+        # Write out the volume constraints second:
+        for iVolCon in xrange(self.nVolumeCon):
+            nSpan = self.volumeConSizes[iVolCon][0]
+            nChord = self.volumeConSizes[iVolCon][1]
+            # Extract the coordinates:
+            istart = self.volumeConPtr[iVolCon][0]
+            iend   = self.volumeConPtr[iVolCon][1]
+            x = self.coords[istart:iend].flatten().reshape(
+                [nSpan, nChord, 2, 3])
+            f.write('Zone T=VolumeCon_%d I=%d J=%d K=%d\n'%(
+                    iVolCon, nSpan, nChord, 2))
+            f.write('DATAPACKING=POINT\n')
+            for k in xrange(2):
+                for j in xrange(nChord):
+                    for i in xrange(nSpan):
+                        f.write('%f %f %f\n'%(x[i, j, k, 0],
+                                              x[i, j, k, 1],
+                                              x[i, j, k, 2]))
+                    # end for
+                # end for
+            # end for
+        # end for
+
+        # Close the file
+        f.close()
+
+        return
+
+    def getCoordinates(self):
+        ''' Return the current set of coordinates used in
+        DVConstraints'''
+
+        return self.coords
+
+    def setCoordinates(self, coords):
+        ''' Set the new set of coordinates'''
+
+        self.coords = coords.copy()
+
+        return
+
+    def addConstraintsPyOpt(self, opt_prob, geoName=None, thickConName='thickCon', 
+                            volumeConName='volumeCon', LeTeConName='LeTeCon'):
+        ''' Add thickness contraints to pyOpt
+        
+         Input: opt_prob -> optimization problem
+                thickConName -> Override default pyopt name for thickness constraints
+                volumeConName -> Override default pyopt name for volume constraints
+                LeTeConName -> Overwrite default pyopt name for LeTe Constraints
+                '''
+        if geoName is None:
+            # Use pygeo default
+            wrt = ['geo']
+        else:
+            wrt = [geoName]
+        # end if
+        
+        if self.nThickCon > 0:
+            print 'lower',type(self.thickConLower),thickConName
+            opt_prob.addConGroup(
+                thickConName, len(self.thickConLower), 
+                lower=self.thickConLower, upper=self.thickConUpper, wrt=wrt)
+        # end if
+
+        if self.nVolumeCon > 0:
+            opt_prob.addConGroup(
+                volumeConName, len(self.volumeConLower), 
+                lower=self.volumeConLower, upper=self.volumeConUpper, wrt=wrt)
+        # end if
+
+        if self.LeTeCon:
+            opt_prob.addConGroup(LeTeConName, len(self.LeTeCon),
+                                 lower=0.0, upper=0.0, wrt=wrt)
+        # end if
+
+        return 
+
+    def evalConstraints(self, fcon, DVGeo, thickConName='thickCon', 
+                        volumeConName='volumeCon', LeTeConName='LeTeCon'):
+        ''' Evaluate all the constraints that this object has and set
+        them in the supplied fcon dictionary'''
+        
+        if self.nThickCon > 0:
+            fcon[thickConName] = self.getThicknessConstraints()
+        if self.nVolumeCon > 0:
+            fcon[volumeConName] = self.getVolumeConstraints()
+        if self.LeTeCon:
+            fcon[LeTeConName] = self.getLeTeConstraints(DVGeo)
+        
+        return
+
+    def evalJacobianConstraints(self, gcon, DVGeo, wrt='geo', thickConName='thickCon', 
+                        volumeConName='volumeCon', LeTeConName='LeTeCon'):
+        ''' Evaluate the jacobian of the constraints this object
+        has. These constraints only depend on geometric
+        variables, so we can set them directly in dictionary gcon'''
+        
+        if self.nThickCon > 0:
+            gcon[thickConName] = {wrt:self.getThicknessSensitivity(DVGeo, 'con')}
+        if self.nVolumeCon > 0:
+            gcon[volumeConName] = {wrt:self.getVolumeSensitivity(DVGeo, 'con')}
+        if self.LeTeCon:
+            gcon[LeTeConName] = {wrt:self.getLeTeSensitivity(DVGeo)}
+            
+        return
+
+    def getLeTeConstraints(self, DVGeo):
+        '''Evaluate the LeTe constraint using the current DVGeo opject'''
+
+        con = numpy.zeros(len(self.LeTeCon))
+        for i in xrange(len(self.LeTeCon)):
+            dv = self.LeTeCon[i][0]
+            up = self.LeTeCon[i][1]
+            down = self.LeTeCon[i][2]
+            con[i] = DVGeo.DV_listLocal[dv].value[up] + \
+                DVGeo.DV_listLocal[dv].value[down]
+        # end for
+
+        return con
+
+    def getLeTeSensitivity(self, DVGeo, scaled=True):
+        ndv = DVGeo._getNDV()
+        nlete = len(self.LeTeCon)
+        dLeTedx = numpy.zeros([nlete, ndv])
+
+        DVoffset = [DVGeo._getNDVGlobal()]
+        # Generate offset lift of the number of local variables
+        for i in xrange(len(DVGeo.DV_listLocal)):
+            DVoffset.append(DVoffset[-1] + DVGeo.DV_listLocal[i].nVal)
+
+        for i in xrange(len(self.LeTeCon)):
+            # Set the two values a +1 and -1 or (+range - range if scaled)
+            dv = self.LeTeCon[i][0]
+            up = self.LeTeCon[i][1]
+            down = self.LeTeCon[i][2]
+            if scaled:
+                dLeTedx[i, DVoffset[dv] + up  ] = \
+                    DVGeo.DV_listLocal[dv].range[up  ]
+                dLeTedx[i, DVoffset[dv] + down] =  \
+                    DVGeo.DV_listLocal[dv].range[down]
+            else:
+                dLeTedx[i, DVoffset[dv] + up  ] =  1.0
+                dLeTedx[i, DVoffset[dv] + down] =  1.0
+            # end if
+        # end for
+
+        return dLeTedx
+
+    def getThicknessConstraints(self):
+        '''Return the current thickness constraints. Note that all
+        thickness constraints are returned together...there is no
+        disctinction between how they were added'''
+        D = numpy.zeros(len(self.D0))
+        d_count = 0
+
+        for ii in xrange(self.nThickCon):
+            for i in xrange(self.thickConPtr[ii][0]/2, 
+                            self.thickConPtr[ii][1]/2):
+                D[d_count] = geo_utils.e_dist(
+                    self.coords[2*i, :],self.coords[2*i+1, :])
+                if self.thickScaled[ii]:
+                    D[d_count]/=self.D0[d_count]
+                # end if
+                d_count += 1
+            # end for
+            
+        # end for
+
+        return D
+
+    def getThicknessSensitivity(self, DVGeo, name=None):
+
+        '''Return the derivative of all the thickness constraints We
+        pass in the DVGeo object so this function retuns the full
+        appropriate jacobian.
+        
+        '''
+        nDV = DVGeo._getNDV()
+        dTdx = numpy.zeros((len(self.D0), nDV))
+        dTdpt = numpy.zeros(self.coords.shape)
+        d_count = 0
+        for ii in xrange(self.nThickCon):
+            for i in xrange(self.thickConPtr[ii][0]/2, 
+                            self.thickConPtr[ii][1]/2):
+
+                dTdpt[:, :] = 0.0
+
+                p1b, p2b = geo_utils.e_dist_b(
+                    self.coords[2*i, :], self.coords[2*i+1, :])
+        
+                dTdpt[2*i, :] = p1b
+                dTdpt[2*i+1, :] = p2b
+
+                if self.scaled:
+                    dTdpt[2*i  , :] /= self.D0[i]
+                    dTdpt[2*i+1, :] /= self.D0[i]
+
+                dTdx[i, :] = self.DVGeo.totalSensitivity(
+                    dTdpt, ptSetName=self.name)
+
+        funcsSens[self.name] = {self.DVGeo.varSet:dTdx}
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=[self.DVGeo.varSet])
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write("ZONE T=\"%s\"\n"%(self.name))
+        handle.write("Nodes=%d, Elements=%d, ZONETYPE=FELineSeg\n"%(
+            self.nCon*2, self.nCon))
+        handle.write("DATAPACKING=POINT\n")
+        
+        for i in range(self.nCon*2):
+            handle.write('%g %g %g\n'%(self.coords[i, 0],
+                                       self.coords[i, 1],
+                                       self.coords[i, 2]))
+        for i in range(self.nCon):
+            handle.write('%d %d\n'%(2*i+1, 2*i+2))
+
+=======
+>>>>>>> other
 class VolumeConstraint(object):
     """
     This class is used to represet a single volume constraint. The
