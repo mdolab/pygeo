@@ -109,12 +109,15 @@ class DVGeometry(object):
         else:
             self.dtype = 'd'
 
+        self.varSet = None
+
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case aditional pyBlock options
         # need to be set. 
         self.FFD = pyBlock.pyBlock('plot3d', fileName=fileName, FFD=True,
                            *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
+
         # Jacobians:
         # self.JT: Total transpose jacobian for self.J_name
         self.JT = None
@@ -1778,6 +1781,131 @@ specified for a call to addRefAxis')
         self._unComplexifyCoef()
                               
         return sparse.csr_matrix(Jacobian)
+
+    def addVariablesPyOpt(self, opt_prob, varSet='geo'):
+        '''
+        Add the current set of global and local design variables to the opt_prob specified
+        '''
+
+        # We are going to do our own scaling here...since pyOpt can't
+        # do it...
+
+        # save the varSet name this object used:
+        self.varSet = varSet
+
+        # Add design variables from the master:
+        for dvList in [self.DV_listGlobal, self.DV_listLocal]:
+            for dv in dvList:
+                if dv.nVal > 1:
+                    low = numpy.zeros(dv.nVal)
+                    high = numpy.ones(dv.nVal)
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
+                                         value=val, lower=low, upper=high, varSet=varSet)
+                else:
+                    low = 0.0
+                    high = 1.0
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVar(dv.name, 'c', value=val, 
+                                    lower=low, upper=high, varSet=varSet)
+                # end if
+            # end for
+        # end for
+
+        # Add variables for children
+        for child in self.children:
+            child.addVariablesPyOpt(opt_prob)
+        # end for
+
+        return opt_prob
+
+    def addGlobalVariablesPyOpt(self, opt_prob):
+        '''
+        Add only the global variable to pyopt
+        '''
+
+        # Add design variables from the master:
+        for dvList in [self.DV_listGlobal]:
+            for dv in dvList:
+                if dv.nVal > 1:
+                    low = numpy.zeros(dv.nVal)
+                    high = numpy.ones(dv.nVal)
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
+                                         value=val, lower=low, upper=high)
+                else:
+                    low = 0.0
+                    high = 1.0
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVar(dv.name, 'c', value=val, 
+                                    lower=low, upper=high)
+                # end if
+            # end for
+        # end for
+
+        # Add variables for children
+        for child in self.children:
+            child.addGlobalVariablesPyOpt(opt_prob)
+        # end for
+
+        return opt_prob
+
+    def addLocalVariablesPyOpt(self, opt_prob):
+        '''
+        Add only the local variable to pyopt
+        '''
+
+        # Add design variables from the master:
+        for dvList in [self.DV_listLocal]:
+            for dv in dvList:
+                if dv.nVal > 1:
+                    low = numpy.zeros(dv.nVal)
+                    high = numpy.ones(dv.nVal)
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
+                                         value=val, lower=low, upper=high)
+                else:
+                    low = 0.0
+                    high = 1.0
+                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
+
+                    opt_prob.addVar(dv.name, 'c', value=val, 
+                                    lower=low, upper=high)
+                # end if
+            # end for
+        # end for
+
+        # Add variables for children
+        for child in self.children:
+            child.addLocalVariablesPyOpt(opt_prob)
+        # end for
+
+        return opt_prob
+
+    def writeTecplot(self, file_name):
+        '''Write the (deformed) current state of the FFD's to a file
+        including the children'''
+
+        # Name here doesn't matter, just take the first one
+        self.update(self.pt_names[0], childDelta=False)
+
+        f = ps.pySpline.openTecplot(file_name, 3)
+        vol_counter = 0
+        # Write master volumes:
+        vol_counter += self._writeVols(f, vol_counter)
+
+        # Write children volumes:
+        for iChild in xrange(len(self.children)):
+            vol_counter += self.children[iChild]._writeVols(f, vol_counter)
+        # end for
+
+        ps.pySpline.closeTecplot(f)
+
+        self.update(self.pt_names[0], childDelta=True) 
+
+        return
 
     def _writeVols(self, handle, vol_counter):
         for i in xrange(len(self.FFD.vols)):
