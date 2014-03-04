@@ -1626,7 +1626,7 @@ specified for a call to addRefAxis')
 
         return Jacobian
 
-    def _localDVJacobian(self, scaled=True):
+    def _localDVJacobian(self):
         """
         Return the derivative of the coefficients wrt the local design 
         variables
@@ -1677,10 +1677,7 @@ specified for a call to addRefAxis')
 
                     pt_dv = self.DV_listLocal[key].coefList[j] 
                     irow = pt_dv[0]*3 + pt_dv[1]
-                    if not scaled:
-                        Jacobian[irow, iDVLocal] = 1.0
-                    else:
-                        Jacobian[irow, iDVLocal] = self.DV_listLocal[key].scale[j]
+                    Jacobian[irow, iDVLocal] = 1.0
 
                     for iChild in xrange(len(self.children)):
 
@@ -1705,13 +1702,13 @@ specified for a call to addRefAxis')
                         self.children[iChild].dXrefdXdvl[:, iDVLocal] = dXrefdXdvl
                         self.children[iChild].dCcdXdvl[:, iDVLocal] = dCcdXdvl
 
-                    if scaled:
-                        if self.rangel is None:
-                            for iChild in xrange(len(self.children)):
-                                self.children[iChild].rangel[iDVLocal] = self.DV_listLocal[key].scale[j]
-                        else:
-                            for iChild in xrange(len(self.children)):
-                                self.children[iChild].rangel[iDVLocal] = self.rangel[iDVLocal]
+                    # if scaled:
+                    #     if self.rangel is None:
+                    #         for iChild in xrange(len(self.children)):
+                    #             self.children[iChild].rangel[iDVLocal] = self.DV_listLocal[key].scale[j]
+                    #     else:
+                    #         for iChild in xrange(len(self.children)):
+                    #             self.children[iChild].rangel[iDVLocal] = self.rangel[iDVLocal]
                             # end for
                         # end if
                     # end if
@@ -1751,25 +1748,15 @@ specified for a call to addRefAxis')
 
                 new_pts_child = self._update_deriv(iDV, h, oneoverh)
                 tmp2 = numpy.zeros(self.nPtAttachFull*3,dtype='D')
-                if scaled:
-                    # ptAttachInd is of length nPtAttach, but need to
-                    # set the x-y-z coordinates here:
-                    numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0]*self.rangel[iDV])
-                    numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1]*self.rangel[iDV])
-                    numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2]*self.rangel[iDV])
-                else:
-                    numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
-                    numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
-                    numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2])
-                # end
+                numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
+                numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
+                numpy.put(tmp2[2::3], self.ptAttachInd, new_pts_child[:,2])
+
                 tmp3 = numpy.zeros(self.nPtAttachFull*3,dtype='d')
                 for index in self.ptAttachInd:
                     for j in xrange(3):
                         idx = index*3+j
-                        if scaled:
-                            tmp3[idx]=self.dCcdXdvl[idx,iDV]*self.rangel[iDV]
-                        else:
-                            tmp3[idx]=self.dCcdXdvl[idx,iDV]
+                        tmp3[idx]=self.dCcdXdvl[idx,iDV]
                         # end
                     # end
                 # end
