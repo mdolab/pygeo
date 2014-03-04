@@ -1795,28 +1795,24 @@ specified for a call to addRefAxis')
 
         # Add design variables from the master:
         for dvList in [self.DV_listGlobal, self.DV_listLocal]:
-            for dv in dvList:
+            for key in dvList:
+                dv = dvList[key]
                 if dv.nVal > 1:
-                    low = numpy.zeros(dv.nVal)
-                    high = numpy.ones(dv.nVal)
-                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
                     opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
-                                         value=val, lower=low, upper=high, varSet=varSet)
+                                         value=numpy.real(dv.value), lower=dv.lower,
+                                         upper=dv.upper, varSet=varSet)
                 else:
                     low = 0.0
                     high = 1.0
                     val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
 
-                    opt_prob.addVar(dv.name, 'c', value=val, 
-                                    lower=low, upper=high, varSet=varSet)
-                # end if
-            # end for
-        # end for
+                    opt_prob.addVar(dv.name, 'c', value=numpy.real(dv.value),
+                                    lower=dv.lower, upper=dv.upper, varSet=varSet)
 
         # Add variables for children
         for child in self.children:
             child.addVariablesPyOpt(opt_prob)
-        # end for
+
 
         return opt_prob
 
