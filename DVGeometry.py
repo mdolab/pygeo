@@ -1027,7 +1027,7 @@ specified for a call to addRefAxis')
             coefMask.extend(self.masks[ptName])
 
         for key in self.axis:
-            vol_list = self.axis[key]['volumes']
+            vol_list = numpy.atleast_1d(self.axis[key]['volumes']).astype('intc')
             temp = []
             for iVol in vol_list:
                 for i in xrange(self.FFD.vols[iVol].nCtlu):
