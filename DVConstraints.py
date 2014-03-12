@@ -261,6 +261,9 @@ class DVConstraints(object):
         >>> DVCon.addThicknessConstraints2D(leList, teList, 10, 3, 
                                 lower=1.0, scaled=True)
         """
+        if self.DVGeo == None:
+            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
+
         upper = self._convertTo2D(upper, nSpan, nChord).flatten()
         lower = self._convertTo2D(lower, nSpan, nChord).flatten()
         scale = self._convertTo2D(scale, nSpan, nChord).flatten()
@@ -488,6 +491,9 @@ class DVConstraints(object):
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
             """
+        if self.DVGeo == None:
+            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
+
 
         if name is None:
             conName = 'volume_constraint_%d'% len(self.volumeCon)
@@ -791,6 +797,9 @@ class ThicknessConstraint(object):
             self.D0[i] = numpy.linalg.norm(
                 self.coords[2*i] - self.coords[2*i+1])
 
+        if self.DVGeo == None:
+            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
+        
     def evalFunctions(self, funcs):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -865,6 +874,10 @@ class VolumeConstraint(object):
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
+
+        if self.DVGeo == None:
+            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
+
                     
     def evalFunctions(self, funcs):
         """
