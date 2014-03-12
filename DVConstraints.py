@@ -829,6 +829,14 @@ class ThicknessConstraint(object):
                 p1b, p2b = geo_utils.eDist_b(
                     self.coords[2*i, :], self.coords[2*i+1, :])
 
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+                optProb.addConGroup(self.name, self.nCon, lower=self.lower, upper=self.upper,
+                               scale=self.scale, wrt=[self.DVGeo.varSet])
+
 
 class VolumeConstraint(object):
     """
