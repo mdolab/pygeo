@@ -116,12 +116,10 @@ class DVGeometry(object):
         else:
             self.dtype = 'd'
 
-        self.varSet = None
-
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case aditional pyBlock options
         # need to be set. 
-        self.FFD = pyBlock.pyBlock('plot3d', fileName=fileName, FFD=True,
+        self.FFD = pyBlock('plot3d', fileName=fileName, FFD=True,
                            *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
@@ -141,10 +139,6 @@ class DVGeometry(object):
         self.dCoefdXdvl = None
 
         self.axis = OrderedDict()
-
-        # The default variable set name is geo. 
-        self.varSet = 'geo'
-        return 
 
     def addRefAxis(self, name, curve=None,  xFraction=None, volumes=None, rotType=5,
                    axis='x'):
@@ -443,7 +437,7 @@ specified for a call to addRefAxis')
         else:
             # Just take'em all
             ind = numpy.arange(len(self.FFD.coef))
-        
+
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper,
                                                scale, axis, ind)
             
@@ -722,6 +716,50 @@ specified for a call to addRefAxis')
         else:
             return True
 
+    def convertSensitivityToDict(self, dIdx):
+        """
+        This function takes the result of totalSensitivity and
+        converts it to a dict for use in pyOptSparse
+
+        Parameters
+        ----------
+        dIdxDV : array
+           Flattened array of length getNDV(). Generally it comes from
+           a call to totalSensitivity()
+
+        Returns
+        -------
+        dIdxDict : dictionary
+           Dictionary of the same information keyed by this object's
+           design variables
+        """
+
+        i = 0
+        dIdxDict = {}
+        for key in self.DV_listGlobal:
+            dv = self.DV_listGlobal[key]
+            dIdxDict[dv.name] = dIdx[i:i+dv.nVal].squeeze().T
+            i += dv.nVal
+        for key in self.DV_listLocal:
+            dv = self.DV_listLocal[key]
+            dIdxDict[dv.name] = dIdx[i:i+dv.nVal].squeeze().T
+            i += dv.nVal
+        return dIdxDict
+
+    def getVarNames(self):
+        """
+        Return a list of the design variable names. This is typically
+        used when specifying a wrt= argument for pyOptSparse.
+
+        Examples
+        --------
+        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        """
+        names = list(self.DV_listGlobal.keys())
+        names.extend(list(self.DV_listLocal.keys()))
+
+        return names
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, child=False,
                         nDVStore=0):
         """
@@ -732,9 +770,13 @@ specified for a call to addRefAxis')
 
         Parameters
         ----------
-        dIdpt : array of size (Npt, 3)
+        dIdpt : array of size (Npt, 3) or (Npt, 3, N)
+
             This is the total derivative of the objective or function
-            of interest with respect to the coordinates in 'ptSetName'
+            of interest with respect to the coordinates in
+            'ptSetName'. This can be a single array of size (Npt, 3)
+            **or** a group of N vectors of size (Npt, 3, N). If you
+            have many to do, it is faster to do many at once. 
 
         ptSetName : str
             The name of set of points we are dealing with
@@ -743,13 +785,22 @@ specified for a call to addRefAxis')
             The communicator to use to reduce the final derivative. If
             comm is None, no reduction takes place. 
 
+        Returns
+        -------
+        dIdxDict : dic
+            The dictionary containing the derivatives, suitable for
+            pyOptSparse
+            
         Notes
         -----
         The ``child`` and ``nDVStore`` options are only used
         internally and should not be changed by the user. 
         """
         self._finalize()
-        
+
+        # Make dIdpt at least 3D
+        dIdpt = numpy.atleast_3d(dIdpt)
+        N = dIdpt.shape[2]
         # This is going to be DENSE in general -- does not depend on
         # name
         if self.J_attach is None:
@@ -782,18 +833,19 @@ specified for a call to addRefAxis')
             nDV = self._getNDV()
 
         if dPtdCoef is not None:
-            dIdcoef = numpy.zeros((self.nPtAttachFull*3))
+            dIdcoef = numpy.zeros((self.nPtAttachFull*3,N))
             if dPtdCoef is not None:
-                dIdcoef[0::3] = dPtdCoef.T.dot(dIdpt[:, 0])
-                dIdcoef[1::3] = dPtdCoef.T.dot(dIdpt[:, 1])
-                dIdcoef[2::3] = dPtdCoef.T.dot(dIdpt[:, 2])
+                for i in range(N):
+                    dIdcoef[0::3, i] = dPtdCoef.T.dot(dIdpt[:, 0, i])
+                    dIdcoef[1::3, i] = dPtdCoef.T.dot(dIdpt[:, 1, i])
+                    dIdcoef[2::3, i] = dPtdCoef.T.dot(dIdpt[:, 2, i])
 
             # Now back to design variables:
             dIdx_local = J_temp.T.dot(dIdcoef)
         else:
             # This is an array of zeros of length the number of design
             # variables
-            dIdx_local = numpy.zeros(nDV, 'd')
+            dIdx_local = numpy.zeros((nDV, N), 'd')
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -811,9 +863,8 @@ specified for a call to addRefAxis')
             self.children[iChild].refAxis._updateCurveCoef()
             dIdx += self.children[iChild].totalSensitivity(dIdpt, comm, ptSetName,
                                                            True, nDV)
-        # self.computeTotalJacobian(name)
-        # #print 'shapes',self.JT.shape,dIdpt.shape
-        # dIdx = self.JT.dot(dIdpt.reshape(self.JT.shape[1]))
+        # Now convert to dict:
+        dIdx = self.convertSensitivityToDict(dIdx)
 
         return dIdx
     
@@ -923,14 +974,14 @@ specified for a call to addRefAxis')
                 dv = self.DV_listGlobal[key]
                 optProb.addVarGroup(dv.name, dv.nVal, 'c', 
                                      value=dv.value, lower=dv.lower, upper=dv.upper,
-                                     scale=dv.scale, varSet=self.varSet)
+                                     scale=dv.scale)
         if localVars:
             for key in self.DV_listLocal:
                 dv = self.DV_listLocal[key]
                 optProb.addVarGroup(dv.name, dv.nVal, 'c', 
                                      value=dv.value, lower=dv.lower, upper=dv.upper,
-                                     scale=dv.scale, varSet=self.varSet)
-        
+                                     scale=dv.scale)
+
         # Add variables for children
         for child in self.children:
             child.addVariablesPyOpt(optProb)
@@ -960,6 +1011,11 @@ specified for a call to addRefAxis')
         pySpline.closeTecplot(f)
         self.update(self.points.keys()[0], childDelta=True) 
 
+    def getLocalIndex(self, iVol):
+        """ Return the local index mapping that points to the global
+        coefficient list for a given volume"""
+        return self.FFD.topo.lIndex[iVol].copy()
+        
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
@@ -976,7 +1032,7 @@ specified for a call to addRefAxis')
             curves.append(self.axis[axis]['curve'])
 
         # Setup the network of reference axis curves
-        self.refAxis = pyNetwork.pyNetwork(curves)
+        self.refAxis = pyNetwork(curves)
         
         # These are the rotations
         self.rot_x = OrderedDict()
@@ -1776,104 +1832,6 @@ specified for a call to addRefAxis')
                               
         return sparse.csr_matrix(Jacobian)
 
-    def addVariablesPyOpt(self, opt_prob, varSet='geo'):
-        '''
-        Add the current set of global and local design variables to the opt_prob specified
-        '''
-
-        # We are going to do our own scaling here...since pyOpt can't
-        # do it...
-
-        # save the varSet name this object used:
-        self.varSet = varSet
-
-        # Add design variables from the master:
-        for dvList in [self.DV_listGlobal, self.DV_listLocal]:
-            for key in dvList:
-                dv = dvList[key]
-                if dv.nVal > 1:
-                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
-                                         value=numpy.real(dv.value), lower=dv.lower,
-                                         upper=dv.upper, varSet=varSet)
-                else:
-                    low = 0.0
-                    high = 1.0
-                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
-
-                    opt_prob.addVar(dv.name, 'c', value=numpy.real(dv.value),
-                                    lower=dv.lower, upper=dv.upper, varSet=varSet)
-
-        # Add variables for children
-        for child in self.children:
-            child.addVariablesPyOpt(opt_prob)
-
-
-        return opt_prob
-
-    def addGlobalVariablesPyOpt(self, opt_prob):
-        '''
-        Add only the global variable to pyopt
-        '''
-
-        # Add design variables from the master:
-        for dvList in [self.DV_listGlobal]:
-            for dv in dvList:
-                if dv.nVal > 1:
-                    low = numpy.zeros(dv.nVal)
-                    high = numpy.ones(dv.nVal)
-                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
-                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
-                                         value=val, lower=low, upper=high)
-                else:
-                    low = 0.0
-                    high = 1.0
-                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
-
-                    opt_prob.addVar(dv.name, 'c', value=val, 
-                                    lower=low, upper=high)
-                # end if
-            # end for
-        # end for
-
-        # Add variables for children
-        for child in self.children:
-            child.addGlobalVariablesPyOpt(opt_prob)
-        # end for
-
-        return opt_prob
-
-    def addLocalVariablesPyOpt(self, opt_prob):
-        '''
-        Add only the local variable to pyopt
-        '''
-
-        # Add design variables from the master:
-        for dvList in [self.DV_listLocal]:
-            for dv in dvList:
-                if dv.nVal > 1:
-                    low = numpy.zeros(dv.nVal)
-                    high = numpy.ones(dv.nVal)
-                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
-                    opt_prob.addVarGroup(dv.name, dv.nVal, 'c', 
-                                         value=val, lower=low, upper=high)
-                else:
-                    low = 0.0
-                    high = 1.0
-                    val = (numpy.real(dv.value)-dv.lower)/(dv.upper-dv.lower)
-
-                    opt_prob.addVar(dv.name, 'c', value=val, 
-                                    lower=low, upper=high)
-                # end if
-            # end for
-        # end for
-
-        # Add variables for children
-        for child in self.children:
-            child.addLocalVariablesPyOpt(opt_prob)
-        # end for
-
-        return opt_prob
-
     def writeTecplot(self, file_name):
         '''Write the (deformed) current state of the FFD's to a file
         including the children'''
@@ -2067,14 +2025,13 @@ class geoDVLocal(object):
         self.name = dvName
         self.lower = None
         self.upper = None
-        self.scale = 1.0
 
         if lower is not None:
             self.lower = _convertTo1D(lower, self.nVal)
         if upper is not None:
             self.upper = _convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = _convertTo1D(upper, self.nVal)
+            self.scale = _convertTo1D(scale, self.nVal)
         
         self.coefList = numpy.zeros((self.nVal, 2), 'intc')
         j = 0
