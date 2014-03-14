@@ -1,2 +1,7 @@
-from . import geo_utils, pyNetwork, pyGeo, pyBlock
-from . import DVConstraints, DVGeometry
+from . import geo_utils
+from .pyNetwork import pyNetwork
+from .pyGeo import pyGeo
+from .pyBlock import pyBlock
+from .DVConstraints import DVConstraints
+from .DVGeometry import DVGeometry
+

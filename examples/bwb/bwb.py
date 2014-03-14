@@ -53,12 +53,12 @@ rot_y = numpy.zeros(naf)
 rot_z = numpy.zeros(naf)
 offset = numpy.zeros((naf,2))
 
-bwb = pyGeo.pyGeo('liftingSurface', 
-                  xsections=airfoil_list,
-                  scale=chord, offset=offset, 
-                  thickness=thickness,
-                  bluntTe=True, teHeight=0.05,
-                  tip='rounded', 
-                  x=x,y=y,z=z)
+bwb = pyGeo('liftingSurface', 
+            xsections=airfoil_list,
+            scale=chord, offset=offset, 
+            thickness=thickness,
+            bluntTe=True, teHeight=0.05,
+            tip='rounded', 
+            x=x,y=y,z=z)
 
 bwb.writeIGES('bwb.igs')

@@ -3,6 +3,7 @@
 # ======================================================================
 from __future__ import print_function
 import numpy
+from scipy import sparse
 from . import geo_utils
 from pyspline import pySpline
 try:
@@ -261,8 +262,10 @@ class DVConstraints(object):
         >>> DVCon.addThicknessConstraints2D(leList, teList, 10, 3, 
                                 lower=1.0, scaled=True)
         """
-        if self.DVGeo == None:
-            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
+        if self.DVGeo is None:
+            raise Error('A DVGeometry object must be added to DVCon before \
+            using a call to DVCon.setDVGeo(DVGeo) before constraints can be \
+            added.')
 
         upper = self._convertTo2D(upper, nSpan, nChord).flatten()
         lower = self._convertTo2D(lower, nSpan, nChord).flatten()
@@ -491,9 +494,10 @@ class DVConstraints(object):
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
             """
-        if self.DVGeo == None:
-            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
-
+        if self.DVGeo is None:
+            raise Error('A DVGeometry object must be added to DVCon before \
+            using a call to DVCon.setDVGeo(DVGeo) before constraints can be \
+            added.')
 
         if name is None:
             conName = 'volume_constraint_%d'% len(self.volumeCon)
@@ -509,48 +513,130 @@ class DVConstraints(object):
             self.DVGeo, addToPyOpt)
 
 
-    # def addLeTeCon(self, up_ind, low_ind):
-    #     """Add Leading Edge and Trailing Edge Constraints to the FFD
-    #     at the indiceis defined by up_ind and low_ind"""
+    def addLeTeConstraints(self, volID=None, faceID=None,
+                           indSetA=None, indSetB=None, name=None):
+        """
+        Add a set of 'leading edge' or 'trailing edge' constraints to
+        DVConstraints. These are just a particular form of linear
+        constraints for shape variables. The need for these
+        constraints arise when the shape variables can effectively
+        emulate a 'twist' variable (actually a shearing twist). The
+        purpose of these constraints is to make control points at the
+        leading and trailing edge move in equal and opposite diretion.
 
-    #     if self.DVGeo is None:
-    #         raise Error('A DVGeometry object must be set with setDVGeo()\
-    #         before this function can be called')
-    #     if len(up_ind) != len(low_ind):
-    #         raise Error('The upInd and lowInd lengths are not the same!')
-     
-    #     # Check to see if we have local design variables in DVGeo
-    #     if len(self.DVGeo.DV_listLocal) == 0:
-    #         print('Warning: Trying to add Le/Te Constraint \
-    #         when no local variables found')
+        ie. x1 - x2 = 0.0
 
-    #     # Loop over each set of Local Design Variables
-    #     for i in range(len(self.DVGeo.DV_listLocal)):
+        where x1 is the movment (in 1, 2, or 3 directions) of a
+        control point on the top of the FFD and x2 is the control
+        poin on teh bottom of the FFD.
 
-    #         # We will assume that each GeoDVLocal only moves on
-    #         # 1,2, or 3 coordinate directions (but not mixed)
-    #         temp = self.DVGeo.DV_listLocal[i].coef_list
-    #         for j in range(len(up_ind)): # Try to find this index
-    #                                       # in the coef_list
-    #             up = None
-    #             down = None
-    #             for k in range(len(temp)):
-    #                 if temp[k][0] == up_ind[j]:
-    #                     up = k
-    #                 # end if
-    #                 if temp[k][0] == low_ind[j]:
-    #                     down = k
-    #                 # end for
-    #             # end for
-    #             # If we haven't found up AND down do nothing
-    #             # if up is not None and down is not None:
-    #             #     self.LeTeCon.append([i, up, down])
-    #             # end if
+        There are two ways of specifying these constraints:
 
-    #     # Finally, unique the list to parse out duplicates. Note:
-    #     # This sort may not be stable however, the order of the
-    #     # LeTeCon list doens't matter
-    #     self.LeTeCon = geo_utils.unique(self.LeTeCon)
+        volID and faceID: Provide the index of the FFD block and the
+        faceID (one of 'ilow', 'ihgih', 'jlow', 'jhigh', 'klow', or
+        'khigh'). This it the preferred approach
+
+        Alternatively, two sets of indices can be provided, 'indSetA'
+        and 'indSetB'. Both must be the same length. These indices may
+        be obtained from the 'lindex' array of the FFD object.
+
+        lIndex = DVGeo.getLocalIndex(iVol)
+
+        lIndex is a three dimensional set of indices that provide the
+        index into the global set of control points. See below for
+        examples.
+
+        Note that these constraints *will* be added to pyOptSparse
+        automatically with a call to addConstraintsPyOpt()
+
+        Parameters
+        ----------
+        volID : int
+            Single integer specifying the volume index
+        faceID : str {'iLow', 'iHigh', 'jLow', 'jHigh', 'kLow', 'kHigh'}
+            One of above specifying the node on which face to constrain.
+        indSetA : array of int
+            Indices of control points on one side of the FFD
+        indSetB : array of int
+            Indices of control points on the *other* side of the FFD
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished
+             
+        Examples
+        --------
+        >>>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
+        >>> DVCon.addLeTeConstraints(0, 'iLow')
+        >>> DVCon.addLeTeConstraints(0, 'iHigh')
+        >>> # Alternative way -- this can be specialzed as required:
+        >>> lIndex = DVGeo.getLocalIndex(1) # Volume 2
+        >>> indSetA = []; indSetB = [];
+        >>> for k in range(4,7): # 4 on the leading edge
+        >>>     indSetA.append(lIndex[0, 0, k])
+        >>>     indSetB.append(lIndex[0, 1, k])
+        >>> lIndex = DVGeo.getLocalIndex(4) # Volume 5 (different from LE)
+        >>> for k in range(4,8): # 5 on the trailing edge
+        >>>     indSetA.append(lIndex[-1, 0, k])
+        >>>     indSetB.append(lIndex[-1, 1, k])
+        >>> # Now add to DVCon
+        >>> DVCon.addLeTeConstraints(indSetA, indSetB)
+        """
+        if self.DVGeo is None:
+            raise Error('A DVGeometry object must be added to DVCon before \
+            using a call to DVCon.setDVGeo(DVGeo) before constraints can be \
+            added.')
+
+        # Now determine what type of specification we have:
+        if volID is not None and faceID is not None:
+            lIndex = self.DVGeo.getLocalIndex(volID)
+            if faceID.lower() == 'ilow':
+                indices = lIndex[0, :, :]
+            elif faceID.lower() == 'ihigh':
+                indices = lIndex[-1, :, :]
+            elif faceID.lower() == 'jlow':
+                indices = lIndex[:, 0, :]
+            elif faceID.lower() == 'jhigh':
+                indices = lIndex[:, -1, :]
+            elif faceID.lower() == 'klow':
+                indices = lIndex[:, :, 0]
+            elif faceID.lower() == 'khigh':
+                indices = lIndex[:, :, -1]
+            else:
+                raise Error('faceID must be one of iLow, iHigh, jLow, jHigh, \
+                kLow or kHigh.')
+
+            # Now we see if one and exactly one length in 2:
+            shp = indices.shape
+            if shp[0] == 2 and shp[1] > 2:
+                indSetA = indices[0, :]
+                indSetB = indices[1, :]
+            elif shp[1] == 2 and shp[0] > 2:
+                indSetA = indices[:, 0]
+                indSetB = indices[:, 1]
+            else:
+                raise Error('Cannot add leading edge constraints. One (and \
+                exactly one) of FFD block dimensions on the specified face \
+                must be 2. The dimensions of the selected face are: \
+                (%d, %d)' % (shp[0], shp[1]))
+
+        elif indSetA is not None and indSetB is not None:
+            if len(indSetA) != len(indSetB):
+                raise Error("The length of the supplied indices are not\
+                the same length")
+        else:
+            raise Error("Incorrect data supplied to addLeTeConstraint. The\
+            keyword arguments 'volID' and 'faceID' must be specified **or**\
+            'indSetA' and 'indSetB'")
+
+        if name is None:
+            conName = 'lete_constraint_%d'% len(self.LeTeCon)
+        else:
+            conName = name
+
+        # Finally add the volume constraint object
+        self.LeTeCon[conName] = LeTeConstraint(conName, indSetA, indSetB, self.DVGeo)
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -574,7 +660,7 @@ class DVConstraints(object):
         for key in self.LeTeCon:
             self.LeTeCon[key].addConstraintsPyOpt(optProb)
 
-    def evalFunctions(self, funcs):
+    def evalFunctions(self, funcs, includeLeTe=False):
         """
         Evaluate all the 'functions' that this object has. Of course,
         these functions are usually just the desired constraint
@@ -583,18 +669,23 @@ class DVConstraints(object):
 
         Parameters
         ----------
-        fucns : dict
-            Dictionary into which the function values are placed. 
+        funcs : dict
+            Dictionary into which the function values are placed.
+        includeLeTe : bool
+            Flag to include Leading/Trailing edge
+            constraints. Normally this can be false since pyOptSparse
+            does not need linear constraints to be returned. 
         """
 
         for key in self.thickCon:
             self.thickCon[key].evalFunctions(funcs)
         for key in self.volumeCon:
             self.volumeCon[key].evalFunctions(funcs)
-        for key in self.LeTeCon:
-            self.LeTeCon[key].evalFunctions(funcs)
+        if includeLeTe:
+            for key in self.LeTeCon:
+                self.LeTeCon[key].evalFunctions(funcs)
                     
-    def evalFunctionsSens(self, funcsSens):
+    def evalFunctionsSens(self, funcsSens, includeLeTe=False):
         """
         Evaluate the derivative of all the 'funcitons' that this
         object has. These functions are just the constraint values.
@@ -604,13 +695,18 @@ class DVConstraints(object):
         ----------
         funcSens : dict
             Dictionary into which the sensitivities are added. 
+        includeLeTe : bool
+            Flag to include Leading/Trailing edge
+            constraints. Normally this can be false since pyOptSparse
+            does not need linear constraints to be returned. 
         """
         for key in self.thickCon:
             self.thickCon[key].evalFunctionsSens(funcsSens)
         for key in self.volumeCon:
             self.volumeCon[key].evalFunctionsSens(funcsSens)
-        for key in self.LeTeCon:
-            self.LeTeCon[key].evalFunctionsSens(funcsSens)
+        if includeLeTe:
+            for key in self.LeTeCon:
+                self.LeTeCon[key].evalFunctionsSens(funcsSens)
             
     def writeTecplot(self, fileName): 
         """
@@ -634,6 +730,8 @@ class DVConstraints(object):
             self.thickCon[key].writeTecplot(f)
         for key in self.volumeCon:
             self.volumeCon[key].writeTecplot(f)
+        for key in self.LeTeCon:
+            self.LeTeCon[key].writeTecplot(f)
         f.close()
 
     def _convertTo2D(self, value, dim1, dim2):
@@ -796,9 +894,6 @@ class ThicknessConstraint(object):
         for i in range(self.nCon):
             self.D0[i] = numpy.linalg.norm(
                 self.coords[2*i] - self.coords[2*i+1])
-
-        if self.DVGeo == None:
-            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
         
     def evalFunctions(self, funcs):
         """
@@ -830,22 +925,48 @@ class ThicknessConstraint(object):
         """
 
         nDV = self.DVGeo.getNDV()
-        dTdx = numpy.zeros((self.nCon, nDV))
         if nDV > 0:
-            dTdpt = numpy.zeros(self.coords.shape)
+            dTdPt = numpy.zeros((self.coords.shape[0],
+                                 self.coords.shape[1],
+                                 self.nCon))
+
             for i in range(self.nCon):
-                dTdpt[:, :] = 0.0
                 p1b, p2b = geo_utils.eDist_b(
                     self.coords[2*i, :], self.coords[2*i+1, :])
+                if self.scaled:
+                    p1b /= self.D0[i]
+                    p2b /= self.D0[i]
+                dTdPt[2*i  , :, i] = p1b
+                dTdPt[2*i+1, :, i] = p2b
+
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(
+                dTdPt, self.name)
 
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
-                optProb.addConGroup(self.name, self.nCon, lower=self.lower, upper=self.upper,
-                               scale=self.scale, wrt=[self.DVGeo.varSet])
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.DVGeo.getVarNames())
 
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write('Zone T=%s\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            len(self.coords), len(self.coords)/2))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(len(self.coords)):
+            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
+                                        self.coords[i, 2]))
+
+        for i in range(len(self.coords)/2):
+            handle.write('%d %d\n'% (2*i+1, 2*i+2))
 
 class VolumeConstraint(object):
     """
@@ -875,10 +996,6 @@ class VolumeConstraint(object):
         # Now get the reference volume
         self.V0 = self.evalVolume()
 
-        if self.DVGeo == None:
-            raise Error('DVGeo is not added to DVCon: use DVCon.setDVGeo(DVGeo)')
-
-                    
     def evalFunctions(self, funcs):
         """
         Evaluate the function this object has and place in the funcs dictionary
@@ -906,24 +1023,21 @@ class VolumeConstraint(object):
             Dictionary to place function values
         """
         nDV = self.DVGeo.getNDV()
-        dVdx = numpy.zeros((1, nDV))
         if nDV > 0:
             dVdPt = self.evalVolumeSens()
             if self.scaled:
                 dVdPt /= self.V0
 
             # Now compute the DVGeo total sensitivity:
-            dVdx = self.DVGeo.totalSensitivity(dVdPt, self.name)
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dVdPt, self.name)
             
-        funcsSens[self.name] = {self.DVGeo.varSet:dVdx}
-
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
             optProb.addCon(self.name, lower=self.lower, upper=self.upper,
-                           scale=self.scale, wrt=[self.DVGeo.varSet])
+                           scale=self.scale, wrt=self.DVGeo.getVarNames())
 
     def writeTecplot(self, handle):
         """
@@ -1106,40 +1220,126 @@ class VolumeConstraint(object):
         pb[1] = pb[1] + tempb6
         pb[2] = pb[2] + tempb13
 
-# # --------------------------------------------------------------------------------
-#     def _getLeTeConstraints(self):
-#         """Evaluate the LeTe constraint using the current DVGeo opject"""
+class LeTeConstraint(object):
+    """
+    This class is used to represet a set of LeadingEdge/Trailing edge
+    constraints. 
+    """
+    def __init__(self, name, indSetA, indSetB, DVGeo):
+        self.name = name
+        self.indSetA = indSetA
+        self.indSetB = indSetB
+        self.DVGeo = DVGeo
+        self.ncon = 0
+        self.wrt = []
+        self.jac = {}
+        self.conIndices = []
+        self._finalize()
+        
+    def evalFunctions(self, funcs):
+        """
+        Evaluate the function this object has and place in the funcs
+        dictionary. Note that this function typically will not need to
+        called since these constraints are supplied as a linear
+        constraint jacobian they constraints themselves need to be
+        revaluated.
 
-#         con = numpy.zeros(len(self.LeTeCon))
-#         for i in range(len(self.LeTeCon)):
-#             dv = self.LeTeCon[i][0]
-#             up = self.LeTeCon[i][1]
-#             down = self.LeTeCon[i][2]
-#             con[i] = self.DVGeo.DV_listLocal[dv].value[up] + \
-#                 DVGeo.DV_listLocal[dv].value[down]
-#         # end for
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        cons = []
+        for key in self.wrt:
+            cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
+            
+        funcs[self.name] = numpy.array(cons)
+        
+    def evalFunctionsSens(self, funcsSens):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
 
-#         return con
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        funcsSens[self.name] = self.jac
 
-#     def _getLeTeSensitivity(self):
-#         ndv = self.DVGeo._getNDV()
-#         nlete = len(self.LeTeCon)
-#         dLeTedx = numpy.zeros([nlete, ndv])
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt. These constraints are added as
+        linear constraints. 
+        """
+        if self.ncon > 0:
+            optProb.addConGroup(self.name, self.ncon, lower=0.0, upper=0.0,
+                                scale=1.0, linear=True, wrt=self.wrt,
+                                jac=self.jac)
 
-#         DVoffset = [self.DVGeo._getNDVGlobal()]
-#         # Generate offset lift of the number of local variables
-#         for i in range(len(self.DVGeo.DV_listLocal)):
-#             DVoffset.append(DVoffset[-1] + self.DVGeo.DV_listLocal[i].nVal)
+    def _finalize(self):
+        """
+        We have postponed actually determining the constraint jacobian
+        until this function is called. Here we determine the actual
+        constraint jacobains as they relate to the actual sets of
+        local shape variables that may (or may not) be present in the
+        DVGeo object. 
+        """
+        for key in self.DVGeo.DV_listLocal:
+            # Temp is the list of FFD coefficients that are included
+            # as shape variables in this localDV "key"
+            temp = self.DVGeo.DV_listLocal[key].coefList
+            cons = []
+            for j in range(len(self.indSetA)):
+                # Try to find this index # in the coefList (temp)
+                up = None
+                down = None
 
-#         for i in range(len(self.LeTeCon)):
-#             # Set the two values a +1 and -1 or (+range - range if scaled)
-#             dv = self.LeTeCon[i][0]
-#             up = self.LeTeCon[i][1]
-#             down = self.LeTeCon[i][2]
-#             dLeTedx[i, DVoffset[dv] + up  ] =  1.0
-#             dLeTedx[i, DVoffset[dv] + down] =  1.0
-#         # end for
+                # Note: We are doing inefficient double looping here
+                for k in range(len(temp)):
+                    if temp[k][0] == self.indSetA[j]:
+                        up = k
+                    if temp[k][0] == self.indSetB[j]:
+                        down = k
 
-#         return dLeTedx
+                # If we haven't found up AND down do nothing
+                if up is not None and down is not None:
+                    cons.append([up, down])
 
- 
+            # end for (indSet loop)
+            ncon = len(cons)
+            if ncon > 0:
+                self.wrt.append(key)
+                # Now form the jacobian:
+                ndv = self.DVGeo.DV_listLocal[key].nVal
+                jacobian = sparse.lil_matrix((ncon, ndv))
+                for i in range(ncon):
+                    jacobian[i, cons[i][0]] = 1.0
+                    jacobian[i, cons[i][1]] = -1.0
+                self.jac[key] = jacobian
+
+            # Add to the number of constraints and store indices which
+            # we need for tecplot visualization
+            self.ncon += len(cons)
+            self.conIndices.extend(cons)
+            
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of lete constraints
+        to the open file handle
+        """
+
+        nodes = numpy.zeros((self.ncon*2, 3))
+        for i in range(self.ncon):
+            nodes[2*i  ] = self.DVGeo.FFD.coef[self.conIndices[i][0]]
+            nodes[2*i+1] = self.DVGeo.FFD.coef[self.conIndices[i][1]]
+
+        handle.write('Zone T=%s\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            self.ncon*2, self.ncon))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(self.ncon*2):
+            handle.write('%f %f %f\n'% (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
+
+        for i in range(self.ncon):
+            handle.write('%d %d\n'% (2*i+1, 2*i+2))
