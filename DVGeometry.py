@@ -110,7 +110,7 @@ class DVGeometry(object):
         self.updated = {}
         self.masks = OrderedDict()
         self.finalized = False
-        self.complex = kwargs.pop('complex', False)
+        self.complex = complex
         if self.complex:
             self.dtype = 'D'
         else:
@@ -563,7 +563,7 @@ specified for a call to addRefAxis')
 
         # We've postposed things as long as we can...do the finialization. 
         self._finalize()
-        
+
         # Set all coef Values back to initial values
         if not self.isChild:
             self._setInitialValues()
@@ -684,7 +684,7 @@ specified for a call to addRefAxis')
             imag_part     = numpy.imag(tempCoef)
             imag_j = 1j
 
-            dPtdCoef = self.FFD.embeded_volumes[ptSetName].dPtdCoef
+            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
             if dPtdCoef is not None:
                 for ii in xrange(3):
                     coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
@@ -1323,8 +1323,8 @@ specified for a call to addRefAxis')
         # set the forward effect of the global design vars in each child
         for iChild in xrange(len(self.children)):
 
-            dXrefdCoef = self.FFD.embeded_volumes['child%d_axis'%(iChild)].dPtdCoef
-            dCcdCoef   = self.FFD.embeded_volumes['child%d_coef'%(iChild)].dPtdCoef
+            dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
+            dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
             
             tmp = numpy.zeros(self.FFD.coef.shape,dtype='D')
             
