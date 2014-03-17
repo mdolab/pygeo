@@ -1083,12 +1083,10 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
             self.box = pySpline.bilinearSurface(X)
             self.type = 'box'
-        elif type == 'list':
+        elif psType == 'list':
             self.box = None
-            self.type = type
+            self.type = 'list'
             self.indices = np.array(args[0])
-
-        return
 
     def getPoints(self, points):
 
