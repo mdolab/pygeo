@@ -533,9 +533,15 @@ class DVConstraints(object):
         There are two ways of specifying these constraints:
 
         volID and faceID: Provide the index of the FFD block and the
-        faceID (one of 'ilow', 'ihgih', 'jlow', 'jhigh', 'klow', or
-        'khigh'). This it the preferred approach
-
+        faceID (one of 'ilow', 'ihigh', 'jlow', 'jhigh', 'klow', or
+        'khigh'). This it the preferred approach. Both volID and faceID
+        can be determined by examining the FFD file in TecPlot or ICEM.
+        Use 'prob data' tool in TecPlot to click on the surface of which
+        you want to put constraints on (e.g. the front or LE of FFD and
+        the back surface or TE of the FFD). You will see which plane 
+        it coresponding to. For example, 'I-Plane' with I-index = 1 is
+        'iLow'.
+        
         Alternatively, two sets of indices can be provided, 'indSetA'
         and 'indSetB'. Both must be the same length. These indices may
         be obtained from the 'lindex' array of the FFD object.
@@ -567,7 +573,7 @@ class DVConstraints(object):
              
         Examples
         --------
-        >>>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
+        >>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
         >>> DVCon.addLeTeConstraints(0, 'iLow')
         >>> DVCon.addLeTeConstraints(0, 'iHigh')
         >>> # Alternative way -- this can be specialzed as required:
