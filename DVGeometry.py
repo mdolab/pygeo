@@ -1075,6 +1075,7 @@ specified for a call to addRefAxis')
         self.rot_theta0 = self.rot_theta.copy()
 
     def _finalize(self):
+
         if self.finalized:
             return
         self._finalizeAxis()
@@ -1833,13 +1834,14 @@ specified for a call to addRefAxis')
         return sparse.csr_matrix(Jacobian)
 
     def writeTecplot(self, file_name):
-        '''Write the (deformed) current state of the FFD's to a file
-        including the children'''
+        """Write the (deformed) current state of the FFDs to a file
+        including the children"""
 
-        # Name here doesn't matter, just take the first one
-        self.update(self.pt_names[0], childDelta=False)
+        # Name here doesnt matter, just take the first one
+        firstPtSet = list(self.points.keys())[0]
+        self.update(firstPtSet, childDelta=False)
 
-        f = ps.pySpline.openTecplot(file_name, 3)
+        f = pySpline.openTecplot(file_name, 3)
         vol_counter = 0
         # Write master volumes:
         vol_counter += self._writeVols(f, vol_counter)
@@ -1849,11 +1851,9 @@ specified for a call to addRefAxis')
             vol_counter += self.children[iChild]._writeVols(f, vol_counter)
         # end for
 
-        ps.pySpline.closeTecplot(f)
+        pySpline.closeTecplot(f)
 
-        self.update(self.pt_names[0], childDelta=True) 
-
-        return
+        self.update(firstPtSet, childDelta=True) 
 
     def _writeVols(self, handle, vol_counter):
         for i in xrange(len(self.FFD.vols)):
@@ -1870,7 +1870,7 @@ specified for a call to addRefAxis')
         ----------
         ptSetName : str
             name of the point set to check
-        """
+            """
 
         print('Computing Analytic Jacobian...')
         self.JT = None # J is no longer up to date
