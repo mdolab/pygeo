@@ -1011,6 +1011,21 @@ specified for a call to addRefAxis')
         pySpline.closeTecplot(f)
         self.update(self.points.keys()[0], childDelta=True) 
 
+    def writePlot3d(self, fileName):
+        """Write the (deformed) current state of the FFD object into a
+        plot3D file. This file could then be used as the base-line FFD
+        for a subsequent optimization. This function is not typically
+        used in a regular basis, but may be useful in certain
+        situaions, i.e. a sequence of optimizations
+
+        Parameters
+        ----------
+        fileName : str
+            Filename of the plot3D file to write. Should have a .fmt
+            file extension.
+            """
+        self.FFD.writePlot3dCoef(fileName)
+
     def getLocalIndex(self, iVol):
         """ Return the local index mapping that points to the global
         coefficient list for a given volume"""
