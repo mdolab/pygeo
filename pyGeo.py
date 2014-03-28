@@ -359,30 +359,56 @@ class pyGeo():
                 if curves[i] is not None:
                     origKnots[i] = curves[i].t.copy()
 
-            # Now for each section go back and insert the required knots
-            for i in range(N):
-                print('Inserting knots for curve %d'%(i))
+            # First take all the knots of the first curve:
+            baseKnots = []
+            baseKnots.extend(origKnots[0])
+
+            # For the rest of the curves
+            for i in range(1, N):
                 if curves[i] is not None:
-                    for j in range(N):
-                        if curves[j] is not None:
-                            if i != j:
-                               # Add the knots from curve[j] to curve[i]
-                                for jj in range(len(origKnots[j])):
+                    knots = origKnots[i]
+                    # Search for all indices
+                    indices = numpy.searchsorted(baseKnots, knots, side='left')
 
-                                    found = False
-                                    for ii in range(len(origKnots[i])):
-                                        if abs(origKnots[j][jj] - origKnots[i][ii]) < 1e-12:
-                                            found = True
-                                            break
+                    toInsert = []
+                    # Now go over the indices and see if we need to add 
+                    for i in range(len(indices)):
+                        if abs(baseKnots[indices[i]] - knots[i]) > 1e-12:
+                            toInsert.append(knots[i])
 
-                                    if not found:
-                                        curves[i].insertKnot(origKnots[j][jj], 1)
+                    # Finally add the new indices and resort
+                    baseKnots.extend(toInsert)
+                    baseKnots.sort()
+
+            # We have to know determine more information about the set
+            # of baseKnots: We want just a list of just the knot
+            # values and their multiplicity.
+            newKnots = []
+            mult = []
+            i = 0
+            Nmax = len(baseKnots)
+            while i < len(baseKnots):
+                curKnot = baseKnots[i]
+                j = 1
+                while i+j<Nmax and abs(baseKnots[i+j] - curKnot) < 1e-12:
+                    j += 1
+                i += j
+                newKnots.append(curKnot)
+                mult.append(j)
+            
+            # Now we have a knot vector that *ALL* curve *MUST* have
+            # to form our surface. So we loop back over the curves and
+            # insert the knots as necessary. 
+            for i in range(N):
+                if curves[i] is not None:
+                    for j in range(len(newKnots)):
+                        if not newKnots[j] in curves[i].t:
+                            curves[i].insertKnot(newKnots[j], mult[j])
 
             # If we want a pinched tip will will zero everything here.
             if tip == 'pinched':
             # Just zero out the last section in y
                 if curves[-1] is not None:
-                    print('zeroing tip')
                     curves[-1].coef[:, 1] = 0
 
             # Finally force ALL curve to have PRECISELY identical knots
@@ -420,7 +446,7 @@ class pyGeo():
                 alpha = (s-sStart)/(sEnd-sStart)
 
                 coef = curves[istart].coef*(1-alpha) + \
-                    curves[iend].coef*(alpha)
+                       curves[iend].coef*(alpha)
 
                 curves[i] = pySpline.Curve(coef=coef, k=4, t=newKnots.copy())
         # end for (xsections)
@@ -441,7 +467,7 @@ class pyGeo():
         # Now split each curve at uSplit which roughly coorsponds to LE
         topCurves = []
         botCurves = []
-        uSplit = curves[0].t[(curves[0].nCtl+4-1)/2]
+        uSplit = curves[0].t[(curves[0].nCtl+4-1)//2]
 
         for i in range(len(xsections)):
             c1, c2 = curves[i].splitCurve(uSplit)
@@ -465,7 +491,7 @@ class pyGeo():
                     found = True
 
             if not found:
-                # Add to all section
+                # Add to all sections
                 for ii in range(len(xsections)):
                     botCurves[ii].insertKnot(knotsTop[i], 1)
 
@@ -477,7 +503,7 @@ class pyGeo():
                     found = True
 
             if not found:
-                # Add to all section
+                # Add to all sections
                 for ii in range(len(xsections)):
                     topCurves[ii].insertKnot(knotsBot[i], 1)
 
