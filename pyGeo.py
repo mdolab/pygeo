@@ -13,7 +13,7 @@ from . import geo_utils
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
-    was a expliclty raised exception.
+    was a explicitly raised exception.
     """
     def __init__(self, message):
         msg = '\n+'+'-'*78+'+'+'\n' + '| pyGeo Error: '
@@ -62,10 +62,10 @@ class pyGeo():
     rot : List or array
         List of x-y-z rotations to apply to cross sections. Length = N
     rotX, rotY, rotZ : list or arrays
-        Indvidual lists of x,y, and z rotations. Each of length N
+        Individual lists of x,y, and z rotations. Each of length N
     nCtl : int
         Number of control points to use for fitting. If it is None, local
-        interpolation is performed which typicaly yields better results, if
+        interpolation is performed which typically yields better results, if
         a small number of sections are used. 
     kSpan : int
         The spline order in span-wise direction. 2 for linear, 3 for quadratic
@@ -76,7 +76,7 @@ class pyGeo():
         self.initType = initType
         print('pyGeo Initialization Type is: %s'%(initType))
 
-        #------------------- pyGeo Class Atributes -----------------
+        #------------------- pyGeo Class Attributes -----------------
         self.topo = None           # The topology of the surfaces
         self.surfs = []            # The list of surface (pySpline surf)
                                    # objects
@@ -145,7 +145,7 @@ class pyGeo():
         self.surfs = []
 
         # Note This doesn't actually fit the surfaces...just produces
-        # the parameterization and knot vectors
+        # the parametrization and knot vectors
         self.nSurf = nSurf
         for isurf in range(self.nSurf):
             self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=4, kv=4,
@@ -419,7 +419,7 @@ class pyGeo():
             newKnots = curves[0].t.copy()
         # end if (nCtl is not none)
 
-        # Generate a curve from X just for the paramterization
+        # Generate a curve from X just for the parametrization
         Xcurve = pySpline.Curve(X=Xsec, k=kSpan)
 
         # Now blend the missing sections
@@ -427,7 +427,7 @@ class pyGeo():
 
         for i in range(len(xsections)):
             if xsections[i] is None:
-                # Fist two cuves bounding this unknown one:
+                # Fist two curves bounding this unknown one:
                 for j in range(i, -1, -1):
                     if xsections[j] is not None:
                         istart = j
@@ -438,7 +438,7 @@ class pyGeo():
                         iend = j
                         break
 
-                # Now generate blending paramter alpha
+                # Now generate blending parameter alpha
                 sStart = Xcurve.s[istart]
                 sEnd   = Xcurve.s[iend]
                 s      = Xcurve.s[i]
@@ -451,7 +451,7 @@ class pyGeo():
                 curves[i] = pySpline.Curve(coef=coef, k=4, t=newKnots.copy())
         # end for (xsections)
         
-        # Before we continue the user may want to artifically scale
+        # Before we continue the user may want to artificially scale
         # the thickness of the sections. This is useful when a
         # different airfoil thickness is desired than the actual
         # airfoil coordinates. 
@@ -464,7 +464,7 @@ class pyGeo():
                 # Only scale the interior control points; not the first and last
                 curves[i].coef[1:-1, 1] *= thickness[i]
 
-        # Now split each curve at uSplit which roughly coorsponds to LE
+        # Now split each curve at uSplit which roughly corresponds to LE
         topCurves = []
         botCurves = []
         uSplit = curves[0].t[(curves[0].nCtl+4-1)//2]
@@ -477,7 +477,7 @@ class pyGeo():
     
         # Note that the number of control points on the upper and
         # lower surface MAY not be the same. We can fix this by doing
-        # more knot insersions. 
+        # more knot insertions.
         knotsTop = topCurves[0].t.copy()
         knotsBot = botCurves[0].t.copy()
 
@@ -696,7 +696,7 @@ class pyGeo():
                     coef[:, 0] = coefTopTip[0, :]
                     coef[:, 3] = coefBotTip[0, :]
 
-                    # We will actually recompute the coefficents
+                    # We will actually recompute the coefficients
                     # on the last sections since we need to do a
                     # couple of more for this surface
                     for i in range(4):
@@ -757,7 +757,7 @@ class pyGeo():
         for isurf in range(self.nSurf):
             sizes.append([self.surfs[isurf].Nu, self.surfs[isurf].Nv])
         
-        # Get the Globaling number of the original data
+        # Get the Global number of the original data
         origTopo.calcGlobalNumbering(sizes) 
         N = origTopo.nGlobal
         print(' -> Creating global point list')
@@ -827,7 +827,7 @@ class pyGeo():
         ----------
         fileName : str
             Filename for con file
-        noeTol : float
+        nodeTol : float
             The tolerance for identical nodes
         edgeTol : float
             The tolerance for midpoint of edges being identical
@@ -860,7 +860,7 @@ class pyGeo():
 
     def _calcConnectivity(self, nodeTol, edgeTol):
         """This function attempts to automatically determine the connectivity
-        between the pataches"""
+        between the patches"""
         
         # Calculate the 4 corners and 4 midpoints for each surface
 
@@ -890,7 +890,7 @@ class pyGeo():
         self.topo.printConnectivity()
   
     def _propagateKnotVectors(self):
-        """ Propage the knot vectors to make consistent"""
+        """ Propagate the knot vectors to make consistent"""
         # First get the number of design groups
         nDG = -1
         ncoef = []
@@ -920,7 +920,7 @@ class pyGeo():
             self.surfs[isurf].calcKnots()
         
         # Now loop over the number of design groups, accumulate all
-        # the knot vectors that coorspond to this dg, then merge them all
+        # the knot vectors that corresponds to this dg, then merge them all
 
         for idg in range(nDG):
             knotVectors = []
@@ -1119,7 +1119,7 @@ class pyGeo():
             Pcount, counter = self.surfs[isurf].writeIGES_parameters(\
                 f, Pcount, counter)
 
-        # Write the terminate statment
+        # Write the terminate statement
         f.write('S%7dG%7dD%7dP%7d%40sT%6s1\n'%(1, 4, Dcount-1, counter-1, ' ', ' '))
         f.close()
 
@@ -1205,8 +1205,8 @@ class pyGeo():
         
         Notes 
         -----
-        This aglorithim is not efficient at all.  We basically do the
-        curve-surface projection agorithim for each surface the loop
+        This algorithm is not efficient at all.  We basically do the
+        curve-surface projection algorithm for each surface the loop
         back over them to see which is the best in terms of closest
         distance. This intent is that the curve ACTUALLY intersects
         one of the surfaces.

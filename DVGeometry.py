@@ -9,8 +9,8 @@ except ImportError:
     try:
         from ordereddict import OrderedDict
     except ImportError:
-        print('Could not find any OrderedDict class. For 2.6 and earlier, \
-use:\n pip install ordereddict')
+        print("Could not find any OrderedDict class. For 2.6 and earlier, "
+              "use:\n pip install ordereddict")
 import numpy
 from scipy import sparse
 from mpi4py import MPI
@@ -20,7 +20,7 @@ from . import pyNetwork, pyBlock, geo_utils
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
-    was a expliclty raised exception.
+    was a explicitly raised exception.
     """
     def __init__(self, message):
         msg = '\n+'+'-'*78+'+'+'\n' + '| DVGeometry Error: '
@@ -61,7 +61,7 @@ class DVGeometry(object):
     DVGeometry uses the *Free-Form Deformation* approach for goemetry
     manipulation. The basic idea is the coordinates are *embedded* in
     a clear-flexible jelly-like block. Then by stretching moving and
-    'poking' the volume, the coordines that are embedded inside move
+    'poking' the volume, the coordinates that are embedded inside move
     along with overall deformation of the volume. 
 
     Parameters
@@ -85,7 +85,7 @@ class DVGeometry(object):
       >>> DVGeo = DVGeometry('FFD_file.fmt')
       >>> # Embed a set of coordinates Xpt into the object
       >>> DVGeo.addPointSet(Xpt, 'myPoints')
-      >>> # Associate a 'reference axis' for large-scale manipuation
+      >>> # Associate a 'reference axis' for large-scale manipulation
       >>> DVGeo.addRefAxis('wing_axis', axis_curve)
       >>> # Define a global design variable function:
       >>> def twist(val, geo):
@@ -117,7 +117,7 @@ class DVGeometry(object):
             self.dtype = 'd'
 
         # Load the FFD file in FFD mode. Also note that args and
-        # kwargs are passed through in case aditional pyBlock options
+        # kwargs are passed through in case additional pyBlock options
         # need to be set. 
         self.FFD = pyBlock('plot3d', fileName=fileName, FFD=True,
                            *args, **kwargs)
@@ -138,6 +138,7 @@ class DVGeometry(object):
         self.dXrefdXdvl = None
         self.dCoefdXdvl = None
 
+        # The set of user supplied axis. 
         self.axis = OrderedDict()
 
     def addRefAxis(self, name, curve=None,  xFraction=None, volumes=None, rotType=5,
@@ -152,10 +153,10 @@ class DVGeometry(object):
         There are two different ways that a reference can be
         specified:
  
-        #. The first is explictly a pySpline curve object using the
+        #. The first is explicitly a pySpline curve object using the
            keyword argument curve=<curve>.
 
-        #. The second is to specifiy the xFraction variable. There are
+        #. The second is to specify the xFraction variable. There are
            few caveats with the use of this method. First, DVGeometry
            will try to determine automatically the orientation of the FFD
            volume. Then, a reference axis will consist of the same number
@@ -184,10 +185,10 @@ class DVGeometry(object):
             taken. 
 
         rotType : int
-            Integer in rane 0->6 (inclusive) to determine the order
+            Integer in range 0->6 (inclusive) to determine the order
             that the rotations are made. 
 
-            0. Intrinsic rotation, rot_theta is roation about axis
+            0. Intrinsic rotation, rot_theta is rotation about axis
             1. x-y-z
             2. x-z-y
             3. y-z-x  
@@ -230,7 +231,7 @@ class DVGeometry(object):
             axis = numpy.array([0, 0, 1], 'd')
 
         if curve is not None:
-            # Explict curve has been supplied:
+            # Explicit curve has been supplied:
             if volumes is None:
                 volumes = numpy.arange(self.FFD.nVol)
                 
@@ -238,10 +239,10 @@ class DVGeometry(object):
                                'rotType':rotType, 'axis':axis}
             nAxis = len(curve.coef)
         elif xFraction is not None:
-            raise ValueError('xFraction specification is not coded yet.')
+            raise Error('xFraction specification is not coded yet.')
         else:
-            raise ValueError('One of \'curve\' or \'xFraction\' must be \
-specified for a call to addRefAxis')
+            raise Error("One of 'curve' or 'xFraction' must be "
+                        "specified for a call to addRefAxis")
 
         return nAxis
    
@@ -289,6 +290,10 @@ specified for a call to addRefAxis')
             self.FFD.coef = tmpCoef
             self.FFD._updateVolumeCoef()
 
+        # Now embed into the children:
+        for child in self.children:
+            child.addPointSet(points, ptName, origConfig, **kwargs)
+
         self.masks[ptName] = coefMask
         self.FFD.calcdPtdCoef(ptName)
         self.updated[ptName] = False
@@ -300,7 +305,8 @@ specified for a call to addRefAxis')
         another, parent FFD. A child FFD is also an instance of
         DVGeometry which may have its own global and/or local design
         variables. Coordinates do **not** need to be added to the
-        children. The parent object will take care of that.
+        children. The parent object will take care of that in a call
+        to addPointSet(). 
 
         Parameters
         ----------
@@ -310,21 +316,22 @@ specified for a call to addRefAxis')
 
         # Make sure the DVGeo being added is flaged as a child:
         if childDVGeo.isChild is False:
-            print('='*80)
-            print('Error: Trying to add a child FFD that has NOT been')
-            print('created as a child. This operation is illegal.')
-            print('='*80)
-            return
+            raise Error("Trying to add a child FFD that has NOT been "
+                        "created as a child. This operation is illegal.")
 
         # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
         iChild = len(self.children)
-        childDVGeo.iChild=iChild
+        childDVGeo.iChild = iChild
+        
         self.FFD.attachPoints(childDVGeo.FFD.coef, 'child%d_coef'%(iChild))
-        self.FFD._calcdPtdCoef('child%d_coef'%(iChild))
+        self.FFD.calcdPtdCoef('child%d_coef'%(iChild))
 
-        self.FFD.attachPoints(childDVGeo.coef, 'child%d_axis'%(iChild))
-        self.FFD._calcdPtdCoef('child%d_axis'%(iChild))
+        # We must finalize the Child here since we need the ref axis
+        # coefficients
+        childDVGeo._finalizeAxis()
+        self.FFD.attachPoints(childDVGeo.refAxis.coef, 'child%d_axis'%(iChild))
+        self.FFD.calcdPtdCoef('child%d_axis'%(iChild))
 
         # Add the child to the parent and return
         self.children.append(childDVGeo)
@@ -365,7 +372,6 @@ specified for a call to addRefAxis')
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0. 
-
         """
 
         self.DV_listGlobal[dvName] = geoDVGlobal(
@@ -493,7 +499,7 @@ specified for a call to addRefAxis')
         # Now call setValues on the children. This way the
         # variables will be set on the children
         for child in self.children:
-            child.setValues(dvDict)
+            child.setDesignVars(dvDict)
 
     def getValues(self):
         """
@@ -660,7 +666,7 @@ specified for a call to addRefAxis')
         # points as evaluated from the parent
 
         for iChild in xrange(len(self.children)):
-
+            self.children[iChild]._finalize()
             self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
                 'child%d_coef'%(iChild))
 
@@ -743,6 +749,7 @@ specified for a call to addRefAxis')
         for key in self.DV_listLocal:
             dv = self.DV_listLocal[key]
             dIdxDict[dv.name] = dIdx[i:i+dv.nVal].squeeze().T
+
             i += dv.nVal
         return dIdxDict
 
@@ -982,9 +989,9 @@ specified for a call to addRefAxis')
                                      value=dv.value, lower=dv.lower, upper=dv.upper,
                                      scale=dv.scale)
 
-        # Add variables for children
+        # Add variables from the children
         for child in self.children:
-            child.addVariablesPyOpt(optProb)
+            child.addVariablesPyOpt(optProb, globalVars, localVars)
 
     def writeTecplot(self, fileName):
         """Write the (deformed) current state of the FFD's to a tecplot file, 
@@ -1041,11 +1048,13 @@ specified for a call to addRefAxis')
         the user has added one at a time. This will create the
         internal pyNetwork object
         """
+        if len(self.axis) == 0:
+            return
 
         curves = []
         for axis in self.axis:
             curves.append(self.axis[axis]['curve'])
-
+        
         # Setup the network of reference axis curves
         self.refAxis = pyNetwork(curves)
         
@@ -1094,7 +1103,9 @@ specified for a call to addRefAxis')
         if self.finalized:
             return
         self._finalizeAxis()
-        
+        if len(self.axis) == 0:
+            self.finalized = True
+            return
         # What we need to figure out is which of the control points
         # are connected to an axis, and which ones are not connected
         # to an axis. 
@@ -1369,7 +1380,7 @@ specified for a call to addRefAxis')
         return new_pts
 
     def _complexifyCoef(self):
-        """Convert coef to complex terporarily"""
+        """Convert coef to complex temporarily"""
 
         for key in self.axis:
             self.rot_x[key].coef = self.rot_x[key].coef.astype('D')
@@ -1996,7 +2007,7 @@ class geoDVGlobal(object):
      
     def __init__(self, dv_name, value, lower, upper, scale, function):
         """Create a geometric design variable (or design variable group)
-        See addGeoDVGloabl in pyGeo for more information
+        See addGeoDVGlobal in DVGeometry class for more information
         """
         self.name = dv_name
         self.value = numpy.atleast_1d(numpy.array(value)).astype('D')
@@ -2029,10 +2040,10 @@ class geoDVLocal(object):
      
     def __init__(self, dvName, lower, upper, scale, axis, coefList):
         
-        """Create a set of gemoetric design variables whcih change the shape
+        """Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
-        See addGeoDVLOcal for more information
+        See addGeoDVLocal for more information
         """
         N = len(axis)
         self.nVal = len(coefList)*N
