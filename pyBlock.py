@@ -13,7 +13,7 @@ from .geo_utils import readNValues, BlockTopology, blendKnotVectors
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
-    was a expliclty raised exception.
+    was a explicitly raised exception.
     """
     def __init__(self, message):
         msg = '\n+'+'-'*78+'+'+'\n' + '| pyBlock Error: '
@@ -48,8 +48,8 @@ class pyBlock():
 
     FFD : bool
        Flag to indicate that this object is to be created as an FFD.
-       When this is true, no fitting is performed; The coordiantes in
-       the plot 3d file explictly become the control points and
+       When this is true, no fitting is performed; The coordinates in
+       the plot 3d file explicitly become the control points and
        uniform (and symmetric) knot vectors are assumed
        everywhere. This ensures a seamless FFD. 
        """
@@ -124,7 +124,7 @@ class pyBlock():
                 kv = min(4, sizes[ivol, 1])
                 kw = min(4, sizes[ivol, 2])
 
-                # A unform knot vector is ok and we won't have to
+                # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by
                 # construction symmetric
                     
@@ -167,7 +167,7 @@ class pyBlock():
 
         else: # (not FFD check --- must run fitGlobal after!)
             # Note This doesn't actually fit the volumes...just produces
-            # the parameterization and knot vectors
+            # the parametrization and knot vectors
             for ivol in range(nVol):
                 self.vols.append(pySpline.Volume(
                     X=blocks[ivol], ku=4, kv=4, kw=4, 
@@ -186,7 +186,7 @@ class pyBlock():
         Parameters
         ----------
         greedyReorder : bool
-            Flag to compute ording of initial mesh in a greedy
+            Flag to compute ordering of initial mesh in a greedy
             ordering sense. 
             """
         
@@ -200,7 +200,7 @@ class pyBlock():
                           self.vols[ivol].Nv, 
                           self.vols[ivol].Nw])
         
-        # Get the Globaling number of the original data
+        # Get the Global number of the original data
         origTopo.calcGlobalNumbering(sizes, greedyReorder=greedyReorder) 
         N = origTopo.nGlobal
         print(' -> Creating global point list')
@@ -337,7 +337,7 @@ class pyBlock():
         self.topo.printConnectivity()
   
     def _propagateKnotVectors(self):
-        """ Propage the knot vectors to make consistent"""
+        """ Propagate the knot vectors to make consistent"""
      
         nDG = -1
         ncoef = []
@@ -375,7 +375,7 @@ class pyBlock():
 
             self.vols[ivol].calcKnots()
             # Now loop over the number of design groups, accumulate all
-            # the knot vectors that coorspond to this dg, then merge them all
+            # the knot vectors that correspond to this dg, then merge them all
         
         for idg in range(nDG):
             knotVectors = []
@@ -442,7 +442,7 @@ class pyBlock():
 # ----------------------------------------------------------------------    
     def writeTecplot(self, fileName, vols=True, coef=True, orig=False, 
                      volLabels=False, edgeLabels=False, nodeLabels=False):
-        """Write a tecplot visualation of the pyBlock object. 
+        """Write a tecplot visualization of the pyBlock object. 
 
         Parameters
         ----------
@@ -701,7 +701,7 @@ class pyBlock():
         -------
         coordinates : numpy array (Nx3)
             The coordinates of the embedded points. If a mask was used,
-            only the points cooresponding to the indices in mask will be 
+            only the points corresponding to the indices in mask will be 
             non-zero in the array. 
             """
 
@@ -724,7 +724,7 @@ class pyBlock():
         return coordinates
 
 # ----------------------------------------------------------------------
-#             Embeded Geometry Functions
+#             Embedded Geometry Functions
 # ----------------------------------------------------------------------    
 
     def attachPoints(self, coordinates, ptSetName, interiorOnly=False, 
@@ -740,9 +740,9 @@ class pyBlock():
         ptSetName : str
             The name given to this set of coordinates. 
         interiorOnly : bool
-            Project only points that lie fully insie the volume
+            Project only points that lie fully inside the volume
         faceFreeze : 
-            List of string specifiying which faces should be
+            List of string specifying which faces should be
             'frozen'. This is only used with child FFD's in
             DVGeometry. For example if faceFreeze = ['iLow'], then the
             plane of control points corresponding to i=0, and i=1,
@@ -772,7 +772,7 @@ class pyBlock():
 
                 if faceFreeze is None:
                     # Do the "auto" freezing algorithm: Determine a
-                    # characteric 'length', rStar based on FFD
+                    # characteristic 'length', rStar based on FFD
                     # size. If a point is within this rStar of a
                     # boundary, we freeze that boundary. 
                     Xmin, Xmax = self.getBounds()
@@ -817,14 +817,14 @@ class pyBlock():
                                         coefMask[volID[i]][:, :, -1] = True
                                         coefMask[volID[i]][:, :, -2] = True
 
-                else: # Use faceFreeze to freeze sepcified faces:
+                else: # Use faceFreeze to freeze specified faces:
 
                     # Only let the user do this for one volume. You
                     # will most likely not get what you expect for
                     # multiple volumes:
                     if self.nVol > 1: 
-                        raise Error('faceFreeze option can only be used\
-                        with child FFD\'s with one volume')
+                        raise Error("faceFreeze option can only be used "
+                                    "with child FFD's with one volume")
            
                     mask = []
                     for i in range(len(D)):
@@ -835,19 +835,19 @@ class pyBlock():
                     if 'iLow' in faceFreeze:
                         coefMask[0][0, :, :] = True
                         coefMask[0][1, :, :] = True
-                    elif 'iHigh' in faceFreeze:
+                    if 'iHigh' in faceFreeze:
                         coefMask[0][-1, :, :] = True
                         coefMask[0][-2, :, :] = True
-                    elif 'jLow' in faceFreeze:
+                    if 'jLow' in faceFreeze:
                         coefMask[0][:, 0, :] = True
                         coefMask[0][:, 1, :] = True
-                    elif 'jHigh' in faceFreeze:
+                    if 'jHigh' in faceFreeze:
                         coefMask[0][:, -1, :] = True
                         coefMask[0][:, -2, :] = True
-                    elif 'kLow' in faceFreeze:
+                    if 'kLow' in faceFreeze:
                         coefMask[0][:, :, 0] = True
                         coefMask[0][:, :, 1] = True
-                    elif 'kHigh' in faceFreeze:
+                    if 'kHigh' in faceFreeze:
                         coefMask[0][:, :, -1] = True
                         coefMask[0][:, :, -2] = True
 
@@ -879,11 +879,11 @@ class pyBlock():
         closest to it.
         
         This is still *technically* a inefficient brute force search, 
-        but it uses some huristics to give a much more efficient
+        but it uses some heuristics to give a much more efficient
         algorithm. Basically, we use the volume the last point was
         projected in as a 'good guess' as to what volume the current
         point falls in. This works since subsequent points are usually
-        close together. This will not help for randomly distrubuted
+        close together. This will not help for randomly distributed
         points.
 
         Parameters
@@ -896,7 +896,7 @@ class pyBlock():
             Flag to print out the error is points have not been projected
             to tolerance eps. 
         nIter : int
-            Maximum number of Newton ieterations to perform. The
+            Maximum number of Newton iterations to perform. The
             default of 100 should be sufficient for points that
             **actually** lie inside the volume, except for
             pathological or degenerate FFD volumes
@@ -943,7 +943,7 @@ class pyBlock():
 
             # Shuffle the order of the volList such that the last
             # volume used (iVol or volList[j]) is at the start of the
-            # list and the remainder are shuflled towards the back
+            # list and the remainder are shuffled towards the back
             volList = numpy.hstack([iVol, volList[:j], volList[j+1:]])
         # end for (length of x0)
         
@@ -1007,7 +1007,7 @@ class pyBlock():
         return Xmin, Xmax
   
 class EmbeddedVolume(object):
-    """A Container class for a set of embeded volume points
+    """A Container class for a set of embedded volume points
 
     Parameters
     ----------
