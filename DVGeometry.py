@@ -534,11 +534,12 @@ class DVGeometry(object):
         """ Extract the coefficients for the selected reference
         axis. This should be used only inside design variable functions"""
 
-        C = numpy.zeros((len(self.refAxis.topo.lIndex[axisID]),3),self.coef.dtype)
+        axisNumber = self._getAxisNumber(axisID)
+        C = numpy.zeros((len(self.refAxis.topo.lIndex[axisNumber]),3),self.coef.dtype)
  
-        C[:,0] = numpy.take(self.coef[:,0],self.refAxis.topo.lIndex[axisID])
-        C[:,1] = numpy.take(self.coef[:,1],self.refAxis.topo.lIndex[axisID])
-        C[:,2] = numpy.take(self.coef[:,2],self.refAxis.topo.lIndex[axisID])
+        C[:,0] = numpy.take(self.coef[:,0],self.refAxis.topo.lIndex[axisNumber])
+        C[:,1] = numpy.take(self.coef[:,1],self.refAxis.topo.lIndex[axisNumber])
+        C[:,2] = numpy.take(self.coef[:,2],self.refAxis.topo.lIndex[axisNumber])
 
         return C
 
@@ -547,10 +548,24 @@ class DVGeometry(object):
         axis. This should be used inside design variable functions"""
 
         # Reset
-        numpy.put(self.coef[:,0],self.refAxis.topo.lIndex[axisID],coef[:,0])
-        numpy.put(self.coef[:,1],self.refAxis.topo.lIndex[axisID],coef[:,1])
-        numpy.put(self.coef[:,2],self.refAxis.topo.lIndex[axisID],coef[:,2])
+        axisNumber = self._getAxisNumber(axisID)
+        numpy.put(self.coef[:,0],self.refAxis.topo.lIndex[axisNumber],coef[:,0])
+        numpy.put(self.coef[:,1],self.refAxis.topo.lIndex[axisNumber],coef[:,1])
+        numpy.put(self.coef[:,2],self.refAxis.topo.lIndex[axisNumber],coef[:,2])
 
+    def extractS(self, axisID):
+        """Extract the parametric positions of the control
+        points. This is usually used in conjunction with extractCoef()"""
+        axisNumber = self._getAxisNumber(axisID)
+        return self.refAxis.curves[axisNumber].s.copy()
+
+    def _getAxisNumber(self, axisID):
+        """Get the sequential axis number from the name tag axisID"""
+        try:
+            return self.axis.keys().index(axisID)
+        except:
+            raise Error("'The 'axisID' was invalid!")
+        
     def update(self, ptSetName, childDelta=True):
         """
         This is the main routine for returning coordinates that have
@@ -1858,28 +1873,6 @@ class DVGeometry(object):
         self._unComplexifyCoef()
                               
         return sparse.csr_matrix(Jacobian)
-
-    def writeTecplot(self, file_name):
-        """Write the (deformed) current state of the FFDs to a file
-        including the children"""
-
-        # Name here doesnt matter, just take the first one
-        firstPtSet = list(self.points.keys())[0]
-        self.update(firstPtSet, childDelta=False)
-
-        f = pySpline.openTecplot(file_name, 3)
-        vol_counter = 0
-        # Write master volumes:
-        vol_counter += self._writeVols(f, vol_counter)
-
-        # Write children volumes:
-        for iChild in xrange(len(self.children)):
-            vol_counter += self.children[iChild]._writeVols(f, vol_counter)
-        # end for
-
-        pySpline.closeTecplot(f)
-
-        self.update(firstPtSet, childDelta=True) 
 
     def _writeVols(self, handle, vol_counter):
         for i in xrange(len(self.FFD.vols)):
