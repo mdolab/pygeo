@@ -288,7 +288,7 @@ class DVConstraints(object):
     def addThicknessConstraints1D(self, ptList, nCon, axis, 
                                   lower=1.0, upper=3.0, scaled=True,
                                   scale=1.0, name=None,
-                                  addToPyOpt=False):
+                                  addToPyOpt=True):
         """
         Add a set of thickness constraints oriented along a poly-line.
 
@@ -394,7 +394,7 @@ class DVConstraints(object):
         else:
             conName = name
         self.thickCon[conName] = ThicknessConstraint(
-            conName, coords, lower, upper, scale, scaled, scale, self.DVGeo,
+            conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
@@ -590,9 +590,9 @@ class DVConstraints(object):
         >>> DVCon.addLeTeConstraints(indSetA, indSetB)
         """
         if self.DVGeo is None:
-            raise Error('A DVGeometry object must be added to DVCon before \
-            using a call to DVCon.setDVGeo(DVGeo) before constraints can be \
-            added.')
+            raise Error("A DVGeometry object must be added to DVCon before "
+                        "using a call to DVCon.setDVGeo(DVGeo) before "
+                        "constraints can be added.")
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
@@ -610,8 +610,8 @@ class DVConstraints(object):
             elif faceID.lower() == 'khigh':
                 indices = lIndex[:, :, -1]
             else:
-                raise Error('faceID must be one of iLow, iHigh, jLow, jHigh, \
-                kLow or kHigh.')
+                raise Error("faceID must be one of iLow, iHigh, jLow, jHigh, "
+                            "kLow or kHigh.")
 
             # Now we see if one and exactly one length in 2:
             shp = indices.shape
@@ -622,19 +622,19 @@ class DVConstraints(object):
                 indSetA = indices[:, 0]
                 indSetB = indices[:, 1]
             else:
-                raise Error('Cannot add leading edge constraints. One (and \
-                exactly one) of FFD block dimensions on the specified face \
-                must be 2. The dimensions of the selected face are: \
-                (%d, %d)' % (shp[0], shp[1]))
+                raise Error("Cannot add leading edge constraints. One (and "
+                            "exactly one) of FFD block dimensions on the specified face "
+                            "must be 2. The dimensions of the selected face are: "
+                            "(%d, %d)" % (shp[0], shp[1]))
 
         elif indSetA is not None and indSetB is not None:
             if len(indSetA) != len(indSetB):
-                raise Error("The length of the supplied indices are not\
-                the same length")
+                raise Error("The length of the supplied indices are not "
+                            "the same length")
         else:
-            raise Error("Incorrect data supplied to addLeTeConstraint. The\
-            keyword arguments 'volID' and 'faceID' must be specified **or**\
-            'indSetA' and 'indSetB'")
+            raise Error("Incorrect data supplied to addLeTeConstraint. The "
+                        "keyword arguments 'volID' and 'faceID' must be "
+                        "specified **or** 'indSetA' and 'indSetB'")
 
         if name is None:
             conName = 'lete_constraint_%d'% len(self.LeTeCon)
@@ -1337,8 +1337,8 @@ class LeTeConstraint(object):
 
         nodes = numpy.zeros((self.ncon*2, 3))
         for i in range(self.ncon):
-            nodes[2*i  ] = self.DVGeo.FFD.coef[self.conIndices[i][0]]
-            nodes[2*i+1] = self.DVGeo.FFD.coef[self.conIndices[i][1]]
+            nodes[2*i  ] = self.DVGeo.FFD.coef[self.indSetA[i]]
+            nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
         handle.write('Zone T=%s\n'% self.name)
         handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (

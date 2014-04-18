@@ -808,6 +808,7 @@ class DVGeometry(object):
         # Make dIdpt at least 3D
         dIdpt = numpy.atleast_3d(dIdpt)
         N = dIdpt.shape[2]
+
         # This is going to be DENSE in general -- does not depend on
         # name
         if self.J_attach is None:
