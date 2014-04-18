@@ -587,7 +587,7 @@ class DVConstraints(object):
         >>>     indSetA.append(lIndex[-1, 0, k])
         >>>     indSetB.append(lIndex[-1, 1, k])
         >>> # Now add to DVCon
-        >>> DVCon.addLeTeConstraints(indSetA, indSetB)
+        >>> DVCon.addLeTeConstraints(0, indSetA, indSetB)
         """
         if self.DVGeo is None:
             raise Error("A DVGeometry object must be added to DVCon before "

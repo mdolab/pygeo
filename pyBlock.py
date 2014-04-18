@@ -477,7 +477,7 @@ class pyBlock():
         if vols:
             for ivol in range(self.nVol):
                 self.vols[ivol].computeData()
-                pySpline.writeTecplot3D(f, 'interpolated', self.vols[ivol],
+                pySpline.writeTecplot3D(f, 'interpolated',
                                         self.vols[ivol].data)
         if orig:
             for ivol in range(self.nVol):
