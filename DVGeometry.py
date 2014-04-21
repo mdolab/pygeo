@@ -759,11 +759,11 @@ class DVGeometry(object):
         dIdxDict = {}
         for key in self.DV_listGlobal:
             dv = self.DV_listGlobal[key]
-            dIdxDict[dv.name] = dIdx[i:i+dv.nVal].squeeze().T
+            dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
             i += dv.nVal
         for key in self.DV_listLocal:
             dv = self.DV_listLocal[key]
-            dIdxDict[dv.name] = dIdx[i:i+dv.nVal].squeeze().T
+            dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
 
             i += dv.nVal
         return dIdxDict
@@ -792,7 +792,7 @@ class DVGeometry(object):
 
         Parameters
         ----------
-        dIdpt : array of size (Npt, 3) or (Npt, 3, N)
+        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
 
             This is the total derivative of the objective or function
             of interest with respect to the coordinates in
@@ -821,8 +821,9 @@ class DVGeometry(object):
         self._finalize()
 
         # Make dIdpt at least 3D
-        dIdpt = numpy.atleast_3d(dIdpt)
-        N = dIdpt.shape[2]
+        if len(dIdpt.shape) == 2:
+            dIdpt = numpy.array([dIdpt])
+        N = dIdpt.shape[0]
 
         # This is going to be DENSE in general -- does not depend on
         # name
@@ -855,20 +856,15 @@ class DVGeometry(object):
         else:
             nDV = self._getNDV()
 
+        dIdx_local = numpy.zeros((N, nDV), 'd')
         if dPtdCoef is not None:
-            dIdcoef = numpy.zeros((self.nPtAttachFull*3,N))
+            tmp = numpy.zeros(self.nPtAttachFull*3)
             if dPtdCoef is not None:
                 for i in range(N):
-                    dIdcoef[0::3, i] = dPtdCoef.T.dot(dIdpt[:, 0, i])
-                    dIdcoef[1::3, i] = dPtdCoef.T.dot(dIdpt[:, 1, i])
-                    dIdcoef[2::3, i] = dPtdCoef.T.dot(dIdpt[:, 2, i])
-
-            # Now back to design variables:
-            dIdx_local = J_temp.T.dot(dIdcoef)
-        else:
-            # This is an array of zeros of length the number of design
-            # variables
-            dIdx_local = numpy.zeros((nDV, N), 'd')
+                    tmp[0::3] = dPtdCoef.T.dot(dIdpt[i, :, 0])
+                    tmp[1::3] = dPtdCoef.T.dot(dIdpt[i, :, 1])
+                    tmp[2::3] = dPtdCoef.T.dot(dIdpt[i, :, 2])
+                    dIdx_local[i, :] = J_temp.T.dot(tmp)
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -2008,14 +2004,14 @@ class geoDVGlobal(object):
         self.nVal = len(self.value)
         self.lower = None
         self.upper = None
-        self.scale = 1.0
+
         self.function = function
         if lower is not None:
             self.lower = _convertTo1D(lower, self.nVal)
         if upper is not None:
             self.upper = _convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = _convertTo1D(upper, self.nVal)
+            self.scale = _convertTo1D(scale, self.nVal)
 
     def __call__(self, geo):
         """When the object is called, actually apply the function"""

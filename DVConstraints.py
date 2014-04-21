@@ -932,9 +932,9 @@ class ThicknessConstraint(object):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dTdPt = numpy.zeros((self.coords.shape[0],
-                                 self.coords.shape[1],
-                                 self.nCon))
+            dTdPt = numpy.zeros((self.nCon, 
+                                 self.coords.shape[0],
+                                 self.coords.shape[1]))
 
             for i in range(self.nCon):
                 p1b, p2b = geo_utils.eDist_b(
@@ -942,8 +942,8 @@ class ThicknessConstraint(object):
                 if self.scaled:
                     p1b /= self.D0[i]
                     p2b /= self.D0[i]
-                dTdPt[2*i  , :, i] = p1b
-                dTdPt[2*i+1, :, i] = p2b
+                dTdPt[i, 2*i  , :] = p1b
+                dTdPt[i, 2*i+1, :] = p2b
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dTdPt, self.name)
