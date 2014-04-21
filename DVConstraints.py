@@ -1321,7 +1321,7 @@ class LeTeConstraint(object):
                 jacobian = sparse.lil_matrix((ncon, ndv))
                 for i in range(ncon):
                     jacobian[i, cons[i][0]] = 1.0
-                    jacobian[i, cons[i][1]] = -1.0
+                    jacobian[i, cons[i][1]] = 1.0
                 self.jac[key] = jacobian
 
             # Add to the number of constraints and store indices which
