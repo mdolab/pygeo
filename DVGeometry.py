@@ -1102,7 +1102,8 @@ class DVGeometry(object):
             self.scale_x[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
             self.scale_y[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
             self.scale_z[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
-
+            i += 1
+            
         # Need to keep track of initail scale values
         self.scale0 = self.scale.copy()
         self.scale_x0 = self.scale_x.copy()
