@@ -262,11 +262,8 @@ class DVConstraints(object):
         >>> DVCon.addThicknessConstraints2D(leList, teList, 10, 3, 
                                 lower=1.0, scaled=True)
         """
-        if self.DVGeo is None:
-            raise Error('A DVGeometry object must be added to DVCon before \
-            using a call to DVCon.setDVGeo(DVGeo) before constraints can be \
-            added.')
 
+        self._checkDVGeo()
         upper = self._convertTo2D(upper, nSpan, nChord).flatten()
         lower = self._convertTo2D(lower, nSpan, nChord).flatten()
         scale = self._convertTo2D(scale, nSpan, nChord).flatten()
@@ -285,6 +282,7 @@ class DVConstraints(object):
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
         
+
     def addThicknessConstraints1D(self, ptList, nCon, axis, 
                                   lower=1.0, upper=3.0, scaled=True,
                                   scale=1.0, name=None,
@@ -369,7 +367,7 @@ class DVConstraints(object):
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
         """
-
+        self._checkDVGeo()
         # Create mesh of itersections
         constr_line = pySpline.Curve(X=ptList, k=2)
         s = numpy.linspace(0, 1, nCon)
@@ -381,8 +379,8 @@ class DVConstraints(object):
             up, down, fail = geo_utils.projectNode(
                 X[i], axis, self.p0, self.v1, self.v2)
             if fail:
-                raise Error('There was an error projecting a node \
-                 at (%f, %f, %f) with normal (%f, %f, %f).'% ( 
+                raise Error("There was an error projecting a node "
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
                         X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
             coords[i, 0] = up
             coords[i, 1] = down
@@ -396,6 +394,120 @@ class DVConstraints(object):
         self.thickCon[conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
+
+    def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir, 
+                                         lower=1.0, upper=3.0, scale=1.0, 
+                                         name=None, addToPyOpt=True):
+        """
+        Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
+
+        See below for a schematic::
+
+          Planform view of the wing: The '+' are the (three dimensional)
+          points that are supplied in ptList:
+
+          Physical extent of wing            
+                                   \         
+          __________________________\_________
+          |                  +               |   
+          |                -/                |
+          |                /                 |
+          | +-------+-----+                  | 
+          |              4-points defining   |
+          |              poly-line           |
+          |                                  |
+          |__________________________________/
+
+
+        Parameters
+        ----------
+        ptList : list or array of size (N x 3) where N >=2
+            The list of points forming a poly-line along which the
+            thickness constraints will be added. 
+
+        nCon : int
+            The number of thickness to chord ratio constraints to add
+
+        axis : list or array of length 3
+            The direction along which the projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+
+        chordDir : list or array or length 3
+            The direction defining "chord". This will typically be the
+            xasis ([1,0,0]). The magnitude of the vector doesn't
+            matter.
+
+        lower : float or array of size nCon
+
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint. This
+            constraint can only be used in "scaled" mode. That means,
+            the *actual* t/c is *NEVER* computed. This constraint can
+            only be used to constrain the relative change in t/c. A
+            lower bound of 1.0, therefore mean the t/c cannot
+            decrease. This is the typical use of this constraint. 
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint. 
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the thickness constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value of the resulting physical
+            thickness have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constriant names
+            need to be distinguished **or** you are using this set of
+            thickness constraints for something other than a direct
+            constraint in pyOptSparse.
+            
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) BEFORE they are
+            given to the optimizer, set this flag to False.
+        """
+        self._checkDVGeo()
+
+        constr_line = pySpline.Curve(X=ptList, k=2)
+        s = numpy.linspace(0, 1, nCon)
+        X = constr_line(s)
+        coords = numpy.zeros((nCon, 4, 3))
+        chordDir /= numpy.linalg.norm(numpy.array(chordDir,'d'))
+        # Project all the points
+        for i in range(nCon):
+            # Project actual node:
+            up, down, fail = geo_utils.projectNode(
+                X[i], axis, self.p0, self.v1, self.v2)
+            if fail:
+                raise Error("There was an error projecting a node "
+                            "at (%f, %f, %f) with normal (%f, %f, %f)." % ( 
+                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+
+            coords[i, 0] = up
+            coords[i, 1] = down
+            height = numpy.linalg.norm(coords[i, 0] - coords[i, 1])
+            # Third point is the mid-point of thsoe
+            coords[i, 2] = 0.5*(up + down)
+            
+            # Fourth point is along the chordDir
+            coords[i, 3] = coords[i, 2] + 0.1*height*chordDir
+
+        # Create the thickness constraint object:
+        coords = coords.reshape((nCon*4, 3))
+        if name is None:
+            conName = 'thickness_to_chord_constraints_%d'% len(self.thickCon)
+        else:
+            conName = name
+        self.thickCon[conName] = ThicknessToChordConstraint(
+            conName, coords, lower, upper, scale, self.DVGeo, addToPyOpt)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -494,11 +606,7 @@ class DVConstraints(object):
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
             """
-        if self.DVGeo is None:
-            raise Error('A DVGeometry object must be added to DVCon before \
-            using a call to DVCon.setDVGeo(DVGeo) before constraints can be \
-            added.')
-
+        self._checkDVGeo()
         if name is None:
             conName = 'volume_constraint_%d'% len(self.volumeCon)
         else:
@@ -589,10 +697,7 @@ class DVConstraints(object):
         >>> # Now add to DVCon
         >>> DVCon.addLeTeConstraints(0, indSetA, indSetB)
         """
-        if self.DVGeo is None:
-            raise Error("A DVGeometry object must be added to DVCon before "
-                        "using a call to DVCon.setDVGeo(DVGeo) before "
-                        "constraints can be added.")
+        self._checkDVGeo()
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
@@ -643,6 +748,13 @@ class DVConstraints(object):
 
         # Finally add the volume constraint object
         self.LeTeCon[conName] = LeTeConstraint(conName, indSetA, indSetB, self.DVGeo)
+
+    def _checkDVGeo(self):
+        """check if DVGeo exists"""
+        if self.DVGeo is None:
+            raise Error("A DVGeometry object must be added to DVCon before "
+                        "using a call to DVCon.setDVGeo(DVGeo) before "
+                        "constraints can be added.")
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -883,7 +995,7 @@ class ThicknessConstraint(object):
                  addToPyOpt):
         self.name = name
         self.coords = coords
-        self.nCon = len(self.coords)/2
+        self.nCon = len(self.coords)//2
         self.lower = lower
         self.upper = upper
         self.scaled = scaled
@@ -965,14 +1077,124 @@ class ThicknessConstraint(object):
 
         handle.write('Zone T=%s\n'% self.name)
         handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)/2))
+            len(self.coords), len(self.coords)//2))
         handle.write('DATAPACKING=POINT\n')
         for i in range(len(self.coords)):
             handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
                                         self.coords[i, 2]))
 
-        for i in range(len(self.coords)/2):
+        for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
+
+class ThicknessToChordConstraint(object):
+    """
+    ThicknessToChordConstraint represents of a set of
+    thickess-to-chord ratio constraints. One of these objects is
+    created each time a addThicknessToChordConstraints2D or
+    addThicknessToChordConstraints1D call is made. The user should not
+    have to deal with this class directly.
+    """
+
+    def __init__(self, name, coords, lower, upper, scale, DVGeo, addToPyOpt):
+        self.name = name
+        self.coords = coords
+        self.nCon = len(self.coords)//4
+        self.lower = lower
+        self.upper = upper
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name)
+        
+        # Now get the reference lengths
+        self.ToC0 = numpy.zeros(self.nCon)
+        for i in range(self.nCon):
+            t = numpy.linalg.norm(self.coords[4*i] - self.coords[4*i+1])
+            c = numpy.linalg.norm(self.coords[4*i+2] - self.coords[4*i+3])
+            self.ToC0[i] = t/c
+        
+    def evalFunctions(self, funcs):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.coords = self.DVGeo.update(self.name)
+        ToC = numpy.zeros(self.nCon)
+        for i in range(self.nCon):
+            t = geo_utils.eDist(self.coords[4*i], self.coords[4*i+1])
+            c = geo_utils.eDist(self.coords[4*i+2], self.coords[4*i+3])
+            ToC[i] = (t/c)/self.ToC0[i]
+
+        funcs[self.name] = ToC
+
+    def evalFunctionsSens(self, funcsSens):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dToCdPt = numpy.zeros((self.nCon, 
+                                   self.coords.shape[0],
+                                   self.coords.shape[1]))
+
+            for i in range(self.nCon):
+                t = geo_utils.eDist(self.coords[4*i], self.coords[4*i+1])
+                c = geo_utils.eDist(self.coords[4*i+2], self.coords[4*i+3])
+
+                p1b, p2b = geo_utils.eDist_b(
+                    self.coords[4*i, :], self.coords[4*i+1, :])
+                p3b, p4b = geo_utils.eDist_b(
+                    self.coords[4*i+2, :], self.coords[4*i+3, :])
+
+                dToCdPt[i, 4*i  , :] = p1b*c / self.ToC0[i]
+                dToCdPt[i, 4*i+1, :] = p2b*c / self.ToC0[i]
+                dToCdPt[i, 4*i+2, :] = (-p3b*t/c**2) / self.ToC0[i]
+                dToCdPt[i, 4*i+3, :] = (-p4b*t/c**2) / self.ToC0[i]
+
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(
+                dToCdPt, self.name)
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.DVGeo.getVarNames())
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write('Zone T=%s\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            len(self.coords), len(self.coords)//2))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(len(self.coords)):
+            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
+                                        self.coords[i, 2]))
+
+        for i in range(len(self.coords)//2):
+            handle.write('%d %d\n'% (2*i+1, 2*i+2))
+
 
 class VolumeConstraint(object):
     """
