@@ -1161,8 +1161,8 @@ class ThicknessToChordConstraint(object):
                 p3b, p4b = geo_utils.eDist_b(
                     self.coords[4*i+2, :], self.coords[4*i+3, :])
 
-                dToCdPt[i, 4*i  , :] = p1b*c / self.ToC0[i]
-                dToCdPt[i, 4*i+1, :] = p2b*c / self.ToC0[i]
+                dToCdPt[i, 4*i  , :] = p1b/c / self.ToC0[i]
+                dToCdPt[i, 4*i+1, :] = p2b/c / self.ToC0[i]
                 dToCdPt[i, 4*i+2, :] = (-p3b*t/c**2) / self.ToC0[i]
                 dToCdPt[i, 4*i+3, :] = (-p4b*t/c**2) / self.ToC0[i]
 
