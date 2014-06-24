@@ -95,7 +95,7 @@ class DVGeometry(object):
       >>> # Now add local (shape) variables
       >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
       >>> 
-        """
+      """
     def __init__(self, fileName, complex=False, child=False, *args, **kwargs):
         
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
@@ -589,7 +589,7 @@ class DVGeometry(object):
             Return updates on child as a delta. The user should not
             need to ever change this parameter.
             """
-
+        self.curPtSet = ptSetName
         # We've postposed things as long as we can...do the finialization. 
         self._finalize()
 
@@ -835,16 +835,15 @@ class DVGeometry(object):
         internally and should not be changed by the user. 
         """
         self._finalize()
-
+        self.curPtSet = ptSetName
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
             dIdpt = numpy.array([dIdpt])
         N = dIdpt.shape[0]
 
-        # This is going to be DENSE in general -- does not depend on
-        # name
-        if self.J_attach is None:
-            self.J_attach = self._attachedPtJacobian()
+        # This is going to be DENSE in general. MAY depend on the name
+        # if we have different configurations.
+        self.J_attach = self._attachedPtJacobian()
            
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
@@ -908,15 +907,12 @@ class DVGeometry(object):
         """ Return the total point jacobian in CSR format since we
         need this for TACS"""
         self._finalize()
-        
+        self.curPtSet = ptSetName
         # if self.JT is not None and self.J_name == name: # Already computed
         #     return
         
-        # This is going to be DENSE in general -- does not depend on
-        # name
-
-        if self.J_attach is None:
-            self.J_attach = self._attachedPtJacobian()
+        # This is going to be DENSE in general
+        self.J_attach = self._attachedPtJacobian()
 
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
