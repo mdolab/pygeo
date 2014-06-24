@@ -860,8 +860,6 @@ class DVConstraints(object):
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
             self.DVGeo)
         
-        self.LeTeCon[conName] = LeTeConstraint(conName, indSetA, indSetB, self.DVGeo)
-
     def _checkDVGeo(self):
         """check if DVGeo exists"""
         if self.DVGeo is None:
