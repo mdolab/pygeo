@@ -621,6 +621,94 @@ class DVConstraints(object):
             self.DVGeo, addToPyOpt)
 
 
+    def addCompositeVolumeConstraint(self, vols, lower=1.0, upper=3.0,
+                                     scaled=True, scale=1.0, name=None,
+                                     addToPyOpt=True):
+        """
+        Add a composite volume constraint. This used previously added
+        constraints and combines them to form a single volume constraint.
+
+        The general ussage is as follows::
+        
+          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
+                                    name='part1', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
+                                    name='part2', addToPyOpt=False)
+          DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
+                                        
+        
+        Parameters
+        ----------
+        vols : list of strings
+           A list containing the names of the previously added
+           volumes to be used. 
+
+        lower : float 
+            The lower bound for the volume constraint. 
+
+        upper : float
+            The upper bound for the volume constraint. 
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not. 
+
+            * scaled=True: The initial volume is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial volume. lower=0.85, upper=1.15,
+              would allow for 15% change in volume both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              volume. lower and upper refer to the physical volumes. 
+
+        scale : float 
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if the
+            volume is to be used as a constraint. If the volume is to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+            """
+        self._checkDVGeo()
+        if name is None:
+            conName = 'composite_volume_constraint_%d'% len(self.volumeCon)
+        else:
+            conName = name
+
+        # Determine the list of volume constraint objects
+        volCons = []
+        for vol in vols:
+            try:
+                volCons.append(self.volumeCon[vol])
+            except KeyError:
+                raise Error("The supplied volume name '%s' has not"
+                            " already been added with a call to "
+                            "addVolumeConstraint()"% vol)
+        self.volumeCon[conName] = CompositeVolumeConstraint(
+            conName, volCons, lower, upper, scaled, scale, self.DVGeo,
+            addToPyOpt)
+
     def addLeTeConstraints(self, volID=None, faceID=None,
                            indSetA=None, indSetB=None, name=None):
         """
@@ -951,7 +1039,7 @@ class DVConstraints(object):
             .dat extension will be added automatically. 
         """
         
-        f = open(fileName,'w')
+        f = open(fileName, 'w')
         f.write("TITLE = \"DVConstraints Data\"\n")
         f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
 
@@ -1072,8 +1160,8 @@ class DVConstraints(object):
             tu = surf.tu
             tv = surf.tv
             
-            u = geo_utils.fill_knots(tu, ku, level)
-            v = geo_utils.fill_knots(tv, kv, level)
+            u = geo_utils.fillKnots(tu, ku, level)
+            v = geo_utils.fillKnots(tv, kv, level)
 
             for i in range(len(u)-1):
                 for j in range(len(v)-1):
@@ -1380,8 +1468,7 @@ class VolumeConstraint(object):
 
     def writeTecplot(self, handle):
         """
-        Write the visualization of this set of thickness constraints
-        to the open file handle
+        Write the visualization of this volume constriant
         """
         # Reshape coordinates back to 3D format
         x = self.coords.reshape([self.nSpan, self.nChord, 2, 3])
@@ -1558,6 +1645,83 @@ class VolumeConstraint(object):
         db[1] = db[1] + tempb7 - tempb17 - tempb5
         pb[1] = pb[1] + tempb6
         pb[2] = pb[2] + tempb13
+
+
+class CompositeVolumeConstraint(object):
+    """This class is used to represet a single volume constraints that is a
+    group of other VolumeConstraints.
+    """
+    
+    def __init__(self, name, vols, lower, upper, scaled, scale,
+                 DVGeo, addToPyOpt):
+        self.name = name
+        self.vols = vols
+        self.scaled = scaled
+        self.lower = lower
+        self.upper = upper
+        self.scaled = scaled
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+
+        # Now get the reference volume
+        self.V0 = 0.0
+        for vol in self.vols:
+            self.V0 += vol.evalVolume()
+            
+    def evalFunctions(self, funcs):
+        """
+        Evaluate the function this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        V = 0.0
+        for vol in self.vols:
+            V += vol.evalVolume()
+        if self.scaled:
+            V /= self.V0
+        funcs[self.name] = V
+
+    def evalFunctionsSens(self, funcsSens):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            tmp = [] # List of dict derivatives
+            for vol in self.vols:
+                dVdPt = vol.evalVolumeSens()
+                if self.scaled:
+                    dVdPt /= self.V0
+                tmp.append(vol.DVGeo.totalSensitivity(dVdPt, vol.name))
+
+            # Now we need to sum up the derivatives:
+            funcsSens[self.name] = tmp[0]
+            for i in range(1, len(tmp)):
+                for key in tmp[i]:
+                    funcsSens[self.name][key] += tmp[i][key]
+                    
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addCon(self.name, lower=self.lower, upper=self.upper,
+                           scale=self.scale, wrt=self.DVGeo.getVarNames())
+        
+    def writeTecplot(self, handle):
+        """No need to write the composite volume since each of the
+        individual ones are already written"""
+        pass
 
 class LinearConstraint(object):
     """
