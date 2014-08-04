@@ -760,7 +760,7 @@ class DVGeometry(object):
 
         Parameters
         ----------
-        dIdxDV : array
+        dIdx : array
            Flattened array of length getNDV(). Generally it comes from
            a call to totalSensitivity()
 
