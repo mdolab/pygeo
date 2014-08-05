@@ -449,6 +449,7 @@ class DVGeometry(object):
             
         return self.DV_listLocal[dvName].nVal
 
+
     def setDesignVars(self, dvDict):
         """
         Standard routine for setting design variables from a design
@@ -985,7 +986,8 @@ class DVGeometry(object):
         else:
             self.JT = None
 
-    def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True):
+    def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True, 
+                          ignoreVars=None, freezeVars=None):
         """
         Add the current set of variables to the optProb object.
 
@@ -995,29 +997,47 @@ class DVGeometry(object):
             Optimization problem definition to which variables are added
 
         globalVars : bool
-            Flag specifying whether gloabl variables are to be added
+            Flag specifying whether global variables are to be added
 
         localVars : bool
             Flag specifying whether local variables are to be added
+            
+        ignoreVars : list of strings
+            List of design variables the user DOESN'T want to use 
+            as optimization variables. 
+
+        freezeVars : list of string
+            List of design variables the user WANTS to add as optimization
+            variables, but to have the lower and upper bounds set at the current
+            variable. This effectively eliminates the variable, but it the variable
+            is still part of the optimization.
         """
+        if ignoreVars is None:
+            ignoreVars = set()
+        if freezeVars is None:
+            freezeVars = set()
 
         # Add design variables from the master:
-        if globalVars:
-            for key in self.DV_listGlobal:
-                dv = self.DV_listGlobal[key]
-                optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
-                                    lower=dv.lower, upper=dv.upper,
-                                    scale=dv.scale)
-        if localVars:
-            for key in self.DV_listLocal:
-                dv = self.DV_listLocal[key]
-                optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
-                                    lower=dv.lower, upper=dv.upper,
-                                    scale=dv.scale)
-
+        varLists = {'globalVars':self.DV_listGlobal,
+                   'localVars':self.DV_listLocal}
+        for lst in varLists:
+            if lst == 'globalVars' and globalVars or lst=='localVars' and localVars:
+                for key in varLists[lst]:
+                    if key not in ignoreVars:
+                        dv = varLists[lst][key]
+                        if key not in freezeVars:
+                            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
+                                                lower=dv.lower, upper=dv.upper,
+                                                scale=dv.scale)
+                        else:
+                            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
+                                                lower=dv.value, upper=dv.value,
+                                                scale=dv.scale)
+                    
         # Add variables from the children
         for child in self.children:
-            child.addVariablesPyOpt(optProb, globalVars, localVars)
+            child.addVariablesPyOpt(optProb, globalVars, localVars, 
+                                    ignoreVars, freezeVars)
 
     def writeTecplot(self, fileName):
         """Write the (deformed) current state of the FFD's to a tecplot file, 
