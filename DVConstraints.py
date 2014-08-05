@@ -3,7 +3,6 @@
 # ======================================================================
 from __future__ import print_function
 import numpy
-from scipy import sparse
 from . import geo_utils
 from pyspline import pySpline
 try:
@@ -480,7 +479,7 @@ class DVConstraints(object):
         s = numpy.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = numpy.zeros((nCon, 4, 3))
-        chordDir /= numpy.linalg.norm(numpy.array(chordDir,'d'))
+        chordDir /= numpy.linalg.norm(numpy.array(chordDir, 'd'))
         # Project all the points
         for i in range(nCon):
             # Project actual node:
@@ -1822,7 +1821,7 @@ class LinearConstraint(object):
                 self.wrt.append(key)
                 # Now form the jacobian:
                 ndv = self.DVGeo.DV_listLocal[key].nVal
-                jacobian = sparse.lil_matrix((ncon, ndv))
+                jacobian = numpy.zeros((ncon, ndv))
                 for i in range(ncon):
                     jacobian[i, cons[i][0]] = self.factorA[i]
                     jacobian[i, cons[i][1]] = self.factorB[i]
