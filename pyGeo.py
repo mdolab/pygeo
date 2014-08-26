@@ -65,8 +65,11 @@ class pyGeo():
         Individual lists of x,y, and z rotations. Each of length N
     nCtl : int
         Number of control points to use for fitting. If it is None, local
-        interpolation is performed which typically yields better results, if
-        a small number of sections are used. 
+        interpolation is performed which typically yields better results when
+        a small number of sections. When trying to match wing geometries, a
+        larger number of sections are often required.  In this case, the 
+        number of control points also needs to be increased to prevent the
+        file from becoming overly large.
     kSpan : int
         The spline order in span-wise direction. 2 for linear, 3 for quadratic
         and 4 for cubic
