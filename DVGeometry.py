@@ -784,6 +784,37 @@ class DVGeometry(object):
             i += dv.nVal
         return dIdxDict
 
+    def convertDictToSensitivity(self, dIdxDict):
+        """
+        This function performs the reverse operation of 
+        convertSensitivityToDict(); it transforms the dictionary back 
+        into an array. This function is important for the matrix-free 
+        interface.
+
+        Parameters
+        ----------
+        dIdxDict : dictionary
+           Dictionary of information keyed by this object's
+           design variables
+
+        Returns
+        -------
+        dIdx : array
+           Flattened array of length getNDV(). 
+        """
+
+        dIdx = numpy.zeros(self.getNDV(), self.dtype)
+        i = 0
+        for key in self.DV_listGlobal:
+            dv = self.DV_listGlobal[key]
+            dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
+            i += dv.nVal
+        for key in self.DV_listLocal:
+            dv = self.DV_listLocal[key]
+            dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
+            i += dv.nVal
+        return dIdx        
+
     def getVarNames(self):
         """
         Return a list of the design variable names. This is typically
@@ -952,6 +983,7 @@ class DVGeometry(object):
                 i += len(vec[key])
 
         xsdot = self.JT.T.dot(newvec)
+
         return xsdot
         
 
