@@ -195,6 +195,7 @@ class DVGeometry(object):
             4. y-x-z
             5. z-x-y  Default (x-streamwise y-up z-out wing)
             6. z-y-x
+            7. z-x-y + rot_theta
 
         axis: str
             Axis along which to project points/control points onto the
@@ -649,13 +650,15 @@ class DVGeometry(object):
 
                     rotM = self._getRotMatrix(rotX, rotY, rotZ, rotType)
                     D = numpy.dot(rotM, D)
-
-                    deriv = self.refAxis.curves[
-                        self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                    deriv[0] = 0.0
-                    deriv /= geo_utils.euclideanNorm(deriv) # Normalize
-                    D = geo_utils.rotVbyW(D, deriv, numpy.pi/180*self.rot_theta[
-                            self.curveIDNames[ipt]](self.links_s[ipt]))
+                    if rotType == 7:
+                        # only apply the theta rotations in certain cases
+                        deriv = self.refAxis.curves[
+                            self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+                        deriv[0] = 0.0
+                        deriv /= geo_utils.euclideanNorm(deriv) # Normalize
+                        D = geo_utils.rotVbyW(D, deriv, numpy.pi/180*self.rot_theta[
+                                self.curveIDNames[ipt]](self.links_s[ipt]))
+                    
                     D[0] *= scale_x
                     D[1] *= scale_y
                     D[2] *= scale_z
@@ -1251,6 +1254,8 @@ class DVGeometry(object):
             D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
         elif rotType == 6:
             D = numpy.dot(rotX, numpy.dot(rotY, rotZ))
+        elif rotType == 7:
+            D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
 
         return D
 
@@ -1382,14 +1387,17 @@ class DVGeometry(object):
 
                     rotM = self._getRotMatrix(rotX, rotY, rotZ, rotType)
                     D = numpy.dot(rotM, D)
-                    deriv = self.refAxis.curves[
-                        self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                    deriv[0] = 0.0
 
-                    deriv /= geo_utils.euclideanNorm(deriv) # Normalize
+                    if rotType == 7:
+                        # only apply the theta rotations in certain cases
+                        deriv = self.refAxis.curves[
+                            self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
+                        deriv[0] = 0.0
 
-                    D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
-                            self.curveIDNames[ipt]](self.links_s[ipt]))
+                        deriv /= geo_utils.euclideanNorm(deriv) # Normalize
+
+                        D = geo_utils.rotVbyW(D,deriv,numpy.pi/180*self.rot_theta[              
+                                self.curveIDNames[ipt]](self.links_s[ipt]))
 
                     D[0] *= scale_x
                     D[1] *= scale_y

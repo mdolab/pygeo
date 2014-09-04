@@ -742,10 +742,11 @@ class pyBlock():
         interiorOnly : bool
             Project only points that lie fully inside the volume
         faceFreeze : 
-            List of string specifying which faces should be
-            'frozen'. This is only used with child FFD's in
-            DVGeometry. For example if faceFreeze = ['iLow'], then the
-            plane of control points corresponding to i=0, and i=1,
+            A dictionary of lists of strings specifying which faces should be
+            'frozen'. Each dictionary represents one block in the FFD.
+            This is only used with child FFD's in DVGeometry. 
+            For example if faceFreeze =['0':['iLow'],'1':[]], then the
+            plane of control points corresponding to i=0, and i=1, in block '0'
             will not be able to move in DVGeometry.
         eps : float
             Physical tolerance to which to converge Newton search
@@ -819,37 +820,41 @@ class pyBlock():
 
                 else: # Use faceFreeze to freeze specified faces:
 
-                    # Only let the user do this for one volume. You
-                    # will most likely not get what you expect for
-                    # multiple volumes:
-                    if self.nVol > 1: 
-                        raise Error("faceFreeze option can only be used "
-                                    "with child FFD's with one volume")
+                    # # Only let the user do this for one volume. You
+                    # # will most likely not get what you expect for
+                    # # multiple volumes:
+                    # if self.nVol > 1: 
+                    #     raise Error("faceFreeze option can only be used "
+                    #                 "with child FFD's with one volume")
            
                     mask = []
                     for i in range(len(D)):
                         Dnrm = numpy.linalg.norm(D[i])
                         if Dnrm < 50*eps: # Sufficiently inside
                             mask.append(i)
-
-                    if 'iLow' in faceFreeze:
-                        coefMask[0][0, :, :] = True
-                        coefMask[0][1, :, :] = True
-                    if 'iHigh' in faceFreeze:
-                        coefMask[0][-1, :, :] = True
-                        coefMask[0][-2, :, :] = True
-                    if 'jLow' in faceFreeze:
-                        coefMask[0][:, 0, :] = True
-                        coefMask[0][:, 1, :] = True
-                    if 'jHigh' in faceFreeze:
-                        coefMask[0][:, -1, :] = True
-                        coefMask[0][:, -2, :] = True
-                    if 'kLow' in faceFreeze:
-                        coefMask[0][:, :, 0] = True
-                        coefMask[0][:, :, 1] = True
-                    if 'kHigh' in faceFreeze:
-                        coefMask[0][:, :, -1] = True
-                        coefMask[0][:, :, -2] = True
+                    for iVol in range(self.nVol):
+                        key = '%d'%iVol
+                        print('keys',faceFreeze.keys())
+                        if key in faceFreeze.keys():
+                            if 'iLow' in faceFreeze[key]:
+                                coefMask[iVol][0, :, :] = True
+                                coefMask[iVol][1, :, :] = True
+                            if 'iHigh' in faceFreeze[key]:
+                                coefMask[iVol][-1, :, :] = True
+                                coefMask[iVol][-2, :, :] = True
+                            if 'jLow' in faceFreeze[key]:
+                                coefMask[iVol][:, 0, :] = True
+                                coefMask[iVol][:, 1, :] = True
+                            if 'jHigh' in faceFreeze[key]:
+                                coefMask[iVol][:, -1, :] = True
+                                coefMask[iVol][:, -2, :] = True
+                            if 'kLow' in faceFreeze[key]:
+                                coefMask[iVol][:, :, 0] = True
+                                coefMask[iVol][:, :, 1] = True
+                            if 'kHigh' in faceFreeze[key]:
+                                coefMask[iVol][:, :, -1] = True
+                                coefMask[iVol][:, :, -2] = True
+                            
 
                 # Now that we have the mask we can create the embedded volume
                 self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
