@@ -788,6 +788,37 @@ class DVGeometry(object):
             i += dv.nVal
         return dIdxDict
 
+    def convertDictToSensitivity(self, dIdxDict):
+        """
+        This function performs the reverse operation of 
+        convertSensitivityToDict(); it transforms the dictionary back 
+        into an array. This function is important for the matrix-free 
+        interface.
+
+        Parameters
+        ----------
+        dIdxDict : dictionary
+           Dictionary of information keyed by this object's
+           design variables
+
+        Returns
+        -------
+        dIdx : array
+           Flattened array of length getNDV(). 
+        """
+
+        dIdx = numpy.zeros(self.getNDV(), self.dtype)
+        i = 0
+        for key in self.DV_listGlobal:
+            dv = self.DV_listGlobal[key]
+            dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
+            i += dv.nVal
+        for key in self.DV_listLocal:
+            dv = self.DV_listLocal[key]
+            dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
+            i += dv.nVal
+        return dIdx        
+
     def getVarNames(self):
         """
         Return a list of the design variable names. This is typically
@@ -907,6 +938,59 @@ class DVGeometry(object):
 
         return dIdx
     
+    def totalSensitivityProd(self, vec, ptSetName, comm=None, child=False,
+                        nDVStore=0):
+        """
+        This function computes sensitivty information.
+
+        Specifically, it computes the following:
+        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec
+
+        Parameters
+        ----------
+        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
+
+            This is the total derivative of the objective or function
+            of interest with respect to the coordinates in
+            'ptSetName'. This can be a single array of size (Npt, 3)
+            **or** a group of N vectors of size (Npt, 3, N). If you
+            have many to do, it is faster to do many at once. 
+
+        ptSetName : str
+            The name of set of points we are dealing with
+
+        comm : MPI.IntraComm
+            The communicator to use to reduce the final derivative. If
+            comm is None, no reduction takes place. 
+
+        Returns
+        -------
+        dIdxDict : dic
+            The dictionary containing the derivatives, suitable for
+            pyOptSparse
+            
+        Notes
+        -----
+        The ``child`` and ``nDVStore`` options are only used
+        internally and should not be changed by the user. 
+        """
+        if self.JT is None:
+            self.computeTotalJacobian(ptSetName)
+
+        # Unpack vec dictionary
+        names = self.getVarNames()
+        newvec = numpy.zeros(self.getNDV(),self.dtype)
+        i = 0
+        for key in vec:
+            if key in names:
+                newvec[i:i+len(vec[key])] = vec[key]
+                i += len(vec[key])
+
+        xsdot = self.JT.T.dot(newvec)
+
+        return xsdot
+        
+
     def computeTotalJacobian(self, ptSetName):
         """ Return the total point jacobian in CSR format since we
         need this for TACS"""
