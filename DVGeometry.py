@@ -338,7 +338,7 @@ class DVGeometry(object):
         self.children.append(childDVGeo)
 
     def addGeoDVGlobal(self, dvName, value, func, lower=None, upper=None,
-                       scale=1.0):
+                       scale=1.0, config=None):
         """
         Add a global design variable to the DVGeometry object. This
         type of design variable acts on one or more reference axis.
@@ -373,13 +373,20 @@ class DVGeometry(object):
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0. 
+        
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple 
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
         """
-
+        if type(config) == str:
+            config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(
-            dvName, value, lower, upper, scale, func)
+            dvName, value, lower, upper, scale, func, config)
 
     def addGeoDVLocal(self, dvName, lower=None, upper=None, scale=1.0,
-                      axis='y', volList=None, pointSelect=None):
+                      axis='y', volList=None, pointSelect=None, config=None):
         """
         Add one or more local design variables ot the DVGeometry
         object. Local variables are used for small shape modifications.
@@ -414,6 +421,12 @@ class DVGeometry(object):
             of control points. See the documentation for the
             pointSelect class in geo_utils.
 
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple 
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
         Returns
         -------
         N : int
@@ -432,6 +445,8 @@ class DVGeometry(object):
         >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
+        if type(config) == str:
+            config = [config]
 
         if pointSelect is not None:
             pts, ind = pointSelect.getPoints(self.FFD.coef)
@@ -446,7 +461,7 @@ class DVGeometry(object):
             ind = numpy.arange(len(self.FFD.coef))
 
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper,
-                                               scale, axis, ind)
+                                               scale, axis, ind, config)
             
         return self.DV_listLocal[dvName].nVal
 
@@ -576,7 +591,7 @@ class DVGeometry(object):
         except:
             raise Error("'The 'axisID' was invalid!")
         
-    def update(self, ptSetName, childDelta=True):
+    def update(self, ptSetName, childDelta=True, config=None):
         """
         This is the main routine for returning coordinates that have
         been updated by design variables.
@@ -594,8 +609,6 @@ class DVGeometry(object):
         self.curPtSet = ptSetName
         # We've postposed things as long as we can...do the finialization. 
         self._finalize()
-
-    
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
@@ -615,7 +628,7 @@ class DVGeometry(object):
 
             # Run Global Design Vars
             for key in self.DV_listGlobal:
-                self.DV_listGlobal[key](self)
+                self.DV_listGlobal[key](self, config)
 
             self.refAxis.coef = self.coef.copy()
             self.refAxis._updateCurveCoef()
@@ -689,7 +702,7 @@ class DVGeometry(object):
         # end for (ref axis)
 
         for key in self.DV_listLocal:
-            self.DV_listLocal[key](self.FFD.coef)
+            self.DV_listLocal[key](self.FFD.coef, config)
 
         # Update all coef
         self.FFD._updateVolumeCoef()
@@ -710,7 +723,7 @@ class DVGeometry(object):
             self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
             self.children[iChild].refAxis._updateCurveCoef()
 
-            coords += self.children[iChild].update(ptSetName, childDelta)
+            coords += self.children[iChild].update(ptSetName, childDelta, config=config)
             
         if self.complex:
             if len(self.children) > 0:
@@ -803,7 +816,7 @@ class DVGeometry(object):
         return names
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, child=False,
-                        nDVStore=0):
+                         nDVStore=0, config=None):
         """
         This function computes sensitivty information.
 
@@ -847,12 +860,11 @@ class DVGeometry(object):
 
         # This is going to be DENSE in general. MAY depend on the name
         # if we have different configurations.
-        self.J_attach = self._attachedPtJacobian()
-           
+        self.J_attach = self._attachedPtJacobian(config=config)
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
         if self.J_local is None:
-            self.J_local = self._localDVJacobian()
+            self.J_local = self._localDVJacobian(config=config)
          
         # HStack em'
         # Three different possibilities: 
@@ -907,7 +919,7 @@ class DVGeometry(object):
 
         return dIdx
     
-    def computeTotalJacobian(self, ptSetName):
+    def computeTotalJacobian(self, ptSetName, config=None):
         """ Return the total point jacobian in CSR format since we
         need this for TACS"""
         self._finalize()
@@ -916,12 +928,12 @@ class DVGeometry(object):
         #     return
         
         # This is going to be DENSE in general
-        self.J_attach = self._attachedPtJacobian()
+        self.J_attach = self._attachedPtJacobian(config=config)
 
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
         if self.J_local is None:
-            self.J_local = self._localDVJacobian()
+            self.J_local = self._localDVJacobian(config=config)
          
         # HStack em'
         # Three different possibilities: 
@@ -1331,10 +1343,9 @@ class DVGeometry(object):
 
         return nDV
         
-    def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40):
+    def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None):
 
         """Copy of update function for derivative calc"""
-        
         new_pts = numpy.zeros((self.nPtAttach, 3), 'D')
 
         # Set all coef Values back to initial values
@@ -1352,7 +1363,7 @@ class DVGeometry(object):
         if len(self.axis) > 0:
             # Step 1: Call all the design variables
             for key in self.DV_listGlobal:
-                self.DV_listGlobal[key](self)
+                self.DV_listGlobal[key](self, config)
 
             self.refAxis.coef = self.coef.copy()
             self.refAxis._updateCurveCoef()
@@ -1646,7 +1657,7 @@ class DVGeometry(object):
 
     #     return dPtdx
  
-    def _attachedPtJacobian(self):
+    def _attachedPtJacobian(self, config):
         """
         Compute the derivative of the the attached points
         """
@@ -1695,34 +1706,37 @@ class DVGeometry(object):
 
             iDV = 0
             for key in self.DV_listGlobal:
-                nVal = self.DV_listGlobal[key].nVal
-                for j in xrange(nVal):
+                if self.DV_listGlobal[key].config is None or config in self.DV_listGlobal[key].config:
+                    nVal = self.DV_listGlobal[key].nVal
+                    for j in xrange(nVal):
 
-                    refVal = self.DV_listGlobal[key].value[j]
+                        refVal = self.DV_listGlobal[key].value[j]
 
-                    self.DV_listGlobal[key].value[j] += h
+                        self.DV_listGlobal[key].value[j] += h
 
-                    deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh)).flatten()
-                    #deriv = oneoverh*(self._update_deriv().flatten()-coordref)
+                        deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh,config=config)).flatten()
+                        #deriv = oneoverh*(self._update_deriv().flatten()-coordref)
 
-                    numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
-                              deriv[0::3])
-                    numpy.put(Jacobian[1::3, iDV], self.ptAttachInd, 
-                            deriv[1::3])
-                    numpy.put(Jacobian[2::3, iDV], self.ptAttachInd, 
-                              deriv[2::3])
+                        numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
+                                  deriv[0::3])
+                        numpy.put(Jacobian[1::3, iDV], self.ptAttachInd, 
+                                deriv[1::3])
+                        numpy.put(Jacobian[2::3, iDV], self.ptAttachInd, 
+                                  deriv[2::3])
 
-                    # save the global DV Ranges for the children
-                    if self.rangeg==None:
-                        for iChild in xrange(len(self.children)):
-                            self.children[iChild].rangeg[iDV]=self.DV_listGlobal[key].scale[j]
-                    else:
-                        for iChild in xrange(len(self.children)):
-                            self.children[iChild].rangeg[iDV]=self.rangeg[iDV]
+                        # save the global DV Ranges for the children
+                        if self.rangeg==None:
+                            for iChild in xrange(len(self.children)):
+                                self.children[iChild].rangeg[iDV]=self.DV_listGlobal[key].scale[j]
+                        else:
+                            for iChild in xrange(len(self.children)):
+                                self.children[iChild].rangeg[iDV]=self.rangeg[iDV]
 
-                    iDV += 1
+                        iDV += 1
 
-                    self.DV_listGlobal[key].value[j] = refVal
+                        self.DV_listGlobal[key].value[j] = refVal
+                else:
+                    iDV += self.DV_listGlobal[key].nVal
         else:
             Jacobian = None
 
@@ -1754,7 +1768,7 @@ class DVGeometry(object):
 
                 self.FFD.coef+=tmp1
 
-                new_pts_child = self._update_deriv(iDV,h,oneoverh)
+                new_pts_child = self._update_deriv(iDV,h,oneoverh, config=config)
                 tmp2 = numpy.zeros(self.nPtAttachFull*3,dtype='D')
                 numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
                 numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
@@ -1774,7 +1788,7 @@ class DVGeometry(object):
 
         return Jacobian
 
-    def _localDVJacobian(self):
+    def _localDVJacobian(self, config=None):
         """
         Return the derivative of the coefficients wrt the local design 
         variables
@@ -1820,48 +1834,54 @@ class DVGeometry(object):
 
             iDVLocal = 0
             for key in self.DV_listLocal:
-                nVal = self.DV_listLocal[key].nVal
-                for j in xrange(nVal):
 
-                    pt_dv = self.DV_listLocal[key].coefList[j] 
-                    irow = pt_dv[0]*3 + pt_dv[1]
-                    Jacobian[irow, iDVLocal] = 1.0
+                if self.DV_listLocal[key].config is None or config in self.DV_listLocal[key].config:
 
-                    for iChild in xrange(len(self.children)):
+                    nVal = self.DV_listLocal[key].nVal
+                    for j in xrange(nVal):
 
-                        dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
-                        dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
-            
-                        tmp = numpy.zeros(self.FFD.coef.shape,dtype='D')
-                        
-                        tmp[pt_dv[0],pt_dv[1]] = 1.0
+                        pt_dv = self.DV_listLocal[key].coefList[j] 
+                        irow = pt_dv[0]*3 + pt_dv[1]
+                        Jacobian[irow, iDVLocal] = 1.0
 
-                        dXrefdXdvl = numpy.zeros((dXrefdCoef.shape[0]*3),'D')
-                        dCcdXdvl   = numpy.zeros((dCcdCoef.shape[0]*3),'D')
+                        for iChild in xrange(len(self.children)):
 
-                        dXrefdXdvl[0::3] = dXrefdCoef.dot(tmp[:, 0])
-                        dXrefdXdvl[1::3] = dXrefdCoef.dot(tmp[:, 1])
-                        dXrefdXdvl[2::3] = dXrefdCoef.dot(tmp[:, 2])
+                            dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
+                            dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
 
-                        dCcdXdvl[0::3] = dCcdCoef.dot(tmp[:, 0])
-                        dCcdXdvl[1::3] = dCcdCoef.dot(tmp[:, 1])
-                        dCcdXdvl[2::3] = dCcdCoef.dot(tmp[:, 2])
+                            tmp = numpy.zeros(self.FFD.coef.shape,dtype='D')
 
-                        self.children[iChild].dXrefdXdvl[:, iDVLocal] = dXrefdXdvl
-                        self.children[iChild].dCcdXdvl[:, iDVLocal] = dCcdXdvl
+                            tmp[pt_dv[0],pt_dv[1]] = 1.0
 
-                    # if scaled:
-                    #     if self.rangel is None:
-                    #         for iChild in xrange(len(self.children)):
-                    #             self.children[iChild].rangel[iDVLocal] = self.DV_listLocal[key].scale[j]
-                    #     else:
-                    #         for iChild in xrange(len(self.children)):
-                    #             self.children[iChild].rangel[iDVLocal] = self.rangel[iDVLocal]
-                            # end for
+                            dXrefdXdvl = numpy.zeros((dXrefdCoef.shape[0]*3),'D')
+                            dCcdXdvl   = numpy.zeros((dCcdCoef.shape[0]*3),'D')
+
+                            dXrefdXdvl[0::3] = dXrefdCoef.dot(tmp[:, 0])
+                            dXrefdXdvl[1::3] = dXrefdCoef.dot(tmp[:, 1])
+                            dXrefdXdvl[2::3] = dXrefdCoef.dot(tmp[:, 2])
+
+                            dCcdXdvl[0::3] = dCcdCoef.dot(tmp[:, 0])
+                            dCcdXdvl[1::3] = dCcdCoef.dot(tmp[:, 1])
+                            dCcdXdvl[2::3] = dCcdCoef.dot(tmp[:, 2])
+
+                            self.children[iChild].dXrefdXdvl[:, iDVLocal] = dXrefdXdvl
+                            self.children[iChild].dCcdXdvl[:, iDVLocal] = dCcdXdvl
+
+                        # if scaled:
+                        #     if self.rangel is None:
+                        #         for iChild in xrange(len(self.children)):
+                        #             self.children[iChild].rangel[iDVLocal] = self.DV_listLocal[key].scale[j]
+                        #     else:
+                        #         for iChild in xrange(len(self.children)):
+                        #             self.children[iChild].rangel[iDVLocal] = self.rangel[iDVLocal]
+                                # end for
+                            # end if
                         # end if
-                    # end if
-                    iDVLocal += 1
-                # end for
+                        iDVLocal += 1
+                else:
+                    iDVLocal += self.DV_listLocal[key].nVal
+
+                # end if config check
             # end for
         else:
             Jacobian = None
@@ -1894,7 +1914,7 @@ class DVGeometry(object):
 
                 self.FFD.coef+=tmp1
 
-                new_pts_child = self._update_deriv(iDV, h, oneoverh)
+                new_pts_child = self._update_deriv(iDV, h, oneoverh, config=config)
                 tmp2 = numpy.zeros(self.nPtAttachFull*3,dtype='D')
                 numpy.put(tmp2[0::3], self.ptAttachInd, new_pts_child[:,0])
                 numpy.put(tmp2[1::3], self.ptAttachInd, new_pts_child[:,1])
@@ -2041,7 +2061,7 @@ class DVGeometry(object):
   
 class geoDVGlobal(object):
      
-    def __init__(self, dv_name, value, lower, upper, scale, function):
+    def __init__(self, dv_name, value, lower, upper, scale, function, config):
         """Create a geometric design variable (or design variable group)
         See addGeoDVGlobal in DVGeometry class for more information
         """
@@ -2050,7 +2070,7 @@ class geoDVGlobal(object):
         self.nVal = len(self.value)
         self.lower = None
         self.upper = None
-
+        self.config = config
         self.function = function
         if lower is not None:
             self.lower = _convertTo1D(lower, self.nVal)
@@ -2059,22 +2079,23 @@ class geoDVGlobal(object):
         if scale is not None:
             self.scale = _convertTo1D(scale, self.nVal)
 
-    def __call__(self, geo):
+    def __call__(self, geo, config):
         """When the object is called, actually apply the function"""
         # Run the user-supplied function
         d = numpy.dtype(complex)
 
-        # If the geo object is complex, which is indicated by .coef
-        # being complex, run with complex numbers. Otherwise, convert
-        # to real before calling. This eliminates casting warnings. 
-        if geo.coef.dtype == d or geo.complex:
-            return self.function(self.value, geo)
-        else:
-            return self.function(numpy.real(self.value), geo)
-
+        if self.config is None or config in self.config:
+            # If the geo object is complex, which is indicated by .coef
+            # being complex, run with complex numbers. Otherwise, convert
+            # to real before calling. This eliminates casting warnings. 
+            if geo.coef.dtype == d or geo.complex:
+                return self.function(self.value, geo)
+            else:
+                return self.function(numpy.real(self.value), geo)
+    
 class geoDVLocal(object):
      
-    def __init__(self, dvName, lower, upper, scale, axis, coefList):
+    def __init__(self, dvName, lower, upper, scale, axis, coefList, config):
         
         """Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
@@ -2087,7 +2108,7 @@ class geoDVLocal(object):
         self.name = dvName
         self.lower = None
         self.upper = None
-
+        self.config = config
         if lower is not None:
             self.lower = _convertTo1D(lower, self.nVal)
         if upper is not None:
@@ -2109,11 +2130,12 @@ class geoDVLocal(object):
                 self.coefList[j] = [coefList[i], 2]
                 j += 1
    
-    def __call__(self, coef):
+    def __call__(self, coef, config):
         """When the object is called, apply the design variable values to 
         coefficients"""
-        for i in xrange(self.nVal):
-            coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
+        if self.config is None or config in self.config:
+            for i in xrange(self.nVal):
+                coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
       
         return coef
 
