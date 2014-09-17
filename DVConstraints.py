@@ -709,7 +709,8 @@ class DVConstraints(object):
             addToPyOpt)
 
     def addLeTeConstraints(self, volID=None, faceID=None,
-                           indSetA=None, indSetB=None, name=None):
+                           indSetA=None, indSetB=None, name=None, 
+                           config=None):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
         DVConstraints. These are just a particular form of linear
@@ -765,6 +766,10 @@ class DVConstraints(object):
              be generated automatically. Only use this if you have
              multiple DVCon objects and the constriant names need to
              be distinguished
+        config : str
+             The DVGeo configuration to apply this LETE con to. Must be either None
+             which will allpy to *ALL* the local DV groups or a single string specifying
+             a particular configuration.
              
         Examples
         --------
@@ -838,10 +843,10 @@ class DVConstraints(object):
         n = len(indSetA)
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, numpy.ones(n), numpy.ones(n),
-            lower=0, upper=0, DVGeo=self.DVGeo)
+            lower=0, upper=0, DVGeo=self.DVGeo, config=config)
 
     def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
-                                 lower=0, upper=0, name=None):
+                                  lower=0, upper=0, name=None, config=None):
         """
         Add a complete generic set of linear constraints for the shape
         variables that have been added to DVGeo. The constraints are
@@ -942,10 +947,10 @@ class DVConstraints(object):
         elif len(upper) != n:
             raise Error('Length of upper invalid!')
         
-        # Finally add the volume constraint object
+        # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
-            self.DVGeo)
+            self.DVGeo,config=config)
         
     def _checkDVGeo(self):
         """check if DVGeo exists"""
@@ -976,7 +981,7 @@ class DVConstraints(object):
         for key in self.linearCon:
             self.linearCon[key].addConstraintsPyOpt(optProb)
 
-    def evalFunctions(self, funcs, includeLinear=False):
+    def evalFunctions(self, funcs, includeLinear=False, config=None):
         """
         Evaluate all the 'functions' that this object has. Of course,
         these functions are usually just the desired constraint
@@ -994,14 +999,14 @@ class DVConstraints(object):
         """
 
         for key in self.thickCon:
-            self.thickCon[key].evalFunctions(funcs)
+            self.thickCon[key].evalFunctions(funcs, config)
         for key in self.volumeCon:
-            self.volumeCon[key].evalFunctions(funcs)
+            self.volumeCon[key].evalFunctions(funcs, config)
         if includeLinear:
             for key in self.linearCon:
                 self.linearCon[key].evalFunctions(funcs)
                     
-    def evalFunctionsSens(self, funcsSens, includeLinear=False):
+    def evalFunctionsSens(self, funcsSens, includeLinear=False, config=None):
         """
         Evaluate the derivative of all the 'funcitons' that this
         object has. These functions are just the constraint values.
@@ -1017,9 +1022,9 @@ class DVConstraints(object):
             does not need linear constraints to be returned. 
         """
         for key in self.thickCon:
-            self.thickCon[key].evalFunctionsSens(funcsSens)
+            self.thickCon[key].evalFunctionsSens(funcsSens, config)
         for key in self.volumeCon:
-            self.volumeCon[key].evalFunctionsSens(funcsSens)
+            self.volumeCon[key].evalFunctionsSens(funcsSens, config)
         if includeLinear:
             for key in self.linearCon:
                 self.linearCon[key].evalFunctionsSens(funcsSens)
@@ -1211,7 +1216,7 @@ class ThicknessConstraint(object):
             self.D0[i] = numpy.linalg.norm(
                 self.coords[2*i] - self.coords[2*i+1])
         
-    def evalFunctions(self, funcs):
+    def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
 
@@ -1221,7 +1226,7 @@ class ThicknessConstraint(object):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name)
+        self.coords = self.DVGeo.update(self.name, config=config)
         D = numpy.zeros(self.nCon)
         for i in range(self.nCon):
             D[i] = numpy.linalg.norm(self.coords[2*i] - self.coords[2*i+1])
@@ -1229,7 +1234,7 @@ class ThicknessConstraint(object):
                 D[i] /= self.D0[i]
         funcs[self.name] = D
 
-    def evalFunctionsSens(self, funcsSens):
+    def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
         place in the funcsSens dictionary
@@ -1256,7 +1261,7 @@ class ThicknessConstraint(object):
                 dTdPt[i, 2*i+1, :] = p2b
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dTdPt, self.name)
+                dTdPt, self.name, config=config)
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -1314,7 +1319,7 @@ class ThicknessToChordConstraint(object):
             c = numpy.linalg.norm(self.coords[4*i+2] - self.coords[4*i+3])
             self.ToC0[i] = t/c
         
-    def evalFunctions(self, funcs):
+    def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
 
@@ -1324,7 +1329,7 @@ class ThicknessToChordConstraint(object):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name)
+        self.coords = self.DVGeo.update(self.name, config=config)
         ToC = numpy.zeros(self.nCon)
         for i in range(self.nCon):
             t = geo_utils.eDist(self.coords[4*i], self.coords[4*i+1])
@@ -1333,7 +1338,7 @@ class ThicknessToChordConstraint(object):
 
         funcs[self.name] = ToC
 
-    def evalFunctionsSens(self, funcsSens):
+    def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
         place in the funcsSens dictionary
@@ -1365,7 +1370,7 @@ class ThicknessToChordConstraint(object):
                 dToCdPt[i, 4*i+3, :] = (-p4b*t/c**2) / self.ToC0[i]
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dToCdPt, self.name)
+                dToCdPt, self.name, config=config)
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -1422,7 +1427,7 @@ class VolumeConstraint(object):
         # Now get the reference volume
         self.V0 = self.evalVolume()
 
-    def evalFunctions(self, funcs):
+    def evalFunctions(self, funcs, config):
         """
         Evaluate the function this object has and place in the funcs dictionary
 
@@ -1432,13 +1437,13 @@ class VolumeConstraint(object):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name)
+        self.coords = self.DVGeo.update(self.name, config=config)
         V = self.evalVolume()
         if self.scaled:
             V /= self.V0
         funcs[self.name] = V
 
-    def evalFunctionsSens(self, funcsSens):
+    def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
         place in the funcsSens dictionary
@@ -1455,7 +1460,8 @@ class VolumeConstraint(object):
                 dVdPt /= self.V0
 
             # Now compute the DVGeo total sensitivity:
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(dVdPt, self.name)
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(
+                dVdPt, self.name, config=config)
             
     def addConstraintsPyOpt(self, optProb):
         """
@@ -1668,7 +1674,7 @@ class CompositeVolumeConstraint(object):
         for vol in self.vols:
             self.V0 += vol.evalVolume()
             
-    def evalFunctions(self, funcs):
+    def evalFunctions(self, funcs, config):
         """
         Evaluate the function this object has and place in the funcs dictionary
 
@@ -1684,7 +1690,7 @@ class CompositeVolumeConstraint(object):
             V /= self.V0
         funcs[self.name] = V
 
-    def evalFunctionsSens(self, funcsSens):
+    def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
         place in the funcsSens dictionary
@@ -1701,7 +1707,7 @@ class CompositeVolumeConstraint(object):
                 dVdPt = vol.evalVolumeSens()
                 if self.scaled:
                     dVdPt /= self.V0
-                tmp.append(vol.DVGeo.totalSensitivity(dVdPt, vol.name))
+                tmp.append(vol.DVGeo.totalSensitivity(dVdPt, vol.name, config=config))
 
             # Now we need to sum up the derivatives:
             funcsSens[self.name] = tmp[0]
@@ -1728,8 +1734,8 @@ class LinearConstraint(object):
     constriants coupling local shape variables together.
     """
     def __init__(self, name, indSetA, indSetB, factorA, factorB,
-                 lower, upper, DVGeo):
-        # No error checking here sice the calling routine should have
+                 lower, upper, DVGeo, config):
+        # No error checking here since the calling routine should have
         # already done it.
         self.name = name
         self.indSetA = indSetA
@@ -1742,7 +1748,7 @@ class LinearConstraint(object):
         self.ncon = 0
         self.wrt = []
         self.jac = {}
-        self.conIndices = []
+        self.config = config
         self._finalize()
         
     def evalFunctions(self, funcs):
@@ -1782,10 +1788,10 @@ class LinearConstraint(object):
         linear constraints. 
         """
         if self.ncon > 0:
-            optProb.addConGroup(self.name, self.ncon, lower=self.lower,
-                                upper=self.upper, scale=1.0, linear=True,
-                                wrt=self.wrt, jac=self.jac)
-
+            for key in self.jac:
+                optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
+                                    lower=self.lower, upper=self.upper, scale=1.0, 
+                                    linear=True, wrt=key, jac={key:self.jac[key]})
     def _finalize(self):
         """
         We have postponed actually determining the constraint jacobian
@@ -1794,61 +1800,66 @@ class LinearConstraint(object):
         local shape variables that may (or may not) be present in the
         DVGeo object. 
         """
+        self.vizConIndices = {}
+        
         for key in self.DVGeo.DV_listLocal:
-            # Temp is the list of FFD coefficients that are included
-            # as shape variables in this localDV "key"
-            temp = self.DVGeo.DV_listLocal[key].coefList
-            cons = []
-            for j in range(len(self.indSetA)):
-                # Try to find this index # in the coefList (temp)
-                up = None
-                down = None
+             if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
-                # Note: We are doing inefficient double looping here
-                for k in range(len(temp)):
-                    if temp[k][0] == self.indSetA[j]:
-                        up = k
-                    if temp[k][0] == self.indSetB[j]:
-                        down = k
+                # Temp is the list of FFD coefficients that are included
+                # as shape variables in this localDV "key"
+                temp = self.DVGeo.DV_listLocal[key].coefList
+                cons = []
+                for j in range(len(self.indSetA)):
+                    # Try to find this index # in the coefList (temp)
+                    up = None
+                    down = None
 
-                # If we haven't found up AND down do nothing
-                if up is not None and down is not None:
-                    cons.append([up, down])
+                    # Note: We are doing inefficient double looping here
+                    for k in range(len(temp)):
+                        if temp[k][0] == self.indSetA[j]:
+                            up = k
+                        if temp[k][0] == self.indSetB[j]:
+                            down = k
 
-            # end for (indSet loop)
-            ncon = len(cons)
-            if ncon > 0:
-                self.wrt.append(key)
-                # Now form the jacobian:
-                ndv = self.DVGeo.DV_listLocal[key].nVal
-                jacobian = numpy.zeros((ncon, ndv))
-                for i in range(ncon):
-                    jacobian[i, cons[i][0]] = self.factorA[i]
-                    jacobian[i, cons[i][1]] = self.factorB[i]
-                self.jac[key] = jacobian
+                    # If we haven't found up AND down do nothing
+                    if up is not None and down is not None:
+                        cons.append([up, down])
 
-            # Add to the number of constraints and store indices which
-            # we need for tecplot visualization
-            self.ncon += len(cons)
-            self.conIndices.extend(cons)
-            
+                # end for (indSet loop)
+                ncon = len(cons)
+                if ncon > 0:
+                    # Now form the jacobian:
+                    ndv = self.DVGeo.DV_listLocal[key].nVal
+                    jacobian = numpy.zeros((ncon, ndv))
+                    for i in range(ncon):
+                        jacobian[i, cons[i][0]] = self.factorA[i]
+                        jacobian[i, cons[i][1]] = self.factorB[i]
+                    self.jac[key] = jacobian
+
+                # Add to the number of constraints and store indices which
+                # we need for tecplot visualization
+                self.ncon += len(cons)
+                self.vizConIndices[key] = cons
+
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of lete constraints
         to the open file handle
         """
+        
+        for key in self.vizConIndices:
+            ncon = len(self.vizConIndices[key])
+            nodes = numpy.zeros((ncon*2, 3))
+            for i in range(ncon):
+                nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
+                nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
-        nodes = numpy.zeros((self.ncon*2, 3))
-        for i in range(self.ncon):
-            nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
-            nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
+                handle.write('Zone T=%s\n'% self.name+'_'+key)
+                handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+                    ncon*2, ncon))
+                handle.write('DATAPACKING=POINT\n')
+                for i in range(ncon*2):
+                    handle.write('%f %f %f\n'% (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
 
-        handle.write('Zone T=%s\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            self.ncon*2, self.ncon))
-        handle.write('DATAPACKING=POINT\n')
-        for i in range(self.ncon*2):
-            handle.write('%f %f %f\n'% (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
-
-        for i in range(self.ncon):
-            handle.write('%d %d\n'% (2*i+1, 2*i+2))
+                for i in range(ncon):
+                    handle.write('%d %d\n'% (2*i+1, 2*i+2))
