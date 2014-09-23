@@ -16,6 +16,7 @@ from scipy import sparse
 from mpi4py import MPI
 from pyspline import pySpline
 from . import pyNetwork, pyBlock, geo_utils
+import pdb
 
 class Error(Exception):
     """
@@ -986,8 +987,8 @@ class DVGeometry(object):
         The ``child`` and ``nDVStore`` options are only used
         internally and should not be changed by the user. 
         """
-        if self.JT is None:
-            self.computeTotalJacobian(ptSetName)
+
+        self.computeTotalJacobian(ptSetName)
 
         # Unpack vec dictionary
         names = self.getVarNames()
@@ -1001,7 +1002,61 @@ class DVGeometry(object):
         xsdot = self.JT.T.dot(newvec)
 
         return xsdot
-        
+
+    def totalSensitivityTransProd(self, vec, ptSetName, comm=None, child=False,
+                        nDVStore=0):
+        """
+        This function computes sensitivty information.
+
+        Specifically, it computes the following:
+        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec
+
+        Parameters
+        ----------
+        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
+
+            This is the total derivative of the objective or function
+            of interest with respect to the coordinates in
+            'ptSetName'. This can be a single array of size (Npt, 3)
+            **or** a group of N vectors of size (Npt, 3, N). If you
+            have many to do, it is faster to do many at once. 
+
+        ptSetName : str
+            The name of set of points we are dealing with
+
+        comm : MPI.IntraComm
+            The communicator to use to reduce the final derivative. If
+            comm is None, no reduction takes place. 
+
+        Returns
+        -------
+        dIdxDict : dic
+            The dictionary containing the derivatives, suitable for
+            pyOptSparse
+            
+        Notes
+        -----
+        The ``child`` and ``nDVStore`` options are only used
+        internally and should not be changed by the user. 
+        """
+
+        self.computeTotalJacobian(ptSetName)
+
+        xsdot = self.JT.dot(numpy.ravel(vec))
+
+        # Pack result into dictionary
+        xsdict = {}
+        names = self.getVarNames()
+        i = 0
+        for key in names:
+            if key in self.DV_listGlobal:
+                dv = self.DV_listGlobal[key]
+            else:
+                dv = self.DV_listLocal[key]
+            xsdict[key] = xsdot[i:i+dv.nVal]
+            i += dv.nVal
+
+        return xsdict
 
     def computeTotalJacobian(self, ptSetName, config=None):
         """ Return the total point jacobian in CSR format since we
