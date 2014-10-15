@@ -771,7 +771,7 @@ class DVGeometry(object):
         else:
             return True
 
-    def convertSensitivityToDict(self, dIdx):
+    def convertSensitivityToDict(self, dIdx, out1D=False):
         """
         This function takes the result of totalSensitivity and
         converts it to a dict for use in pyOptSparse
@@ -781,6 +781,10 @@ class DVGeometry(object):
         dIdx : array
            Flattened array of length getNDV(). Generally it comes from
            a call to totalSensitivity()
+
+        out1D : boolean
+            If true, creates a 1D array in the dictionary instead of 2D.
+            This function is used in the matrix-vector product calculation.
 
         Returns
         -------
@@ -793,11 +797,17 @@ class DVGeometry(object):
         dIdxDict = {}
         for key in self.DV_listGlobal:
             dv = self.DV_listGlobal[key]
-            dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
+            if out1D:
+                dIdxDict[dv.name] = numpy.ravel(dIdx[:, i:i+dv.nVal])
+            else:
+                dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
             i += dv.nVal
         for key in self.DV_listLocal:
             dv = self.DV_listLocal[key]
-            dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
+            if out1D:
+                dIdxDict[dv.name] = numpy.ravel(dIdx[:, i:i+dv.nVal])
+            else:
+                dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
 
             i += dv.nVal
         return dIdxDict
