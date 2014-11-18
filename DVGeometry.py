@@ -955,7 +955,7 @@ class DVGeometry(object):
                 self.children[iChild].coef.copy())
             self.children[iChild].refAxis._updateCurveCoef()
             dIdx += self.children[iChild].totalSensitivity(
-                dIdpt, comm, ptSetName, True, nDV)
+                dIdpt, ptSetName, comm, True, nDV)
         # Now convert to dict:
         dIdx = self.convertSensitivityToDict(dIdx)
 
