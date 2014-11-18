@@ -944,8 +944,12 @@ class DVGeometry(object):
         else:
             dIdx = dIdx_local
 
+        # Now convert to dict:
+        dIdx = self.convertSensitivityToDict(dIdx)
+
+        # Call the children recursively
         for iChild in xrange(len(self.children)):
-             # reset control points on child for child link derivatives
+            # reset control points on child for child link derivatives
             self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
                 'child%d_coef'%(iChild))
             
@@ -954,11 +958,19 @@ class DVGeometry(object):
             self.children[iChild].refAxis.coef = (
                 self.children[iChild].coef.copy())
             self.children[iChild].refAxis._updateCurveCoef()
-            dIdx += self.children[iChild].totalSensitivity(
-                dIdpt, ptSetName, comm, True, nDV)
-        # Now convert to dict:
-        dIdx = self.convertSensitivityToDict(dIdx)
+           
+            # call the child
+            childdIdx = self.children[iChild].totalSensitivity(
+                dIdpt, ptSetName=ptSetName, comm=comm, child=True, nDVStore=nDV)
+           
+            # update the total sensitivities with the derivatives from the child
+            for key in childdIdx:
+                if key in dIdx.keys():
+                    dIdx[key]+=childdIdx[key]
+                else:
+                    dIdx[key]=childdIdx[key]
 
+      
         return dIdx
     
     def totalSensitivityProd(self, vec, ptSetName, comm=None, child=False,
