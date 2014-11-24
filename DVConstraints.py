@@ -1768,7 +1768,7 @@ class LinearConstraint(object):
         for key in self.wrt:
             cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
             
-        funcs[self.name] = numpy.array(cons)
+        funcs[self.name] = numpy.array(cons).astype('d')
         
     def evalFunctionsSens(self, funcsSens):
         """
@@ -1840,6 +1840,9 @@ class LinearConstraint(object):
                 # we need for tecplot visualization
                 self.ncon += len(cons)
                 self.vizConIndices[key] = cons
+
+        # with-respect-to are just the keys of the jacobian
+        self.wrt = list(self.jac.keys())
 
     def writeTecplot(self, handle):
         """
