@@ -1020,8 +1020,11 @@ class DVGeometry(object):
             if key in names:
                 newvec[i:i+len(vec[key])] = vec[key]
                 i += len(vec[key])
-
-        xsdot = self.JT.T.dot(newvec)
+        # perform the product
+        if self.JT == None:
+            xsdot = numpy.zeros((0, 3))
+        else:
+            xsdot = self.JT.T.dot(newvec)
 
         return xsdot
 
