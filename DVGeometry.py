@@ -1066,8 +1066,12 @@ class DVGeometry(object):
         """
 
         self.computeTotalJacobian(ptSetName)
-
-        xsdot = self.JT.dot(numpy.ravel(vec))
+        
+        # perform the product
+        if self.JT == None:
+            xsdot = numpy.zeros((0, 3))
+        else:
+            xsdot = self.JT.dot(numpy.ravel(vec))
 
         # Pack result into dictionary
         xsdict = {}
