@@ -734,7 +734,11 @@ class DVGeometry(object):
             numpy.put(tempCoef[:, 0], self.ptAttachInd, new_pts[:, 0])
             numpy.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
             numpy.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
-         
+
+            # Apply just the complex part of the local varibales
+            for key in self.DV_listLocal:
+                self.DV_listLocal[key].updateComplex(tempCoef, config)
+                     
             coords = coords.astype('D')
             imag_part = numpy.imag(tempCoef)
             imag_j = 1j
@@ -1012,19 +1016,26 @@ class DVGeometry(object):
 
         self.computeTotalJacobian(ptSetName)
 
-        # Unpack vec dictionary
         names = self.getVarNames()
         newvec = numpy.zeros(self.getNDV(),self.dtype)
         i = 0
-        for key in vec:
-            if key in names:
-                newvec[i:i+len(vec[key])] = vec[key]
-                i += len(vec[key])
+        for key in names:
+            if key in self.DV_listGlobal:
+                dv = self.DV_listGlobal[key]
+            else:
+                dv = self.DV_listLocal[key]
+
+            if key in vec:
+                newvec[i:i+dv.nVal] = vec[key]
+            
+            i += dv.nVal
+
         # perform the product
-        if self.JT == None:
+        if self.JT is None:
             xsdot = numpy.zeros((0, 3))
         else:
             xsdot = self.JT.T.dot(newvec)
+            xsdot.reshape(len(xsdot)/3, 3)
 
         return xsdot
 
@@ -2306,6 +2317,14 @@ class geoDVLocal(object):
                 coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
       
         return coef
+
+    def updateComplex(self, coef, config):
+        if self.config is None or config in self.config:
+            for i in xrange(self.nVal):
+                coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].imag*1j
+
+        return coef
+        
 
 def _convertTo1D(value, dim1):
     """
