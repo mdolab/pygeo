@@ -57,6 +57,9 @@ class DVConstraints(object):
        edges must be fixed wrt the shape variables so these enforce that the
        coefficients on the leading edge can only move in equal and opposite
        directions
+
+    4. Fixed Location Constraints: These constraints allow you to specify 
+       certain location in the FFD that can not move.
        
     Analytic sensitivity information is computed for all functions and a
     facility for adding the constraints automatically to a pyOptSparse
@@ -69,6 +72,7 @@ class DVConstraints(object):
         constraints will added individually
         """
         self.thickCon = OrderedDict()
+        self.locCon = OrderedDict()
         self.volumeCon = OrderedDict()
         self.linearCon = OrderedDict()
         self.volumeCGCon = OrderedDict()
@@ -392,6 +396,92 @@ class DVConstraints(object):
             conName = name
         self.thickCon[conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
+            addToPyOpt)
+
+    def addLocationConstraints1D(self, ptList, nCon,lower=None, upper=None,
+                                 scaled=False, scale=1.0, name=None,
+                                 addToPyOpt=True):
+        """
+        Add a polyline in space that cannot move.
+
+        Parameters
+        ----------
+        ptList : list or array of size (N x 3) where N >=2
+            The list of points forming a poly-line along which the
+            points will be fixed. 
+
+        nCon : int
+            The number of points constraints to add
+
+        lower : float or array of size nCon
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint. If
+            no value is provided, the bounds will default to the points,
+            giving equality constraints. Using the default is recommended.
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.  If
+            no value is provided, the bounds will default to the points,
+            giving equality constraints. Using the default is recommended.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not. 
+
+            * scaled=True: The initial location of each location
+              constraint is defined to be 1.0. In this case, the lower
+              and upper bounds are given in multiple of the initial
+              location. lower=0.85, upper=1.15, would allow for 15%
+              change in each direction from the original location. However,
+              for initial points close to zero this blows up, so this should
+              be used with caution, therefore unscaled is the default. 
+
+            * scaled=False: No scaling is applied and the phyical locations
+              must be specified for the lower and upper bounds. 
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the location constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value if the resulting physical
+            location have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constriant names
+            need to be distinguished **or** you are using this set of
+            location constraints for something other than a direct
+            constraint in pyOptSparse.
+            
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) BEFORE they are
+            given to the optimizer, set this flag to False.
+        """
+        self._checkDVGeo()
+        # Create the points to constrain
+        constr_line = pySpline.Curve(X=ptList, k=2)
+        s = numpy.linspace(0, 1, nCon)
+        X = constr_line(s)
+        # X shouls now be in the shape we need
+
+        if lower==None:
+            lower = X.flatten()
+        if upper==None:
+            upper = X.flatten()
+
+        # Create the location constraint object
+        if name is None:
+            conName = 'location_constraints_%d'% len(self.locCon)
+        else:
+            conName = name
+        self.locCon[conName] = LocationConstraint(
+            conName, X, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
     def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir, 
@@ -976,6 +1066,8 @@ class DVConstraints(object):
 
         for key in self.thickCon:
             self.thickCon[key].addConstraintsPyOpt(optProb)
+        for key in self.locCon:
+            self.locCon[key].addConstraintsPyOpt(optProb)
         for key in self.volumeCon:
             self.volumeCon[key].addConstraintsPyOpt(optProb)
         for key in self.linearCon:
@@ -1000,6 +1092,8 @@ class DVConstraints(object):
 
         for key in self.thickCon:
             self.thickCon[key].evalFunctions(funcs, config)
+        for key in self.locCon:
+            self.locCon[key].evalFunctions(funcs, config)
         for key in self.volumeCon:
             self.volumeCon[key].evalFunctions(funcs, config)
         if includeLinear:
@@ -1023,6 +1117,8 @@ class DVConstraints(object):
         """
         for key in self.thickCon:
             self.thickCon[key].evalFunctionsSens(funcsSens, config)
+        for key in self.locCon:
+            self.locCon[key].evalFunctionsSens(funcsSens, config)
         for key in self.volumeCon:
             self.volumeCon[key].evalFunctionsSens(funcsSens, config)
         if includeLinear:
@@ -1049,6 +1145,8 @@ class DVConstraints(object):
 
         for key in self.thickCon:
             self.thickCon[key].writeTecplot(f)
+        for key in self.locCon:
+            self.locCon[key].writeTecplot(f)
         for key in self.volumeCon:
             self.volumeCon[key].writeTecplot(f)
         for key in self.linearCon:
@@ -1288,6 +1386,108 @@ class ThicknessConstraint(object):
 
         for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
+
+class LocationConstraint(object):
+    """
+    DVConstraints representation of a set of location
+    constraints. One of these objects is created each time a
+    addLocationConstraints1D call is
+    made. The user should not have to deal with this class directly.
+    """
+
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
+                 addToPyOpt):
+        self.name = name
+        self.coords = coords
+        self.nCon = len(self.coords.flatten())
+        self.lower = lower
+        self.upper = upper
+        self.scaled = scaled
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name)
+        
+        # Now get the reference lengths
+        self.X0 = numpy.zeros(self.nCon)
+        X = self.coords.flatten()
+        for i in range(self.nCon):
+            self.X0[i] = X[i]
+        
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.coords = self.DVGeo.update(self.name, config=config)
+        #X = numpy.zeros(self.nCon*3)
+        X = self.coords.flatten()
+        if self.scaled:
+            for i in range(self.nCon):
+                X[i] /= self.X0[i]
+
+        funcs[self.name] = X
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dTdPt = numpy.zeros((self.nCon, 
+                                 self.coords.shape[0],
+                                 self.coords.shape[1]))
+            counter = 0
+            for i in range( self.coords.shape[0]):
+                for j in range( self.coords.shape[1]):
+                    dTdPt[counter][i][j] = 1.0
+                    if self.scaled:
+                        dTdPt[counter][i][j] /= self.X0[i]
+                    counter+=1
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(
+                dTdPt, self.name, config=config)
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.DVGeo.getVarNames())
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write('Zone T=%s\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            len(self.coords), len(self.coords)-1))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(len(self.coords)):
+            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
+                                        self.coords[i, 2]))
+
+        for i in range(len(self.coords)-1):
+            handle.write('%d %d\n'% (i, i+1))
+
 
 class ThicknessToChordConstraint(object):
     """
