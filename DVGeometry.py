@@ -236,7 +236,7 @@ class DVGeometry(object):
             # Explicit curve has been supplied:
             if volumes is None:
                 volumes = numpy.arange(self.FFD.nVol)
-                
+
             self.axis[name] = {'curve':curve, 'volumes':volumes,
                                'rotType':rotType, 'axis':axis}
             nAxis = len(curve.coef)
@@ -610,6 +610,9 @@ class DVGeometry(object):
         self.curPtSet = ptSetName
         # We've postposed things as long as we can...do the finialization. 
         self._finalize()
+        
+        # Make sure coefficients are complex
+        self._complexifyCoef()
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
@@ -1648,7 +1651,7 @@ class DVGeometry(object):
         
     def _unComplexifyCoef(self):
         """Convert coef back to reals"""
-        if len(self.axis) > 0:
+        if len(self.axis) > 0 and not self.complex:
             for key in self.axis:
                 self.rot_x[key].coef = self.rot_x[key].coef.real.astype('d')
                 self.rot_y[key].coef = self.rot_y[key].coef.real.astype('d')
