@@ -2172,7 +2172,7 @@ class LinearConstraint(object):
                 nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
                 nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
-                handle.write('Zone T=%s\n'% self.name+'_'+key)
+                handle.write('Zone T=%s\n'% (self.name+'_'+key))
                 handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
                     ncon*2, ncon))
                 handle.write('DATAPACKING=POINT\n')
