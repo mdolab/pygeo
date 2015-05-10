@@ -484,6 +484,121 @@ class DVConstraints(object):
             conName, X, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
+
+    def addProjectedLocationConstraints1D(self, ptList, nCon, axis, bias=0.5, 
+                                          lower=None, upper=None,
+                                          scaled=False, scale=1.0, name=None,
+                                          addToPyOpt=True):
+        """This is similar to addLocationConstraints1D except that the actual
+        poly line is determined by first projecting points on to the
+        surface in a similar manner as addConstraints1D, and then
+        taking the mid-point (or user specificed fraction) blend of
+        the upper and lower surface locations. 
+
+        Parameters
+        ----------
+        ptList : list or array of size (N x 3) where N >=2
+            The list of points from which to perform the projection
+
+        nCon : int
+            The number of points constraints to add
+
+        axis : list or array of length 3
+            The direction along which the projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+
+        bias : float
+            The blending of the upper/lower surface points to use. Default
+            is 0.5 which is the average. 0.0 cooresponds to taking the 
+            lower point, 1.0 the upper point. 
+
+        lower : float or array of size nCon
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint. If
+            no value is provided, the bounds will default to the points,
+            giving equality constraints. Using the default is recommended.
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.  If
+            no value is provided, the bounds will default to the points,
+            giving equality constraints. Using the default is recommended.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not. 
+
+            * scaled=True: The initial location of each location
+              constraint is defined to be 1.0. In this case, the lower
+              and upper bounds are given in multiple of the initial
+              location. lower=0.85, upper=1.15, would allow for 15%
+              change in each direction from the original location. However,
+              for initial points close to zero this blows up, so this should
+              be used with caution, therefore unscaled is the default. 
+
+            * scaled=False: No scaling is applied and the phyical locations
+              must be specified for the lower and upper bounds. 
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the location constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value if the resulting physical
+            location have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constriant names
+            need to be distinguished **or** you are using this set of
+            location constraints for something other than a direct
+            constraint in pyOptSparse.
+            
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) BEFORE they are
+            given to the optimizer, set this flag to False.
+
+        """
+        self._checkDVGeo()
+        # Create the points to constrain
+        constr_line = pySpline.Curve(X=ptList, k=2)
+        s = numpy.linspace(0, 1, nCon)
+        X = constr_line(s)
+
+        coords = numpy.zeros((nCon, 2, 3))
+        # Project all the points
+        for i in range(nCon):
+            # Project actual node:
+            up, down, fail = geo_utils.projectNode(
+                X[i], axis, self.p0, self.v1, self.v2)
+            if fail:
+                raise Error("There was an error projecting a node "
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
+                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+            coords[i, 0] = up
+            coords[i, 1] = down
+        
+        X = (1-bias)*coords[:, 1] + bias*coords[:, 0]
+
+        # X is now what we want to constrain
+        if lower==None:
+            lower = 0.0
+        if upper==None:
+            upper = 0.0
+
+        # Create the location constraint object
+        if name is None:
+            conName = 'location_constraints_%d'% len(self.locCon)
+        else:
+            conName = name
+        self.locCon[conName] = LocationConstraint(
+            conName, X, lower, upper, scaled, scale, self.DVGeo,
+            addToPyOpt)
+
     def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir, 
                                          lower=1.0, upper=3.0, scale=1.0, 
                                          name=None, addToPyOpt=True):
@@ -1428,12 +1543,11 @@ class LocationConstraint(object):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        #X = numpy.zeros(self.nCon*3)
         X = self.coords.flatten()
         if self.scaled:
             for i in range(self.nCon):
                 X[i] /= self.X0[i]
-
+ 
         funcs[self.name] = X
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -1459,6 +1573,7 @@ class LocationConstraint(object):
                     if self.scaled:
                         dTdPt[counter][i][j] /= self.X0[i]
                     counter+=1
+
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dTdPt, self.name, config=config)
 
