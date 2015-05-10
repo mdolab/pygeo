@@ -639,7 +639,6 @@ class DVGeometry(object):
 
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
-
                 scale = self.scale[self.curveIDNames[ipt]](self.links_s[ipt]) 
                 scale_x = self.scale_x[self.curveIDNames[ipt]](self.links_s[ipt]) 
                 scale_y = self.scale_y[self.curveIDNames[ipt]](self.links_s[ipt]) 
@@ -679,8 +678,10 @@ class DVGeometry(object):
                     D[0] *= scale_x
                     D[1] *= scale_y
                     D[2] *= scale_z
-
-                    new_pts[ipt] = base_pt + D*scale
+                    if self.complex:
+                        new_pts[ipt] = base_pt + D*scale
+                    else:
+                        new_pts[ipt] = numpy.real(base_pt + D*scale)
 
             if not self.isChild:
                 temp = numpy.real(new_pts)
