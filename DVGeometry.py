@@ -1427,15 +1427,16 @@ class DVGeometry(object):
 
     def _setInitialValues(self):
         if len(self.axis) > 0:
-            self.coef = copy.deepcopy(self.coef0)
-            self.scale = copy.deepcopy(self.scale0)
-            self.scale_x = copy.deepcopy(self.scale_x0)
-            self.scale_y = copy.deepcopy(self.scale_y0)
-            self.scale_z = copy.deepcopy(self.scale_z0)      
-            self.rot_x = copy.deepcopy(self.rot_x0) 
-            self.rot_y = copy.deepcopy(self.rot_y0)
-            self.rot_z = copy.deepcopy(self.rot_z0)
-            self.rot_theta = copy.deepcopy(self.rot_theta0)   
+            self.coef[:,:] = copy.deepcopy(self.coef0)
+            for key in self.axis:
+                self.scale[key].coef[:] = copy.deepcopy(self.scale0[key].coef)
+                self.scale_x[key].coef[:] = copy.deepcopy(self.scale_x0[key].coef)
+                self.scale_y[key].coef[:] = copy.deepcopy(self.scale_y0[key].coef)
+                self.scale_z[key].coef[:] = copy.deepcopy(self.scale_z0[key].coef)      
+                self.rot_x[key].coef[:] = copy.deepcopy(self.rot_x0[key].coef) 
+                self.rot_y[key].coef[:] = copy.deepcopy(self.rot_y0[key].coef)
+                self.rot_z[key].coef[:] = copy.deepcopy(self.rot_z0[key].coef)
+                self.rot_theta[key].coef[:] = copy.deepcopy(self.rot_theta0[key].coef)
 
     def _getRotMatrix(self, rotX, rotY, rotZ, rotType):
         if rotType == 1:
