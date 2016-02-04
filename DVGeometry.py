@@ -639,7 +639,6 @@ class DVGeometry(object):
 
             for ipt in xrange(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
-
                 scale = self.scale[self.curveIDNames[ipt]](self.links_s[ipt]) 
                 scale_x = self.scale_x[self.curveIDNames[ipt]](self.links_s[ipt]) 
                 scale_y = self.scale_y[self.curveIDNames[ipt]](self.links_s[ipt]) 
@@ -679,8 +678,10 @@ class DVGeometry(object):
                     D[0] *= scale_x
                     D[1] *= scale_y
                     D[2] *= scale_z
-
-                    new_pts[ipt] = base_pt + D*scale
+                    if self.complex:
+                        new_pts[ipt] = base_pt + D*scale
+                    else:
+                        new_pts[ipt] = numpy.real(base_pt + D*scale)
 
             if not self.isChild:
                 temp = numpy.real(new_pts)
@@ -1354,14 +1355,20 @@ class DVGeometry(object):
         # What we need to figure out is which of the control points
         # are connected to an axis, and which ones are not connected
         # to an axis. 
-        self.ptAttachInd = []
 
-        # Retrieve the complete from all the pointSets
-        coefMask = []
+        # Retrieve all the pointset masks
+        coefMask = numpy.zeros(len(self.FFD.coef), dtype=bool)
         for ptName in self.masks:
-            coefMask.extend(self.masks[ptName])
+            coefMask += self.masks[ptName] # This is boolean addition.
 
+        self.ptAttachInd = []
+        self.ptAttach = []
+        curveIDs = []
+        s = []
+        curveID = 0
+        # Loop over the axis we have:
         for key in self.axis:
+
             vol_list = numpy.atleast_1d(self.axis[key]['volumes']).astype('intc')
             temp = []
             for iVol in vol_list:
@@ -1372,34 +1379,28 @@ class DVGeometry(object):
                             if coefMask[ind] == False:
                                 temp.append(ind)
 
+            # Unique the values and append to the master list
+            curPtAttach = geo_utils.unique(temp)
+            self.ptAttachInd.extend(curPtAttach)
 
-            # Unique the values
-            self.ptAttachInd.extend(geo_utils.unique(temp))
-   
-        # Convert the ind list to an array
-        self.ptAttachInd = numpy.array(self.ptAttachInd).flatten()
+            curPts = self.FFD.coef.take(curPtAttach, axis=0).real
+            self.ptAttach.extend(curPts)
 
-        # Take the subset of the FFD cofficients as what will be
-        # attached
-        self.ptAttach = self.FFD.coef.take(self.ptAttachInd, axis=0).real
+            # Now do the projections for *just* the axis defined by my
+            # key. 
+            if self.axis[key]['axis'] is None:
+                tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
+            else:
+                tmpIDs, tmpS0 = self.refAxis.projectRays(
+                    curPts, self.axis[key]['axis'], curves=[curveID])
+
+            curveIDs.extend(tmpIDs)
+            s.extend(tmpS0)
+            curveID += 1
+
         self.ptAttachFull = self.FFD.coef.copy().real
-
-        # Number of points attached to ref axis(s)
         self.nPtAttach = len(self.ptAttach)
         self.nPtAttachFull = len(self.ptAttachFull)
-        
-        curveIDs = []
-        s = []
-
-        for key in self.axis:
-            if self.axis[key]['axis'] is None:
-                ids, s0 = self.refAxis.projectPoints(self.ptAttach)
-            else:
-                ids, s0 = self.refAxis.projectRays(
-                    self.ptAttach, self.axis[key]['axis'])
-
-            curveIDs.extend(ids)
-            s.extend(s0)
 
         self.curveIDs = curveIDs
         self.curveIDNames = []
@@ -1407,9 +1408,10 @@ class DVGeometry(object):
         for i in range(len(curveIDs)):
             self.curveIDNames.append(axisKeys[self.curveIDs[i]])
 
-        self.links_s = s
+        self.links_s = numpy.array(s)
         self.links_x = []
         self.links_n = []
+
         for i in xrange(self.nPtAttach):
             self.links_x.append(
                 self.ptAttach[i] - \
@@ -1422,18 +1424,19 @@ class DVGeometry(object):
         self.links_x = numpy.array(self.links_x)
         self.links_s = numpy.array(self.links_s)
         self.finalized = True
-    
+
     def _setInitialValues(self):
         if len(self.axis) > 0:
-            self.coef = copy.deepcopy(self.coef0)
-            self.scale = copy.deepcopy(self.scale0)
-            self.scale_x = copy.deepcopy(self.scale_x0)
-            self.scale_y = copy.deepcopy(self.scale_y0)
-            self.scale_z = copy.deepcopy(self.scale_z0)      
-            self.rot_x = copy.deepcopy(self.rot_x0) 
-            self.rot_y = copy.deepcopy(self.rot_y0)
-            self.rot_z = copy.deepcopy(self.rot_z0)
-            self.rot_theta = copy.deepcopy(self.rot_theta0)   
+            self.coef[:,:] = copy.deepcopy(self.coef0)
+            for key in self.axis:
+                self.scale[key].coef[:] = copy.deepcopy(self.scale0[key].coef)
+                self.scale_x[key].coef[:] = copy.deepcopy(self.scale_x0[key].coef)
+                self.scale_y[key].coef[:] = copy.deepcopy(self.scale_y0[key].coef)
+                self.scale_z[key].coef[:] = copy.deepcopy(self.scale_z0[key].coef)      
+                self.rot_x[key].coef[:] = copy.deepcopy(self.rot_x0[key].coef) 
+                self.rot_y[key].coef[:] = copy.deepcopy(self.rot_y0[key].coef)
+                self.rot_z[key].coef[:] = copy.deepcopy(self.rot_z0[key].coef)
+                self.rot_theta[key].coef[:] = copy.deepcopy(self.rot_theta0[key].coef)
 
     def _getRotMatrix(self, rotX, rotY, rotZ, rotType):
         if rotType == 1:
