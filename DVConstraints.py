@@ -11,8 +11,8 @@ except ImportError:
     try:
         from ordereddict import OrderedDict
     except ImportError:
-        print('Could not find any OrderedDict class. For 2.6 and earlier, \
-use:\n pip install ordereddict')
+        print("Could not find any OrderedDict class. For 2.6 and earlier, "
+              "use:\n pip install ordereddict")
 
 class Error(Exception):
     """
@@ -20,8 +20,8 @@ class Error(Exception):
     was a expliclty raised exception.
     """
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| pyBlock Error: '
-        i = 16
+        msg = '\n+'+'-'*78+'+'+'\n' + '| DVCon Error: '
+        i = 14
         for word in message.split():
             if len(word) + i + 1 > 78: # Finish line and start new one
                 msg += ' '*(78-i)+'|\n| ' + word + ' '
@@ -34,8 +34,7 @@ class Error(Exception):
         Exception.__init__(self)
 
 class DVConstraints(object):
-    """
-    DVConstraints provides a convenient way of defining geometric
+    """DVConstraints provides a convenient way of defining geometric
     constraints for WINGS. This can be very useful for a constrained
     aerodynamic or aerostructural optimization. Three types of
     constraints are supported:
@@ -50,7 +49,7 @@ class DVConstraints(object):
 
     2. Volume constraint: This computes and enforces a volume constraint
        over the specified domain. The input is identical to the '2d'
-       thickness constraints. See :func:`addVolumeConstraint`.
+       thickness constraints. See :func:`addVolumeConstraint`.  
     
     3. LE/TE Constraints: These geometric constraints are required when
        using FFD volumes with shape variables. The leading and trailing
@@ -61,9 +60,15 @@ class DVConstraints(object):
     4. Fixed Location Constraints: These constraints allow you to specify 
        certain location in the FFD that can not move.
        
+    5. Gear Post Constraint: This is a very highly specialized
+       constraint used to ensure there is sufficient vertical space to
+       install wing-mounted landing gear and that it is correctly positioned
+       relative to the wing. See the class definition for more information. 
+
     Analytic sensitivity information is computed for all functions and a
     facility for adding the constraints automatically to a pyOptSparse
     optimization problem is also provided.
+
     """
   
     def __init__(self):
@@ -77,6 +82,8 @@ class DVConstraints(object):
         self.linearCon = OrderedDict()
         self.volumeCGCon = OrderedDict()
         self.volumeAreaCon = OrderedDict()
+        self.gearCon = OrderedDict()
+
         self.DVGeo = None
         # Data for the discrete surface
         self.p0 = None
@@ -384,7 +391,7 @@ class DVConstraints(object):
             if fail:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
-                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+                                X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
             coords[i, 0] = up
             coords[i, 1] = down
 
@@ -470,6 +477,121 @@ class DVConstraints(object):
         X = constr_line(s)
         # X shouls now be in the shape we need
 
+        if lower==None:
+            lower = X.flatten()
+        if upper==None:
+            upper = X.flatten()
+
+        # Create the location constraint object
+        if name is None:
+            conName = 'location_constraints_%d'% len(self.locCon)
+        else:
+            conName = name
+        self.locCon[conName] = LocationConstraint(
+            conName, X, lower, upper, scaled, scale, self.DVGeo,
+            addToPyOpt)
+
+
+    def addProjectedLocationConstraints1D(self, ptList, nCon, axis, bias=0.5, 
+                                          lower=None, upper=None,
+                                          scaled=False, scale=1.0, name=None,
+                                          addToPyOpt=True):
+        """This is similar to addLocationConstraints1D except that the actual
+        poly line is determined by first projecting points on to the
+        surface in a similar manner as addConstraints1D, and then
+        taking the mid-point (or user specificed fraction) blend of
+        the upper and lower surface locations. 
+
+        Parameters
+        ----------
+        ptList : list or array of size (N x 3) where N >=2
+            The list of points from which to perform the projection
+
+        nCon : int
+            The number of points constraints to add
+
+        axis : list or array of length 3
+            The direction along which the projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+
+        bias : float
+            The blending of the upper/lower surface points to use. Default
+            is 0.5 which is the average. 0.0 cooresponds to taking the 
+            lower point, 1.0 the upper point. 
+
+        lower : float or array of size nCon
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint. If
+            no value is provided, the bounds will default to the points,
+            giving equality constraints. Using the default is recommended.
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.  If
+            no value is provided, the bounds will default to the points,
+            giving equality constraints. Using the default is recommended.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not. 
+
+            * scaled=True: The initial location of each location
+              constraint is defined to be 1.0. In this case, the lower
+              and upper bounds are given in multiple of the initial
+              location. lower=0.85, upper=1.15, would allow for 15%
+              change in each direction from the original location. However,
+              for initial points close to zero this blows up, so this should
+              be used with caution, therefore unscaled is the default. 
+
+            * scaled=False: No scaling is applied and the phyical locations
+              must be specified for the lower and upper bounds. 
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the location constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value if the resulting physical
+            location have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constriant names
+            need to be distinguished **or** you are using this set of
+            location constraints for something other than a direct
+            constraint in pyOptSparse.
+            
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) BEFORE they are
+            given to the optimizer, set this flag to False.
+
+        """
+        self._checkDVGeo()
+        # Create the points to constrain
+        constr_line = pySpline.Curve(X=ptList, k=2)
+        s = numpy.linspace(0, 1, nCon)
+        X = constr_line(s)
+
+        coords = numpy.zeros((nCon, 2, 3))
+        # Project all the points
+        for i in range(nCon):
+            # Project actual node:
+            up, down, fail = geo_utils.projectNode(
+                X[i], axis, self.p0, self.v1, self.v2)
+            if fail:
+                raise Error("There was an error projecting a node "
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
+                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+            coords[i, 0] = up
+            coords[i, 1] = down
+        
+        X = (1-bias)*coords[:, 1] + bias*coords[:, 0]
+
+        # X is now what we want to constrain
         if lower==None:
             lower = X.flatten()
         if upper==None:
@@ -1041,8 +1163,99 @@ class DVConstraints(object):
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
             self.DVGeo,config=config)
+
+    def addGearPostConstraint(self, wimpressCalc, position, axis, 
+                              thickLower=1.0, thickUpper=3.0, 
+                              thickScaled=True, 
+                              MACFracLower=0.50, MACFracUpper=0.60,  
+                              name=None, addToPyOpt=True):
         
+        """Code for doing landing gear post constraints on the fly in an
+        optimization. As it turns out, this is a critical constraint
+        for wing-mounted landing gear and high-aspect ratio swept
+        wings. This constraint actually encompasses *two*
+        optimization constraints: 
+    
+        1. The first is a physical depth constraint that uses DVCon's
+        built in thickness constraint class. 
+
+        2. The second constraint is that the x-position of the the
+        gear post as a fraction of the wing MAC must be greater than
+        MACFracLower which will typically be 50%. 
+        
+        The calculation uses a wimpressCalc object to determine the
+        nominal trapezodial planform to determine the MAC and the
+        LE-MAC.
+
+        Parameters
+        ----------
+        wimpressCalc : wimpressCalc class
+            An instance of the wimpress calc class. This is required for 
+            computing the MAC and the xLEMac
+
+        position : array of size 3
+            Three dimensional position of the gear post constraint. 
+
+        axis : array of size 3
+            Direction to perofrm projection. Same as 'axis' 
+            in addThicknessConstraints1D
+        
+        thickLower : float
+            Lower bound for thickness constraint. If thickScaled=True, 
+            this is the pysical distance scaled by the initial length. 
+            This value is used as the optimization constraint lower bound.
+ 
+        thickUpper : float
+            Upper bound for optimization constraint. See thickLower.
+
+        thickScaled : bool
+            Flag specifiying if the constraint should be scaled. 
+            It is true by default. The defalut values of thickScaled=True,
+            thickLower=1.0, ensures that the initial thickness does not 
+            decrease. 
+
+        MACFracLower : float
+            The desired lower bound for the gear post location as a
+            fraction of MAC. Default is 0.50
+
+        MACFracUpper : float
+            The desired upper bound for the gear post location as a
+            fraction of MAC. Default is 0.60
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constriant names
+            need to be distinguished **or** the values are to be used
+            in a subsequent computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) BEFORE they are
+            given to the optimizer, set this flag to False.
+
+        """
+
+        self._checkDVGeo()
+        if name is None:
+            conName = 'gear_constraint_%d'% len(self.gearCon)
+        else:
+            conName = name
+
+        # Project the actual location we were give:
+        up, down, fail = geo_utils.projectNode(
+            position, axis, self.p0, self.v1, self.v2)
+        if fail:
+            raise Error("There was an error projecting a node "
+                        "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
+                            position))
+        
+        self.gearCon[conName] = GearPostConstraint(
+            conName, wimpressCalc, up, down, thickLower, thickUpper,
+            thickScaled, MACFracLower, MACFracUpper, self.DVGeo, 
+            addToPyOpt)
+
     def _checkDVGeo(self):
+
         """check if DVGeo exists"""
         if self.DVGeo is None:
             raise Error("A DVGeometry object must be added to DVCon before "
@@ -1072,6 +1285,8 @@ class DVConstraints(object):
             self.volumeCon[key].addConstraintsPyOpt(optProb)
         for key in self.linearCon:
             self.linearCon[key].addConstraintsPyOpt(optProb)
+        for key in self.gearCon:
+            self.gearCon[key].addConstraintsPyOpt(optProb)
 
     def evalFunctions(self, funcs, includeLinear=False, config=None):
         """
@@ -1096,6 +1311,8 @@ class DVConstraints(object):
             self.locCon[key].evalFunctions(funcs, config)
         for key in self.volumeCon:
             self.volumeCon[key].evalFunctions(funcs, config)
+        for key in self.gearCon:
+            self.gearCon[key].evalFunctions(funcs, config)
         if includeLinear:
             for key in self.linearCon:
                 self.linearCon[key].evalFunctions(funcs)
@@ -1121,6 +1338,8 @@ class DVConstraints(object):
             self.locCon[key].evalFunctionsSens(funcsSens, config)
         for key in self.volumeCon:
             self.volumeCon[key].evalFunctionsSens(funcsSens, config)
+        for key in self.gearCon:
+            self.gearCon[key].evalFunctionsSens(funcsSens, config)
         if includeLinear:
             for key in self.linearCon:
                 self.linearCon[key].evalFunctionsSens(funcsSens)
@@ -1149,6 +1368,8 @@ class DVConstraints(object):
             self.locCon[key].writeTecplot(f)
         for key in self.volumeCon:
             self.volumeCon[key].writeTecplot(f)
+        for key in self.gearCon:
+            self.gearCon[key].writeTecplot(f)
         for key in self.linearCon:
             self.linearCon[key].writeTecplot(f)
         f.close()
@@ -1460,12 +1681,11 @@ class LocationConstraint(object):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        #X = numpy.zeros(self.nCon*3)
         X = self.coords.flatten()
         if self.scaled:
             for i in range(self.nCon):
                 X[i] /= self.X0[i]
-
+ 
         funcs[self.name] = X
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -1491,6 +1711,7 @@ class LocationConstraint(object):
                     if self.scaled:
                         dTdPt[counter][i][j] /= self.X0[i]
                     counter+=1
+
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dTdPt, self.name, config=config)
 
@@ -2089,7 +2310,7 @@ class LinearConstraint(object):
                 nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
                 nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
-                handle.write('Zone T=%s\n'% self.name+'_'+key)
+                handle.write('Zone T=%s\n'% (self.name+'_'+key))
                 handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
                     ncon*2, ncon))
                 handle.write('DATAPACKING=POINT\n')
@@ -2098,3 +2319,120 @@ class LinearConstraint(object):
 
                 for i in range(ncon):
                     handle.write('%d %d\n'% (2*i+1, 2*i+2))
+
+
+
+class GearPostConstraint(object):
+    """
+    This class is used to represet a single volume constraint. The
+    parameter list is explained in the addVolumeConstaint() of
+    the DVConstraints class
+    """
+    def __init__(self, name, wimpressCalc, up, down, thickLower, 
+                 thickUpper, thickScaled, MACFracLower, MACFracUpper, 
+                 DVGeo, addToPyOpt):
+
+        self.name = name
+        self.wimpress = wimpressCalc
+        self.thickLower = thickLower
+        self.thickUpper = thickUpper
+        self.thickScaled = thickScaled
+        self.MACFracLower = MACFracLower
+        self.MACFracUpper = MACFracUpper
+        self.coords = numpy.array([up, down])
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+                            
+
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name)
+  
+        # Compute the reference length
+        self.D0 = numpy.linalg.norm(self.coords[0] - self.coords[1])
+
+    def evalFunctions(self, funcs, config):
+
+        # Update the gear post locations
+        self.coords = self.DVGeo.update(self.name, config=config)
+
+        # Compute the thickness constraint
+        D = numpy.linalg.norm(self.coords[0] - self.coords[1])
+        if self.thickScaled:
+            D = D/self.D0
+
+        # Compute the values we need from the wimpress calc
+        wfuncs = {}
+        self.wimpress.evalFunctions(wfuncs)
+        
+        # Now the constraint value is
+        postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])  
+        locCon = (postLoc - wfuncs['xLEMAC'])/wfuncs['MAC']
+
+        # Final set of two constrains
+        funcs[self.name + '_thick'] = D
+        funcs[self.name + '_MAC'] = locCon
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+
+            wfuncs = {}
+            self.wimpress.evalFunctions(wfuncs)
+
+            wSens = {}
+            self.wimpress.evalFunctionsSens(wSens)
+
+            # Accumulate the derivative into p1b and p2b
+            p1b, p2b = geo_utils.eDist_b(
+                self.coords[0, :], self.coords[1, :])
+            if self.thickScaled:
+                p1b /= self.D0
+                p2b /= self.D0
+
+            funcsSens[self.name + '_thick'] = self.DVGeo.totalSensitivity(
+                numpy.array([[p1b, p2b]]), self.name, config=config)
+
+            # And now we need the sensitivty of the conLoc calc
+            p1b[:] = 0
+            p2b[:] = 0
+            p1b[0] += 0.5/wfuncs['MAC']
+            p2b[0] += 0.5/wfuncs['MAC']
+
+            tmpSens = self.DVGeo.totalSensitivity(
+                numpy.array([[p1b, p2b]]), self.name, config=config)
+
+            # And we need the sensitity of conLoc wrt 'xLEMAC' and 'MAC'
+            postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])  
+            for key in wSens['xLEMAC']:
+                tmpSens[key] -= wSens['xLEMAC'][key]/wfuncs['MAC']
+                tmpSens[key] += wfuncs['xLEMAC']/wfuncs['MAC']**2 * wSens['MAC'][key]
+                tmpSens[key] -= postLoc/wfuncs['MAC']**2 * wSens['MAC'][key]
+            funcsSens[self.name + '_MAC'] = tmpSens
+            
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addCon(self.name + '_thick', lower=self.thickLower, 
+                           upper=self.thickUpper, wrt=self.DVGeo.getVarNames())
+
+            optProb.addCon(self.name + '_MAC', lower=self.MACFracLower,
+                           upper=self.MACFracUpper, wrt=self.DVGeo.getVarNames())
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this volume constriant
+        """
+        pass
+

@@ -215,7 +215,7 @@ class pyNetwork():
        
         # Do point project to determine the approximate distance such
         # that we know how large to make the line representing the ray. 
-        curveID0, s0 = self.projectPoints(points, **kwargs)
+        curveID0, s0 = self.projectPoints(points, curves=curves, **kwargs)
       
         D0 = numpy.zeros((len(s0), 3), 'd')
         for i in range(len(s0)):

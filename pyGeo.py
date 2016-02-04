@@ -1126,6 +1126,38 @@ class pyGeo():
         f.write('S%7dG%7dD%7dP%7d%40sT%6s1\n'%(1, 4, Dcount-1, counter-1, ' ', ' '))
         f.close()
 
+    def writeTin(self, fileName):
+        """
+        Write the surfaces to ICEMCFD .tin format
+
+        Parameters
+        ----------
+        fileName : str
+            File name of tin file. Should have .tin extension. 
+            """
+        f = open(fileName, 'w')
+        import datetime
+
+        # Write the required header info here:
+        f.write('// tetin file version 1.1\n')
+        f.write('// written by pyLayoutGeo - on %s\n'%(datetime.datetime.now()))
+        f.write('set_triangulation_tolerance 0.001\n')
+
+        # Now loop over the componets and each will write the info it
+        # has to the .tin file:
+        for i in range(self.nSurf):
+            str = 'define_surface name surf.%d family surface_%d tetra_size %f\n'%(
+                i, i, 1.0)
+            f.write(str)
+            self.surfs[i].writeTin(f)
+
+        # Write the closing info:
+        f.write('affix 0\n')
+        f.write('define_model 1e+10 reference_size 1\n')
+        f.write('return\n')
+        f.close()
+
+
 # ----------------------------------------------------------------------
 #                Update and Derivative Functions
 # ----------------------------------------------------------------------
