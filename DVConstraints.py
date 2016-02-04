@@ -1153,6 +1153,38 @@ class DVConstraints(object):
             self.linearCon[key].writeTecplot(f)
         f.close()
 
+    def writeSurfaceTecplot(self,fileName):
+        """
+        Write the triangulated surface mesh used in the constraint object
+        to a tecplot file for visualization.
+
+        Parameters
+        ----------
+        fileName : str
+            File name for tecplot file. Should have a .dat extension. 
+
+        """
+        f = open(fileName, 'w')
+        f.write("TITLE = \"DVConstraints Surface Mesh\"\n")
+        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
+        f.write('Zone T=%s\n'%('surf'))
+        f.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
+            len(self.p0)*3, len(self.p0)))
+        f.write('DATAPACKING=POINT\n')
+        for i in range(len(self.p0)):
+            points = []
+            points.append(self.p0[i])
+            points.append(self.p0[i]+self.v1[i])
+            points.append(self.p0[i]+self.v2[i])
+            for i in range(len(points)):
+                f.write('%f %f %f\n'% (points[i][0], points[i][1],points[i][2]))
+
+        for i in range(len(self.p0)):
+            f.write('%d %d %d\n'% (3*i+1, 3*i+2,3*i+3))
+
+        f.close()
+
+
     def _convertTo2D(self, value, dim1, dim2):
         """
         Generic function to process 'value'. In the end, it must be dim1
