@@ -1261,6 +1261,26 @@ class DVGeometry(object):
 
         pySpline.closeTecplot(f)
         self.update(self.points.keys()[0], childDelta=True) 
+        
+    def writeRefAxes(self, fileName):
+        """Write the (deformed) current state of the RefAxes to a tecplot file, 
+        including the children
+
+        Parameters
+        ----------
+        fileName : str
+           Filename for tecplot file. Should have a no extension,an
+           extension will be added.
+        """
+        # Name here doesnt matter, just take the first one
+        self.update(self.points.keys()[0], childDelta=False)
+        
+        gFileName = fileName+'_parent.dat'
+        self.refAxis.writeTecplot(gFileName, orig=True, curves=True, coef=True)
+        # Write children axes:
+        for iChild in xrange(len(self.children)):
+            cFileName = fileName+'_child%3d.dat'%iChild
+            self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
 
     def writePlot3d(self, fileName):
         """Write the (deformed) current state of the FFD object into a
