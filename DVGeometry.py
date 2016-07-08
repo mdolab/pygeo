@@ -1247,8 +1247,9 @@ class DVGeometry(object):
            Filename for tecplot file. Should have a .dat extension
         """
 
-        # Name here doesnt matter, just take the first one
-        self.update(self.points.keys()[0], childDelta=False)
+        # Name here doesn't matter, just take the first one
+        if len(self.points)>0:
+            self.update(self.points.keys()[0], childDelta=False)
 
         f = pySpline.openTecplot(fileName, 3)
         vol_counter = 0
@@ -1260,7 +1261,8 @@ class DVGeometry(object):
             vol_counter += self.children[iChild]._writeVols(f, vol_counter)
 
         pySpline.closeTecplot(f)
-        self.update(self.points.keys()[0], childDelta=True) 
+        if len(self.points)>0:
+            self.update(self.points.keys()[0], childDelta=True) 
         
     def writeRefAxes(self, fileName):
         """Write the (deformed) current state of the RefAxes to a tecplot file, 
@@ -1281,6 +1283,24 @@ class DVGeometry(object):
         for iChild in xrange(len(self.children)):
             cFileName = fileName+'_child%3d.dat'%iChild
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
+
+    def writePointSet(self,name,fileName):
+        """
+        Write a given point set to a tecplot file
+
+        Parameters
+        ----------
+        name : str
+             The name of the point set to write to a file
+        fileName : str
+           Filename for tecplot file. Should have a no extension,an
+           extension will be added
+        """
+        coords = self.update(name, childDelta=False)
+        fileName = fileName+'_%s.dat'%name
+        f = pySpline.openTecplot(fileName, 3)
+        pySpline.writeTecplot1D(f, name, coords)
+        pySpline.closeTecplot(f)
 
     def writePlot3d(self, fileName):
         """Write the (deformed) current state of the FFD object into a
