@@ -211,6 +211,20 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1,
             
     return x, y
 
+
+def writeAirfoilFile(fileName,name, x,y):
+    """ write an airfoil file """
+    f = open(fileName, 'w')
+    f.write("%s\n"%name)
+    
+    for i in xrange(len(x)):
+        f.write('%12.10f %12.10f\n'%(x[i],y[i]))
+
+    f.close()
+
+    
+    return 
+
 def getCoordinatesFromFile(fileName):
     """Get a list of coordinates from a file - useful for testing
     Required:

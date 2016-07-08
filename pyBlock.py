@@ -54,7 +54,7 @@ class pyBlock():
        everywhere. This ensures a seamless FFD. 
        """
  
-    def __init__(self, initType, fileName=None, FFD=False, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False,symmPlane=None, **kwargs):
                 
         self.initType = initType
         self.FFD = False
@@ -63,6 +63,7 @@ class pyBlock():
         self.nVol = None         # The total number of volumessurfaces
         self.coef  = None        # The global (reduced) set of control pts
         self.embededVolumes = {}
+        self.symmPlane = symmPlane
 
         if initType == 'plot3d':
             self._readPlot3D(fileName, FFD=FFD, **kwargs)
@@ -76,7 +77,7 @@ class pyBlock():
 #                     Initialization Types
 # ----------------------------------------------------------------------    
 
-    def _readPlot3D(self, fileName, order='f', FFD=False):
+    def _readPlot3D(self, fileName, order='f', FFD=False,symmTol=0.001):
         """ Load a plot3D file and create the splines to go with each
         patch. See the pyBlock() docstring for more information.
 
@@ -101,6 +102,62 @@ class pyBlock():
                     f, cur_size, 'float', binary).reshape(
                     (sizes[i, 0], sizes[i, 1], sizes[i, 2]), order=order)
         f.close()
+
+        def flip(axis, coords):
+            """Flip coordinates by plane defined by 'axis'"""
+            if axis.lower() == 'x':
+                index = 0
+            elif axis.lower() == 'y':
+                index = 1
+            elif axis.lower() == 'z':
+                index = 2
+            coords[:, :, :, index] = -coords[:, :, :, index]
+
+            # HOWEVER just doing this results in a left-handed block (if
+            # the original block was right handed). So we have to also
+            # reverse ONE of the indices 
+            coords[:, :, :, :] = coords[::-1, :, :, :]
+            # dims = coords.shape
+            # for k in range(dims[2]):
+            #     for j in range(dims[1]):
+            #         for idim in range(3):
+            #             self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
+
+        def symmZero(axis,coords,tol):
+            """ set all coords within a certain tolerance of the symm plan to be exactly 0"""
+            
+            if axis.lower() == 'x':
+                index = 0
+            elif axis.lower() == 'y':
+                index = 1
+            elif axis.lower() == 'z':
+                index = 2
+                
+            dims = coords.shape
+            for k in range(dims[2]):
+                for j in range(dims[1]):
+                    for i in range(dims[0]):
+                        error = abs(coords[i,j,k,index])
+                        if error <= tol:
+                            coords[i,j,k,index]=0
+
+        if self.symmPlane is not None:
+            #duplicate and mirror the blocks. 
+            newBlocks = []
+            for block in blocks:
+                newBlock = copy.deepcopy(block)
+                symmZero(self.symmPlane,newBlock,symmTol)
+                flip(self.symmPlane,newBlock)
+                newBlocks.append(newBlock)
+            # now create the appended list with double the blocks
+            blocks+=newBlocks
+            #Extend sizes
+            newSizes = numpy.zeros([nVol*2,3],'int')
+            newSizes[:nVol,:] = sizes
+            newSizes[nVol:,:] = sizes
+            sizes = newSizes
+            #increase the volume counter
+            nVol*=2
 
         # Now create a list of spline volume objects:
         self.vols = []
