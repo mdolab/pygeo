@@ -234,11 +234,38 @@ class DVGeometry(object):
 
         if curve is not None:
             # Explicit curve has been supplied:
-            if volumes is None:
-                volumes = numpy.arange(self.FFD.nVol)
+            if self.FFD.symmPlane is None:
+                if volumes is None:
+                    volumes = numpy.arange(self.FFD.nVol)
+                self.axis[name] = {'curve':curve, 'volumes':volumes,
+                                   'rotType':rotType, 'axis':axis}
 
-            self.axis[name] = {'curve':curve, 'volumes':volumes,
-                               'rotType':rotType, 'axis':axis}
+            else:
+                # get the direction of the symmetry plane
+                if self.FFD.symmPlane.lower() == 'x':
+                    index = 0
+                elif self.FFD.symmPlane.lower() == 'y':
+                    index = 1
+                elif self.FFD.symmPlane.lower() == 'z':
+                    index = 2
+
+                # mirror the axis and attach the mirrored vols
+                if volumes is None:
+                    volumes = numpy.arange(self.FFD.nVol/2)
+
+                volumesSymm = []
+                for volume in volumes:
+                    volumesSymm.append(volume+self.FFD.nVol/2)
+
+                curveSymm = copy.deepcopy(curve)
+                curveSymm.reverse()
+                for coef in curveSymm.coef:
+                    curveSymm.coef[:,index]=-curveSymm.coef[:,index]
+                self.axis[name] = {'curve':curve, 'volumes':volumes,
+                                   'rotType':rotType, 'axis':axis}
+                self.axis[name+'Symm'] = {'curve':curveSymm, 'volumes':volumesSymm,
+                                          'rotType':rotType, 'axis':axis}
+
             nAxis = len(curve.coef)
         elif xFraction is not None:
             raise Error('xFraction specification is not coded yet.')
@@ -452,6 +479,14 @@ class DVGeometry(object):
         if pointSelect is not None:
             pts, ind = pointSelect.getPoints(self.FFD.coef)
         elif volList is not None:
+            if self.FFD.symmPlane is not None:
+                volListTmp = []
+                for vol in volList:
+                    volListTmp.append(vol)
+                for vol in volList:
+                    volListTmp.append(vol+self.FFD.nVol/2)
+                volList = volListTmp                    
+
             volList = numpy.atleast_1d(volList).astype('int')
             ind = []
             for iVol in volList:
@@ -466,6 +501,103 @@ class DVGeometry(object):
             
         return self.DV_listLocal[dvName].nVal
 
+    def getSymmetricCoefList(self,volList=None, pointSelect=None, tol = 1e-8):
+        """
+        Determine the pairs of coefs that need to be constrained for symmetry.
+
+        Parameters
+        ----------
+        volList : list
+            Use the control points on the volume indicies given in volList
+            
+        pointSelect : pointSelect object. Default is None Use a
+            pointSelect object to select a subset of the total number
+            of control points. See the documentation for the
+            pointSelect class in geo_utils.
+        tol : float
+              Tolerance for ignoring nodes around the symmetry plane. These should be
+              merged by the network/connectivity anyway
+
+        Returns
+        -------
+        indSetA : list of ints
+                  One half of the coefs to be constrained
+
+        indSetB : list of ints
+                  Other half of the coefs to be constrained
+
+        Examples
+        --------
+ 
+        """
+        
+        if self.FFD.symmPlane is None:
+            #nothing to be done
+            indSetA = []
+            indSetB = []
+        else:
+            # get the direction of the symmetry plane
+            if self.FFD.symmPlane.lower() == 'x':
+                index = 0
+            elif self.FFD.symmPlane.lower() == 'y':
+                index = 1
+            elif self.FFD.symmPlane.lower() == 'z':
+                index = 2
+
+            #get the points to be matched up
+            if pointSelect is not None:
+                pts, ind = pointSelect.getPoints(self.FFD.coef)
+            elif volList is not None:
+                volListTmp = []
+                for vol in volList:
+                    volListTmp.append(vol)
+                for vol in volList:
+                    volListTmp.append(vol+self.FFD.nVol/2)
+                volList = volListTmp                    
+
+                volList = numpy.atleast_1d(volList).astype('int')
+                ind = []
+                for iVol in volList:
+                    ind.extend(self.FFD.topo.lIndex[iVol].flatten())
+                ind = geo_utils.unique(ind)
+                pts = self.FFD.coef[ind]
+            else:
+                # Just take'em all
+                ind = numpy.arange(len(self.FFD.coef))
+                pts = self.FFD.coef
+
+            # Create the base points for the KD tree search. We will take the abs
+            # value of the symmetry direction, that way when we search we will get
+            # back index pairs which is what we want.
+            baseCoords = copy.copy(pts)
+            baseCoords[:,index] = abs(baseCoords[:,index])
+            
+            #now use the baseCoords to create a KD tree
+            try:
+                from scipy.spatial import cKDTree
+            except:
+                raise Error("scipy.spatial "
+                            "must be available to use detect symmetry")
+    
+            # Now make a KD-tree so we can use it to find the unique nodes
+            tree = cKDTree(baseCoords)
+                
+            # Now search through the +ve half of the points, ignoring anything within 
+            # tol of the symmetry plane to find pairs
+            indSetA = []
+            indSetB = []
+            for pt in pts:
+                if pt[index]>tol:
+                    # Now find any matching nodes within tol. there should be 2 and
+                    # only 2 if the mesh is symmtric
+                    Ind =tree.query_ball_point(pt, tol)#should this be a separate tol
+                    if not(len(Ind)==2):
+                        raise Error("more than 2 coefs found that match pt")
+                    else:
+                        indSetA.append(Ind[0])
+                        indSetB.append(Ind[1])
+
+        return indSetA,indSetB
 
     def setDesignVars(self, dvDict):
         """
