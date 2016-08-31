@@ -101,6 +101,30 @@ def euclideanNorm(inVec):
         temp += inVec[i]**2
  
     return np.sqrt(temp)
+
+def cross_b(a,b,crossb):
+    """
+    Do the reverse accumulation through a cross product.
+    """
+    ab = numpy.zeros_like(a)
+    bb = numpy.zeros_like(b)
+
+    ab[0] = ab[0] + b[1]*crossb[2]
+    bb[1] = bb[1] + a[0]*crossb[2]
+    ab[1] = ab[1] - b[0]*crossb[2]
+    bb[0] = bb[0] - a[1]*crossb[2]
+    crossb[2] = 0.0
+    ab[2] = ab[2] + b[0]*crossb[1]
+    bb[0] = bb[0] + a[2]*crossb[1]
+    ab[0] = ab[0] - b[2]*crossb[1]
+    bb[2] = bb[2] - a[0]*crossb[1]
+    crossb[1] = 0.0
+    ab[1] = ab[1] + b[2]*crossb[0]
+    bb[2] = bb[2] + a[1]*crossb[0]
+    ab[2] = ab[2] - b[1]*crossb[0]
+    bb[1] = bb[1] - a[2]*crossb[0]
+
+    return ab,bb
     
  # --------------------------------------------------------------
  #                I/O Functions
