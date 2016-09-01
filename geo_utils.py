@@ -106,8 +106,8 @@ def cross_b(a,b,crossb):
     """
     Do the reverse accumulation through a cross product.
     """
-    ab = numpy.zeros_like(a)
-    bb = numpy.zeros_like(b)
+    ab = np.zeros_like(a)
+    bb = np.zeros_like(b)
 
     ab[0] = ab[0] + b[1]*crossb[2]
     bb[1] = bb[1] + a[0]*crossb[2]

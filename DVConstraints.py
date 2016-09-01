@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 from __future__ import print_function
-import numpy
+import numpy,copy
 from pygeo import geo_utils
 from pyspline import pySpline
 try:
@@ -2705,7 +2705,7 @@ class CircularityConstraint(object):
     def __init__(self, name, center, coords, lower, upper, scale, DVGeo,
                  addToPyOpt):
         self.name = name
-        self.center = numpy.array(center).reshape((3,))
+        self.center = numpy.array(center).reshape((1,3))
         self.coords = coords
         self.nCon = self.coords.shape[0]-1
         self.lower = lower
@@ -2733,18 +2733,8 @@ class CircularityConstraint(object):
         self.coords = self.DVGeo.update(self.name+'coords', config=config)
         self.center = self.DVGeo.update(self.name+'center', config=config)
 
-        #length = 0
-#        for j in xrange(3):
-            #length += (self.center[j]-self.coords[0,j])*(self.center[j]-self.coords[0,j])
-        reflength2 = numpy.sum((self.center-self.coords[0,:])**2)
-#        refLength = numpy.sqrt(length2)
-        for i in xrange(self.nCon):
-            # length = 0
-            # for j in xrange(3):
-            #     length += (self.center[j]-self.coords[i+1,j])*(self.center[j]-self.coords[i+1,j])
-            length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
-            self.X[i] = numpy.sqrt(length2/reflength2)
- 
+        self._computeLengths(self.center,self.coords,self.X)
+
         funcs[self.name] = self.X
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -2764,44 +2754,59 @@ class CircularityConstraint(object):
                                  self.coords.shape[0],
                                  self.coords.shape[1]))
             dLndCn = numpy.zeros((self.nCon, 
-                                  1,
-                                  self.center.shape[0]))
+                                  self.center.shape[0],
+                                  self.center.shape[1]))
 
+              xb = numpy.zeros(self.nCon)
             for con in xrange(self.nCon):
-                reflength2 = 0
-                for i in xrange(3):
-                    reflength2 = reflength2 + (center[i]-coords[0,i])**2
-
-                centerb = dLndCn[con,0,:]#0.0
-                coordsb = dLndPt[con,:,:]#0.0
+                centerb = dLndCn[con,0,:]
+                coordsb = dLndPt[con,:,:]
+                xb[:] = 0.
+                xb[con] = 1.
+                # reflength2 = 0
+                # for i in xrange(3):
+                #     reflength2 = reflength2 + (center[i]-coords[0,i])**2
+                reflength2 = numpy.sum((self.center-self.coords[0,:])**2)
                 reflength2b = 0.0
                 for i in xrange(self.nCon):
-                    length2 = 0
-                    for j in xrange(3):
-                        length2 = length2 + (center[j]-coords[i+1, j])**2
+                    # length2 = 0
+                    # for j in xrange(3):
+                    #     length2 = length2 + (center[j]-coords[i+1, j])**2
+                    length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
 
                     if (length2/reflength2 == 0.0):
                         tempb1 = 0.0
                     else:
                         tempb1 = xb[i]/(2.0*numpy.sqrt(length2/reflength2)*reflength2)
-
                     length2b = tempb1
                     reflength2b = reflength2b - length2*tempb1/reflength2
                     xb[i] = 0.0
-                    for j in reversed(xrange(3)):#DO j=3,1,-1
-                        tempb0 = 2*(center[j]-coords[i+1, j])*length2b
+                    for j in reversed(xrange(3)):
+                        tempb0 = 2*(self.center[0,j]-self.coords[i+1, j])*length2b
                         centerb[j] = centerb[j] + tempb0
                         coordsb[i+1, j] = coordsb[i+1, j] - tempb0
-                for i in reversed(xrange(3)):#DO i=3,1,-1
-                    tempb = 2*(center[i]-coords[0, i])*reflength2b
-                    centerb[i] = centerb[i] + tempb
-                    coordsb[0, i] = coordsb[0, i] - tempb
-            
+                for j in reversed(xrange(3)):#DO i=3,1,-1
+                    tempb = 2*(self.center[0,j]-self.coords[0, j])*reflength2b
+                    centerb[j] = centerb[j] + tempb
+                    coordsb[0, j] = coordsb[0, j] - tempb
                 
             tmpPt = self.DVGeo.totalSensitivity(dLndPt, self.name+'coords', config=config)
             tmpCn = self.DVGeo.totalSensitivity(dLndCn, self.name+'center', config=config)
-        
-            funcsSens[self.name] = tmpPt+tmpCn
+            tmpTotal = {}
+            for key in tmpPt:
+                tmpTotal[key] = tmpPt[key]+tmpCn[key]
+
+            funcsSens[self.name] = tmpTotal
+
+    def _computeLengths(self,center,coords,X):
+        '''
+        compute the lengths from the center and coordinates
+        '''
+        reflength2 = numpy.sum((center-coords[0,:])**2)
+        for i in xrange(self.nCon):
+            length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
+            X[i] = numpy.sqrt(length2/reflength2)
+
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -2832,10 +2837,10 @@ class CircularityConstraint(object):
         handle.write('Zone T=%s_center\n'% self.name)
         handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
         handle.write('DATAPACKING=POINT\n')
-        handle.write('%f %f %f\n'% (self.center[0], self.center[1],
-                                    self.center[2]))
-        handle.write('%f %f %f\n'% (self.center[0], self.center[1],
-                                    self.center[2]))
+        handle.write('%f %f %f\n'% (self.center[0,0], self.center[0,1],
+                                    self.center[0,2]))
+        handle.write('%f %f %f\n'% (self.center[0,0], self.center[0,1],
+                                    self.center[0,2]))
 
 class SurfaceAreaConstraint(object):
     """
@@ -2907,42 +2912,46 @@ class SurfaceAreaConstraint(object):
                                  self.p0.shape[0],
                                  self.p0.shape[1]))
             dAdp1 = numpy.zeros((self.nCon, 
-                                 self.p0.shape[0],
-                                 self.p0.shape[1]))
+                                 self.p1.shape[0],
+                                 self.p1.shape[1]))
 
             dAdp2 = numpy.zeros((self.nCon, 
-                                 self.p0.shape[0],
-                                 self.p0.shape[1]))
+                                 self.p2.shape[0],
+                                 self.p2.shape[1]))
 
+            p0 = self.p0
+            p1 = self.p1
+            p2 = self.p2
             for con in xrange(self.nCon):
                 p0b = dAdp0[con,:,:]
                 p1b = dAdp1[con,:,:]
                 p2b = dAdp2[con,:,:]
-
+                areab = 1
                 areasb = numpy.empty(self.n)
+                crossesb = numpy.empty((self.n,3))
+                v1b = numpy.empty((self.n,3))
+                v2b = numpy.empty((self.n,3))
                 if self.scaled:
                     areab = areab/self.X0
                 areasb[:] = areab/2.
-                for i in xrange(n):#DO i=1,n
-                    # for j in xrange(3):#DO j=1,3
-                    #     v1(i,j) = p1(i, j) - p0(i, j)
-                    #     v2(i, j) = p2(i, j) - p0(i, j)
-                    v1[i,:] = p1[i,:] - p0[i, :]
-                    v2[i,:] = p2[i,:] - p0[i, :]
 
-                    crosses[i, :] = numpy.cross(v1[i, :], v2[i, :])
+                v1 = p1 - p0
+                v2 = p2 - p0
+
+                crosses = numpy.cross(v1, v2)
                     # for j in xrange(3):
                     #     areas(i) = areas(i) + crosses(i, j)**2
-                    areas[i] = numpy.sum(crosses[i, :]**2)
+                    #areas[i] = numpy.sum(crosses[i, :]**2)
+                areas = numpy.sum(crosses**2,axis=1)
+                for i in xrange(self.n):#DO i=1,n
                     if (areas[i] == 0.0):
                         areasb[i] = 0.0
                     else:
-                        areasb[i] = areasb[i]/(2.0*SQRT(areas[i]))
-
+                        areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
+                
                     # for j in reversed(xrange(3)):#DO j=3,1,-1
                     #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
-
-                    crossesb[i, :] = numpy.sum(2*crosses[i, :]*areasb[i])
+                    crossesb[i, :] = 2*crosses[i, :]*areasb[i]
 
                     v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
 
@@ -2956,13 +2965,20 @@ class SurfaceAreaConstraint(object):
                     p0b[i, :] = - v1b[i, :] - v2b[i, :]
                     p1b[i, :] = p1b[i, :] + v1b[i, :]
             
-                
-            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', config=config)
-            tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1', config=config)
-            tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2', config=config)
+
+
+            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
+                                                config=config)
+            tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
+                                                config=config)
+            tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
+                                                config=config)
+            tmpTotal = {}
+            for key in tmpp0:
+                tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
 
         
-            funcsSens[self.name] = tmpp0 + tmpp1 + tmpp2
+            funcsSens[self.name] = tmpTotal
 
     def _computeArea(self, p0, p1, p2):
         """
@@ -2975,9 +2991,13 @@ class SurfaceAreaConstraint(object):
         #compute the areas
         areaVec = numpy.cross(v1, v2)
 
-        area = numpy.linalg.norm(areaVec,axis=1)
+        #area = numpy.linalg.norm(areaVec,axis=1)
+        area = 0
+        for i in xrange(len(areaVec)):
+            area += geo_utils.euclideanNorm(areaVec[i,:])
         
-        return numpy.sum(area)/2.0
+        #return numpy.sum(area)/2.0
+        return area/2.0
 
     def addConstraintsPyOpt(self, optProb):
         """
