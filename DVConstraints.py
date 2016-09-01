@@ -2757,7 +2757,7 @@ class CircularityConstraint(object):
                                   self.center.shape[0],
                                   self.center.shape[1]))
 
-              xb = numpy.zeros(self.nCon)
+            xb = numpy.zeros(self.nCon)
             for con in xrange(self.nCon):
                 centerb = dLndCn[con,0,:]
                 coordsb = dLndPt[con,:,:]
@@ -2832,7 +2832,7 @@ class CircularityConstraint(object):
                                         self.coords[i, 2]))
 
         for i in range(len(self.coords)-1):
-            handle.write('%d %d\n'% (i, i+1))
+            handle.write('%d %d\n'% (i+1, i+2))
 
         handle.write('Zone T=%s_center\n'% self.name)
         handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
@@ -2841,7 +2841,7 @@ class CircularityConstraint(object):
                                     self.center[0,2]))
         handle.write('%f %f %f\n'% (self.center[0,0], self.center[0,1],
                                     self.center[0,2]))
-
+        handle.write('%d %d\n'% (1, 2))
 class SurfaceAreaConstraint(object):
     """
     DVConstraints representation of a surface area
