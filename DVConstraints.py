@@ -49,28 +49,28 @@ class DVConstraints(object):
 
     2. Volume constraint: This computes and enforces a volume constraint
        over the specified domain. The input is identical to the '2d'
-       thickness constraints. See :func:`addVolumeConstraint`.  
-    
+       thickness constraints. See :func:`addVolumeConstraint`.
+
     3. LE/TE Constraints: These geometric constraints are required when
        using FFD volumes with shape variables. The leading and trailing
        edges must be fixed wrt the shape variables so these enforce that the
        coefficients on the leading edge can only move in equal and opposite
        directions
 
-    4. Fixed Location Constraints: These constraints allow you to specify 
+    4. Fixed Location Constraints: These constraints allow you to specify
        certain location in the FFD that can not move.
-       
+
     5. Gear Post Constraint: This is a very highly specialized
        constraint used to ensure there is sufficient vertical space to
        install wing-mounted landing gear and that it is correctly positioned
-       relative to the wing. See the class definition for more information. 
+       relative to the wing. See the class definition for more information.
 
     Analytic sensitivity information is computed for all functions and a
     facility for adding the constraints automatically to a pyOptSparse
     optimization problem is also provided.
 
     """
-  
+
     def __init__(self):
         """
         Create a (empty) DVconstrains object. Specific types of
@@ -85,6 +85,7 @@ class DVConstraints(object):
         self.gearCon = OrderedDict()
         self.circCon = OrderedDict()
         self.surfAreaCon = OrderedDict()
+        self.projAreaCon = OrderedDict()
 
         self.DVGeo = None
         # Data for the discrete surface
@@ -116,7 +117,7 @@ class DVConstraints(object):
         >>> DVCon.setSurface(surf)
 
         """
-        
+
         if type(surf) == list:
             self.p0 = numpy.array(surf[0])
             self.v1 = numpy.array(surf[1])
@@ -151,15 +152,15 @@ class DVConstraints(object):
         two-dimensional region. A little ASCII art can help here::
 
           Planform view of the wing: The '+' are the (three dimensional)
-          points that are supplied in leList and teList. 
+          points that are supplied in leList and teList.
 
-          Physical extent of wing            
-                                   \         
+          Physical extent of wing
+                                   \
           __________________________\_________
-          |                                  |   
+          |                                  |
           +-----------+--o-----------+       |
           |   /                       \      |
-          | leList      teList         \     | 
+          | leList      teList         \     |
           |                   \         \    |
           +------------------------------+   |
                                              |
@@ -182,7 +183,7 @@ class DVConstraints(object):
           above, with leList=3 and nSpan=3, the three thickness
           constraints on the leading edge of the 2D domain would be at
           the left and right boundaries, and at the point denoted by
-          'o' which is equidistance between the root and tip. 
+          'o' which is equidistance between the root and tip.
 
         * If a curved leading or trailing edge domain is desired,
           simply pass in lists for leList and teList with a sufficient
@@ -199,8 +200,8 @@ class DVConstraints(object):
         * If the surface formed by leList and teList is NOT precisely
           normal, issues can arise near the end of a opensurface (ie
           root of a single wing) which can result in failing
-          intersections. 
-        
+          intersections.
+
         Parameters
         ----------
         leList : list or array
@@ -209,7 +210,7 @@ class DVConstraints(object):
             domain
 
         teList : list or array
-           Same as leList but for the trailing edge. 
+           Same as leList but for the trailing edge.
 
         nSpan : int
             The number of thickness constraints to be (linear)
@@ -222,16 +223,16 @@ class DVConstraints(object):
         lower : float or array of size (nSpan x nChord)
             The lower bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. 
+            option will use different bounds for each constraint.
 
         upper : float or array of size (nSpan x nChord)
             The upper bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. 
+            option will use different bounds for each constraint.
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial length of each thickness
               constraint is defined to be 1.0. In this case, the lower
@@ -239,10 +240,10 @@ class DVConstraints(object):
               length. lower=0.85, upper=1.15, would allow for 15%
               change in each direction from the original length. For
               aerodynamic shape optimizations, this option is used
-              most often. 
+              most often.
 
             * scaled=False: No scaling is applied and the phyical lengths
-              must be specified for the lower and upper bounds. 
+              must be specified for the lower and upper bounds.
 
         scale : float or array of size (nSpan x nChord)
 
@@ -252,7 +253,7 @@ class DVConstraints(object):
             already results in well-scaled constraint values, and
             scale can be left at 1.0. If scaled=False, it may changed
             to a more suitable value of the resulting physical
-            thickness have magnitudes vastly different than O(1). 
+            thickness have magnitudes vastly different than O(1).
 
         name : str
             Normally this does not need to be set. Only use this if
@@ -271,7 +272,7 @@ class DVConstraints(object):
         >>> # and the along x-direction (chordWise)
         >>> leList = [[0, 0, 0], [0, 0, 1]]
         >>> teList = [[1, 0, 0], [0, 0, 1]]
-        >>> DVCon.addThicknessConstraints2D(leList, teList, 10, 3, 
+        >>> DVCon.addThicknessConstraints2D(leList, teList, 10, 3,
                                 lower=1.0, scaled=True)
         """
 
@@ -285,7 +286,7 @@ class DVConstraints(object):
         # Create the thickness constraint object:
         coords = coords.reshape((nSpan*nChord*2, 3))
 
-        # Create a name 
+        # Create a name
         if name is None:
             conName = 'thickness_constraints_%d'% len(self.thickCon)
         else:
@@ -293,9 +294,9 @@ class DVConstraints(object):
         self.thickCon[conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
-        
 
-    def addThicknessConstraints1D(self, ptList, nCon, axis, 
+
+    def addThicknessConstraints1D(self, ptList, nCon, axis,
                                   lower=1.0, upper=3.0, scaled=True,
                                   scale=1.0, name=None,
                                   addToPyOpt=True):
@@ -307,13 +308,13 @@ class DVConstraints(object):
           Planform view of the wing: The '+' are the (three dimensional)
           points that are supplied in ptList:
 
-          Physical extent of wing            
-                                   \         
+          Physical extent of wing
+                                   \
           __________________________\_________
-          |                  +               |   
+          |                  +               |
           |                -/                |
           |                /                 |
-          | +-------+-----+                  | 
+          | +-------+-----+                  |
           |              4-points defining   |
           |              poly-line           |
           |                                  |
@@ -324,7 +325,7 @@ class DVConstraints(object):
         ----------
         ptList : list or array of size (N x 3) where N >=2
             The list of points forming a poly-line along which the
-            thickness constraints will be added. 
+            thickness constraints will be added.
 
         nCon : int
             The number of thickness constraints to add
@@ -336,16 +337,16 @@ class DVConstraints(object):
         lower : float or array of size nCon
             The lower bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. 
+            option will use different bounds for each constraint.
 
         upper : float or array of size nCon
             The upper bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. 
+            option will use different bounds for each constraint.
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial length of each thickness
               constraint is defined to be 1.0. In this case, the lower
@@ -353,10 +354,10 @@ class DVConstraints(object):
               length. lower=0.85, upper=1.15, would allow for 15%
               change in each direction from the original length. For
               aerodynamic shape optimizations, this option is used
-              most often. 
+              most often.
 
             * scaled=False: No scaling is applied and the phyical lengths
-              must be specified for the lower and upper bounds. 
+              must be specified for the lower and upper bounds.
 
         scale : float or array of size nCon
             This is the optimization scaling of the
@@ -373,7 +374,7 @@ class DVConstraints(object):
             need to be distinguished **or** you are using this set of
             thickness constraints for something other than a direct
             constraint in pyOptSparse.
-            
+
         addToPyOpt : bool
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
@@ -392,7 +393,7 @@ class DVConstraints(object):
                 X[i], axis, self.p0, self.v1, self.v2)
             if fail:
                 raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                                 X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
             coords[i, 0] = up
             coords[i, 1] = down
@@ -417,7 +418,7 @@ class DVConstraints(object):
         ----------
         ptList : list or array of size (N x 3) where N >=2
             The list of points forming a poly-line along which the
-            points will be fixed. 
+            points will be fixed.
 
         nCon : int
             The number of points constraints to add
@@ -438,7 +439,7 @@ class DVConstraints(object):
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial location of each location
               constraint is defined to be 1.0. In this case, the lower
@@ -446,10 +447,10 @@ class DVConstraints(object):
               location. lower=0.85, upper=1.15, would allow for 15%
               change in each direction from the original location. However,
               for initial points close to zero this blows up, so this should
-              be used with caution, therefore unscaled is the default. 
+              be used with caution, therefore unscaled is the default.
 
             * scaled=False: No scaling is applied and the phyical locations
-              must be specified for the lower and upper bounds. 
+              must be specified for the lower and upper bounds.
 
         scale : float or array of size nCon
             This is the optimization scaling of the
@@ -466,7 +467,7 @@ class DVConstraints(object):
             need to be distinguished **or** you are using this set of
             location constraints for something other than a direct
             constraint in pyOptSparse.
-            
+
         addToPyOpt : bool
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
@@ -494,7 +495,7 @@ class DVConstraints(object):
             addToPyOpt)
 
 
-    def addProjectedLocationConstraints1D(self, ptList, nCon, axis, bias=0.5, 
+    def addProjectedLocationConstraints1D(self, ptList, nCon, axis, bias=0.5,
                                           lower=None, upper=None,
                                           scaled=False, scale=1.0, name=None,
                                           addToPyOpt=True):
@@ -502,7 +503,7 @@ class DVConstraints(object):
         poly line is determined by first projecting points on to the
         surface in a similar manner as addConstraints1D, and then
         taking the mid-point (or user specificed fraction) blend of
-        the upper and lower surface locations. 
+        the upper and lower surface locations.
 
         Parameters
         ----------
@@ -518,8 +519,8 @@ class DVConstraints(object):
 
         bias : float
             The blending of the upper/lower surface points to use. Default
-            is 0.5 which is the average. 0.0 cooresponds to taking the 
-            lower point, 1.0 the upper point. 
+            is 0.5 which is the average. 0.0 cooresponds to taking the
+            lower point, 1.0 the upper point.
 
         lower : float or array of size nCon
             The lower bound for the constraint. A single float will
@@ -537,7 +538,7 @@ class DVConstraints(object):
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial location of each location
               constraint is defined to be 1.0. In this case, the lower
@@ -545,10 +546,10 @@ class DVConstraints(object):
               location. lower=0.85, upper=1.15, would allow for 15%
               change in each direction from the original location. However,
               for initial points close to zero this blows up, so this should
-              be used with caution, therefore unscaled is the default. 
+              be used with caution, therefore unscaled is the default.
 
             * scaled=False: No scaling is applied and the phyical locations
-              must be specified for the lower and upper bounds. 
+              must be specified for the lower and upper bounds.
 
         scale : float or array of size nCon
             This is the optimization scaling of the
@@ -565,7 +566,7 @@ class DVConstraints(object):
             need to be distinguished **or** you are using this set of
             location constraints for something other than a direct
             constraint in pyOptSparse.
-            
+
         addToPyOpt : bool
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
@@ -586,11 +587,11 @@ class DVConstraints(object):
                 X[i], axis, self.p0, self.v1, self.v2)
             if fail:
                 raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                         X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
             coords[i, 0] = up
             coords[i, 1] = down
-        
+
         X = (1-bias)*coords[:, 1] + bias*coords[:, 0]
 
         # X is now what we want to constrain
@@ -608,8 +609,8 @@ class DVConstraints(object):
             conName, X, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
-    def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir, 
-                                         lower=1.0, upper=3.0, scale=1.0, 
+    def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir,
+                                         lower=1.0, upper=3.0, scale=1.0,
                                          name=None, addToPyOpt=True):
         """
         Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
@@ -619,13 +620,13 @@ class DVConstraints(object):
           Planform view of the wing: The '+' are the (three dimensional)
           points that are supplied in ptList:
 
-          Physical extent of wing            
-                                   \         
+          Physical extent of wing
+                                   \
           __________________________\_________
-          |                  +               |   
+          |                  +               |
           |                -/                |
           |                /                 |
-          | +-------+-----+                  | 
+          | +-------+-----+                  |
           |              4-points defining   |
           |              poly-line           |
           |                                  |
@@ -636,7 +637,7 @@ class DVConstraints(object):
         ----------
         ptList : list or array of size (N x 3) where N >=2
             The list of points forming a poly-line along which the
-            thickness constraints will be added. 
+            thickness constraints will be added.
 
         nCon : int
             The number of thickness to chord ratio constraints to add
@@ -659,12 +660,12 @@ class DVConstraints(object):
             the *actual* t/c is *NEVER* computed. This constraint can
             only be used to constrain the relative change in t/c. A
             lower bound of 1.0, therefore mean the t/c cannot
-            decrease. This is the typical use of this constraint. 
+            decrease. This is the typical use of this constraint.
 
         upper : float or array of size nCon
             The upper bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. 
+            option will use different bounds for each constraint.
 
         scale : float or array of size nCon
             This is the optimization scaling of the
@@ -681,7 +682,7 @@ class DVConstraints(object):
             need to be distinguished **or** you are using this set of
             thickness constraints for something other than a direct
             constraint in pyOptSparse.
-            
+
         addToPyOpt : bool
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
@@ -701,7 +702,7 @@ class DVConstraints(object):
                 X[i], axis, self.p0, self.v1, self.v2)
             if fail:
                 raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)." % ( 
+                            "at (%f, %f, %f) with normal (%f, %f, %f)." % (
                         X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
 
             coords[i, 0] = up
@@ -709,7 +710,7 @@ class DVConstraints(object):
             height = numpy.linalg.norm(coords[i, 0] - coords[i, 1])
             # Third point is the mid-point of thsoe
             coords[i, 2] = 0.5*(up + down)
-            
+
             # Fourth point is along the chordDir
             coords[i, 3] = coords[i, 2] + 0.1*height*chordDir
 
@@ -731,15 +732,15 @@ class DVConstraints(object):
         as shown below::
 
           Planform view of the wing: The '+' are the (three dimensional)
-          points that are supplied in leList and teList. 
+          points that are supplied in leList and teList.
 
-          Physical extent of wing            
-                                   \         
+          Physical extent of wing
+                                   \
           __________________________\_________
-          |                                  |   
+          |                                  |
           +--------------------------+       |
           |   /      (Volume in here) \      |
-          | leList      teList         \     | 
+          | leList      teList         \     |
           |                   \         \    |
           +------------------------------+   |
                                              |
@@ -750,9 +751,9 @@ class DVConstraints(object):
         and then projected up and down onto the surface to form 3D
         hexahedreal volumes. The accuracy of the volume computation
         depends on how well these linear hexahedral volumes
-        approximate the (assumed) continuous underlying surface. 
-        
-        See `addThicknessConstraints2D` for additional information. 
+        approximate the (assumed) continuous underlying surface.
+
+        See `addThicknessConstraints2D` for additional information.
 
         Parameters
         ----------
@@ -762,7 +763,7 @@ class DVConstraints(object):
            domain
 
         teList : list or array
-           Same as leList but for the trailing edge. 
+           Same as leList but for the trailing edge.
 
         nSpan : int
             The number of thickness constraints to be (linear)
@@ -772,15 +773,15 @@ class DVConstraints(object):
             The number of thickness constraints to be (linearly)
             interpolated between the leading and trailing edges
 
-        lower : float 
-            The lower bound for the volume constraint. 
+        lower : float
+            The lower bound for the volume constraint.
 
         upper : float
-            The upper bound for the volume constraint. 
+            The upper bound for the volume constraint.
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial volume is defined to be 1.0.
               In this case, the lower and upper bounds are given in
@@ -790,9 +791,9 @@ class DVConstraints(object):
               widely used option .
 
             * scaled=False: No scaling is applied and the physical
-              volume. lower and upper refer to the physical volumes. 
+              volume. lower and upper refer to the physical volumes.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -842,29 +843,29 @@ class DVConstraints(object):
         constraints and combines them to form a single volume constraint.
 
         The general ussage is as follows::
-        
+
           DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
                                     name='part1', addToPyOpt=False)
           DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
                                     name='part2', addToPyOpt=False)
           DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
-                                        
-        
+
+
         Parameters
         ----------
         vols : list of strings
            A list containing the names of the previously added
-           volumes to be used. 
+           volumes to be used.
 
-        lower : float 
-            The lower bound for the volume constraint. 
+        lower : float
+            The lower bound for the volume constraint.
 
         upper : float
-            The upper bound for the volume constraint. 
+            The upper bound for the volume constraint.
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial volume is defined to be 1.0.
               In this case, the lower and upper bounds are given in
@@ -874,9 +875,9 @@ class DVConstraints(object):
               widely used option .
 
             * scaled=False: No scaling is applied and the physical
-              volume. lower and upper refer to the physical volumes. 
+              volume. lower and upper refer to the physical volumes.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -923,7 +924,7 @@ class DVConstraints(object):
             addToPyOpt)
 
     def addLeTeConstraints(self, volID=None, faceID=None,
-                           indSetA=None, indSetB=None, name=None, 
+                           indSetA=None, indSetB=None, name=None,
                            config=None):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
@@ -948,10 +949,10 @@ class DVConstraints(object):
         can be determined by examining the FFD file in TecPlot or ICEM.
         Use 'prob data' tool in TecPlot to click on the surface of which
         you want to put constraints on (e.g. the front or LE of FFD and
-        the back surface or TE of the FFD). You will see which plane 
+        the back surface or TE of the FFD). You will see which plane
         it coresponding to. For example, 'I-Plane' with I-index = 1 is
         'iLow'.
-        
+
         Alternatively, two sets of indices can be provided, 'indSetA'
         and 'indSetB'. Both must be the same length. These indices may
         be obtained from the 'lindex' array of the FFD object.
@@ -984,7 +985,7 @@ class DVConstraints(object):
              The DVGeo configuration to apply this LETE con to. Must be either None
              which will allpy to *ALL* the local DV groups or a single string specifying
              a particular configuration.
-             
+
         Examples
         --------
         >>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
@@ -1072,8 +1073,8 @@ class DVConstraints(object):
         control points that are to be linked with linear variables. If
         more than one pair is specified (ie len(indSetA)=len(indSetB)
         > 1) then factorA, factorB, lower and upper may all be arrays
-        of the same length or a constant which will applied to all. 
-        
+        of the same length or a constant which will applied to all.
+
         Two sets of indices can be provided, 'indSetA'
         and 'indSetB'. Both must be the same length. These indices may
         be obtained from the 'lindex' array of the FFD object.
@@ -1106,7 +1107,7 @@ class DVConstraints(object):
              be generated automatically. Only use this if you have
              multiple DVCon objects and the constriant names need to
              be distinguished
-             
+
         Examples
         --------
         >>> # Make two sets of controls points move the same amount:
@@ -1160,31 +1161,31 @@ class DVConstraints(object):
             upper = upper[0]*numpy.ones(n)
         elif len(upper) != n:
             raise Error('Length of upper invalid!')
-        
+
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
             self.DVGeo,config=config)
 
-    def addGearPostConstraint(self, wimpressCalc, position, axis, 
-                              thickLower=1.0, thickUpper=3.0, 
-                              thickScaled=True, 
-                              MACFracLower=0.50, MACFracUpper=0.60,  
+    def addGearPostConstraint(self, wimpressCalc, position, axis,
+                              thickLower=1.0, thickUpper=3.0,
+                              thickScaled=True,
+                              MACFracLower=0.50, MACFracUpper=0.60,
                               name=None, addToPyOpt=True):
-        
+
         """Code for doing landing gear post constraints on the fly in an
         optimization. As it turns out, this is a critical constraint
         for wing-mounted landing gear and high-aspect ratio swept
         wings. This constraint actually encompasses *two*
-        optimization constraints: 
-    
+        optimization constraints:
+
         1. The first is a physical depth constraint that uses DVCon's
-        built in thickness constraint class. 
+        built in thickness constraint class.
 
         2. The second constraint is that the x-position of the the
         gear post as a fraction of the wing MAC must be greater than
-        MACFracLower which will typically be 50%. 
-        
+        MACFracLower which will typically be 50%.
+
         The calculation uses a wimpressCalc object to determine the
         nominal trapezodial planform to determine the MAC and the
         LE-MAC.
@@ -1192,29 +1193,29 @@ class DVConstraints(object):
         Parameters
         ----------
         wimpressCalc : wimpressCalc class
-            An instance of the wimpress calc class. This is required for 
+            An instance of the wimpress calc class. This is required for
             computing the MAC and the xLEMac
 
         position : array of size 3
-            Three dimensional position of the gear post constraint. 
+            Three dimensional position of the gear post constraint.
 
         axis : array of size 3
-            Direction to perofrm projection. Same as 'axis' 
+            Direction to perofrm projection. Same as 'axis'
             in addThicknessConstraints1D
-        
+
         thickLower : float
-            Lower bound for thickness constraint. If thickScaled=True, 
-            this is the pysical distance scaled by the initial length. 
+            Lower bound for thickness constraint. If thickScaled=True,
+            this is the pysical distance scaled by the initial length.
             This value is used as the optimization constraint lower bound.
- 
+
         thickUpper : float
             Upper bound for optimization constraint. See thickLower.
 
         thickScaled : bool
-            Flag specifiying if the constraint should be scaled. 
+            Flag specifiying if the constraint should be scaled.
             It is true by default. The defalut values of thickScaled=True,
-            thickLower=1.0, ensures that the initial thickness does not 
-            decrease. 
+            thickLower=1.0, ensures that the initial thickness does not
+            decrease.
 
         MACFracLower : float
             The desired lower bound for the gear post location as a
@@ -1248,12 +1249,12 @@ class DVConstraints(object):
             position, axis, self.p0, self.v1, self.v2)
         if fail:
             raise Error("There was an error projecting a node "
-                        "at (%f, %f, %f) with normal (%f, %f, %f)."% ( 
+                        "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                             position))
-        
+
         self.gearCon[conName] = GearPostConstraint(
             conName, wimpressCalc, up, down, thickLower, thickUpper,
-            thickScaled, MACFracLower, MACFracUpper, self.DVGeo, 
+            thickScaled, MACFracLower, MACFracUpper, self.DVGeo,
             addToPyOpt)
 
 
@@ -1264,12 +1265,12 @@ class DVConstraints(object):
                                  name=None, addToPyOpt=True):
         """
         Add a contraint to keep a certain portion of your geometry circular.
-        Define the origin, central axis and radius to define the circle. 
+        Define the origin, central axis and radius to define the circle.
         Define the zero axis, and two angles to define the portion of the circle to
         use for the constraint
         The constraint will enforce that the radial lengths from the origin to the
         nPts around the circle stay equal.
-     
+
         Parameters
         ----------
         origin: vector
@@ -1277,20 +1278,20 @@ class DVConstraints(object):
 
         rotation: vector
               The central axis of the circle
-        
+
         radius: float
               The radius of the circle
 
         zeroAxis: vector
               The axis defining the zero rotation angle around the circle
-        
+
         angleCW : float
               Angle in the clockwise direction to extend the circularity constraint.
               Angle should be positive. Angles are specified in degrees.
 
         angleCCW : float
               Angle in the counter-clockwise direction to extend the
-              circularity constraint. Angle should be positive. 
+              circularity constraint. Angle should be positive.
               Angles are specified in degrees.
 
         nPts : int
@@ -1299,11 +1300,11 @@ class DVConstraints(object):
         lower : float
             Lower bound for circularity. This is the ratio of the target length
             relative to the first length calculated
- 
+
         upper : float
             Upper bound for optimization constraint. See lower.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -1340,7 +1341,7 @@ class DVConstraints(object):
         coords = coords.reshape((nPts, 3))
         origin = numpy.array(origin).reshape((1, 3))
 
-        # Create a name 
+        # Create a name
         if name is None:
             conName = 'circularity_constraints_%d'% len(self.circCon)
         else:
@@ -1355,16 +1356,16 @@ class DVConstraints(object):
         Sum up the total surface area of the triangles included in the DVCon surface
 
         Parameters
-        ---------- 
-        lower : float 
-            The lower bound for the area constraint. 
+        ----------
+        lower : float
+            The lower bound for the area constraint.
 
         upper : float
-            The upper bound for the area constraint. 
+            The upper bound for the area constraint.
 
         scaled : bool
             Flag specifying whether or not the constraint is to be
-            implemented in a scaled fashion or not. 
+            implemented in a scaled fashion or not.
 
             * scaled=True: The initial area is defined to be 1.0.
               In this case, the lower and upper bounds are given in
@@ -1374,9 +1375,9 @@ class DVConstraints(object):
               widely used option .
 
             * scaled=False: No scaling is applied and the physical
-              area. lower and upper refer to the physical areas. 
+              area. lower and upper refer to the physical areas.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -1403,14 +1404,14 @@ class DVConstraints(object):
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
         """
-        
+
         if self.p0==None or self.v1 == None or self.v2 == None:
             raise Error("DVCon surface is not properly defined. Check that setSurface"
                         "is called.")
-        
+
         self._checkDVGeo()
 
-        # Create a name 
+        # Create a name
         if name is None:
             conName = 'surfaceArea_constraints_%d'% len(self.surfAreaCon)
         else:
@@ -1418,6 +1419,86 @@ class DVConstraints(object):
         self.surfAreaCon[conName] = SurfaceAreaConstraint(
             conName, self.p0, self.v1, self.v2, lower, upper, scale, scaled, self.DVGeo,
             addToPyOpt)
+
+    def addProjectedAreaConstraint(self, axis='y', lower=1.0, upper=3.0, scaled=True,
+                                 scale=1.0, name=None, addToPyOpt=True):
+        """
+        Sum up the total surface area of the triangles included in the
+        DVCon surface projected to a plane defined by "axis".
+
+        Parameters
+        ----------
+        axis : str
+            The axis normal to the projection plane. ('x', 'y', or 'z')
+        lower : float
+            The lower bound for the area constraint.
+
+        upper : float
+            The upper bound for the area constraint.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial area is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial area. lower=0.85, upper=1.15,
+              would allow for 15% change in area both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              area. lower and upper refer to the physical areas.
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if the
+            volume is to be used as a constraint. If the volume is to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+        """
+
+        if self.p0==None or self.v1 == None or self.v2 == None:
+            raise Error("DVCon surface is not properly defined. Check that setSurface"
+                        "is called.")
+
+        self._checkDVGeo()
+
+        if axis=='x':
+            axis = numpy.array([1,0,0])
+        elif axis=='y':
+            axis = numpy.array([0,1,0])
+        elif axis=='z':
+            axis = numpy.array([0,0,1])
+
+        # Create a name
+        if name is None:
+            conName = 'projectedArea_constraints_%d'% len(self.projAreaCon)
+        else:
+            conName = name
+        self.projAreaCon[conName] = ProjectedAreaConstraint(
+            conName, self.p0, self.v1, self.v2, axis, lower, upper, scale, scaled,
+            self.DVGeo, addToPyOpt)
 
 
     def _checkDVGeo(self):
@@ -1431,7 +1512,7 @@ class DVConstraints(object):
     def addConstraintsPyOpt(self, optProb):
         """
         Add all constraints to the optProb object. Only constraints
-        the that have the addToPyOpt flags are actually added. 
+        the that have the addToPyOpt flags are actually added.
 
         Parameters
         ----------
@@ -1457,6 +1538,8 @@ class DVConstraints(object):
             self.circCon[key].addConstraintsPyOpt(optProb)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].addConstraintsPyOpt(optProb)
+        for key in self.projAreaCon:
+            self.projAreaCon[key].addConstraintsPyOpt(optProb)
 
     def evalFunctions(self, funcs, includeLinear=False, config=None):
         """
@@ -1472,7 +1555,7 @@ class DVConstraints(object):
         includeLeTe : bool
             Flag to include Leading/Trailing edge
             constraints. Normally this can be false since pyOptSparse
-            does not need linear constraints to be returned. 
+            does not need linear constraints to be returned.
         """
 
         for key in self.thickCon:
@@ -1487,10 +1570,12 @@ class DVConstraints(object):
             self.circCon[key].evalFunctions(funcs, config)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].evalFunctions(funcs, config)
+        for key in self.projAreaCon:
+            self.projAreaCon[key].evalFunctions(funcs, config)
         if includeLinear:
             for key in self.linearCon:
                 self.linearCon[key].evalFunctions(funcs)
-                    
+
     def evalFunctionsSens(self, funcsSens, includeLinear=False, config=None):
         """
         Evaluate the derivative of all the 'funcitons' that this
@@ -1500,11 +1585,11 @@ class DVConstraints(object):
         Parameters
         ----------
         funcSens : dict
-            Dictionary into which the sensitivities are added. 
+            Dictionary into which the sensitivities are added.
         includeLeTe : bool
             Flag to include Leading/Trailing edge
             constraints. Normally this can be false since pyOptSparse
-            does not need linear constraints to be returned. 
+            does not need linear constraints to be returned.
         """
         for key in self.thickCon:
             self.thickCon[key].evalFunctionsSens(funcsSens, config)
@@ -1518,12 +1603,13 @@ class DVConstraints(object):
             self.circCon[key].evalFunctionsSens(funcsSens, config)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].evalFunctionsSens(funcsSens, config)
-
+        for key in self.projAreaCon:
+            self.projAreaCon[key].evalFunctionsSens(funcsSens, config)
         if includeLinear:
             for key in self.linearCon:
                 self.linearCon[key].evalFunctionsSens(funcsSens)
-            
-    def writeTecplot(self, fileName): 
+
+    def writeTecplot(self, fileName):
         """
         This function writes a visualization file for constraints. All
         currently added constraints are written to a tecplot. This is
@@ -1534,9 +1620,9 @@ class DVConstraints(object):
         ----------
         fileName : str
             File name for tecplot file. Should have a .dat extension or a
-            .dat extension will be added automatically. 
+            .dat extension will be added automatically.
         """
-        
+
         f = open(fileName, 'w')
         f.write("TITLE = \"DVConstraints Data\"\n")
         f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
@@ -1555,6 +1641,8 @@ class DVConstraints(object):
             self.surfAreaCon[key].writeTecplot(f)
         for key in self.linearCon:
             self.linearCon[key].writeTecplot(f)
+        for key in self.projAreaCon:
+            self.projAreaCon[key].writeTecplot(f)
         f.close()
 
     def writeSurfaceTecplot(self,fileName):
@@ -1565,7 +1653,7 @@ class DVConstraints(object):
         Parameters
         ----------
         fileName : str
-            File name for tecplot file. Should have a .dat extension. 
+            File name for tecplot file. Should have a .dat extension.
 
         """
         f = open(fileName, 'w')
@@ -1604,7 +1692,7 @@ class DVConstraints(object):
                 return value
             else:
                 raise Error('The size of the 2D array was the incorret shape')
-                    
+
     def _convertTo1D(self, value, dim1):
         """
         Generic function to process 'value'. In the end, it must be
@@ -1620,7 +1708,7 @@ class DVConstraints(object):
                 return value
             else:
                 raise Error('The size of the 1D array was the incorret shape')
-    
+
     def _generateIntersections(self, leList, teList, nSpan, nChord):
         """
         Internal function to generate the grid points (nSpan x nChord)
@@ -1629,7 +1717,7 @@ class DVConstraints(object):
         constraints use the same conde. The list of projected
         coordinates are returned.
         """
-                
+
         # Create mesh of itersections
         le_s = pySpline.Curve(X=leList, k=2)
         te_s = pySpline.Curve(X=teList, k=2)
@@ -1639,13 +1727,13 @@ class DVConstraints(object):
         # Generate parametric distances
         span_s = numpy.linspace(0.0, 1.0, nSpan)
         chord_s = numpy.linspace(0.0, 1.0, nChord)
-        
+
         # Generate a 2D region of intersections
         X = geo_utils.tfi_2d(le_s(span_s), te_s(span_s),
                              root_s(chord_s), tip_s(chord_s))
         coords = numpy.zeros((nSpan, nChord, 2, 3))
         # Generate all intersections:
-        for i in range(nSpan): 
+        for i in range(nSpan):
             for j in range(nChord):
                 # Generate the 'up_vec' from taking the cross product
                 # across a quad
@@ -1662,9 +1750,9 @@ class DVConstraints(object):
                     vVec = X[i, j] - X[i, j-1]
                 else:
                     vVec = X[i, j+1] - X[i, j-1]
-                    
+
                 upVec = numpy.cross(uVec, vVec)
-                
+
                 # Project actual node:
                 up, down, fail = geo_utils.projectNode(
                     X[i ,j], upVec, self.p0, self.v1, self.v2)
@@ -1686,7 +1774,7 @@ class DVConstraints(object):
         attention to things like how well the triangles approximate
         the surface or the underlying parametrization of the surface
         """
-        
+
         p0 = []
         v1 = []
         v2 = []
@@ -1697,7 +1785,7 @@ class DVConstraints(object):
             kv = surf.kv
             tu = surf.tu
             tv = surf.tv
-            
+
             u = geo_utils.fillKnots(tu, ku, level)
             v = geo_utils.fillKnots(tv, kv, level)
 
@@ -1722,7 +1810,7 @@ class DVConstraints(object):
 
     def _generateCircle(self,origin,rotAxis,radius,zeroAxis,angleCW,angleCCW,nPts):
         """
-        generate the coordinates for a circle. The user should not have to call this 
+        generate the coordinates for a circle. The user should not have to call this
         directly.
 
         Parameters
@@ -1732,13 +1820,13 @@ class DVConstraints(object):
 
         rotation: vector
               The central axis of the circle
-        
+
         radius: float
               The radius of the circle
 
         zeroAxis: vector
               The axis defining the zero rotation angle around the circle
-        
+
         angleCW : float
               Angle in the clockwise direction to extend the circularity constraint.
               Angles are specified in degrees.
@@ -1762,7 +1850,7 @@ class DVConstraints(object):
             raise Error("Negative angle specified. angleCW should be positive.")
         if angleCCW<0:
             raise Error("Negative angle specified. angleCCW should be positive.")
-        
+
         angles = numpy.linspace(numpy.deg2rad(-angleCW),numpy.deg2rad(angleCCW),nPts)
 
         # ---------
@@ -1770,7 +1858,7 @@ class DVConstraints(object):
         # ----
         # get the third axis by taking the cross product of rotAxis and zeroAxis
         axis = numpy.cross(zeroAxis,rotAxis)
-        
+
         #now use these axis to regenerate the orthogonal zero axis
         zeroAxisOrtho = numpy.cross(rotAxis,axis)
 
@@ -1814,17 +1902,17 @@ class ThicknessConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
-        
+
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
-        
+
         # Now get the reference lengths
         self.D0 = numpy.zeros(self.nCon)
         for i in range(self.nCon):
             self.D0[i] = numpy.linalg.norm(
                 self.coords[2*i] - self.coords[2*i+1])
-        
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -1856,7 +1944,7 @@ class ThicknessConstraint(object):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dTdPt = numpy.zeros((self.nCon, 
+            dTdPt = numpy.zeros((self.nCon,
                                  self.coords.shape[0],
                                  self.coords.shape[1]))
 
@@ -1917,17 +2005,17 @@ class LocationConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
-        
+
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
-        
+
         # Now get the reference lengths
         self.X0 = numpy.zeros(self.nCon)
         X = self.coords.flatten()
         for i in range(self.nCon):
             self.X0[i] = X[i]
-        
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -1943,7 +2031,7 @@ class LocationConstraint(object):
         if self.scaled:
             for i in range(self.nCon):
                 X[i] /= self.X0[i]
- 
+
         funcs[self.name] = X
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -1959,7 +2047,7 @@ class LocationConstraint(object):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dTdPt = numpy.zeros((self.nCon, 
+            dTdPt = numpy.zeros((self.nCon,
                                  self.coords.shape[0],
                                  self.coords.shape[1]))
             counter = 0
@@ -2018,18 +2106,18 @@ class ThicknessToChordConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
-        
+
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
-        
+
         # Now get the reference lengths
         self.ToC0 = numpy.zeros(self.nCon)
         for i in range(self.nCon):
             t = numpy.linalg.norm(self.coords[4*i] - self.coords[4*i+1])
             c = numpy.linalg.norm(self.coords[4*i+2] - self.coords[4*i+3])
             self.ToC0[i] = t/c
-        
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -2062,7 +2150,7 @@ class ThicknessToChordConstraint(object):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dToCdPt = numpy.zeros((self.nCon, 
+            dToCdPt = numpy.zeros((self.nCon,
                                    self.coords.shape[0],
                                    self.coords.shape[1]))
 
@@ -2173,7 +2261,7 @@ class VolumeConstraint(object):
             # Now compute the DVGeo total sensitivity:
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dVdPt, self.name, config=config)
-            
+
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
@@ -2210,11 +2298,11 @@ class VolumeConstraint(object):
                 Volume += self.evalVolumeHex(
                     x[i, j, 0], x[i+1, j, 0], x[i, j+1, 0], x[i+1, j+1, 0],
                     x[i, j, 1], x[i+1, j, 1], x[i, j+1, 1], x[i+1, j+1, 1])
-               
+
         if Volume < 0:
             Volume = -Volume
             self.flipVolume = True
-      
+
         return Volume
 
     def evalVolumeSens(self):
@@ -2233,7 +2321,7 @@ class VolumeConstraint(object):
                     xb[i, j, 1], xb[i+1, j, 1], xb[i, j+1, 1], xb[i+1, j+1, 1])
         # We haven't divided by 6.0 yet...lets do it here....
         xb /= 6.0
-        
+
         if self.flipVolume:
             xb = -xb
 
@@ -2241,18 +2329,18 @@ class VolumeConstraint(object):
         xb = xb.reshape((self.nSpan*self.nChord*2, 3))
 
         return xb
-        
+
     def evalVolumeHex(self, x0, x1, x2, x3, x4, x5, x6, x7):
         """
         Evaluate the volume of the hexahedreal volume defined by the
-        the 8 corners. 
+        the 8 corners.
 
         Parameters
         ----------
         x{0:7} : arrays or size (3)
             Array of defining the coordinates of the volume
         """
-        
+
         p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
         V = 0.0
         V += self.volpym(x0, x1, x3, x2, p)
@@ -2277,14 +2365,14 @@ class VolumeConstraint(object):
             * ((a[2] - c[2])*(b[0] - d[0]) - (a[0] - c[0])*(b[2] - d[2]))   + \
             (p[2] - fourth*(a[2] + b[2]  + c[2] + d[2]))                \
             * ((a[0] - c[0])*(b[1] - d[1]) - (a[1] - c[1])*(b[0] - d[0]))
-        
+
         return volpym
 
     def evalVolumeHex_b(self, x0, x1, x2, x3, x4, x5, x6, x7,
                         x0b, x1b, x2b, x3b, x4b, x5b, x6b, x7b):
         """
         Evaluate the derivative of the volume defined by the 8
-        coordinates in the array x. 
+        coordinates in the array x.
 
         Parameters
         ----------
@@ -2294,7 +2382,7 @@ class VolumeConstraint(object):
         Returns
         -------
         xb{0:7} : arrays of len 3
-            Derivatives of the volume wrt the points. 
+            Derivatives of the volume wrt the points.
         """
 
         p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
@@ -2315,7 +2403,7 @@ class VolumeConstraint(object):
         x5b += pb
         x6b += pb
         x7b += pb
-    
+
     def volpym_b(self, a, b, c, d, p, ab, bb, cb, db, pb):
         """
         Compute the reverse-mode derivative of the square-based
@@ -2367,7 +2455,7 @@ class CompositeVolumeConstraint(object):
     """This class is used to represet a single volume constraints that is a
     group of other VolumeConstraints.
     """
-    
+
     def __init__(self, name, vols, lower, upper, scaled, scale,
                  DVGeo, addToPyOpt):
         self.name = name
@@ -2384,7 +2472,7 @@ class CompositeVolumeConstraint(object):
         self.V0 = 0.0
         for vol in self.vols:
             self.V0 += vol.evalVolume()
-            
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the function this object has and place in the funcs dictionary
@@ -2425,7 +2513,7 @@ class CompositeVolumeConstraint(object):
             for i in range(1, len(tmp)):
                 for key in tmp[i]:
                     funcsSens[self.name][key] += tmp[i][key]
-                    
+
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
@@ -2433,7 +2521,7 @@ class CompositeVolumeConstraint(object):
         if self.addToPyOpt:
             optProb.addCon(self.name, lower=self.lower, upper=self.upper,
                            scale=self.scale, wrt=self.DVGeo.getVarNames())
-        
+
     def writeTecplot(self, handle):
         """No need to write the composite volume since each of the
         individual ones are already written"""
@@ -2461,7 +2549,7 @@ class LinearConstraint(object):
         self.jac = {}
         self.config = config
         self._finalize()
-        
+
     def evalFunctions(self, funcs):
         """
         Evaluate the function this object has and place in the funcs
@@ -2478,9 +2566,9 @@ class LinearConstraint(object):
         cons = []
         for key in self.wrt:
             cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
-            
+
         funcs[self.name] = numpy.array(cons).astype('d')
-        
+
     def evalFunctionsSens(self, funcsSens):
         """
         Evaluate the sensitivity of the functions this object has and
@@ -2496,12 +2584,12 @@ class LinearConstraint(object):
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt. These constraints are added as
-        linear constraints. 
+        linear constraints.
         """
         if self.ncon > 0:
             for key in self.jac:
                 optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
-                                    lower=self.lower, upper=self.upper, scale=1.0, 
+                                    lower=self.lower, upper=self.upper, scale=1.0,
                                     linear=True, wrt=key, jac={key:self.jac[key]})
     def _finalize(self):
         """
@@ -2509,10 +2597,10 @@ class LinearConstraint(object):
         until this function is called. Here we determine the actual
         constraint jacobains as they relate to the actual sets of
         local shape variables that may (or may not) be present in the
-        DVGeo object. 
+        DVGeo object.
         """
         self.vizConIndices = {}
-        
+
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
@@ -2560,7 +2648,7 @@ class LinearConstraint(object):
         Write the visualization of this set of lete constraints
         to the open file handle
         """
-        
+
         for key in self.vizConIndices:
             ncon = len(self.vizConIndices[key])
             nodes = numpy.zeros((ncon*2, 3))
@@ -2586,8 +2674,8 @@ class GearPostConstraint(object):
     parameter list is explained in the addVolumeConstaint() of
     the DVConstraints class
     """
-    def __init__(self, name, wimpressCalc, up, down, thickLower, 
-                 thickUpper, thickScaled, MACFracLower, MACFracUpper, 
+    def __init__(self, name, wimpressCalc, up, down, thickLower,
+                 thickUpper, thickScaled, MACFracLower, MACFracUpper,
                  DVGeo, addToPyOpt):
 
         self.name = name
@@ -2600,12 +2688,12 @@ class GearPostConstraint(object):
         self.coords = numpy.array([up, down])
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
-                            
+
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
-  
+
         # Compute the reference length
         self.D0 = numpy.linalg.norm(self.coords[0] - self.coords[1])
 
@@ -2622,9 +2710,9 @@ class GearPostConstraint(object):
         # Compute the values we need from the wimpress calc
         wfuncs = {}
         self.wimpress.evalFunctions(wfuncs)
-        
+
         # Now the constraint value is
-        postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])  
+        postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])
         locCon = (postLoc - wfuncs['xLEMAC'])/wfuncs['MAC']
 
         # Final set of two constrains
@@ -2670,19 +2758,19 @@ class GearPostConstraint(object):
                 numpy.array([[p1b, p2b]]), self.name, config=config)
 
             # And we need the sensitity of conLoc wrt 'xLEMAC' and 'MAC'
-            postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])  
+            postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])
             for key in wSens['xLEMAC']:
                 tmpSens[key] -= wSens['xLEMAC'][key]/wfuncs['MAC']
                 tmpSens[key] += wfuncs['xLEMAC']/wfuncs['MAC']**2 * wSens['MAC'][key]
                 tmpSens[key] -= postLoc/wfuncs['MAC']**2 * wSens['MAC'][key]
             funcsSens[self.name + '_MAC'] = tmpSens
-            
+
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
-            optProb.addCon(self.name + '_thick', lower=self.thickLower, 
+            optProb.addCon(self.name + '_thick', lower=self.thickLower,
                            upper=self.thickUpper, wrt=self.DVGeo.getVarNames())
 
             optProb.addCon(self.name + '_MAC', lower=self.MACFracLower,
@@ -2714,12 +2802,12 @@ class CircularityConstraint(object):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
         self.X = numpy.zeros(self.nCon)
-        
+
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name+'coords')
         self.DVGeo.addPointSet(self.center, self.name+'center')
-                
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -2750,10 +2838,10 @@ class CircularityConstraint(object):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dLndPt = numpy.zeros((self.nCon, 
+            dLndPt = numpy.zeros((self.nCon,
                                  self.coords.shape[0],
                                  self.coords.shape[1]))
-            dLndCn = numpy.zeros((self.nCon, 
+            dLndCn = numpy.zeros((self.nCon,
                                   self.center.shape[0],
                                   self.center.shape[1]))
 
@@ -2789,7 +2877,7 @@ class CircularityConstraint(object):
                     tempb = 2*(self.center[0,j]-self.coords[0, j])*reflength2b
                     centerb[j] = centerb[j] + tempb
                     coordsb[0, j] = coordsb[0, j] - tempb
-                
+
             tmpPt = self.DVGeo.totalSensitivity(dLndPt, self.name+'coords', config=config)
             tmpCn = self.DVGeo.totalSensitivity(dLndCn, self.name+'center', config=config)
             tmpTotal = {}
@@ -2850,7 +2938,7 @@ class SurfaceAreaConstraint(object):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, p0, v1, v2, lower, upper, scale,scaled, DVGeo,
+    def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo,
                  addToPyOpt):
         self.name = name
         self.nCon = 1
@@ -2867,15 +2955,16 @@ class SurfaceAreaConstraint(object):
         self.p0 = p0
         self.p1 = v1+p0
         self.p2 = v2+p0
+
         # Now embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.p0, self.name+'p0')
         self.DVGeo.addPointSet(self.p1, self.name+'p1')
         self.DVGeo.addPointSet(self.p2, self.name+'p2')
 
-        # compute the refernece area
+        # compute the reference area
         self.X0 = self._computeArea(self.p0,self.p1,self.p2)
-                
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -2889,8 +2978,8 @@ class SurfaceAreaConstraint(object):
         self.p0 = self.DVGeo.update(self.name+'p0', config=config)
         self.p1 = self.DVGeo.update(self.name+'p1', config=config)
         self.p2 = self.DVGeo.update(self.name+'p2', config=config)
-      
-        self.X = self._computeArea(self.p0,self.p1,self.p2) 
+
+        self.X = self._computeArea(self.p0,self.p1,self.p2)
         if self.scaled:
             self.X/= self.X0
         funcs[self.name] = self.X
@@ -2908,14 +2997,14 @@ class SurfaceAreaConstraint(object):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dAdp0 = numpy.zeros((self.nCon, 
+            dAdp0 = numpy.zeros((self.nCon,
                                  self.p0.shape[0],
                                  self.p0.shape[1]))
-            dAdp1 = numpy.zeros((self.nCon, 
+            dAdp1 = numpy.zeros((self.nCon,
                                  self.p1.shape[0],
                                  self.p1.shape[1]))
 
-            dAdp2 = numpy.zeros((self.nCon, 
+            dAdp2 = numpy.zeros((self.nCon,
                                  self.p2.shape[0],
                                  self.p2.shape[1]))
 
@@ -2948,7 +3037,7 @@ class SurfaceAreaConstraint(object):
                         areasb[i] = 0.0
                     else:
                         areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
-                
+
                     # for j in reversed(xrange(3)):#DO j=3,1,-1
                     #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
                     crossesb[i, :] = 2*crosses[i, :]*areasb[i]
@@ -2964,10 +3053,10 @@ class SurfaceAreaConstraint(object):
                     p2b[i, :] = v2b[i, :]
                     p0b[i, :] = - v1b[i, :] - v2b[i, :]
                     p1b[i, :] = p1b[i, :] + v1b[i, :]
-            
 
 
-            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
+
+            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0',
                                                 config=config)
             tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
                                                 config=config)
@@ -2977,7 +3066,7 @@ class SurfaceAreaConstraint(object):
             for key in tmpp0:
                 tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
 
-        
+
             funcsSens[self.name] = tmpTotal
 
     def _computeArea(self, p0, p1, p2):
@@ -2995,7 +3084,7 @@ class SurfaceAreaConstraint(object):
         area = 0
         for i in xrange(len(areaVec)):
             area += geo_utils.euclideanNorm(areaVec[i,:])
-        
+
         #return numpy.sum(area)/2.0
         return area/2.0
 
@@ -3033,154 +3122,201 @@ class SurfaceAreaConstraint(object):
             handle.write('%d %d %d\n'% (i+1, i+self.n+1, i+self.n*2+1))
 
 
-# class ProjectedAreaConstraint(object):
-#     """
-#     DVConstraints representation of a surface area
-#     constraint. One of these objects is created each time a
-#     addSurfaceAreaConstraints call is made.
-#     The user should not have to deal with this class directly.
-#     """
+class ProjectedAreaConstraint(object):
+    """
+    DVConstraints representation of a surface area
+    constraint. One of these objects is created each time a
+    addSurfaceAreaConstraints call is made.
+    The user should not have to deal with this class directly.
+    """
 
-#     def __init__(self, name, p0, v1, v2,axis, lower, upper, scale, DVGeo,
-#                  addToPyOpt):
-#         self.name = name
-#         self.center = numpy.array(center).reshape((3,))
-#         self.coords = coords
-#         self.nCon = len(self.coords.shape[0])-1
-#         self.lower = lower
-#         self.upper = upper
-#         self.scale = scale
-#         self.DVGeo = DVGeo
-#         self.addToPyOpt = addToPyOpt
-#         self.X = numpy.zeros(self.nCon)
-#         self.axis = axis
-        
-#         # The first thing we do is convert v1 and v2 to coords
-#         self.p0 = p0
-#         self.p1 = v1+p0
-#         self.p2 = v2+p0
-#         # Now embed the coordinates into DVGeo
-#         # with the name provided:
-#         self.DVGeo.addPointSet(self.coords, self.name+'p0')
-#         self.DVGeo.addPointSet(self.center, self.name+'p1')
-#         self.DVGeo.addPointSet(self.center, self.name+'p2')
-                
-#     def evalFunctions(self, funcs, config):
-#         """
-#         Evaluate the functions this object has and place in the funcs dictionary
+    def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled,
+                DVGeo, addToPyOpt):
+        self.name = name
+        self.nCon = 1
+        self.lower = lower
+        self.upper = upper
+        self.scale = scale
+        self.scaled = scaled
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        self.X = numpy.zeros(self.nCon)
+        self.n = len(p0)
+        self.axis = axis
+        self.activeTris = numpy.zeros(self.n)
 
-#         Parameters
-#         ----------
-#         funcs : dict
-#             Dictionary to place function values
-#         """
-#         # Pull out the most recent set of coordinates:
-#         self.p0 = self.DVGeo.update(self.name+'p0', config=config)
-#         self.p1 = self.DVGeo.update(self.name+'p1', config=config)
-#         self.p2 = self.DVGeo.update(self.name+'p2', config=config)
+        # The first thing we do is convert v1 and v2 to coords
+        self.p0 = p0
+        self.p1 = v1+p0
+        self.p2 = v2+p0
 
-#         # convert p1 and p2 to v1 and v2
-#         v1 = self.p1- self.p0
-#         v2 = self.p2- self.p0
+        # Now embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.p0, self.name+'p0')
+        self.DVGeo.addPointSet(self.p1, self.name+'p1')
+        self.DVGeo.addPointSet(self.p2, self.name+'p2')
 
-#         #compute the areas
-#         areaVec = numpy.cross(v1, v2)
+        # compute the reference area
+        self.X0 = self._computeArea(self.p0, self.p1, self.p2, self.axis)
 
-#         projectedAreas = numpy.sum(areaVec*self.axis,axis=1)
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
 
-#         projectedAreas[projectedAreas<0] = 0.
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.p0 = self.DVGeo.update(self.name+'p0', config=config)
+        self.p1 = self.DVGeo.update(self.name+'p1', config=config)
+        self.p2 = self.DVGeo.update(self.name+'p2', config=config)
 
-#         sumArea = numpy.sum(projectedArea)/2.0
+        self.X = self._computeArea(self.p0, self.p1, self.p2, self.axis)
+        if self.scaled:
+            self.X /= self.X0
+        funcs[self.name] = self.X
 
-#         funcs[self.name] = sumArea
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
 
-#     def evalFunctionsSens(self, funcsSens, config):
-#         """
-#         Evaluate the sensitivity of the functions this object has and
-#         place in the funcsSens dictionary
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dAdp0 = numpy.zeros((self.nCon,
+                                 self.p0.shape[0],
+                                 self.p0.shape[1]))
+            dAdp1 = numpy.zeros((self.nCon,
+                                 self.p1.shape[0],
+                                 self.p1.shape[1]))
 
-#         Parameters
-#         ----------
-#         funcsSens : dict
-#             Dictionary to place function values
-#         """
+            dAdp2 = numpy.zeros((self.nCon,
+                                 self.p2.shape[0],
+                                 self.p2.shape[1]))
+        p0 = self.p0
+        p1 = self.p1
+        p2 = self.p2
+        for con in xrange(self.nCon):
+            p0b = dAdp0[con,:,:]
+            p1b = dAdp1[con,:,:]
+            p2b = dAdp2[con,:,:]
+            areab = 1
+            areasb = numpy.empty(self.n)
+            if self.scaled:
+                areab = areab/self.X0
+            areasb[:] = areab/2.
 
-#         nDV = self.DVGeo.getNDV()
-#         if nDV > 0:
-#             dLndPt = numpy.zeros((self.nCon, 
-#                                  self.coords.shape[0],
-#                                  self.coords.shape[1]))
-#             dLndCn = numpy.zeros((self.nCon, 
-#                                   1,
-#                                   self.center.shape[0]))
+            for i in range(self.n):
+                v1 = p1[i,:] - p0[i,:]
+                v2 = p2[i,:] - p0[i,:]
+                SAvec = numpy.cross(v1, v2)
+                PA = numpy.dot(SAvec, self.axis)
+                if PA > 0:
+                    PAb = areasb[i]
+                else:
+                    PAb = 0.0
+                SAvecb, axisb = geo_utils.dot_b(SAvec, self.axis, PAb)
+                v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
+                p2b[i,:] = p2b[i,:] + v2b
+                p1b[i,:] = p1b[i,:] + v1b
+                p0b[i,:] = p0b[i,:] - v1b - v2b
 
-#             for con in xrange(self.nCon):
-#                 reflength2 = 0
-#                 for i in xrange(3):
-#                     reflength2 = reflength2 + (center[i]-coords[0,i])**2
+        tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0',
+                                            config=config)
+        tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
+                                            config=config)
+        tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
+                                            config=config)
+        tmpTotal = {}
+        for key in tmpp0:
+            tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
 
-#                 centerb = dLndCn[con,0,:]#0.0
-#                 coordsb = dLndPt[con,:,:]#0.0
-#                 reflength2b = 0.0
-#                 for i in xrange(self.nCon):
-#                     length2 = 0
-#                     for j in xrange(3):
-#                         length2 = length2 + (center[j]-coords[i+1, j])**2
+        funcsSens[self.name] = tmpTotal
 
-#                     if (length2/reflength2 == 0.0):
-#                         tempb1 = 0.0
-#                     else:
-#                         tempb1 = xb[i]/(2.0*numpy.sqrt(length2/reflength2)*reflength2)
+    def _computeArea(self, p0, p1, p2, axis, plot=False):
+        """
+        Compute projected surface area
+        """
+        # Convert p1 and p2 to v1 and v2
+        v1 = p1- p0
+        v2 = p2- p0
 
-#                     length2b = tempb1
-#                     reflength2b = reflength2b - length2*tempb1/reflength2
-#                     xb[i] = 0.0
-#                     for j in reversed(xrange(3)):#DO j=3,1,-1
-#                         tempb0 = 2*(center[j])-coords[i+1, j])*length2b
-#                         centerb[j] = centerb[j] + tempb0
-#                         coordsb[i+1, j] = coordsb[i+1, j] - tempb0
-#                 for i in reversed(xrange(3)):#DO i=3,1,-1
-#                     tempb = 2*(center[i]-coords[0, i])*reflength2b
-#                     centerb[i] = centerb[i] + tempb
-#                     coordsb[0, i] = coordsb[0, i] - tempb
-            
-                
-#             tmpPt = self.DVGeo.totalSensitivity(dLndPt, self.name+'coords', config=config)
-#             tmpCn = self.DVGeo.totalSensitivity(dLndCn, self.name+'center', config=config)
-        
-#             funcsSens[self.name] = tmpPt+tmpCn
+        # Compute the surface area vectors for each triangle patch
+        surfaceAreas = numpy.cross(v1, v2)
 
-#     def addConstraintsPyOpt(self, optProb):
-#         """
-#         Add the constraints to pyOpt, if the flag is set
-#         """
-#         if self.addToPyOpt:
-#             optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-#                                 upper=self.upper, scale=self.scale,
-#                                 wrt=self.DVGeo.getVarNames())
+        # Compute the projected area of each triangle patch
+        projectedAreas = numpy.dot(surfaceAreas, axis)
 
-#     def writeTecplot(self, handle):
-#         """
-#         Write the visualization of this set of thickness constraints
-#         to the open file handle
-#         """
+        # Cut out negative projected areas to get one side of surface
+        if plot:
+            for i in range(self.n):
+                if projectedAreas[i] < 0:
+                    self.activeTris[i] = 1
+                else:
+                    projectedAreas[i] = 0.0
+        else:
+            projectedAreas[projectedAreas<0] = 0.0
 
-#         handle.write('Zone T=%s_coords\n'% self.name)
-#         handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-#             len(self.coords), len(self.coords)-1))
-#         handle.write('DATAPACKING=POINT\n')
-#         for i in range(len(self.coords)):
-#             handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-#                                         self.coords[i, 2]))
+        # Sum projected areas and divide by two for triangle area
+        totalProjectedArea = numpy.sum(projectedAreas)/2.0
 
-#         for i in range(len(self.coords)-1):
-#             handle.write('%d %d\n'% (i, i+1))
+        return totalProjectedArea
 
-#         handle.write('Zone T=%s_center\n'% self.name)
-#         handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
-#         handle.write('DATAPACKING=POINT\n')
-#         handle.write('%f %f %f\n'% (self.center[0], self.center[1],
-#                                     self.center[2]))
-#         handle.write('%f %f %f\n'% (self.center[0], self.center[1],
-#                                     self.center[2]))
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.DVGeo.getVarNames())
 
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+        self._computeArea(self.p0, self.p1, self.p2, self.axis, plot=True)
+        nActiveTris = int(numpy.sum(self.activeTris))
+        p0 = self.p0.copy()
+        p1 = self.p1.copy()
+        p2 = self.p2.copy()
+        if self.axis[0] == 1.0:
+            p0[:,0] = numpy.zeros(self.n)
+            p1[:,0] = numpy.zeros(self.n)
+            p2[:,0] = numpy.zeros(self.n)
+        if self.axis[1] == 1.0:
+            p0[:,1] = numpy.zeros(self.n)
+            p1[:,1] = numpy.zeros(self.n)
+            p2[:,1] = numpy.zeros(self.n)
+        if self.axis[2] == 1.0:
+            p0[:,2] = numpy.zeros(self.n)
+            p1[:,2] = numpy.zeros(self.n)
+            p2[:,2] = numpy.zeros(self.n)
+
+        handle.write('Zone T=%s_surface\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
+            3*nActiveTris, nActiveTris))
+        handle.write('DATAPACKING=POINT\n')
+        for i in xrange(self.n):
+            if self.activeTris[i]:
+                handle.write('%f %f %f\n'% (p0[i, 0], p0[i, 1], p0[i, 2]))
+        for i in xrange(self.n):
+            if self.activeTris[i]:
+                handle.write('%f %f %f\n'% (p1[i, 0], p1[i, 1], p1[i, 2]))
+        for i in xrange(self.n):
+            if self.activeTris[i]:
+                handle.write('%f %f %f\n'% (p2[i, 0], p2[i, 1], p2[i, 2]))
+        iActive = 0
+        for i in range(self.n):
+            if self.activeTris[i]:
+                handle.write('%d %d %d\n'% (iActive+1, iActive+nActiveTris+1,
+                        iActive+nActiveTris*2+1))
+                iActive += 1
