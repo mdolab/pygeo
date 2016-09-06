@@ -138,6 +138,59 @@ def dot_b(a, b, dotb):
 
     return ab, bb
 
+    return ab,bb
+    
+def calculateCentroid(p0,v1,v2):
+    '''
+    take in a triangulated surface and calculate the centroid
+    '''
+    p1 = v1+p0
+    p2 = v2+p0
+
+    #compute the areas
+    areaVec = np.cross(v1, v2)/2.0
+    area = np.linalg.norm(areaVec,axis=1)
+
+    # compute the cell centroids
+    cellCenter = (p0+p1+p2)/3.
+    
+    centerSum = area.dot(cellCenter)
+    areaSum = np.sum(area)
+
+    centroid = centerSum/areaSum
+
+    return centroid
+
+def calculateRadii(centroid,p0,v1,v2):
+    ''' 
+    take the centroid and compute inner and outer radii of surface
+    '''
+    p1 = v1+p0
+    p2 = v2+p0
+
+    # take the difference between the points and the centroid
+    d0 = p0-centroid
+    d1 = p1-centroid
+    d2 = p2-centroid
+    
+    radO = np.zeros(3)
+    radI = np.zeros(3)
+    d0 = np.linalg.norm(d0,axis=1)
+    radO[0] = np.max(d0)
+    radI[0] = np.min(d0)
+    d1 = np.linalg.norm(d1,axis=1)
+    radO[1] = np.max(d1)
+    radI[1] = np.min(d1)
+    d2 = np.linalg.norm(d2,axis=1)
+    radO[2] = np.max(d2)
+    radI[2] = np.min(d2)
+
+    outerRadius = np.max(radO)
+    innerRadius = np.max(radI)
+#    print(radO,radI)
+
+    return innerRadius,outerRadius
+    
  # --------------------------------------------------------------
  #                I/O Functions
  # --------------------------------------------------------------
