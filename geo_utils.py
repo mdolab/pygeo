@@ -102,7 +102,7 @@ def euclideanNorm(inVec):
 
     return np.sqrt(temp)
 
-def cross_b(a,b,crossb):
+def cross_b(a, b, crossb):
     """
     Do the reverse accumulation through a cross product.
     """
@@ -124,7 +124,7 @@ def cross_b(a,b,crossb):
     ab[2] = ab[2] - b[1]*crossb[0]
     bb[1] = bb[1] - a[2]*crossb[0]
     crossb[0] = 0.0
-    return ab,bb
+    return ab, bb
 
 def dot_b(a, b, dotb):
     """
@@ -137,10 +137,8 @@ def dot_b(a, b, dotb):
     bb = bb + a*dotb
 
     return ab, bb
-
-    return ab,bb
     
-def calculateCentroid(p0,v1,v2):
+def calculateCentroid(p0, v1, v2):
     '''
     take in a triangulated surface and calculate the centroid
     '''
@@ -149,7 +147,7 @@ def calculateCentroid(p0,v1,v2):
 
     #compute the areas
     areaVec = np.cross(v1, v2)/2.0
-    area = np.linalg.norm(areaVec,axis=1)
+    area = np.linalg.norm(areaVec, axis=1)
 
     # compute the cell centroids
     cellCenter = (p0+p1+p2)/3.
@@ -161,7 +159,7 @@ def calculateCentroid(p0,v1,v2):
 
     return centroid
 
-def calculateRadii(centroid,p0,v1,v2):
+def calculateRadii(centroid, p0, v1, v2):
     ''' 
     take the centroid and compute inner and outer radii of surface
     '''
@@ -175,19 +173,18 @@ def calculateRadii(centroid,p0,v1,v2):
     
     radO = np.zeros(3)
     radI = np.zeros(3)
-    d0 = np.linalg.norm(d0,axis=1)
+    d0 = np.linalg.norm(d0, axis=1)
     radO[0] = np.max(d0)
     radI[0] = np.min(d0)
-    d1 = np.linalg.norm(d1,axis=1)
+    d1 = np.linalg.norm(d1, axis=1)
     radO[1] = np.max(d1)
     radI[1] = np.min(d1)
-    d2 = np.linalg.norm(d2,axis=1)
+    d2 = np.linalg.norm(d2, axis=1)
     radO[2] = np.max(d2)
     radI[2] = np.min(d2)
 
     outerRadius = np.max(radO)
     innerRadius = np.max(radI)
-#    print(radO,radI)
 
     return innerRadius,outerRadius
     
