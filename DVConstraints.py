@@ -119,8 +119,6 @@ class GeometricConstraint(object):
         pass
       
 
-
-
 class DVConstraints(object):
     """DVConstraints provides a convenient way of defining geometric
     constraints for WINGS. This can be very useful for a constrained
@@ -171,19 +169,8 @@ class DVConstraints(object):
         constraints will added individually
         """
 
-        #self.constraints = orderedDict()
-        self.thickCon = OrderedDict()
-        self.locCon = OrderedDict()
-        self.volumeCon = OrderedDict()
+        self.constraints = OrderedDict()
         self.linearCon = OrderedDict()
-        self.volumeCGCon = OrderedDict()
-        self.volumeAreaCon = OrderedDict()
-        self.gearCon = OrderedDict()
-        self.circCon = OrderedDict()
-        self.planeCon = OrderedDict()
-        self.coLinCon = OrderedDict()
-        self.surfAreaCon = OrderedDict()
-        self.projAreaCon = OrderedDict()
 
         self.DVGeo = None
         # Data for the discrete surface
@@ -241,6 +228,192 @@ class DVConstraints(object):
         """
 
         self.DVGeo = DVGeo
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add all constraints to the optProb object. Only constraints
+        the that have the addToPyOpt flags are actually added.
+
+        Parameters
+        ----------
+        optProb : pyOpt_optimization object
+            Optimization description to which the constraints are added
+
+        Examples
+        --------
+        >>> DVCon.addConstraintsPyOpt(optProb)
+        """
+
+        # loop over the generated constraint objects and add the necessary
+        # constraints to pyopt
+        for conTypeKey in self.constraints:
+            constraint = self.constraints[conTypeKey]
+            for key in constraint:
+                constraint[key].addConstraintsPyOpt(optProb)
+        
+        # add the linear constraints separately, since they are treated a bit differently
+        for key in self.linearCon:
+            self.linearCon[key].addConstraintsPyOpt(optProb)
+
+    def addVariablesPyOpt(self, optProb):
+        """
+        Add all constraint variables to the optProb object. 
+
+        Parameters
+        ----------
+        optProb : pyOpt_optimization object
+            Optimization description to which the constraints are added
+
+        Examples
+        --------
+        >>> DVCon.addVariablesPyOpt(optProb)
+        """
+
+        # loop over the generated constraint objects and add the necessary
+        # variables to pyopt
+        for conTypeKey in self.constraints:
+            constraint = self.constraints[conTypeKey]
+            for key in constraint:
+                constraint[key].addVariablesPyOpt(optProb)
+
+        # linear contraints are ignored because at the moment there are no linear
+        # constraints that have independent variables
+
+    def setDesignVars(self, dvDict):
+        """
+        Standard routine for setting design variables from a design
+        variable dictionary.
+
+        Parameters
+        ----------
+        dvDict : dict
+            Dictionary of design variables. The keys of the dictionary
+            must correspond to the design variable names. Any
+            additional keys in the dfvdictionary are simply ignored. 
+            """
+
+        # loop over the generated constraint objects and add the necessary
+        # variables to pyopt
+        for conTypeKey in self.constraints:
+            constraint = self.constraints[conTypeKey]
+            for key in constraint:
+                constraint[key].setDesignVars(dvDict)
+
+        # linear contraints are ignored because at the moment there are no linear
+        # constraints that have independent variables
+
+    def evalFunctions(self, funcs, includeLinear=False, config=None):
+        """
+        Evaluate all the 'functions' that this object has. Of course,
+        these functions are usually just the desired constraint
+        values. These values will be set directly into the funcs
+        dictionary.
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary into which the function values are placed.
+        includeLeTe : bool
+            Flag to include Leading/Trailing edge
+            constraints. Normally this can be false since pyOptSparse
+            does not need linear constraints to be returned.
+        """
+        
+        # loop over the generated constraints and evaluate their function values
+        for conTypeKey in self.constraints:
+            constraint = self.constraints[conTypeKey]
+            for key in constraint:
+                constraint[key].evalFunctions(funcs, config)
+
+        if includeLinear:
+            for key in self.linearCon:
+                self.linearCon[key].evalFunctions(funcs)
+
+    def evalFunctionsSens(self, funcsSens, includeLinear=False, config=None):
+        """
+        Evaluate the derivative of all the 'funcitons' that this
+        object has. These functions are just the constraint values.
+        Thse values will be set directly in the funcSens dictionary.
+
+        Parameters
+        ----------
+        funcSens : dict
+            Dictionary into which the sensitivities are added.
+        includeLeTe : bool
+            Flag to include Leading/Trailing edge
+            constraints. Normally this can be false since pyOptSparse
+            does not need linear constraints to be returned.
+        """
+
+        # loop over the generated constraints and evaluate their function values
+        for conTypeKey in self.constraints:
+            constraint = self.constraints[conTypeKey]
+            for key in constraint:
+                constraint[key].evalFunctionsSens(funcsSens, config)
+
+        if includeLinear:
+            for key in self.linearCon:
+                self.linearCon[key].evalFunctionsSens(funcsSens)
+
+    def writeTecplot(self, fileName):
+        """
+        This function writes a visualization file for constraints. All
+        currently added constraints are written to a tecplot. This is
+        useful for publication purposes as well as determine if the
+        constraints are *actually* what the user expects them to be.
+
+        Parameters
+        ----------
+        fileName : str
+            File name for tecplot file. Should have a .dat extension or a
+            .dat extension will be added automatically.
+        """
+
+        f = open(fileName, 'w')
+        f.write("TITLE = \"DVConstraints Data\"\n")
+        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
+
+        # loop over the constraints and add their data to the tecplot file
+        for conTypeKey in self.constraints:
+            constraint = self.constraints[conTypeKey]
+            for key in constraint:
+                constraint[key].writeTecplot(f)
+
+        for key in self.linearCon:
+            self.linearCon[key].writeTecplot(f)
+        f.close()
+
+    def writeSurfaceTecplot(self,fileName):
+        """
+        Write the triangulated surface mesh used in the constraint object
+        to a tecplot file for visualization.
+
+        Parameters
+        ----------
+        fileName : str
+            File name for tecplot file. Should have a .dat extension.
+
+        """
+        f = open(fileName, 'w')
+        f.write("TITLE = \"DVConstraints Surface Mesh\"\n")
+        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
+        f.write('Zone T=%s\n'%('surf'))
+        f.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
+            len(self.p0)*3, len(self.p0)))
+        f.write('DATAPACKING=POINT\n')
+        for i in range(len(self.p0)):
+            points = []
+            points.append(self.p0[i])
+            points.append(self.p0[i]+self.v1[i])
+            points.append(self.p0[i]+self.v2[i])
+            for i in range(len(points)):
+                f.write('%f %f %f\n'% (points[i][0], points[i][1],points[i][2]))
+
+        for i in range(len(self.p0)):
+            f.write('%d %d %d\n'% (3*i+1, 3*i+2,3*i+3))
+
+        f.close()
+
 
     def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
                                   lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -384,12 +557,16 @@ class DVConstraints(object):
         # Create the thickness constraint object:
         coords = coords.reshape((nSpan*nChord*2, 3))
 
+        typeName = 'thickCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         # Create a name
         if name is None:
-            conName = '%s_thickness_constraints_%d'%(self.name, len(self.thickCon))
+            conName = '%s_thickness_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.thickCon[conName] = ThicknessConstraint(
+        self.constraints[typeName][conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
@@ -498,11 +675,16 @@ class DVConstraints(object):
 
         # Create the thickness constraint object:
         coords = coords.reshape((nCon*2, 3))
+
+        typeName = 'thickCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
             conName = '%s_thickness_constraints_%d'%(self.name, len(self.thickCon))
         else:
             conName = name
-        self.thickCon[conName] = ThicknessConstraint(
+        self.constraints[typeName][conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
@@ -584,11 +766,15 @@ class DVConstraints(object):
             upper = X.flatten()
 
         # Create the location constraint object
+        typeName = 'locCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
             conName = '%s_location_constraints_%d'%(self.name,len(self.locCon))
         else:
             conName = name
-        self.locCon[conName] = LocationConstraint(
+        self.constraints[typeName][conName] = LocationConstraint(
             conName, X, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
@@ -699,11 +885,15 @@ class DVConstraints(object):
             upper = X.flatten()
 
         # Create the location constraint object
+        typeName = 'locCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
             conName = '%s_location_constraints_%d'%(self.name, len(self.locCon))
         else:
             conName = name
-        self.locCon[conName] = LocationConstraint(
+        self.constraints[typeName][conName] = LocationConstraint(
             conName, X, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
@@ -814,11 +1004,15 @@ class DVConstraints(object):
 
         # Create the thickness constraint object:
         coords = coords.reshape((nCon*4, 3))
+
+        typeName = 'thickCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
         if name is None:
             conName = '%s_thickness_to_chord_constraints_%d'%(self.name, len(self.thickCon))
         else:
             conName = name
-        self.thickCon[conName] = ThicknessToChordConstraint(
+        self.constraints[typeName][conName] = ThicknessToChordConstraint(
             conName, coords, lower, upper, scale, self.DVGeo, addToPyOpt)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
@@ -919,8 +1113,13 @@ class DVConstraints(object):
             meaningless
             """
         self._checkDVGeo()
+
+        typeName = 'volCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
-            conName = '%s_volume_constraint_%d'%(self.name, len(self.volumeCon))
+            conName = '%s_volume_constraint_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
@@ -928,7 +1127,7 @@ class DVConstraints(object):
         coords = coords.reshape((nSpan*nChord*2, 3))
 
         # Finally add the volume constraint object
-        self.volumeCon[conName] = VolumeConstraint(
+        self.constraints[typeName][conName] = VolumeConstraint(
             conName, nSpan, nChord, coords, lower, upper, scaled, scale,
             self.DVGeo, addToPyOpt)
 
@@ -1003,8 +1202,13 @@ class DVConstraints(object):
             meaningless
             """
         self._checkDVGeo()
+
+        typeName = 'volCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
-            conName = '%s_composite_volume_constraint_%d'%(self.name, len(self.volumeCon))
+            conName = '%s_composite_volume_constraint_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
@@ -1017,7 +1221,7 @@ class DVConstraints(object):
                 raise Error("The supplied volume name '%s' has not"
                             " already been added with a call to "
                             "addVolumeConstraint()"% vol)
-        self.volumeCon[conName] = CompositeVolumeConstraint(
+        self.constraints[typeName][conName] = CompositeVolumeConstraint(
             conName, volCons, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
@@ -1337,8 +1541,13 @@ class DVConstraints(object):
         """
 
         self._checkDVGeo()
+
+        typeName = 'gearCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
-            conName = '%s_gear_constraint_%d'%(self.name, len(self.gearCon))
+            conName = '%s_gear_constraint_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
@@ -1350,7 +1559,7 @@ class DVConstraints(object):
                         "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                             position))
 
-        self.gearCon[conName] = GearPostConstraint(
+        self.constraints[typeName][conName] = GearPostConstraint(
             conName, wimpressCalc, up, down, thickLower, thickUpper,
             thickScaled, MACFracLower, MACFracUpper, self.DVGeo,
             addToPyOpt)
@@ -1439,12 +1648,17 @@ class DVConstraints(object):
         coords = coords.reshape((nPts, 3))
         origin = numpy.array(origin).reshape((1, 3))
 
+        typeName = 'circCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+
         # Create a name
         if name is None:
-            conName = '%s_circularity_constraints_%d'%(self.name, len(self.circCon))
+            conName = '%s_circularity_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.circCon[conName] = CircularityConstraint(
+        self.constraints[typeName][conName] = CircularityConstraint(
             conName, origin, coords, lower, upper, scale, self.DVGeo,
             addToPyOpt)
 
@@ -1508,13 +1722,17 @@ class DVConstraints(object):
                         "is called.")
 
         self._checkDVGeo()
+        
+        typeName = 'surfAreaCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
 
         # Create a name
         if name is None:
-            conName = '%s_surfaceArea_constraints_%d'%(self.name, len(self.surfAreaCon))
+            conName = '%s_surfaceArea_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.surfAreaCon[conName] = SurfaceAreaConstraint(
+        self.constraints[typeName][conName] = SurfaceAreaConstraint(
             conName, self.p0, self.v1, self.v2, lower, upper, scale, scaled, self.DVGeo,
             addToPyOpt)
 
@@ -1589,12 +1807,16 @@ class DVConstraints(object):
         elif axis=='z':
             axis = numpy.array([0,0,1])
 
+        typeName = 'projAreaCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         # Create a name
         if name is None:
-            conName = 'projectedArea_constraints_%d'% len(self.projAreaCon)
+            conName = 'projectedArea_constraints_%d'% len(self.constraints[typeName])
         else:
             conName = name
-        self.projAreaCon[conName] = ProjectedAreaConstraint(
+        self.constraints[typeName][conName] = ProjectedAreaConstraint(
             conName, self.p0, self.v1, self.v2, axis, lower, upper, scale, scaled,
             self.DVGeo, addToPyOpt)
 
@@ -1658,11 +1880,15 @@ class DVConstraints(object):
         planeAxis = numpy.array(planeAxis).reshape((1, 3))
 
         # Create a name 
+        typeName = 'planeCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
-            conName = '%s_planarity_constraints_%d'%(self.name, len(self.planeCon))
+            conName = '%s_planarity_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.planeCon[conName] = PlanarityConstraint(
+        self.constraints[typeName][conName] = PlanarityConstraint(
             conName, origin, coords, lower, upper, scale, self.DVGeo,
             addToPyOpt)
 
@@ -1732,11 +1958,15 @@ class DVConstraints(object):
         lineAxis = numpy.array(lineAxis).reshape((1, 3))
 
         # Create a name 
+        typeName = 'coLinCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
         if name is None:
-            conName = '%s_colinearity_constraints_%d'%(self.name, len(self.colinCon))
+            conName = '%s_colinearity_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.coLinCon[conName] = ColinearityConstraint(
+        self.constraints[typeName][conName] = ColinearityConstraint(
             conName, lineAxis, origin, coords, lower, upper, scale, 
             self.DVGeo, addToPyOpt)
 
@@ -1747,190 +1977,6 @@ class DVConstraints(object):
             raise Error("A DVGeometry object must be added to DVCon before "
                         "using a call to DVCon.setDVGeo(DVGeo) before "
                         "constraints can be added.")
-
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add all constraints to the optProb object. Only constraints
-        the that have the addToPyOpt flags are actually added.
-
-        Parameters
-        ----------
-        optProb : pyOpt_optimization object
-            Optimization description to which the constraints are added
-
-        Examples
-        --------
-        >>> DVCon.addConstraintsPyOpt(optProb)
-        """
-
-        for key in self.thickCon:
-            self.thickCon[key].addConstraintsPyOpt(optProb)
-        for key in self.locCon:
-            self.locCon[key].addConstraintsPyOpt(optProb)
-        for key in self.volumeCon:
-            self.volumeCon[key].addConstraintsPyOpt(optProb)
-        for key in self.linearCon:
-            self.linearCon[key].addConstraintsPyOpt(optProb)
-        for key in self.gearCon:
-            self.gearCon[key].addConstraintsPyOpt(optProb)
-        for key in self.circCon:
-            self.circCon[key].addConstraintsPyOpt(optProb)
-        for key in self.planeCon:
-            self.planeCon[key].addConstraintsPyOpt(optProb)
-        for key in self.coLinCon:
-            self.coLinCon[key].addConstraintsPyOpt(optProb)
-        for key in self.surfAreaCon:
-            self.surfAreaCon[key].addConstraintsPyOpt(optProb)
-        for key in self.projAreaCon:
-            self.projAreaCon[key].addConstraintsPyOpt(optProb)
-
-    def evalFunctions(self, funcs, includeLinear=False, config=None):
-        """
-        Evaluate all the 'functions' that this object has. Of course,
-        these functions are usually just the desired constraint
-        values. These values will be set directly into the funcs
-        dictionary.
-
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary into which the function values are placed.
-        includeLeTe : bool
-            Flag to include Leading/Trailing edge
-            constraints. Normally this can be false since pyOptSparse
-            does not need linear constraints to be returned.
-        """
-
-        for key in self.thickCon:
-            self.thickCon[key].evalFunctions(funcs, config)
-        for key in self.locCon:
-            self.locCon[key].evalFunctions(funcs, config)
-        for key in self.volumeCon:
-            self.volumeCon[key].evalFunctions(funcs, config)
-        for key in self.gearCon:
-            self.gearCon[key].evalFunctions(funcs, config)
-        for key in self.circCon:
-            self.circCon[key].evalFunctions(funcs, config)
-        for key in self.coLinCon:
-            self.coLinCon[key].evalFunctions(funcs, config)
-        for key in self.planeCon:
-            self.planeCon[key].evalFunctions(funcs, config)
-        for key in self.surfAreaCon:
-            self.surfAreaCon[key].evalFunctions(funcs, config)
-        for key in self.projAreaCon:
-            self.projAreaCon[key].evalFunctions(funcs, config)
-        if includeLinear:
-            for key in self.linearCon:
-                self.linearCon[key].evalFunctions(funcs)
-
-    def evalFunctionsSens(self, funcsSens, includeLinear=False, config=None):
-        """
-        Evaluate the derivative of all the 'funcitons' that this
-        object has. These functions are just the constraint values.
-        Thse values will be set directly in the funcSens dictionary.
-
-        Parameters
-        ----------
-        funcSens : dict
-            Dictionary into which the sensitivities are added.
-        includeLeTe : bool
-            Flag to include Leading/Trailing edge
-            constraints. Normally this can be false since pyOptSparse
-            does not need linear constraints to be returned.
-        """
-        for key in self.thickCon:
-            self.thickCon[key].evalFunctionsSens(funcsSens, config)
-        for key in self.locCon:
-            self.locCon[key].evalFunctionsSens(funcsSens, config)
-        for key in self.volumeCon:
-            self.volumeCon[key].evalFunctionsSens(funcsSens, config)
-        for key in self.gearCon:
-            self.gearCon[key].evalFunctionsSens(funcsSens, config)
-        for key in self.circCon:
-            self.circCon[key].evalFunctionsSens(funcsSens, config)
-        for key in self.coLinCon:
-            self.coLinCon[key].evalFunctionsSens(funcs, config)
-        for key in self.planeCon:
-            self.planeCon[key].evalFunctionsSens(funcs, config)
-        for key in self.surfAreaCon:
-            self.surfAreaCon[key].evalFunctionsSens(funcsSens, config)
-        for key in self.projAreaCon:
-            self.projAreaCon[key].evalFunctionsSens(funcsSens, config)
-        if includeLinear:
-            for key in self.linearCon:
-                self.linearCon[key].evalFunctionsSens(funcsSens)
-
-    def writeTecplot(self, fileName):
-        """
-        This function writes a visualization file for constraints. All
-        currently added constraints are written to a tecplot. This is
-        useful for publication purposes as well as determine if the
-        constraints are *actually* what the user expects them to be.
-
-        Parameters
-        ----------
-        fileName : str
-            File name for tecplot file. Should have a .dat extension or a
-            .dat extension will be added automatically.
-        """
-
-        f = open(fileName, 'w')
-        f.write("TITLE = \"DVConstraints Data\"\n")
-        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
-
-        for key in self.thickCon:
-            self.thickCon[key].writeTecplot(f)
-        for key in self.locCon:
-            self.locCon[key].writeTecplot(f)
-        for key in self.volumeCon:
-            self.volumeCon[key].writeTecplot(f)
-        for key in self.gearCon:
-            self.gearCon[key].writeTecplot(f)
-        for key in self.circCon:
-            self.circCon[key].writeTecplot(f)
-        for key in self.coLinCon:
-            self.coLinCon[key].writeTecplot(f)
-        for key in self.planeCon:
-            self.planeCon[key].writeTecplot(f)
-        for key in self.surfAreaCon:
-            self.surfAreaCon[key].writeTecplot(f)
-        for key in self.linearCon:
-            self.linearCon[key].writeTecplot(f)
-        for key in self.projAreaCon:
-            self.projAreaCon[key].writeTecplot(f)
-        f.close()
-
-    def writeSurfaceTecplot(self,fileName):
-        """
-        Write the triangulated surface mesh used in the constraint object
-        to a tecplot file for visualization.
-
-        Parameters
-        ----------
-        fileName : str
-            File name for tecplot file. Should have a .dat extension.
-
-        """
-        f = open(fileName, 'w')
-        f.write("TITLE = \"DVConstraints Surface Mesh\"\n")
-        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
-        f.write('Zone T=%s\n'%('surf'))
-        f.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
-            len(self.p0)*3, len(self.p0)))
-        f.write('DATAPACKING=POINT\n')
-        for i in range(len(self.p0)):
-            points = []
-            points.append(self.p0[i])
-            points.append(self.p0[i]+self.v1[i])
-            points.append(self.p0[i]+self.v2[i])
-            for i in range(len(points)):
-                f.write('%f %f %f\n'% (points[i][0], points[i][1],points[i][2]))
-
-        for i in range(len(self.p0)):
-            f.write('%d %d %d\n'% (3*i+1, 3*i+2,3*i+3))
-
-        f.close()
-
 
     def _convertTo2D(self, value, dim1, dim2):
         """
