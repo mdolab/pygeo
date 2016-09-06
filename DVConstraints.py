@@ -33,6 +33,94 @@ class Error(Exception):
         print(msg)
         Exception.__init__(self)
 
+class GeometricConstraint(object):
+    """
+    This is a generic base class for all of the geometric constraints.
+
+    """
+    def __init__(self,name, nCon, lower, upper, scale, DVGeo, addToPyOpt):
+        """
+        General init function. Every constraint has these functions
+        """
+        self.name = name
+        self.nCon = nCon
+        self.lower = lower
+        self.upper = upper
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary.
+        This function is constraint specific, so the baseclass doesn't implement anything.
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        pass
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+        This function is constraint specific, so the baseclass doesn't implement anything.
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        pass
+
+    def getVarNames(self):
+        """
+        return the var names relevant to this constraint. By default, this is the DVGeo
+        variables, but some constraints may extend this to include other variables.
+        """
+
+        return self.DVGeo.getVarNames()
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.getVarNames())
+
+    def addVariablesPyOpt(self, optProb):
+        """
+        Add the variables to pyOpt, if the flag is set
+        """
+        # if self.addToPyOpt:
+        #     optProb.addVarGroup(self.name, self.nCon, lower=self.lower,
+        #                         upper=self.upper, scale=self.scale,
+        #                         wrt=self.getVarNames())
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write('Zone T=%s\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            len(self.coords), len(self.coords)//2))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(len(self.coords)):
+            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
+                                        self.coords[i, 2]))
+
+        for i in range(len(self.coords)//2):
+            handle.write('%d %d\n'% (2*i+1, 2*i+2))
+
+
+
 class DVConstraints(object):
     """DVConstraints provides a convenient way of defining geometric
     constraints for WINGS. This can be very useful for a constrained
@@ -69,13 +157,21 @@ class DVConstraints(object):
     facility for adding the constraints automatically to a pyOptSparse
     optimization problem is also provided.
 
-    """
+    Parameters
+    ----------
+    name: str
+        A name for this object. Used to distiguish between DVCon objects
+        if multiple DVConstraint objects are used in an optimization.
 
-    def __init__(self):
+    """
+  
+    def __init__(self,name='DVCon1'):
         """
         Create a (empty) DVconstrains object. Specific types of
         constraints will added individually
         """
+
+        #self.constraints = orderedDict()
         self.thickCon = OrderedDict()
         self.locCon = OrderedDict()
         self.volumeCon = OrderedDict()
@@ -84,6 +180,8 @@ class DVConstraints(object):
         self.volumeAreaCon = OrderedDict()
         self.gearCon = OrderedDict()
         self.circCon = OrderedDict()
+        self.planeCon = OrderedDict()
+        self.coLinCon = OrderedDict()
         self.surfAreaCon = OrderedDict()
         self.projAreaCon = OrderedDict()
 
@@ -288,7 +386,7 @@ class DVConstraints(object):
 
         # Create a name
         if name is None:
-            conName = 'thickness_constraints_%d'% len(self.thickCon)
+            conName = '%s_thickness_constraints_%d'%(self.name, len(self.thickCon))
         else:
             conName = name
         self.thickCon[conName] = ThicknessConstraint(
@@ -401,7 +499,7 @@ class DVConstraints(object):
         # Create the thickness constraint object:
         coords = coords.reshape((nCon*2, 3))
         if name is None:
-            conName = 'thickness_constraints_%d'% len(self.thickCon)
+            conName = '%s_thickness_constraints_%d'%(self.name, len(self.thickCon))
         else:
             conName = name
         self.thickCon[conName] = ThicknessConstraint(
@@ -487,7 +585,7 @@ class DVConstraints(object):
 
         # Create the location constraint object
         if name is None:
-            conName = 'location_constraints_%d'% len(self.locCon)
+            conName = '%s_location_constraints_%d'%(self.name,len(self.locCon))
         else:
             conName = name
         self.locCon[conName] = LocationConstraint(
@@ -602,7 +700,7 @@ class DVConstraints(object):
 
         # Create the location constraint object
         if name is None:
-            conName = 'location_constraints_%d'% len(self.locCon)
+            conName = '%s_location_constraints_%d'%(self.name, len(self.locCon))
         else:
             conName = name
         self.locCon[conName] = LocationConstraint(
@@ -717,7 +815,7 @@ class DVConstraints(object):
         # Create the thickness constraint object:
         coords = coords.reshape((nCon*4, 3))
         if name is None:
-            conName = 'thickness_to_chord_constraints_%d'% len(self.thickCon)
+            conName = '%s_thickness_to_chord_constraints_%d'%(self.name, len(self.thickCon))
         else:
             conName = name
         self.thickCon[conName] = ThicknessToChordConstraint(
@@ -822,7 +920,7 @@ class DVConstraints(object):
             """
         self._checkDVGeo()
         if name is None:
-            conName = 'volume_constraint_%d'% len(self.volumeCon)
+            conName = '%s_volume_constraint_%d'%(self.name, len(self.volumeCon))
         else:
             conName = name
 
@@ -906,7 +1004,7 @@ class DVConstraints(object):
             """
         self._checkDVGeo()
         if name is None:
-            conName = 'composite_volume_constraint_%d'% len(self.volumeCon)
+            conName = '%s_composite_volume_constraint_%d'%(self.name, len(self.volumeCon))
         else:
             conName = name
 
@@ -1050,7 +1148,7 @@ class DVConstraints(object):
                         "specified **or** 'indSetA' and 'indSetB'")
 
         if name is None:
-            conName = 'lete_constraint_%d'% len(self.linearCon)
+            conName = '%s_lete_constraint_%d'%(self.name, len(self.linearCon))
         else:
             conName = name
 
@@ -1131,7 +1229,7 @@ class DVConstraints(object):
                         "the same length")
 
         if name is None:
-            conName = 'linear_constraint_%d'% len(self.linearCon)
+            conName = '%s_linear_constraint_%d'%(self.name, len(self.linearCon))
         else:
             conName = name
 
@@ -1240,7 +1338,7 @@ class DVConstraints(object):
 
         self._checkDVGeo()
         if name is None:
-            conName = 'gear_constraint_%d'% len(self.gearCon)
+            conName = '%s_gear_constraint_%d'%(self.name, len(self.gearCon))
         else:
             conName = name
 
@@ -1343,7 +1441,7 @@ class DVConstraints(object):
 
         # Create a name
         if name is None:
-            conName = 'circularity_constraints_%d'% len(self.circCon)
+            conName = '%s_circularity_constraints_%d'%(self.name, len(self.circCon))
         else:
             conName = name
         self.circCon[conName] = CircularityConstraint(
@@ -1413,7 +1511,7 @@ class DVConstraints(object):
 
         # Create a name
         if name is None:
-            conName = 'surfaceArea_constraints_%d'% len(self.surfAreaCon)
+            conName = '%s_surfaceArea_constraints_%d'%(self.name, len(self.surfAreaCon))
         else:
             conName = name
         self.surfAreaCon[conName] = SurfaceAreaConstraint(
@@ -1500,6 +1598,147 @@ class DVConstraints(object):
             conName, self.p0, self.v1, self.v2, axis, lower, upper, scale, scaled,
             self.DVGeo, addToPyOpt)
 
+    def addPlanarityConstraint(self,origin,planeAxis,
+                               upper=1.0,lower=1.0, scale=1.0,
+                               name=None, addToPyOpt=True):
+        """
+        Add a contraint to keep the surface in set in DVCon planar
+        Define the origin, and the plane axis. 
+        The constraint will enforce that all of the surface points lie on
+        the plane.
+     
+        Parameters
+        ----------
+        origin: vector
+              The coordinate of the origin
+
+        planeAxis: vector
+              Vector defining the plane of interest
+        
+        lower : float
+            Lower bound for circularity. This is the ratio of the target length
+            relative to the first length calculated
+ 
+        upper : float
+            Upper bound for optimization constraint. See lower.
+
+        scale : float 
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if the
+            volume is to be used as a constraint. If the volume is to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+
+        """
+
+        self._checkDVGeo()
+
+        # Create the circularity constraint object:
+        origin = numpy.array(origin).reshape((1, 3))
+        planeAxis = numpy.array(planeAxis).reshape((1, 3))
+
+        # Create a name 
+        if name is None:
+            conName = '%s_planarity_constraints_%d'%(self.name, len(self.planeCon))
+        else:
+            conName = name
+        self.planeCon[conName] = PlanarityConstraint(
+            conName, origin, coords, lower, upper, scale, self.DVGeo,
+            addToPyOpt)
+
+    def addColinearityConstraint(self,conName,lineAxis, origin,distances,
+                                 upper=1.0,lower=1.0, scale=1.0,
+                                 name=None, addToPyOpt=True):
+        """
+        Add a contraint to keep a set of points aligned.
+        Define the origin, and axis of the line and then a set of distances
+        along the axis to constrain.
+        The constraint will compute the points to constrain.
+     
+        Parameters
+        ----------
+        origin: vector
+              The coordinate of the origin
+
+        lineAxis: vector
+              The line of colinearity
+        
+        distances: list 
+              List of distances from origin to constrain
+
+        lower : float
+            Lower bound for circularity. This is the ratio of the target length
+            relative to the first length calculated
+ 
+        upper : float
+            Upper bound for optimization constraint. See lower.
+
+        scale : float 
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if the
+            volume is to be used as a constraint. If the volume is to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+
+        """
+
+        self._checkDVGeo()
+        nPts = len(distances)
+        coords = dist*lineAxis+origin
+
+        # Create the circularity constraint object:
+        coords = coords.reshape((nPts, 3))
+        origin = numpy.array(origin).reshape((1, 3))
+        lineAxis = numpy.array(lineAxis).reshape((1, 3))
+
+        # Create a name 
+        if name is None:
+            conName = '%s_colinearity_constraints_%d'%(self.name, len(self.colinCon))
+        else:
+            conName = name
+        self.coLinCon[conName] = ColinearityConstraint(
+            conName, lineAxis, origin, coords, lower, upper, scale, 
+            self.DVGeo, addToPyOpt)
 
     def _checkDVGeo(self):
 
@@ -1536,6 +1775,10 @@ class DVConstraints(object):
             self.gearCon[key].addConstraintsPyOpt(optProb)
         for key in self.circCon:
             self.circCon[key].addConstraintsPyOpt(optProb)
+        for key in self.planeCon:
+            self.planeCon[key].addConstraintsPyOpt(optProb)
+        for key in self.coLinCon:
+            self.coLinCon[key].addConstraintsPyOpt(optProb)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].addConstraintsPyOpt(optProb)
         for key in self.projAreaCon:
@@ -1568,6 +1811,10 @@ class DVConstraints(object):
             self.gearCon[key].evalFunctions(funcs, config)
         for key in self.circCon:
             self.circCon[key].evalFunctions(funcs, config)
+        for key in self.coLinCon:
+            self.coLinCon[key].evalFunctions(funcs, config)
+        for key in self.planeCon:
+            self.planeCon[key].evalFunctions(funcs, config)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].evalFunctions(funcs, config)
         for key in self.projAreaCon:
@@ -1601,6 +1848,10 @@ class DVConstraints(object):
             self.gearCon[key].evalFunctionsSens(funcsSens, config)
         for key in self.circCon:
             self.circCon[key].evalFunctionsSens(funcsSens, config)
+        for key in self.coLinCon:
+            self.coLinCon[key].evalFunctionsSens(funcs, config)
+        for key in self.planeCon:
+            self.planeCon[key].evalFunctionsSens(funcs, config)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].evalFunctionsSens(funcsSens, config)
         for key in self.projAreaCon:
@@ -1637,6 +1888,10 @@ class DVConstraints(object):
             self.gearCon[key].writeTecplot(f)
         for key in self.circCon:
             self.circCon[key].writeTecplot(f)
+        for key in self.coLinCon:
+            self.coLinCon[key].writeTecplot(f)
+        for key in self.planeCon:
+            self.planeCon[key].writeTecplot(f)
         for key in self.surfAreaCon:
             self.surfAreaCon[key].writeTecplot(f)
         for key in self.linearCon:
@@ -2930,6 +3185,369 @@ class CircularityConstraint(object):
         handle.write('%f %f %f\n'% (self.center[0,0], self.center[0,1],
                                     self.center[0,2]))
         handle.write('%d %d\n'% (1, 2))
+
+class PlanarityConstraint(object):
+    """
+    DVConstraints representation of a surface planarity constraint.
+    Constrain that all of the points on this surface are co-planar.
+    One of these objects is created each time an
+    addPlanarityConstraint call is made.
+    The user should not have to deal with this class directly.
+    """
+
+    def __init__(self, name, axis, origin, p0, v1, v2, lower, upper, scale,
+                 DVGeo, addToPyOpt):
+        self.name = name
+        self.nCon = len(p0)*3
+        self.lower = lower
+        self.upper = upper
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        self.X = numpy.zeros(self.nCon)
+        self.n = len(p0)
+
+        # The first thing we do is convert v1 and v2 to coords
+        self.axis = axis
+        self.p0 = p0
+        self.p1 = v1+p0
+        self.p2 = v2+p0
+        self.origin = origin
+
+        # Now embed the coordinates and origin into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.p0, self.name+'p0')
+        self.DVGeo.addPointSet(self.p1, self.name+'p1')
+        self.DVGeo.addPointSet(self.p2, self.name+'p2')
+        self.DVGeo.addPointSet(self.origin, self.name+'origin')
+
+                
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.p0 = self.DVGeo.update(self.name+'p0', config=config)
+        self.p1 = self.DVGeo.update(self.name+'p1', config=config)
+        self.p2 = self.DVGeo.update(self.name+'p2', config=config)
+        self.origin = self.DVGeo.update(self.name+'origin', config=config)
+
+        allPoints = numpy.vstack([self.p0,self.p1,self.p2])
+
+        # Compute the distance from the origin to each point
+        dist = allPoints-origin
+
+        #project it onto the axis
+        self.X = numpy.dot(self.axis,dist)
+        
+        funcs[self.name] = self.X
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        # nDV = self.DVGeo.getNDV()
+        # if nDV > 0:
+        #     dAdp0 = numpy.zeros((self.nCon, 
+        #                          self.p0.shape[0],
+        #                          self.p0.shape[1]))
+        #     dAdp1 = numpy.zeros((self.nCon, 
+        #                          self.p1.shape[0],
+        #                          self.p1.shape[1]))
+
+        #     dAdp2 = numpy.zeros((self.nCon, 
+        #                          self.p2.shape[0],
+        #                          self.p2.shape[1]))
+
+        #     p0 = self.p0
+        #     p1 = self.p1
+        #     p2 = self.p2
+        #     for con in xrange(self.nCon):
+        #         p0b = dAdp0[con,:,:]
+        #         p1b = dAdp1[con,:,:]
+        #         p2b = dAdp2[con,:,:]
+        #         areab = 1
+        #         areasb = numpy.empty(self.n)
+        #         crossesb = numpy.empty((self.n,3))
+        #         v1b = numpy.empty((self.n,3))
+        #         v2b = numpy.empty((self.n,3))
+        #         if self.scaled:
+        #             areab = areab/self.X0
+        #         areasb[:] = areab/2.
+
+        #         v1 = p1 - p0
+        #         v2 = p2 - p0
+
+        #         crosses = numpy.cross(v1, v2)
+        #             # for j in xrange(3):
+        #             #     areas(i) = areas(i) + crosses(i, j)**2
+        #             #areas[i] = numpy.sum(crosses[i, :]**2)
+        #         areas = numpy.sum(crosses**2,axis=1)
+        #         for i in xrange(self.n):#DO i=1,n
+        #             if (areas[i] == 0.0):
+        #                 areasb[i] = 0.0
+        #             else:
+        #                 areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
+                
+        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
+        #             #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
+        #             crossesb[i, :] = 2*crosses[i, :]*areasb[i]
+
+        #             v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
+
+        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
+        #             #      p2b(i, j) = p2b(i, j) + v2b(i, j)
+        #             #      p0b(i, j) = p0b(i, j) - v1b(i, j) - v2b(i, j)
+        #             #      v2b(i, j) = 0.0
+        #             #      p1b(i, j) = p1b(i, j) + v1b(i, j)
+        #             #      v1b(i, j) = 0.0
+        #             p2b[i, :] = v2b[i, :]
+        #             p0b[i, :] = - v1b[i, :] - v2b[i, :]
+        #             p1b[i, :] = p1b[i, :] + v1b[i, :]
+            
+
+
+        #     tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
+        #                                         config=config)
+        #     tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
+        #                                         config=config)
+        #     tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
+        #                                         config=config)
+        #     tmpTotal = {}
+        #     for key in tmpp0:
+        #         tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+
+        
+        #     funcsSens[self.name] = tmpTotal
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.DVGeo.getVarNames())
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write('Zone T=%s_surface\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
+            3*self.n, self.n))
+        handle.write('DATAPACKING=POINT\n')
+        for i in xrange(self.n):
+            handle.write('%f %f %f\n'% (self.p0[i, 0], self.p0[i, 1],
+                                        self.p0[i, 2]))
+        for i in xrange(self.n):
+            handle.write('%f %f %f\n'% (self.p1[i, 0], self.p1[i, 1],
+                                        self.p1[i, 2]))
+
+        for i in xrange(self.n):
+            handle.write('%f %f %f\n'% (self.p2[i, 0], self.p2[i, 1],
+                                        self.p2[i, 2]))
+
+        for i in range(self.n):
+            handle.write('%d %d %d\n'% (i+1, i+self.n+1, i+self.n*2+1))
+
+        handle.write('Zone T=%s_center\n'% self.name)
+        handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
+        handle.write('DATAPACKING=POINT\n')
+        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
+                                    self.origin[0,2]))
+        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
+                                    self.origin[0,2]))
+
+
+class ColinearityConstraint(object):
+    """
+    DVConstraints representation of a colinearity constraint.
+    Constrain that all of the points provided stay colinear with the 
+    specified axis.
+    One of these objects is created each time an
+    addColinearityConstraint call is made.
+    The user should not have to deal with this class directly.
+    """
+
+    def __init__(self, name, axis, origin, coords, lower, upper, scale,
+                 DVGeo, addToPyOpt):
+        self.name = name
+        self.nCon = len(coords)
+        self.lower = lower
+        self.upper = upper
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        self.X = numpy.zeros(self.nCon)
+
+        # The first thing we do is convert v1 and v2 to coords
+        self.axis = axis
+        self.origin = origin
+        self.coords = coords
+
+        # Now embed the coordinates and origin into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.origin, self.name+'origin')
+        self.DVGeo.addPointSet(self.coords, self.name+'coords')
+
+                
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.coords = self.DVGeo.update(self.name+'coords', config=config)
+        self.origin = self.DVGeo.update(self.name+'origin', config=config)
+
+        # Compute the direction from each point to the origin
+        dirVec = origin-coords
+        
+        # compute the cross product with the desired axis. Cross product
+        # will be zero if the direction vector is the same as the axis
+        result = numpy.cross(self.axis,dirVec)
+        
+        self.X = numpy.linalg.norm(result)
+
+        funcs[self.name] = self.X
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        # nDV = self.DVGeo.getNDV()
+        # if nDV > 0:
+        #     dAdp0 = numpy.zeros((self.nCon, 
+        #                          self.p0.shape[0],
+        #                          self.p0.shape[1]))
+        #     dAdp1 = numpy.zeros((self.nCon, 
+        #                          self.p1.shape[0],
+        #                          self.p1.shape[1]))
+
+        #     dAdp2 = numpy.zeros((self.nCon, 
+        #                          self.p2.shape[0],
+        #                          self.p2.shape[1]))
+
+        #     p0 = self.p0
+        #     p1 = self.p1
+        #     p2 = self.p2
+        #     for con in xrange(self.nCon):
+        #         p0b = dAdp0[con,:,:]
+        #         p1b = dAdp1[con,:,:]
+        #         p2b = dAdp2[con,:,:]
+        #         areab = 1
+        #         areasb = numpy.empty(self.n)
+        #         crossesb = numpy.empty((self.n,3))
+        #         v1b = numpy.empty((self.n,3))
+        #         v2b = numpy.empty((self.n,3))
+        #         if self.scaled:
+        #             areab = areab/self.X0
+        #         areasb[:] = areab/2.
+
+        #         v1 = p1 - p0
+        #         v2 = p2 - p0
+
+        #         crosses = numpy.cross(v1, v2)
+        #             # for j in xrange(3):
+        #             #     areas(i) = areas(i) + crosses(i, j)**2
+        #             #areas[i] = numpy.sum(crosses[i, :]**2)
+        #         areas = numpy.sum(crosses**2,axis=1)
+        #         for i in xrange(self.n):#DO i=1,n
+        #             if (areas[i] == 0.0):
+        #                 areasb[i] = 0.0
+        #             else:
+        #                 areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
+                
+        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
+        #             #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
+        #             crossesb[i, :] = 2*crosses[i, :]*areasb[i]
+
+        #             v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
+
+        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
+        #             #      p2b(i, j) = p2b(i, j) + v2b(i, j)
+        #             #      p0b(i, j) = p0b(i, j) - v1b(i, j) - v2b(i, j)
+        #             #      v2b(i, j) = 0.0
+        #             #      p1b(i, j) = p1b(i, j) + v1b(i, j)
+        #             #      v1b(i, j) = 0.0
+        #             p2b[i, :] = v2b[i, :]
+        #             p0b[i, :] = - v1b[i, :] - v2b[i, :]
+        #             p1b[i, :] = p1b[i, :] + v1b[i, :]
+            
+
+
+        #     tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
+        #                                         config=config)
+        #     tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
+        #                                         config=config)
+        #     tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
+        #                                         config=config)
+        #     tmpTotal = {}
+        #     for key in tmpp0:
+        #         tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+
+        
+        #     funcsSens[self.name] = tmpTotal
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.DVGeo.getVarNames())
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+        handle.write('Zone T=%s_coords\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            len(self.coords), len(self.coords)-1))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(len(self.coords)):
+            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
+                                        self.coords[i, 2]))
+
+        for i in range(len(self.coords)-1):
+            handle.write('%d %d\n'% (i, i+1))
+
+        handle.write('Zone T=%s_center\n'% self.name)
+        handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
+        handle.write('DATAPACKING=POINT\n')
+        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
+                                    self.origin[0,2]))
+        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
+                                    self.origin[0,2]))
+
 class SurfaceAreaConstraint(object):
     """
     DVConstraints representation of a surface area
