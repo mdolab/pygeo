@@ -50,6 +50,14 @@ class GeometricConstraint(object):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
+        return
+
+    def setDesignVars(self,x):
+        """
+        take in the design var vector from pyopt and set the variables for this constraint
+        This function is constraint specific, so the baseclass doesn't implement anything.
+        """
+        pass
 
     def evalFunctions(self, funcs, config):
         """
@@ -106,18 +114,10 @@ class GeometricConstraint(object):
         """
         Write the visualization of this set of thickness constraints
         to the open file handle
+        This function is constraint specific, so the baseclass doesn't implement anything.
         """
-
-        handle.write('Zone T=%s\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)//2))
-        handle.write('DATAPACKING=POINT\n')
-        for i in range(len(self.coords)):
-            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-                                        self.coords[i, 2]))
-
-        for i in range(len(self.coords)//2):
-            handle.write('%d %d\n'% (2*i+1, 2*i+2))
+        pass
+      
 
 
 
@@ -2138,7 +2138,7 @@ class DVConstraints(object):
 
         return coords
 
-class ThicknessConstraint(object):
+class ThicknessConstraint(GeometricConstraint):
     """
     DVConstraints representation of a set of thickness
     constraints. One of these objects is created each time a
@@ -2157,6 +2157,10 @@ class ThicknessConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -2215,15 +2219,6 @@ class ThicknessConstraint(object):
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dTdPt, self.name, config=config)
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
-
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of thickness constraints
@@ -2241,7 +2236,7 @@ class ThicknessConstraint(object):
         for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
 
-class LocationConstraint(object):
+class LocationConstraint(GeometricConstraint):
     """
     DVConstraints representation of a set of location
     constraints. One of these objects is created each time a
@@ -2260,6 +2255,10 @@ class LocationConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+        
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -2314,16 +2313,7 @@ class LocationConstraint(object):
                     counter+=1
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dTdPt, self.name, config=config)
-
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
+                dTdPt, self.name, config=config)                                    
 
     def writeTecplot(self, handle):
         """
@@ -2340,10 +2330,10 @@ class LocationConstraint(object):
                                         self.coords[i, 2]))
 
         for i in range(len(self.coords)-1):
-            handle.write('%d %d\n'% (i, i+1))
+            handle.write('%d %d\n'% (i+1, i+2))
 
 
-class ThicknessToChordConstraint(object):
+class ThicknessToChordConstraint(GeometricConstraint):
     """
     ThicknessToChordConstraint represents of a set of
     thickess-to-chord ratio constraints. One of these objects is
@@ -2361,6 +2351,10 @@ class ThicknessToChordConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -2426,15 +2420,6 @@ class ThicknessToChordConstraint(object):
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dToCdPt, self.name, config=config)
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
-
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of thickness constraints
@@ -2452,8 +2437,7 @@ class ThicknessToChordConstraint(object):
         for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
 
-
-class VolumeConstraint(object):
+class VolumeConstraint(GeometricConstraint):
     """
     This class is used to represet a single volume constraint. The
     parameter list is explained in the addVolumeConstaint() of
@@ -2464,6 +2448,7 @@ class VolumeConstraint(object):
                  scale, DVGeo, addToPyOpt):
 
         self.name = name
+        self.nCon = 1
         self.nSpan = nSpan
         self.nChord = nChord
         self.coords = coords
@@ -2474,6 +2459,11 @@ class VolumeConstraint(object):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
         self.flipVolume = False
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
+
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
@@ -2517,14 +2507,7 @@ class VolumeConstraint(object):
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dVdPt, self.name, config=config)
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addCon(self.name, lower=self.lower, upper=self.upper,
-                           scale=self.scale, wrt=self.DVGeo.getVarNames())
-
+  
     def writeTecplot(self, handle):
         """
         Write the visualization of this volume constriant
@@ -2706,7 +2689,7 @@ class VolumeConstraint(object):
         pb[2] = pb[2] + tempb13
 
 
-class CompositeVolumeConstraint(object):
+class CompositeVolumeConstraint(GeometricConstraint):
     """This class is used to represet a single volume constraints that is a
     group of other VolumeConstraints.
     """
@@ -2714,6 +2697,7 @@ class CompositeVolumeConstraint(object):
     def __init__(self, name, vols, lower, upper, scaled, scale,
                  DVGeo, addToPyOpt):
         self.name = name
+        self.nCon = 1
         self.vols = vols
         self.scaled = scaled
         self.lower = lower
@@ -2722,6 +2706,10 @@ class CompositeVolumeConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
 
         # Now get the reference volume
         self.V0 = 0.0
@@ -2769,13 +2757,7 @@ class CompositeVolumeConstraint(object):
                 for key in tmp[i]:
                     funcsSens[self.name][key] += tmp[i][key]
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addCon(self.name, lower=self.lower, upper=self.upper,
-                           scale=self.scale, wrt=self.DVGeo.getVarNames())
+  
 
     def writeTecplot(self, handle):
         """No need to write the composite volume since each of the
@@ -2923,7 +2905,7 @@ class LinearConstraint(object):
 
 
 
-class GearPostConstraint(object):
+class GearPostConstraint(GeometricConstraint):
     """
     This class is used to represet a single volume constraint. The
     parameter list is explained in the addVolumeConstaint() of
@@ -2944,7 +2926,9 @@ class GearPostConstraint(object):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-
+        GeometricConstraint.__init__(self, self.name, None, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
@@ -3031,13 +3015,8 @@ class GearPostConstraint(object):
             optProb.addCon(self.name + '_MAC', lower=self.MACFracLower,
                            upper=self.MACFracUpper, wrt=self.DVGeo.getVarNames())
 
-    def writeTecplot(self, handle):
-        """
-        Write the visualization of this volume constriant
-        """
-        pass
 
-class CircularityConstraint(object):
+class CircularityConstraint(GeometricConstraint):
     """
     DVConstraints representation of a set of circularity
     constraint. One of these objects is created each time a
@@ -3056,6 +3035,12 @@ class CircularityConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
+
+
         self.X = numpy.zeros(self.nCon)
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -3150,16 +3135,6 @@ class CircularityConstraint(object):
             length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
             X[i] = numpy.sqrt(length2/reflength2)
 
-
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
-
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of thickness constraints
@@ -3186,7 +3161,7 @@ class CircularityConstraint(object):
                                     self.center[0,2]))
         handle.write('%d %d\n'% (1, 2))
 
-class PlanarityConstraint(object):
+class PlanarityConstraint(GeometricConstraint):
     """
     DVConstraints representation of a surface planarity constraint.
     Constrain that all of the points on this surface are co-planar.
@@ -3204,6 +3179,12 @@ class PlanarityConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
+
+        # create the output array
         self.X = numpy.zeros(self.nCon)
         self.n = len(p0)
 
@@ -3332,14 +3313,6 @@ class PlanarityConstraint(object):
         
         #     funcsSens[self.name] = tmpTotal
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
 
     def writeTecplot(self, handle):
         """
@@ -3374,7 +3347,7 @@ class PlanarityConstraint(object):
                                     self.origin[0,2]))
 
 
-class ColinearityConstraint(object):
+class ColinearityConstraint(GeometricConstraint):
     """
     DVConstraints representation of a colinearity constraint.
     Constrain that all of the points provided stay colinear with the 
@@ -3393,6 +3366,12 @@ class ColinearityConstraint(object):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
+
+        # create the output array
         self.X = numpy.zeros(self.nCon)
 
         # The first thing we do is convert v1 and v2 to coords
@@ -3515,15 +3494,6 @@ class ColinearityConstraint(object):
         
         #     funcsSens[self.name] = tmpTotal
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
-
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of thickness constraints
@@ -3548,7 +3518,7 @@ class ColinearityConstraint(object):
         handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
                                     self.origin[0,2]))
 
-class SurfaceAreaConstraint(object):
+class SurfaceAreaConstraint(GeometricConstraint):
     """
     DVConstraints representation of a surface area
     constraint. One of these objects is created each time a
@@ -3566,6 +3536,12 @@ class SurfaceAreaConstraint(object):
         self.scaled = scaled
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
+
+        # create output array
         self.X = numpy.zeros(self.nCon)
         self.n = len(p0)
 
@@ -3706,15 +3682,6 @@ class SurfaceAreaConstraint(object):
         #return numpy.sum(area)/2.0
         return area/2.0
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
-
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of thickness constraints
@@ -3740,7 +3707,7 @@ class SurfaceAreaConstraint(object):
             handle.write('%d %d %d\n'% (i+1, i+self.n+1, i+self.n*2+1))
 
 
-class ProjectedAreaConstraint(object):
+class ProjectedAreaConstraint(GeometricConstraint):
     """
     DVConstraints representation of a surface area
     constraint. One of these objects is created each time a
@@ -3758,6 +3725,12 @@ class ProjectedAreaConstraint(object):
         self.scaled = scaled
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo, 
+                                     self.addToPyOpt)
+
+        # create output array
         self.X = numpy.zeros(self.nCon)
         self.n = len(p0)
         self.axis = axis
@@ -3887,14 +3860,6 @@ class ProjectedAreaConstraint(object):
 
         return totalProjectedArea
 
-    def addConstraintsPyOpt(self, optProb):
-        """
-        Add the constraints to pyOpt, if the flag is set
-        """
-        if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.DVGeo.getVarNames())
 
     def writeTecplot(self, handle):
         """
