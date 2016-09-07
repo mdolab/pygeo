@@ -3285,79 +3285,71 @@ class PlanarityConstraint(GeometricConstraint):
             Dictionary to place function values
         """
 
-        # nDV = self.DVGeo.getNDV()
-        # if nDV > 0:
-        #     dAdp0 = numpy.zeros((self.nCon, 
-        #                          self.p0.shape[0],
-        #                          self.p0.shape[1]))
-        #     dAdp1 = numpy.zeros((self.nCon, 
-        #                          self.p1.shape[0],
-        #                          self.p1.shape[1]))
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dPdp0 = numpy.zeros((self.nCon, 
+                                 self.p0.shape[0],
+                                 self.p0.shape[1]))
+            dPdp1 = numpy.zeros((self.nCon, 
+                                 self.p1.shape[0],
+                                 self.p1.shape[1]))
 
-        #     dAdp2 = numpy.zeros((self.nCon, 
-        #                          self.p2.shape[0],
-        #                          self.p2.shape[1]))
+            dPdp2 = numpy.zeros((self.nCon, 
+                                 self.p2.shape[0],
+                                 self.p2.shape[1]))
 
-        #     p0 = self.p0
-        #     p1 = self.p1
-        #     p2 = self.p2
-        #     for con in xrange(self.nCon):
-        #         p0b = dAdp0[con,:,:]
-        #         p1b = dAdp1[con,:,:]
-        #         p2b = dAdp2[con,:,:]
-        #         areab = 1
-        #         areasb = numpy.empty(self.n)
-        #         crossesb = numpy.empty((self.n,3))
-        #         v1b = numpy.empty((self.n,3))
-        #         v2b = numpy.empty((self.n,3))
-        #         if self.scaled:
-        #             areab = areab/self.X0
-        #         areasb[:] = areab/2.
+        # copy data into all points array
+        # allpoints(1:n) = p0
+        # allpoints(n:2*n) = p1
+        # allpoints(2*n:3*n) = p2
+        allPoints = numpy.vstack([self.p0,self.p1,self.p2])
 
-        #         v1 = p1 - p0
-        #         v2 = p2 - p0
+        # Compute the distance from the origin to each point
+        # for i in range(n*3):#DO i=1,n*3
+        #     for j in range(3):#DO j=1,3
+        #         dist(i, j) = allpoints(i, j) - origin(j)
+        dist = allPoints-origin
+        xb = numpy.zeros(self.nCon)    
+        for con in range(self.nCon):
+            p0b = dPdp0[con,:,:]
+            p1b = dPdp1[con,:,:]
+            p2b = dPdp2[con,:,:]
+            axisb = 0.0
+            originb = 0.0
+            allpointsb = 0.0
+            distb = 0.0
+            for i in reversed(range(self.nCon)):#DO i=3*n,1,-1
+                #CALL DOT_B(axis, axisb, dist(i, :), distb(i, :), x(i), xb(i))
+                axisb, distb[i,:] = geo_utils.dot_b(axis, dist[i, :], xb[i])
+                xb[i] = 0.0
+                for j in reversed(range(3)):#DO j=3,1,-1
+                    allpointsb[i, j] = allpointsb[i, j] + distb[i, j]
+                    originb[j] = originb[j] - distb[i, j]
+                    distb[i, j] = 0.0
 
-        #         crosses = numpy.cross(v1, v2)
-        #             # for j in xrange(3):
-        #             #     areas(i) = areas(i) + crosses(i, j)**2
-        #             #areas[i] = numpy.sum(crosses[i, :]**2)
-        #         areas = numpy.sum(crosses**2,axis=1)
-        #         for i in xrange(self.n):#DO i=1,n
-        #             if (areas[i] == 0.0):
-        #                 areasb[i] = 0.0
-        #             else:
-        #                 areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
-                
-        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
-        #             #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
-        #             crossesb[i, :] = 2*crosses[i, :]*areasb[i]
-
-        #             v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
-
-        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
-        #             #      p2b(i, j) = p2b(i, j) + v2b(i, j)
-        #             #      p0b(i, j) = p0b(i, j) - v1b(i, j) - v2b(i, j)
-        #             #      v2b(i, j) = 0.0
-        #             #      p1b(i, j) = p1b(i, j) + v1b(i, j)
-        #             #      v1b(i, j) = 0.0
-        #             p2b[i, :] = v2b[i, :]
-        #             p0b[i, :] = - v1b[i, :] - v2b[i, :]
-        #             p1b[i, :] = p1b[i, :] + v1b[i, :]
+            p2b = 0.0
+            p2b = allpointsb[2*self.n:3*self.n]
+            allpointsb[2*self.n:3*self.n] = 0.0
+            p1b = 0.0
+            p1b = allpointsb[self.n:2*self.n]
+            allpointsb[self.n:2*self.n] = 0.0
+            p0b = 0.0
+            p0b = allpointsb[1:self.n]
+         
             
-
-
-        #     tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
-        #                                         config=config)
-        #     tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
-        #                                         config=config)
-        #     tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
-        #                                         config=config)
-        #     tmpTotal = {}
-        #     for key in tmpp0:
-        #         tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+            # map back to DVGeo
+            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
+                                                config=config)
+            tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
+                                                config=config)
+            tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
+                                                config=config)
+            tmpTotal = {}
+            for key in tmpp0:
+                tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
 
         
-        #     funcsSens[self.name] = tmpTotal
+            funcsSens[self.name] = tmpTotal
 
 
     def writeTecplot(self, handle):
@@ -3449,9 +3441,10 @@ class ColinearityConstraint(GeometricConstraint):
         
         # compute the cross product with the desired axis. Cross product
         # will be zero if the direction vector is the same as the axis
-        result = numpy.cross(self.axis,dirVec)
+        resultDir = numpy.cross(self.axis,dirVec)
         
-        self.X = numpy.linalg.norm(result)
+        for i in range(len(resultDir)):
+            self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
 
         funcs[self.name] = self.X
 
@@ -3466,79 +3459,91 @@ class ColinearityConstraint(GeometricConstraint):
             Dictionary to place function values
         """
 
-        # nDV = self.DVGeo.getNDV()
-        # if nDV > 0:
-        #     dAdp0 = numpy.zeros((self.nCon, 
-        #                          self.p0.shape[0],
-        #                          self.p0.shape[1]))
-        #     dAdp1 = numpy.zeros((self.nCon, 
-        #                          self.p1.shape[0],
-        #                          self.p1.shape[1]))
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dCdPt = numpy.zeros((self.nCon, 
+                                     self.coords.shape[0],
+                                     self.coords.shape[1]))
+            dCdOrigin = numpy.zeros((self.nCon, 
+                                     self.origin.shape[0],
+                                     self.origin.shape[1]))
+            dCdAxis = numpy.zeros((self.nCon, 
+                                     self.axis.shape[0],
+                                     self.axis.shape[1]))
 
-        #     dAdp2 = numpy.zeros((self.nCon, 
-        #                          self.p2.shape[0],
-        #                          self.p2.shape[1]))
+        
+            #Compute the direction from each point to the origin
+            # for i in range(n):
+            #     for j in range(3):
+            #         dirvec[i, j] = origin[j] - coords[i, j]
+            dirVec = origin-coords
 
-        #     p0 = self.p0
-        #     p1 = self.p1
-        #     p2 = self.p2
-        #     for con in xrange(self.nCon):
-        #         p0b = dAdp0[con,:,:]
-        #         p1b = dAdp1[con,:,:]
-        #         p2b = dAdp2[con,:,:]
-        #         areab = 1
-        #         areasb = numpy.empty(self.n)
-        #         crossesb = numpy.empty((self.n,3))
-        #         v1b = numpy.empty((self.n,3))
-        #         v2b = numpy.empty((self.n,3))
-        #         if self.scaled:
-        #             areab = areab/self.X0
-        #         areasb[:] = areab/2.
+            axisb = 0.0
+            dirvecb = 0.0
+            # for i in range(self.nCon):
+            #     resultdir = numpy.cross(axis, dirvec[i, :])
+            #     self.X[i] = 0
+            #     for j in range(3):
+            #         self.X[i] = self.X[i] + resultdir[j]**2
+            resultDir = numpy.cross(self.axis,dirVec)
+            for i in range(len(resultDir)):
+                self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
 
-        #         v1 = p1 - p0
-        #         v2 = p2 - p0
+            xb = numpy.zeros(self.nCon)
+            for con in xrange(self.nCon):
+                originsb = dCdOrigin[con,0,:]
+                coordsb = dCdPt[con,:,:]
+                axisb = dCdAxis[con,0,:]
+                xb[:] = 0.
+                xb[con] = 1.
 
-        #         crosses = numpy.cross(v1, v2)
-        #             # for j in xrange(3):
-        #             #     areas(i) = areas(i) + crosses(i, j)**2
-        #             #areas[i] = numpy.sum(crosses[i, :]**2)
-        #         areas = numpy.sum(crosses**2,axis=1)
-        #         for i in xrange(self.n):#DO i=1,n
-        #             if (areas[i] == 0.0):
-        #                 areasb[i] = 0.0
-        #             else:
-        #                 areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
-                
-        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
-        #             #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
-        #             crossesb[i, :] = 2*crosses[i, :]*areasb[i]
+                for i in range(self.nCon):
+                    if (self.X[i] == 0.0):
+                        xb[i] = 0.0
+                    else:
+                        xb[i] = xb[i]/(2.0*numpy.sqrt(self.X[i]))
 
-        #             v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
+                    resultdirb = 0.0
+                    for i in reversed(range(3)):#DO j=3,1,-1
+                        resultdirb[j] = resultdirb[j] + 2*resultdir[j]*xb[i]
 
-        #             # for j in reversed(xrange(3)):#DO j=3,1,-1
-        #             #      p2b(i, j) = p2b(i, j) + v2b(i, j)
-        #             #      p0b(i, j) = p0b(i, j) - v1b(i, j) - v2b(i, j)
-        #             #      v2b(i, j) = 0.0
-        #             #      p1b(i, j) = p1b(i, j) + v1b(i, j)
-        #             #      v1b(i, j) = 0.0
-        #             p2b[i, :] = v2b[i, :]
-        #             p0b[i, :] = - v1b[i, :] - v2b[i, :]
-        #             p1b[i, :] = p1b[i, :] + v1b[i, :]
+                    xb[i] = 0.0
+                    #CALL CROSS_B(axis, axisb, dirvec(i, :), dirvecb(i, :), resultdirb)
+                    axisb, dirvec[i,:] = geo_utils.cross_b(axis, axisb, dirvec[i, :], dirvecb[i, :],
+                                                           resultdirb)
+
+                coordsb = 0.0
+                originb = 0.0
+                for i in reversed(range(len(coordsb))):#DO i=n,1,-1
+                    for j in reversed(range(3)):#DO j=3,1,-1
+                        originb[j] = originb[j] + dirvecb[i, j]
+                        coordsb[i, j] = coordsb[i, j] - dirvecb[i, j]
+                        dirvecb[i, j] = 0.0
             
 
 
-        #     tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0', 
-        #                                         config=config)
-        #     tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
-        #                                         config=config)
-        #     tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
-        #                                         config=config)
-        #     tmpTotal = {}
-        #     for key in tmpp0:
-        #         tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+            tmpPt = self.DVGeo.totalSensitivity(dCdPt, self.name+'coords', 
+                                                config=config)
+            tmpOrigin = self.DVGeo.totalSensitivity(dCdOrigin, self.name+'origin',
+                                                    config=config)
+     
+            tmpTotal = {}
+            for key in tmppt:
+                tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
 
-        
-        #     funcsSens[self.name] = tmpTotal
+            tmpTotal[self.name+'axis'] =  dCdAxis
+
+            funcsSens[self.name] = tmpTotal
+
+    def addVariablesPyOpt(self,optProb):
+        """
+        Add the axis variable for the colinearity constraint to pyOpt
+        """
+
+        if self.addVarToPyOpt:
+            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
+                                lower=dv.lower, upper=dv.upper,
+                                scale=dv.scale)
 
     def writeTecplot(self, handle):
         """
