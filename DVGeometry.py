@@ -995,6 +995,10 @@ class DVGeometry(object):
         names = list(self.DV_listGlobal.keys())
         names.extend(list(self.DV_listLocal.keys()))
 
+        # Call the children recursively
+        for iChild in xrange(len(self.children)):
+            names.extend(self.children[iChild].getVarNames())
+
         return names
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, child=False,
@@ -1104,7 +1108,7 @@ class DVGeometry(object):
                 dIdpt, ptSetName=ptSetName, comm=comm, child=True, nDVStore=nDV)
            
             # update the total sensitivities with the derivatives from the child
-            for key in childdIdx:
+            for key in childdIdx:               
                 if key in dIdx.keys():
                     dIdx[key]+=childdIdx[key]
                 else:

@@ -102,7 +102,7 @@ def euclideanNorm(inVec):
 
     return np.sqrt(temp)
 
-def cross_b(a, b, crossb):
+def cross_b(a, b,  crossb):
     """
     Do the reverse accumulation through a cross product.
     """
@@ -159,6 +159,22 @@ def calculateCentroid(p0, v1, v2):
 
     return centroid
 
+def calculateAverageNormal(p0, v1, v2):
+    '''
+    take in a triangulated surface and calculate the centroid
+    '''
+    p1 = v1+p0
+    p2 = v2+p0
+
+    #compute the normal of each triangle
+    normal = np.cross(v1, v2)
+    sumNormal = np.sum(normal,axis=0)
+    lengthNorm = np.linalg.norm(sumNormal)
+    
+    unitNormal = sumNormal/lengthNorm
+
+    return unitNormal
+
 def calculateRadii(centroid, p0, v1, v2):
     ''' 
     take the centroid and compute inner and outer radii of surface
@@ -184,7 +200,7 @@ def calculateRadii(centroid, p0, v1, v2):
     radI[2] = np.min(d2)
 
     outerRadius = np.max(radO)
-    innerRadius = np.max(radI)
+    innerRadius = np.min(radI)
 
     return innerRadius,outerRadius
     
