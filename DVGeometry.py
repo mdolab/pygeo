@@ -124,8 +124,8 @@ class DVGeometry(object):
         self.origFFDCoef = self.FFD.coef.copy()
 
         # Jacobians:
-        # self.JT: Total transpose jacobian for self.J_name
-        self.zeroJacobians()
+        self.ptSetNames = []
+        self.JT = {}
      
         # Derivatives of Xref and Coef provided by the parent to the
         # children
@@ -294,6 +294,11 @@ class DVGeometry(object):
             always be True except in circumstances when the user knows
             exactly what they are doing."""
  
+
+        # save this name so that we can zero out the jacobians properly
+        self.ptSetNames.append(ptName)
+        self.zeroJacobians([ptName])
+        
         points = numpy.array(points).real.astype('d')
         self.points[ptName] = points
 
@@ -634,7 +639,7 @@ class DVGeometry(object):
                 self.DV_listLocal[key].value = vals_to_set
 
             # Jacobians are, in general, no longer up to date
-            self.zeroJacobians()
+            self.zeroJacobians(self.ptSetNames)
 
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
@@ -645,15 +650,18 @@ class DVGeometry(object):
         for child in self.children:
             child.setDesignVars(dvDict)
 
-    def zeroJacobians(self):
+    def zeroJacobians(self,ptSetNames):
         '''
-        set all of the stored jacobians to None
+        set stored jacobians to None for ptSetNames
+        
+        Parameters
+        ----------
+        ptSetNames : list
+            list of ptSetNames to zero the jacobians.
         '''
-        self.JT = None # J is no longer up to date
-        self.J_name = None # Name is no longer defined
-        self.J_attach = None
-        self.J_local = None
-
+        for name in ptSetNames:
+            self.JT[name] = None # J is no longer up to date
+            
     def getValues(self):
         """
         Generic routine to return the current set of design
@@ -1063,14 +1071,13 @@ class DVGeometry(object):
         N = dIdpt.shape[0]
 
         # generate the total Jacobian self.JT
-        if self.JT is None:
-            self.computeTotalJacobian(ptSetName,config=config)
+        self.computeTotalJacobian(ptSetName,config=config)
 
         # now that we have self.JT compute the Mat-Mat multiplication
         nDV = self._getNDV()
         dIdx_local = numpy.zeros((N, nDV), 'd')
         for i in range(N):
-            dIdx_local[i,:] = self.JT.dot(dIdpt[i,:,:].flatten())
+            dIdx_local[i,:] = self.JT[ptSetName].dot(dIdpt[i,:,:].flatten())
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -1136,10 +1143,10 @@ class DVGeometry(object):
             i += dv.nVal
 
         # perform the product
-        if self.JT is None:
+        if self.JT[ptSetName] is None:
             xsdot = numpy.zeros((0, 3))
         else:
-            xsdot = self.JT.T.dot(newvec)
+            xsdot = self.JT[ptSetName].T.dot(newvec)
             xsdot.reshape(len(xsdot)/3, 3)
 
         return xsdot
@@ -1184,10 +1191,10 @@ class DVGeometry(object):
         self.computeTotalJacobian(ptSetName)
         
         # perform the product
-        if self.JT == None:
+        if self.JT[ptSetName] == None:
             xsdot = numpy.zeros((0, 3))
         else:
-            xsdot = self.JT.dot(numpy.ravel(vec))
+            xsdot = self.JT[ptSetName].dot(numpy.ravel(vec))
 
         # Pack result into dictionary
         xsdict = {}
@@ -1208,20 +1215,20 @@ class DVGeometry(object):
         return J_temp for a given config
         """
         # This is going to be DENSE in general
-        self.J_attach = self._attachedPtJacobian(config=config)
+        J_attach = self._attachedPtJacobian(config=config)
+
         # This is the sparse jacobian for the local DVs that affect
         # Control points directly.
-        if self.J_local is None:
-            self.J_local = self._localDVJacobian(config=config)
+        J_local = self._localDVJacobian(config=config)
 
         # HStack em'
         # Three different possibilities: 
-        if self.J_attach is not None and self.J_local is None:
-            J_temp = sparse.lil_matrix(self.J_attach)
-        elif self.J_local is not None and self.J_attach is None:
-            J_temp = sparse.lil_matrix(self.J_local)
+        if J_attach is not None and J_local is None:
+            J_temp = sparse.lil_matrix(J_attach)
+        elif J_local is not None and J_attach is None:
+            J_temp = sparse.lil_matrix(J_local)
         else:
-            J_temp = sparse.hstack([self.J_attach, self.J_local], format='lil')
+            J_temp = sparse.hstack([J_attach, J_local], format='lil')
 
         return J_temp
 
@@ -1230,8 +1237,9 @@ class DVGeometry(object):
         need this for TACS"""
         self._finalize()
         self.curPtSet = ptSetName
-        # if self.JT is not None and self.J_name == name: # Already computed
-        #     return
+        
+        if not(self.JT[ptSetName] is None):
+            return
   
         # compute the design variable Jacobian
         J_temp = self.computeDVJacobian(config=config)
@@ -1268,8 +1276,8 @@ class DVGeometry(object):
             new_dPtdCoef = sparse.coo_matrix(
                 (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
             # Do Sparse Mat-Mat multiplaiction and resort indices
-            self.JT = (J_temp.T*new_dPtdCoef.T).tocsr()
-            self.JT.sort_indices()
+            self.JT[ptSetName] = (J_temp.T*new_dPtdCoef.T).tocsr()
+            self.JT[ptSetName].sort_indices()
 
             # Add in child portion
             for iChild in xrange(len(self.children)):
@@ -1285,10 +1293,10 @@ class DVGeometry(object):
                 self.children[iChild].refAxis._updateCurveCoef()
                 self.children[iChild].computeTotalJacobian(ptSetName)
 
-                self.JT = self.JT + self.children[iChild].JT
+                self.JT[ptSetName] = self.JT[ptSetName] + self.children[iChild].JT[ptSetName]
              
         else:
-            self.JT = None
+            self.JT[ptSetName] = None
 
 
     def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True, 
@@ -2322,14 +2330,11 @@ class DVGeometry(object):
         print('Computing Analytic Jacobian...')
         self.zeroJacobians()
         for child in self.children:
-            child.zeroJacobians()
-        # self.JT = None # J is no longer up to date
-        # self.J_name = None # Name is no longer defined
-        # self.J_attach = None
-        # self.J_local = None
+            child.zeroJacobians(ptSetName)
+
         self.computeTotalJacobian(ptSetName)
        
-        Jac = copy.deepcopy(self.JT)
+        Jac = copy.deepcopy(self.JT[ptSetName])
         
         # Global Variables
         print('========================================')
