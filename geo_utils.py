@@ -142,8 +142,9 @@ def calculateCentroid(p0, v1, v2):
     '''
     take in a triangulated surface and calculate the centroid
     '''
-    p1 = v1+p0
-    p2 = v2+p0
+    p0 = np.array(p0)
+    p1 = np.array(v1)+p0
+    p2 = np.array(v2)+p0
 
     #compute the areas
     areaVec = np.cross(v1, v2)/2.0
@@ -163,8 +164,9 @@ def calculateAverageNormal(p0, v1, v2):
     '''
     take in a triangulated surface and calculate the centroid
     '''
-    p1 = v1+p0
-    p2 = v2+p0
+    p0 = np.array(p0)
+    p1 = np.array(v1)+p0
+    p2 = np.array(v2)+p0
 
     #compute the normal of each triangle
     normal = np.cross(v1, v2)
@@ -179,8 +181,9 @@ def calculateRadii(centroid, p0, v1, v2):
     ''' 
     take the centroid and compute inner and outer radii of surface
     '''
-    p1 = v1+p0
-    p2 = v2+p0
+    p0 = np.array(p0)
+    p1 = np.array(v1)+p0
+    p2 = np.array(v2)+p0
 
     # take the difference between the points and the centroid
     d0 = p0-centroid
