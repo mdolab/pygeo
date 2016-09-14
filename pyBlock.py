@@ -891,7 +891,6 @@ class pyBlock():
                             mask.append(i)
                     for iVol in range(self.nVol):
                         key = '%d'%iVol
-                        print('keys',faceFreeze.keys())
                         if key in faceFreeze.keys():
                             if 'iLow' in faceFreeze[key]:
                                 coefMask[iVol][0, :, :] = True

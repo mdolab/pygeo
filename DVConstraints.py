@@ -3591,23 +3591,16 @@ class ColinearityConstraint(GeometricConstraint):
         """
         handle.write('Zone T=%s_coords\n'% self.name)
         handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)-1))
+            len(self.coords)+1, len(self.coords)))
         handle.write('DATAPACKING=POINT\n')
+        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
+                                    self.origin[0,2]))
         for i in range(len(self.coords)):
             handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
                                         self.coords[i, 2]))
 
-        for i in range(len(self.coords)-1):
+        for i in range(len(self.coords)):
             handle.write('%d %d\n'% (i+1, i+2))
-
-        handle.write('Zone T=%s_center\n'% self.name)
-        handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
-        handle.write('DATAPACKING=POINT\n')
-        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
-                                    self.origin[0,2]))
-        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
-                                    self.origin[0,2]))
-        handle.write('%d %d\n'% (1, 2))
     
     def _computeDist(self,origin,coords,axis, dtype='d'):
         """
