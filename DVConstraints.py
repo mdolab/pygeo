@@ -89,7 +89,6 @@ class GeometricConstraint(object):
         return the var names relevant to this constraint. By default, this is the DVGeo
         variables, but some constraints may extend this to include other variables.
         """
-        print('wrtnames',self.DVGeo.getVarNames())
         return self.DVGeo.getVarNames()
 
     def addConstraintsPyOpt(self, optProb):
@@ -683,7 +682,7 @@ class DVConstraints(object):
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_thickness_constraints_%d'%(self.name, len(self.thickCon))
+            conName = '%s_thickness_constraints_%d'%(self.name,len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
@@ -773,7 +772,7 @@ class DVConstraints(object):
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_location_constraints_%d'%(self.name,len(self.locCon))
+            conName = '%s_location_constraints_%d'%(self.name,len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = LocationConstraint(
@@ -892,7 +891,7 @@ class DVConstraints(object):
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_location_constraints_%d'%(self.name, len(self.locCon))
+            conName = '%s_location_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = LocationConstraint(
@@ -1011,7 +1010,7 @@ class DVConstraints(object):
         if not typeName in self.constraints:
             self.constraints[typeName] = OrderedDict()
         if name is None:
-            conName = '%s_thickness_to_chord_constraints_%d'%(self.name, len(self.thickCon))
+            conName = '%s_thickness_to_chord_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
