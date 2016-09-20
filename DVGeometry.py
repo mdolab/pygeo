@@ -1657,7 +1657,6 @@ class DVGeometry(object):
         curveID = 0
         # Loop over the axis we have:
         for key in self.axis:
-            print(key)
             vol_list = numpy.atleast_1d(self.axis[key]['volumes']).astype('intc')
             temp = []
             for iVol in vol_list:
