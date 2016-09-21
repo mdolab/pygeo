@@ -2152,7 +2152,7 @@ class DVGeometry(object):
                         deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh,config=config)).flatten()
                         # reset the FFD and axis
                         self._unComplexifyCoef()
-                        self.FFD.coef = self.FFD.coef.astype('d')
+                        self.FFD.coef = self.FFD.coef.real.astype('d')
         
                         numpy.put(Jacobian[0::3, iDV], self.ptAttachInd, 
                                   deriv[0::3])
