@@ -36,8 +36,8 @@ if mode == 'train':
         pass
 
     # Run each script
-    os.system("python solve_script.py --mode='train' --task='all' >> %s_reg.ref 2>&1"%(
-        module_name))
+    os.system("%s -np 1 python solve_script.py --mode='train' --task='all' >> %s_reg.ref 2>&1"%(
+        mpiexec, module_name))
         
     # If we're training, we done (no comparison)
     sys.exit(0)
@@ -48,8 +48,8 @@ else:
         pass
 
     # Run each script
-    os.system("python solve_script.py --mode='test' --task='all' >> %s_reg 2>&1"%(
-        module_name))
+    os.system("%s -np 1 python solve_script.py --mode='test' --task='all' >> %s_reg 2>&1"%(
+        mpiexec, module_name))
 
     # Do the comparison (reference file must be first)
     res = reg.reg_file_comp('%s_reg.ref'%(module_name),'%s_reg'%(module_name))
