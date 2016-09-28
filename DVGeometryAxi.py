@@ -1,4 +1,4 @@
-from __future__ import print_function
+# from __future__ import print_function
 
 import numpy as np 
 
@@ -61,16 +61,16 @@ class _AxiTransform(object):
         # self.c_pts_axi = np.vstack((self.alpha, self.radii, np.zeros(self.n_points))).T
         self.c_pts = np.empty(self.pts.shape)
         self.c_pts[:, 0] = self.alpha 
-        self.c_pts[:, 1] = self.radii + self.center[self.beta_idx]
-        self.c_pts[:, 2] = 0. + self.center[self.gamma_idx]
+        self.c_pts[:, self.beta_idx] = self.radii
+        self.c_pts[:, self.gamma_idx] = 0.
 
     def expand(self, new_c_pts): 
         """given new collapsed points, re-expands them into physical space"""
 
         self.c_pts = new_c_pts 
         self.pts[:, self.alpha_idx] = new_c_pts[:, 0] 
-        self.pts[:, self.beta_idx] = new_c_pts[:, 1]*np.cos(self.thetas) + self.center[self.beta_idx]
-        self.pts[:, self.gamma_idx] = new_c_pts[:, 1]*np.sin(self.thetas) + self.center[self.gamma_idx]
+        self.pts[:, self.beta_idx] = new_c_pts[:, self.beta_idx]*np.cos(self.thetas) + self.center[self.beta_idx]
+        self.pts[:, self.gamma_idx] = new_c_pts[:, self.beta_idx]*np.sin(self.thetas) + self.center[self.gamma_idx]
 
         return self.pts
 
@@ -81,7 +81,7 @@ class DVGeometryAxi(DVGeometry):
 
         self.axiTransforms = OrderedDict()  # TODO: Why is this ordered? 
 
-        super(self, DVGeometry).__init__(fileName, complex, child, *args, **kwargs)
+        super(DVGeometryAxi, self).__init__(fileName, complex, child, *args, **kwargs)
 
     def addPointSet(self, points, center, collapse_into, ptName, origConfig=True, **kwargs): 
         """
@@ -119,14 +119,15 @@ class DVGeometryAxi(DVGeometry):
 
         xform = self.axiTransforms[ptName] = _AxiTransform(points, center, collapse_into)
 
-        super(self, DVGeometry).addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
+        super(DVGeometryAxi, self).addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
 
     def update(self, ptSetName, childDelta=True, config=None): 
 
-        new_c_pts = super(self, DVGeometryAxi).update(ptSetName, childDelta, config)
+        new_c_pts = super(DVGeometryAxi, self).update(ptSetName, childDelta, config)
 
         xform = self.axiTransforms[ptSetName]
         coords = xform.expand(new_c_pts)
+        # coords = new_c_pts
 
         return coords 
 
