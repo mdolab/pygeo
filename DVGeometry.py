@@ -2055,18 +2055,18 @@ class DVGeometry(object):
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
-        DVGlobalCount,DVLocalCount = self._getDVOffsets()
+        DVGlobalCount, DVLocalCount = self._getDVOffsets()
         
         coords0 = self.update(ptSetName,config).flatten()
 
-        h = 1e-8#6
+        h = 1e-1#6
 
         self.JT[ptSetName] = numpy.zeros([self.nDV_T,self.nPts[ptSetName]])    
 
         for key in self.DV_listGlobal:
             for j in xrange(self.DV_listGlobal[key].nVal):
                 if self.isChild:
-                    self.FFD.coef=  refFFDCoef.copy()
+                    self.FFD.coef = refFFDCoef.copy()
                 # end if
 
                 refVal = self.DV_listGlobal[key].value[j]
