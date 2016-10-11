@@ -1899,8 +1899,8 @@ class DVGeometry(object):
                     self.children[iChild].dXrefdXdvl[:, iDV] += dXrefdXdv # This is for recursion, check??
                     self.children[iChild].dCcdXdvl[:, iDV] += dCcdXdv  # This is for recursion, check??
                 else:
-                    self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv # This is for recursion, check??
-                    self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv  # This is for recursion, check??
+                    self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv.real # This is for recursion, check??
+                    self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv.real  # This is for recursion, check??
         return new_pts
 
     def _update_deriv_new(self,ptSetName, childDelta = True, config=None):

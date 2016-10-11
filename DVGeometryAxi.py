@@ -188,13 +188,14 @@ class DVGeometryAxi(DVGeometry):
         self.JT[ptSetName] = xform.dPtCdPtA.dot(self.JT[ptSetName].T).T
 
 
-    def computeTotalJacobianFD(self, ptSetName, config=None): 
+    # TODO JSG: the computeTotalJacobianFD method is broken in DVGeometry Base class
+    # def computeTotalJacobianFD(self, ptSetName, config=None): 
 
-        super(DVGeometryAxi, self).computeTotalJacobianFD(ptSetName, config)
+    #     super(DVGeometryAxi, self).computeTotalJacobianFD(ptSetName, config)
 
-        xform = self.axiTransforms[ptSetName]
+    #     xform = self.axiTransforms[ptSetName]
 
-        self.JT[ptSetName] = xform.dPtCdPtA.dot(self.JT[ptSetName].T).T
+    #     self.JT[ptSetName] = xform.dPtCdPtA.dot(self.JT[ptSetName].T).T
 
 
 
