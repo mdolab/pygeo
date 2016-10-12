@@ -4081,10 +4081,9 @@ class ProjectedAreaConstraint(GeometricConstraint):
                 
 class CurvatureConstraint(GeometricConstraint):
     """
-    DVConstraints representation of a set of thickness
-    constraints. One of these objects is created each time a
-    addThicknessConstraints2D or addThicknessConstraints1D call is
-    made. The user should not have to deal with this class directly.
+    DVConstraints representation of a set of the curvature constraint. 
+    One of these objects is created each time a addCurvatureConstraint is made. 
+    The user should not have to deal with this class directly.
     """
 
     def __init__(self, name, surfs, lower, upper, scaled, scale, DVGeo,
