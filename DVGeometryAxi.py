@@ -122,14 +122,86 @@ class _AxiTransform(object):
 
 
 class DVGeometryAxi(DVGeometry):
+    """
+    A class for manipulating geometry. 
+    
+    The purpose of the DVGeometry class is to provide a mapping from
+    user-supplied design variables to an arbitrary set of discrete,
+    three-dimensional coordinates. These three-dimensional coordinates
+    can in general represent anything, but will typically be the
+    surface of an aerodynamic mesh, the nodes of a FE mesh or the
+    nodes of another geometric construct. 
 
-    def __init__(self, fileName, complex=False, child=False, *args, **kwargs): 
+    In a very general sense, DVGeometry performs two primary
+    functions:
+
+    1. Given a new set of design variables, update the
+       three-dimensional coordinates: :math:`X_{DV}\\rightarrow
+       X_{pt}` where :math:`X_{pt}` are the coordinates and :math:`X_{DV}`
+       are the user variables. 
+
+    2. Determine the derivative of the coordinates with respect to the
+       design variables. That is the derivative :math:`\\frac{dX_{pt}}{dX_{DV}}`
+    
+    DVGeometry uses the *Free-Form Deformation* approach for goemetry
+    manipulation. The basic idea is the coordinates are *embedded* in
+    a clear-flexible jelly-like block. Then by stretching moving and
+    'poking' the volume, the coordinates that are embedded inside move
+    along with overall deformation of the volume. 
+
+    Parameters
+    ----------
+    fileName : str
+       filename of FFD file. This must be a ascii formatted plot3D file
+       in fortran ordering. 
+    center : array, size (3,1)
+            The center about which the axisymmetric FFD should be applied.
+            This can be any point along the rotation axis of the body
+    collapse_into: 2-tuple of strings
+            Two coordinate axes that you wish to collapse your points into. 
+            This should align with the directions you are moving FFD 
+            control points. The first item in the tuple is taken as the rotation 
+            axis for the axi-symmetric coordinate system. So ("x","z") means to 
+            collapse into the x,z plane and use x as the rotational axis. 
+            ("z", "x") means to collapse into the x,z plane and use z as the 
+            rotational axis
+    complex : bool
+        Make the entire object complex. This should **only** be used when
+        debugging the entire tool-chain with the complex step method. 
+
+    child : bool
+        Flag to indicate that this object is a child of parent DVGeo object
+
+
+    Examples
+    --------
+    The general sequence of operations for using DVGeometry is as follows::
+      >>> from pygeo import DVGeometryAxi
+      >>> DVGeo = DVGeometryAxi('FFD_file.fmt', center=(0., 0., 0.), collapse_into=("x", "z"))
+      >>> # Embed a set of coordinates Xpt into the object
+      >>> DVGeo.addPointSet(Xpt, 'myPoints')
+      >>> # Associate a 'reference axis' for large-scale manipulation
+      >>> DVGeo.addRefAxis('wing_axis', axis_curve)
+      >>> # Define a global design variable function:
+      >>> def twist(val, geo):
+      >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
+      >>> # Now add this as a global variable:
+      >>> DVGeo.addGeoDVGlobal('wing_twist', 0.0, twist, lower=-10, upper=10)
+      >>> # Now add local (shape) variables
+      >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
+      >>> 
+      """
+
+    def __init__(self, fileName, center, collapse_into, complex=False, child=False, *args, **kwargs): 
 
         self.axiTransforms = OrderedDict()  # TODO: Why is this ordered? 
 
         super(DVGeometryAxi, self).__init__(fileName, complex, child, *args, **kwargs)
 
-    def addPointSet(self, points, center, collapse_into, ptName, origConfig=True, **kwargs): 
+        self.center = center
+        self.collapse_into = collapse_into
+
+    def addPointSet(self, points, ptName, origConfig=True, **kwargs): 
         """
         Add a set of coordinates to DVGeometry
 
@@ -141,17 +213,6 @@ class DVGeometryAxi(DVGeometry):
         points : array, size (N,3)
             The coordinates to embed. These cordinates *should* all
             project into the interior of the FFD volume. 
-        center : array, size (3,1)
-            The center about which the axisymmetric FFD should be applied.
-            This can be any point along the rotation axis of the body
-        collapse_into: 2-tuple of strings
-            Two coordinate axes that you wish to collapse your points into. 
-            This should align with the directions you are moving FFD 
-            control points. The first item in the tuple is taken as the rotation 
-            axis for the axi-symmetric coordinate system. So ("x","z") means to 
-            collapse into the x,z plane and use x as the rotational axis. 
-            ("z", "x") means to collapse into the x,z plane and use z as the 
-            rotational axis
         ptName : str
             A user supplied name to associate with the set of
             coordinates. This name will need to be provided when
@@ -163,8 +224,8 @@ class DVGeometryAxi(DVGeometry):
             always be True except in circumstances when the user knows
             exactly what they are doing."""
 
-        xform = self.axiTransforms[ptName] = _AxiTransform(points, center, collapse_into)
-
+        xform = self.axiTransforms[ptName] = _AxiTransform(points, self.center, self.collapse_into)
+        
         super(DVGeometryAxi, self).addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
 
     def update(self, ptSetName, childDelta=True, config=None): 

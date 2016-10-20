@@ -86,7 +86,7 @@ def setupDVGeoD8(isComplex):
     return DVGeo, DVGeoChild
 
 def setupDVGeoAxi(): 
-    DVGeo = DVGeometryAxi("./inputFiles/axiTestFFD.xyz")
+    DVGeo = DVGeometryAxi("./inputFiles/axiTestFFD.xyz", center=(0., 0., 0.), collapse_into=("x", "z"))
     axisPoints = [[ 0,   0.  ,   0.],[ 0,  0.,  1.]]
     c1 = Curve(X=axisPoints,k=2)
     DVGeo.addRefAxis('stretch',curve=c1, axis='z')
@@ -808,7 +808,7 @@ def test19(refDeriv=False):
     DVGeo.addGeoDVLocal('z_axis', lower=-2, upper=2, axis="z")
     DVGeo.addGeoDVLocal('y_axis', lower=-2, upper=2, axis="y")
 
-    DVGeo.addPointSet(points=s_pts, ptName="point", center=(0., 0., 0.), collapse_into=("x", "z"))
+    DVGeo.addPointSet(points=s_pts, ptName="point")
 
     DVGeo.computeTotalJacobian("point")
 
