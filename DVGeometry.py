@@ -1899,8 +1899,8 @@ class DVGeometry(object):
                     self.children[iChild].dXrefdXdvl[:, iDV] += dXrefdXdv # This is for recursion, check??
                     self.children[iChild].dCcdXdvl[:, iDV] += dCcdXdv  # This is for recursion, check??
                 else:
-                    self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv # This is for recursion, check??
-                    self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv  # This is for recursion, check??
+                    self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv.real # This is for recursion, check??
+                    self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv.real  # This is for recursion, check??
         return new_pts
 
     def _update_deriv_new(self,ptSetName, childDelta = True, config=None):
@@ -2055,18 +2055,18 @@ class DVGeometry(object):
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
-        DVGlobalCount,DVLocalCount = self._getDVOffsets()
+        DVGlobalCount, DVLocalCount = self._getDVOffsets()
         
         coords0 = self.update(ptSetName,config).flatten()
 
-        h = 1e-8#6
+        h = 1e-1#6
 
         self.JT[ptSetName] = numpy.zeros([self.nDV_T,self.nPts[ptSetName]])    
 
         for key in self.DV_listGlobal:
             for j in xrange(self.DV_listGlobal[key].nVal):
                 if self.isChild:
-                    self.FFD.coef=  refFFDCoef.copy()
+                    self.FFD.coef = refFFDCoef.copy()
                 # end if
 
                 refVal = self.DV_listGlobal[key].value[j]

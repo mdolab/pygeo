@@ -25,7 +25,7 @@ parser.add_argument("--task", help='what to do',
                              'test5', 'test6', 'test7', 'test8',
                              'test9', 'test10', 'test11', 'test12',
                              'test13', 'test14', 'test15', 'test16',
-                             'test17', 'test18',
+                             'test17', 'test18', 'test19',
                          ], default='all')
 
 args = parser.parse_args()
@@ -84,8 +84,17 @@ def setupDVGeoD8(isComplex):
     DVGeoChild.addRefAxis('nestedAxis',curve=c1, axis='y')
 
     return DVGeo, DVGeoChild
+
+def setupDVGeoAxi(): 
+    DVGeo = DVGeometryAxi("./inputFiles/axiTestFFD.xyz", center=(0., 0., 0.), collapse_into=("x", "z"))
+    axisPoints = [[ 0,   0.  ,   0.],[ 0,  0.,  1.]]
+    c1 = Curve(X=axisPoints,k=2)
+    DVGeo.addRefAxis('stretch',curve=c1, axis='z')
+
+    return DVGeo
+
     
-#define a nested global design variable
+# define a nested global design variable
 def childAxisPoints(val,geo):
     C = geo.extractCoef('nestedAxis')
     
@@ -131,6 +140,12 @@ def mainAxisPointsD8(val,geo):
 
     return
 
+def mainAxisPointAxi(val, DVgeo): 
+    C = DVgeo.extractCoef('stretch')
+    C[0,2] = val[0]
+
+    DVgeo.restoreCoef(C, 'stretch')
+    return 
 
 def totalSensitivityFD(DVGeo,nPt,ptName):
     xDV = DVGeo.getValues()
@@ -777,7 +792,60 @@ def test18(refDeriv=False):
     del DVGeo
     del DVGeoChild
 
+def test19(refDeriv=False): 
+    printHeader("Test 19: Axisymmetric FFD, global and local DVs")
+    # Test with a single point along the 45 ` degree theta direction
+    sys.stdout.flush()
 
+    DVGeo = setupDVGeoAxi()
+
+    s_pts = numpy.array([[0, .5, .5],], dtype="float")
+
+
+    DVGeo.addGeoDVGlobal('mainAxis', numpy.zeros(1), mainAxisPointAxi)
+
+    DVGeo.addGeoDVLocal('x_axis', lower=-2, upper=2, axis="x")
+    DVGeo.addGeoDVLocal('z_axis', lower=-2, upper=2, axis="z")
+    DVGeo.addGeoDVLocal('y_axis', lower=-2, upper=2, axis="y")
+
+    DVGeo.addPointSet(points=s_pts, ptName="point")
+
+    DVGeo.computeTotalJacobian("point")
+
+    if not refDeriv: 
+        J_analytic = DVGeo.JT['point'].T.toarray()
+
+        reg_write(J_analytic,1e-7,1e-7)
+
+    else: 
+        # generate an FD jacobian
+        xDV = DVGeo.getValues()
+        global_var_names = DVGeo.DV_listGlobal.keys()
+        local_var_names = DVGeo.DV_listLocal.keys()
+        refPoints = DVGeo.update("point")
+        n_pt = refPoints.shape[0]
+
+        step = 1e-5
+        J_fd = numpy.empty((3, 0))
+
+        for dv_name in global_var_names + local_var_names: 
+            n_dv = xDV[dv_name].shape[0]
+
+            dPtdDV_var = numpy.empty((3*n_pt, n_dv))
+
+            baseVar = xDV[dv_name].copy()
+
+            for i in range(n_dv):
+                xDV[dv_name][i] = baseVar[i]+ step
+                DVGeo.setDesignVars(xDV)
+                newPoints = DVGeo.update("point")
+                deriv = (newPoints-refPoints)/step
+                dPtdDV_var[:, i] = deriv.flatten()
+                xDV[dv_name][i] = baseVar[i]
+
+            J_fd = numpy.hstack((J_fd, dPtdDV_var))
+
+        reg_write(J_fd,1e-7,1e-7)
 
 ######################
 # DV constraints Tests
@@ -807,6 +875,7 @@ if args.task=='all':
     test16(refDeriv)
     test17(refDeriv)
     test18(refDeriv)
+    test19(refDeriv)
 elif args.task=='test1':
     test1(refDeriv)
 elif args.task=='test2':
@@ -843,3 +912,5 @@ elif args.task=='test17':
     test17(refDeriv)
 elif args.task=='test18':
     test18(refDeriv)
+elif args.task=='test19':
+    test19(refDeriv)
