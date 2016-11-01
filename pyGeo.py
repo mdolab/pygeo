@@ -146,7 +146,7 @@ class pyGeo():
 
         # Now create a list of spline surface objects:
         self.surfs = []
-
+        self.surfs0 = surfs
         # Note This doesn't actually fit the surfaces...just produces
         # the parametrization and knot vectors
         self.nSurf = nSurf
