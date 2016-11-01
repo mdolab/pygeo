@@ -4320,7 +4320,7 @@ class CurvatureConstraint(GeometricConstraint):
         DKDF = self.diags((L*N-M*M)/(E*G-F*F)**2*2*F)
         DKDG = self.diags(-(L*N-M*M)/(E*G-F*F)**2*E)
         DKDL = self.diags(N/(E*G-F*F))
-        DKDM = self.diags(2*M/(E*G-F*F))
+        DKDM = self.diags(-2*M/(E*G-F*F))
         DKDN = self.diags(L/(E*G-F*F))
         DKDX = DKDE.dot(DEDX) + DKDF.dot(DFDX) + DKDG.dot(DGDX) +\
                DKDL.dot(DLDX) + DKDM.dot(DMDX) + DKDN.dot(DNDX)
