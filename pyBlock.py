@@ -811,13 +811,6 @@ class pyBlock():
             kwargs pass through to the actual projectPoints() function
         """
 
-        # Generate coefMask regardless
-        coefMask = []
-        for iVol in range(self.nVol):
-            coefMask.append(numpy.zeros((self.vols[iVol].nCtlu, 
-                                         self.vols[iVol].nCtlv, 
-                                         self.vols[iVol].nCtlw), dtype=bool))
-
         # Project Points, if some were actually passed in:
         if coordinates is not None:
             if not interiorOnly:
@@ -828,107 +821,17 @@ class pyBlock():
                 volID, u, v, w, D = self.projectPoints(
                     coordinates, checkErrors=False, eps=eps, **kwargs)
 
-                if faceFreeze is None:
-                    # Do the "auto" freezing algorithm: Determine a
-                    # characteristic 'length', rStar based on FFD
-                    # size. If a point is within this rStar of a
-                    # boundary, we freeze that boundary. 
-                    Xmin, Xmax = self.getBounds()
-                    rStar = min(abs(Xmax[0] - Xmin[0]), 
-                                 abs(Xmax[1] - Xmin[1]), 
-                                 abs(Xmax[2] - Xmin[2]))
-                    
-                    mask = []
-                    for i in range(len(D)):
-                        Dnrm = numpy.linalg.norm(D[i])
-
-                        if Dnrm < 50*eps: # Sufficiently inside
-                            mask.append(i)
-                        else:
-                            # Determine if the points NOT in the
-                            # volume are within rStar. If they are,
-                            # flag the face and the on inside of that
-                            # face in coefMask as True
-                            if Dnrm < rStar:
-                                if (v[i] > eps and v[i] < 1-eps and w[i] > eps
-                                    and w[i] < 1-eps):
-                                    if u[i] < eps:
-                                        coefMask[volID[i]][0, :, :] = True
-                                        coefMask[volID[i]][1, :, :] = True
-                                    elif u[i] > 1-eps:
-                                        coefMask[volID[i]][-1, :, :] = True
-                                        coefMask[volID[i]][-2, :, :] = True
-                                elif (u[i] > eps and u[i] < 1-eps and w[i] > eps
-                                      and w[i] < 1-eps):
-                                    if v[i] < eps:
-                                        coefMask[volID[i]][:, 0, :] = True
-                                        coefMask[volID[i]][:, 1, :] = True
-                                    elif v[i] > 1-eps:
-                                        coefMask[volID[i]][:, -1, :] = True
-                                        coefMask[volID[i]][:, -2, :] = True
-                                elif (u[i] > eps and u[i] < 1-eps and v[i] > eps
-                                      and v[i] < 1-eps):
-                                    if w[i] < eps:
-                                        coefMask[volID[i]][:, :, 0] = True
-                                        coefMask[volID[i]][:, :, 1] = True
-                                    elif w[i] > 1-eps:
-                                        coefMask[volID[i]][:, :, -1] = True
-                                        coefMask[volID[i]][:, :, -2] = True
-
-                else: # Use faceFreeze to freeze specified faces:
-
-                    # # Only let the user do this for one volume. You
-                    # # will most likely not get what you expect for
-                    # # multiple volumes:
-                    # if self.nVol > 1: 
-                    #     raise Error("faceFreeze option can only be used "
-                    #                 "with child FFD's with one volume")
-           
-                    mask = []
-                    for i in range(len(D)):
-                        Dnrm = numpy.linalg.norm(D[i])
-                        if Dnrm < 50*eps: # Sufficiently inside
-                            mask.append(i)
-                    for iVol in range(self.nVol):
-                        key = '%d'%iVol
-                        if key in faceFreeze.keys():
-                            if 'iLow' in faceFreeze[key]:
-                                coefMask[iVol][0, :, :] = True
-                                coefMask[iVol][1, :, :] = True
-                            if 'iHigh' in faceFreeze[key]:
-                                coefMask[iVol][-1, :, :] = True
-                                coefMask[iVol][-2, :, :] = True
-                            if 'jLow' in faceFreeze[key]:
-                                coefMask[iVol][:, 0, :] = True
-                                coefMask[iVol][:, 1, :] = True
-                            if 'jHigh' in faceFreeze[key]:
-                                coefMask[iVol][:, -1, :] = True
-                                coefMask[iVol][:, -2, :] = True
-                            if 'kLow' in faceFreeze[key]:
-                                coefMask[iVol][:, :, 0] = True
-                                coefMask[iVol][:, :, 1] = True
-                            if 'kHigh' in faceFreeze[key]:
-                                coefMask[iVol][:, :, -1] = True
-                                coefMask[iVol][:, :, -2] = True
-                            
+                mask = []
+                for i in range(len(D)):
+                    Dnrm = numpy.linalg.norm(D[i])
+                    if Dnrm < 50*eps: # Sufficiently inside
+                        mask.append(i)
 
                 # Now that we have the mask we can create the embedded volume
                 self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
-            # end if (face freeze)
         # end if (Coordinate not none check)
-        
-        # Finally we need to convert coefMask to the flattened global
-        # coef type:
-        tmp = numpy.zeros(len(self.coef), dtype=bool)
-        for iVol in range(self.nVol):
-            for i in range(coefMask[iVol].shape[0]):
-                for j in range(coefMask[iVol].shape[1]):
-                    for k in range(coefMask[iVol].shape[2]):
-                        ind = self.topo.lIndex[iVol][i, j, k]
-                        if coefMask[iVol][i, j, k]:
-                            tmp[ind] = True
 
-        return tmp
+        return 
 
 # ----------------------------------------------------------------------
 #             Geometric Functions
