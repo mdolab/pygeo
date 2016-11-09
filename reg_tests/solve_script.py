@@ -380,6 +380,43 @@ def test6(refDeriv=False):
     del DVGeo
     del DVGeoChild
 
+def test6b(refDeriv=False):
+    # Test a basic case. Single FFD
+    sys.stdout.flush()
+    printHeader("Test 6: Basic + Nested FFD, local DVs only on parent")
+  
+    DVGeo,DVGeoChild = setupDVGeo()
+
+    #create local DVs on the parent
+    DVGeo.addGeoDVLocal('xdir', lower=-1.0, upper=1.0, axis='x', scale=1.0)
+    DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
+    DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
+
+    DVGeo.addChild(DVGeoChild)
+
+    testSensitvities(DVGeo,refDeriv)
+
+    del DVGeo
+    del DVGeoChild
+
+def test6c(refDeriv=False):
+    # Test a basic case. Single FFD
+    sys.stdout.flush()
+    printHeader("Test 6: Basic + Nested FFD, local DVs only on child")
+  
+    DVGeo,DVGeoChild = setupDVGeo()
+
+    DVGeoChild.addGeoDVLocal('childxdir', lower=-1.1, upper=1.1, axis='x', scale=1.0)
+    DVGeoChild.addGeoDVLocal('childydir', lower=-1.1, upper=1.1, axis='y', scale=1.0)
+    DVGeoChild.addGeoDVLocal('childzdir', lower=-1.1, upper=1.1, axis='z', scale=1.0)
+
+    DVGeo.addChild(DVGeoChild)
+
+    testSensitvities(DVGeo,refDeriv)
+
+    del DVGeo
+    del DVGeoChild
+
 def test7(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
@@ -795,6 +832,8 @@ if args.task=='all':
     test4(refDeriv)
     test5(refDeriv)
     test6(refDeriv)
+    test6b(refDeriv)
+    test6c(refDeriv)
     test7(refDeriv)
     test8(refDeriv)
     test9(refDeriv)
@@ -819,6 +858,8 @@ elif args.task=='test5':
     test5(refDeriv)
 elif args.task=='test6':
     test6(refDeriv)
+    test6b(refDeriv)
+    test6c(refDeriv)
 elif args.task=='test7':
     test7(refDeriv)
 elif args.task=='test8':

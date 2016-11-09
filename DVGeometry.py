@@ -156,7 +156,6 @@ class DVGeometry(object):
         if faceFreeze is not None:
             for iVol in range(self.FFD.nVol):
                 key = '%d'%iVol
-                print('key',key)
                 if key in faceFreeze.keys():
                     if 'iLow' in faceFreeze[key]:
                         coefMask[iVol][0, :, :] = True
@@ -176,7 +175,7 @@ class DVGeometry(object):
                     if 'kHigh' in faceFreeze[key]:
                         coefMask[iVol][:, :, -1] = True
                         coefMask[iVol][:, :, -2] = True
-                    print('coefMask',coefMask[iVol])
+
         # Finally we need to convert coefMask to the flattened global
         # coef type:
         tmp = numpy.zeros(len(self.FFD.coef), dtype=bool)
@@ -1386,8 +1385,9 @@ class DVGeometry(object):
                 (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
 
             # Do Sparse Mat-Mat multiplaiction and resort indices
-            self.JT[ptSetName] = (J_temp.T*new_dPtdCoef.T).tocsr()
-            self.JT[ptSetName].sort_indices()
+            if J_temp is not None:
+                self.JT[ptSetName] = (J_temp.T*new_dPtdCoef.T).tocsr()
+                self.JT[ptSetName].sort_indices()
 
             # Add in child portion
             for iChild in xrange(len(self.children)):
@@ -1403,8 +1403,10 @@ class DVGeometry(object):
                 self.children[iChild].refAxis._updateCurveCoef()
                 self.children[iChild].computeTotalJacobian(ptSetName)
 
-                self.JT[ptSetName] = self.JT[ptSetName] + self.children[iChild].JT[ptSetName]
-             
+                if self.JT[ptSetName] is not None:
+                    self.JT[ptSetName] = self.JT[ptSetName] + self.children[iChild].JT[ptSetName]
+                else:
+                    self.JT[ptSetName] = self.children[iChild].JT[ptSetName]
         else:
             self.JT[ptSetName] = None
 
