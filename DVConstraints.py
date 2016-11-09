@@ -2965,27 +2965,8 @@ class LinearConstraint(object):
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
-                # Temp is the list of FFD coefficients that are included
-                # as shape variables in this localDV "key"
-                temp = self.DVGeo.DV_listLocal[key].coefList
-                cons = []
-                for j in range(len(self.indSetA)):
-                    # Try to find this index # in the coefList (temp)
-                    up = None
-                    down = None
-
-                    # Note: We are doing inefficient double looping here
-                    for k in range(len(temp)):
-                        if temp[k][0] == self.indSetA[j]:
-                            up = k
-                        if temp[k][0] == self.indSetB[j]:
-                            down = k
-
-                    # If we haven't found up AND down do nothing
-                    if up is not None and down is not None:
-                        cons.append([up, down])
-
                 # end for (indSet loop)
+                cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
                 ncon = len(cons)
                 if ncon > 0:
                     # Now form the jacobian:
