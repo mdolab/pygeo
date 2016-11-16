@@ -3035,8 +3035,8 @@ class GearPostConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, None, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+        GeometricConstraint.__init__(self, self.name, None, None,
+                                     None,None, self.DVGeo, 
                                      self.addToPyOpt)
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
