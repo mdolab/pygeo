@@ -97,7 +97,7 @@ class DVGeometry(object):
       >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
       >>> 
       """
-    def __init__(self, fileName, complex=False, child=False, *args, **kwargs):
+    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, *args, **kwargs):
         
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
         self.DV_listLocal = OrderedDict() # Local Design Variable List
@@ -108,7 +108,7 @@ class DVGeometry(object):
         self.iChild = None
         self.points = OrderedDict()
         self.updated = {}
-        self.masks = OrderedDict()
+        self.masks = None
         self.finalized = False
         self.complex = complex
         if self.complex:
@@ -145,6 +145,48 @@ class DVGeometry(object):
 
         # The set of user supplied axis. 
         self.axis = OrderedDict()
+
+        # Generate coefMask regardless
+        coefMask = []
+        for iVol in range(self.FFD.nVol):
+            coefMask.append(numpy.zeros((self.FFD.vols[iVol].nCtlu, 
+                                         self.FFD.vols[iVol].nCtlv, 
+                                         self.FFD.vols[iVol].nCtlw), dtype=bool))
+        # Now do the faceFreeze
+        if faceFreeze is not None:
+            for iVol in range(self.FFD.nVol):
+                key = '%d'%iVol
+                if key in faceFreeze.keys():
+                    if 'iLow' in faceFreeze[key]:
+                        coefMask[iVol][0, :, :] = True
+                        coefMask[iVol][1, :, :] = True
+                    if 'iHigh' in faceFreeze[key]:
+                        coefMask[iVol][-1, :, :] = True
+                        coefMask[iVol][-2, :, :] = True
+                    if 'jLow' in faceFreeze[key]:
+                        coefMask[iVol][:, 0, :] = True
+                        coefMask[iVol][:, 1, :] = True
+                    if 'jHigh' in faceFreeze[key]:
+                        coefMask[iVol][:, -1, :] = True
+                        coefMask[iVol][:, -2, :] = True
+                    if 'kLow' in faceFreeze[key]:
+                        coefMask[iVol][:, :, 0] = True
+                        coefMask[iVol][:, :, 1] = True
+                    if 'kHigh' in faceFreeze[key]:
+                        coefMask[iVol][:, :, -1] = True
+                        coefMask[iVol][:, :, -2] = True
+
+        # Finally we need to convert coefMask to the flattened global
+        # coef type:
+        tmp = numpy.zeros(len(self.FFD.coef), dtype=bool)
+        for iVol in range(self.FFD.nVol):
+            for i in range(coefMask[iVol].shape[0]):
+                for j in range(coefMask[iVol].shape[1]):
+                    for k in range(coefMask[iVol].shape[2]):
+                        ind = self.FFD.topo.lIndex[iVol][i, j, k]
+                        if coefMask[iVol][i, j, k]:
+                            tmp[ind] = True
+        self.masks = tmp
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
                    rotType=5, axis='x'):
@@ -319,10 +361,10 @@ class DVGeometry(object):
 
         # Project the last set of points into the volume
         if self.isChild:
-            coefMask = self.FFD.attachPoints(
+            self.FFD.attachPoints(
                 self.points[ptName], ptName, interiorOnly=True, **kwargs)
         else:
-            coefMask = self.FFD.attachPoints(
+            self.FFD.attachPoints(
                 self.points[ptName], ptName, interiorOnly=False)
 
         if origConfig:
@@ -333,7 +375,6 @@ class DVGeometry(object):
         for child in self.children:
             child.addPointSet(points, ptName, origConfig, **kwargs)
 
-        self.masks[ptName] = coefMask
         self.FFD.calcdPtdCoef(ptName)
         self.updated[ptName] = False
 
@@ -507,7 +548,8 @@ class DVGeometry(object):
             ind = numpy.arange(len(self.FFD.coef))
 
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper,
-                                               scale, axis, ind, config)
+                                               scale, axis, ind, self.masks,
+                                               config)
             
         return self.DV_listLocal[dvName].nVal
 
@@ -1343,8 +1385,9 @@ class DVGeometry(object):
                 (new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
 
             # Do Sparse Mat-Mat multiplaiction and resort indices
-            self.JT[ptSetName] = (J_temp.T*new_dPtdCoef.T).tocsr()
-            self.JT[ptSetName].sort_indices()
+            if J_temp is not None:
+                self.JT[ptSetName] = (J_temp.T*new_dPtdCoef.T).tocsr()
+                self.JT[ptSetName].sort_indices()
 
             # Add in child portion
             for iChild in xrange(len(self.children)):
@@ -1360,8 +1403,10 @@ class DVGeometry(object):
                 self.children[iChild].refAxis._updateCurveCoef()
                 self.children[iChild].computeTotalJacobian(ptSetName)
 
-                self.JT[ptSetName] = self.JT[ptSetName] + self.children[iChild].JT[ptSetName]
-             
+                if self.JT[ptSetName] is not None:
+                    self.JT[ptSetName] = self.JT[ptSetName] + self.children[iChild].JT[ptSetName]
+                else:
+                    self.JT[ptSetName] = self.children[iChild].JT[ptSetName]
         else:
             self.JT[ptSetName] = None
 
@@ -1646,9 +1691,7 @@ class DVGeometry(object):
         # to an axis. 
 
         # Retrieve all the pointset masks
-        coefMask = numpy.zeros(len(self.FFD.coef), dtype=bool)
-        for ptName in self.masks:
-            coefMask += self.masks[ptName] # This is boolean addition.
+        coefMask = self.masks
 
         self.ptAttachInd = []
         self.ptAttach = []
@@ -2532,13 +2575,20 @@ class geoDVGlobal(object):
     
 class geoDVLocal(object):
      
-    def __init__(self, dvName, lower, upper, scale, axis, coefList, config):
+    def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask, config):
         
         """Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
         See addGeoDVLocal for more information
         """
+        
+        coefList = []
+        #create a new coefficent list that excludes any values that are masked
+        for i in range(len(coefListIn)):
+            if mask[coefListIn[i]]==False:
+                coefList.append(coefListIn[i])
+
         N = len(axis)
         self.nVal = len(coefList)*N
         self.value = numpy.zeros(self.nVal, 'D')
@@ -2582,7 +2632,32 @@ class geoDVLocal(object):
                 coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].imag*1j
 
         return coef
-        
+
+    def mapIndexSets(self,indSetA,indSetB):
+        '''
+        Map the index sets from the full coefficient indices to the local set.
+        '''
+        # Temp is the list of FFD coefficients that are included
+        # as shape variables in this localDV "key"
+        temp = self.coefList
+        cons = []
+        for j in range(len(indSetA)):
+            # Try to find this index # in the coefList (temp)
+            up = None
+            down = None
+
+            # Note: We are doing inefficient double looping here
+            for k in range(len(temp)):
+                if temp[k][0] == indSetA[j]:
+                    up = k
+                if temp[k][0] == indSetB[j]:
+                    down = k
+
+            # If we haven't found up AND down do nothing
+            if up is not None and down is not None:
+                cons.append([up, down])
+
+        return cons
 
 def _convertTo1D(value, dim1):
     """
