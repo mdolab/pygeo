@@ -1974,7 +1974,7 @@ class DVConstraints(object):
             conName, lineAxis, origin, coords, lower, upper, scale, 
             self.DVGeo, addToPyOpt)
 
-    def addCurvatureConstraint(self, surfFile, order=2, lower=-1e20, upper=1e20,
+    def addCurvatureConstraint(self, surfFile, lower=-1e20, upper=1e20,
                                scaled=False, scale=1.0, name=None, 
                                addToPyOpt=False):
         """
@@ -1985,14 +1985,9 @@ class DVConstraints(object):
      
         Parameters
         ----------
-        surfFile: str
+        surfFile: vector
               Plot3D file with desired surface to integrate over, should be 
               sufficiently refined to accurately capture surface curvature
-              
-        order: int
-              Order of finite differencing to be used to compute curvatures.
-              Options are 2 and 4. Fourth order is generally more accurate, but 
-              may be unstable for large Plot3D mesh sizes. 
 
         lower : float
             Lower bound for curvature integral.
@@ -2031,15 +2026,16 @@ class DVConstraints(object):
 
         self._checkDVGeo()
         
-        if (order != 2 and order != 4):
-            raise Error("CurvatureConstraint order given was %d. Only second \
-            and fourth order are currently supported."%(order))
-        
         # Use pyGeo to load the plot3d file 
         geo = pyGeo('plot3d', surfFile)
+        # node and edge tolerance for pyGeo (these are never used so 
+        # we just fix them)
+        node_tol =  1e-8
+        edge_tol =  1e-8
         # Explicity do the connectivity here since we don't want to
         # write a con file:
-        surfs = geo.surfs0
+        geo._calcConnectivity(node_tol, edge_tol)
+        surfs = geo.surfs
         typeName = 'curveCon'
         if not typeName in self.constraints:
             self.constraints[typeName] = OrderedDict()
@@ -2049,7 +2045,7 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = CurvatureConstraint(
-            conName, surfs, order, lower, upper, scaled, scale, self.DVGeo,
+            conName, surfs, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
     def _checkDVGeo(self):
@@ -4071,10 +4067,9 @@ class CurvatureConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, surfs, order, lower, upper, scaled, scale, DVGeo,
+    def __init__(self, name, surfs, lower, upper, scaled, scale, DVGeo,
                  addToPyOpt):
         self.name = name
-        self.order = order
         self.nSurfs = len(surfs)
         self.X = []
         self.X_map = []
@@ -4083,19 +4078,19 @@ class CurvatureConstraint(GeometricConstraint):
         for iSurf in range(self.nSurfs):
             # A list of the coordinates arrays for each surface, flattened in order
             # to vectorize operations
-            self.X += [numpy.reshape(surfs[iSurf],-1)]
+            self.X += [numpy.reshape(surfs[iSurf].X,-1)]
             # A list of maping arrays used to translate from the structured index
             # to the flatten index number of X
             # For example: X[iSurf][X_map[iSurf][i,j,2]] gives the z coordinate 
             # of the node in the i-th row and j-th column on surface iSurf
-            self.X_map += [numpy.reshape(numpy.array(range(surfs[iSurf].size)),surfs[iSurf].shape)]
+            self.X_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size)),surfs[iSurf].X.shape)]
             # A list of maping arrays used to provide a unique node number for 
             # every node on each surface
             # For example: node_map[iSurf][i,j] gives the node number 
             # of the node in the i-th row and j-th column on surface iSurf
-            self.node_map += [numpy.reshape(numpy.array(range(surfs[iSurf].size/3)),(surfs[iSurf].shape[0],surfs[iSurf].shape[1]))]
+            self.node_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size/3)),(surfs[iSurf].X.shape[0],surfs[iSurf].X.shape[1]))]
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
-            self.coords += [numpy.reshape(self.X[iSurf],(surfs[iSurf].shape[0]*surfs[iSurf].shape[1],3))]
+            self.coords += [numpy.reshape(self.X[iSurf],(surfs[iSurf].X.shape[0]*surfs[iSurf].X.shape[1],3))]
         self.nCon = 1
         self.lower = lower
         self.upper = upper
@@ -4215,7 +4210,7 @@ class CurvatureConstraint(GeometricConstraint):
         locations X 
         '''
         # Evaluate the derivitive of the position vector of every point on the 
-        # surface wrt to the parameteric coordinate u and v
+        # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], 'u')
         Dt_uDX = self.evalDiffSens(iSurf, 'u')        
         t_v = self.evalDiff(iSurf, self.X[iSurf], 'v')
@@ -4224,7 +4219,7 @@ class CurvatureConstraint(GeometricConstraint):
         n = self.evalCross(iSurf,t_u,t_v)
         [DnDt_u, DnDt_v] = self.evalCrossSens(iSurf,t_u,t_v)
         DnDX = DnDt_u.dot(Dt_uDX) + DnDt_v.dot(Dt_vDX)
-        # Compute the norm of t_u x t_v
+        # Compute the norm of tu_ x tv
         n_norm = self.evalNorm(iSurf,n)
         Dn_normDn = self.evalNormSens(iSurf,n)
         Dn_normDX = Dn_normDn.dot(DnDX)
@@ -4301,7 +4296,7 @@ class CurvatureConstraint(GeometricConstraint):
         DKDF = self.diags((L*N-M*M)/(E*G-F*F)**2*2*F)
         DKDG = self.diags(-(L*N-M*M)/(E*G-F*F)**2*E)
         DKDL = self.diags(N/(E*G-F*F))
-        DKDM = self.diags(-2*M/(E*G-F*F))
+        DKDM = self.diags(2*M/(E*G-F*F))
         DKDN = self.diags(L/(E*G-F*F))
         DKDX = DKDE.dot(DEDX) + DKDF.dot(DFDX) + DKDG.dot(DGDX) +\
                DKDL.dot(DLDX) + DKDM.dot(DMDX) + DKDN.dot(DNDX)
@@ -4341,12 +4336,9 @@ class CurvatureConstraint(GeometricConstraint):
         (n = u x v)
         '''
         n = numpy.zeros_like(self.X[iSurf])
-        n[self.X_map[iSurf][:,:,0]] = u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,2]] \
-                                    - u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,1]]  
-        n[self.X_map[iSurf][:,:,1]] = -u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,2]] \
-                                    + u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,0]]
-        n[self.X_map[iSurf][:,:,2]] = u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,1]] \
-                                    - u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,0]]
+        n[self.X_map[iSurf][:,:,0]] = u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,2]] - u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,1]]  
+        n[self.X_map[iSurf][:,:,1]] = -u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,2]] + u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,0]]
+        n[self.X_map[iSurf][:,:,2]] = u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,1]] - u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,0]]
         return n
         
     def evalCrossSens(self, iSurf, u, v):
@@ -4493,462 +4485,122 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalDiff(self, iSurf, v, wrt):
         '''
-        Differentiate vector field v wrt the parameteric coordinate u or v.
-        Second or fourth order accurate. Central difference for nodes in the 
-        center forward/backward difference for nodes on the edge.
+        Diferentiate vector field v wrt the parameteric coordinate u or v.
+        Second order accurate. Central difference for nodes in the center 
+        forward/backward difference for nodes on the edge
         '''
         v_wrt = numpy.zeros_like(v)
         if wrt == 'u':
-            if self.order == 2:
-                # Central Difference
-                v_wrt[self.X_map[iSurf][1:-1,:,:]]=(v[self.X_map[iSurf][2:,:,:]]-v[self.X_map[iSurf][0:-2,:,:]])/2.0
-                # Forward Difference
-                v_wrt[self.X_map[iSurf][0,:,:]]=(-1*v[self.X_map[iSurf][2,:,:]]+4*v[self.X_map[iSurf][1,:,:]] \
-                                                -3*v[self.X_map[iSurf][0,:,:]])/2.0
-                # Backward Difference
-                v_wrt[self.X_map[iSurf][-1,:,:]]=-(-1*v[self.X_map[iSurf][-3,:,:]]+4*v[self.X_map[iSurf][-2,:,:]] \
-                                                 -3*v[self.X_map[iSurf][-1,:,:]])/2.0
-            elif self.order == 4:
-                # Central Difference
-                i = 2
-                j = len(self.X_map[iSurf][:,0,0])-2
-                v_wrt[self.X_map[iSurf][i:j,:,:]]=(-v[self.X_map[iSurf][i+2:j+2,:,:]]+8*v[self.X_map[iSurf][i+1:j+1,:,:]] \
-                                                  -8*v[self.X_map[iSurf][i-1:j-1,:,:]]+v[self.X_map[iSurf][i-2:j-2,:,:]])/12.0
-                # Forward Difference
-                i = 0
-                v_wrt[self.X_map[iSurf][i,:,:]]=(-3*v[self.X_map[iSurf][i+4,:,:]]+16*v[self.X_map[iSurf][i+3,:,:]] \
-                                                -36*v[self.X_map[iSurf][i+2,:,:]]+48*v[self.X_map[iSurf][i+1,:,:]] \
-                                                -25*v[self.X_map[iSurf][i+0,:,:]])/12.0
-                i = 1
-                v_wrt[self.X_map[iSurf][i,:,:]]=-(-v[self.X_map[iSurf][i+3,:,:]]+6*v[self.X_map[iSurf][i+2,:,:]] \
-                                                -18*v[self.X_map[iSurf][i+1,:,:]]+10*v[self.X_map[iSurf][i+0,:,:]] \
-                                                +3*v[self.X_map[iSurf][i-1,:,:]])/12.0
-                # Backward Difference
-                i =  len(self.X_map[iSurf][:,0,0])-1            
-                v_wrt[self.X_map[iSurf][i,:,:]]=-(-3*v[self.X_map[iSurf][i-4,:,:]]+16*v[self.X_map[iSurf][i-3,:,:]] \
-                                                -36*v[self.X_map[iSurf][i-2,:,:]]+48*v[self.X_map[iSurf][i-1,:,:]] \
-                                                -25*v[self.X_map[iSurf][i-0,:,:]])/12.0
-                
-                i = len(self.X_map[iSurf][:,0,0])-2
-                v_wrt[self.X_map[iSurf][i,:,:]]=(-v[self.X_map[iSurf][i-3,:,:]]+6*v[self.X_map[iSurf][i-2,:,:]] \
-                                                -18*v[self.X_map[iSurf][i-1,:,:]]+10*v[self.X_map[iSurf][i-0,:,:]] \
-                                                +3*v[self.X_map[iSurf][i+1,:,:]])/12.0
-            
+            v_wrt[self.X_map[iSurf][1:-1,:,:]]=(v[self.X_map[iSurf][2:,:,:]]-v[self.X_map[iSurf][0:-2,:,:]])/2.0
+            v_wrt[self.X_map[iSurf][0,:,:]]=(-1*v[self.X_map[iSurf][2,:,:]]+4*v[self.X_map[iSurf][1,:,:]]-3*v[self.X_map[iSurf][0,:,:]])/2.0
+            v_wrt[self.X_map[iSurf][-1,:,:]]=-(-1*v[self.X_map[iSurf][-3,:,:]]+4*v[self.X_map[iSurf][-2,:,:]]-3*v[self.X_map[iSurf][-1,:,:]])/2.0
         elif wrt == 'v':
-            if self.order == 2:
-                # Central Difference
-                v_wrt[self.X_map[iSurf][:,1:-1,:]]=(v[self.X_map[iSurf][:,2:,:]]-v[self.X_map[iSurf][:,0:-2,:]])/2.0
-                # Forward Difference
-                v_wrt[self.X_map[iSurf][:,0,:]]=(-1*v[self.X_map[iSurf][:,2,:]]+4*v[self.X_map[iSurf][:,1,:]] \
-                                                -3*v[self.X_map[iSurf][:,0,:]])/2.0
-                # Backward Difference
-                v_wrt[self.X_map[iSurf][:,-1,:]]=-(-1*v[self.X_map[iSurf][:,-3,:]]+4*v[self.X_map[iSurf][:,-2,:]] \
-                                                  -3*v[self.X_map[iSurf][:,-1,:]])/2.0
-            
-            elif self.order == 4:
-                # Central Difference
-                i = 2
-                j = len(self.X_map[iSurf][0,:,0])-2
-                v_wrt[self.X_map[iSurf][:,i:j,:]]=(-v[self.X_map[iSurf][:,i+2:j+2,:]]+8*v[self.X_map[iSurf][:,i+1:j+1,:]] \
-                                                  -8*v[self.X_map[iSurf][:,i-1:j-1,:]]+v[self.X_map[iSurf][:,i-2:j-2,:]])/12.0
-                # Forward Difference
-                i = 0
-                v_wrt[self.X_map[iSurf][:,i,:]]=(-3*v[self.X_map[iSurf][:,i+4,:]]+16*v[self.X_map[iSurf][:,i+3,:]] \
-                                                -36*v[self.X_map[iSurf][:,i+2,:]]+48*v[self.X_map[iSurf][:,i+1,:]] \
-                                                -25*v[self.X_map[iSurf][:,i+0,:]])/12.0
-                i = 1
-                v_wrt[self.X_map[iSurf][:,i,:]]=-(-v[self.X_map[iSurf][:,i+3,:]]+6*v[self.X_map[iSurf][:,i+2,:]] \
-                                                -18*v[self.X_map[iSurf][:,i+1,:]]+10*v[self.X_map[iSurf][:,i+0,:]] \
-                                                +3*v[self.X_map[iSurf][:,i-1,:]])/12.0
-                # Backward Difference
-                i =  len(self.X_map[iSurf][0,:,0])-1 
-                v_wrt[self.X_map[iSurf][:,i,:]]=-(-3*v[self.X_map[iSurf][:,i-4,:]]+16*v[self.X_map[iSurf][:,i-3,:]] \
-                                                -36*v[self.X_map[iSurf][:,i-2,:]]+48*v[self.X_map[iSurf][:,i-1,:]] \
-                                                -25*v[self.X_map[iSurf][:,i-0,:]])/12.0
-                
-                i = len(self.X_map[iSurf][0,:,0])-2
-                v_wrt[self.X_map[iSurf][:,i,:]]=(-v[self.X_map[iSurf][:,i-3,:]]+6*v[self.X_map[iSurf][:,i-2,:]] \
-                                                -18*v[self.X_map[iSurf][:,i-1,:]]+10*v[self.X_map[iSurf][:,i-0,:]] \
-                                                +3*v[self.X_map[iSurf][:,i+1,:]])/12.0
-            
+            v_wrt[self.X_map[iSurf][:,1:-1,:]]=(v[self.X_map[iSurf][:,2:,:]]-v[self.X_map[iSurf][:,0:-2,:]])/2.0
+            v_wrt[self.X_map[iSurf][:,0,:]]=(-1*v[self.X_map[iSurf][:,2,:]]+4*v[self.X_map[iSurf][:,1,:]]-3*v[self.X_map[iSurf][:,0,:]])/2.0
+            v_wrt[self.X_map[iSurf][:,-1,:]]=-(-1*v[self.X_map[iSurf][:,-3,:]]+4*v[self.X_map[iSurf][:,-2,:]]-3*v[self.X_map[iSurf][:,-1,:]])/2.0
         return v_wrt
 
     def evalDiffSens(self, iSurf, wrt):
         '''
-        Compute sensitivity of v_wrt with respect to input vector field v 
+        Compute sensitivity of v_wrt with respect to input vector fiel v 
         (Dv_wrt/Dv)
         '''
         ii = []
         jj = []
         data = []
         if wrt == 'u':
-            if self.order == 2:
-                # Central Difference
-                
-                # Dt_u[X_map[1:-1,:,:]]/DX[X_map[2:,:,:]] = 1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][2:,:,:],-1))
-                data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-                
-                # Dt_u[X_map[1:-1,:,:]]/DX[X_map[0:-2,:,:]] = -1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][0:-2,:,:],-1))
-                data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-                
-                # Forward Difference
-                
-                # Dt_u[X_map[0,:,:]]/DX[X_map[2,:,:]] = -1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][2,:,:],-1))
-                data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                
-                # Dt_u[X_map[0,:,:]]/DX[X_map[1,:,:]] = 4/2
-                ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][1,:,:],-1))
-                data+=[2]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                
-                # Dt_u[X_map[0,:,:]]/DX[X_map[0,:,:]] = -3/2
-                ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-                
-                # Backward Difference
-                
-                # Dt_u[X_map[-1,:,:]]/DX[X_map[-3,:,:]] = 1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][-3,:,:],-1))
-                data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-                
-                # Dt_u[X_map[-1,:,:]]/DX[X_map[-2,:,:]] = -4/2
-                ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
-                data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
-                
-                # Dt_u[X_map[-1,:,:]]/DX[X_map[-1,:,:]] = 3/2
-                ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-                data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-                
-            elif self.order == 4:
-                # Central Difference
+            # Central Difference
             
-                i = 2
-                j = len(self.X_map[iSurf][:,0,0])-2
-                # Dt_u[X_map[i:j,:,:]]/DX[X_map[i+2:j+2,:,:]] = -1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+2:j+2,:,:],-1))
-                data+=[-1.0/12]*len(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                
-                # Dt_u[X_map[i:j,:,:]]/DX[X_map[i+1:j+1,:,:]] = 8/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+1:j+1,:,:],-1))
-                data+=[8.0/12]*len(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                
-                # Dt_u[X_map[i:j,:,:]]/DX[X_map[i-1:j-1,:,:]] = -8/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-1:j-1,:,:],-1))
-                data+=[-8.0/12]*len(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                
-                # Dt_u[X_map[i:j,:,:]]/DX[X_map[i-2:j-2,:,:]] = 1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-2:j-2,:,:],-1))
-                data+=[1.0/12]*len(numpy.reshape(self.X_map[iSurf][i:j,:,:],-1))
-                
-                # Forward Difference
-                
-                i = 0
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+4,:,:]] = -3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+4,:,:],-1))
-                data+=[-3.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+3,:,:]] = 16/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+3,:,:],-1))
-                data+=[16.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+2,:,:]] = -36/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+2,:,:],-1))
-                data+=[-36.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+1,:,:]] = 48/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+1,:,:],-1))
-                data+=[48.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+0,:,:]] = -25/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+0,:,:],-1))
-                data+=[-25.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                i = 1
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+3,:,:]] = 1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+3,:,:],-1))
-                data+=[1.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+2,:,:]] = -6/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+2,:,:],-1))
-                data+=[-6.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+1,:,:]] = 18/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+1,:,:],-1))
-                data+=[18.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+0,:,:]] = -10/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+0,:,:],-1))
-                data+=[-10.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-1,:,:]] = -3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-1,:,:],-1))
-                data+=[-3.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Backward Difference
-                
-                i =  len(self.X_map[iSurf][:,0,0])-1
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-4,:,:]] = -3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-4,:,:],-1))
-                data+=[3.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-3,:,:]] = 16/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-3,:,:],-1))
-                data+=[-16.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-2,:,:]] = -36/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-2,:,:],-1))
-                data+=[36.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-1,:,:]] = 48/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-1,:,:],-1))
-                data+=[-48.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-0,:,:]] = -25/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-0,:,:],-1))
-                data+=[25.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                i =  len(self.X_map[iSurf][:,0,0])-2
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-3,:,:]] = -1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-3,:,:],-1))
-                data+=[-1.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-2,:,:]] = 6/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-2,:,:],-1))
-                data+=[6.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-1,:,:]] = -18/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i-1,:,:],-1))
-                data+=[-18.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i-0,:,:]] = 10/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+0,:,:],-1))
-                data+=[10.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                
-                # Dt_u[X_map[i,:,:]]/DX[X_map[i+1,:,:]] = 3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][i+1,:,:],-1))
-                data+=[3.0/12]*len(numpy.reshape(self.X_map[iSurf][i,:,:],-1))
+            # Dt_u[X_map[1:-1,:,:]]/DX[X_map[2:,:,:]] = 1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][2:,:,:],-1))
+            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
+            
+            # Dt_u[X_map[1:-1,:,:]]/DX[X_map[0:-2,:,:]] = -1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][0:-2,:,:],-1))
+            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
+            
+            # Forward Difference
+            
+            # Dt_u[X_map[0,:,:]]/DX[X_map[2,:,:]] = -1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][2,:,:],-1))
+            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            
+            # Dt_u[X_map[0,:,:]]/DX[X_map[1,:,:]] = 4/2
+            ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][1,:,:],-1))
+            data+=[2]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            
+            # Dt_u[X_map[0,:,:]]/DX[X_map[0,:,:]] = -3/2
+            ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            
+            # Backward Difference
+            
+            # Dt_u[X_map[-1,:,:]]/DX[X_map[-3,:,:]] = 1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][-3,:,:],-1))
+            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            
+            # Dt_u[X_map[-1,:,:]]/DX[X_map[-2,:,:]] = -4/2
+            ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
+            data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
+            
+            # Dt_u[X_map[-1,:,:]]/DX[X_map[-1,:,:]] = 3/2
+            ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
             
         elif wrt == 'v':
-            if self.order == 2:
-                # Central Difference
-                
-                # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,2:,:]] = 1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,2:,:],-1))
-                data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-                
-                # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,0:-2,:]] = -1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,0:-2,:],-1))
-                data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-                
-                # Forward Difference
-                
-                # Dt_u[X_map[:,0,:]]/DX[X_map[:,2,:]] = -1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,2,:],-1))
-                data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                
-                # Dt_u[X_map[:,0,:]]/DX[X_map[:,1,:]] = 4/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,1,:],-1))
-                data+=[2]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                
-                # Dt_u[X_map[:,0,:]]/DX[X_map[:,0,:]] = -3/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-                
-                # Backward Difference
-                
-                # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-3,:]] = 1/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,-3,:],-1))
-                data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-                
-                # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-2,:]] = -4/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
-                data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
-                
-                # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-1,:]] = 3/2
-                ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-                data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            # Central Difference
             
-            elif self.order == 4:
-                # Central Difference
+            # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,2:,:]] = 1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,2:,:],-1))
+            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
             
-                i = 2
-                j = len(self.X_map[iSurf][0,:,0])-2
-                # Dt_u[X_map[:,i:j,:]]/DX[X_map[:,i+2:j+2,:]] = -1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+2:j+2,:],-1))
-                data+=[-1.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                
-                # Dt_u[X_map[:,i:j,:]]/DX[X_map[:,i+1:j+1,:]] = 8/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+1:j+1,:],-1))
-                data+=[8.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                
-                # Dt_u[X_map[:,i:j,:]]/DX[X_map[:,i-1:j-1,:]] = -8/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-1:j-1,:],-1))
-                data+=[-8.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                
-                # Dt_u[X_map[:,i:j,:]]/DX[X_map[:,i-2:j-2,:]] = 1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-2:j-2,:],-1))
-                data+=[1.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i:j,:],-1))
-                
-                # Forward Difference
-                
-                i = 0
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+4,:]] = -3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+4,:],-1))
-                data+=[-3.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+3,:]] = 16/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+3,:],-1))
-                data+=[16.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+2,:]] = -36/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+2,:],-1))
-                data+=[-36.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+1,:]] = 48/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+1,:],-1))
-                data+=[48.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+0,:]] = -25/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+0,:],-1))
-                data+=[-25.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                i = 1
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+3,:]] = 1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+3,:],-1))
-                data+=[1.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+2,:]] = -6/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+2,:],-1))
-                data+=[-6.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+1,:]] = 18/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+1,:],-1))
-                data+=[18.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+0,:]] = -10/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+0,:],-1))
-                data+=[-10.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-1,:]] = -3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-1,:],-1))
-                data+=[-3.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Backward Difference
-                
-                i =  len(self.X_map[iSurf][0,:,0])-1
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-4,:]] = 3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-4,:],-1))
-                data+=[3.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-3,:]] = -16/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-3,:],-1))
-                data+=[-16.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-2,:]] = 36/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-2,:],-1))
-                data+=[36.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-1,:]] = -48/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-1,:],-1))
-                data+=[-48.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-0,:]] = 25/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-0,:],-1))
-                data+=[25.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                i =  len(self.X_map[iSurf][0,:,0])-2
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-3,:]] = -1/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-3,:],-1))
-                data+=[-1.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-2,:]] = 6/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-2,:],-1))
-                data+=[6.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-1,:]] = -18/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i-1,:],-1))
-                data+=[-18.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i-0,:]] = 10/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+0,:],-1))
-                data+=[10.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                
-                # Dt_u[X_map[:,i,:]]/DX[X_map[:,i+1,:]] = 3/12
-                ii += list(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
-                jj += list(numpy.reshape(self.X_map[iSurf][:,i+1,:],-1))
-                data+=[3.0/12]*len(numpy.reshape(self.X_map[iSurf][:,i,:],-1))
+            # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,0:-2,:]] = -1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,0:-2,:],-1))
+            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
             
+            # Forward Difference
+            
+            # Dt_u[X_map[:,0,:]]/DX[X_map[:,2,:]] = -1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,2,:],-1))
+            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            
+            # Dt_u[X_map[:,0,:]]/DX[X_map[:,1,:]] = 4/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,1,:],-1))
+            data+=[2]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            
+            # Dt_u[X_map[:,0,:]]/DX[X_map[:,0,:]] = -3/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            
+            # Backward Difference
+            
+            # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-3,:]] = 1/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,-3,:],-1))
+            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            
+            # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-2,:]] = -4/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
+            data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
+            
+            # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-1,:]] = 3/2
+            ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            jj += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
             
         Dv_uDX = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
             
@@ -4986,7 +4638,7 @@ class CurvatureConstraint(GeometricConstraint):
                 len(self.coords[iSurf]), (self.X_map[iSurf].shape[0]-1)*(self.X_map[iSurf].shape[1]-1)))
             for i in range(self.X_map[iSurf].shape[0]):
                 for j in range(self.X_map[iSurf].shape[1]):
-                    handle.write('%.15E %.15E %.15E %.15E %.15E\n'% (self.X[iSurf][self.X_map[iSurf][i, j, 0]], self.X[iSurf][self.X_map[iSurf][i, j, 1]],
+                    handle.write('%E %E %E %E %E\n'% (self.X[iSurf][self.X_map[iSurf][i, j, 0]], self.X[iSurf][self.X_map[iSurf][i, j, 1]],
                                             self.X[iSurf][self.X_map[iSurf][i, j, 2]],K[self.node_map[iSurf][i,j]],H[self.node_map[iSurf][i,j]])) 
             handle.write('\n')
             for i in range(self.X_map[iSurf].shape[0]-1):
