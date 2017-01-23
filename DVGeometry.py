@@ -270,8 +270,9 @@ class DVGeometry(object):
         # We don't do any of the final processing here; we simply
         # record the information the user has supplied into a
         # dictionary structure.
-
-        if axis.lower() == 'x':
+        if axis is None:
+            pass
+        elif axis.lower() == 'x':
             axis = numpy.array([1, 0, 0], 'd')
         elif axis.lower() == 'y':
             axis = numpy.array([0, 1, 0], 'd')
