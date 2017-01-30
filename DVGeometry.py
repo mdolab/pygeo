@@ -1581,6 +1581,29 @@ class DVGeometry(object):
             cFileName = fileName+'_child%3d.dat'%iChild
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
 
+    def writeLinks(self, fileName):
+        """Write the links attaching the control points to the reference axes
+
+        Parameters
+        ----------
+        fileName : str
+            Filename for tecplot file. Should have .dat extension
+        """
+        self._finalize()
+        f = pySpline.openTecplot(fileName, 3)
+        f.write('ZONE NODES=%d ELEMENTS=%d ZONETYPE=FELINESEG\n'%(self.nPtAttach*2, self.nPtAttach))
+        f.write('DATAPACKING=POINT\n')
+        for ipt in range(self.nPtAttach):
+            pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
+            pt2 = self.links_x[ipt] + pt1
+
+            f.write('%.12g %.12g %.12g\n'%(pt1[0], pt1[1], pt1[2]))
+            f.write('%.12g %.12g %.12g\n'%(pt2[0], pt2[1], pt2[2]))
+        for i in range(self.nPtAttach):
+            f.write('%d %d\n'%(2*i+1, 2*i+2))
+
+        pySpline.closeTecplot(f)
+
     def writePointSet(self,name,fileName):
         """
         Write a given point set to a tecplot file
