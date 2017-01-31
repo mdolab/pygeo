@@ -137,7 +137,7 @@ def dot_b(a, b, dotb):
     bb = bb + a*dotb
 
     return ab, bb
-    
+
 def calculateCentroid(p0, v1, v2):
     '''
     take in a triangulated surface and calculate the centroid
@@ -152,7 +152,7 @@ def calculateCentroid(p0, v1, v2):
 
     # compute the cell centroids
     cellCenter = (p0+p1+p2)/3.
-    
+
     centerSum = area.dot(cellCenter)
     areaSum = np.sum(area)
 
@@ -172,13 +172,13 @@ def calculateAverageNormal(p0, v1, v2):
     normal = np.cross(v1, v2)
     sumNormal = np.sum(normal,axis=0)
     lengthNorm = np.linalg.norm(sumNormal)
-    
+
     unitNormal = sumNormal/lengthNorm
 
     return unitNormal
 
 def calculateRadii(centroid, p0, v1, v2):
-    ''' 
+    '''
     take the centroid and compute inner and outer radii of surface
     '''
     p0 = np.array(p0)
@@ -189,7 +189,7 @@ def calculateRadii(centroid, p0, v1, v2):
     d0 = p0-centroid
     d1 = p1-centroid
     d2 = p2-centroid
-    
+
     radO = np.zeros(3)
     radI = np.zeros(3)
     d0 = np.linalg.norm(d0, axis=1)
@@ -206,7 +206,7 @@ def calculateRadii(centroid, p0, v1, v2):
     innerRadius = np.min(radI)
 
     return innerRadius,outerRadius
-    
+
  # --------------------------------------------------------------
  #                I/O Functions
  # --------------------------------------------------------------
