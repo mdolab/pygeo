@@ -324,17 +324,17 @@ class DVGeometry(object):
             #   - 'x' is streamwise direction
 
             # This is the block direction along which the reference axis will lie
-            IJK = 'K'
+            alignIndex = 'K'
 
-            # Get index for refaxis direction
-            if IJK.lower() == 'i':
-                sectionIndex = 0
+            # Get index direction along which refaxis will be aligned
+            if alignIndex.lower() == 'i':
+                alignIndex = 0
                 faceCol = 2
-            elif IJK.lower() == 'j':
-                sectionIndex = 1
+            elif alignIndex.lower() == 'j':
+                alignIndex = 1
                 faceCol = 4
-            elif IJK.lower() == 'k':
-                sectionIndex = 2
+            elif alignIndex.lower() == 'k':
+                alignIndex = 2
                 faceCol = 0
 
             if volumes is None:
@@ -366,16 +366,16 @@ class DVGeometry(object):
             nSections = []
             for i in range(len(volOrd)):
                 if i == 0:
-                    nSections.append(lIndex[volOrd[i]].shape[sectionIndex])
+                    nSections.append(lIndex[volOrd[i]].shape[alignIndex])
                 else:
-                    nSections.append(lIndex[volOrd[i]].shape[sectionIndex] - 1)
+                    nSections.append(lIndex[volOrd[i]].shape[alignIndex] - 1)
 
             refaxisNodes = numpy.zeros((sum(nSections), 3))
 
             # Loop through sections and compute node location
             place = 0
             for j, vol in enumerate(volOrd):
-                sectionArr = numpy.rollaxis(lIndex[vol], sectionIndex, 0)
+                sectionArr = numpy.rollaxis(lIndex[vol], alignIndex, 0)
                 skip = 0
                 if j > 0:
                     skip = 1
@@ -2639,76 +2639,90 @@ class DVGeometry(object):
         for child in self.children:
             child.printDesignVariables()
 
-    def calculateNormal(self, normaldirection=1, rootsection=2, ivol=0):
+    def sectionNormal(self, sectionIndex='k', normalIndex=None, ivol=0,
+                        normal2Stream=None, rootGlobal=False):
         """
-        Take coordinates of FFD frame and calculates normal directions in which
-        shape design variables will be set to change.
-        Each FFD section is for an airfoil section, so each section has its own normal
-        direction. Every control point in the same section will share the same
-        normal direction.
-        We do this because for winglet or other shapes, airfoil sections will be
-        rotated and no longer in the same plane with each other.
+        This function computes normals for the sections along one axis of an FFD
+        volume. For example, if we have a wing with a winglet, the airfoil
+        sections which make up the wing will not all lie in parallel planes. In
+        this example, let's say the wing FFD is oriented with indices:
+            'i' - along chord
+            'j' - normal to wing surface
+            'k' - out of wing (along span)
+        This function will compute a normal which is parallel with the k-planes
+        of the FFD volume. This is useful because in some cases (as with a
+        winglet), we want to perturb sectional control points within the section
+        plane instead of in the global coordinate directions.
+
+        Assumptions:
+            - the normal direction is computed along block index with size 2
 
         Parameters
         ----------
+        sectionIndex : 'i', 'j', or 'k'
+            The ffd plane in which the normal should be computed.
 
-        normaldirection:integer
-            0-i,1-j,2-k. Take normal direction along this direction.
-            This direction will be normal to chord in the airfoil plane.
+        normalIndex : 'i', 'j', or 'k'
+            Take normal direction along this direction.
 
-        rootsection:integer
-            0-i,1-j,2-k. span is along this direction and Root airfoil
-            section is the first one along this direction.
+        ivol : integer
+            Volume ID for the volume in which section normals will be computed.
 
-        ivol: number of vol from an FFD to calculate normal vector for.
+        normal2Stream : 'x', 'y', or 'z' (optional)
+            If given, section normals will be rotated about the k-plane normal
+            so that they are orthogonal to the given streamwise direction.
+            
+        rootGlobal : boolean
+            If true, the first plane normal will be oriented with the global
+            coordinate system.
 
         Output
-        normalvec : array
-           .
+        ------
+        secNorm : array
+            Unit normal for each section in volume.
 
-        rootsection:integer
-        0-x, 1-y, 2-z
-        root section should be on a plane normal to this value.
-        2 is plane normal to Z. And it also indicates airfoil sections are tiled
-        along this .
+        In the end, we want to have a data structure that contains information about
+        a normal vector for each coef. If that coef is in a volume assigned to a
+        geoDVLocalnormal object, then it should have a unit normal derived from
+        the surface. Otherwise it should not move.
         """
-        nSpansections = self.FFD.vols[ivol].nCtlw
-        nChordsections = self.FFD.vols[ivol].nCtlu
-        print(nSpansections, nChordsections)
-        normalvec = numpy.zeros([nSpansections,3])
-        #print(normalvec)
-        if(normaldirection==1):
-            for k in range(nSpansections):
-                #print(self.FFD.coef[self.FFD.topo.lIndex[ivol][0, -1, k]][0])
-                for i in range(nChordsections):
-                    #print('1')
-                    normalvec[k][0]+=\
-                        self.FFD.coef[self.FFD.topo.lIndex[ivol][i, -1, k]][0]-\
-                        self.FFD.coef[self.FFD.topo.lIndex[ivol][i,  0, k]][0]#,axis=0)
-                    #print('normalvec[k][0]',normalvec[k][0])
+        xyz_2_idx = {'x':0, 'y':1, 'z':2}
+        ijk_2_idx = {'i':0, 'j':1, 'k':2}
+        lIndex = self.FFD.topo.lIndex[ivol]
 
-                    normalvec[k][1]+=\
-                        self.FFD.coef[self.FFD.topo.lIndex[ivol][i, -1, k]][1]-\
-                        self.FFD.coef[self.FFD.topo.lIndex[ivol][i,  0, k]][1]#,axis=0)
-                    #print('normalvec[k][1]',normalvec[k][1])
-
-                    normalvec[k][2]+=\
-                        self.FFD.coef[self.FFD.topo.lIndex[ivol][i, -1, k]][2]-\
-                        self.FFD.coef[self.FFD.topo.lIndex[ivol][i,  0, k]][2]#,axis=0)
-                    #print('normalvec[k][2]',normalvec[k][2])
-                print(normalvec[k])
-                normalvec[k] = normalvec[k]/nChordsections
-                #print('k------------------------------------')
-
-                # normalvec[k]=normalvec[k]/geo_utils.euclideanNorm(normalvec[k])
-
-            k=0
-            normalvec[k][2]=0
-            #normalvec[k]=normalvec[k]/geo_utils.euclideanNorm(normalvec[k])
-            # print('normalvec',normalvec)
-            return normalvec
+        # Get normal index
+        if normalIndex is not None:
+            normalIndex = ijk_2_idx[normalIndex.lower()]
+        elif lIndex.shape.count(2) == 1:
+            normalIndex = lIndex.shape.index(2)
         else:
-            raise Error('Has not considered other than J is normal direction')
+            raise Error('Need to specify normal direction if there is not a '
+                        'single block direction with size 2.')
+        # Get section index and number of sections
+        sectionIndex = ijk_2_idx[sectionIndex.lower()]
+        nSections = lIndex.shape[sectionIndex]
+
+        # Roll lIndex so that 0th index is sectionIndex and 1st index is normalIndex
+        rolledlIndex = numpy.rollaxis(lIndex, normalIndex, 0)
+        rolledlIndex = numpy.rollaxis(rolledlIndex, sectionIndex, 0)
+
+        # Initialize array of section normals
+        secNorm = numpy.zeros([nSections,3])
+
+        # Loop through the sections and compute normal vector for each by subtracting
+        # bottom surface from top surface and taking an average
+        for i in range(nSections):
+            secNorm[i,:] = numpy.mean((self.FFD.coef[rolledlIndex[i,-1,:]] - \
+                            self.FFD.coef[rolledlIndex[i,0,:]]), axis=0)
+
+            # If flagged, rotate Normal to be normal to the streamwise direction
+            if normal2Stream:
+                secNorm[i,xyz_2_idx[normal2Stream]] = 0.0
+
+            # Normalize section normal
+            secNorm[i,:] /= numpy.linalg.norm(secNorm[i,:])
+
+        return secNorm
 
 class geoDVGlobal(object):
 
