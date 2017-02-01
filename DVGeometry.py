@@ -844,7 +844,6 @@ class DVGeometry(object):
                     # only apply the theta rotations in certain cases
                     deriv = self.refAxis.curves[
                         self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                    deriv[0] = 0.0
                     deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                     D = geo_utils.rotVbyW(D, deriv, numpy.pi/180*self.rot_theta[
                             self.curveIDNames[ipt]](self.links_s[ipt]))
