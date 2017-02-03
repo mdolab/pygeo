@@ -101,6 +101,7 @@ class DVGeometry(object):
 
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
         self.DV_listLocal = OrderedDict() # Local Design Variable List
+        self.DV_listLocalNormal = OrderedDict() # Local Normal Design Variable List
 
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild = child
@@ -189,7 +190,7 @@ class DVGeometry(object):
         self.masks = tmp
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
-                   rotType=5, axis='x'):
+                   rotType=5, axis='x', alignIndex=None):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -324,7 +325,9 @@ class DVGeometry(object):
             #   - 'x' is streamwise direction
 
             # This is the block direction along which the reference axis will lie
-            alignIndex = 'K'
+            # alignIndex = 'K'
+            if alignIndex is None:
+                raise Error('Must specify alignIndex to use xFraction.')
 
             # Get index direction along which refaxis will be aligned
             if alignIndex.lower() == 'i':
@@ -544,7 +547,7 @@ class DVGeometry(object):
     def addGeoDVLocal(self, dvName, lower=None, upper=None, scale=1.0,
                       axis='y', volList=None, pointSelect=None, config=None):
         """
-        Add one or more local design variables ot the DVGeometry
+        Add one or more local design variables to the DVGeometry
         object. Local variables are used for small shape modifications.
 
         Parameters
@@ -629,6 +632,99 @@ class DVGeometry(object):
                                                config)
 
         return self.DV_listLocal[dvName].nVal
+
+    def addGeoDVLocalNormal(self, dvName, lower=None, upper=None, scale=1.0,
+                      axis='j', volList=None, sectionIndices=[], config=None):
+        """
+        Add one or more local design variables to the DVGeometry
+        object. Local variables are used for small shape modifications.
+
+        Parameters
+        ----------
+        dvName : str
+            A unique name to be given to this design variable group
+
+        lower : float
+            The lower bound for the variable(s). This will be applied to
+            all shape variables
+
+        upper : float
+            The upper bound for the variable(s). This will be applied to
+            all shape variables
+
+        scale : flot
+            The scaling of the variables. A good approximate scale to
+            start with is approximately 1.0/(upper-lower). This gives
+            variables that are of order ~1.0.
+
+        axis : str. Default is 'j'
+            The coordinate directions to move. Permissible values are 'i',
+            'j' and 'k'. If more than one direction is required, use multiple
+            calls to addGeoDVLocal with different axis values
+        volList : list
+            Use the control points on the volume indicies given in volList
+
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
+        Returns
+        -------
+        N : int
+            The number of design variables added.
+
+        Examples
+        --------
+        >>> # Add all variables in FFD as local shape variables
+        >>> # moving in the y direction, within +/- 1.0 units
+        >>> DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper= 1.0, axis='y')
+        >>> # As above, but moving in the x and y directions.
+        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
+        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
+        >>> # Create a point select to use: (box from (0,0,0) to (10,0,10) with
+        >>> # any point projecting into the point along 'y' axis will be selected.
+        >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
+        >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
+        """
+        if type(config) == str:
+            config = [config]
+
+        if volList is not None:
+            if self.FFD.symmPlane is not None:
+                volListTmp = []
+                for vol in volList:
+                    volListTmp.append(vol)
+                for vol in volList:
+                    volListTmp.append(vol+self.FFD.nVol/2)
+                volList = volListTmp
+
+            volList = numpy.atleast_1d(volList).astype('int')
+            ind = []
+            for iVol in volList:
+                ind.extend(self.FFD.topo.lIndex[iVol].flatten())
+            ind = geo_utils.unique(ind)
+        else:
+            # Just take'em all
+            volList = numpy.arange(self.FFD.nVol)
+            ind = numpy.arange(len(self.FFD.coef))
+
+        sectionLink = numpy.zeros(self.FFD.coef.shape[0], dtype=int)
+        sectionTransform = [numpy.eye(3)]
+        if len(sectionIndices) == 1:
+            sectionIndices *= len(volList)
+        elif len(sectionIndices) != len(volList):
+            raise Error('Length of sectionIndices must be equal to length of volList.')
+
+        for iVol in volList:
+            self.sectionFrame(sectionIndices[iVol], sectionTransform, sectionLink, iVol)
+            # print(sectionLink)
+        self.DV_listLocalNormal[dvName] = geoDVLocalNormal(dvName, lower, upper,
+                                               scale, axis, ind, self.masks,
+                                               config, sectionTransform, sectionLink)
+
+        return self.DV_listLocalNormal[dvName].nVal
 
     def getSymmetricCoefList(self,volList=None, pointSelect=None, tol = 1e-8):
         """
@@ -767,6 +863,15 @@ class DVGeometry(object):
                                   len(vals_to_set)))
                 self.DV_listLocal[key].value = vals_to_set
 
+            if key in self.DV_listLocalNormal:
+                vals_to_set = numpy.atleast_1d(dvDict[key]).astype('D')
+                if len(vals_to_set) != self.DV_listLocalNormal[key].nVal:
+                    raise Error('Incorrect number of design variables \
+                    for DV: %s.\nExpecting %d variables and received \
+                    %d variabes'%(key, self.DV_listLocalNormal[key].nVal,
+                                  len(vals_to_set)))
+                self.DV_listLocalNormal[key].value = vals_to_set
+
             # Jacobians are, in general, no longer up to date
             self.zeroJacobians(self.ptSetNames)
 
@@ -810,6 +915,11 @@ class DVGeometry(object):
         # and now the local DVs
         for key in self.DV_listLocal:
             dvDict[key] = self.DV_listLocal[key].value
+
+        # and now the local normal DVs
+        for key in self.DV_listLocalNormal:
+            dvDict[key] = self.DV_listLocalNormal[key].value
+
 
         # Now call getValues on the children. This way the
         # returned dictionary will include the variables from
@@ -995,6 +1105,10 @@ class DVGeometry(object):
         # now add in the local DVs
         for key in self.DV_listLocal:
             self.DV_listLocal[key](self.FFD.coef, config)
+
+        # now add in the local normal DVs
+        for key in self.DV_listLocalNormal:
+            self.DV_listLocalNormal[key](self.FFD.coef, config)
 
         # Update all coef
         self.FFD._updateVolumeCoef()
@@ -1187,6 +1301,7 @@ class DVGeometry(object):
         """
         names = list(self.DV_listGlobal.keys())
         names.extend(list(self.DV_listLocal.keys()))
+        names.extend(list(self.DV_listLocalNormal.keys()))
 
         # Call the children recursively
         for iChild in xrange(len(self.children)):
@@ -2639,52 +2754,55 @@ class DVGeometry(object):
         for child in self.children:
             child.printDesignVariables()
 
-    def sectionNormal(self, sectionIndex='k', normalIndex=None, ivol=0,
-                        normal2Stream=None, rootGlobal=False):
+    def sectionFrame(self, sectionIndex, sectionTransform, sectionLink, ivol=0,
+                    normalIndex=None, alignStream=None, alignNormal=False):
         """
-        This function computes normals for the sections along one axis of an FFD
-        volume. For example, if we have a wing with a winglet, the airfoil
-        sections which make up the wing will not all lie in parallel planes. In
-        this example, let's say the wing FFD is oriented with indices:
+        This function computes a unique reference coordinate frame for each
+        section of an FFD volume. You can choose which axis of the FFD you would
+        like these sections to be defined by. For example, if we have a wing
+        with a winglet, the airfoil sections which make up the wing will not all
+        lie in parallel planes. We want to find a reference frame for each of
+        these airfoil sections so that we can constrain local control points to
+        deform within the sectional plane. Let's say the wing FFD is oriented
+        with indices:
             'i' - along chord
             'j' - normal to wing surface
             'k' - out of wing (along span)
-        This function will compute a normal which is parallel with the k-planes
-        of the FFD volume. This is useful because in some cases (as with a
-        winglet), we want to perturb sectional control points within the section
-        plane instead of in the global coordinate directions.
+        If we choose sectionIndex='k', This function will compute a frame which
+        is parallel with the k-planes of the FFD volume. This is useful because
+        in some cases (as with a winglet), we want to perturb sectional control
+        points within the section plane instead of in the global coordinate
+        directions.
 
         Assumptions:
-            - the normal direction is computed along block index with size 2
+            - the normal direction is computed along the block index with size 2
+            - all point for a given sectionIndex lie within a plane
 
         Parameters
         ----------
         sectionIndex : 'i', 'j', or 'k'
-            The ffd plane in which the normal should be computed.
+            This the index of the FFD which defines a section plane.
 
         normalIndex : 'i', 'j', or 'k'
-            Take normal direction along this direction.
+            Within the section plane, this is the index which is considered
+            normal to the surface (think normal to chord for an airfoil section).
 
         ivol : integer
             Volume ID for the volume in which section normals will be computed.
 
-        normal2Stream : 'x', 'y', or 'z' (optional)
-            If given, section normals will be rotated about the k-plane normal
-            so that they are orthogonal to the given streamwise direction.
-            
-        rootGlobal : boolean
-            If true, the first plane normal will be oriented with the global
-            coordinate system.
+        alignStreamwise : 'x', 'y', or 'z' (optional)
+            If given, section frames are rotated about the k-plane normal
+            so that the x' axis is parallel with the given streamwise direction.
+
+        rootGlobal : list
+            List of sections along specified axis that will be fixed to the
+            global coordinate frame.
 
         Output
         ------
-        secNorm : array
-            Unit normal for each section in volume.
-
-        In the end, we want to have a data structure that contains information about
-        a normal vector for each coef. If that coef is in a volume assigned to a
-        geoDVLocalnormal object, then it should have a unit normal derived from
-        the surface. Otherwise it should not move.
+        sectionTransform : list of 3x3 arrays
+            List of transformation matrices for the sections of a given volume.
+            Transformations are set up from local section frame to global frame.
         """
         xyz_2_idx = {'x':0, 'y':1, 'z':2}
         ijk_2_idx = {'i':0, 'j':1, 'k':2}
@@ -2704,25 +2822,57 @@ class DVGeometry(object):
 
         # Roll lIndex so that 0th index is sectionIndex and 1st index is normalIndex
         rolledlIndex = numpy.rollaxis(lIndex, normalIndex, 0)
+        if sectionIndex != 2:
+            sectionIndex += 1
         rolledlIndex = numpy.rollaxis(rolledlIndex, sectionIndex, 0)
 
-        # Initialize array of section normals
-        secNorm = numpy.zeros([nSections,3])
+        # Length of sectionTransform
+        Tcount = len(sectionTransform)
 
-        # Loop through the sections and compute normal vector for each by subtracting
-        # bottom surface from top surface and taking an average
         for i in range(nSections):
-            secNorm[i,:] = numpy.mean((self.FFD.coef[rolledlIndex[i,-1,:]] - \
-                            self.FFD.coef[rolledlIndex[i,0,:]]), axis=0)
+            # Compute singular value decomposition of points in section (the
+            # U matrix should provide us with a pretty good approximation
+            # of the transformation matrix)
+            pts = self.FFD.coef[rolledlIndex[i,:,:]]
+            nJ, nI = pts.shape[:-1]
+            X = numpy.reshape(pts, (nI*nJ, 3))
+            c = numpy.mean(X,0)
+            A = X - c
+            U,S,V = numpy.linalg.svd(A.T)
 
-            # If flagged, rotate Normal to be normal to the streamwise direction
-            if normal2Stream:
-                secNorm[i,xyz_2_idx[normal2Stream]] = 0.0
+            # Choose section plane normal axis
+            z1 = U[:,2]
 
-            # Normalize section normal
-            secNorm[i,:] /= numpy.linalg.norm(secNorm[i,:])
+            # Options for choosing in-plane axes
+            # 1. Align chordwise axis (x1) with projection of streamwise
+            #       direction on the section plane
+            # 2. Align normal axis (y1) with the projection of an average
+            #       difference vector between top and bottom surface on the
+            #       section plane
+            # 3. Use the default SVD decomposition (in general this will work).
+            #       It will choose the chordwise direction as the best fit line
+            #       through the section points.
+            if alignStream:
+                u = numpy.zeros(3)
+                u[xyz_2_idx[alignStream]] = 1.0
+                x1 = u - u.dot(z1)*z1
+                y1 = numpy.cross(z1,x1)
+            elif alignNormal:
+                v = numpy.mean((pts[-1,:] - pts[0,:]), axis=0)
+                v = v/numpy.linalg.norm(v)
+                y1 = v - v.dot(z1)*z1
+                x1 = numpy.cross(y1,z1)
+            else:
+                x1 = U[:,0]
+                y1 = U[:,1]
 
-        return secNorm
+            T = numpy.vstack((x1,y1,z1)).T
+            sectionTransform.append(T)
+            # Modify reference normal for each individual control point in section
+            sectionLink[rolledlIndex[i,:,:]] = Tcount
+            Tcount += 1
+
+        return nSections
 
 class geoDVGlobal(object):
 
@@ -2861,9 +3011,10 @@ def _convertTo1D(value, dim1):
             raise Error('The size of the 1D array was the incorret shape')
 
 
-class geoDVLocalnormal(object):
+class geoDVLocalNormal(object):
 
-    def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask, config):
+    def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask,
+                config, sectionTransform, sectionLink):
 
         """Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
@@ -2871,14 +3022,14 @@ class geoDVLocalnormal(object):
         See addGeoDVLocal for more information
         """
 
-        coefList = []
+        self.coefList = []
         #create a new coefficent list that excludes any values that are masked
         for i in range(len(coefListIn)):
             if mask[coefListIn[i]]==False:
-                coefList.append(coefListIn[i])
+                self.coefList.append(coefListIn[i])
 
         N = len(axis)
-        self.nVal = len(coefList)*N
+        self.nVal = len(self.coefList)*N
         self.value = numpy.zeros(self.nVal, 'D')
         self.name = dvName
         self.lower = None
@@ -2891,30 +3042,29 @@ class geoDVLocalnormal(object):
         if scale is not None:
             self.scale = _convertTo1D(scale, self.nVal)
 
-        self.coefList = numpy.zeros((self.nVal, 2), 'intc')
-        j = 0
+        self.sectionTransform = sectionTransform
+        self.sectionLink = sectionLink
 
-        for i in xrange(len(coefList)):
-            if 'x' in axis.lower():
-                self.coefList[j] = [coefList[i], 0]
-                j += 1
-            elif 'y' in axis.lower():
-                self.coefList[j] = [coefList[i], 1]
-                j += 1
-            elif 'z' in axis.lower():
-                self.coefList[j] = [coefList[i], 2]
-                j += 1
+        self.axes = []
+        if 'i' in axis.lower():
+            self.axes.append(0)
+        elif 'j' in axis.lower():
+            self.axes.append(1)
+        elif 'k' in axis.lower():
+            self.axes.append(2)
 
-    def __call__(self, coef, config, normalvec):
+    def __call__(self, coef, config):
         """When the object is called, apply the design variable values to
         coefficients"""
         if self.config is None or config in self.config:
-            for i in xrange(self.nVal):
-                #coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
-                coef[self.coefList[i, 0], 0] += self.value[i].real*normalvec[i][0] #should it be real or complex?
-                coef[self.coefList[i, 0], 1] += self.value[i].real*normalvec[i][1]
-                coef[self.coefList[i, 0], 2] += self.value[i].real*normalvec[i][2]
+            for i in xrange(len(self.coefList)):
+                T = self.sectionTransform[self.sectionLink[self.coefList[i]]]
 
+                inFrame = numpy.zeros(3)
+                for j in range(len(self.axes)):
+                    inFrame[self.axes[j]] = self.value[i+j].real
+
+                coef[self.coefList[i]] += T.dot(inFrame)
         return coef
 
     def updateComplex(self, coef, config):
