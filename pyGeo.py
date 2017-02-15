@@ -266,6 +266,7 @@ class pyGeo():
                               scale=None, offset=None, nCtl=None, kSpan=3, 
                               teHeight=None, teHeightScaled=None,
                               thickness=None, bluntTe=False, roundedTe=False,
+                              bluntTaperRange=0.1,
                               squareTeTip=True, teScale=0.75, tip='rounded',
                               tipScale=0.25, leOffset=.001, teOffset=.001,
                               spanTang=0.5, upTang=0.5):
@@ -326,7 +327,8 @@ class pyGeo():
         for i in range(len(xsections)):
             if xsections[i] is not None:
                 x, y = geo_utils.readAirfoilFile(xsections[i], bluntTe,
-                                                 bluntThickness=teHeight[i])
+                                                 bluntThickness=teHeight[i],
+                                                 bluntTaperRange=bluntTaperRange)
                 weights = numpy.ones(len(x))
                 weights[0] = -1
                 weights[-1] = -1
