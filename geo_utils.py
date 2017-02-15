@@ -256,6 +256,9 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1,
     y = rr[:, 1]
     npt = len(x)
 
+    xMin = min(x)
+    xMax = max(x)
+
     # There are 4 possibilites we have to deal with:
     # a. Given a sharp TE -- User wants a sharp TE
     # b. Given a sharp TE -- User wants a blunt TE
@@ -305,13 +308,13 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1,
         # Rescale upper surface:
         for i in range(0,npt//2):
             if x[i] > xBreak:
-                s = (x[i]-xBreak)/bluntTaperRange
+                s = (x[i]-xMin-xBreak)/bluntTaperRange
                 y[i] += s*0.5*(bluntThickness-curThick)
 
         # Rescale lower surface:
         for i in range(npt//2,npt):
             if x[i] > xBreak:
-                s = (x[i]-xBreak)/bluntTaperRange
+                s = (x[i]-xMin-xBreak)/bluntTaperRange
                 y[i] -= s*0.5*(bluntThickness-curThick)
 
     return x, y

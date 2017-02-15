@@ -1448,7 +1448,7 @@ class DVGeometry(object):
 
                 self.DV_listGlobal[key].value[j] += h
 
-                deriv = numpy.imag(self._update_deriv_new(ptSetName,config=config).flatten())/numpy.imag(h)
+                deriv = numpy.imag(self._update_deriv_cs(ptSetName,config=config).flatten())/numpy.imag(h)
 
                 self.JT[ptSetName][DVGlobalCount,:]=deriv
 
@@ -1463,7 +1463,7 @@ class DVGeometry(object):
                 refVal = self.DV_listLocal[key].value[j]
 
                 self.DV_listLocal[key].value[j] += h
-                deriv = numpy.imag(self._update_deriv_new(ptSetName,config=config).flatten())/numpy.imag(h)
+                deriv = numpy.imag(self._update_deriv_cs(ptSetName,config=config).flatten())/numpy.imag(h)
 
                 self.JT[ptSetName][DVLocalCount,:]=deriv
 
@@ -1946,9 +1946,11 @@ class DVGeometry(object):
                     self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv  # This is for recursion, check??
         return new_pts
 
-    def _update_deriv_new(self,ptSetName, childDelta = True, config=None):
+    def _update_deriv_cs(self,ptSetName, childDelta = True, config=None):
 
-        """Copy of update function for derivative calc"""
+        """
+        A version of the update_deriv function specifically for use
+        in the computeTotalJacobianCS function. """
         new_pts = numpy.zeros((self.nPtAttachFull, 3), 'D')
 
         # Step 1: Call all the design variables IFF we have ref axis:
@@ -2025,7 +2027,7 @@ class DVGeometry(object):
                     self.children[iChild].FFD.coef[:, ii] += imag_j*dCcdCoef.dot(imag_part[:, ii])   
             self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
             self.children[iChild].refAxis._updateCurveCoef()
-            coords += self.children[iChild]._update_deriv_new(ptSetName, config=config)
+            coords += self.children[iChild]._update_deriv_cs(ptSetName, config=config)
             self.children[iChild]._unComplexifyCoef()
 
         self.FFD.coef = self.FFD.coef.astype('d')
