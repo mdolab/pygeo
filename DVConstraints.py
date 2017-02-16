@@ -192,11 +192,11 @@ class DVConstraints(object):
             projections. If available, a pyGeo surface object can be
             used OR a triagnulaed surface in the form [p0, v1, v2] can
             be used. This triangulated surface form can be supplied
-            form pySUmb or from pyTrian.
+            form pyADflow or from pyTrian.
 
         Examples
         --------
-        >>> CFDsolver = SUMB(comm=comm, options=aeroOptions)
+        >>> CFDsolver = ADFLOW(comm=comm, options=aeroOptions)
         >>> surf = CFDsolver.getTriangulatedMeshSurface()
         >>> DVCon.setSurface(surf)
         >>> # Or using a pyGeo surface object:
