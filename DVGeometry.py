@@ -142,10 +142,10 @@ class DVGeometry(object):
         self.nDV_T = None
         self.nDVG_T = None
         self.nDVL_T = None
-        self.nDVLN_T = None
+        self.nDVSL_T = None
         self.nDVG_count = 0
         self.nDVL_count = 0
-        self.nDVLN_count = 0
+        self.nDVSL_count = 0
 
         # The set of user supplied axis.
         self.axis = OrderedDict()
@@ -696,7 +696,7 @@ class DVGeometry(object):
             Use the control points on the volume indicies given in volList. If
             None, all volumes will be included.
 
-        secIndex : char or list or chars
+        secIndex : char or list of chars
             For each volume, we need to specify along which index we would like
             to subdivide the volume into sections. Entries in list can be 'i',
             'j', or 'k'. This index will be designated as the transverse (0)
@@ -1113,6 +1113,8 @@ class DVGeometry(object):
 
                 D = self.links_x[ipt]
                 rotM = self._getRotMatrix(rotX, rotY, rotZ, rotType)
+
+                # if necessary, assign rotation matrix for each ffd coef
                 if self.Rotate is not None:
                     self.Rotate[str(ipt)] = rotM
                 D = numpy.dot(rotM, D)
@@ -1192,7 +1194,7 @@ class DVGeometry(object):
 
         # end for (ref axis)
 
-        # now add in the local normal DVs
+        # now add in the section local DVs
         for key in self.DV_listSectionLocal:
             self.DV_listSectionLocal[key](self.FFD.coef, self.Rotate, config)
 
@@ -1316,12 +1318,20 @@ class DVGeometry(object):
         """
 
         # compute the various DV offsets
-        DVCountGlobal,DVCountLocal = self._getDVOffsets()
+        DVCountGlobal, DVCountLocal, DVCountSecLoc = self._getDVOffsets()
 
         i = DVCountGlobal
         dIdxDict = {}
         for key in self.DV_listGlobal:
             dv = self.DV_listGlobal[key]
+            if out1D:
+                dIdxDict[dv.name] = numpy.ravel(dIdx[:, i:i+dv.nVal])
+            else:
+                dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
+            i += dv.nVal
+        i = DVCountSecLoc
+        for key in self.DV_listSectionLocal:
+            dv = self.DV_listSectionLocal[key]
             if out1D:
                 dIdxDict[dv.name] = numpy.ravel(dIdx[:, i:i+dv.nVal])
             else:
@@ -1334,15 +1344,6 @@ class DVGeometry(object):
                 dIdxDict[dv.name] = numpy.ravel(dIdx[:, i:i+dv.nVal])
             else:
                 dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
-
-            i += dv.nVal
-        for key in self.DV_listSectionLocal:
-            dv = self.DV_listSectionLocal[key]
-            if out1D:
-                dIdxDict[dv.name] = numpy.ravel(dIdx[:, i:i+dv.nVal])
-            else:
-                dIdxDict[dv.name] = dIdx[:, i:i+dv.nVal]
-
             i += dv.nVal
 
         # Add in child portion
@@ -1739,7 +1740,7 @@ class DVGeometry(object):
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
-        DVGlobalCount,DVLocalCount = self._getDVOffsets()
+        DVGlobalCount, DVLocalCount, DVSecLocCount = self._getDVOffsets()
 
         h = 1e-40j
 
@@ -1754,7 +1755,6 @@ class DVGeometry(object):
                 refVal = self.DV_listGlobal[key].value[j]
 
                 self.DV_listGlobal[key].value[j] += h
-
                 deriv = numpy.imag(self._update_deriv_new(ptSetName,config=config).flatten())/numpy.imag(h)
 
                 self.JT[ptSetName][DVGlobalCount,:]=deriv
@@ -1764,6 +1764,20 @@ class DVGeometry(object):
             # end for
         # end for
         self._unComplexifyCoef()
+        for key in self.DV_listSectionLocal:
+            for j in xrange(self.DV_listSectionLocal[key].nVal):
+
+                refVal = self.DV_listSectionLocal[key].value[j]
+
+                self.DV_listSectionLocal[key].value[j] += h
+                deriv = numpy.imag(self._update_deriv_new(ptSetName,config=config).flatten())/numpy.imag(h)
+
+                self.JT[ptSetName][DVSecLocCount,:]=deriv
+
+                DVSecLocCount += 1
+                self.DV_listSectionLocal[key].value[j] = refVal
+            # end for
+        # end for
         for key in self.DV_listLocal:
             for j in xrange(self.DV_listLocal[key].nVal):
 
@@ -2120,8 +2134,8 @@ class DVGeometry(object):
         return D
 
     def _getNDV(self):
-        """Return the actual number of design variables, global +
-        local
+        """Return the actual number of design variables, global + local
+            + section local
         """
         return self._getNDVGlobal() + self._getNDVLocal() + self._getNDVSectionLocal()
 
@@ -2227,18 +2241,19 @@ class DVGeometry(object):
 
         # get the global and local DV numbers on the parents if we don't have them
         if self.nDV_T==None or self.nDVG_T == None or self.nDVL_T==None \
-            or self.nDVLN_T==None:
+            or self.nDVSL_T==None:
             self.nDV_T = self._getNDV()
             self.nDVG_T = self._getNDVGlobal()
             self.nDVL_T = self._getNDVLocal()
-            self.nDVLN_T = self._getNDVSectionLocal()
+            self.nDVSL_T = self._getNDVSectionLocal()
             self.nDVG_count = 0
-            self.nDVLN_count = self.nDVG_T
-            self.nDVL_count = self.nDVG_T + self.nDVLN_T
+            self.nDVSL_count = self.nDVG_T
+            self.nDVL_count = self.nDVG_T + self.nDVSL_T
 
         # now get the numbers for the current parent child
         nDVG = self._getNDVGlobalSelf()
         nDVL = self._getNDVLocalSelf()
+        nDVSL = self._getNDVSectionLocalSelf()
 
         # Set the total number of global and local DVs into any children of this parent
         for child in self.children:
@@ -2248,7 +2263,7 @@ class DVGeometry(object):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
 
-        return self.nDVG_count,self.nDVL_count
+        return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
     def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None, localDV=False):
 
@@ -2257,11 +2272,16 @@ class DVGeometry(object):
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
-            # Set all coef Values back to initial values
+            # Set all ref axis coef Values back to initial values
             if not self.isChild:
                 self._setInitialValues()
 
+            # Recompute changes due to global dvs at current point + h
             self.updateCalculations(new_pts, isComplex=True,config=config)
+
+            # Add dependence of section variables on the global dv rotations
+            for key in self.DV_listSectionLocal:
+                self.DV_listSectionLocal[key](new_pts, self.Rotate, config)
 
             # set the forward effect of the global design vars in each child
             for iChild in xrange(len(self.children)):
@@ -2320,7 +2340,12 @@ class DVGeometry(object):
             self._complexifyCoef()
             self.FFD.coef = self.FFD.coef.astype('D')
 
+            # Compute changes due to global design vars
             self.updateCalculations(new_pts, isComplex=True,config=config)
+
+            # Add dependence of section variables on the global dv rotations
+            for key in self.DV_listSectionLocal:
+                self.DV_listSectionLocal[key](new_pts, self.Rotate, config)
 
             if not self.isChild:
                 self.FFD.coef = self.ptAttachFull.copy().astype('D')
@@ -2337,7 +2362,12 @@ class DVGeometry(object):
                 self.FFD.coef -= oldCoefLocations
         else:
             self.FFD.coef = self.FFD.coef.astype('D')
-        # Apply just the complex part of the local varibales
+
+        # Apply just the complex part of the section local variables
+        for key in self.DV_listSectionLocal:
+            self.DV_listSectionLocal[key].updateComplex(self.FFD.coef, self.Rotate, config)
+
+        # Apply just the complex part of the local variables
         for key in self.DV_listLocal:
             self.DV_listLocal[key].updateComplex(self.FFD.coef, config)
 
@@ -2457,7 +2487,7 @@ class DVGeometry(object):
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
-        DVGlobalCount, DVLocalCount = self._getDVOffsets()
+        DVGlobalCount, DVLocalCount, DVSecLocCount = self._getDVOffsets()
 
         coords0 = self.update(ptSetName,config).flatten()
 
@@ -2548,8 +2578,8 @@ class DVGeometry(object):
                         self.DV_listGlobal[key].value[j] += h
 
                         # Make sure coefficients are complex
-                        self._complexifyCoef()
-                        self.FFD.coef = self.FFD.coef.astype('D')
+                        self._complexifyCoef()  # ref axis coefficients
+                        self.FFD.coef = self.FFD.coef.astype('D') # ffd coefficients
                         deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh,config=config)).flatten()
                         # reset the FFD and axis
                         self._unComplexifyCoef()
@@ -2595,7 +2625,7 @@ class DVGeometry(object):
             #     N = self.FFD.embededVolumes['child%d_coef'%(iChild)].N
             #     self.children[iChild].dCcdXdvl = numpy.zeros((N*3, self.nDV_T))
 
-            iDVSectionLocal = self.nDVLN_count
+            iDVSectionLocal = self.nDVSL_count
             for key in self.DV_listSectionLocal:
                 if self.DV_listSectionLocal[key].config is None or \
                    config in self.DV_listSectionLocal[key].config:
@@ -2887,7 +2917,7 @@ class DVGeometry(object):
         h = 1e-6
 
         # figure out the split between local and global Variables
-        DVCountGlob,DVCountLoc = self._getDVOffsets()
+        DVCountGlob, DVCountLoc, DVCountSecLoc = self._getDVOffsets()
 
         for key in self.DV_listGlobal:
             for j in xrange(self.DV_listGlobal[key].nVal):
@@ -3285,11 +3315,15 @@ class geoDVSectionLocal(object):
                 coef[self.coefList[i]] += R.dot(T.dot(inFrame))
         return coef
 
-    def updateComplex(self, coef, config):
+    def updateComplex(self, coef, Rotate, config):
         if self.config is None or config in self.config:
-            for i in xrange(self.nVal):
-                coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].imag*1j
+            for i in xrange(len(self.coefList)):
+                T = self.sectionTransform[self.sectionLink[self.coefList[i]]]
+                inFrame = numpy.zeros(3, 'D')
+                inFrame[self.axis] = self.value[i].imag*1j
 
+                R = Rotate[str(self.coefList[i])]
+                coef[self.coefList[i]] += R.dot(T.dot(inFrame))
         return coef
 
     def mapIndexSets(self,indSetA,indSetB):
