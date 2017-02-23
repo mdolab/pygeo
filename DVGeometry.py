@@ -270,8 +270,9 @@ class DVGeometry(object):
         # We don't do any of the final processing here; we simply
         # record the information the user has supplied into a
         # dictionary structure.
-
-        if axis.lower() == 'x':
+        if axis is None:
+            pass
+        elif axis.lower() == 'x':
             axis = numpy.array([1, 0, 0], 'd')
         elif axis.lower() == 'y':
             axis = numpy.array([0, 1, 0], 'd')
@@ -843,7 +844,6 @@ class DVGeometry(object):
                     # only apply the theta rotations in certain cases
                     deriv = self.refAxis.curves[
                         self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
-                    deriv[0] = 0.0
                     deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                     D = geo_utils.rotVbyW(D, deriv, numpy.pi/180*self.rot_theta[
                             self.curveIDNames[ipt]](self.links_s[ipt]))
@@ -1448,7 +1448,7 @@ class DVGeometry(object):
 
                 self.DV_listGlobal[key].value[j] += h
 
-                deriv = numpy.imag(self._update_deriv_new(ptSetName,config=config).flatten())/numpy.imag(h)
+                deriv = numpy.imag(self._update_deriv_cs(ptSetName,config=config).flatten())/numpy.imag(h)
 
                 self.JT[ptSetName][DVGlobalCount,:]=deriv
 
@@ -1463,7 +1463,7 @@ class DVGeometry(object):
                 refVal = self.DV_listLocal[key].value[j]
 
                 self.DV_listLocal[key].value[j] += h
-                deriv = numpy.imag(self._update_deriv_new(ptSetName,config=config).flatten())/numpy.imag(h)
+                deriv = numpy.imag(self._update_deriv_cs(ptSetName,config=config).flatten())/numpy.imag(h)
 
                 self.JT[ptSetName][DVLocalCount,:]=deriv
 
@@ -1579,6 +1579,29 @@ class DVGeometry(object):
         for iChild in xrange(len(self.children)):
             cFileName = fileName+'_child%3d.dat'%iChild
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
+
+    def writeLinks(self, fileName):
+        """Write the links attaching the control points to the reference axes
+
+        Parameters
+        ----------
+        fileName : str
+            Filename for tecplot file. Should have .dat extension
+        """
+        self._finalize()
+        f = pySpline.openTecplot(fileName, 3)
+        f.write('ZONE NODES=%d ELEMENTS=%d ZONETYPE=FELINESEG\n'%(self.nPtAttach*2, self.nPtAttach))
+        f.write('DATAPACKING=POINT\n')
+        for ipt in range(self.nPtAttach):
+            pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
+            pt2 = self.links_x[ipt] + pt1
+
+            f.write('%.12g %.12g %.12g\n'%(pt1[0], pt1[1], pt1[2]))
+            f.write('%.12g %.12g %.12g\n'%(pt2[0], pt2[1], pt2[2]))
+        for i in range(self.nPtAttach):
+            f.write('%d %d\n'%(2*i+1, 2*i+2))
+
+        pySpline.closeTecplot(f)
 
     def writePointSet(self,name,fileName):
         """
@@ -1946,9 +1969,11 @@ class DVGeometry(object):
                     self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv.real  # This is for recursion, check??
         return new_pts
 
-    def _update_deriv_new(self,ptSetName, childDelta = True, config=None):
+    def _update_deriv_cs(self,ptSetName, childDelta = True, config=None):
 
-        """Copy of update function for derivative calc"""
+        """
+        A version of the update_deriv function specifically for use
+        in the computeTotalJacobianCS function. """
         new_pts = numpy.zeros((self.nPtAttachFull, 3), 'D')
 
         # Step 1: Call all the design variables IFF we have ref axis:
@@ -2025,7 +2050,7 @@ class DVGeometry(object):
                     self.children[iChild].FFD.coef[:, ii] += imag_j*dCcdCoef.dot(imag_part[:, ii])   
             self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
             self.children[iChild].refAxis._updateCurveCoef()
-            coords += self.children[iChild]._update_deriv_new(ptSetName, config=config)
+            coords += self.children[iChild]._update_deriv_cs(ptSetName, config=config)
             self.children[iChild]._unComplexifyCoef()
 
         self.FFD.coef = self.FFD.coef.astype('d')
