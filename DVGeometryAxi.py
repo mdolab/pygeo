@@ -40,7 +40,9 @@ class _AxiTransform(object):
         into the x,z plane and use z as the rotational axis
     """ 
 
-    def __init__(self, pts, center, collapse_into): 
+    def __init__(self, pts, center, collapse_into, complex=False): 
+        self.complex = complex 
+
         self.c_plane = collapse_into
         self.n_points = pts.shape[0]
         self.center = center
@@ -57,7 +59,9 @@ class _AxiTransform(object):
         gamma = pts[:, self.gamma_idx] - center[self.gamma_idx]
 
         self.radii = np.sqrt(beta**2 + gamma**2)
-        self.thetas = np.arctan2(gamma, beta)
+        # need to get the real part because arctan2 is not complex save
+        # but its ok, becuase these are constants
+        self.thetas = np.arctan2(gamma.real, beta.real) 
 
         self.cos_thetas = np.cos(self.thetas)
         self.sin_thetas = np.sin(self.thetas)
@@ -102,7 +106,11 @@ class _AxiTransform(object):
 
         # points collapsed into the prescribed plane
         # self.c_pts_axi = np.vstack((self.alpha, self.radii, np.zeros(self.n_points))).T
-        self.c_pts = np.empty((self.n_points, 3))
+        if self.complex: 
+            self.c_pts = np.empty((self.n_points, 3), dtype="complex")
+        else: 
+            self.c_pts = np.empty((self.n_points, 3))
+
         self.c_pts[:, 0] = alpha 
         self.c_pts[:, self.beta_idx] = self.radii
         self.c_pts[:, self.gamma_idx] = 0.  # no need to store zeros
@@ -111,7 +119,10 @@ class _AxiTransform(object):
         """given new collapsed points, re-expands them into physical space"""
 
         self.c_pts = new_c_pts 
-        pts = np.empty((self.n_points, 3))
+        if self.complex: 
+            pts = np.empty((self.n_points, 3), dtype="complex")
+        else: 
+            pts = np.empty((self.n_points, 3))
         pts[:, self.alpha_idx] = new_c_pts[:, 0] 
 
         new_rads = new_c_pts[:, self.beta_idx]
@@ -224,8 +235,8 @@ class DVGeometryAxi(DVGeometry):
             always be True except in circumstances when the user knows
             exactly what they are doing."""
 
-        xform = self.axiTransforms[ptName] = _AxiTransform(points, self.center, self.collapse_into)
-        
+        xform = self.axiTransforms[ptName] = _AxiTransform(points, self.center, self.collapse_into, self.complex)
+
         super(DVGeometryAxi, self).addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
 
     def update(self, ptSetName, childDelta=True, config=None): 
