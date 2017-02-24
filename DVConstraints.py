@@ -206,10 +206,16 @@ class DVConstraints(object):
         """
 
         if type(surf) == list:
+            # Data from ADflow
             self.p0 = numpy.array(surf[0])
             self.v1 = numpy.array(surf[1])
             self.v2 = numpy.array(surf[2])
-        else:
+
+        elif isinstance(surf, str):
+            # Load the surf as a plot3d file
+            self.p0, self.v1, self.v2 = self._readPlot3DSurfFile(surf)
+
+        else: # Assume it's a pyGeo surface
             self._generateDiscreteSurface(surf)
 
     def setDVGeo(self, DVGeo):
@@ -2047,6 +2053,52 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = CurvatureConstraint(
             conName, surfs, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
+
+    def _readPlot3DSurfFile(self, fileName):
+        """Read a plot3d file and return the points and connectivity in
+        an unstructured mesh format"""
+
+        pts = None
+        conn = None
+
+        f = open(fileName, 'r')
+        nSurf = numpy.fromfile(f, 'int', count=1, sep=' ')[0]
+        sizes = numpy.fromfile(f, 'int', count=3*nSurf, sep=' ').reshape((nSurf, 3))
+        nElem = 0
+        for i in range(nSurf):
+            nElem += (sizes[i, 0]-1)*(sizes[i, 1]-1)
+
+        # Generate the uncompacted point and connectivity list:
+        p0 = numpy.zeros((nElem*2, 3))
+        v1 = numpy.zeros((nElem*2, 3))
+        v2 = numpy.zeros((nElem*2, 3))
+
+        elemCount = 0
+        
+        for iSurf in range(nSurf):
+            curSize = sizes[iSurf, 0]*sizes[iSurf, 1]
+            pts = numpy.zeros((curSize, 3))
+            for idim in range(3):
+                pts[:, idim] = numpy.fromfile(f, 'float', curSize, sep=' ')
+
+            pts = pts.reshape((sizes[iSurf,0], sizes[iSurf,1], 3), order='f')
+            for j in range(sizes[iSurf, 1]-1):
+                for i in range(sizes[iSurf, 0]-1):
+                    # Each quad is split into two triangles
+                    p0[elemCount] = pts[i, j]
+                    v1[elemCount] = pts[i+1, j] - pts[i, j]
+                    v2[elemCount] = pts[i, j+1] - pts[i, j]
+
+                    elemCount += 1
+                    
+                    p0[elemCount] = pts[i+1, j]
+                    v1[elemCount] = pts[i+1, j+1] - pts[i+1, j]
+                    v2[elemCount] = pts[i, j+1] - pts[i+1, j]
+
+                    elemCount += 1
+
+        return p0, v1, v2
+
 
     def _checkDVGeo(self):
 
