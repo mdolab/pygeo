@@ -3324,8 +3324,7 @@ class geoDVSectionLocal(object):
                 inFrame = numpy.zeros(3)
                 inFrame[self.axis] = self.value[i].real
 
-                # R = coefRotM[str(self.coefList[i])]
-                R = numpy.eye(3)
+                R = coefRotM[str(self.coefList[i])]
                 coef[self.coefList[i]] += R.dot(T.dot(inFrame))
         return coef
 
@@ -3355,9 +3354,9 @@ class geoDVSectionLocal(object):
 
             # Note: We are doing inefficient double looping here
             for k in range(len(temp)):
-                if temp[k][0] == indSetA[j]:
+                if temp[k] == indSetA[j]:
                     up = k
-                if temp[k][0] == indSetB[j]:
+                if temp[k] == indSetB[j]:
                     down = k
 
             # If we haven't found up AND down do nothing

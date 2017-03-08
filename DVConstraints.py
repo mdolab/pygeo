@@ -117,7 +117,7 @@ class GeometricConstraint(object):
         This function is constraint specific, so the baseclass doesn't implement anything.
         """
         pass
-      
+
 
 class DVConstraints(object):
     """DVConstraints provides a convenient way of defining geometric
@@ -162,13 +162,13 @@ class DVConstraints(object):
         if multiple DVConstraint objects are used in an optimization.
 
     """
-  
+
     def __init__(self,name='DVCon1'):
         """
         Create a (empty) DVconstrains object. Specific types of
         constraints will added individually
         """
-        
+
         self.name = name
 
         self.constraints = OrderedDict()
@@ -252,14 +252,14 @@ class DVConstraints(object):
             constraint = self.constraints[conTypeKey]
             for key in constraint:
                 constraint[key].addConstraintsPyOpt(optProb)
-        
+
         # add the linear constraints separately, since they are treated a bit differently
         for key in self.linearCon:
             self.linearCon[key].addConstraintsPyOpt(optProb)
 
     def addVariablesPyOpt(self, optProb):
         """
-        Add all constraint variables to the optProb object. 
+        Add all constraint variables to the optProb object.
 
         Parameters
         ----------
@@ -291,7 +291,7 @@ class DVConstraints(object):
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored. 
+            additional keys in the dfvdictionary are simply ignored.
             """
 
         # loop over the generated constraint objects and add the necessary
@@ -320,7 +320,7 @@ class DVConstraints(object):
             constraints. Normally this can be false since pyOptSparse
             does not need linear constraints to be returned.
         """
-        
+
         # loop over the generated constraints and evaluate their function values
         for conTypeKey in self.constraints:
             constraint = self.constraints[conTypeKey]
@@ -1724,7 +1724,7 @@ class DVConstraints(object):
                         "is called.")
 
         self._checkDVGeo()
-        
+
         typeName = 'surfAreaCon'
         if not typeName in self.constraints:
             self.constraints[typeName] = OrderedDict()
@@ -1827,10 +1827,10 @@ class DVConstraints(object):
                                name=None, addToPyOpt=True):
         """
         Add a contraint to keep the surface in set in DVCon planar
-        Define the origin, and the plane axis. 
+        Define the origin, and the plane axis.
         The constraint will enforce that all of the surface points lie on
         the plane.
-     
+
         Parameters
         ----------
         origin: vector
@@ -1838,15 +1838,15 @@ class DVConstraints(object):
 
         planeAxis: vector
               Vector defining the plane of interest
-        
+
         lower : float
             Lower bound for circularity. This is the ratio of the target length
             relative to the first length calculated
- 
+
         upper : float
             Upper bound for optimization constraint. See lower.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -1881,7 +1881,7 @@ class DVConstraints(object):
         origin = numpy.array(origin).reshape((1, 3))
         planeAxis = numpy.array(planeAxis).reshape((1, 3))
 
-        # Create a name 
+        # Create a name
         typeName = 'planeCon'
         if not typeName in self.constraints:
             self.constraints[typeName] = OrderedDict()
@@ -1902,7 +1902,7 @@ class DVConstraints(object):
         Define the origin, and axis of the line and then a set of distances
         along the axis to constrain.
         The constraint will compute the points to constrain.
-     
+
         Parameters
         ----------
         origin: vector
@@ -1910,18 +1910,18 @@ class DVConstraints(object):
 
         lineAxis: vector
               The line of colinearity
-        
-        distances: list 
+
+        distances: list
               List of distances from origin to constrain
 
         lower : float
             Lower bound for circularity. This is the ratio of the target length
             relative to the first length calculated
- 
+
         upper : float
             Upper bound for optimization constraint. See lower.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -1961,7 +1961,7 @@ class DVConstraints(object):
         origin = numpy.array(origin).reshape((1, 3))
         lineAxis = numpy.array(lineAxis).reshape((1, 3))
 
-        # Create a name 
+        # Create a name
         typeName = 'coLinCon'
         if not typeName in self.constraints:
             self.constraints[typeName] = OrderedDict()
@@ -1971,31 +1971,31 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = ColinearityConstraint(
-            conName, lineAxis, origin, coords, lower, upper, scale, 
+            conName, lineAxis, origin, coords, lower, upper, scale,
             self.DVGeo, addToPyOpt)
 
     def addCurvatureConstraint(self, surfFile, lower=-1e20, upper=1e20,
-                               scaled=False, scale=1.0, name=None, 
+                               scaled=False, scale=1.0, name=None,
                                addToPyOpt=False):
         """
-        Add a contraint on the Gaussian curvature squared integrated over the 
-        surface area of the wing. The only required input for this constraint is 
+        Add a contraint on the Gaussian curvature squared integrated over the
+        surface area of the wing. The only required input for this constraint is
         a structured plot 3D file of the surface (there can be multiple surfaces in the file).
         This value is meant to be corelated with tooling cost of the wing.
-     
+
         Parameters
         ----------
         surfFile: vector
-              Plot3D file with desired surface to integrate over, should be 
+              Plot3D file with desired surface to integrate over, should be
               sufficiently refined to accurately capture surface curvature
 
         lower : float
             Lower bound for curvature integral.
- 
+
         upper : float
             Upper bound for optimization constraint. See lower.
 
-        scale : float 
+        scale : float
             This is the optimization scaling of the
             constraint. Typically this parameter will not need to be
             changed. If scaled=True, this automatically results in a
@@ -2025,10 +2025,10 @@ class DVConstraints(object):
 
 
         self._checkDVGeo()
-        
-        # Use pyGeo to load the plot3d file 
+
+        # Use pyGeo to load the plot3d file
         geo = pyGeo('plot3d', surfFile)
-        # node and edge tolerance for pyGeo (these are never used so 
+        # node and edge tolerance for pyGeo (these are never used so
         # we just fix them)
         node_tol =  1e-8
         edge_tol =  1e-8
@@ -2283,7 +2283,7 @@ class ThicknessConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -2379,9 +2379,9 @@ class LocationConstraint(GeometricConstraint):
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
-        
+
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -2437,7 +2437,7 @@ class LocationConstraint(GeometricConstraint):
                     counter+=1
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dTdPt, self.name, config=config)                                    
+                dTdPt, self.name, config=config)
 
     def writeTecplot(self, handle):
         """
@@ -2477,7 +2477,7 @@ class ThicknessToChordConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -2585,7 +2585,7 @@ class VolumeConstraint(GeometricConstraint):
         self.flipVolume = False
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -2631,7 +2631,7 @@ class VolumeConstraint(GeometricConstraint):
             funcsSens[self.name] = self.DVGeo.totalSensitivity(
                 dVdPt, self.name, config=config)
 
-  
+
     def writeTecplot(self, handle):
         """
         Write the visualization of this volume constriant
@@ -2832,7 +2832,7 @@ class CompositeVolumeConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # Now get the reference volume
@@ -2881,7 +2881,7 @@ class CompositeVolumeConstraint(GeometricConstraint):
                 for key in tmp[i]:
                     funcsSens[self.name][key] += tmp[i][key]
 
-  
+
 
     def writeTecplot(self, handle):
         """No need to write the composite volume since each of the
@@ -2926,7 +2926,10 @@ class LinearConstraint(object):
         """
         cons = []
         for key in self.wrt:
-            cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
+            if key in self.DVGeo.DV_listLocal:
+                cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
+            elif key in self.DVGeo.DV_listSectionLocal:
+                cons.extend(self.jac[key].dot(self.DVGeo.DV_listSectionLocal[key].value))
 
         funcs[self.name] = numpy.array(cons).astype('d')
 
@@ -2962,6 +2965,7 @@ class LinearConstraint(object):
         """
         self.vizConIndices = {}
 
+        # Local Shape Variables
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
@@ -2971,6 +2975,27 @@ class LinearConstraint(object):
                 if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal
+                    jacobian = numpy.zeros((ncon, ndv))
+                    for i in range(ncon):
+                        jacobian[i, cons[i][0]] = self.factorA[i]
+                        jacobian[i, cons[i][1]] = self.factorB[i]
+                    self.jac[key] = jacobian
+
+                # Add to the number of constraints and store indices which
+                # we need for tecplot visualization
+                self.ncon += len(cons)
+                self.vizConIndices[key] = cons
+
+        # Section local shape variables
+        for key in self.DVGeo.DV_listSectionLocal:
+             if self.config is None or self.config in self.DVGeo.DV_listSectionLocal[key].config:
+
+                # end for (indSet loop)
+                cons = self.DVGeo.DV_listSectionLocal[key].mapIndexSets(self.indSetA,self.indSetB)
+                ncon = len(cons)
+                if ncon > 0:
+                    # Now form the jacobian:
+                    ndv = self.DVGeo.DV_listSectionLocal[key].nVal
                     jacobian = numpy.zeros((ncon, ndv))
                     for i in range(ncon):
                         jacobian[i, cons[i][0]] = self.factorA[i]
@@ -3032,7 +3057,7 @@ class GearPostConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, None, None,
-                                     None,None, self.DVGeo, 
+                                     None,None, self.DVGeo,
                                      self.addToPyOpt)
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -3142,7 +3167,7 @@ class CircularityConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
 
@@ -3286,7 +3311,7 @@ class PlanarityConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # create the output array
@@ -3307,7 +3332,7 @@ class PlanarityConstraint(GeometricConstraint):
         self.DVGeo.addPointSet(self.p2, self.name+'p2')
         self.DVGeo.addPointSet(self.origin, self.name+'origin')
 
-                
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -3349,18 +3374,18 @@ class PlanarityConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dPdp0 = numpy.zeros((self.nCon, 
+            dPdp0 = numpy.zeros((self.nCon,
                                  self.p0.shape[0],
                                  self.p0.shape[1]))
-            dPdp1 = numpy.zeros((self.nCon, 
+            dPdp1 = numpy.zeros((self.nCon,
                                  self.p1.shape[0],
                                  self.p1.shape[1]))
 
-            dPdp2 = numpy.zeros((self.nCon, 
+            dPdp2 = numpy.zeros((self.nCon,
                                  self.p2.shape[0],
                                  self.p2.shape[1]))
 
-            dPdO = numpy.zeros((self.nCon, 
+            dPdO = numpy.zeros((self.nCon,
                                 self.origin.shape[0],
                                 self.origin.shape[1]))
 
@@ -3375,14 +3400,14 @@ class PlanarityConstraint(GeometricConstraint):
         #     for j in range(3):#DO j=1,3
         #         dist(i, j) = allpoints(i, j) - origin(j)
         dist = allPoints-self.origin
-        
+
         scalardist = numpy.zeros(self.n*3)
         tmpX = 0
         for i in range(self.n*3):
             scalardist[i] = numpy.dot(self.axis,dist[i,:])
             tmpX+=scalardist[i]**2
 
-        xb = numpy.zeros(self.nCon) 
+        xb = numpy.zeros(self.nCon)
         axisb = numpy.zeros(3)
 
         scalardistb = numpy.zeros((self.n*3))
@@ -3424,10 +3449,10 @@ class PlanarityConstraint(GeometricConstraint):
             allpointsb[self.n:2*self.n] = 0.0
             p0b[:,:] = 0.0
             p0b[:,:] = allpointsb[0:self.n]
-         
-            
+
+
             # map back to DVGeo
-            tmpp0 = self.DVGeo.totalSensitivity(dPdp0, self.name+'p0', 
+            tmpp0 = self.DVGeo.totalSensitivity(dPdp0, self.name+'p0',
                                                 config=config)
             tmpp1 = self.DVGeo.totalSensitivity(dPdp1, self.name+'p1',
                                                 config=config)
@@ -3440,7 +3465,7 @@ class PlanarityConstraint(GeometricConstraint):
             for key in tmpp0:
                 tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]+tmpO[key]
 
-        
+
             funcsSens[self.name] = tmpTotal
 
 
@@ -3480,7 +3505,7 @@ class PlanarityConstraint(GeometricConstraint):
 class ColinearityConstraint(GeometricConstraint):
     """
     DVConstraints representation of a colinearity constraint.
-    Constrain that all of the points provided stay colinear with the 
+    Constrain that all of the points provided stay colinear with the
     specified axis.
     One of these objects is created each time an
     addColinearityConstraint call is made.
@@ -3498,7 +3523,7 @@ class ColinearityConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # create the output array
@@ -3514,7 +3539,7 @@ class ColinearityConstraint(GeometricConstraint):
         self.DVGeo.addPointSet(self.origin, self.name+'origin')
         self.DVGeo.addPointSet(self.coords, self.name+'coords')
 
-                
+
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary
@@ -3530,11 +3555,11 @@ class ColinearityConstraint(GeometricConstraint):
 
         # # Compute the direction from each point to the origin
         # dirVec = self.origin-self.coords
-        
+
         # # compute the cross product with the desired axis. Cross product
         # # will be zero if the direction vector is the same as the axis
         # resultDir = numpy.cross(self.axis,dirVec)
-        
+
         # for i in range(len(resultDir)):
         #     self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
         self.X = self._computeDist(self.origin,self.coords,self.axis)
@@ -3554,16 +3579,16 @@ class ColinearityConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dCdPt = numpy.zeros((self.nCon, 
+            dCdPt = numpy.zeros((self.nCon,
                                      self.coords.shape[0],
                                      self.coords.shape[1]))
-            dCdOrigin = numpy.zeros((self.nCon, 
+            dCdOrigin = numpy.zeros((self.nCon,
                                      self.origin.shape[0],
                                      self.origin.shape[1]))
-            dCdAxis = numpy.zeros((self.nCon, 
+            dCdAxis = numpy.zeros((self.nCon,
                                      self.axis.shape[0],
                                      self.axis.shape[1]))
-            
+
             #Compute the direction from each point to the origin
             # for i in range(n):
             #     for j in range(3):
@@ -3583,8 +3608,8 @@ class ColinearityConstraint(GeometricConstraint):
                 #self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
                 for j in range(3):
                     tmpX[i] += resultDir[i,j]**2
-                
-            resultdirb = numpy.zeros(3)    
+
+            resultdirb = numpy.zeros(3)
             dirvecb = numpy.zeros_like(dirVec)
             xb = numpy.zeros(self.nCon)
             for con in xrange(self.nCon):
@@ -3599,11 +3624,11 @@ class ColinearityConstraint(GeometricConstraint):
                         xb[i] = 0.0
                     else:
                         xb[i] = xb[i]/(2.0*numpy.sqrt(tmpX[i]))
-                        
+
                     resultdirb[:] = 0.0
                     for j in reversed(range(3)):#DO j=3,1,-1
                         resultdirb[j] = resultdirb[j] + 2*resultDir[i,j]*xb[i]
-     
+
                     xb[i] = 0.0
                     #CALL CROSS_B(axis, axisb, dirvec(i, :), dirvecb(i, :), resultdirb)
                     axisb, dirvecb[i,:] = geo_utils.cross_b(self.axis[0,:],dirVec[i, :], resultdirb)
@@ -3615,12 +3640,12 @@ class ColinearityConstraint(GeometricConstraint):
                         originb[j] = originb[j] + dirvecb[i, j]
                         coordsb[i, j] = coordsb[i, j] - dirvecb[i, j]
                         dirvecb[i, j] = 0.0
-            
-            tmpPt = self.DVGeo.totalSensitivity(dCdPt, self.name+'coords', 
+
+            tmpPt = self.DVGeo.totalSensitivity(dCdPt, self.name+'coords',
                                                 config=config)
             tmpOrigin = self.DVGeo.totalSensitivity(dCdOrigin, self.name+'origin',
                                                     config=config)
-     
+
             tmpTotal = {}
             for key in tmpPt:
                 tmpTotal[key] = tmpPt[key]+tmpOrigin[key]
@@ -3656,7 +3681,7 @@ class ColinearityConstraint(GeometricConstraint):
 
         for i in range(len(self.coords)):
             handle.write('%d %d\n'% (i+1, i+2))
-    
+
     def _computeDist(self,origin,coords,axis, dtype='d'):
         """
         compute the distance of coords from the defined axis.
@@ -3667,11 +3692,11 @@ class ColinearityConstraint(GeometricConstraint):
         # compute the cross product with the desired axis. Cross product
         # will be zero if the direction vector is the same as the axis
         resultDir = numpy.cross(axis,dirVec)
-        
+
         X = numpy.zeros(len(coords),dtype)
         for i in range(len(resultDir)):
             X[i] = geo_utils.euclideanNorm(resultDir[i,:])
-            
+
         return X
 
 class SurfaceAreaConstraint(GeometricConstraint):
@@ -3694,7 +3719,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # create output array
@@ -3883,7 +3908,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # create output array
@@ -4059,11 +4084,11 @@ class ProjectedAreaConstraint(GeometricConstraint):
                 handle.write('%d %d %d\n'% (iActive+1, iActive+nActiveTris+1,
                         iActive+nActiveTris*2+1))
                 iActive += 1
-                
+
 class CurvatureConstraint(GeometricConstraint):
     """
-    DVConstraints representation of a set of the curvature constraint. 
-    One of these objects is created each time a addCurvatureConstraint is made. 
+    DVConstraints representation of a set of the curvature constraint.
+    One of these objects is created each time a addCurvatureConstraint is made.
     The user should not have to deal with this class directly.
     """
 
@@ -4081,12 +4106,12 @@ class CurvatureConstraint(GeometricConstraint):
             self.X += [numpy.reshape(surfs[iSurf].X,-1)]
             # A list of maping arrays used to translate from the structured index
             # to the flatten index number of X
-            # For example: X[iSurf][X_map[iSurf][i,j,2]] gives the z coordinate 
+            # For example: X[iSurf][X_map[iSurf][i,j,2]] gives the z coordinate
             # of the node in the i-th row and j-th column on surface iSurf
             self.X_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size)),surfs[iSurf].X.shape)]
-            # A list of maping arrays used to provide a unique node number for 
+            # A list of maping arrays used to provide a unique node number for
             # every node on each surface
-            # For example: node_map[iSurf][i,j] gives the node number 
+            # For example: node_map[iSurf][i,j] gives the node number
             # of the node in the i-th row and j-th column on surface iSurf
             self.node_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size/3)),(surfs[iSurf].X.shape[0],surfs[iSurf].X.shape[1]))]
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
@@ -4100,7 +4125,7 @@ class CurvatureConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
 
         GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo, 
+                                     self.upper, self.scale, self.DVGeo,
                                      self.addToPyOpt)
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -4124,7 +4149,7 @@ class CurvatureConstraint(GeometricConstraint):
             self.coords[iSurf] = self.DVGeo.update(self.name+'%d'%(iSurf), config=config)
             self.X[iSurf] = numpy.reshape(self.coords[iSurf],-1)
             funcs[self.name] += self.evalCurvArea(iSurf)[0]
-        
+
     def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
@@ -4151,13 +4176,13 @@ class CurvatureConstraint(GeometricConstraint):
                         DkSDpt, self.name+'%d'%(iSurf), config=config)
                     for key in funcsSens[self.name]:
                         funcsSens[self.name][key] += tmp[key]
-        
+
     def evalCurvArea(self, iSurf):
         '''
         Evaluate the integral K**2 over the surface area of the wing.
         Where K is the Gaussian curvature.
         '''
-        # Evaluate the derivitive of the position vector of every point on the 
+        # Evaluate the derivitive of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], 'u')
         t_v = self.evalDiff(iSurf, self.X[iSurf], 'v')
@@ -4174,12 +4199,12 @@ class CurvatureConstraint(GeometricConstraint):
         t_uu = self.evalDiff(iSurf, t_u, 'u')
         t_vv = self.evalDiff(iSurf, t_v, 'v')
         t_uv = self.evalDiff(iSurf, t_v, 'u')
-        # Compute the components of the first fundamental form of a parameteric 
+        # Compute the components of the first fundamental form of a parameteric
         # surface
         E = self.evalInProd(iSurf, t_u,t_u)
         F = self.evalInProd(iSurf, t_v,t_u)
         G = self.evalInProd(iSurf, t_v,t_v)
-        # Compute the components of the second fundamental form of a parameteric 
+        # Compute the components of the second fundamental form of a parameteric
         # surface
         L = self.evalInProd(iSurf, t_uu,n_hat)
         M = self.evalInProd(iSurf, t_uv,n_hat)
@@ -4187,8 +4212,8 @@ class CurvatureConstraint(GeometricConstraint):
         # Compute Gaussian and mean curvature (K and H)
         K = (L*N-M*M)/(E*G-F*F)
         H = (E*N - 2*F*M + G*L)/(2*(E*G-F*F))
-        # Assign integration weights for each point 
-        # 1   for center nodes  
+        # Assign integration weights for each point
+        # 1   for center nodes
         # 1/2 for edge nodes
         # 1/4 for corner nodes
         wt = numpy.zeros_like(n_norm)+1
@@ -4196,23 +4221,23 @@ class CurvatureConstraint(GeometricConstraint):
         wt[self.node_map[iSurf][-1,:]] *= 0.5
         wt[self.node_map[iSurf][:,0]] *= 0.5
         wt[self.node_map[iSurf][:,-1]] *= 0.5
-        # Compute discrete area associated with each node 
+        # Compute discrete area associated with each node
         dS = wt*n_norm
         one = numpy.ones(self.node_map[iSurf].size)
-        # Now compute integral (K**2) over S, equivelent to sum(K**2*dS) 
+        # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
         kS = numpy.dot(one,K*K*dS)
 
         return [kS, K, H]
-        
+
     def evalCurvAreaSens(self, iSurf):
         '''
-        Compute sensitivity of the integral K**2 wrt the coordinate 
-        locations X 
+        Compute sensitivity of the integral K**2 wrt the coordinate
+        locations X
         '''
-        # Evaluate the derivitive of the position vector of every point on the 
+        # Evaluate the derivitive of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], 'u')
-        Dt_uDX = self.evalDiffSens(iSurf, 'u')        
+        Dt_uDX = self.evalDiffSens(iSurf, 'u')
         t_v = self.evalDiff(iSurf, self.X[iSurf], 'v')
         Dt_vDX = self.evalDiffSens(iSurf,'v')
         # Compute the normal vector by taking the cross product of t_u and t_v
@@ -4228,7 +4253,7 @@ class CurvatureConstraint(GeometricConstraint):
         n_hat[self.X_map[iSurf][:,:,0]]=n[self.X_map[iSurf][:,:,0]]/n_norm[self.node_map[iSurf][:,:]]
         n_hat[self.X_map[iSurf][:,:,1]]=n[self.X_map[iSurf][:,:,1]]/n_norm[self.node_map[iSurf][:,:]]
         n_hat[self.X_map[iSurf][:,:,2]]=n[self.X_map[iSurf][:,:,2]]/n_norm[self.node_map[iSurf][:,:]]
-        
+
         ii = []
         data = []
         for i in range(3):
@@ -4236,60 +4261,60 @@ class CurvatureConstraint(GeometricConstraint):
             ii += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
             data +=list(numpy.reshape(n_norm[self.node_map[iSurf][:,:]]**-1,-1))
         Dn_hatDn = csr_matrix((data,[ii,ii]),shape=(self.X[iSurf].size,self.X[iSurf].size))
-        
+
         ii = []
         jj = []
         data = []
         for i in range(3):
-            # Dn_hat[self.X_map[iSurf][:,:,i]]/Dn_norm[self.node_map[iSurf][:,:]]                                  
+            # Dn_hat[self.X_map[iSurf][:,:,i]]/Dn_norm[self.node_map[iSurf][:,:]]
             ii += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
             jj += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
             data +=list(numpy.reshape(-n[self.X_map[iSurf][:,:,i]]/(n_norm[self.node_map[iSurf][:,:]]**2),-1))
         Dn_hatDn_norm = csr_matrix((data,[ii,jj]),shape=(n_hat.size,n_norm.size))
-        
+
         Dn_hatDX=Dn_hatDn.dot(DnDX)+Dn_hatDn_norm.dot(Dn_normDX)
         # Evaluate the second derivitives of the position vector wrt u and v
         t_uu = self.evalDiff(iSurf,t_u, 'u')
         Dt_uuDt_u = self.evalDiffSens(iSurf,'u')
         Dt_uuDX = Dt_uuDt_u.dot(Dt_uDX)
-        
+
         t_vv = self.evalDiff(iSurf,t_v, 'v')
         Dt_vvDt_v = self.evalDiffSens(iSurf,'v')
         Dt_vvDX = Dt_vvDt_v.dot(Dt_vDX)
-        
+
         t_uv = self.evalDiff(iSurf,t_v, 'u')
         Dt_uvDt_v = self.evalDiffSens(iSurf,'u')
         Dt_uvDX = Dt_uvDt_v.dot(Dt_vDX)
-        # Compute the components of the first fundamental form of a parameteric 
+        # Compute the components of the first fundamental form of a parameteric
         # surface
         E = self.evalInProd(iSurf,t_u,t_u)
         [DEDt_u, _] = self.evalInProdSens(iSurf,t_u,t_u)
         DEDt_u*=2
         DEDX = DEDt_u.dot(Dt_uDX)
-        
+
         F = self.evalInProd(iSurf,t_v,t_u)
         [DFDt_v, DFDt_u] = self.evalInProdSens(iSurf,t_v,t_u)
         DFDX = DFDt_v.dot(Dt_vDX) + DFDt_u.dot(Dt_uDX)
-        
+
         G = self.evalInProd(iSurf,t_v,t_v)
         [DGDt_v, _] = self.evalInProdSens(iSurf,t_v,t_v)
         DGDt_v*=2
         DGDX = DGDt_v.dot(Dt_vDX)
 
-        # Compute the components of the second fundamental form of a parameteric 
+        # Compute the components of the second fundamental form of a parameteric
         # surface
         L = self.evalInProd(iSurf,t_uu,n_hat)
         [DLDt_uu, DLDn_hat] = self.evalInProdSens(iSurf,t_uu,n_hat)
         DLDX = DLDt_uu.dot(Dt_uuDX)+DLDn_hat.dot(Dn_hatDX)
-        
+
         M = self.evalInProd(iSurf,t_uv,n_hat)
         [DMDt_uv, DMDn_hat] = self.evalInProdSens(iSurf,t_uv,n_hat)
         DMDX = DMDt_uv.dot(Dt_uvDX)+DMDn_hat.dot(Dn_hatDX)
-        
+
         N = self.evalInProd(iSurf,t_vv,n_hat)
         [DNDt_vv, DNDn_hat] = self.evalInProdSens(iSurf,t_vv,n_hat)
         DNDX = DNDt_vv.dot(Dt_vvDX)+DNDn_hat.dot(Dn_hatDX)
-        
+
         # Compute Gaussian and mean curvature (K and H)
         K = (L*N-M*M)/(E*G-F*F)
         DKDE = self.diags(-(L*N-M*M)/(E*G-F*F)**2*G)
@@ -4300,7 +4325,7 @@ class CurvatureConstraint(GeometricConstraint):
         DKDN = self.diags(L/(E*G-F*F))
         DKDX = DKDE.dot(DEDX) + DKDF.dot(DFDX) + DKDG.dot(DGDX) +\
                DKDL.dot(DLDX) + DKDM.dot(DMDX) + DKDN.dot(DNDX)
-        
+
         H = (E*N - 2*F*M + G*L)/(2*(E*G-F*F))
         DHDE = self.diags(N/(2*(E*G-F*F)) - (E*N - 2*F*M + G*L)/(2*(E*G-F*F))**2*2*G)
         DHDF = self.diags(-2*M/(2*(E*G-F*F)) + (E*N - 2*F*M + G*L)/(2*(E*G-F*F))**2*4*F)
@@ -4311,8 +4336,8 @@ class CurvatureConstraint(GeometricConstraint):
         DHDX = DHDE.dot(DEDX) + DHDF.dot(DFDX) + DHDG.dot(DGDX)+\
                DHDL.dot(DLDX) + DHDM.dot(DMDX) + DHDN.dot(DNDX)
 
-        # Assign integration weights for each point 
-        # 1   for center nodes  
+        # Assign integration weights for each point
+        # 1   for center nodes
         # 1/2 for edge nodes
         # 1/4 for corner nodes
         wt = numpy.zeros_like(n_norm)+1
@@ -4320,62 +4345,62 @@ class CurvatureConstraint(GeometricConstraint):
         wt[self.node_map[iSurf][-1,:]] *= 0.5
         wt[self.node_map[iSurf][:,0]] *= 0.5
         wt[self.node_map[iSurf][:,-1]] *= 0.5
-        #Compute discrete area associated with each node 
+        #Compute discrete area associated with each node
         dS = wt*n_norm
         DdSDX = self.diags(wt).dot(Dn_normDX)
-        
+
         one = numpy.ones(self.node_map[iSurf].size)
-        # Now compute integral (K**2) over S, equivelent to sum(K**2*dS) 
+        # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
         kS = numpy.dot(one,K*K*dS)
         DkSDX = (self.diags(2*K*dS).dot(DKDX)+self.diags(K*K).dot(DdSDX)).T.dot(one)
         return DkSDX
-        
+
     def evalCross(self, iSurf, u, v):
         '''
-        Evaluate the cross product of two vector fields on the surface 
+        Evaluate the cross product of two vector fields on the surface
         (n = u x v)
         '''
         n = numpy.zeros_like(self.X[iSurf])
-        n[self.X_map[iSurf][:,:,0]] = u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,2]] - u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,1]]  
+        n[self.X_map[iSurf][:,:,0]] = u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,2]] - u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,1]]
         n[self.X_map[iSurf][:,:,1]] = -u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,2]] + u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,0]]
         n[self.X_map[iSurf][:,:,2]] = u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,1]] - u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,0]]
         return n
-        
+
     def evalCrossSens(self, iSurf, u, v):
         '''
-        Evaluate sensitivity of cross product wrt to the input vectors u and v 
+        Evaluate sensitivity of cross product wrt to the input vectors u and v
         (DnDu, DnDv)
         '''
         # Compute sensitivity wrt v
         ii = []
         jj = []
         data = []
-        # Dn[self.X_map[iSurf][:,:,0]]/Dv[self.X_map[iSurf][:,:,2]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,0]]/Dv[self.X_map[iSurf][:,:,2]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         data += list(numpy.reshape(u[self.X_map[iSurf][:,:,1]],-1))
-        # Dn[self.X_map[iSurf][:,:,0]]/Dv[self.X_map[iSurf][:,:,1]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,0]]/Dv[self.X_map[iSurf][:,:,1]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         data += list(numpy.reshape(-u[self.X_map[iSurf][:,:,2]],-1))
-        # Dn[self.X_map[iSurf][:,:,1]]/Dv[self.X_map[iSurf][:,:,2]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,1]]/Dv[self.X_map[iSurf][:,:,2]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         data += list(numpy.reshape(-u[self.X_map[iSurf][:,:,0]],-1))
-        # Dn[self.X_map[iSurf][:,:,1]]/Dv[self.X_map[iSurf][:,:,0]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,1]]/Dv[self.X_map[iSurf][:,:,0]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         data += list(numpy.reshape(u[self.X_map[iSurf][:,:,2]],-1))
-        # Dn[self.X_map[iSurf][:,:,2]]/Dv[self.X_map[iSurf][:,:,1]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,2]]/Dv[self.X_map[iSurf][:,:,1]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         data += list(numpy.reshape(u[self.X_map[iSurf][:,:,0]],-1))
-        # Dn[self.X_map[iSurf][:,:,2]]/Dv[self.X_map[iSurf][:,:,0]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,2]]/Dv[self.X_map[iSurf][:,:,0]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         data += list(numpy.reshape(-u[self.X_map[iSurf][:,:,1]],-1))
-        
-        
+
+
         DnDv = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
         # Now wrt v
         ii = []
@@ -4385,41 +4410,41 @@ class CurvatureConstraint(GeometricConstraint):
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         data += list(numpy.reshape(v[self.X_map[iSurf][:,:,2]],-1))
-        # Dn[self.X_map[iSurf][:,:,0]]/Du[self.X_map[iSurf][:,:,2]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,0]]/Du[self.X_map[iSurf][:,:,2]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,1]],-1)) 
-        # Dn[self.X_map[iSurf][:,:,1]]/Du[self.X_map[iSurf][:,:,0]]                                                                                                                    
+        data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,1]],-1))
+        # Dn[self.X_map[iSurf][:,:,1]]/Du[self.X_map[iSurf][:,:,0]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,2]],-1))
-        # Dn[self.X_map[iSurf][:,:,1]]/Du[self.X_map[iSurf][:,:,2]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,1]]/Du[self.X_map[iSurf][:,:,2]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         data += list(numpy.reshape(v[self.X_map[iSurf][:,:,0]],-1))
-        # Dn[self.X_map[iSurf][:,:,2]]/Du[self.X_map[iSurf][:,:,0]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,2]]/Du[self.X_map[iSurf][:,:,0]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         data += list(numpy.reshape(v[self.X_map[iSurf][:,:,1]],-1))
-        # Dn[self.X_map[iSurf][:,:,2]]/Du[self.X_map[iSurf][:,:,1]]                                                                                                                    
+        # Dn[self.X_map[iSurf][:,:,2]]/Du[self.X_map[iSurf][:,:,1]]
         ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,0]],-1))
-        
-        
+
+
         DnDu = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
         return [DnDu, DnDv]
-        
+
     def evalNorm(self, iSurf, u):
         '''
-        Evaluate the norm of vector field on the surface 
+        Evaluate the norm of vector field on the surface
          (u o u)**1/2
         '''
         u_norm = numpy.zeros(self.X[iSurf].size/3)
         u_norm[self.node_map[iSurf][:,:]] = numpy.sqrt(u[self.X_map[iSurf][:,:,0]]**2 + \
             u[self.X_map[iSurf][:,:,1]]**2 + u[self.X_map[iSurf][:,:,2]]**2)
         return u_norm
-        
+
     def evalNormSens(self, iSurf, u):
         '''
         Evaluate the sensitivity of the norm wrt input vector u
@@ -4434,23 +4459,23 @@ class CurvatureConstraint(GeometricConstraint):
         ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
         data += list(numpy.reshape(u[self.X_map[iSurf][:,:,0]]/u_norm[self.node_map[iSurf][:,:]],-1))
-        
-        # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,1]]                                                                                                                    
+
+        # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,1]]
         ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
         data += list(numpy.reshape(u[self.X_map[iSurf][:,:,1]]/u_norm[self.node_map[iSurf][:,:]],-1))
-        
-        # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,2]]                                                                                                                    
+
+        # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,2]]
         ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
         jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
         data += list(numpy.reshape(u[self.X_map[iSurf][:,:,2]]/u_norm[self.node_map[iSurf][:,:]],-1))
-        
+
         Du_normDu = csr_matrix((data,[ii,jj]),shape=(u_norm.size,self.X[iSurf].size))
         return Du_normDu
-        
+
     def evalInProd(self, iSurf, u, v):
         '''
-        Evaluate the inner product of two vector fields on the surface 
+        Evaluate the inner product of two vector fields on the surface
         (ip = u o v)
         '''
         ip = numpy.zeros(self.node_map[iSurf].size)
@@ -4460,7 +4485,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalInProdSens(self, iSurf, u, v):
         '''
-        Evaluate sensitivity of inner product wrt to the input vectors u and v 
+        Evaluate sensitivity of inner product wrt to the input vectors u and v
         (DipDu, DipDv)
         '''
         ii = []
@@ -4476,7 +4501,7 @@ class CurvatureConstraint(GeometricConstraint):
         jj = []
         data = []
         for i in range(3):
-            # Dip[node_map[:,:]]/Dv[self.X_map[iSurf][:,:,i]]                                                                                                               
+            # Dip[node_map[:,:]]/Dv[self.X_map[iSurf][:,:,i]]
             ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
             data += list(numpy.reshape(u[self.X_map[iSurf][:,:,i]],-1))
@@ -4486,7 +4511,7 @@ class CurvatureConstraint(GeometricConstraint):
     def evalDiff(self, iSurf, v, wrt):
         '''
         Diferentiate vector field v wrt the parameteric coordinate u or v.
-        Second order accurate. Central difference for nodes in the center 
+        Second order accurate. Central difference for nodes in the center
         forward/backward difference for nodes on the edge
         '''
         v_wrt = numpy.zeros_like(v)
@@ -4502,7 +4527,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalDiffSens(self, iSurf, wrt):
         '''
-        Compute sensitivity of v_wrt with respect to input vector fiel v 
+        Compute sensitivity of v_wrt with respect to input vector fiel v
         (Dv_wrt/Dv)
         '''
         ii = []
@@ -4510,121 +4535,121 @@ class CurvatureConstraint(GeometricConstraint):
         data = []
         if wrt == 'u':
             # Central Difference
-            
+
             # Dt_u[X_map[1:-1,:,:]]/DX[X_map[2:,:,:]] = 1/2
             ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][2:,:,:],-1))
             data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-            
+
             # Dt_u[X_map[1:-1,:,:]]/DX[X_map[0:-2,:,:]] = -1/2
             ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][0:-2,:,:],-1))
             data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-            
+
             # Forward Difference
-            
+
             # Dt_u[X_map[0,:,:]]/DX[X_map[2,:,:]] = -1/2
             ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][2,:,:],-1))
             data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            
+
             # Dt_u[X_map[0,:,:]]/DX[X_map[1,:,:]] = 4/2
             ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][1,:,:],-1))
             data+=[2]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            
+
             # Dt_u[X_map[0,:,:]]/DX[X_map[0,:,:]] = -3/2
             ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
             data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            
+
             # Backward Difference
-            
+
             # Dt_u[X_map[-1,:,:]]/DX[X_map[-3,:,:]] = 1/2
             ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][-3,:,:],-1))
             data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-            
+
             # Dt_u[X_map[-1,:,:]]/DX[X_map[-2,:,:]] = -4/2
             ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
             data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
-            
+
             # Dt_u[X_map[-1,:,:]]/DX[X_map[-1,:,:]] = 3/2
             ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
             data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-            
+
         elif wrt == 'v':
             # Central Difference
-            
+
             # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,2:,:]] = 1/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,2:,:],-1))
             data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-            
+
             # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,0:-2,:]] = -1/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,0:-2,:],-1))
             data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-            
+
             # Forward Difference
-            
+
             # Dt_u[X_map[:,0,:]]/DX[X_map[:,2,:]] = -1/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,2,:],-1))
             data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            
+
             # Dt_u[X_map[:,0,:]]/DX[X_map[:,1,:]] = 4/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,1,:],-1))
             data+=[2]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            
+
             # Dt_u[X_map[:,0,:]]/DX[X_map[:,0,:]] = -3/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
             data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            
+
             # Backward Difference
-            
+
             # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-3,:]] = 1/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,-3,:],-1))
             data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-            
+
             # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-2,:]] = -4/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
             data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
-            
+
             # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-1,:]] = 3/2
             ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
             jj += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
             data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-            
+
         Dv_uDX = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
-            
-        return Dv_uDX 
-        
+
+        return Dv_uDX
+
     def diags(self, a):
-        '''                                                                         
+        '''
         A standard vectorized sparse diagnal matrix function. Similar to the above \
-        function                                                                        
+        function
         some versions of scipy don't have this function, so this is here to prevent\
-                                                                                    
-        potential import problems.                                                  
+
+        potential import problems.
         '''
         ii=range(len(a))
         return csr_matrix((a,[ii,ii]),(len(a),len(a)))
-        
+
     def writeToTecplot(self, tec_file):
         '''
-        Write Curvature data on the surface to a tecplot file. Data includes 
+        Write Curvature data on the surface to a tecplot file. Data includes
         mean curvature, H, and Gaussian curvature, K.
-        
+
         Input:
-        
-            tec_file: name of TecPlot file.      
+
+            tec_file: name of TecPlot file.
         '''
         handle = open(tec_file,'w')
         handle.write('title = "DVConstraint curvature constraint"\n')
@@ -4633,13 +4658,13 @@ class CurvatureConstraint(GeometricConstraint):
         for iSurf in range(self.nSurfs):
             [_,K,H] = self.evalCurvArea(iSurf)
             handle.write('Zone T=%s_%d\n'% (self.name,iSurf))
-            
+
             handle.write('Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n'% (
                 len(self.coords[iSurf]), (self.X_map[iSurf].shape[0]-1)*(self.X_map[iSurf].shape[1]-1)))
             for i in range(self.X_map[iSurf].shape[0]):
                 for j in range(self.X_map[iSurf].shape[1]):
                     handle.write('%E %E %E %E %E\n'% (self.X[iSurf][self.X_map[iSurf][i, j, 0]], self.X[iSurf][self.X_map[iSurf][i, j, 1]],
-                                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],K[self.node_map[iSurf][i,j]],H[self.node_map[iSurf][i,j]])) 
+                                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],K[self.node_map[iSurf][i,j]],H[self.node_map[iSurf][i,j]]))
             handle.write('\n')
             for i in range(self.X_map[iSurf].shape[0]-1):
                 for j in range(self.X_map[iSurf].shape[1]-1):
