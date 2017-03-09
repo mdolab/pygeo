@@ -1608,11 +1608,9 @@ class DVGeometry(object):
         # pass information down one level for the next pass call from the routine above
 
         # This is going to be DENSE in general
-        print("attached")
         J_attach = self._attachedPtJacobian(config=config)
 
         # Compute local normal jacobian
-        print("sectionlocal")
         J_sectionlocal = self._sectionlocalDVJacobian(config=config)
 
         # This is the sparse jacobian for the local DVs that affect
