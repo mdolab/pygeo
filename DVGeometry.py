@@ -102,6 +102,8 @@ class DVGeometry(object):
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
         self.DV_listLocal = OrderedDict() # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict() # Local Normal Design Variable List
+
+        # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
 
         # Flags to determine if this DVGeometry is a parent or child
@@ -252,6 +254,10 @@ class DVGeometry(object):
             Axis along which to project points/control points onto the
             ref axis. Default is 'x' which will project rays.
 
+        alignIndex: str
+            FFD axis along which the reference axis will lie. Can be 'i', 'j',
+            or 'k'. Only necessary when using xFraction.
+
         Notes
         -----
         One of curve or xFraction must be specified.
@@ -320,7 +326,8 @@ class DVGeometry(object):
             nAxis = len(curve.coef)
         elif xFraction is not None:
             # Some assumptions
-            #   - FFD should be a close approximation of geometry surface
+            #   - FFD should be a close approximation of geometry surface so that
+            #       xFraction roughly corresponds to airfoil LE, TE, or 1/4 chord
             #   - User provides 'i', 'j' or 'k' to specify which block direction
             #       the reference axis should project
             #   - if no volumes are listed, it is assumed that all volumes are
@@ -1002,7 +1009,7 @@ class DVGeometry(object):
         for key in self.DV_listLocal:
             dvDict[key] = self.DV_listLocal[key].value
 
-        # and now the local normal DVs
+        # and now the section local DVs
         for key in self.DV_listSectionLocal:
             dvDict[key] = self.DV_listSectionLocal[key].value
 
@@ -1224,6 +1231,8 @@ class DVGeometry(object):
             if not self.isChild:
                 for key in self.DV_listLocal:
                     self.DV_listLocal[key].updateComplex(tempCoef, config)
+                for key in self.DV_listSectionLocal:
+                    self.DV_listSectionLocal[key].updateComplex(tempCoef, config)
 
             coords = coords.astype('D')
             imag_part = numpy.imag(tempCoef)
@@ -2996,14 +3005,19 @@ class DVGeometry(object):
         Print a formatted list of design variables to the screen
         """
         for dg in self.DV_listGlobal:
-            print('%s'%(dg.name))
-            for i in xrange(dg.nVal):
-                print('%20.15f'%(dg.value[i]))
+            print('%s'%(self.DV_listGlobal[dg].name))
+            for i in xrange(self.DV_listGlobal[dg].nVal):
+                print('%20.15f'%(self.DV_listGlobal[dg].value[i]))
 
         for dl in self.DV_listLocal:
-            print('%s'%(dl.name))
-            for i in xrange(dl.nVal):
-                print('%20.15f'%(dl.value[i]))
+            print('%s'%(self.DV_listLocal[dl].name))
+            for i in xrange(self.DV_listLocal[dl].nVal):
+                print('%20.15f'%(self.DV_listLocal[dl].value[i]))
+
+        for dsl in self.DV_listSectionLocal:
+            print('%s'%(self.DV_listSectionLocal[dsl].name))
+            for i in xrange(self.DV_listSectionLocal[dsl].nVal):
+                print('%20.15f'%(self.DV_listSectionLocal[dsl].value[i]))
 
         for child in self.children:
             child.printDesignVariables()
