@@ -2054,6 +2054,44 @@ class DVConstraints(object):
             conName, surfs, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
+    def addMonotonicConstraints(self, key, slope=1.0, name=None, config=None):
+        """
+        Parameters
+        ----------
+        key : str
+            Name of the global design variable we are dealing with.
+        slope : float
+            Direction of monotonic decrease
+                1.0 - from left to right along design variable vector
+                -1.0 - from right to left along design variable vector
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished
+        config : str
+             The DVGeo configuration to apply this LETE con to. Must be either None
+             which will allpy to *ALL* the local DV groups or a single string specifying
+             a particular configuration.
+
+        Examples
+        --------
+        >>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
+        >>> DVCon.addMonotonicConstraints('chords', 1.0)
+        """
+        self._checkDVGeo()
+
+        if name is None:
+            conName = '%s_monotonic_constraint_%d'%(self.name, len(self.linearCon))
+        else:
+            conName = name
+
+        options = {'slope':slope}
+        # Finally add the global linear constraint object
+        self.linearCon[conName] = GlobalLinearConstraint(
+            conName, key, type='monotonic', options=options,
+            lower=0, upper=None, DVGeo=self.DVGeo, config=config)
+
     def _readPlot3DSurfFile(self, fileName):
         """Read a plot3d file and return the points and connectivity in
         an unstructured mesh format"""
@@ -2074,7 +2112,7 @@ class DVConstraints(object):
         v2 = numpy.zeros((nElem*2, 3))
 
         elemCount = 0
-        
+
         for iSurf in range(nSurf):
             curSize = sizes[iSurf, 0]*sizes[iSurf, 1]
             pts = numpy.zeros((curSize, 3))
@@ -2090,7 +2128,7 @@ class DVConstraints(object):
                     v2[elemCount] = pts[i, j+1] - pts[i, j]
 
                     elemCount += 1
-                    
+
                     p0[elemCount] = pts[i+1, j]
                     v1[elemCount] = pts[i+1, j+1] - pts[i+1, j]
                     v2[elemCount] = pts[i, j+1] - pts[i+1, j]
@@ -3084,8 +3122,6 @@ class LinearConstraint(object):
 
                 for i in range(ncon):
                     handle.write('%d %d\n'% (2*i+1, 2*i+2))
-
-
 
 class GearPostConstraint(GeometricConstraint):
     """
@@ -4694,7 +4730,7 @@ class CurvatureConstraint(GeometricConstraint):
         ii=range(len(a))
         return csr_matrix((a,[ii,ii]),(len(a),len(a)))
 
-    def writeToTecplot(self, tec_file):
+    def writeTecplot(self, tec_file):
         '''
         Write Curvature data on the surface to a tecplot file. Data includes
         mean curvature, H, and Gaussian curvature, K.
@@ -4722,3 +4758,89 @@ class CurvatureConstraint(GeometricConstraint):
                 for j in range(self.X_map[iSurf].shape[1]-1):
                     handle.write('%d %d %d %d\n'% (self.node_map[iSurf][i,j]+1, self.node_map[iSurf][i+1,j]+1,self.node_map[iSurf][i+1,j+1]+1,self.node_map[iSurf][i,j+1]+1))
         handle.close()
+
+class GlobalLinearConstraint(object):
+    """
+    This class is used to represent a set of generic set of linear
+    constriants coupling global design variables together.
+    """
+    def __init__(self, name, key, type, options, lower, upper, DVGeo, config):
+        # No error checking here since the calling routine should have
+        # already done it.
+        self.name = name
+        self.key = key
+        self.type = type
+        self.lower = lower
+        self.upper = upper
+        self.DVGeo = DVGeo
+        self.ncon = 0
+        self.jac = {}
+        self.config = config
+        if self.type == 'monotonic':
+            self.setMonotonic(options)
+
+    def evalFunctions(self, funcs):
+        """
+        Evaluate the function this object has and place in the funcs
+        dictionary. Note that this function typically will not need to
+        called since these constraints are supplied as a linear
+        constraint jacobian they constraints themselves need to be
+        revaluated.
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        cons = []
+        for key in self.jac:
+            cons.extend(self.jac[key].dot(self.DVGeo.DV_listGlobal[key].value))
+
+        funcs[self.name] = numpy.array(cons).astype('d')
+
+    def evalFunctionsSens(self, funcsSens):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        funcsSens[self.name] = self.jac
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt. These constraints are added as
+        linear constraints.
+        """
+        if self.ncon > 0:
+            for key in self.jac:
+                optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
+                                    lower=self.lower, upper=self.upper, scale=1.0,
+                                    linear=True, wrt=key, jac={key:self.jac[key]})
+    def setMonotonic(self, options):
+        """
+        Set up monotonicty jacobian for the given global design variable
+        """
+        self.vizConIndices = {}
+
+        if self.config is None or self.config in self.DVGeo.DV_listGlobal[self.key].config:
+            ndv = self.DVGeo.DV_listGlobal[self.key].nVal
+            ncon = ndv - 1
+            jacobian = numpy.zeros((ncon, ndv))
+            slope = options['slope']
+            for i in range(ncon):
+                jacobian[i, i] = 1.0*slope
+                jacobian[i, i+1] = -1.0*slope
+            self.jac[self.key] = jacobian
+            self.ncon += ncon
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of lete constraints
+        to the open file handle
+        """
+
+        pass
