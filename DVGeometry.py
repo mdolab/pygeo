@@ -2271,8 +2271,10 @@ class DVGeometry(object):
             child.nDV_T = self.nDV_T
             child.nDVG_T = self.nDVG_T
             child.nDVL_T = self.nDVL_T
+            child.nDVSL_T = self.nDVSL_T
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
+            child.nDVSL_count = self.nDVSL_count + nDVSL
 
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
