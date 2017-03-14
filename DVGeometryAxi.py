@@ -254,11 +254,10 @@ class DVGeometryAxi(DVGeometry):
         need this for TACS"""
 
         super(DVGeometryAxi, self).computeTotalJacobian(ptSetName, config)
+        if self.JT[ptSetName] is not None: 
+            xform = self.axiTransforms[ptSetName]
 
-        xform = self.axiTransforms[ptSetName]
-
-        self.JT[ptSetName] = xform.dPtCdPtA.dot(self.JT[ptSetName].T).T
-
+            self.JT[ptSetName] = xform.dPtCdPtA.dot(self.JT[ptSetName].T).T
 
     # TODO JSG: the computeTotalJacobianFD method is broken in DVGeometry Base class
     # def computeTotalJacobianFD(self, ptSetName, config=None): 
