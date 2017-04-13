@@ -1113,14 +1113,14 @@ class pyGeo():
         Dcount = 1
         Pcount = 1
 
-        for isurf in xrange(self.nSurf):
+        for isurf in range(self.nSurf):
             Pcount, Dcount = self.surfs[isurf].writeIGES_directory( \
                 f, Dcount, Pcount)
 
         Pcount  = 1
         counter = 1
 
-        for isurf in xrange(self.nSurf):
+        for isurf in range(self.nSurf):
             Pcount, counter = self.surfs[isurf].writeIGES_parameters(\
                 f, Pcount, counter)
 
