@@ -325,7 +325,7 @@ def writeAirfoilFile(fileName,name, x,y):
     f = open(fileName, 'w')
     f.write("%s\n"%name)
 
-    for i in xrange(len(x)):
+    for i in range(len(x)):
         f.write('%12.10f %12.10f\n'%(x[i],y[i]))
 
     f.close()
@@ -2700,35 +2700,24 @@ class EdgeCmpObject(object):
         return 'Node1: %d Node2: %d MidPt: %f %f %f'% (
             self.n1, self.n2, self.midPt[0], self.midPt[1], self.midPt[2])
 
-    def __cmp__(self, other):
-        # This function should return :
-        # -1 if self < other
-        #  0 if self == other
-        #  1 if self > other
+    def __lt__(self, other):
 
-        # Basically we want to make three comparisons: n1, n2 and the
-        # midPt Its (substantially) faster if we break before all 3
-        # comparisons are done
+        if self.n1 != other.n1:
+            return self.n1 < other.n1
 
-        n1Cmp = cmp(self.n1, other.n1)
-        if n1Cmp: # n1Cmp is non-zero so return with the result
-            return n1Cmp
-
-        n2Cmp = cmp(self.n2, other.n2)
-
-        if n2Cmp: # n2Cmp is non-zero so return
-            return n2Cmp
-
-        xCmp = cmp(self.midPt[0], other .midPt[0])
-        yCmp = cmp(self.midPt[1], other .midPt[1])
-        zCmp = cmp(self.midPt[2], other .midPt[2])
-
-        if eDist(self.midPt, other.midPt) < self.tol:
-            midCmp = 0
+        if self.n2 != other.n2:
+            return self.n2 < other.n2
+        
+        if eDist(self.midPt, other.midPt) < self.tol: 
+            return False
         else:
-            midCmp = xCmp or yCmp or zCmp
-
-        return midCmp
+            if self.midPt[0] != other.midPt[0]:
+                return self.midPt[0] < other.midPt[0]
+            if self.midPt[1] != other.midPt[1]:
+                return self.midPt[1] < other.midPt[1]
+            if self.midPt[2] != other.midPt[2]:
+                return self.midPt[2] < other.midPt[2]
+            return False
 
 class FaceCmpObject(object):
     """A temporary class for sorting edge objects"""
@@ -2746,44 +2735,30 @@ class FaceCmpObject(object):
         return 'Node1: %d Node2: %d MidPt: %f %f %f'% (
             self.n1, self.n2, self.midPt[0], self.midPt[1], self.midPt[2])
 
-    def __cmp__(self, other):
-        # This function should return :
-        # -1 if self < other
-        #  0 if self == other
-        #  1 if self > other
+    def __lt__(self, other):
 
-        # Basically we want to make three comparisons: n1, n2, n3, n4 and the
-        # midPt Its (substantially) faster if we break before all
-        # comparisons are done
+        if self.n1 != other.n1:
+            return self.n1 < other.n1
 
-        n1Cmp = cmp(self.n1, other.n1)
-        if n1Cmp: # n1Cmp is non-zero so return with the result
-            return n1Cmp
+        if self.n2 != other.n2:
+            return self.n2 < other.n2
 
-        n2Cmp = cmp(self.n2, other.n2)
+        if self.n3 != other.n3:
+            return self.n3 < other.n3
 
-        if n2Cmp: # n2Cmp is non-zero so return
-            return n2Cmp
-
-        n3Cmp = cmp(self.n3, other.n3)
-        if n3Cmp: # n3Cmp is non-zero so return
-            return n3Cmp
-
-        n4Cmp = cmp(self.n4, other.n4)
-        if n4Cmp: # n4Cmp is non-zero so return
-            return n4Cmp
-
-        # Finally do mid-pt calc
-        xCmp = cmp(self.midPt[0], other .midPt[0])
-        yCmp = cmp(self.midPt[1], other .midPt[1])
-        zCmp = cmp(self.midPt[2], other .midPt[2])
-
-        if eDist(self.midPt, other.midPt) < self.tol:
-            midCmp = 0
+        if self.n4 != other.n4:
+            return self.n4 < other.n4
+        
+        if eDist(self.midPt, other.midPt) < self.tol: 
+            return False
         else:
-            midCmp = xCmp or yCmp or zCmp
-
-        return midCmp
+            if self.midPt[0] != other.midPt[0]:
+                return self.midPt[0] < other.midPt[0]
+            if self.midPt[1] != other.midPt[1]:
+                return self.midPt[1] < other.midPt[1]
+            if self.midPt[2] != other.midPt[2]:
+                return self.midPt[2] < other.midPt[2]
+            return False
 
 # --------------------------------------------------------------
 #                Array Rotation and Flipping Functions

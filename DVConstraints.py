@@ -2345,7 +2345,7 @@ class DVConstraints(object):
         # now rotate, multiply by radius ,and add to the origin to get the coords
         # ----------
 
-        for i in xrange(nPts):
+        for i in range(nPts):
             newUnitVec = geo_utils.rotVbyW(zeroAxisOrtho, rotAxis, angles[i])
             newUnitVec*=radius
             coords[i,:] = newUnitVec+origin
@@ -3304,19 +3304,19 @@ class CircularityConstraint(GeometricConstraint):
                                   self.center.shape[1]))
 
             xb = numpy.zeros(self.nCon)
-            for con in xrange(self.nCon):
+            for con in range(self.nCon):
                 centerb = dLndCn[con,0,:]
                 coordsb = dLndPt[con,:,:]
                 xb[:] = 0.
                 xb[con] = 1.
                 # reflength2 = 0
-                # for i in xrange(3):
+                # for i in range(3):
                 #     reflength2 = reflength2 + (center[i]-coords[0,i])**2
                 reflength2 = numpy.sum((self.center-self.coords[0,:])**2)
                 reflength2b = 0.0
-                for i in xrange(self.nCon):
+                for i in range(self.nCon):
                     # length2 = 0
-                    # for j in xrange(3):
+                    # for j in range(3):
                     #     length2 = length2 + (center[j]-coords[i+1, j])**2
                     length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
 
@@ -3327,11 +3327,11 @@ class CircularityConstraint(GeometricConstraint):
                     length2b = tempb1
                     reflength2b = reflength2b - length2*tempb1/reflength2
                     xb[i] = 0.0
-                    for j in reversed(xrange(3)):
+                    for j in reversed(range(3)):
                         tempb0 = 2*(self.center[0,j]-self.coords[i+1, j])*length2b
                         centerb[j] = centerb[j] + tempb0
                         coordsb[i+1, j] = coordsb[i+1, j] - tempb0
-                for j in reversed(xrange(3)):#DO i=3,1,-1
+                for j in reversed(range(3)):#DO i=3,1,-1
                     tempb = 2*(self.center[0,j]-self.coords[0, j])*reflength2b
                     centerb[j] = centerb[j] + tempb
                     coordsb[0, j] = coordsb[0, j] - tempb
@@ -3349,7 +3349,7 @@ class CircularityConstraint(GeometricConstraint):
         compute the lengths from the center and coordinates
         '''
         reflength2 = numpy.sum((center-coords[0,:])**2)
-        for i in xrange(self.nCon):
+        for i in range(self.nCon):
             length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
             X[i] = numpy.sqrt(length2/reflength2)
 
@@ -3444,7 +3444,6 @@ class PlanarityConstraint(GeometricConstraint):
         #project it onto the axis
         self.X[0] = 0
         for i in range(self.n*3):
-            #print('planarity',self.name, numpy.dot(self.axis,dist[i,:]),self.X[0])
             self.X[0] += numpy.dot(self.axis,dist[i,:])**2
         self.X[0]= numpy.sqrt(self.X[0])
         funcs[self.name] = self.X
@@ -3567,14 +3566,14 @@ class PlanarityConstraint(GeometricConstraint):
         handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
             3*self.n, self.n))
         handle.write('DATAPACKING=POINT\n')
-        for i in xrange(self.n):
+        for i in range(self.n):
             handle.write('%f %f %f\n'% (self.p0[i, 0], self.p0[i, 1],
                                         self.p0[i, 2]))
-        for i in xrange(self.n):
+        for i in range(self.n):
             handle.write('%f %f %f\n'% (self.p1[i, 0], self.p1[i, 1],
                                         self.p1[i, 2]))
 
-        for i in xrange(self.n):
+        for i in range(self.n):
             handle.write('%f %f %f\n'% (self.p2[i, 0], self.p2[i, 1],
                                         self.p2[i, 2]))
 
@@ -3700,7 +3699,7 @@ class ColinearityConstraint(GeometricConstraint):
             resultdirb = numpy.zeros(3)
             dirvecb = numpy.zeros_like(dirVec)
             xb = numpy.zeros(self.nCon)
-            for con in xrange(self.nCon):
+            for con in range(self.nCon):
                 originb = dCdOrigin[con,0,:]
                 coordsb = dCdPt[con,:,:]
                 axisb = dCdAxis[con,0,:]
@@ -3874,7 +3873,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
             p0 = self.p0
             p1 = self.p1
             p2 = self.p2
-            for con in xrange(self.nCon):
+            for con in range(self.nCon):
                 p0b = dAdp0[con,:,:]
                 p1b = dAdp1[con,:,:]
                 p2b = dAdp2[con,:,:]
@@ -3891,23 +3890,23 @@ class SurfaceAreaConstraint(GeometricConstraint):
                 v2 = p2 - p0
 
                 crosses = numpy.cross(v1, v2)
-                    # for j in xrange(3):
+                    # for j in range(3):
                     #     areas(i) = areas(i) + crosses(i, j)**2
                     #areas[i] = numpy.sum(crosses[i, :]**2)
                 areas = numpy.sum(crosses**2,axis=1)
-                for i in xrange(self.n):#DO i=1,n
+                for i in range(self.n):#DO i=1,n
                     if (areas[i] == 0.0):
                         areasb[i] = 0.0
                     else:
                         areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
 
-                    # for j in reversed(xrange(3)):#DO j=3,1,-1
+                    # for j in reversed(range(3)):#DO j=3,1,-1
                     #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
                     crossesb[i, :] = 2*crosses[i, :]*areasb[i]
 
                     v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
 
-                    # for j in reversed(xrange(3)):#DO j=3,1,-1
+                    # for j in reversed(range(3)):#DO j=3,1,-1
                     #      p2b(i, j) = p2b(i, j) + v2b(i, j)
                     #      p0b(i, j) = p0b(i, j) - v1b(i, j) - v2b(i, j)
                     #      v2b(i, j) = 0.0
@@ -3945,7 +3944,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
 
         #area = numpy.linalg.norm(areaVec,axis=1)
         area = 0
-        for i in xrange(len(areaVec)):
+        for i in range(len(areaVec)):
             area += geo_utils.euclideanNorm(areaVec[i,:])
 
         #return numpy.sum(area)/2.0
@@ -3961,14 +3960,14 @@ class SurfaceAreaConstraint(GeometricConstraint):
         handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
             3*self.n, self.n))
         handle.write('DATAPACKING=POINT\n')
-        for i in xrange(self.n):
+        for i in range(self.n):
             handle.write('%f %f %f\n'% (self.p0[i, 0], self.p0[i, 1],
                                         self.p0[i, 2]))
-        for i in xrange(self.n):
+        for i in range(self.n):
             handle.write('%f %f %f\n'% (self.p1[i, 0], self.p1[i, 1],
                                         self.p1[i, 2]))
 
-        for i in xrange(self.n):
+        for i in range(self.n):
             handle.write('%f %f %f\n'% (self.p2[i, 0], self.p2[i, 1],
                                         self.p2[i, 2]))
 
@@ -4063,7 +4062,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
         p0 = self.p0
         p1 = self.p1
         p2 = self.p2
-        for con in xrange(self.nCon):
+        for con in range(self.nCon):
             p0b = dAdp0[con,:,:]
             p1b = dAdp1[con,:,:]
             p2b = dAdp2[con,:,:]
@@ -4157,13 +4156,13 @@ class ProjectedAreaConstraint(GeometricConstraint):
         handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
             3*nActiveTris, nActiveTris))
         handle.write('DATAPACKING=POINT\n')
-        for i in xrange(self.n):
+        for i in range(self.n):
             if self.activeTris[i]:
                 handle.write('%f %f %f\n'% (p0[i, 0], p0[i, 1], p0[i, 2]))
-        for i in xrange(self.n):
+        for i in range(self.n):
             if self.activeTris[i]:
                 handle.write('%f %f %f\n'% (p1[i, 0], p1[i, 1], p1[i, 2]))
-        for i in xrange(self.n):
+        for i in range(self.n):
             if self.activeTris[i]:
                 handle.write('%f %f %f\n'% (p2[i, 0], p2[i, 1], p2[i, 2]))
         iActive = 0
