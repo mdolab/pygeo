@@ -216,7 +216,7 @@ def testSensitvities(DVGeo,refDeriv):
     else:
         dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
 
-    for key in dIdx:
+    for key in sorted(list(dIdx)):
         print(key)
         for i in range(dIdx[key].shape[0]):
             for j in range(dIdx[key].shape[1]):
@@ -253,7 +253,7 @@ def testSensitvitiesD8(DVGeo,refDeriv):
     else:
         dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
 
-    for key in dIdx:
+    for key in list(sorted(dIdx)):
         print(key)
         for i in range(dIdx[key].shape[0]):
             for j in range(dIdx[key].shape[1]):
