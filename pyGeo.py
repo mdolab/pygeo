@@ -1106,7 +1106,7 @@ class pyGeo():
         #Note: Eventually we may want to put the CORRECT Data here
         f.write('                                                                        S      1\n')
         f.write('1H,,1H;,7H128-000,11H128-000.IGS,9H{unknown},9H{unknown},16,6,15,13,15, G      1\n')
-        f.write('7H128-000,1.,6,1HM,8,0.016,15H19970830.165254, 0.0001,0.,            G      2\n')
+        f.write('7H128-000,1.,6,1HM,8,0.016,15H19970830.165254, 0.0001,0.,               G      2\n')
         f.write('21Hdennette@wiz-worx.com,23HLegacy PDD AP Committee,11,3,               G      3\n')
         f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
 
