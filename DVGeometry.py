@@ -644,7 +644,8 @@ class DVGeometry(object):
         return self.DV_listLocal[dvName].nVal
 
     def addGeoDVSectionLocal(self, dvName, secIndex, lower=None, upper=None,
-                    scale=1.0, axis=1, volList=None, orient0=None, config=None):
+                             scale=1.0, axis=1, volList=None, orient0=None, config=None,
+                             ijkBounds={}):
         """
         Add one or more section local design variables to the DVGeometry
         object. Section local variables are used as an alternative to local
@@ -735,6 +736,15 @@ class DVGeometry(object):
             configurations. The default value of None implies that the design
             variable appies to *ALL* configurations.
 
+        ijkBounds : dictionary of int[3x2]
+            Dictionary defining upper and lower block indices to which we will apply the DVs.
+            It should follow this format:
+            ijkBounds = {volID:[[ilow, ihigh],
+                                [jlow, jhigh],
+                                [klow, khigh]]
+            volID is the same block identifier used in volList.
+            If the user provides none, then we will apply the normal DVs to all FFD nodes
+
         Returns
         -------
         N : int
@@ -769,7 +779,24 @@ class DVGeometry(object):
             volList = numpy.atleast_1d(volList).astype('int')
             ind = []
             for iVol in volList:
-                ind.extend(self.FFD.topo.lIndex[iVol].flatten())
+
+                # Check if the user want to select a subset of the ijk indices
+                if iVol in ijkBounds.keys():
+                    ilow = ijkBounds[iVol][0][0]
+                    ihigh = ijkBounds[iVol][0][1]
+                    jlow = ijkBounds[iVol][1][0]
+                    jhigh = ijkBounds[iVol][1][1]
+                    klow = ijkBounds[iVol][2][0]
+                    khigh = ijkBounds[iVol][2][1]
+                else:
+                    ilow = 0
+                    ihigh = -1
+                    jlow = 0
+                    jhigh = -1
+                    klow = 0
+                    khigh = -1
+
+                ind.extend(self.FFD.topo.lIndex[iVol][ilow:ihigh,jlow:jhigh,klow:khigh].flatten())
             ind = geo_utils.unique(ind)
         else:
             # Just take'em all
@@ -1492,15 +1519,12 @@ class DVGeometry(object):
         Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec
 
+        This is useful for forward AD mode.
+
         Parameters
         ----------
-        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
-
-            This is the total derivative of the objective or function
-            of interest with respect to the coordinates in
-            'ptSetName'. This can be a single array of size (Npt, 3)
-            **or** a group of N vectors of size (Npt, 3, N). If you
-            have many to do, it is faster to do many at once.
+        vec : dictionary whose keys are the design variable names, and whose
+              values are the derivative seeds of the corresponding design variable.
 
         ptSetName : str
             The name of set of points we are dealing with
@@ -1511,10 +1535,8 @@ class DVGeometry(object):
 
         Returns
         -------
-        dIdxDict : dic
-            The dictionary containing the derivatives, suitable for
-            pyOptSparse
-
+        xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
+            
         Notes
         -----
         The ``child`` and ``nDVStore`` options are only used
@@ -1545,6 +1567,8 @@ class DVGeometry(object):
         else:
             xsdot = self.JT[ptSetName].T.dot(newvec)
             xsdot.reshape(len(xsdot)/3, 3)
+            # Maybe this should be:
+            #xsdot = xsdot.reshape(len(xsdot)/3, 3)
 
         return xsdot
 
@@ -1555,6 +1579,8 @@ class DVGeometry(object):
 
         Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec
+
+        This is useful for reverse AD mode.
 
         Parameters
         ----------
