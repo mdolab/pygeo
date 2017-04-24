@@ -1745,7 +1745,7 @@ class DVGeometry(object):
                 self.children[iChild].refAxis.coef = (
                     self.children[iChild].coef.copy())
                 self.children[iChild].refAxis._updateCurveCoef()
-                self.children[iChild].computeTotalJacobian(ptSetName)
+                self.children[iChild].computeTotalJacobian(ptSetName,config=config)
 
                 if self.JT[ptSetName] is not None:
                     self.JT[ptSetName] = self.JT[ptSetName] + self.children[iChild].JT[ptSetName]
