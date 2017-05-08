@@ -3108,8 +3108,8 @@ class LinearConstraint(object):
 
         for key in self.vizConIndices:
             ncon = len(self.vizConIndices[key])
-            nodes = numpy.zeros((ncon*2, 3))
             for i in range(ncon):
+                nodes = numpy.zeros((ncon*2, 3))
                 nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
                 nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
