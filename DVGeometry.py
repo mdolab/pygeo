@@ -1413,21 +1413,29 @@ class DVGeometry(object):
         dIdx : array
            Flattened array of length getNDV().
         """
-        # TODO: This should probably call the children recursively
-        dIdx = numpy.zeros(self.getNDV(), self.dtype)
-        i = 0
+        DVCountGlobal, DVCountLocal, DVCountSecLoc = self._getDVOffsets()
+        dIdx = numpy.zeros(self.nDV_T, self.dtype)
+        i = DVCountGlobal
         for key in self.DV_listGlobal:
             dv = self.DV_listGlobal[key]
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
+        i = DVCountLocal
         for key in self.DV_listLocal:
             dv = self.DV_listLocal[key]
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
+        i = DVCountSecLoc
         for key in self.DV_listSectionLocal:
             dv = self.DV_listSectionLocal[key]
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
+
+        #Note: not sure if this works with (multiple) sibling child FFDs    
+        for iChild in range(len(self.children)):
+            childdIdx = self.children[iChild].convertDictToSensitivity(dIdxDict)
+            # update the total sensitivities with the derivatives from the child
+            dIdx+=childdIdx
         return dIdx
 
     def getVarNames(self):
@@ -2301,7 +2309,7 @@ class DVGeometry(object):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-
+        
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
     def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None, localDV=False):
