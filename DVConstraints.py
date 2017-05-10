@@ -1980,7 +1980,7 @@ class DVConstraints(object):
             conName, lineAxis, origin, coords, lower, upper, scale,
             self.DVGeo, addToPyOpt)
 
-    def addCurvatureConstraint(self, surfFile, lower=-1e20, upper=1e20,
+    def addCurvatureConstraint(self, surfFile, curvatureType='Gaussian', lower=-1e20, upper=1e20,
                                scaled=False, scale=1.0, name=None,
                                addToPyOpt=False):
         """
@@ -1992,9 +1992,14 @@ class DVConstraints(object):
         Parameters
         ----------
         surfFile: vector
-              Plot3D file with desired surface to integrate over, should be
-              sufficiently refined to accurately capture surface curvature
-
+            Plot3D file with desired surface to integrate over, should be
+            sufficiently refined to accurately capture surface curvature
+              
+        curvatureType: str
+            The type of curvature to calculate. Options are: 'Gaussian', 'mean', or 'combined'.
+            Specifically, the Gaussian curvature: K=kappa_1 * kappa_2, the mean curvature: 
+            H = 0.5*(kappa_1+kappa_2), the combined curvature C = kappa_1^2 + kappa_2^2 = (2*H)^2-2*K
+              
         lower : float
             Lower bound for curvature integral.
 
@@ -2047,11 +2052,19 @@ class DVConstraints(object):
             self.constraints[typeName] = OrderedDict()
         # Create a name
         if name is None:
-            conName = '%s_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            if curvatureType == 'Gaussian':
+                conName = '%s_gaussian_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            elif curvatureType == 'mean':
+                conName = '%s_mean_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            elif curvatureType == 'combined':
+                conName = '%s_combined_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            else:
+                raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
+                            "%s is not supported!"%curvatureType)
         else:
             conName = name
         self.constraints[typeName][conName] = CurvatureConstraint(
-            conName, surfs, lower, upper, scaled, scale, self.DVGeo,
+            conName, surfs, curvatureType, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
     def addMonotonicConstraints(self, key, slope=1.0, name=None, config=None):
@@ -4179,7 +4192,7 @@ class CurvatureConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, surfs, lower, upper, scaled, scale, DVGeo,
+    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, DVGeo,
                  addToPyOpt):
         self.name = name
         self.nSurfs = len(surfs)
@@ -4204,6 +4217,7 @@ class CurvatureConstraint(GeometricConstraint):
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
             self.coords += [numpy.reshape(self.X[iSurf],(surfs[iSurf].X.shape[0]*surfs[iSurf].X.shape[1],3))]
         self.nCon = 1
+        self.curvatureType = curvatureType
         self.lower = lower
         self.upper = upper
         self.scaled = scaled
@@ -4299,6 +4313,8 @@ class CurvatureConstraint(GeometricConstraint):
         # Compute Gaussian and mean curvature (K and H)
         K = (L*N-M*M)/(E*G-F*F)
         H = (E*N - 2*F*M + G*L)/(2*(E*G-F*F))
+        # Compute the combined curvature (C)
+        C = 4.0*H*H-2.0*K
         # Assign integration weights for each point
         # 1   for center nodes
         # 1/2 for edge nodes
@@ -4311,10 +4327,23 @@ class CurvatureConstraint(GeometricConstraint):
         # Compute discrete area associated with each node
         dS = wt*n_norm
         one = numpy.ones(self.node_map[iSurf].size)
-        # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
-        kS = numpy.dot(one,K*K*dS)
+        
+        if self.curvatureType == 'Gaussian':
+            # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
+            kS = numpy.dot(one,K*K*dS)
+            return [kS, K, H, C]
+        elif self.curvatureType == 'mean':
+            # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
+            hS = numpy.dot(one,H*H*dS)
+            return [hS, K, H, C]
+        elif self.curvatureType == 'combined':
+            # Now compute integral C over S, equivelent to sum(C*dS)
+            cS = numpy.dot(one,C*dS)
+            return [cS, K, H, C]
+        else:
+            raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
+                        "%s is not supported!"%curvatureType)
 
-        return [kS, K, H]
 
     def evalCurvAreaSens(self, iSurf):
         '''
@@ -4437,10 +4466,27 @@ class CurvatureConstraint(GeometricConstraint):
         DdSDX = self.diags(wt).dot(Dn_normDX)
 
         one = numpy.ones(self.node_map[iSurf].size)
-        # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
-        kS = numpy.dot(one,K*K*dS)
-        DkSDX = (self.diags(2*K*dS).dot(DKDX)+self.diags(K*K).dot(DdSDX)).T.dot(one)
-        return DkSDX
+
+        if self.curvatureType == 'Gaussian':
+            # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
+            kS = numpy.dot(one,K*K*dS)
+            DkSDX = (self.diags(2*K*dS).dot(DKDX)+self.diags(K*K).dot(DdSDX)).T.dot(one)
+            return DkSDX
+        elif self.curvatureType == 'mean':
+            # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
+            hS = numpy.dot(one,H*H*dS)
+            DhSDX = (self.diags(2*H*dS).dot(DHDX)+self.diags(H*H).dot(DdSDX)).T.dot(one)
+            return DhSDX
+        elif self.curvatureType == 'combined':
+            # Now compute dcSDX. Note: cS= sum( (4*H*H-2*K)*dS ), DcSDX = term1 - term2
+            # where term1 = sum( 8*H*DHDX*dS + 4*H*H*DdSdX ), term2 = sum( 2*DKDX*dS + 2*K*DdSdX )
+            term1 = (self.diags(8*H*dS).dot(DHDX)+self.diags(4*H*H).dot(DdSDX)).T.dot(one)
+            term2 = (self.diags(2*dS).dot(DKDX)+self.diags(2*K).dot(DdSDX)).T.dot(one)
+            DcSDX = term1 - term2
+            return DcSDX
+        else:
+            raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
+                        "%s is not supported!"%curvatureType)
 
     def evalCross(self, iSurf, u, v):
         '''
@@ -4740,18 +4786,18 @@ class CurvatureConstraint(GeometricConstraint):
         '''
         handle = open(tec_file,'w')
         handle.write('title = "DVConstraint curvature constraint"\n')
-        varbs='variables = "x", "y", "z", "K", "H"'
+        varbs='variables = "x", "y", "z", "K", "H" "C"'
         handle.write(varbs+'\n')
         for iSurf in range(self.nSurfs):
-            [_,K,H] = self.evalCurvArea(iSurf)
+            [_,K,H,C] = self.evalCurvArea(iSurf)
             handle.write('Zone T=%s_%d\n'% (self.name,iSurf))
 
             handle.write('Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n'% (
                 len(self.coords[iSurf]), (self.X_map[iSurf].shape[0]-1)*(self.X_map[iSurf].shape[1]-1)))
             for i in range(self.X_map[iSurf].shape[0]):
                 for j in range(self.X_map[iSurf].shape[1]):
-                    handle.write('%E %E %E %E %E\n'% (self.X[iSurf][self.X_map[iSurf][i, j, 0]], self.X[iSurf][self.X_map[iSurf][i, j, 1]],
-                                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],K[self.node_map[iSurf][i,j]],H[self.node_map[iSurf][i,j]]))
+                    handle.write('%E %E %E %E %E %E\n'% (self.X[iSurf][self.X_map[iSurf][i, j, 0]], self.X[iSurf][self.X_map[iSurf][i, j, 1]],
+                                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],K[self.node_map[iSurf][i,j]],H[self.node_map[iSurf][i,j]],C[self.node_map[iSurf][i,j]]))
             handle.write('\n')
             for i in range(self.X_map[iSurf].shape[0]-1):
                 for j in range(self.X_map[iSurf].shape[1]-1):
