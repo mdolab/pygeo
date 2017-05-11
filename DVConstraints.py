@@ -768,9 +768,9 @@ class DVConstraints(object):
         X = constr_line(s)
         # X shouls now be in the shape we need
 
-        if lower==None:
+        if lower is None:
             lower = X.flatten()
-        if upper==None:
+        if upper is None:
             upper = X.flatten()
 
         # Create the location constraint object
@@ -887,9 +887,9 @@ class DVConstraints(object):
         X = (1-bias)*coords[:, 1] + bias*coords[:, 0]
 
         # X is now what we want to constrain
-        if lower==None:
+        if lower is None:
             lower = X.flatten()
-        if upper==None:
+        if upper is None:
             upper = X.flatten()
 
         # Create the location constraint object
@@ -1725,7 +1725,7 @@ class DVConstraints(object):
             meaningless
         """
 
-        if self.p0==None or self.v1 == None or self.v2 == None:
+        if self.p0 is None or self.v1 is None or self.v2 is None:
             raise Error("DVCon surface is not properly defined. Check that setSurface"
                         "is called.")
 
@@ -1802,7 +1802,7 @@ class DVConstraints(object):
             meaningless
         """
 
-        if self.p0==None or self.v1 == None or self.v2 == None:
+        if self.p0 is None or self.v1 is None or self.v2 is None:
             raise Error("DVCon surface is not properly defined. Check that setSurface"
                         "is called.")
 
@@ -4116,6 +4116,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
         """
         Compute projected surface area
         """
+
         # Convert p1 and p2 to v1 and v2
         v1 = p1- p0
         v2 = p2- p0
