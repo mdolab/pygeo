@@ -770,13 +770,22 @@ class pyBlock():
         mask  = self.embededVolumes[ptSetName].mask
         coordinates = numpy.zeros((N, 3))
 
-        if mask is None:
-            for i in range(N):
-                coordinates[i] = self.vols[volID[i]].getValue(u[i], v[i], w[i])
-        else:
-            for j in range(len(mask)):
-                i = mask[j]
-                coordinates[i] = self.vols[volID[i]].getValue(u[i], v[i], w[i])
+        # This evaluation is fast enough we don't really care about
+        # only looping explictly over the mask values
+        for iVol in self.embededVolumes[ptSetName].indices:
+            indices =  self.embededVolumes[ptSetName].indices[iVol]
+            u = self.embededVolumes[ptSetName].u[indices]
+            v = self.embededVolumes[ptSetName].v[indices]
+            w = self.embededVolumes[ptSetName].w[indices]
+            coords = self.vols[iVol](u, v, w)
+            coordinates[indices, :] = coords
+
+        if mask is not None:
+            # Explictly zero anything not in mask to ensure no-one
+            # accidently uses it when they should not
+            tmp = coordinates.copy() # Create copy
+            coordinates[:,:] = 0.0   # Completely zero
+            coordinates[mask, :] = tmp[mask, :] # Just put back the ones we wnat.
 
         return coordinates
 
@@ -992,6 +1001,14 @@ class EmbeddedVolume(object):
         self.v = numpy.array(v)
         self.w = numpy.array(w)
         self.N = len(self.u)
+        self.indices = {}
         self.dPtdCoef = None
         self.dPtdX    = None
         self.mask     = mask
+
+        # Get the number of unique volumes this point set requires:
+        uniqueVolIDs = numpy.unique(self.volID)
+
+        for iVol in uniqueVolIDs:
+            self.indices[iVol] = numpy.where(self.volID == iVol)[0]
+                       
