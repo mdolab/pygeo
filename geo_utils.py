@@ -1137,6 +1137,21 @@ class PointSelect(object):
         'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
         COUNTER-CLOCKWISE orientation
 
+        'ijkBounds': Dictionary of int[3x2] defining upper and lower block indices to which we will apply the DVs.
+        It should follow this format:
+        ijkBounds = {volID:[[ilow, ihigh],
+                            [jlow, jhigh],
+                            [klow, khigh]]}
+        volID is the same block identifier used in volList.
+        If the user provides none, then we will apply the normal DVs to all FFD nodes.
+        This is how you call PointSelect for ijkBounds:
+        ps = PointSelect('ijkBounds',ijkBounds =  {volID:[[ilow, ihigh],
+                                                          [jlow, jhigh],
+                                                          [klow, khigh]]})
+        Then to get the point indices you need to use:
+        ps.getPointsijk(FFD)
+        
+
         'list': Define the indices of a list that will be used to
         extract the points
         """
@@ -1151,6 +1166,10 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]'
                 and 'pt4' in kwargs, 'Error:, four points \
 must be specified with initialization type quad. Points are specified \
 with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
+
+        elif psType == 'ijkBounds':
+            assert 'ijkBounds' in kwargs, 'Error:, ijkBounds selection method requires a dictonary with \
+            the specific ijkBounds for each volume.'
 
 
         corners = np.zeros([4, 3])
@@ -1205,10 +1224,16 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
 
             self.box = pySpline.bilinearSurface(X)
             self.type = 'box'
+
         elif psType == 'list':
             self.box = None
             self.type = 'list'
             self.indices = np.array(args[0])
+
+        elif psType == 'ijkBounds':
+
+            self.ijkBounds = kwargs['ijkBounds'] # Store the ijk bounds dictionary
+            self.type = 'ijkBounds'
 
     def getPoints(self, points):
 
@@ -1228,6 +1253,40 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
                 ptList.append(points[self.indices[i]])
 
             indList = self.indices.copy()
+
+        elif self.type == 'ijkBounds':
+            raise NameError('Use PointSelect.getPoints_ijk() to return indices of an object initialized with ijkBounds.')
+
+        return ptList, indList
+
+    def getPoints_ijk(self, DVGeo):
+
+        """ Receives a DVGeo object (with an embedded FFD) and uses the ijk bounds specified in the initialization to extract
+        the corresponding indices.
+
+        You can only use this method if you initialized PointSelect with 'ijkBounds' option.
+
+        DVGeo : DVGeo object"""
+
+        # Initialize list to hold indices in the DVGeo ordering
+        indList = []
+
+        # Loop over every dictionary entry to get cooresponding indices
+        for iVol in self.ijkBounds:
+
+            # Get current bounds
+            ilow = self.ijkBounds[iVol][0][0]
+            ihigh = self.ijkBounds[iVol][0][1]
+            jlow = self.ijkBounds[iVol][1][0]
+            jhigh = self.ijkBounds[iVol][1][1]
+            klow = self.ijkBounds[iVol][2][0]
+            khigh = self.ijkBounds[iVol][2][1]
+            
+            # Retrieve current points
+            indList.extend(DVGeo.FFD.topo.lIndex[iVol][ilow:ihigh,jlow:jhigh,klow:khigh].flatten())
+
+        # Now get the corresponding coordinates
+        ptList = [DVGeo.FFD.coef[ii] for ii in indList]
 
         return ptList, indList
 
