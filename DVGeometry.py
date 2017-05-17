@@ -581,14 +581,17 @@ class DVGeometry(object):
         axis : str. Default is 'y'
             The coordinate directions to move. Permissible values are 'x',
             'y' and 'z'. If more than one direction is required, use multiple
-            calls to addGeoDVLocal with different axis values
+            calls to addGeoDVLocal with different axis values.
+
         volList : list
-            Use the control points on the volume indicies given in volList
+            Use the control points on the volume indicies given in volList.
+            You should use pointSelect = None, otherwise this will not work.
 
         pointSelect : pointSelect object. Default is None Use a
             pointSelect object to select a subset of the total number
             of control points. See the documentation for the
-            pointSelect class in geo_utils.
+            pointSelect class in geo_utils. Using pointSelect discards everything in
+            volList.
 
         config : str or list
             Define what configurations this design variable will be applied to
@@ -611,14 +614,17 @@ class DVGeometry(object):
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
         >>> # Create a point select to use: (box from (0,0,0) to (10,0,10) with
         >>> # any point projecting into the point along 'y' axis will be selected.
-        >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
+        >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
         if type(config) == str:
             config = [config]
 
         if pointSelect is not None:
-            pts, ind = pointSelect.getPoints(self.FFD.coef)
+            if pointSelect.type != 'ijkBounds':
+                pts, ind = pointSelect.getPoints(self.FFD.coef)
+            else:
+                pts, ind = pointSelect.getPoints_ijk(self)
         elif volList is not None:
             if self.FFD.symmPlane is not None:
                 volListTmp = []
@@ -644,8 +650,7 @@ class DVGeometry(object):
         return self.DV_listLocal[dvName].nVal
 
     def addGeoDVSectionLocal(self, dvName, secIndex, lower=None, upper=None,
-                             scale=1.0, axis=1, volList=None, orient0=None, config=None,
-                             ijkBounds={}):
+                             scale=1.0, axis=1, pointSelect=None, volList=None, orient0=None, config=None):
         """
         Add one or more section local design variables to the DVGeometry
         object. Section local variables are used as an alternative to local
@@ -700,9 +705,21 @@ class DVGeometry(object):
                                 /
                                2
 
+
+        pointSelect : pointSelect object. Default is None Use a
+            pointSelect object to select a subset of the total number
+            of control points. See the documentation for the
+            pointSelect class in geo_utils. Using pointSelect discards everything in
+            volList.
+            You can create a PointSelect object by using, for instance:
+            >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
+            Check the other PointSelect options in geo_utils.py
+
         volList : list
             Use the control points on the volume indicies given in volList. If
             None, all volumes will be included.
+            PointSelect has priority over volList. So if you use PointSelect, the values
+            defined in volList will have no effect.
 
         secIndex : char or list of chars
             For each volume, we need to specify along which index we would like
@@ -736,15 +753,6 @@ class DVGeometry(object):
             configurations. The default value of None implies that the design
             variable appies to *ALL* configurations.
 
-        ijkBounds : dictionary of int[3x2]
-            Dictionary defining upper and lower block indices to which we will apply the DVs.
-            It should follow this format:
-            ijkBounds = {volID:[[ilow, ihigh],
-                                [jlow, jhigh],
-                                [klow, khigh]]
-            volID is the same block identifier used in volList.
-            If the user provides none, then we will apply the normal DVs to all FFD nodes
-
         Returns
         -------
         N : int
@@ -767,7 +775,14 @@ class DVGeometry(object):
             config = [config]
 
         # Pick out control points
-        if volList is not None:
+        if pointSelect is not None:
+            if pointSelect.type != 'ijkBounds':
+                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                volList = numpy.arange(self.FFD.nVol) # Select all volumes
+            else:
+                pts, ind = pointSelect.getPoints_ijk(self)
+                volList = pointSelect.ijkBounds.keys() # Select only volumes used by pointSelect
+        elif volList is not None:
             if self.FFD.symmPlane is not None:
                 volListTmp = []
                 for vol in volList:
@@ -779,24 +794,7 @@ class DVGeometry(object):
             volList = numpy.atleast_1d(volList).astype('int')
             ind = []
             for iVol in volList:
-
-                # Check if the user want to select a subset of the ijk indices
-                if iVol in ijkBounds.keys():
-                    ilow = ijkBounds[iVol][0][0]
-                    ihigh = ijkBounds[iVol][0][1]
-                    jlow = ijkBounds[iVol][1][0]
-                    jhigh = ijkBounds[iVol][1][1]
-                    klow = ijkBounds[iVol][2][0]
-                    khigh = ijkBounds[iVol][2][1]
-                else:
-                    ilow = 0
-                    ihigh = -1
-                    jlow = 0
-                    jhigh = -1
-                    klow = 0
-                    khigh = -1
-
-                ind.extend(self.FFD.topo.lIndex[iVol][ilow:ihigh,jlow:jhigh,klow:khigh].flatten())
+                ind.extend(self.FFD.topo.lIndex[iVol].flatten()) # Get all indices from this block
             ind = geo_utils.unique(ind)
         else:
             # Just take'em all
@@ -1413,21 +1411,29 @@ class DVGeometry(object):
         dIdx : array
            Flattened array of length getNDV().
         """
-        # TODO: This should probably call the children recursively
-        dIdx = numpy.zeros(self.getNDV(), self.dtype)
-        i = 0
+        DVCountGlobal, DVCountLocal, DVCountSecLoc = self._getDVOffsets()
+        dIdx = numpy.zeros(self.nDV_T, self.dtype)
+        i = DVCountGlobal
         for key in self.DV_listGlobal:
             dv = self.DV_listGlobal[key]
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
+        i = DVCountLocal
         for key in self.DV_listLocal:
             dv = self.DV_listLocal[key]
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
+        i = DVCountSecLoc
         for key in self.DV_listSectionLocal:
             dv = self.DV_listSectionLocal[key]
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
+
+        #Note: not sure if this works with (multiple) sibling child FFDs    
+        for iChild in range(len(self.children)):
+            childdIdx = self.children[iChild].convertDictToSensitivity(dIdxDict)
+            # update the total sensitivities with the derivatives from the child
+            dIdx+=childdIdx
         return dIdx
 
     def getVarNames(self):
@@ -2301,7 +2307,7 @@ class DVGeometry(object):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-
+        
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
     def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None, localDV=False):
