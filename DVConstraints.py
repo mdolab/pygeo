@@ -34,6 +34,23 @@ class Error(Exception):
         print(msg)
         Exception.__init__(self)
 
+class Warning(object):
+    """
+    Format a warning message
+    """
+    def __init__(self, message):
+        msg = '\n+'+'-'*78+'+'+'\n' + '| DVConstraints Warning: '
+        i = 24
+        for word in message.split():
+            if len(word) + i + 1 > 78: # Finish line and start new one
+                msg += ' '*(78-i)+'|\n| ' + word + ' '
+                i = 1 + len(word)+1
+            else:
+                msg += word + ' '
+                i += len(word)+1
+        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+        print(msg)
+
 class GeometricConstraint(object):
     """
     This is a generic base class for all of the geometric constraints.
@@ -2214,7 +2231,6 @@ class DVConstraints(object):
         X = geo_utils.tfi_2d(le_s(span_s), te_s(span_s),
                              root_s(chord_s), tip_s(chord_s))
         coords = numpy.zeros((nSpan, nChord, 2, 3))
-        # Generate all intersections:
         for i in range(nSpan):
             for j in range(nChord):
                 # Generate the 'up_vec' from taking the cross product
@@ -2234,18 +2250,22 @@ class DVConstraints(object):
                     vVec = X[i, j+1] - X[i, j-1]
 
                 upVec = numpy.cross(uVec, vVec)
-
                 # Project actual node:
                 up, down, fail = geo_utils.projectNode(
                     X[i ,j], upVec, self.p0, self.v1, self.v2)
 
-                if fail:
+                if fail == 0:
+                    coords[i, j, 0] = up
+                    coords[i, j, 1] = down
+                elif fail == -1:
+                    # More than 2 solutoins. Returned in sorted distance. 
+                    coords[i, j, 0] = down
+                    coords[i, j, 1] = up
+                else:
                     raise Error('There was an error projecting a node \
                      at (%f, %f, %f) with normal (%f, %f, %f).'% (
                             X[i, j, 0], X[i, j, 1], X[i, j, 2],
                             upVec[0], upVec[1], upVec[2]))
-                coords[i, j, 0] = up
-                coords[i, j, 1] = down
 
         return coords
 

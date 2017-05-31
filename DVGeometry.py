@@ -1677,7 +1677,7 @@ class DVGeometry(object):
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_local)
             else:
-                #print('shapes',J_temp.shape,J_local.shape)
+                print('shapes',J_temp.shape,J_local.shape)
                 J_temp += J_local
 
         if J_casc is not None:
@@ -1702,7 +1702,7 @@ class DVGeometry(object):
         # compute the derivatives of the coeficients of this level wrt all of the design
         # variables at this level and all levels above
         J_temp = self.computeDVJacobian(config=config)
-
+      
         # now get the derivative of the points for this level wrt the coefficients(dPtdCoef)
         if self.FFD.embededVolumes[ptSetName].dPtdCoef is not None:
             dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef.tocoo()
@@ -1910,7 +1910,8 @@ class DVGeometry(object):
 
         # Name here doesn't matter, just take the first one
         if len(self.points)>0:
-            self.update(self.points.keys()[0], childDelta=False)
+            keyToUpdate = list(self.points.keys())[0]
+            self.update(keyToUpdate, childDelta=False)
 
         f = pySpline.openTecplot(fileName, 3)
         vol_counter = 0
@@ -1923,7 +1924,7 @@ class DVGeometry(object):
 
         pySpline.closeTecplot(f)
         if len(self.points)>0:
-            self.update(self.points.keys()[0], childDelta=True)
+            self.update(keyToUpdate, childDelta=True)
 
     def writeRefAxes(self, fileName):
         """Write the (deformed) current state of the RefAxes to a tecplot file,
@@ -2293,13 +2294,13 @@ class DVGeometry(object):
             self.nDVSL_count = self.nDVG_T
             self.nDVL_count = self.nDVG_T + self.nDVSL_T
 
-        # now get the numbers for the current parent child
-        nDVG = self._getNDVGlobalSelf()
-        nDVL = self._getNDVLocalSelf()
-        nDVSL = self._getNDVSectionLocalSelf()
-
+        nDVG = 0
+        nDVL = 0
+        nDVSL = 0
         # Set the total number of global and local DVs into any children of this parent
         for child in self.children:
+            # now get the numbers for the current parent child
+
             child.nDV_T = self.nDV_T
             child.nDVG_T = self.nDVG_T
             child.nDVL_T = self.nDVL_T
@@ -2307,6 +2308,11 @@ class DVGeometry(object):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
+
+            # Increment the counters for the children
+            nDVG += child._getNDVGlobalSelf()
+            nDVL += child._getNDVLocalSelf()
+            nDVSL += child._getNDVSectionLocalSelf()
         
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
@@ -2751,6 +2757,7 @@ class DVGeometry(object):
                 self.children[iChild].dCcdXdvl = numpy.zeros((N*3, self.nDV_T))
 
             iDVLocal = self.nDVL_count
+
             for key in self.DV_listLocal:
                 if self.DV_listLocal[key].config is None or \
                    config in self.DV_listLocal[key].config:
@@ -2758,7 +2765,9 @@ class DVGeometry(object):
                     nVal = self.DV_listLocal[key].nVal
                     for j in range(nVal):
                         pt_dv = self.DV_listLocal[key].coefList[j]
+
                         irow = pt_dv[0]*3 + pt_dv[1]
+
                         Jacobian[irow, iDVLocal] = 1.0
 
                         for iChild in range(len(self.children)):
