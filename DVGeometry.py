@@ -2294,9 +2294,9 @@ class DVGeometry(object):
             self.nDVSL_count = self.nDVG_T
             self.nDVL_count = self.nDVG_T + self.nDVSL_T
 
-        nDVG = 0
-        nDVL = 0
-        nDVSL = 0
+        nDVG = self._getNDVGlobalSelf()
+        nDVL = self._getNDVLocalSelf()
+        nDVSL = self._getNDVSectionLocalSelf()
         # Set the total number of global and local DVs into any children of this parent
         for child in self.children:
             # now get the numbers for the current parent child
