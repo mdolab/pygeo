@@ -249,6 +249,7 @@ class DVGeometry(object):
             5. z-x-y  Default (x-streamwise y-up z-out wing)
             6. z-y-x
             7. z-x-y + rot_theta
+            8. z-x-y + rotation about section axis (to allow for winglet rotation)
 
         axis: str
             Axis along which to project points/control points onto the
@@ -724,7 +725,7 @@ class DVGeometry(object):
         secIndex : char or list of chars
             For each volume, we need to specify along which index we would like
             to subdivide the volume into sections. Entries in list can be 'i',
-            'j', or 'k'. This index will be designated as the transverse (0)
+            'j', or 'k'. This index will be designated as the transverse (2)
             direction in terms of the direction of perturbation for the 'axis'
             parameter.
 
@@ -831,12 +832,12 @@ class DVGeometry(object):
                 elif orient0.shape[0] != len(volList):
                     raise Error('If an array is given for orient0, the row dimension'
                                 ' must be equal to the length of volList.')
-            for iVol in volList:
-                self.sectionFrame(secIndex[iVol], secTransform, secLink, iVol,
-                                orient0[iVol])
+            for i, iVol in enumerate(volList):
+                self.sectionFrame(secIndex[i], secTransform, secLink, iVol,
+                                orient0[i])
         else:
-            for iVol in volList:
-                self.sectionFrame(secIndex[iVol], secTransform, secLink, iVol)
+            for i, iVol in enumerate(volList):
+                self.sectionFrame(secIndex[i], secTransform, secLink, iVol)
 
         self.DV_listSectionLocal[dvName] = geoDVSectionLocal(dvName, lower, upper,
                                                scale, axis, ind, self.masks,
@@ -1159,6 +1160,12 @@ class DVGeometry(object):
                     D = geo_utils.rotVbyW(D, deriv, numpy.pi/180*self.rot_theta[
                             self.curveIDNames[ipt]](self.links_s[ipt]))
 
+                elif rotType == 8:
+                    slVar = self.DV_listSectionLocal['local']
+                    W = slVar.sectionTransform[slVar.sectionLink[slVar.coefList[ipt]]][:,2]
+                    D = geo_utils.rotVbyW(D, W, numpy.pi/180*self.rot_theta[
+                            self.curveIDNames[ipt]](self.links_s[ipt]))
+
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
@@ -1429,7 +1436,7 @@ class DVGeometry(object):
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
 
-        #Note: not sure if this works with (multiple) sibling child FFDs    
+        #Note: not sure if this works with (multiple) sibling child FFDs
         for iChild in range(len(self.children)):
             childdIdx = self.children[iChild].convertDictToSensitivity(dIdxDict)
             # update the total sensitivities with the derivatives from the child
@@ -1542,7 +1549,7 @@ class DVGeometry(object):
         Returns
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
-            
+
         Notes
         -----
         The ``child`` and ``nDVStore`` options are only used
@@ -2173,7 +2180,8 @@ class DVGeometry(object):
             D = numpy.dot(rotX, numpy.dot(rotY, rotZ))
         elif rotType == 7:
             D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
-
+        elif rotType == 8:
+            D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
         return D
 
     def _getNDV(self):
@@ -2307,7 +2315,7 @@ class DVGeometry(object):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-        
+
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
     def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None, localDV=False):
