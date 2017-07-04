@@ -1148,11 +1148,10 @@ class pyGeo():
         # Now loop over the componets and each will write the info it
         # has to the .tin file:
         for i in range(self.nSurf):
-            name = 'surface_%d'%i
-            # if self.surfs[i].name==None:
-            #     name = 'surface_%d'%i
-            # else:
-            #     name = self.surfs[i].name
+            if self.surfs[i].name==None:
+                name = 'surface_%d'%i
+            else:
+                name = self.surfs[i].name
             str = 'define_surface name surf.%d family %s tetra_size %f\n'%(
                 i, name, 1.0)
             f.write(str)
