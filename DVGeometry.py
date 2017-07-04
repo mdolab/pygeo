@@ -1910,7 +1910,8 @@ class DVGeometry(object):
 
         # Name here doesn't matter, just take the first one
         if len(self.points)>0:
-            self.update(self.points.keys()[0], childDelta=False)
+            keyToUpdate = list(self.points.keys())[0]
+            self.update(keyToUpdate, childDelta=False)
 
         f = pySpline.openTecplot(fileName, 3)
         vol_counter = 0
@@ -1923,7 +1924,7 @@ class DVGeometry(object):
 
         pySpline.closeTecplot(f)
         if len(self.points)>0:
-            self.update(self.points.keys()[0], childDelta=True)
+            self.update(keyToUpdate, childDelta=True)
 
     def writeRefAxes(self, fileName):
         """Write the (deformed) current state of the RefAxes to a tecplot file,
