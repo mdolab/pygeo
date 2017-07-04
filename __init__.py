@@ -5,4 +5,4 @@ from .pyBlock import pyBlock
 from .DVConstraints import DVConstraints
 from .DVGeometry import DVGeometry
 from .DVGeometryAxi import DVGeometryAxi
-
+from .DVGeometryVSP import DVGeometryVSP
