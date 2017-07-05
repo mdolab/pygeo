@@ -2,7 +2,9 @@
 #         Imports
 # ======================================================================
 from __future__ import print_function
-import copy, time, tempfile
+import copy
+import tempfile
+import shutil
 import os
 from collections import OrderedDict
 import numpy
@@ -79,12 +81,13 @@ class DVGeometryVSP(object):
       >>>
 
     """
-    def __init__(self, vspFile, desFile, comm, vspScriptCmd=None, *args, **kwargs):
+    def __init__(self, vspFile, desFile, comm, vspScriptCmd=None, scale=1.0, *args, **kwargs):
         self.points = OrderedDict()
         self.updated = {}
-        self.finalized = False
-        self.dtype = 'd'
-
+        self.pointSets = OrderedDict()
+        self.ptSetNames = []
+        self.vspScale = 1.0
+        self.comm = comm
         # Just store the vspFile as string
         self.vspFile = vspFile
         self.vspScriptCmd=vspScriptCmd
@@ -98,7 +101,7 @@ class DVGeometryVSP(object):
 
         # Run the update. This will also set the conn on the first pass
         self.conn = None
-        self.pts0, self.conn = self._getUpdatedSurface(self.desFile)
+        self.pts0, self.conn = self._getUpdatedSurface(desFile)
         self.pts = None # The current set of points
 
         # Parse and add all the DVs from the DVFile. This will be only
@@ -107,88 +110,6 @@ class DVGeometryVSP(object):
         self.DVs = OrderedDict()
         self._parseDesignFile(desFile)
 
-    def __del__(self):
-        """ On delete we can remove the myid"""
-        shutil.rmtree(self.myid)
-
-    def _getUpdatedSurface(self, desFile):
-        """Return the updated surface already converted to an unstructured
-        format. Note that this routine is safe to call in an
-        embarrassing parallel fashion. That is it can be called with
-        different 'desFile's on different processors and they won't
-        interfere with each other
-
-        Parameters
-        ----------
-        desFile : str
-            Filename containing the variables to use for this update.
-        """
-
-        # Create a temporary export file name.
-        tmpExport = os.path.join(self.mydir, "export.x")
-        cmd = "void main() {\
-        ReadVSPFile(\"%s\"); \
-        ReadApplyDESFile(\"%s\"); \
-        ExportFile(\"%s\", 0, EXPORT_PLOT3D); \
-        }" %(self.vspFile, desFile, tmpExport)
-
-        # Now create the command file
-        tmpScript = os.path.join(self.mydir, 'export.vspscript')
-        f = open(tmpScript, 'w')
-        f.write(cmd)
-        f.close()
-
-        # Now execute the command:
-        os.system("%s -script %s\n"%(self.vspScriptCmd, tmpScript))
-
-        # Now we load in this updated plot3d file. Compute the
-        # connectivity if not already done.
-        computeConn = False
-        if self.conn is None:
-            computeConn = True
-        pts, conn = self._readPlot3DSurfFile(tmpExport, computeConn)
-
-        return pts, conn
-
-    def _readPlot3DSurfFile(self, fileName, computeConn=False):
-        """Read a plot3d file and return the points and connectivity"""
-
-        f = open(fileName, 'r')
-        nSurf = numpy.fromfile(f, 'int', count=1, sep=' ')[0]
-        sizes = numpy.fromfile(f, 'int', count=3*nSurf, sep=' ').reshape((nSurf, 3))
-        nPts = 0; nElem = 0
-        for i in range(nSurf):
-            curSize = sizes[i, 0]*sizes[i, 1]
-            nPts += curSize
-            nElem += (sizes[i, 0]-1)*(sizes[i, 1]-1)
-
-        # Generate the uncompacted point and connectivity list:
-        pts = numpy.zeros((nPts, 3), dtype=self.dtype)
-        if computeConn:
-            conn = numpy.zeros((nElem, 4), dtype='intc')
-        else:
-            conn = self.conn
-
-        nodeCount = 0
-        elemCount = 0
-        for iSurf in range(nSurf):
-            curSize = sizes[iSurf, 0]*sizes[iSurf, 1]
-            for idim in range(3):
-                pts[nodeCount:nodeCount+curSize, idim] = (
-                    numpy.fromfile(f, 'float', curSize, sep=' '))
-            if computeConn:
-                # Add in the connectivity.
-                iSize = sizes[iSurf, 0]
-                for j in range(sizes[iSurf, 1]-1):
-                    for i in range(sizes[iSurf, 0]-1):
-                        conn[elemCount, 0] = nodeCount + j*iSize + i
-                        conn[elemCount, 1] = nodeCount + j*iSize + i+1
-                        conn[elemCount, 2] = nodeCount + (j+1)*iSize + i+1
-                        conn[elemCount, 3] = nodeCount + (j+1)*iSize + i
-                        elemCount += 1
-            nodeCount += curSize
-
-        return pts, conn
 
     def addPointSet(self, points, ptName, **kwargs):
 
@@ -219,10 +140,14 @@ class DVGeometryVSP(object):
         # Attach the points to the original surface using the fast ADT
         # projection code from pySpline. Note that we convert to
         # 1-based indexing for conn here.
-        faceID, uv = pySpline.libspline.adtprojections(
-            self.pts0.T, (self.conn+1).T, points.T)
-        uv = uv.T
-        faceID -= 1 # Convert back to zero-based indexing.
+        if len(points) > 0:
+            faceID, uv = pySpline.libspline.adtprojections(
+                self.pts0.T, (self.conn+1).T, points.T)
+            uv = uv.T
+            faceID -= 1 # Convert back to zero-based indexing.
+        else:
+            faceID = numpy.zeros((0), 'intc')
+            uv = numpy.zeros((0, 2))
 
         # Compute the offsets by evaluating the new points.
         # eval which should be fast enough
@@ -255,14 +180,14 @@ class DVGeometryVSP(object):
 
         for key in dvDict:
             if key in self.DVs:
-                dvDict[key].value = dvDict[key]
+                self.DVs[key].value = dvDict[key]
 
         # When we set the design variables we will also compute the
         # new surface self.pts. Only one proc needs to do this.
         if self.comm.rank == 0:
             desFile = os.path.join(self.mydir, 'desFile')
-            self._createDesginFile(desFile)
-            self.pts, conn = self.getUpdatedSurface(desFile)
+            self._createDesignFile(desFile)
+            self.pts, conn = self._getUpdatedSurface(desFile)
         self.pts = self.comm.bcast(self.pts)
 
         # We will also compute the jacobian so it is also up to date
@@ -289,21 +214,22 @@ class DVGeometryVSP(object):
 
         return dvDict
 
-    def update(self, ptSetName):
-        """
-        This is the main routine for returning coordinates that have
-        been updated by design variables.
+    def update(self, ptSetName, config=None):
+        """This is the main routine for returning coordinates that have been
+        updated by design variables. Multiple configs are not
+        supported. 
 
         Parameters
         ----------
         ptSetName : str
             Name of point-set to return. This must match ones of the
             given in an :func:`addPointSet()` call.
+
         """
 
         # Since we are sure that self.pts is always up to date, we can
         # just do the eval + offset.
-        n      = len(self.pointSets[ptSetname].points)
+        n      = len(self.pointSets[ptSetName].points)
         uv     = self.pointSets[ptSetName].uv
         faceID = self.pointSets[ptSetName].faceID
         offset = self.pointSets[ptSetName].offset
@@ -320,7 +246,7 @@ class DVGeometryVSP(object):
         # Finally flag this pointSet as being up to date:
         self.updated[ptSetName] = True
 
-        return coords
+        return newPts
 
     def pointSetUpToDate(self, ptSetName):
         """
@@ -342,7 +268,7 @@ class DVGeometryVSP(object):
         else:
             return True
 
-    def getNDV():
+    def getNDV(self):
         """ Return the number of DVs"""
         return len(self.DVs)
 
@@ -388,7 +314,7 @@ class DVGeometryVSP(object):
         N = dIdpt.shape[0]
 
         # now that we have self.JT compute the Mat-Mat multiplication
-        nDV = self._getNDV()
+        nDV = self.getNDV()
         dIdx_local = numpy.zeros((N, nDV), 'd')
         for i in range(N):
 
@@ -433,12 +359,105 @@ class DVGeometryVSP(object):
         print ('-----------------------------------------------------------')
         print ('Component      Group          Parm           Value         ')
         print ('-----------------------------------------------------------')
-        for DV in self.DVs:
-            print('%15s %15s %15s %15s %15g'%(DV.component, DV.group, DV.parm, DV.value))
+        for dvName in self.DVs:
+            DV = self.DVs[dvName]
+            print('%15s %15s %15s %15g'%(DV.component, DV.group, DV.parm, DV.value))
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
+
+    def __del__(self):
+        """ On delete we can remove the mydir"""
+        try:
+            shutil.rmtree(self.mydir)
+        except:
+            pass
+
+    def _getUpdatedSurface(self, desFile):
+        """Return the updated surface already converted to an unstructured
+        format. Note that this routine is safe to call in an
+        embarrassing parallel fashion. That is it can be called with
+        different 'desFile's on different processors and they won't
+        interfere with each other
+
+        Parameters
+        ----------
+        desFile : str
+            Filename containing the variables to use for this update.
+        """
+
+        # Create a temporary export file name.
+        tmpExport = os.path.join(self.mydir, "export.x")
+        cmd = "void main() {\
+        ReadVSPFile(\"%s\"); \
+        ReadApplyDESFile(\"%s\"); \
+        ExportFile(\"%s\", 0, EXPORT_PLOT3D); \
+        while ( GetNumTotalErrors() > 0 ){ \
+        ErrorObj err = PopLastError(); \
+        Print( err.GetErrorString() );} \
+        }" %(self.vspFile, desFile, tmpExport)
+
+        # Now create the command file
+        tmpScript = os.path.join(self.mydir, 'export.vspscript')
+        f = open(tmpScript, 'w')
+        f.write(cmd)
+        f.close()
+
+        # Now execute the command:
+        os.system("%s -script %s\n"%(self.vspScriptCmd, tmpScript))
+
+        # Now we load in this updated plot3d file. Compute the
+        # connectivity if not already done.
+        computeConn = False
+        if self.conn is None:
+            computeConn = True
+        pts, conn = self._readPlot3DSurfFile(tmpExport, computeConn)
+
+        # Apply the VSP scale
+        pts *= self.vspScale
+
+        return pts, conn
+
+    def _readPlot3DSurfFile(self, fileName, computeConn=False):
+        """Read a plot3d file and return the points and connectivity"""
+
+        f = open(fileName, 'r')
+        nSurf = numpy.fromfile(f, 'int', count=1, sep=' ')[0]
+        sizes = numpy.fromfile(f, 'int', count=3*nSurf, sep=' ').reshape((nSurf, 3))
+        nPts = 0; nElem = 0
+        for i in range(nSurf):
+            curSize = sizes[i, 0]*sizes[i, 1]
+            nPts += curSize
+            nElem += (sizes[i, 0]-1)*(sizes[i, 1]-1)
+
+        # Generate the uncompacted point and connectivity list:
+        pts = numpy.zeros((nPts, 3))
+        if computeConn:
+            conn = numpy.zeros((nElem, 4), dtype='intc')
+        else:
+            conn = self.conn
+
+        nodeCount = 0
+        elemCount = 0
+        for iSurf in range(nSurf):
+            curSize = sizes[iSurf, 0]*sizes[iSurf, 1]
+            for idim in range(3):
+                pts[nodeCount:nodeCount+curSize, idim] = (
+                    numpy.fromfile(f, 'float', curSize, sep=' '))
+            if computeConn:
+                # Add in the connectivity.
+                iSize = sizes[iSurf, 0]
+                for j in range(sizes[iSurf, 1]-1):
+                    for i in range(sizes[iSurf, 0]-1):
+                        conn[elemCount, 0] = nodeCount + j*iSize + i
+                        conn[elemCount, 1] = nodeCount + j*iSize + i+1
+                        conn[elemCount, 2] = nodeCount + (j+1)*iSize + i+1
+                        conn[elemCount, 3] = nodeCount + (j+1)*iSize + i
+                        elemCount += 1
+            nodeCount += curSize
+
+        return pts, conn
 
     def _computeSurfJacobian(self):
         """This routine comptues the jacobian of the VSP surface with respect
@@ -453,23 +472,24 @@ class DVGeometryVSP(object):
         dvKeys = list(self.DVs.keys())
         for iDV in range(len(dvKeys)):
             # I have to do this one.
-            if i % self.comm.size == self.comm.rank:
+            if iDV % self.comm.size == self.comm.rank:
 
                 # Perturb the DV
+                dvSave = self.DVs[dvKeys[iDV]].value
                 self.DVs[dvKeys[iDV]].value += h
 
                 # Create the DVFile
-                desFile = os.path.join(self.myid, 'desFile')
-                slef._createDesginFile(desFile)
+                desFile = os.path.join(self.mydir, 'desFile')
+                self._createDesignFile(desFile)
 
                 # Get the updated points with this des file
-                pts, conn = self.getUpdatedSurface(desFile)
+                pts, conn = self._getUpdatedSurface(desFile)
 
                 jacLocal[:, iDV] = (pts.flatten() - ptsRef)/h
 
                 # Reset the DV
-                self.DVs[dvKeys[iDV]].value += h
-
+                self.DVs[dvKeys[iDV]].value = dvSave
+                
         # To get the full jacobian we can now all reduce across the
         # procs. This is pretty inefficient but easy to code.
         self.jac = self.comm.allreduce(jacLocal, op=MPI.SUM)
@@ -479,8 +499,9 @@ class DVGeometryVSP(object):
         """Parse through the given design variable file and add the DVs it
         finds to the DV List"""
         f = open(fileName, 'r')
-        lines = f.readline()
+        lines = f.readlines()
         ndvs = int(lines[0])
+
         for i in range(ndvs):
             aux = lines[i+1].split(':')
             dvHash = aux[0]
@@ -488,13 +509,13 @@ class DVGeometryVSP(object):
             dvGroup = aux[2]
             dvParm = aux[3]
             dvVal = float(aux[4])
-            dvName = '%s:%s:%s'%(DV.component, DV.group, DV.parm)
+            dvName = '%s:%s:%s'%(dvComponent, dvGroup, dvParm)
             self.DVs[dvName] = vspDV(dvHash, dvComponent, dvGroup, dvParm, dvVal)
-
+            
     def _createDesignFile(self, fileName):
         """Take the current set of design variables and create a .des file"""
         f = open(fileName, 'w')
-        f.write(len(self.DVs))
+        f.write('%d\n'%len(self.DVs))
         for dvName in self.DVs:
             DV = self.DVs[dvName]
             f.write('%s:%s:%s:%s:%20.15g\n'%(DV.hash, DV.component, DV.group, DV.parm, DV.value))
@@ -502,7 +523,7 @@ class DVGeometryVSP(object):
 
 class vspDV(object):
 
-    def __init__(self, hash, component, group, parm, value, lower, upper, scale)
+    def __init__(self, hash, component, group, parm, value, lower=None, upper=None, scale=None):
 
         """Create a geometric design variable (or design variable group)
         See addGeoDVGlobal in DVGeometry class for more information
@@ -548,4 +569,4 @@ class PointSet(object):
                 jac[i*3+idim, 3*conn[self.faceID[i], 3]+idim] = (1 - uv[i, 0])*(    uv[i, 1])
 
         # Convert to csc becuase we'll be doing a transpose product on it.
-        self.dXpdXsurf = jac.tocsc()
+        self.dPtdXsurf = jac.tocsc()
