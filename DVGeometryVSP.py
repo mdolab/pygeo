@@ -83,14 +83,12 @@ class DVGeometryVSP(object):
     """
     def __init__(self, vspFile, desFile, comm, vspScriptCmd=None, scale=1.0, *args, **kwargs):
         self.points = OrderedDict()
-        self.updated = {}
         self.pointSets = OrderedDict()
-        self.ptSetNames = []
-        self.vspScale = 1.0
+        self.updated = {}
+        self.vspScale = scale
         self.comm = comm
-        # Just store the vspFile as string
         self.vspFile = vspFile
-        self.vspScriptCmd=vspScriptCmd
+        self.vspScriptCmd = vspScriptCmd
         if self.vspScriptCmd is None:
             self.vspScriptCmd = 'vspscript'
 
@@ -109,7 +107,6 @@ class DVGeometryVSP(object):
         # the class.
         self.DVs = OrderedDict()
         self._parseDesignFile(desFile)
-
 
     def addPointSet(self, points, ptName, **kwargs):
 
@@ -132,8 +129,7 @@ class DVGeometryVSP(object):
         """
 
         # save this name so that we can zero out the jacobians properly
-        self.ptSetNames.append(ptName)
-        self.points[ptName] = True # ADFlow checks self.poitns to see
+        self.points[ptName] = True # ADFlow checks self.points to see
                                    # if something is added or not.
 
         points = numpy.array(points).real.astype('d')
@@ -301,11 +297,6 @@ class DVGeometryVSP(object):
         dIdxDict : dic
             The dictionary containing the derivatives, suitable for
             pyOptSparse
-
-        Notes
-        -----
-        The ``child`` and ``nDVStore`` options are only used
-        internally and should not be changed by the user.
         """
 
         # Make dIdpt at least 3D
@@ -313,14 +304,23 @@ class DVGeometryVSP(object):
             dIdpt = numpy.array([dIdpt])
         N = dIdpt.shape[0]
 
-        # now that we have self.JT compute the Mat-Mat multiplication
         nDV = self.getNDV()
         dIdx_local = numpy.zeros((N, nDV), 'd')
+        # The following code computes the final sensitivity product:
+        #
+        #         T        T      T
+        #  pXsurf     pXpt     pI
+        #  ------   -------   ----
+        #  pXdv      pXsurf    pXpt
+        # 
+        # Where I is the objective, Xpt are the externally coordinates
+        # supplied in addPointSet, Xsurf are the coordinates of the
+        # VSP plot3d File and Xdv are the design variables. 
+        import time
+        timeA = time.time()
         for i in range(N):
-
-            # This is the final sensitivity of the
-            tmp = self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt[i,:,:].flatten())
-            dIdx_local[i,:] = self.jac.T.dot(tmp)
+            dIdx_local[i,:] = self.jac.T.dot(
+                self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt[i,:,:].flatten()))
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -355,13 +355,12 @@ class DVGeometryVSP(object):
         """
         Print a formatted list of design variables to the screen
         """
-
-        print ('-----------------------------------------------------------')
-        print ('Component      Group          Parm           Value         ')
-        print ('-----------------------------------------------------------')
+        print ('-'*85)
+        print ('%30s%20s%20s%15s'%('Component','Group','Parm','Value'))
+        print ('-'*85)
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            print('%15s %15s %15s %15g'%(DV.component, DV.group, DV.parm, DV.value))
+            print('%30s%20s%20s%15g'%(DV.component, DV.group, DV.parm, DV.value*numpy.pi))
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
@@ -415,12 +414,12 @@ class DVGeometryVSP(object):
         pts, conn = self._readPlot3DSurfFile(tmpExport, computeConn)
 
         # Apply the VSP scale
-        pts *= self.vspScale
+        newPts = pts * self.vspScale
 
-        return pts, conn
+        return newPts, conn
 
     def _readPlot3DSurfFile(self, fileName, computeConn=False):
-        """Read a plot3d file and return the points and connectivity"""
+        """Read a scii plot3d file and return the points and connectivity"""
 
         f = open(fileName, 'r')
         nSurf = numpy.fromfile(f, 'int', count=1, sep=' ')[0]
@@ -465,7 +464,8 @@ class DVGeometryVSP(object):
         can compute it in an embarassingly parallel fashion across the
         COMM this object was created on.
         """
-
+        import time
+        timeA = time.time()
         jacLocal = numpy.zeros((len(self.pts0)*3, len(self.DVs)))
         ptsRef = self.pts.flatten()
         h = 1e-6
@@ -493,7 +493,7 @@ class DVGeometryVSP(object):
         # To get the full jacobian we can now all reduce across the
         # procs. This is pretty inefficient but easy to code.
         self.jac = self.comm.allreduce(jacLocal, op=MPI.SUM)
-
+        print ('jac time:', time.time()-timeA)
     def _parseDesignFile(self, fileName):
 
         """Parse through the given design variable file and add the DVs it
@@ -524,9 +524,7 @@ class DVGeometryVSP(object):
 class vspDV(object):
 
     def __init__(self, hash, component, group, parm, value, lower=None, upper=None, scale=None):
-
-        """Create a geometric design variable (or design variable group)
-        See addGeoDVGlobal in DVGeometry class for more information
+        """Inernal class for storing VSP design variable information"""
         """
         self.hash = hash
         self.component = component
