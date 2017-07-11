@@ -195,7 +195,7 @@ class DVGeometry(object):
         self.masks = tmp
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
-                   rotType=5, axis='x', alignIndex=None):
+                   rotType=5, axis='x', alignIndex=None, rotAxisVar=None):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -405,7 +405,7 @@ class DVGeometry(object):
             curve = pySpline.Curve(X=refaxisNodes, k=2)
             nAxis = len(curve.coef)
             self.axis[name] = {'curve':curve, 'volumes':volumes,
-                               'rotType':rotType, 'axis':axis}
+                               'rotType':rotType, 'axis':axis, 'rotAxisVar':rotAxisVar}
         else:
             raise Error("One of 'curve' or 'xFraction' must be "
                         "specified for a call to addRefAxis")
@@ -1161,7 +1161,8 @@ class DVGeometry(object):
                             self.curveIDNames[ipt]](self.links_s[ipt]))
 
                 elif rotType == 8:
-                    slVar = self.DV_listSectionLocal['local']
+                    varname = self.axis[self.curveIDNames[ipt]]['rotAxisVar']
+                    slVar = self.DV_listSectionLocal[varname]
                     W = slVar.sectionTransform[slVar.sectionLink[slVar.coefList[ipt]]][:,2]
                     D = geo_utils.rotVbyW(D, W, numpy.pi/180*self.rot_theta[
                             self.curveIDNames[ipt]](self.links_s[ipt]))
@@ -2322,7 +2323,7 @@ class DVGeometry(object):
             nDVG += child._getNDVGlobalSelf()
             nDVL += child._getNDVLocalSelf()
             nDVSL += child._getNDVSectionLocalSelf()
-        
+
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
     def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None, localDV=False):
