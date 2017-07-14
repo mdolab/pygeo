@@ -51,7 +51,7 @@ class DVGeometryVSP(object):
     those points lie on the surface.
 
     2. It cannot handle *moving* intersection. A geometry with static
-    intersections is fine as long as the g
+    intersections is fine as long as the intersection doesn't move
 
     3. It does not support complex numbers for the complex-step
     method.
@@ -68,6 +68,11 @@ class DVGeometryVSP(object):
        perform embarasisngly parallel finite differencing. Defaults to
        MPI.COMM_WORLD.
 
+    scale : float
+       A global scale factor from the VSP geometry to incoming (CFD) mesh 
+       geometry. For example, if the VSP model is in inches, and the CFD 
+       in meters, scale=0.0254. 
+
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
@@ -78,14 +83,13 @@ class DVGeometryVSP(object):
       >>>
 
     """
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, debug=False):
+    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0):
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
         self.updated = {}
         self.vspScale = scale
         self.comm = comm
         self.vspFile = vspFile
-        self.debug = debug
 
         # Load in the VSP model
         vsp.ClearVSPModel()
