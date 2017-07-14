@@ -6,11 +6,14 @@ import copy
 import tempfile
 import shutil
 import os
+import sys
+import time
 from collections import OrderedDict
 import numpy
 from scipy import sparse
 from mpi4py import MPI
 from pyspline import pySpline
+import vsp
 
 class Error(Exception):
     """
@@ -60,56 +63,55 @@ class DVGeometryVSP(object):
     vspFile : str
        filename of .vsp3 file.
 
-    desFile : str
-       filename of the design parameter file
-
     comm : MPI Intra Comm
        Comm on which to build operate the object. This is used to
-       perform embarasisngly parallel finite differencing.
-
-    vspScriptCmd : str
-       If the vspScript command isn't in your path, supply the full path
-       to the executate.
+       perform embarasisngly parallel finite differencing. Defaults to
+       MPI.COMM_WORLD.
 
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
       >>> from pygeo import *
-      >>> DVGeo = DVGeometryVSP("wing.vsp3", "wing.des", MPI_COMM_WORLD)
+      >>> DVGeo = DVGeometryVSP("wing.vsp3", MPI_COMM_WORLD)
       >>> # Add a set of coordinates Xpt into the object
       >>> DVGeo.addPointSet(Xpt, 'myPoints')
       >>>
 
     """
-    def __init__(self, vspFile, desFile, comm, vspScriptCmd=None, scale=1.0, *args, **kwargs):
+    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, debug=False):
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
         self.updated = {}
         self.vspScale = scale
         self.comm = comm
         self.vspFile = vspFile
-        self.vspScriptCmd = vspScriptCmd
-        if self.vspScriptCmd is None:
-            self.vspScriptCmd = 'vspscript'
+        self.debug = debug
 
-        # Create a secure directory in tmp for each processor to play
-        # with. Put the rank at the end to potentially help with
-        # debugging.
-        self.mydir = tempfile.mkdtemp(suffix='-%d'%MPI.COMM_WORLD.rank)
+        # Load in the VSP model
+        vsp.ClearVSPModel()
+        vsp.ReadVSPFile(vspFile)
+
+        # Create a secure directory in which we will put the temporary
+        # files we need. Just one processor needs it and will share. 
+        tmpDir = None
+        if self.comm.rank == 0:
+            tmpDir = tempfile.mkdtemp()
+        self.tmpDir = self.comm.bcast(tmpDir)
+        self.tmpDir = './tmpDir'
+        # Initial list of DVs
+        self.DVs = OrderedDict()
 
         # Run the update. This will also set the conn on the first pass
         self.conn = None
-        self.pts0, self.conn = self._getUpdatedSurface(desFile)
-        self.pts = None # The current set of points
+        self.pts0 = None
+        if self.comm.rank == 0:
+            self.pts0, self.conn = self._getUpdatedSurface()
 
-        # Parse and add all the DVs from the DVFile. This will be only
-        # time we need this desFile so it isn't stored as a member in
-        # the class.
-        self.DVs = OrderedDict()
-        self._parseDesignFile(desFile)
+        self.pts0 = self.comm.bcast(self.pts0)
+        self.conn = self.comm.bcast(self.conn)
+        self.pts = self.pts0.copy()
 
     def addPointSet(self, points, ptName, **kwargs):
-
         """
         Add a set of coordinates to DVGeometry
 
@@ -174,6 +176,7 @@ class DVGeometryVSP(object):
             additional keys in the dfvdictionary are simply ignored.
             """
 
+        # Just dump in the values
         for key in dvDict:
             if key in self.DVs:
                 self.DVs[key].value = dvDict[key]
@@ -181,9 +184,7 @@ class DVGeometryVSP(object):
         # When we set the design variables we will also compute the
         # new surface self.pts. Only one proc needs to do this.
         if self.comm.rank == 0:
-            desFile = os.path.join(self.mydir, 'desFile')
-            self._createDesignFile(desFile)
-            self.pts, conn = self._getUpdatedSurface(desFile)
+            self.pts, conn = self._getUpdatedSurface()
         self.pts = self.comm.bcast(self.pts)
 
         # We will also compute the jacobian so it is also up to date
@@ -220,7 +221,6 @@ class DVGeometryVSP(object):
         ptSetName : str
             Name of point-set to return. This must match ones of the
             given in an :func:`addPointSet()` call.
-
         """
 
         # Since we are sure that self.pts is always up to date, we can
@@ -316,8 +316,7 @@ class DVGeometryVSP(object):
         # Where I is the objective, Xpt are the externally coordinates
         # supplied in addPointSet, Xsurf are the coordinates of the
         # VSP plot3d File and Xdv are the design variables. 
-        import time
-        timeA = time.time()
+
         for i in range(N):
             dIdx_local[i,:] = self.jac.T.dot(
                 self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt[i,:,:].flatten()))
@@ -336,6 +335,59 @@ class DVGeometryVSP(object):
 
         return dIdxDict
 
+    def addVariable(self, component, group, parm, value=None, 
+                    lower=None, upper=None, scale=1.0, scaledStep=True, 
+                    dh=1e-6):
+        """
+        Add a design variable definition. 
+
+        Parameters
+        ----------
+        component : str
+            Name of the VSP component
+        group : str
+            Name of the VSP group
+        parm : str
+            Name of the VSP parameter 
+        value : float or None
+            The design variable. If this value is not supplied (None), then 
+            the current value in the VSP model will be queried and used
+        lower : float or None
+            Lower bound for the design variable. Use None for no lower bound
+        upper : float or None
+            Upper bound for the design variable. Use None for no upper bound
+        scale : float 
+            Scale factor 
+        scaledStep : bool
+            Flag to use a scaled step sized based on the initial value of the 
+            variable. It will remain constant thereafter. 
+        dh : float
+            Step size. When scaledStep is True, the actual step is dh*value. Otherwise
+            this actual step is used. 
+        """
+
+        container_id = vsp.FindContainer(component, 0)
+        if container_id == "":
+            raise Error('Bad component for DV: %s'%component)
+        
+        parm_id = vsp.FindParm(container_id, parm, group)
+        if parm_id == "":
+            raise Error('Bad group or parm: %s %s'%(group, parm))
+
+        # Now we know the parmID is ok. So we just get the value
+        val = vsp.GetParmVal(parm_id)
+
+        dvName = '%s:%s:%s'%(component, group, parm)
+
+        if value is None:
+            value = val
+
+        if scaledStep:
+            dh = dh * value
+
+        self.DVs[dvName] = vspDV(parm_id, component, group, parm, value, lower, 
+                                 upper, scale, dh)
+        
     def addVariablesPyOpt(self, optProb):
         """
         Add the current set of variables to the optProb object.
@@ -346,8 +398,8 @@ class DVGeometryVSP(object):
             Optimization problem definition to which variables are added
         """
 
-        for dvName in self.DVList:
-            dv = DVList[dvName]
+        for dvName in self.DVs:
+            dv = self.DVs[dvName]
             optProb.addVar(dvName, 'c', value=dv.value, lower=dv.lower,
                            upper=dv.upper, scale=dv.scale)
 
@@ -360,58 +412,48 @@ class DVGeometryVSP(object):
         print ('-'*85)
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            print('%30s%20s%20s%15g'%(DV.component, DV.group, DV.parm, DV.value*numpy.pi))
+            print('%30s%20s%20s%15g'%(DV.component, DV.group, DV.parm, DV.value))
+
+    def createDesignFile(self, fileName):
+        """Take the current set of design variables and create a .des file"""
+        f = open(fileName, 'w')
+        f.write('%d\n'%len(self.DVs))
+        for dvName in self.DVs:
+            DV = self.DVs[dvName]
+            f.write('%s:%s:%s:%s:%20.15g\n'%(DV.parmID, DV.component, DV.group, DV.parm, DV.value))
+        f.close()
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
 
-    def __del__(self):
-        """ On delete we can remove the mydir"""
-        try:
-            shutil.rmtree(self.mydir)
-        except:
-            pass
-
-    def _getUpdatedSurface(self, desFile):
-        """Return the updated surface already converted to an unstructured
-        format. Note that this routine is safe to call in an
-        embarrassing parallel fashion. That is it can be called with
-        different 'desFile's on different processors and they won't
-        interfere with each other
-
-        Parameters
-        ----------
-        desFile : str
-            Filename containing the variables to use for this update.
+    def _getUpdatedSurface(self, fName='export.x'):
+        """Return the updated surface for the currently set design variables,
+        converted to an unstructured format. Note that this routine is
+        safe to call in an embarrassing parallel fashion. That is it
+        can be called with different DVs set on different
+        processors and they won't interfere with each other. 
         """
 
-        # Create a temporary export file name.
-        tmpExport = os.path.join(self.mydir, "export.x")
-        cmd = "void main() {\
-        ReadVSPFile(\"%s\"); \
-        ReadApplyDESFile(\"%s\"); \
-        ExportFile(\"%s\", 0, EXPORT_PLOT3D); \
-        while ( GetNumTotalErrors() > 0 ){ \
-        ErrorObj err = PopLastError(); \
-        Print( err.GetErrorString() );} \
-        }" %(self.vspFile, desFile, tmpExport)
+        # Set each of the DVs. We have the parmID stored so its easy. 
+        for dvName in self.DVs:
+            DV = self.DVs[dvName]
+            # We use float here since sometimes pyoptsparse will give
+            # stupid numpy zero-dimensional arrays, which swig does
+            # not like. 
+            vsp.SetParmVal(DV.parmID, float(DV.value))
+        vsp.Update()
 
-        # Now create the command file
-        tmpScript = os.path.join(self.mydir, 'export.vspscript')
-        f = open(tmpScript, 'w')
-        f.write(cmd)
-        f.close()
+        # Write the export file.
+        fName = os.path.join(self.tmpDir, fName)
+        vsp.ExportFile(fName, 0, vsp.EXPORT_PLOT3D)
 
-        # Now execute the command:
-        os.system("%s -script %s\n"%(self.vspScriptCmd, tmpScript))
-
-        # Now we load in this updated plot3d file. Compute the
+        # Now we load in this updated plot3d file and compute the
         # connectivity if not already done.
         computeConn = False
         if self.conn is None:
             computeConn = True
-        pts, conn = self._readPlot3DSurfFile(tmpExport, computeConn)
+        pts, conn = self._readPlot3DSurfFile(fName, computeConn)
 
         # Apply the VSP scale
         newPts = pts * self.vspScale
@@ -464,81 +506,77 @@ class DVGeometryVSP(object):
         can compute it in an embarassingly parallel fashion across the
         COMM this object was created on.
         """
-        import time
-        timeA = time.time()
-        jacLocal = numpy.zeros((len(self.pts0)*3, len(self.DVs)))
+
         ptsRef = self.pts.flatten()
-        h = 1e-6
+        self.jac = numpy.zeros((len(self.pts0)*3, len(self.DVs)))
         dvKeys = list(self.DVs.keys())
+
+        # Determine how many points we'll perturb
+        n = 0
+        for iDV in range(len(dvKeys)):
+            # I have to do this one.
+            if iDV % self.comm.size == self.comm.rank:
+                n += 1
+
+        localJac = numpy.zeros((len(self.pts0)*3, n))
+        i = 0 # Counter on local Jac
+        reqs = []
         for iDV in range(len(dvKeys)):
             # I have to do this one.
             if iDV % self.comm.size == self.comm.rank:
 
+                # Step size for this particular DV
+                dh =  self.DVs[dvKeys[iDV]].dh
+
                 # Perturb the DV
                 dvSave = self.DVs[dvKeys[iDV]].value
-                self.DVs[dvKeys[iDV]].value += h
+                self.DVs[dvKeys[iDV]].value += dh
 
-                # Create the DVFile
-                desFile = os.path.join(self.mydir, 'desFile')
-                self._createDesignFile(desFile)
-
-                # Get the updated points with this des file
-                pts, conn = self._getUpdatedSurface(desFile)
-
-                jacLocal[:, iDV] = (pts.flatten() - ptsRef)/h
+                # Get the updated points. Note that this is the only
+                # time we need to call _getUpdatedSurface in parallel,
+                # so we have to supply a unique file name. 
+                pts, conn = self._getUpdatedSurface('dv_perturb_%d.x'%iDV)
+                
+                localJac[:, i] = (pts.flatten() - ptsRef)/dh
 
                 # Reset the DV
                 self.DVs[dvKeys[iDV]].value = dvSave
                 
-        # To get the full jacobian we can now all reduce across the
-        # procs. This is pretty inefficient but easy to code.
-        self.jac = self.comm.allreduce(jacLocal, op=MPI.SUM)
-        print ('jac time:', time.time()-timeA)
-    def _parseDesignFile(self, fileName):
+                # If we are on the root proc, set direcly, otherwise, MPI_isend
+                if self.comm.rank == 0:
+                    self.jac[:, iDV] = localJac[:, i]
+                else:
+                    reqs.append(self.comm.isend(localJac[:, i], 0, iDV))
+                i += 1
 
-        """Parse through the given design variable file and add the DVs it
-        finds to the DV List"""
-        f = open(fileName, 'r')
-        lines = f.readlines()
-        ndvs = int(lines[0])
-
-        for i in range(ndvs):
-            aux = lines[i+1].split(':')
-            dvHash = aux[0]
-            dvComponent = aux[1]
-            dvGroup = aux[2]
-            dvParm = aux[3]
-            dvVal = float(aux[4])
-            dvName = '%s:%s:%s'%(dvComponent, dvGroup, dvParm)
-            self.DVs[dvName] = vspDV(dvHash, dvComponent, dvGroup, dvParm, dvVal)
-            
-    def _createDesignFile(self, fileName):
-        """Take the current set of design variables and create a .des file"""
-        f = open(fileName, 'w')
-        f.write('%d\n'%len(self.DVs))
-        for dvName in self.DVs:
-            DV = self.DVs[dvName]
-            f.write('%s:%s:%s:%s:%20.15g\n'%(DV.hash, DV.component, DV.group, DV.parm, DV.value))
-        f.close()
+        # Root proc finishes the receives
+        if self.comm.rank == 0:
+            for iDV in range(len(dvKeys)):
+                # This is the rank that did this DV:
+                rank = iDV % self.comm.size 
+                if rank != 0:
+                    self.jac[:, iDV] = self.comm.recv(source=rank, tag=iDV)
+        else:
+            # Wait on all the send requests
+            for req in reqs:
+                req.wait()
+                
+        # Broadcast back out to everyone
+        self.jac = self.comm.bcast(self.jac)
 
 class vspDV(object):
 
-    def __init__(self, hash, component, group, parm, value, lower=None, upper=None, scale=None):
+    def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
         """Inernal class for storing VSP design variable information"""
-        """
-        self.hash = hash
+        self.parmID = parmID
         self.component = component
         self.group = group
         self.parm = parm
         self.value = value
-        self.lower = None
-        self.upper = None
-        if lower is not None:
-            self.lower = _convertTo1D(lower, self.nVal)
-        if upper is not None:
-            self.upper = _convertTo1D(upper, self.nVal)
-        if scale is not None:
-            self.scale = _convertTo1D(scale, self.nVal)
+        self.lower = lower
+        self.upper = upper
+        self.dh = dh
+        self.scale = scale
 
 class PointSet(object):
     def __init__(self, points, faceID, uv, offset, conn, nSurf):
@@ -568,3 +606,4 @@ class PointSet(object):
 
         # Convert to csc becuase we'll be doing a transpose product on it.
         self.dPtdXsurf = jac.tocsc()
+
