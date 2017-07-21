@@ -1572,9 +1572,9 @@ class DVGeometry(object):
             xsdot = numpy.zeros((0, 3))
         else:
             xsdot = self.JT[ptSetName].T.dot(newvec)
-            xsdot.reshape(len(xsdot)/3, 3)
+            xsdot.reshape(len(xsdot)//3, 3)
             # Maybe this should be:
-            #xsdot = xsdot.reshape(len(xsdot)/3, 3)
+            #xsdot = xsdot.reshape(len(xsdot)//3, 3)
 
         return xsdot
 
