@@ -73,9 +73,13 @@ class DVGeometryVSP(object):
        geometry. For example, if the VSP model is in inches, and the CFD 
        in meters, scale=0.0254. 
 
+    comps : list of strings
+       A list of string defining the subset of the VSP components to use when 
+       exporting the P3D surface files
+
     Examples
     --------
-    The general sequence of operations for using DVGeometry is as follows::
+    The general sequence of operations for using DVGeometry is as follows:
       >>> from pygeo import *
       >>> DVGeo = DVGeometryVSP("wing.vsp3", MPI_COMM_WORLD)
       >>> # Add a set of coordinates Xpt into the object
@@ -83,7 +87,7 @@ class DVGeometryVSP(object):
       >>>
 
     """
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0):
+    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[]):
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
         self.updated = {}
@@ -94,14 +98,38 @@ class DVGeometryVSP(object):
         # Load in the VSP model
         vsp.ClearVSPModel()
         vsp.ReadVSPFile(vspFile)
+        
+        # Setup the export group set (0) with just the sets we want. 
+        self.exportSet = 9
 
-        # Create a secure directory in which we will put the temporary
-        # files we need. Just one processor needs it and will share. 
+        # List of all componets returned from VSP
+        allComps = vsp.FindGeoms()
+
+        # If we were not given comps, use all of them
+        if comps == []:
+            comps = allComps
+
+        # First set the export flag for exportSet to False for everyone
+        for comp in allComps:
+            vsp.SetSetFlag(comp, self.exportSet, False)
+
+        for comp in comps:
+            compID = vsp.FindContainer(comp, 0)
+            vsp.SetSetFlag(compID, self.exportSet, True)
+
+        stuff = vsp.GetGeomSetAtIndex(self.exportSet)
+
+        # Create a directory in which we will put the temporary files
+        # we need. We *should* use something like tmepfile.mkdtemp()
+        # but that behaves bady on pleiades. 
         tmpDir = None
         if self.comm.rank == 0:
-            tmpDir = tempfile.mkdtemp()
+            tmpDir = './tmpDir_%d_%s'%(MPI.COMM_WORLD.rank, time.time())
+            print ('Temp dir is: %s'%tmpDir)
+            if not os.path.exists(tmpDir):
+                os.makedirs(tmpDir)
         self.tmpDir = self.comm.bcast(tmpDir)
-        self.tmpDir = './tmpDir'
+        
         # Initial list of DVs
         self.DVs = OrderedDict()
 
@@ -438,6 +466,7 @@ class DVGeometryVSP(object):
         can be called with different DVs set on different
         processors and they won't interfere with each other. 
         """
+        import time
 
         # Set each of the DVs. We have the parmID stored so its easy. 
         for dvName in self.DVs:
@@ -450,7 +479,7 @@ class DVGeometryVSP(object):
 
         # Write the export file.
         fName = os.path.join(self.tmpDir, fName)
-        vsp.ExportFile(fName, 0, vsp.EXPORT_PLOT3D)
+        vsp.ExportFile(fName, self.exportSet, vsp.EXPORT_PLOT3D)
 
         # Now we load in this updated plot3d file and compute the
         # connectivity if not already done.
@@ -513,6 +542,7 @@ class DVGeometryVSP(object):
 
         ptsRef = self.pts.flatten()
         self.jac = numpy.zeros((len(self.pts0)*3, len(self.DVs)))
+        
         dvKeys = list(self.DVs.keys())
 
         # Determine how many points we'll perturb
@@ -550,7 +580,8 @@ class DVGeometryVSP(object):
                 if self.comm.rank == 0:
                     self.jac[:, iDV] = localJac[:, i]
                 else:
-                    reqs.append(self.comm.isend(localJac[:, i], 0, iDV))
+                    self.comm.send(localJac[:, i].copy(), 0, iDV)
+
                 i += 1
 
         # Root proc finishes the receives
@@ -559,14 +590,16 @@ class DVGeometryVSP(object):
                 # This is the rank that did this DV:
                 rank = iDV % self.comm.size 
                 if rank != 0:
-                    self.jac[:, iDV] = self.comm.recv(source=rank, tag=iDV)
-        else:
-            # Wait on all the send requests
-            for req in reqs:
-                req.wait()
-                
-        # Broadcast back out to everyone
-        self.jac = self.comm.bcast(self.jac)
+                    status = MPI.Status()
+                    tmp =  self.comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
+                    tag = status.Get_tag()
+                    # Get the tag so we know where to put it
+                    self.jac[:, tag] = tmp
+               
+        # Broadcast back out to everyone. mpi4py is complete screwed
+        # on pleiades so do 1 column at at time..sigh
+        for iDV in range(len(dvKeys)):
+            self.jac[:, iDV] = self.comm.bcast(self.jac[:, iDV])
 
 class vspDV(object):
 
