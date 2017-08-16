@@ -299,6 +299,17 @@ class DVGeometryVSP(object):
         """ Return the number of DVs"""
         return len(self.DVs)
 
+    def getVarNames(self):
+        """
+        Return a list of the design variable names. This is typically
+        used when specifying a wrt= argument for pyOptSparse.
+
+        Examples
+        --------
+        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        """
+        return list(self.DVs.keys())
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
         This function computes sensitivty information.
@@ -361,7 +372,7 @@ class DVGeometryVSP(object):
         dIdxDict = {}
         i = 0
         for dvName in self.DVs:
-            dIdxDict[dvName] = dIdx[:, i]
+            dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
             i += 1
 
         return dIdxDict
