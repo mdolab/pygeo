@@ -1129,8 +1129,8 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
-                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
-                        self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
+                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
+                        self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
 
             else:
@@ -1685,7 +1685,6 @@ class DVGeometry(object):
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_local)
             else:
-                print('shapes',J_temp.shape,J_local.shape)
                 J_temp += J_local
 
         if J_casc is not None:
