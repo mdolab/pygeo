@@ -1150,7 +1150,7 @@ class PointSelect(object):
                                                           [klow, khigh]]})
         Then to get the point indices you need to use:
         ps.getPointsijk(FFD)
-        
+
 
         'list': Define the indices of a list that will be used to
         extract the points
@@ -1228,7 +1228,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
         elif psType == 'list':
             self.box = None
             self.type = 'list'
-            self.indices = np.array(args[0])
+            self.indices = np.unique(np.array(args[0]))
 
         elif psType == 'ijkBounds':
 
@@ -1281,7 +1281,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
             jhigh = self.ijkBounds[iVol][1][1]
             klow = self.ijkBounds[iVol][2][0]
             khigh = self.ijkBounds[iVol][2][1]
-            
+
             # Retrieve current points
             indList.extend(DVGeo.FFD.topo.lIndex[iVol][ilow:ihigh,jlow:jhigh,klow:khigh].flatten())
 
@@ -2766,8 +2766,8 @@ class EdgeCmpObject(object):
 
         if self.n2 != other.n2:
             return self.n2 < other.n2
-        
-        if eDist(self.midPt, other.midPt) < self.tol: 
+
+        if eDist(self.midPt, other.midPt) < self.tol:
             return False
         else:
             if self.midPt[0] != other.midPt[0]:
@@ -2779,7 +2779,7 @@ class EdgeCmpObject(object):
             return False
 
     def __eq__(self, other):
-        if (self.n1 == other.n1 and self.n2 == other.n2 and 
+        if (self.n1 == other.n1 and self.n2 == other.n2 and
             eDist(self.midPt, other.midPt) < self.tol):
             return True
         else:
@@ -2787,7 +2787,7 @@ class EdgeCmpObject(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
- 
+
 class FaceCmpObject(object):
     """A temporary class for sorting edge objects"""
 
@@ -2817,8 +2817,8 @@ class FaceCmpObject(object):
 
         if self.n4 != other.n4:
             return self.n4 < other.n4
-        
-        if eDist(self.midPt, other.midPt) < self.tol: 
+
+        if eDist(self.midPt, other.midPt) < self.tol:
             return False
         else:
             if self.midPt[0] != other.midPt[0]:
@@ -2830,8 +2830,8 @@ class FaceCmpObject(object):
             return False
 
     def __eq__(self, other):
-        if (self.n1 == other.n1 and self.n2 == other.n2 and 
-            self.n3 == other.n3 and self.n4 == other.n4 and 
+        if (self.n1 == other.n1 and self.n2 == other.n2 and
+            self.n3 == other.n3 and self.n4 == other.n4 and
             eDist(self.midPt, other.midPt) < self.tol):
             return True
         else:
