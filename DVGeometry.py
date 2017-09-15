@@ -806,7 +806,7 @@ class DVGeometry(object):
         secTransform = [numpy.eye(3)]
 
         if type(secIndex) is str:
-            secIndex = [secIndex]*self.FFD.nVol
+            secIndex = [secIndex]*len(volList)
         elif type(secIndex) is list:
             if len(secIndex) != len(volList):
                 raise Error('If a list is given for secIndex, the length must be'
@@ -815,7 +815,7 @@ class DVGeometry(object):
         if orient0 is not None:
             # 'i', 'j', or 'k'
             if type(orient0) is str:
-                orient0 = [orient0]*self.FFD.nVol
+                orient0 = [orient0]*len(volList)
             # ['k', 'k', 'i', etc.]
             elif type(orient0) is list:
                 if len(orient0) != len(volList):
