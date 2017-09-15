@@ -195,7 +195,7 @@ class DVGeometry(object):
         self.masks = tmp
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
-                   rotType=5, axis='x', alignIndex=None):
+                   rotType=5, axis='x', alignIndex=None, rotAxisVar=None):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -249,6 +249,7 @@ class DVGeometry(object):
             5. z-x-y  Default (x-streamwise y-up z-out wing)
             6. z-y-x
             7. z-x-y + rot_theta
+            8. z-x-y + rotation about section axis (to allow for winglet rotation)
 
         axis: str
             Axis along which to project points/control points onto the
@@ -404,7 +405,7 @@ class DVGeometry(object):
             curve = pySpline.Curve(X=refaxisNodes, k=2)
             nAxis = len(curve.coef)
             self.axis[name] = {'curve':curve, 'volumes':volumes,
-                               'rotType':rotType, 'axis':axis}
+                               'rotType':rotType, 'axis':axis, 'rotAxisVar':rotAxisVar}
         else:
             raise Error("One of 'curve' or 'xFraction' must be "
                         "specified for a call to addRefAxis")
@@ -724,7 +725,7 @@ class DVGeometry(object):
         secIndex : char or list of chars
             For each volume, we need to specify along which index we would like
             to subdivide the volume into sections. Entries in list can be 'i',
-            'j', or 'k'. This index will be designated as the transverse (0)
+            'j', or 'k'. This index will be designated as the transverse (2)
             direction in terms of the direction of perturbation for the 'axis'
             parameter.
 
@@ -831,12 +832,12 @@ class DVGeometry(object):
                 elif orient0.shape[0] != len(volList):
                     raise Error('If an array is given for orient0, the row dimension'
                                 ' must be equal to the length of volList.')
-            for iVol in volList:
-                self.sectionFrame(secIndex[iVol], secTransform, secLink, iVol,
-                                orient0[iVol])
+            for i, iVol in enumerate(volList):
+                self.sectionFrame(secIndex[i], secTransform, secLink, iVol,
+                                orient0[i])
         else:
-            for iVol in volList:
-                self.sectionFrame(secIndex[iVol], secTransform, secLink, iVol)
+            for i, iVol in enumerate(volList):
+                self.sectionFrame(secIndex[i], secTransform, secLink, iVol)
 
         self.DV_listSectionLocal[dvName] = geoDVSectionLocal(dvName, lower, upper,
                                                scale, axis, ind, self.masks,
@@ -1128,8 +1129,8 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
-                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_x[
-                        self.curveIDs[ipt]](self.links_s[ipt])*numpy.pi/180)
+                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
+                        self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
                 new_pts[ipt] = base_pt + new_vec*scale
 
             else:
@@ -1157,6 +1158,13 @@ class DVGeometry(object):
                         self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                     deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                     D = geo_utils.rotVbyW(D, deriv, numpy.pi/180*self.rot_theta[
+                            self.curveIDNames[ipt]](self.links_s[ipt]))
+
+                elif rotType == 8:
+                    varname = self.axis[self.curveIDNames[ipt]]['rotAxisVar']
+                    slVar = self.DV_listSectionLocal[varname]
+                    W = slVar.sectionTransform[slVar.sectionLink[slVar.coefList[ipt]]][:,2]
+                    D = geo_utils.rotVbyW(D, W, numpy.pi/180*self.rot_theta[
                             self.curveIDNames[ipt]](self.links_s[ipt]))
 
                 D[0] *= scale_x
@@ -1429,7 +1437,7 @@ class DVGeometry(object):
             dIdx[i:i+dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
 
-        #Note: not sure if this works with (multiple) sibling child FFDs    
+        #Note: not sure if this works with (multiple) sibling child FFDs
         for iChild in range(len(self.children)):
             childdIdx = self.children[iChild].convertDictToSensitivity(dIdxDict)
             # update the total sensitivities with the derivatives from the child
@@ -1542,7 +1550,7 @@ class DVGeometry(object):
         Returns
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
-            
+
         Notes
         -----
         The ``child`` and ``nDVStore`` options are only used
@@ -1677,7 +1685,6 @@ class DVGeometry(object):
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_local)
             else:
-                print('shapes',J_temp.shape,J_local.shape)
                 J_temp += J_local
 
         if J_casc is not None:
@@ -1702,7 +1709,7 @@ class DVGeometry(object):
         # compute the derivatives of the coeficients of this level wrt all of the design
         # variables at this level and all levels above
         J_temp = self.computeDVJacobian(config=config)
-      
+
         # now get the derivative of the points for this level wrt the coefficients(dPtdCoef)
         if self.FFD.embededVolumes[ptSetName].dPtdCoef is not None:
             dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef.tocoo()
@@ -2174,7 +2181,8 @@ class DVGeometry(object):
             D = numpy.dot(rotX, numpy.dot(rotY, rotZ))
         elif rotType == 7:
             D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
-
+        elif rotType == 8:
+            D = numpy.dot(rotY, numpy.dot(rotX, rotZ))
         return D
 
     def _getNDV(self):
@@ -2297,6 +2305,7 @@ class DVGeometry(object):
         nDVG = self._getNDVGlobalSelf()
         nDVL = self._getNDVLocalSelf()
         nDVSL = self._getNDVSectionLocalSelf()
+
         # Set the total number of global and local DVs into any children of this parent
         for child in self.children:
             # now get the numbers for the current parent child
@@ -2313,7 +2322,7 @@ class DVGeometry(object):
             nDVG += child._getNDVGlobalSelf()
             nDVL += child._getNDVLocalSelf()
             nDVSL += child._getNDVSectionLocalSelf()
-        
+
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count
 
     def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0/1e-40, config=None, localDV=False):
@@ -2771,7 +2780,6 @@ class DVGeometry(object):
                 self.children[iChild].dCcdXdvl = numpy.zeros((N*3, self.nDV_T))
 
             iDVLocal = self.nDVL_count
-
             for key in self.DV_listLocal:
                 if self.DV_listLocal[key].config is None or \
                    config in self.DV_listLocal[key].config:
@@ -2779,9 +2787,7 @@ class DVGeometry(object):
                     nVal = self.DV_listLocal[key].nVal
                     for j in range(nVal):
                         pt_dv = self.DV_listLocal[key].coefList[j]
-
                         irow = pt_dv[0]*3 + pt_dv[1]
-
                         Jacobian[irow, iDVLocal] = 1.0
 
                         for iChild in range(len(self.children)):
