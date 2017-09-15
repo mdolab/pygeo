@@ -209,12 +209,12 @@ class DVGeometry(object):
         #. The first is explicitly a pySpline curve object using the
            keyword argument curve=<curve>.
 
-        #. The second is to specify the xFraction variable. There are
+        #. The second is to specify the xFraction variable. There are a
            few caveats with the use of this method. First, DVGeometry
            will try to determine automatically the orientation of the FFD
-           volume. Then, a reference axis will consist of the same number
-           of span-wise sections as the FFD volume has and will be will
-           be oriented in the streamwise (x-direction) according to the
+           volume. Then, a reference axis will consist of the same number of
+           control points as the number of span-wise sections in the FFD volume
+           and will be oriented in the streamwise (x-direction) according to the
            xPercent keyword argument.
 
         Parameters
@@ -258,6 +258,11 @@ class DVGeometry(object):
         alignIndex: str
             FFD axis along which the reference axis will lie. Can be 'i', 'j',
             or 'k'. Only necessary when using xFraction.
+
+        rotAxisVar: str
+            If rotType == 8, then you must specify the name of the section local
+            variable which should be used to compute the orientation of the theta
+            rotation.
 
         Notes
         -----
