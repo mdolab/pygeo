@@ -275,6 +275,10 @@ class DVGeometryVSP(object):
 
         return newPts
 
+    def writeVSPFile(self, fileName, exportSet=0):
+        """Take the current design and write a new FSP file"""
+        vsp.WriteVSPFile(fileName, exportSet)
+ 
     def pointSetUpToDate(self, ptSetName):
         """
         This is used externally to query if the object needs to update

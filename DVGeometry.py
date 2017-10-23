@@ -1677,7 +1677,6 @@ class DVGeometry(object):
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_local)
             else:
-                print('shapes',J_temp.shape,J_local.shape)
                 J_temp += J_local
 
         if J_casc is not None:
@@ -2865,7 +2864,6 @@ class DVGeometry(object):
 
 
                 # sum up all of the various influences
-                #print('shapes',Jacobian[0::3, iDV].shape,self.FFD.coef[:,0:1].shape)
                 Jacobian[0::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,0:1])
                 Jacobian[1::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,1:2])
                 Jacobian[2::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,2:3])
