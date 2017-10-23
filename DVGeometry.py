@@ -328,7 +328,6 @@ class DVGeometry(object):
                                    'rotType':rotType, 'axis':axis}
                 self.axis[name+'Symm'] = {'curve':curveSymm, 'volumes':volumesSymm,
                                           'rotType':rotType, 'axis':axis}
-
             nAxis = len(curve.coef)
         elif xFraction is not None:
             # Some assumptions
@@ -367,7 +366,6 @@ class DVGeometry(object):
             for iter in range(nVol):
                 for vInd, i in enumerate(v):
                     for pInd, j in enumerate(volOrd):
-                        # print(iter, i, j, v, volOrd)
                         if faceLink[i,faceCol] == faceLink[j,faceCol+1]:
                             volOrd.insert(pInd+1, v.pop(vInd))
                             break
@@ -1168,7 +1166,8 @@ class DVGeometry(object):
                 elif rotType == 8:
                     varname = self.axis[self.curveIDNames[ipt]]['rotAxisVar']
                     slVar = self.DV_listSectionLocal[varname]
-                    W = slVar.sectionTransform[slVar.sectionLink[slVar.coefList[ipt]]][:,2]
+                    attachedPoint = self.ptAttachInd[ipt]
+                    W = slVar.sectionTransform[slVar.sectionLink[attachedPoint]][:,2]
                     D = geo_utils.rotVbyW(D, W, numpy.pi/180*self.rot_theta[
                             self.curveIDNames[ipt]](self.links_s[ipt]))
 
@@ -2890,7 +2889,6 @@ class DVGeometry(object):
 
 
                 # sum up all of the various influences
-                #print('shapes',Jacobian[0::3, iDV].shape,self.FFD.coef[:,0:1].shape)
                 Jacobian[0::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,0:1])
                 Jacobian[1::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,1:2])
                 Jacobian[2::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,2:3])
