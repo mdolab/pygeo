@@ -814,7 +814,7 @@ class DVGeometry(object):
         if orient0 is not None:
             # 'i', 'j', or 'k'
             if type(orient0) is str:
-                orient0 = [orient0]*len(volList)
+                orient0 = [orient0]*self.FFD.nVol
             # ['k', 'k', 'i', etc.]
             elif type(orient0) is list:
                 if len(orient0) != len(volList):
@@ -2329,9 +2329,23 @@ class DVGeometry(object):
             # Recompute changes due to global dvs at current point + h
             self.updateCalculations(new_pts, isComplex=True, config=config)
 
+            # create a vector of the size of the full FFD
+            tmp = numpy.zeros(self.FFD.coef.shape,dtype='D')
+            numpy.put(tmp[:, 0], self.ptAttachInd,
+                      new_pts[:,0])
+            numpy.put(tmp[:, 1], self.ptAttachInd,
+                      new_pts[:,1])
+            numpy.put(tmp[:, 2], self.ptAttachInd,
+                      new_pts[:,2])
+
             # Add dependence of section variables on the global dv rotations
             for key in self.DV_listSectionLocal:
-                self.DV_listSectionLocal[key](new_pts, self.coefRotM, config)
+                self.DV_listSectionLocal[key](tmp, self.coefRotM, config)
+
+            # Send values back to new_pts
+            new_pts[:,0] = tmp[self.ptAttachInd,0]
+            new_pts[:,1] = tmp[self.ptAttachInd,1]
+            new_pts[:,2] = tmp[self.ptAttachInd,2]
 
             # set the forward effect of the global design vars in each child
             for iChild in range(len(self.children)):
