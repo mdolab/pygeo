@@ -28,15 +28,15 @@ class Error(Exception):
         msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
         print(msg)
         Exception.__init__(self)
-        
+
 class pyBlock():
     """
-    pyBlock represents a collection of pySpline Volume objects. 
+    pyBlock represents a collection of pySpline Volume objects.
 
     It performs several functions including fitting and point
     projections.  The actual b-spline volumes are of the pySpline
     Volume type.
-    
+
     Parameters
     ----------
     initType : str
@@ -44,18 +44,18 @@ class pyBlock():
 
     fileName : str
        Filename of the plot3d file to be loaded. Should have a .fmt or
-       .xyz extension. Also must be in ASCII format. 
+       .xyz extension. Also must be in ASCII format.
 
     FFD : bool
        Flag to indicate that this object is to be created as an FFD.
        When this is true, no fitting is performed; The coordinates in
        the plot 3d file explicitly become the control points and
        uniform (and symmetric) knot vectors are assumed
-       everywhere. This ensures a seamless FFD. 
+       everywhere. This ensures a seamless FFD.
        """
- 
+
     def __init__(self, initType, fileName=None, FFD=False,symmPlane=None, **kwargs):
-                
+
         self.initType = initType
         self.FFD = False
         self.topo = None         # The topology of the volumes/surface
@@ -75,7 +75,7 @@ class pyBlock():
 
 # ----------------------------------------------------------------------
 #                     Initialization Types
-# ----------------------------------------------------------------------    
+# ----------------------------------------------------------------------
 
     def _readPlot3D(self, fileName, order='f', FFD=False,symmTol=0.001):
         """ Load a plot3D file and create the splines to go with each
@@ -85,10 +85,10 @@ class pyBlock():
         ----------
         order : {'f','c'}
             Internal ordering of plot3d file. Generally should be 'f'
-            for fortran ordering. But could be 'c'. 
+            for fortran ordering. But could be 'c'.
         """
 
-        binary = False # Binary read no longer supported. 
+        binary = False # Binary read no longer supported.
         f = open(fileName, 'r')
         nVol = readNValues(f, 1, 'int', False)[0]
         sizes   = readNValues(f, nVol*3, 'int', False).reshape((nVol, 3))
@@ -115,7 +115,7 @@ class pyBlock():
 
             # HOWEVER just doing this results in a left-handed block (if
             # the original block was right handed). So we have to also
-            # reverse ONE of the indices 
+            # reverse ONE of the indices
             coords[:, :, :, :] = coords[::-1, :, :, :]
             # dims = coords.shape
             # for k in range(dims[2]):
@@ -125,14 +125,14 @@ class pyBlock():
 
         def symmZero(axis,coords,tol):
             """ set all coords within a certain tolerance of the symm plan to be exactly 0"""
-            
+
             if axis.lower() == 'x':
                 index = 0
             elif axis.lower() == 'y':
                 index = 1
             elif axis.lower() == 'z':
                 index = 2
-                
+
             dims = coords.shape
             for k in range(dims[2]):
                 for j in range(dims[1]):
@@ -142,7 +142,7 @@ class pyBlock():
                             coords[i,j,k,index]=0
 
         if self.symmPlane is not None:
-            #duplicate and mirror the blocks. 
+            #duplicate and mirror the blocks.
             newBlocks = []
             for block in blocks:
                 newBlock = copy.deepcopy(block)
@@ -161,16 +161,16 @@ class pyBlock():
 
         # Now create a list of spline volume objects:
         self.vols = []
-    
+
         if FFD:
             self.FFD = True
 
             def uniformKnots(N, k):
                 """ Simple function to generate N uniform knots of
                 order k"""
-                
+
                 knots = numpy.zeros(N+k)
-                knots[0:k-1] = 0.0 
+                knots[0:k-1] = 0.0
                 knots[-k:] = 1.0
                 knots[k-1:-k+1] = numpy.linspace(0, 1, N-k+2)
 
@@ -184,11 +184,11 @@ class pyBlock():
                 # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by
                 # construction symmetric
-                    
+
                 self.vols.append(pySpline.Volume(
-                    ku=ku, kv=kv, kw=kw, coef=blocks[ivol], 
-                    tu=uniformKnots(sizes[ivol, 0], ku), 
-                    tv=uniformKnots(sizes[ivol, 1], kv), 
+                    ku=ku, kv=kv, kw=kw, coef=blocks[ivol],
+                    tu=uniformKnots(sizes[ivol, 0], ku),
+                    tv=uniformKnots(sizes[ivol, 1], kv),
                     tw=uniformKnots(sizes[ivol, 2], kw)))
 
                 # Generate dummy original data:
@@ -227,45 +227,45 @@ class pyBlock():
             # the parametrization and knot vectors
             for ivol in range(nVol):
                 self.vols.append(pySpline.Volume(
-                    X=blocks[ivol], ku=4, kv=4, kw=4, 
-                    nCtlu=4, nCtlv=4, nCtlw=4, 
+                    X=blocks[ivol], ku=4, kv=4, kw=4,
+                    nCtlu=4, nCtlv=4, nCtlw=4,
                     recompute=False))
             self.nVol = len(self.vols)
         # end if (FFD Check)
 
-        
+
     def fitGlobal(self, greedyReorder=False):
         """
         Determine the set of b-spline coefficients that best fits the
         set of volumes in the global sense. This is *required* for
-        non-FFD creation. 
+        non-FFD creation.
 
         Parameters
         ----------
         greedyReorder : bool
             Flag to compute ordering of initial mesh in a greedy
-            ordering sense. 
+            ordering sense.
             """
-        
+
         nCtl = self.topo.nGlobal
         origTopo = copy.deepcopy(self.topo)
-        
+
         print(' -> Creating global numbering')
         sizes = []
         for ivol in range(self.nVol):
-            sizes.append([self.vols[ivol].Nu, 
-                          self.vols[ivol].Nv, 
+            sizes.append([self.vols[ivol].Nu,
+                          self.vols[ivol].Nv,
                           self.vols[ivol].Nw])
-        
+
         # Get the Global number of the original data
-        origTopo.calcGlobalNumbering(sizes, greedyReorder=greedyReorder) 
+        origTopo.calcGlobalNumbering(sizes, greedyReorder=greedyReorder)
         N = origTopo.nGlobal
         print(' -> Creating global point list')
         pts = numpy.zeros((N, 3))
         for ii in range(N):
             pts[ii] = self.vols[origTopo.gIndex[ii][0][0]].X[
-                origTopo.gIndex[ii][0][1], 
-                origTopo.gIndex[ii][0][2], 
+                origTopo.gIndex[ii][0][1],
+                origTopo.gIndex[ii][0][2],
                 origTopo.gIndex[ii][0][3]]
 
         # Get the maximum k (ku, kv, kw for each vol)
@@ -287,7 +287,7 @@ class pyBlock():
             u = self.vols[ivol].U[i, j, k]
             v = self.vols[ivol].V[i, j, k]
             w = self.vols[ivol].W[i, j, k]
-         
+
             vals, colInd = self.vols[ivol].getBasisPt(
                 u, v, w, vals, rowPtr[ii], colInd, self.topo.lIndex[ivol])
             kinc = self.vols[ivol].ku*self.vols[ivol].kv*self.vols[ivol].kw
@@ -296,7 +296,7 @@ class pyBlock():
         # Now we can crop out any additional values in colInd and vals
         vals = vals[:rowPtr[-1]]
         colInd = colInd[:rowPtr[-1]]
-        
+
         # Now make a sparse matrix, the N, and N^T * N factors, sovle
         # and set:
         NN = sparse.csr_matrix((vals, colInd, rowPtr))
@@ -314,9 +314,9 @@ class pyBlock():
 
 # ----------------------------------------------------------------------
 #                     Topology Information Functions
-# ----------------------------------------------------------------------    
+# ----------------------------------------------------------------------
 
-    def doConnectivity(self, fileName=None, nodeTol=1e-4, edgeTol=1e-4, 
+    def doConnectivity(self, fileName=None, nodeTol=1e-4, edgeTol=1e-4,
                        greedyReorder=False):
         """
         This function is used if a separate fitting topology is
@@ -333,7 +333,7 @@ class pyBlock():
         edgeTol : float
             Tolerance for co-incidient mid points of edges
         greedyReorder : bool
-            Flag to reorder numbering in a greedy form. 
+            Flag to reorder numbering in a greedy form.
             """
 
         if fileName is not None and os.path.isfile(fileName):
@@ -351,7 +351,7 @@ class pyBlock():
 
         sizes = []
         for ivol in range(self.nVol):
-            sizes.append([self.vols[ivol].nClu, self.vols[ivol].nCtlv, 
+            sizes.append([self.vols[ivol].nClu, self.vols[ivol].nCtlv,
                               self.vols[ivol].nCtlw])
         self.topo.calcGlobalNumbering(sizes, greedyReorder=greedyReorder)
 
@@ -383,7 +383,7 @@ class pyBlock():
         self.topo = BlockTopology(coords, nodeTol=nodeTol, edgeTol=edgeTol)
         sizes = []
         for ivol in range(self.nVol):
-            sizes.append([self.vols[ivol].nCtlu, self.vols[ivol].nCtlv, 
+            sizes.append([self.vols[ivol].nCtlu, self.vols[ivol].nCtlv,
                           self.vols[ivol].nCtlw])
         self.topo.calcGlobalNumbering(sizes)
 
@@ -392,10 +392,10 @@ class pyBlock():
         Print the connectivity information to the screen
         """
         self.topo.printConnectivity()
-  
+
     def _propagateKnotVectors(self):
         """ Propagate the knot vectors to make consistent"""
-     
+
         nDG = -1
         ncoef = []
         for i in range(self.topo.nEdge):
@@ -433,7 +433,7 @@ class pyBlock():
             self.vols[ivol].calcKnots()
             # Now loop over the number of design groups, accumulate all
             # the knot vectors that correspond to this dg, then merge them all
-        
+
         for idg in range(nDG):
             knotVectors = []
             flip = []
@@ -441,7 +441,7 @@ class pyBlock():
                 for iedge in range(12):
                     if self.topo.edges[
                         self.topo.edgeLink[ivol][iedge]].dg == idg:
-                        
+
                         if self.topo.edgeDir[ivol][iedge] == -1:
                             flip.append(True)
                         else:
@@ -458,7 +458,7 @@ class pyBlock():
                             knotVectors.append((1-knotVec)[::-1].copy())
                         else:
                             knotVectors.append(knotVec)
-           
+
             # Now blend all the knot vectors
             newKnotVec = blendKnotVectors(knotVectors, False)
             newKnotVecFlip = (1-newKnotVec)[::-1]
@@ -496,10 +496,10 @@ class pyBlock():
 
 # ----------------------------------------------------------------------
 #                        Output Functions
-# ----------------------------------------------------------------------    
-    def writeTecplot(self, fileName, vols=True, coef=True, orig=False, 
+# ----------------------------------------------------------------------
+    def writeTecplot(self, fileName, vols=True, coef=True, orig=False,
                      volLabels=False, edgeLabels=False, nodeLabels=False):
-        """Write a tecplot visualization of the pyBlock object. 
+        """Write a tecplot visualization of the pyBlock object.
 
         Parameters
         ----------
@@ -563,7 +563,7 @@ class pyBlock():
                     self.vols[ivol].coef[midu, midv, midw, 2], ivol)
                 f2.write('%s'%(textString))
             f2.close()
-            
+
         if edgeLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
@@ -605,7 +605,7 @@ class pyBlock():
             f2.close()
 
         pySpline.closeTecplot(f)
-        
+
     def writePlot3d(self, fileName):
         """Write the grid to a plot3d file. This isn't efficient as it
         used ASCII format. Only useful for quick visualizations
@@ -621,13 +621,13 @@ class pyBlock():
             sizes.append(self.vols[ivol].Nu)
             sizes.append(self.vols[ivol].Nv)
             sizes.append(self.vols[ivol].Nw)
-        
+
         f = open(fileName, 'w')
         f.write('%d\n'%(self.nVol))
         numpy.array(sizes).tofile(f, sep=" ")
         f.write('\n')
         for ivol in range(self.nVol):
-            vals = self.vols[ivol](self.vols[ivol].U, self.vols[ivol].V, 
+            vals = self.vols[ivol](self.vols[ivol].U, self.vols[ivol].V,
                                    self.vols[ivol].W)
             vals[:, :, :, 0].flatten(1).tofile(f, sep="\n")
             f.write('\n')
@@ -639,7 +639,7 @@ class pyBlock():
 
     def writePlot3dCoef(self, fileName):
         """Write the *coefficients* of the volumes  to a plot3d
-        file. 
+        file.
 
         Parameters
         ----------
@@ -652,7 +652,7 @@ class pyBlock():
             sizes.append(self.vols[ivol].nCtlu)
             sizes.append(self.vols[ivol].nCtlv)
             sizes.append(self.vols[ivol].nCtlw)
-        
+
         f = open(fileName, 'w')
         f.write('%d\n'% (self.nVol))
         numpy.array(sizes).tofile(f, sep=" ")
@@ -666,10 +666,10 @@ class pyBlock():
             vals[:, :, :, 2].flatten(1).tofile(f, sep="\n")
             f.write('\n')
         f.close()
-        
+
 # ----------------------------------------------------------------------
 #               Update Functions
-# ----------------------------------------------------------------------    
+# ----------------------------------------------------------------------
     def _updateVolumeCoef(self):
         """Copy the pyBlock list of control points back to the volumes"""
         for ii in range(len(self.coef)):
@@ -684,7 +684,7 @@ class pyBlock():
         """Set the global coefficient array self.coef from the
         coefficients on the volumes. This typically needs only to be
         called once when the object is created"""
-        
+
         self.coef = numpy.zeros((self.topo.nGlobal, 3))
         for ivol in range(self.nVol):
             vol = self.vols[ivol]
@@ -702,7 +702,7 @@ class pyBlock():
         Parameters
         ----------
         ptSetName : str
-            The name of the point set to use. 
+            The name of the point set to use.
         """
 
         # Extract values to make the code a little easier to read:
@@ -758,8 +758,8 @@ class pyBlock():
         -------
         coordinates : numpy array (Nx3)
             The coordinates of the embedded points. If a mask was used,
-            only the points corresponding to the indices in mask will be 
-            non-zero in the array. 
+            only the points corresponding to the indices in mask will be
+            non-zero in the array.
             """
 
         volID = self.embededVolumes[ptSetName].volID
@@ -791,9 +791,9 @@ class pyBlock():
 
 # ----------------------------------------------------------------------
 #             Embedded Geometry Functions
-# ----------------------------------------------------------------------    
+# ----------------------------------------------------------------------
 
-    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, 
+    def attachPoints(self, coordinates, ptSetName, interiorOnly=False,
                      faceFreeze=None, eps=1e-12, **kwargs):
         """Embed a set of coordinates into the volumes. This is the
         main high level function that is used by DVGeometry when
@@ -804,13 +804,13 @@ class pyBlock():
         coordinates : array, size (N,3)
             The coordinates to embed in the object
         ptSetName : str
-            The name given to this set of coordinates. 
+            The name given to this set of coordinates.
         interiorOnly : bool
             Project only points that lie fully inside the volume
-        faceFreeze : 
+        faceFreeze :
             A dictionary of lists of strings specifying which faces should be
             'frozen'. Each dictionary represents one block in the FFD.
-            This is only used with child FFD's in DVGeometry. 
+            This is only used with child FFD's in DVGeometry.
             For example if faceFreeze =['0':['iLow'],'1':[]], then the
             plane of control points corresponding to i=0, and i=1, in block '0'
             will not be able to move in DVGeometry.
@@ -840,18 +840,18 @@ class pyBlock():
                 self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
         # end if (Coordinate not none check)
 
-        return 
+        return
 
 # ----------------------------------------------------------------------
 #             Geometric Functions
-# ----------------------------------------------------------------------    
+# ----------------------------------------------------------------------
 
     def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
-        
-        This is still *technically* a inefficient brute force search, 
+
+        This is still *technically* a inefficient brute force search,
         but it uses some heuristics to give a much more efficient
         algorithm. Basically, we use the volume the last point was
         projected in as a 'good guess' as to what volume the current
@@ -867,7 +867,7 @@ class pyBlock():
             Physical tolerance to which to converge Newton search
         checkErrors : bool
             Flag to print out the error is points have not been projected
-            to tolerance eps. 
+            to tolerance eps.
         nIter : int
             Maximum number of Newton iterations to perform. The
             default of 100 should be sufficient for points that
@@ -889,7 +889,7 @@ class pyBlock():
         u0 = 0.0
         v0 = 0.0
         w0 = 0.0
-        
+
         for i in range(N):
             for j in range(self.nVol):
                 iVol = volList[j]
@@ -919,7 +919,7 @@ class pyBlock():
             # list and the remainder are shuffled towards the back
             volList = numpy.hstack([iVol, volList[:j], volList[j+1:]])
         # end for (length of x0)
-        
+
         # If desired check the errors and print warnings:
         if checkErrors:
             # Loop back through the points and determine which ones are
@@ -932,7 +932,7 @@ class pyBlock():
                 nrm = numpy.linalg.norm(D[i])
                 if nrm > DMax:
                     DMax = nrm
-          
+
                 DRms += nrm**2
                 if nrm > eps*50:
                     counter += 1
@@ -950,18 +950,18 @@ class pyBlock():
                 print('List of Points is: (pt, delta):')
                 for i in range(len(badPts)):
                     print('[%12.5g %12.5g %12.5g] [%12.5g %12.5g %12.5g]'%(
-                        badPts[i][0][0], 
-                        badPts[i][0][1], 
-                        badPts[i][0][2], 
-                        badPts[i][1][0], 
-                        badPts[i][1][1], 
+                        badPts[i][0][0],
+                        badPts[i][0][1],
+                        badPts[i][0][2],
+                        badPts[i][1][0],
+                        badPts[i][1][1],
                         badPts[i][1][2]))
-     
+
         return volID, u, v, w, D
 
     def getBounds(self):
         """Determine the extents of the set of volumes
-            
+
         Returns
         -------
         xMin : array of length 3
@@ -978,7 +978,7 @@ class pyBlock():
                 Xmax[iDim] = max(Xmax[iDim], Xmax0[iDim])
 
         return Xmin, Xmax
-  
+
 class EmbeddedVolume(object):
     """A Container class for a set of embedded volume points
 
@@ -1011,4 +1011,3 @@ class EmbeddedVolume(object):
 
         for iVol in uniqueVolIDs:
             self.indices[iVol] = numpy.where(self.volID == iVol)[0]
-                       
