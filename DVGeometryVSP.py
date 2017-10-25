@@ -107,7 +107,8 @@ class DVGeometryVSP(object):
 
         # If we were not given comps, use all of them
         if comps == []:
-            comps = allComps
+            for c in allComps:
+                comps.append(vsp.GetContainerName(c))
 
         # First set the export flag for exportSet to False for everyone
         for comp in allComps:
@@ -278,7 +279,7 @@ class DVGeometryVSP(object):
     def writeVSPFile(self, fileName, exportSet=0):
         """Take the current design and write a new FSP file"""
         vsp.WriteVSPFile(fileName, exportSet)
- 
+
     def pointSetUpToDate(self, ptSetName):
         """
         This is used externally to query if the object needs to update
