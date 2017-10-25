@@ -454,6 +454,20 @@ class DVGeometryVSP(object):
             f.write('%s:%s:%s:%s:%20.15g\n'%(DV.parmID, DV.component, DV.group, DV.parm, DV.value))
         f.close()
 
+    def writePlot3D(self, fileName):
+        """Write the current design to Plot3D file"""
+
+        for dvName in self.DVs:
+            DV = self.DVs[dvName]
+            # We use float here since sometimes pyoptsparse will give
+            # stupid numpy zero-dimensional arrays, which swig does
+            # not like.
+            vsp.SetParmVal(DV.parmID, float(DV.value))
+        vsp.Update()
+
+        # Write the export file.
+        vsp.ExportFile(fileName, self.exportSet, vsp.EXPORT_PLOT3D)
+
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
