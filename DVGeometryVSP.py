@@ -8,12 +8,14 @@ import shutil
 import os
 import sys
 import time
-from collections import OrderedDict
 import numpy
+from collections import OrderedDict
 from scipy import sparse
+from scipy.spatial import cKDTree
 from mpi4py import MPI
 from pyspline import pySpline
 import vsp
+from cgtlib import lsect
 
 class Error(Exception):
     """
@@ -87,7 +89,8 @@ class DVGeometryVSP(object):
       >>>
 
     """
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[], debug=False):
+    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[],
+                 intersectedComps=[], debug=False):
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
         self.updated = {}
@@ -95,6 +98,7 @@ class DVGeometryVSP(object):
         self.comm = comm
         self.vspFile = vspFile
         self.debug = debug
+
         # Load in the VSP model
         vsp.ClearVSPModel()
         vsp.ReadVSPFile(vspFile)
@@ -102,7 +106,9 @@ class DVGeometryVSP(object):
         # Setup the export group set (0) with just the sets we want.
         self.exportSet = 9
 
-        # List of all componets returned from VSP
+        # List of all componets returned from VSP. Note that this
+        # order is important...it is the order the comps will be
+        # written out in plot3d format.
         allComps = vsp.FindGeoms()
 
         # If we were not given comps, use all of them
@@ -114,13 +120,17 @@ class DVGeometryVSP(object):
         for comp in allComps:
             vsp.SetSetFlag(comp, self.exportSet, False)
 
-        for comp in comps:
-            compID = vsp.FindContainer(comp, 0)
-            vsp.SetSetFlag(compID, self.exportSet, True)
+        self.exportComps = []
+        for comp in allComps:
+            # Check if this one is in our list:
+            compName = vsp.GetContainerName(comp)
+            if compName in comps:
+                vsp.SetSetFlag(comp, self.exportSet, True)
+                self.exportComps.append(compName)
 
         # Create a directory in which we will put the temporary files
         # we need. We *should* use something like tmepfile.mkdtemp()
-        # but that behaves bady on pleiades.
+        # but that behaves badly on pleiades.
         tmpDir = None
         if self.comm.rank == 0:
             tmpDir = './tmpDir_%d_%s'%(MPI.COMM_WORLD.rank, time.time())
@@ -135,12 +145,32 @@ class DVGeometryVSP(object):
         # Run the update. This will also set the conn on the first pass
         self.conn = None
         self.pts0 = None
+        self.cumSizes = None
+        self.sizes = None
         if self.comm.rank == 0:
-            self.pts0, self.conn = self._getUpdatedSurface()
+            self.pts0, self.conn, self.cumSizes, self.sizes = self._getUpdatedSurface()
 
         self.pts0 = self.comm.bcast(self.pts0)
         self.conn = self.comm.bcast(self.conn)
+        self.cumSizes = self.comm.bcast(self.cumSizes)
+        self.sizes = self.comm.bcast(self.sizes)
         self.pts = self.pts0.copy()
+
+        # Finally process theintersection information. We had to wait
+        # until all processors have the surface information.
+        self.intersectComps = []
+        print (self.exportComps)
+        for i in range(len(intersectedComps)):
+            c = intersectedComps[i]
+            # Get the index of each of the two comps:
+            compIndexA = self.exportComps.index(c[0])
+            compIndexB = self.exportComps.index(c[1])
+            direction = c[2]
+            dStar = c[3]
+
+            self.intersectComps.append(CompIntersection(
+                compIndexA, compIndexB, direction, dStar,
+                self.pts, self.cumSizes, self.sizes, self.tmpDir))
 
     def addPointSet(self, points, ptName, **kwargs):
         """
@@ -156,7 +186,7 @@ class DVGeometryVSP(object):
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of
-            coordinates. This name will need to be provided when
+            coordinates. Thisname will need to be provided when
             updating the coordinates or when getting the derivatives
             of the coordinates.
         """
@@ -179,6 +209,16 @@ class DVGeometryVSP(object):
             faceID = numpy.zeros((0), 'intc')
             uv = numpy.zeros((0, 2), 'intc')
 
+        # From the faceID we can back out what component each one is
+        # connected to. This way if we have intersecting components we
+        # only change the ones that are apart of the two surfaces.
+        cumFaceSizes = numpy.zeros(len(self.sizes) + 1, 'intc')
+        for i in range(len(self.sizes)):
+            nCellI = self.sizes[i][0]-1
+            nCellJ = self.sizes[i][1]-1
+            cumFaceSizes[i+1] = cumFaceSizes[i] + nCellI*nCellJ
+        compIDs = numpy.searchsorted(cumFaceSizes, faceID, side='right')-1
+
         # Compute the offsets by evaluating the new points.
         # eval which should be fast enough
         newPts = numpy.zeros_like(points)
@@ -193,9 +233,14 @@ class DVGeometryVSP(object):
         # Create the little class with the data
         self.pointSets[ptName] = PointSet(points, faceID, uv, offset,
                                           self.conn, len(self.pts0))
+
+        # Add the points to each of the intersection curve objects if we have any
+        for IC in self.intersectComps:
+            IC.addPointSet(points, compIDs, ptName)
+
         self.updated[ptName] = False
 
-    def setDesignVars(self, dvDict):
+    def setDesignVars(self, dvDict, updateJacobian=True):
         """
         Standard routine for setting design variables from a design
         variable dictionary.
@@ -214,13 +259,22 @@ class DVGeometryVSP(object):
                 self.DVs[key].value = dvDict[key]
 
         # When we set the design variables we will also compute the
-        # new surface self.pts. Only one proc needs to do this.
+        # new surface self.pts. Only one proc needs to do this. This
+        # should be the only location where self.pts is set.
         if self.comm.rank == 0:
-            self.pts, conn = self._getUpdatedSurface()
+            self.pts, conn, cumSizes, sizes = self._getUpdatedSurface()
         self.pts = self.comm.bcast(self.pts)
 
-        # We will also compute the jacobian so it is also up to date
-        self._computeSurfJacobian()
+        # We need to give the updated coordinates to each of the
+        # intersectComps (if we have any) so they can update the new
+        # intersection curve
+        for IC in self.intersectComps:
+            IC.setSurface(self.pts)
+
+        # We will also compute the jacobian so it is also up to date,
+        # provided we are asked for ti
+        if updateJacobian:
+            self._computeSurfJacobian()
 
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
@@ -270,6 +324,17 @@ class DVGeometryVSP(object):
                               (  uv[:, 0])*(    uv[:, 1]) * self.pts[self.conn[faceID, 2], idim] + \
                               (1-uv[:, 0])*(    uv[:, 1]) * self.pts[self.conn[faceID, 3], idim]
         newPts -= offset
+
+        # Now compute the delta between the nominal new poitns and the
+        # original points:
+        delta = newPts - self.pointSets[ptSetName].points
+
+        # Potentially modify the delta according to our intersection curves
+        for IC in self.intersectComps:
+            delta = IC.update(ptSetName, delta)
+
+        # Now get the final newPts with a possibly modified delta.
+        newPts = self.pointSets[ptSetName].points + delta
 
         # Finally flag this pointSet as being up to date:
         self.updated[ptSetName] = True
@@ -363,10 +428,29 @@ class DVGeometryVSP(object):
         # Where I is the objective, Xpt are the externally coordinates
         # supplied in addPointSet, Xsurf are the coordinates of the
         # VSP plot3d File and Xdv are the design variables.
-
+        nPts = len(self.pts)
         for i in range(N):
-            dIdx_local[i,:] = self.jac.T.dot(
-                self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt[i,:,:].flatten()))
+
+            # Extract just the single dIdpt we are working with. Make
+            # a copy because we may need to modify it.
+            dIdpt_i = dIdpt[i, :, :].copy()
+
+            dIdSeam = numpy.zeros((0, 3))
+            for IC in self.intersectComps:
+                seamBar = IC.sens(dIdpt_i, ptSetName)
+                dIdSeam = numpy.vstack([dIdSeam, seamBar])
+
+            # Now take dIdpt_i back to the plot3D surface:
+            tmp = self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt_i.flatten())
+
+            # Now vstack the result with seamBar as that is far as the
+            # forward FD jacobian went.
+            tmp = numpy.hstack([tmp, dIdSeam.flatten()])
+
+            # Do final local jacobian transpose product back to the
+            # DVs. Remember the jacobian contains the surface poitns
+            # *and* the the seam nodes.
+            dIdx_local[i,:] = self.jac.T.dot(tmp)
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -515,12 +599,12 @@ class DVGeometryVSP(object):
         computeConn = False
         if self.conn is None:
             computeConn = True
-        pts, conn = self._readPlot3DSurfFile(fName, computeConn)
+        pts, conn, cumSizes, sizes = self._readPlot3DSurfFile(fName, computeConn)
 
         # Apply the VSP scale
         newPts = pts * self.vspScale
 
-        return newPts, conn
+        return newPts, conn, cumSizes, sizes
 
     def _readPlot3DSurfFile(self, fileName, computeConn=False):
         """Read a scii plot3d file and return the points and connectivity"""
@@ -529,9 +613,11 @@ class DVGeometryVSP(object):
         nSurf = numpy.fromfile(f, 'int', count=1, sep=' ')[0]
         sizes = numpy.fromfile(f, 'int', count=3*nSurf, sep=' ').reshape((nSurf, 3))
         nPts = 0; nElem = 0
+        cumSizes = numpy.zeros(nSurf + 1, 'intc')
         for i in range(nSurf):
             curSize = sizes[i, 0]*sizes[i, 1]
             nPts += curSize
+            cumSizes[i+1] = cumSizes[i] + curSize
             nElem += (sizes[i, 0]-1)*(sizes[i, 1]-1)
 
         # Generate the uncompacted point and connectivity list:
@@ -560,7 +646,7 @@ class DVGeometryVSP(object):
                         elemCount += 1
             nodeCount += curSize
 
-        return pts, conn
+        return pts, conn, cumSizes, sizes
 
     def __del__(self):
         # if self.comm.rank == 0 and not self.debug:
@@ -575,8 +661,21 @@ class DVGeometryVSP(object):
         COMM this object was created on.
         """
 
+        # Determine the size of the 'surface' jacobian. It actually
+        # contains the surface from VSP as well as any requried
+        # intersection curves.
+
         ptsRef = self.pts.flatten()
-        self.jac = numpy.zeros((len(self.pts0)*3, len(self.DVs)))
+        nPts = len(self.pts)
+
+        seamsRef = numpy.zeros((0, 3))
+        for IC in self.intersectComps:
+            seamsRef = numpy.vstack([seamsRef, IC.seam])
+        nSeam = len(seamsRef)
+        seamsRef = seamsRef.flatten()
+
+        # Full jacobian
+        self.jac = numpy.zeros((3*(nPts + nSeam), len(self.DVs)))
 
         dvKeys = list(self.DVs.keys())
 
@@ -587,7 +686,7 @@ class DVGeometryVSP(object):
             if iDV % self.comm.size == self.comm.rank:
                 n += 1
 
-        localJac = numpy.zeros((len(self.pts0)*3, n))
+        localJac = numpy.zeros((3*(nPts + nSeam), n))
         i = 0 # Counter on local Jac
         reqs = []
         for iDV in range(len(dvKeys)):
@@ -604,9 +703,16 @@ class DVGeometryVSP(object):
                 # Get the updated points. Note that this is the only
                 # time we need to call _getUpdatedSurface in parallel,
                 # so we have to supply a unique file name.
-                pts, conn = self._getUpdatedSurface('dv_perturb_%d.x'%iDV)
+                pts, conn, cumSizes, sizes = self._getUpdatedSurface('dv_perturb_%d.x'%iDV)
+                localJac[0:nPts*3, i] = (pts.flatten() - ptsRef)/dh
 
-                localJac[:, i] = (pts.flatten() - ptsRef)/dh
+                # Do any required intersections:
+                seams = numpy.zeros((0, 3))
+                for IC in self.intersectComps:
+                    IC.setSurface(pts)
+                    seams = numpy.vstack([seams, IC.seam])
+
+                localJac[nPts*3:, i] = (seams.flatten() - seamsRef)/dh
 
                 # Reset the DV
                 self.DVs[dvKeys[iDV]].value = dvSave
@@ -635,6 +741,11 @@ class DVGeometryVSP(object):
         # on pleiades so do 1 column at at time..sigh
         for iDV in range(len(dvKeys)):
             self.jac[:, iDV] = self.comm.bcast(self.jac[:, iDV])
+
+        # Restore the seams
+        for IC in self.intersectComps:
+            IC.setSurface(self.pts)
+
 
 class vspDV(object):
 
@@ -678,3 +789,175 @@ class PointSet(object):
 
         # Convert to csc becuase we'll be doing a transpose product on it.
         self.dPtdXsurf = jac.tocsc()
+
+
+class CompIntersection(object):
+    def __init__(self, compA, compB, direction, dStar, pts, cumSizes, sizes, tmpDir):
+        '''Class to store information required for an intersection.  The order
+        of compA and compB are important: LSect will give a different
+        result for compA intersecting compB than compB intersecting
+        compA.
+
+        Input
+        -----
+        compA , int : Index of the surface in the plot3D file
+        compB , int : Index of the surface in the plot3D file
+        direction, str: Coordiante index direction to use for
+            lsect. Must be 'j' or 'k'
+        dStar, real : Radius over which to attenuate the deformation
+        pts , real (N, 3) : All coordinates that are being used for this model
+
+        Internally we will store the indices and the weights of the
+        points that this intersection will have to modify. In general,
+        all this code is not super efficient since it's all python,
+        but it should not be more of a bottleneck than VSP is itself
+        in doing the export.
+        '''
+        self.compA = compA
+        self.compB = compB
+        self.dir = direction.lower()
+        self.dStar = dStar
+        self.halfdStar = dStar/2.0
+        self.pts = pts
+        self.cumSizes = cumSizes
+        self.sizes = sizes
+        if direction not in ['j', 'k']:
+            raise Error("Direction must be given as 'j' or 'k' for intersection")
+        if direction == 'j':
+            self.dir = 1
+        else:
+            self.dir = 2
+
+        # First generate the initial intersection curve.
+        s = self.sizes[self.compA]
+        blkA = self.pts[self.cumSizes[self.compA]:self.cumSizes[self.compA+1], :].reshape(
+            (s[0], s[1], s[2], 3), order='f')
+
+        s = self.sizes[self.compB]
+        blkB = self.pts[self.cumSizes[self.compB]:self.cumSizes[self.compB+1], :].reshape(
+            (s[0], s[1], s[2], 3), order='f')
+
+        nmax = max(blkB.shape[0], blkB.shape[1], blkA.shape[0], blkA.shape[1])
+        seam, nOut = lsect.lsect_wrap(blkA, blkB, self.dir, nmax)
+        self.seam0 = seam[0:nOut, :]
+        self.ptSets = {}
+
+    def setSurface(self, pts):
+        """ This set the new udpated surface on which we need to comptue the new intersection curve"""
+
+        s = self.sizes[self.compA]
+        blkA = pts[self.cumSizes[self.compA]:self.cumSizes[self.compA+1], :].reshape(
+            (s[0], s[1], s[2], 3), order='f')
+
+        s = self.sizes[self.compB]
+        blkB = pts[self.cumSizes[self.compB]:self.cumSizes[self.compB+1], :].reshape(
+            (s[0], s[1], s[2], 3), order='f')
+
+        nmax = max(blkB.shape[0], blkB.shape[1], blkA.shape[0], blkA.shape[1])
+        seam, nOut = lsect.lsect_wrap(blkA, blkB, self.dir, nmax)
+        self.seam = seam[0:nOut, :]
+
+    def addPointSet(self, pts, compIDs, ptSetName):
+
+        # Figure out which points this intersection object has to deal with.
+        tree = cKDTree(self.seam0)
+
+        # Find all the distances. This is pretty fast.
+        d, index = tree.query(pts)
+        indices = []
+        factors = []
+        for i in range(len(pts)):
+            if compIDs[i] == self.compA or compIDs[i] == self.compB:
+                if d[i] < self.dStar:
+
+                    # Compute the factor
+                    if d[i] < self.halfdStar:
+                        factor = .5*(d[i]/self.halfdStar)**3
+                    else:
+                        factor = .5*(2-((self.dStar - d[i])/self.halfdStar)**3)
+
+                    # Save the index and factor
+                    indices.append(i)
+                    factors.append(factor)
+
+        # Save the affected indices and the factor in the little dictionary
+        self.ptSets[ptSetName] = [pts.copy(), indices, factors]
+
+    def update(self, ptSetName, delta):
+
+        """Update the delta in ptSetName with our correction. The delta need
+        to be supplied as we will be changing it and returning them
+        """
+        pts     = self.ptSets[ptSetName][0]
+        indices = self.ptSets[ptSetName][1]
+        factors = self.ptSets[ptSetName][2]
+        seamDiff = self.seam - self.seam0
+        for i in range(len(factors)):
+
+            # j is the index of the point in the full set we are
+            # working with.
+            j = indices[i]
+
+            #Run the weighted interp:
+            # num = numpy.zeros(3)
+            # den = 0.0
+            # for k in range(len(seamDiff)):
+            #     rr = pts[j] - self.seam0[k]
+            #     LdefoDist = 1.0/numpy.sqrt(rr[0]**2 + rr[1]**2 + rr[2]**2+1e-16)
+            #     LdefoDist3 = LdefoDist**3
+            #     Wi = LdefoDist3
+            #     Si = seamDiff[k]
+            #     num = num + Wi*Si
+            #     den = den + Wi
+
+            # interp = num / den
+
+            # Do it vectorized
+            rr = pts[j] - self.seam0
+            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
+            LdefoDist3 = LdefoDist**3
+            Wi = LdefoDist3
+            den = numpy.sum(Wi)
+            interp = numpy.zeros(3)
+            for iDim in range(3):
+                interp[iDim] = numpy.sum(Wi*seamDiff[:, iDim])/den
+
+            # Now the delta is replaced by 1-factor times the weighted
+            # interp of the seam * factor of the original:
+
+            delta[j] = factors[i]*delta[j] + (1-factors[i])*interp
+
+        return delta
+
+    def sens(self, dIdPt, ptSetName):
+        # Return the reverse accumulation of dIdpt on the seam
+        # nodes. Also modifies the dIdp array accordingly.
+
+        pts     = self.ptSets[ptSetName][0]
+        indices = self.ptSets[ptSetName][1]
+        factors = self.ptSets[ptSetName][2]
+
+        seamBar = numpy.zeros_like(self.seam0)
+        for i in range(len(factors)):
+
+            # j is the index of the point in the full set we are
+            # working with.
+            j = indices[i]
+
+            # This is the local seed (well the 3 seeds for the point)
+            localVal = dIdPt[j]*(1 - factors[i])
+
+            # Scale the dIdpt by the factor..dIdpt is input/output
+            dIdPt[j] *= factors[i]
+
+            # Do it vectorized
+            rr = pts[j] - self.seam0
+            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
+            LdefoDist3 = LdefoDist**3
+            Wi = LdefoDist3
+            den = numpy.sum(Wi)
+            interp = numpy.zeros(3)
+            for iDim in range(3):
+                seamBar[:, iDim] += Wi*localVal[iDim]/den
+
+        return seamBar
