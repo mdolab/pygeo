@@ -90,7 +90,7 @@ class DVGeometryVSP(object):
 
     """
     def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[],
-                 intersectedComps=[], debug=False):
+                 intersectedComps=None, debug=False):
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
         self.updated = {}
@@ -159,7 +159,8 @@ class DVGeometryVSP(object):
         # Finally process theintersection information. We had to wait
         # until all processors have the surface information.
         self.intersectComps = []
-        print (self.exportComps)
+        if intersectedComps is None:
+            intersectedComps = []
         for i in range(len(intersectedComps)):
             c = intersectedComps[i]
             # Get the index of each of the two comps:
@@ -840,6 +841,7 @@ class CompIntersection(object):
         nmax = max(blkB.shape[0], blkB.shape[1], blkA.shape[0], blkA.shape[1])
         seam, nOut = lsect.lsect_wrap(blkA, blkB, self.dir, nmax)
         self.seam0 = seam[0:nOut, :]
+        self.seam = self.seam0.copy()
         self.ptSets = {}
 
     def setSurface(self, pts):
