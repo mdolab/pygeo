@@ -98,7 +98,7 @@ class DVGeometryVSP(object):
         self.comm = comm
         self.vspFile = vspFile
         self.debug = debug
-
+        self.jac = None
         # Load in the VSP model
         vsp.ClearVSPModel()
         vsp.ReadVSPFile(vspFile)
@@ -381,6 +381,7 @@ class DVGeometryVSP(object):
         """
         return list(self.DVs.keys())
 
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
         This function computes sensitivty information.
@@ -412,6 +413,10 @@ class DVGeometryVSP(object):
             pyOptSparse
         """
 
+        # We may not have set the variables so the surf jac might not be computed.
+        if self.jac is None:
+            self._computeSurfJacobian()
+
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
             dIdpt = numpy.array([dIdpt])
@@ -430,28 +435,36 @@ class DVGeometryVSP(object):
         # supplied in addPointSet, Xsurf are the coordinates of the
         # VSP plot3d File and Xdv are the design variables.
         nPts = len(self.pts)
+
+        # Extract just the single dIdpt we are working with. Make
+        # a copy because we may need to modify it.
+
+        n = 0
+        for IC in self.intersectComps:
+            n += len(IC.seam)
+
+        dIdSeam = numpy.zeros((N, n*3))
         for i in range(N):
-
-            # Extract just the single dIdpt we are working with. Make
-            # a copy because we may need to modify it.
-            dIdpt_i = dIdpt[i, :, :].copy()
-
-            dIdSeam = numpy.zeros((0, 3))
+            n = 0
             for IC in self.intersectComps:
+                dIdpt_i = dIdpt[i, :, :].copy()
                 seamBar = IC.sens(dIdpt_i, ptSetName)
-                dIdSeam = numpy.vstack([dIdSeam, seamBar])
+                dIdpt[i, :, :] = dIdpt_i
+                dIdSeam[i, 3*n:3*(n+len(seamBar))] = seamBar.flatten()
+                n += len(IC.seam)
+        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
 
-            # Now take dIdpt_i back to the plot3D surface:
-            tmp = self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt_i.flatten())
+        # Now take dIdpt_i back to the plot3D surface:
+        tmp = self.pointSets[ptSetName].dPtdXsurf.T.dot(dIdpt.T)
 
-            # Now vstack the result with seamBar as that is far as the
-            # forward FD jacobian went.
-            tmp = numpy.hstack([tmp, dIdSeam.flatten()])
+        # Now vstack the result with seamBar as that is far as the
+        # forward FD jacobian went.
+        tmp = numpy.vstack([tmp, dIdSeam.T])
 
-            # Do final local jacobian transpose product back to the
-            # DVs. Remember the jacobian contains the surface poitns
-            # *and* the the seam nodes.
-            dIdx_local[i,:] = self.jac.T.dot(tmp)
+        # Do final local jacobian transpose product back to the
+        # DVs. Remember the jacobian contains the surface poitns
+        # *and* the the seam nodes.
+        dIdx_local = self.jac.T.dot(tmp)
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -462,10 +475,11 @@ class DVGeometryVSP(object):
         dIdxDict = {}
         i = 0
         for dvName in self.DVs:
-            dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
+            dIdxDict[dvName] = numpy.array([dIdx[i, :]]).T
             i += 1
 
         return dIdxDict
+
 
     def addVariable(self, component, group, parm, value=None,
                     lower=None, upper=None, scale=1.0, scaledStep=True,
