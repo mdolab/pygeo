@@ -195,7 +195,8 @@ class DVGeometry(object):
         self.masks = tmp
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
-                   rotType=5, axis='x', alignIndex=None, rotAxisVar=None):
+                   rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
+                   xFractionOrder=2):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -264,6 +265,8 @@ class DVGeometry(object):
             variable which should be used to compute the orientation of the theta
             rotation.
 
+        xFraction : int
+            Order of spline used for refaxis curve.
         Notes
         -----
         One of curve or xFraction must be specified.
