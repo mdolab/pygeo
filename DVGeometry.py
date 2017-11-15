@@ -195,7 +195,8 @@ class DVGeometry(object):
         self.masks = tmp
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
-                   rotType=5, axis='x', alignIndex=None, rotAxisVar=None):
+                   rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
+                   xFractionOrder=2, includeVols=[], ignoreInd=[]):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -228,7 +229,7 @@ class DVGeometry(object):
             Supply exactly the desired reference axis
 
         xFraction : float
-            Specifiy the stream-wise extent
+            Specify the stream-wise extent
 
         volumes : list or array or integers
             List of the volume indices, in 0-based ordering that this
@@ -264,6 +265,19 @@ class DVGeometry(object):
             variable which should be used to compute the orientation of the theta
             rotation.
 
+        xFractionOrder : int
+            Order of spline used for refaxis curve.
+
+        includeVols : list
+            List of additional volumes to add to reference axis after the
+            automatic generation of the ref axis based on the volumes list using
+            xFraction.
+
+        ignoreInd : list
+            List of indices that should be ignored from the volumes that were
+            added to this reference axis. This can be handy if you have a single
+            volume but you want to link different sets of indices to different
+            reference axes.
         Notes
         -----
         One of curve or xFraction must be specified.
@@ -404,14 +418,23 @@ class DVGeometry(object):
                     refaxisNodes[place+i,2] = numpy.mean(self.FFD.coef[sectionArr[i+skip,:,:],2])
                 place += i + 1
 
+            # Add additional volumes
+            for iVol in includeVols:
+                if iVol not in volumes:
+                    volumes.append(iVol)
+
             # Generate reference axis pySpline curve
             curve = pySpline.Curve(X=refaxisNodes, k=2)
             nAxis = len(curve.coef)
             self.axis[name] = {'curve':curve, 'volumes':volumes,
-                               'rotType':rotType, 'axis':axis, 'rotAxisVar':rotAxisVar}
+                               'rotType':rotType, 'axis':axis,
+                               'rotAxisVar':rotAxisVar}
         else:
             raise Error("One of 'curve' or 'xFraction' must be "
                         "specified for a call to addRefAxis")
+
+        # Specify indices to be ignored
+        self.axis[name]['ignoreInd'] = ignoreInd
 
         return nAxis
 
@@ -2108,7 +2131,7 @@ class DVGeometry(object):
                     for j in range(self.FFD.vols[iVol].nCtlv):
                         for k in range(self.FFD.vols[iVol].nCtlw):
                             ind = self.FFD.topo.lIndex[iVol][i, j, k]
-                            if coefMask[ind] == False:
+                            if coefMask[ind] == False and ind not in self.axis[key]['ignoreInd']:
                                 temp.append(ind)
 
             # Unique the values and append to the master list
