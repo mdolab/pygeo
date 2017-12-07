@@ -1228,7 +1228,11 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]'
         elif psType == 'list':
             self.box = None
             self.type = 'list'
-            self.indices = np.unique(np.array(args[0]))
+            self.indices = np.array(args[0])
+
+            # Check if the list is unique:
+            if len(self.indices) != len(np.unique(self.indices)):
+                raise ValueError('The indices provided to pointSelect are not unique.')
 
         elif psType == 'ijkBounds':
 
