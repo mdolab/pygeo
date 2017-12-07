@@ -691,7 +691,7 @@ class DVConstraints(object):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
                 X[i], axis, self.p0, self.v1, self.v2)
-            if fail:
+            if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                                 X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
@@ -894,7 +894,7 @@ class DVConstraints(object):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
                 X[i], axis, self.p0, self.v1, self.v2)
-            if fail:
+            if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                         X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
@@ -1579,7 +1579,7 @@ class DVConstraints(object):
         # Project the actual location we were give:
         up, down, fail = geo_utils.projectNode(
             position, axis, self.p0, self.v1, self.v2)
-        if fail:
+        if fail > 0:
             raise Error("There was an error projecting a node "
                         "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                             position))
