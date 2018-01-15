@@ -1798,7 +1798,7 @@ class SurfaceTopology(Topology):
             edgeLinkSorted = np.sort(edgeLink)
             edgeLinkInd    = np.argsort(edgeLink)
 
-        elif not coords == None:
+        elif coords is not None:
             self.nFace = len(coords)
             self.nEnt  = self.nFace
             # We can use the pointReduce algorithim on the nodes
