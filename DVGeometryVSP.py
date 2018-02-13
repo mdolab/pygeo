@@ -424,6 +424,7 @@ class DVGeometryVSP(object):
 
         nDV = self.getNDV()
         dIdx_local = numpy.zeros((N, nDV), 'd')
+
         # The following code computes the final sensitivity product:
         #
         #         T        T      T
@@ -462,20 +463,42 @@ class DVGeometryVSP(object):
         tmp = numpy.vstack([tmp, dIdSeam.T])
 
         # Do final local jacobian transpose product back to the
-        # DVs. Remember the jacobian contains the surface poitns
-        # *and* the the seam nodes.
-        dIdx_local = self.jac.T.dot(tmp)
-
-        if comm: # If we have a comm, globaly reduce with sum
-            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        # DVs. This is a little trickier since we have a distributed
+        # total surface jacobian. First we all reduce the "tmp"
+        # variable which is pI/pXsurf. The "Reduce" is important
+        # here...that is performance critical. We need the fast numpy
+        # version. 
+        
+        if comm:
+            tmp2 = numpy.zeros_like(tmp)
+            comm.Reduce(tmp, tmp2, op=MPI.SUM)
+            comm.Bcast(tmp2)
         else:
-            dIdx = dIdx_local
+            tmp2 = tmp
+        # ---------------------------------------------------------------
+
+        # Remember the jacobian contains the surface poitns *and* the
+        # the seam nodes. dIdx_compact is the final derivative for the
+        # variables this proc owns. 
+        dIdx_compact = self.jac.T.dot(tmp2)
+
+        # Now scatter the dIdx_compact into dIdx_local before we all
+        # reduce over the actual DVs. 
+        dvKeys = list(self.DVs.keys())
+        i = 0 # Counter on local Jac
+        for iDV in range(len(dvKeys)):
+            # I have to do this one.
+            if iDV % self.comm.size == self.comm.rank:
+                dIdx_local[:, iDV] = dIdx_compact[i, :]
+                i += 1
+
+        dIdx = self.comm.allreduce(dIdx_local, op=MPI.SUM)
 
         # Now convert to dict:
         dIdxDict = {}
         i = 0
         for dvName in self.DVs:
-            dIdxDict[dvName] = numpy.array([dIdx[i, :]]).T
+            dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
             i += 1
 
         return dIdxDict
@@ -689,19 +712,18 @@ class DVGeometryVSP(object):
         nSeam = len(seamsRef)
         seamsRef = seamsRef.flatten()
 
-        # Full jacobian
-        self.jac = numpy.zeros((3*(nPts + nSeam), len(self.DVs)))
-
         dvKeys = list(self.DVs.keys())
 
-        # Determine how many points we'll perturb
+        # Determine how many variables we'll perturb. 
         n = 0
         for iDV in range(len(dvKeys)):
             # I have to do this one.
             if iDV % self.comm.size == self.comm.rank:
                 n += 1
 
-        localJac = numpy.zeros((3*(nPts + nSeam), n))
+        # The section of the jacobian that I own:
+        self.jac = numpy.zeros((3*(nPts + nSeam), n))
+
         i = 0 # Counter on local Jac
         reqs = []
         for iDV in range(len(dvKeys)):
@@ -719,7 +741,7 @@ class DVGeometryVSP(object):
                 # time we need to call _getUpdatedSurface in parallel,
                 # so we have to supply a unique file name.
                 pts, conn, cumSizes, sizes = self._getUpdatedSurface('dv_perturb_%d.x'%iDV)
-                localJac[0:nPts*3, i] = (pts.flatten() - ptsRef)/dh
+                self.jac[0:nPts*3, i] = (pts.flatten() - ptsRef)/dh
 
                 # Do any required intersections:
                 seams = numpy.zeros((0, 3))
@@ -727,35 +749,12 @@ class DVGeometryVSP(object):
                     IC.setSurface(pts)
                     seams = numpy.vstack([seams, IC.seam])
 
-                localJac[nPts*3:, i] = (seams.flatten() - seamsRef)/dh
+                self.jac[nPts*3:, i] = (seams.flatten() - seamsRef)/dh
 
                 # Reset the DV
                 self.DVs[dvKeys[iDV]].value = dvSave
 
-                # If we are on the root proc, set direcly, otherwise, MPI_isend
-                if self.comm.rank == 0:
-                    self.jac[:, iDV] = localJac[:, i]
-                else:
-                    self.comm.send(localJac[:, i].copy(), 0, iDV)
-
                 i += 1
-
-        # Root proc finishes the receives
-        if self.comm.rank == 0:
-            for iDV in range(len(dvKeys)):
-                # This is the rank that did this DV:
-                rank = iDV % self.comm.size
-                if rank != 0:
-                    status = MPI.Status()
-                    tmp =  self.comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
-                    tag = status.Get_tag()
-                    # Get the tag so we know where to put it
-                    self.jac[:, tag] = tmp
-
-        # Broadcast back out to everyone. mpi4py is complete screwed
-        # on pleiades so do 1 column at at time..sigh
-        for iDV in range(len(dvKeys)):
-            self.jac[:, iDV] = self.comm.bcast(self.jac[:, iDV])
 
         # Restore the seams
         for IC in self.intersectComps:
