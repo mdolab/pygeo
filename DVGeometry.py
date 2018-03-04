@@ -1496,7 +1496,7 @@ class DVGeometry(object):
         This function computes sensitivty information.
 
         Specificly, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}
+        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
 
         Parameters
         ----------
@@ -1558,7 +1558,7 @@ class DVGeometry(object):
         This function computes sensitivty information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec
+        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
 
         This is useful for forward AD mode.
 
@@ -1619,7 +1619,7 @@ class DVGeometry(object):
         This function computes sensitivty information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec
+        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec`
 
         This is useful for reverse AD mode.
 
