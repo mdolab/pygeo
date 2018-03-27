@@ -677,9 +677,9 @@ class DVGeometry(object):
         return self.DV_listLocal[dvName].nVal
 
     def addGeoDVSectionLocal(self, dvName, secIndex, lower=None, upper=None,
-                             scale=1.0, axis=1, pointSelect=None, volList=None, orient0=None, config=None):
-        """
-        Add one or more section local design variables to the DVGeometry
+                             scale=1.0, axis=1, pointSelect=None, volList=None, orient0=None, 
+                             orient2='svn', config=None):
+        """Add one or more section local design variables to the DVGeometry
         object. Section local variables are used as an alternative to local
         variables when it is desirable to deform a cross-section shape within a
         plane that is consistent with the original cross-section orientation.
@@ -774,6 +774,15 @@ class DVGeometry(object):
                     section plane. If a numpy array of len(volList) x 3 is given,
                     each vector will apply to its corresponding volume.
 
+
+        orient2: 'svd' or 'ffd. Default is 'svd'
+            How to compute the orientation '2' axis. SVD is the
+            default bevaviour and is taken from the svd of the plane
+            points. 'ffd' Uses the vector along the FFD direction of
+            secIndex. This is requied to get consistent normals if you
+            have a circular-type FFD when the SVD will swap the
+            normals. 
+
         config : str or list
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
@@ -797,6 +806,7 @@ class DVGeometry(object):
         >>> # any point projecting into the point along 'y' axis will be selected.
         >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
+
         """
         if type(config) == str:
             config = [config]
@@ -860,10 +870,10 @@ class DVGeometry(object):
                                 ' must be equal to the length of volList.')
             for i, iVol in enumerate(volList):
                 self.sectionFrame(secIndex[i], secTransform, secLink, iVol,
-                                orient0[i])
+                                  orient0[i], orient2=orient2)
         else:
             for i, iVol in enumerate(volList):
-                self.sectionFrame(secIndex[i], secTransform, secLink, iVol)
+                self.sectionFrame(secIndex[i], secTransform, secLink, iVol, orient2=orient2)
 
         self.DV_listSectionLocal[dvName] = geoDVSectionLocal(dvName, lower, upper,
                                                scale, axis, ind, self.masks,
@@ -3112,7 +3122,7 @@ class DVGeometry(object):
             child.printDesignVariables()
 
     def sectionFrame(self, sectionIndex, sectionTransform, sectionLink, ivol=0,
-                    orient0=None):
+                     orient0=None, orient2='svd'):
         """
         This function computes a unique reference coordinate frame for each
         section of an FFD volume. You can choose which axis of the FFD you would
@@ -3206,8 +3216,27 @@ class DVGeometry(object):
             U,S,V = numpy.linalg.svd(A.T)
 
             # Choose section plane normal axis
-            ax2 = U[:,2]
-
+            if orient2 == 'svd':
+                ax2 = U[:,2]
+            elif orient2 == 'ffd':
+                # Use a centered FD approximation (first order at the boundaries)
+                if i == 0:
+                    pt = numpy.mean(self.FFD.coef[rolledlIndex[i,:,:]].reshape(nI*nJ,3), 0)
+                    ptp = numpy.mean(self.FFD.coef[rolledlIndex[i+1,:,:]].reshape(nI*nJ,3), 0)
+                    print (pt, pt.shape)
+                    ax2 = ptp-pt
+                elif i == nSections-1:
+                    pt = numpy.mean(self.FFD.coef[rolledlIndex[i,:,:]].reshape(nI*nJ,3), 0)
+                    ptm = numpy.mean(self.FFD.coef[rolledlIndex[i-1,:,:]].reshape(nI*nJ,3), 0)
+                    ax2 = pt-ptm
+                else:
+                    ptp = numpy.mean(self.FFD.coef[rolledlIndex[i+1,:,:]].reshape(nI*nJ,3), 0)
+                    ptm = numpy.mean(self.FFD.coef[rolledlIndex[i-1,:,:]].reshape(nI*nJ,3), 0)
+                    ax2 = ptp-ptm
+                ax2 /= numpy.linalg.norm(ax2)
+            else:   
+                raise Error('orient2 must be \'svd\' or \'ffd\'')
+            
             # Options for choosing in-plane axes
             # 1. Align axis '0' with projection of the given vector on section
             #       plane.
