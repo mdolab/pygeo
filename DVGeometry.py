@@ -3223,7 +3223,6 @@ class DVGeometry(object):
                 if i == 0:
                     pt = numpy.mean(self.FFD.coef[rolledlIndex[i,:,:]].reshape(nI*nJ,3), 0)
                     ptp = numpy.mean(self.FFD.coef[rolledlIndex[i+1,:,:]].reshape(nI*nJ,3), 0)
-                    print (pt, pt.shape)
                     ax2 = ptp-pt
                 elif i == nSections-1:
                     pt = numpy.mean(self.FFD.coef[rolledlIndex[i,:,:]].reshape(nI*nJ,3), 0)
