@@ -168,9 +168,13 @@ class DVGeometryVSP(object):
             compIndexB = self.exportComps.index(c[1])
             direction = c[2]
             dStar = c[3]
+            extraComps = []
+            if len(c) == 5:
+                for j in range(len(c[4])):
+                    extraComps.append(self.exportComps.index(c[4][j]))
 
             self.intersectComps.append(CompIntersection(
-                compIndexA, compIndexB, direction, dStar,
+                compIndexA, compIndexB, extraComps, direction, dStar,
                 self.pts, self.cumSizes, self.sizes, self.tmpDir))
 
     def addPointSet(self, points, ptName, **kwargs):
@@ -806,7 +810,7 @@ class PointSet(object):
 
 
 class CompIntersection(object):
-    def __init__(self, compA, compB, direction, dStar, pts, cumSizes, sizes, tmpDir):
+    def __init__(self, compA, compB, extraComps, direction, dStar, pts, cumSizes, sizes, tmpDir):
         '''Class to store information required for an intersection.  The order
         of compA and compB are important: LSect will give a different
         result for compA intersecting compB than compB intersecting
@@ -816,6 +820,7 @@ class CompIntersection(object):
         -----
         compA , int : Index of the surface in the plot3D file
         compB , int : Index of the surface in the plot3D file
+        extraComps, list : Indexes of other comps to move as well 
         direction, str: Coordiante index direction to use for
             lsect. Must be 'j' or 'k'
         dStar, real : Radius over which to attenuate the deformation
@@ -829,6 +834,7 @@ class CompIntersection(object):
         '''
         self.compA = compA
         self.compB = compB
+        self.extraComps = extraComps
         self.dir = direction.lower()
         self.dStar = dStar
         self.halfdStar = dStar/2.0
@@ -882,7 +888,7 @@ class CompIntersection(object):
         indices = []
         factors = []
         for i in range(len(pts)):
-            if compIDs[i] == self.compA or compIDs[i] == self.compB:
+            if compIDs[i] == self.compA or compIDs[i] == self.compB or compIDs[i] in self.extraComps:
                 if d[i] < self.dStar:
 
                     # Compute the factor
