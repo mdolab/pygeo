@@ -530,6 +530,10 @@ class DVGeometryVSP(object):
         if scaledStep:
             dh = dh * value
 
+            if value == 0:
+                raise Error('Initial value is exactly 0. scaledStep option cannot be used'
+                            'Specify an explicit dh with scaledStep=False')
+
         self.DVs[dvName] = vspDV(parm_id, component, group, parm, value, lower,
                                  upper, scale, dh)
 
