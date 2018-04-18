@@ -677,8 +677,8 @@ class DVGeometry(object):
         return self.DV_listLocal[dvName].nVal
 
     def addGeoDVSectionLocal(self, dvName, secIndex, lower=None, upper=None,
-                             scale=1.0, axis=1, pointSelect=None, volList=None, orient0=None, 
-                             orient2='svn', config=None):
+                             scale=1.0, axis=1, pointSelect=None, volList=None, orient0=None,
+                             orient2='svd', config=None):
         """Add one or more section local design variables to the DVGeometry
         object. Section local variables are used as an alternative to local
         variables when it is desirable to deform a cross-section shape within a
@@ -732,7 +732,6 @@ class DVGeometry(object):
                                 /
                                2
 
-
         pointSelect : pointSelect object. Default is None Use a
             pointSelect object to select a subset of the total number
             of control points. See the documentation for the
@@ -774,14 +773,13 @@ class DVGeometry(object):
                     section plane. If a numpy array of len(volList) x 3 is given,
                     each vector will apply to its corresponding volume.
 
-
         orient2: 'svd' or 'ffd. Default is 'svd'
             How to compute the orientation '2' axis. SVD is the
             default bevaviour and is taken from the svd of the plane
             points. 'ffd' Uses the vector along the FFD direction of
             secIndex. This is requied to get consistent normals if you
             have a circular-type FFD when the SVD will swap the
-            normals. 
+            normals.
 
         config : str or list
             Define what configurations this design variable will be applied to
@@ -806,7 +804,6 @@ class DVGeometry(object):
         >>> # any point projecting into the point along 'y' axis will be selected.
         >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
-
         """
         if type(config) == str:
             config = [config]
@@ -3233,9 +3230,9 @@ class DVGeometry(object):
                     ptm = numpy.mean(self.FFD.coef[rolledlIndex[i-1,:,:]].reshape(nI*nJ,3), 0)
                     ax2 = ptp-ptm
                 ax2 /= numpy.linalg.norm(ax2)
-            else:   
+            else:
                 raise Error('orient2 must be \'svd\' or \'ffd\'')
-            
+
             # Options for choosing in-plane axes
             # 1. Align axis '0' with projection of the given vector on section
             #       plane.
