@@ -1755,7 +1755,7 @@ class SurfaceTopology(Topology):
         self.faceIndex = None
         self.simple = False
 
-        if not faceCon == None:
+        if faceCon is not None:
             faceCon = np.array(faceCon)
             midpoints = None
             self.nFace = len(faceCon)
