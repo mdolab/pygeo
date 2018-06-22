@@ -2011,12 +2011,12 @@ class DVConstraints(object):
         surfFile: vector
             Plot3D file with desired surface to integrate over, should be
             sufficiently refined to accurately capture surface curvature
-              
+
         curvatureType: str
             The type of curvature to calculate. Options are: 'Gaussian', 'mean', or 'combined'.
-            Specifically, the Gaussian curvature: K=kappa_1 * kappa_2, the mean curvature: 
+            Specifically, the Gaussian curvature: K=kappa_1 * kappa_2, the mean curvature:
             H = 0.5*(kappa_1+kappa_2), the combined curvature C = kappa_1^2 + kappa_2^2 = (2*H)^2-2*K
-              
+
         lower : float
             Lower bound for curvature integral.
 
@@ -2258,7 +2258,7 @@ class DVConstraints(object):
                     coords[i, j, 0] = up
                     coords[i, j, 1] = down
                 elif fail == -1:
-                    # More than 2 solutoins. Returned in sorted distance. 
+                    # More than 2 solutoins. Returned in sorted distance.
                     coords[i, j, 0] = down
                     coords[i, j, 1] = up
                 else:
@@ -3141,8 +3141,8 @@ class LinearConstraint(object):
 
         for key in self.vizConIndices:
             ncon = len(self.vizConIndices[key])
+            nodes = numpy.zeros((ncon*2, 3))
             for i in range(ncon):
-                nodes = numpy.zeros((ncon*2, 3))
                 nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
                 nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
@@ -4348,7 +4348,7 @@ class CurvatureConstraint(GeometricConstraint):
         # Compute discrete area associated with each node
         dS = wt*n_norm
         one = numpy.ones(self.node_map[iSurf].size)
-        
+
         if self.curvatureType == 'Gaussian':
             # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
             kS = numpy.dot(one,K*K*dS)

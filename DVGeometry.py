@@ -677,8 +677,8 @@ class DVGeometry(object):
         return self.DV_listLocal[dvName].nVal
 
     def addGeoDVSectionLocal(self, dvName, secIndex, lower=None, upper=None,
-                             scale=1.0, axis=1, pointSelect=None, volList=None, orient0=None,
-                             orient2='svd', config=None):
+                             scale=1.0, axis=1, pointSelect=None, volList=None,
+                             orient0=None, orient2='svd', config=None):
         """Add one or more section local design variables to the DVGeometry
         object. Section local variables are used as an alternative to local
         variables when it is desirable to deform a cross-section shape within a
@@ -794,16 +794,9 @@ class DVGeometry(object):
 
         Examples
         --------
-        >>> # Add all variables in FFD as local shape variables
-        >>> # moving in the y direction, within +/- 1.0 units
-        >>> DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper= 1.0, axis='y')
-        >>> # As above, but moving in the x and y directions.
-        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
-        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
-        >>> # Create a point select to use: (box from (0,0,0) to (10,0,10) with
-        >>> # any point projecting into the point along 'y' axis will be selected.
-        >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
-        >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
+        >>> # Add all control points in FFD as local shape variables
+        >>> # moving in the 1 direction, within +/- 1.0 units
+        >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
         if type(config) == str:
             config = [config]
@@ -1722,6 +1715,7 @@ class DVGeometry(object):
                 J_temp += J_local
 
         if J_casc is not None:
+            # print('J_casc', J_casc.todense())
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_casc)
             else:
@@ -1985,7 +1979,7 @@ class DVGeometry(object):
             self.refAxis.writeTecplot(gFileName, orig=True, curves=True, coef=True)
         # Write children axes:
         for iChild in range(len(self.children)):
-            cFileName = fileName+'_child%3d.dat'%iChild
+            cFileName = fileName+'_child{:03d}.dat'.format(iChild)
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
 
     def writeLinks(self, fileName):
@@ -2020,14 +2014,17 @@ class DVGeometry(object):
         name : str
              The name of the point set to write to a file
         fileName : str
-           Filename for tecplot file. Should have a no extension,an
+           Filename for tecplot file. Should have no extension, an
            extension will be added
         """
-        coords = self.update(name, childDelta=False)
-        fileName = fileName+'_%s.dat'%name
-        f = pySpline.openTecplot(fileName, 3)
-        pySpline.writeTecplot1D(f, name, coords)
-        pySpline.closeTecplot(f)
+        if self.isChild:
+            raise Error('Must call "writePointSet" from parent DVGeo.')
+        else:
+            coords = self.update(name, childDelta=True)
+            fileName = fileName+'_%s.dat'%name
+            f = pySpline.openTecplot(fileName, 3)
+            pySpline.writeTecplot1D(f, name, coords)
+            pySpline.closeTecplot(f)
 
     def writePlot3d(self, fileName):
         """Write the (deformed) current state of the FFD object into a
@@ -2825,7 +2822,8 @@ class DVGeometry(object):
                         Jacobian[irow, iDVLocal] = 1.0
 
                         for iChild in range(len(self.children)):
-
+                            # Get derivatives of child ref axis and FFD control
+                            # points w.r.t. parent's FFD control points
                             dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
                             dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
 
@@ -2860,7 +2858,7 @@ class DVGeometry(object):
 
         return Jacobian
 
-    def _cascadedDVJacobian(self,childDelta=True,config=None):
+    def _cascadedDVJacobian(self, childDelta=True, config=None):
         """
         Compute the cascading derivatives from the parent to the child
         """
@@ -2914,9 +2912,8 @@ class DVGeometry(object):
                 numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, new_pts[:, 0])
                 numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, new_pts[:, 2])
-                if  childDelta:
+                if childDelta:
                     self.FFD.coef -= oldCoefLocations
-
 
                 # sum up all of the various influences
                 Jacobian[0::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,0:1])
@@ -2952,14 +2949,14 @@ class DVGeometry(object):
                 self.refAxis._updateCurveCoef()
 
                 #Complexify the child FFD coords
-                tmp1 =numpy.zeros_like(self.FFD.coef,dtype='D')
+                tmp1 = numpy.zeros_like(self.FFD.coef,dtype='D')
 
                 # add the effect of the global coordinates on the actual control points
                 tmp1[:,0] = self.dCcdXdvl[0::3, iDV]*h
                 tmp1[:,1] = self.dCcdXdvl[1::3, iDV]*h
                 tmp1[:,2] = self.dCcdXdvl[2::3, iDV]*h
 
-                self.FFD.coef+=tmp1
+                self.FFD.coef += tmp1
 
                 #Store the original FFD coordinates so that we can get the delta
                 oldCoefLocations = self.FFD.coef.copy()
@@ -2971,7 +2968,7 @@ class DVGeometry(object):
                 numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, new_pts[:, 0])
                 numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, new_pts[:, 2])
-                if  childDelta:
+                if childDelta:
                     self.FFD.coef -= oldCoefLocations
 
                 # sum up all of the various influences
@@ -3009,7 +3006,7 @@ class DVGeometry(object):
             child.zeroJacobians(ptSetName)
 
         self.computeTotalJacobian(ptSetName)
-        self.computeTotalJacobian_fast(ptSetName)
+        # self.computeTotalJacobian_fast(ptSetName)
 
         Jac = copy.deepcopy(self.JT[ptSetName])
 
@@ -3092,6 +3089,37 @@ class DVGeometry(object):
 
                 DVCountLoc += 1
                 self.DV_listLocal[key].value[j] = refVal
+
+        for key in self.DV_listSectionLocal:
+            for j in range(self.DV_listSectionLocal[key].nVal):
+
+                print('========================================')
+                print('   SectionLocalVar(%s), Value(%d)       '%(key, j))
+                print('========================================')
+
+                if self.isChild:
+                    self.FFD.coef=  refFFDCoef.copy()
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = self.coef.copy()
+                    self.refAxis._updateCurveCoef()
+
+                refVal = self.DV_listSectionLocal[key].value[j]
+
+                self.DV_listSectionLocal[key].value[j] += h
+                coordsph = self.update(ptSetName).flatten()
+
+                deriv = (coordsph-coords0)/h
+
+                for ii in range(len(deriv)):
+                    relErr = (deriv[ii] - Jac[DVCountSecLoc, ii])/(
+                        1e-16 + Jac[DVCountSecLoc, ii])
+                    absErr = deriv[ii] - Jac[DVCountSecLoc,ii]
+
+                    if abs(relErr) > h and abs(absErr) > h:
+                        print(ii, deriv[ii], Jac[DVCountSecLoc, ii], relErr, absErr)
+
+                DVCountSecLoc += 1
+                self.DV_listSectionLocal[key].value[j] = refVal
 
         for child in self.children:
             child.checkDerivatives(ptSetName)
