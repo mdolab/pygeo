@@ -1252,7 +1252,7 @@ class DVConstraints(object):
 
     def addLeTeConstraints(self, volID=None, faceID=None,
                            indSetA=None, indSetB=None, name=None,
-                           config=None):
+                           config=None, childIdx=None):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
         DVConstraints. These are just a particular form of linear
@@ -1333,9 +1333,14 @@ class DVConstraints(object):
         """
         self._checkDVGeo()
 
+        if childIdx is not None:
+            DVGeo = self.DVGeo.children[childIdx]
+        else:
+            DVGeo = self.DVGeo
+
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
-            lIndex = self.DVGeo.getLocalIndex(volID)
+            lIndex = DVGeo.getLocalIndex(volID)
             if faceID.lower() == 'ilow':
                 indices = lIndex[0, :, :]
             elif faceID.lower() == 'ihigh':
@@ -1385,7 +1390,7 @@ class DVConstraints(object):
         n = len(indSetA)
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, numpy.ones(n), numpy.ones(n),
-            lower=0, upper=0, DVGeo=self.DVGeo, config=config)
+            lower=0, upper=0, DVGeo=DVGeo, config=config)
 
     def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
                                   lower=0, upper=0, name=None, config=None):
