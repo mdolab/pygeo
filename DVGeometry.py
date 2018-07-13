@@ -1216,6 +1216,13 @@ class DVGeometry(object):
         childDelta : bool
             Return updates on child as a delta. The user should not
             need to ever change this parameter.
+
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
             """
         self.curPtSet = ptSetName
         # We've postponed things as long as we can...do the finialization.
@@ -1515,6 +1522,13 @@ class DVGeometry(object):
             The communicator to use to reduce the final derivative. If
             comm is None, no reduction takes place.
 
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
+
         Returns
         -------
         dIdxDict : dic
@@ -1553,7 +1567,7 @@ class DVGeometry(object):
         return dIdx
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, child=False,
-                        nDVStore=0):
+                        nDVStore=0, config=None):
         """
         This function computes sensitivty information.
 
@@ -1574,6 +1588,12 @@ class DVGeometry(object):
             The communicator to use to reduce the final derivative. If
             comm is None, no reduction takes place.
 
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
         Returns
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
@@ -1584,7 +1604,7 @@ class DVGeometry(object):
         internally and should not be changed by the user.
         """
 
-        self.computeTotalJacobian(ptSetName)
+        self.computeTotalJacobian(ptSetName,config=config)
 
         names = self.getVarNames()
         newvec = numpy.zeros(self.getNDV(),self.dtype)
@@ -1614,7 +1634,7 @@ class DVGeometry(object):
         return xsdot
 
     def totalSensitivityTransProd(self, vec, ptSetName, comm=None, child=False,
-                        nDVStore=0):
+                        nDVStore=0, config=None):
         """
         This function computes sensitivty information.
 
@@ -1640,6 +1660,12 @@ class DVGeometry(object):
             The communicator to use to reduce the final derivative. If
             comm is None, no reduction takes place.
 
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
         Returns
         -------
         dIdxDict : dic
@@ -1652,7 +1678,7 @@ class DVGeometry(object):
         internally and should not be changed by the user.
         """
 
-        self.computeTotalJacobian(ptSetName)
+        self.computeTotalJacobian(ptSetName,config=config)
 
         # perform the product
         if self.JT[ptSetName] == None:
