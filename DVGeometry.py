@@ -1305,6 +1305,7 @@ class DVGeometry(object):
         # Now loop over the children set the FFD and refAxis control
         # points as evaluated from the parent
 
+
         for iChild in range(len(self.children)):
             self.children[iChild]._finalize()
             self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(

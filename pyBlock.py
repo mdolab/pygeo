@@ -780,6 +780,7 @@ class pyBlock():
             coords = self.vols[iVol](u, v, w)
             coordinates[indices, :] = coords
 
+
         if mask is not None:
             # Explictly zero anything not in mask to ensure no-one
             # accidently uses it when they should not
