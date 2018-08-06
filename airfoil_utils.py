@@ -22,6 +22,9 @@ from geo_utils import readAirfoilFile, writeAirfoilFile
 # and
 
 
+# TODO
+# redo readAirfoilFIle and writeAirfoilFiles so the blunting/sharpening TE operations are separate
+
 # --------------------------------------------------------------
 #             Transformation Functions
 # --------------------------------------------------------------
@@ -275,7 +278,7 @@ def genAirfoilCoords(coordinates, numPoints, spacingFunc=polynomialSpacing, find
 
     Returns
     -------
-    pts : array  (2 x numPoints)
+    coords : array  (numPoints x 2 )
         points along the airfoil at the locations specified by the number of
         points and the spacing function
     """
@@ -291,9 +294,9 @@ def genAirfoilCoords(coordinates, numPoints, spacingFunc=polynomialSpacing, find
         s = joinedSpacing(numPoints, spacingFunc, **kwargs)
 
     # print s
-    pts = airfoilCurve.getValue(s)
+    coords = airfoilCurve.getValue(s)
 
-    return pts
+    return coords
 
 
 # -------------------------------------------------------------
@@ -301,46 +304,68 @@ def genAirfoilCoords(coordinates, numPoints, spacingFunc=polynomialSpacing, find
 #  -------------------------------------------------------------
 
 
-def getSliceData(fileName):
-    headerLines = 5
+def getSliceData(fileName, nHeaderLines=5):
+    """
+    Function to transform slice data from tecplot into a python dictionary of data
+
+    Parameters
+    ----------
+    fileName: string
+        path to slice file from ADflow
+    nHeaderLines: int
+        number of header lines before the data in the slice file
+
+    Returns
+    -------
+    sliceData: dict
+        dictionary where the keys are the variables from the slice file and the values are the
+        corresponding sets of data
+    """
 
     sliceData = {}
     sortedData = {}
 
+    # open the file
     with open(fileName, 'r') as f:
+
         lines = f.readlines()
-        numElem = int(lines[3].split()[4])
-        numNodes = int(lines[3].split()[2])
-        data = np.genfromtxt(fileName, skip_header=headerLines, skip_footer=(numElem))
+        numElem = int(lines[nHeaderLines - 2].split()[4])
+        numNodes = int(lines[nHeaderLines - 2].split()[2])
+        data = np.genfromtxt(fileName, skip_header=nHeaderLines, skip_footer=(numElem))
+
+        # for each variable listed in the slice file ...
         for varIndex, variable in enumerate(lines[1].split()[2:]):
-            print variable
+
+            # add the data the dictionary
             sliceData[variable.replace('"', '')] = data[:, varIndex]
-            sortedData[variable.replace('"', '')] = []
+            # sortedData[variable.replace('"', '')] = []
 
-    # we have all of the data in a dictionary but now we need to sort it based upon the element connectives
+    # sorts the data into elements
 
-    # get element to node connectivity data
-    elem_data = np.genfromtxt(fileName, dtype=int, skip_header=(headerLines + numNodes))
+    # # we have all of the data in a dictionary but now we need to sort it based upon the element connectives
 
-    start = True
-    for elem in elem_data:
+    # # get element to node connectivity data
+    # elem_data = np.genfromtxt(fileName, dtype=int, skip_header=(nHeaderLines + numNodes))
 
-        # if there is no data for that variable
-        if start:
-            for variable in ['XoC', 'YoC']:
-                sortedData[variable].append(np.array([sliceData[variable][elem[0] - 1]]))
+    # start = True
+    # for elem in elem_data:
 
-            start = False
+    #     # if there is no data for that variable
+    #     if start:
+    #         for variable in ['XoC', 'YoC']:
+    #             sortedData[variable].append(np.array([sliceData[variable][elem[0] - 1]]))
 
-        # if the next node is adjacent in the node list, add the data from the node to sortedData
-        if elem[1] == (elem[0] + 1):
-            for variable in ['XoC', 'YoC']:
-                sortedData[variable][-1] = np.append(
-                    sortedData[variable][-1], sliceData[variable][elem[1] - 1])
+    #         start = False
 
-        # if the next node isn't adjacent in the node list, create a new array
-        else:
+    #     # if the next node is adjacent in the node list, add the data from the node to sortedData
+    #     if elem[1] == (elem[0] + 1):
+    #         for variable in ['XoC', 'YoC']:
+    #             sortedData[variable][-1] = np.append(
+    #                 sortedData[variable][-1], sliceData[variable][elem[1] - 1])
 
-            start = True
+    #     # if the next node isn't adjacent in the node list, create a new array
+    #     else:
+
+    #         start = True
 
     return sliceData
