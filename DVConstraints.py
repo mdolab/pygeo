@@ -5,6 +5,7 @@ from __future__ import print_function
 import numpy,copy
 from pygeo import geo_utils, pyGeo
 from pyspline import pySpline
+from mpi4py import MPI
 from scipy.sparse import csr_matrix
 try:
     from collections import OrderedDict
@@ -2003,24 +2004,25 @@ class DVConstraints(object):
             self.DVGeo, addToPyOpt)
 
     def addCurvatureConstraint(self, surfFile, curvatureType='Gaussian', lower=-1e20, upper=1e20,
-                               scaled=False, scale=1.0, name=None,
-                               addToPyOpt=False):
+                               scaled=True, scale=1.0, KSCoeff=None,name=None,addToPyOpt=False):
         """
-        Add a contraint on the Gaussian curvature squared integrated over the
-        surface area of the wing. The only required input for this constraint is
-        a structured plot 3D file of the surface (there can be multiple surfaces in the file).
-        This value is meant to be corelated with tooling cost of the wing.
+        Add a curvature contraint for the prescribed surface. The only required input for this
+        constraint is a structured plot 3D file of the surface (there can be multiple 
+        surfaces in the file). This value is meant to be corelated with manufacturing costs.
 
         Parameters
         ----------
         surfFile: vector
-            Plot3D file with desired surface to integrate over, should be
-            sufficiently refined to accurately capture surface curvature
+            Plot3D file with desired surface, should be sufficiently refined to 
+            accurately capture surface curvature
 
         curvatureType: str
-            The type of curvature to calculate. Options are: 'Gaussian', 'mean', or 'combined'.
-            Specifically, the Gaussian curvature: K=kappa_1 * kappa_2, the mean curvature:
-            H = 0.5*(kappa_1+kappa_2), the combined curvature C = kappa_1^2 + kappa_2^2 = (2*H)^2-2*K
+            The type of curvature to calculate. Options are: 'Gaussian', 'mean', 'combined', or 'KSmean'.
+            Here the Gaussian curvature is K=kappa_1*kappa_2, the mean curvature is H = 0.5*(kappa_1+kappa_2), 
+            the combined curvature C = kappa_1^2+kappa_2^2=(2*H)^2-2*K, and the KSmean curvature applies the 
+            KS function to the mean curvature, which is essentially the max local mean curvature on the prescribed 
+            surface. In practice, we compute the squared integrated value over the surface, e.g., sum(H*H*dS), for the 
+            Gaussian, mean and combined curvatures. While for the KSmean, we applied the KS function, i.e., KS(H*H*dS)
 
         lower : float
             Lower bound for curvature integral.
@@ -2036,6 +2038,27 @@ class DVConstraints(object):
             scaled=False, it may changed to a more suitable value of
             the resulting phyical volume magnitude is vastly different
             from O(1).
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial curvature is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial curvature. lower=0.85, upper=1.15,
+              would allow for 15% change in curvature both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              curvature. lower and upper refer to the physical curvatures.
+
+        KSCoeff : float
+            The coefficient for KS function when curvatyreType=KSmean.
+            This controls how close the KS function approximates the original
+            functions. One should select a KSCoeff such that the printed "Reference curvature" 
+            is only slightly larger than the printed "Max curvature" for the baseline surface.
+            The default value of KSCoeff is the number of points in the plot3D files. 
 
         name : str
              Normally this does not need to be set; a default name will
@@ -2080,14 +2103,15 @@ class DVConstraints(object):
                 conName = '%s_mean_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
             elif curvatureType == 'combined':
                 conName = '%s_combined_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            elif curvatureType == 'KSmean':
+                conName = '%s_ksmean_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
             else:
-                raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
+                raise Error("The curvatureType parameter should be Gaussian, mean, combined, or KSmean "
                             "%s is not supported!"%curvatureType)
         else:
             conName = name
         self.constraints[typeName][conName] = CurvatureConstraint(
-            conName, surfs, curvatureType, lower, upper, scaled, scale, self.DVGeo,
-            addToPyOpt)
+            conName, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, self.DVGeo,addToPyOpt)
 
     def addMonotonicConstraints(self, key, slope=1.0, name=None, config=None):
         """
@@ -4218,10 +4242,10 @@ class CurvatureConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, DVGeo,
+    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo,
                  addToPyOpt):
         self.name = name
-        self.nSurfs = len(surfs)
+        self.nSurfs = len(surfs) # we support multiple surfaces (plot3D files)
         self.X = []
         self.X_map = []
         self.node_map = []
@@ -4248,6 +4272,12 @@ class CurvatureConstraint(GeometricConstraint):
         self.upper = upper
         self.scaled = scaled
         self.scale = scale
+        self.KSCoeff=KSCoeff
+        if self.KSCoeff==None:
+            # set KSCoeff to be the number of points in the plot 3D files
+            self.KSCoeff=0.0
+            for i in range(len(self.coords)):
+                self.KSCoeff+=len(self.coords[i])
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
@@ -4259,6 +4289,14 @@ class CurvatureConstraint(GeometricConstraint):
         # with the name provided. We need to add a point set for each surface:
         for iSurf in range(self.nSurfs):
             self.DVGeo.addPointSet(self.coords[iSurf], self.name+'%d'%(iSurf))
+
+        # compute the reference curvature for normalization
+        self.curvatureRef=0.0
+        for iSurf in range(self.nSurfs):
+            self.curvatureRef += self.evalCurvArea(iSurf)[0]
+
+        if(MPI.COMM_WORLD.rank==0):
+            print("Reference curvature: ",self.curvatureRef)
 
 
     def evalFunctions(self, funcs, config):
@@ -4275,6 +4313,9 @@ class CurvatureConstraint(GeometricConstraint):
         for iSurf in range(self.nSurfs):
             self.coords[iSurf] = self.DVGeo.update(self.name+'%d'%(iSurf), config=config)
             self.X[iSurf] = numpy.reshape(self.coords[iSurf],-1)
+            if self.scaled:
+                funcs[self.name] += self.evalCurvArea(iSurf)[0]/self.curvatureRef
+            else:
             funcs[self.name] += self.evalCurvArea(iSurf)[0]
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -4293,6 +4334,8 @@ class CurvatureConstraint(GeometricConstraint):
             # Add the sensitivity of the curvature integral over all surfaces
             for iSurf in range(self.nSurfs):
                 DkSDX = self.evalCurvAreaSens(iSurf)
+                if self.scaled:
+                    DkSDX /= self.curvatureRef
                 # Reshape the Xpt sensitivity to the shape DVGeo is expecting
                 DkSDpt = numpy.reshape(DkSDX, self.coords[iSurf].shape)
                 if iSurf == 0:
@@ -4366,6 +4409,13 @@ class CurvatureConstraint(GeometricConstraint):
             # Now compute integral C over S, equivelent to sum(C*dS)
             cS = numpy.dot(one,C*dS)
             return [cS, K, H, C]
+        elif self.curvatureType == 'KSmean':
+            # Now compute the KS function for mean curvature, equivelent to KS(H*H*dS)
+            sigmaH=numpy.dot(one,numpy.exp(self.KSCoeff*H*H*dS))
+            KSmean=numpy.log(sigmaH)/self.KSCoeff
+            if(MPI.COMM_WORLD.rank==0):
+                print("Max curvature: ",max(H*H*dS))
+            return [KSmean, K, H, C]
         else:
             raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
                         "%s is not supported!"%curvatureType)
@@ -4510,6 +4560,10 @@ class CurvatureConstraint(GeometricConstraint):
             term2 = (self.diags(2*dS).dot(DKDX)+self.diags(2*K).dot(DdSDX)).T.dot(one)
             DcSDX = term1 - term2
             return DcSDX
+        elif self.curvatureType == 'KSmean':
+            sigmaH=numpy.dot(one,numpy.exp(self.KSCoeff*H*H*dS))
+            DhSDX = (self.diags(2*H*dS/sigmaH*numpy.exp(self.KSCoeff*H*H*dS)).dot(DHDX)+self.diags(H*H/sigmaH*numpy.exp(self.KSCoeff*H*H*dS)).dot(DdSDX)).T.dot(one)
+            return DhSDX
         else:
             raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
                         "%s is not supported!"%curvatureType)
@@ -4801,7 +4855,7 @@ class CurvatureConstraint(GeometricConstraint):
         ii=range(len(a))
         return csr_matrix((a,[ii,ii]),(len(a),len(a)))
 
-    def writeTecplot(self, tec_file):
+    def writeTecplot(self, handle1):
         '''
         Write Curvature data on the surface to a tecplot file. Data includes
         mean curvature, H, and Gaussian curvature, K.
@@ -4810,7 +4864,10 @@ class CurvatureConstraint(GeometricConstraint):
 
             tec_file: name of TecPlot file.
         '''
-        handle = open(tec_file,'w')
+        # we ignore the input handle and use this separated name for curvature constraint tecplot file
+        # NOTE: we use this tecplot file to only visualize the local distribution of curctures. 
+        # The plotted local curvatures are not exactly as that computed in the evalCurvArea function
+        handle = open('%s.dat'%self.name,'w')
         handle.write('title = "DVConstraint curvature constraint"\n')
         varbs='variables = "x", "y", "z", "K", "H" "C"'
         handle.write(varbs+'\n')
