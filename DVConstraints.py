@@ -4316,7 +4316,7 @@ class CurvatureConstraint(GeometricConstraint):
             if self.scaled:
                 funcs[self.name] += self.evalCurvArea(iSurf)[0]/self.curvatureRef
             else:
-            funcs[self.name] += self.evalCurvArea(iSurf)[0]
+                funcs[self.name] += self.evalCurvArea(iSurf)[0]
 
     def evalFunctionsSens(self, funcsSens, config):
         """
