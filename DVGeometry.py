@@ -123,8 +123,11 @@ class DVGeometry(object):
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock('plot3d', fileName=fileName, FFD=True,
-                           *args, **kwargs)
+        if self.isChild:
+            self.FFD = pyBlock('plot3d', fileName=fileName, FFD=True, spline_order=2,  *args, **kwargs)
+        else:
+            self.FFD = pyBlock('plot3d', fileName=fileName, FFD=True, *args, **kwargs)
+
         self.origFFDCoef = self.FFD.coef.copy()
 
         # Jacobians:
@@ -732,6 +735,7 @@ class DVGeometry(object):
                                 /
                                2
 
+
         pointSelect : pointSelect object. Default is None Use a
             pointSelect object to select a subset of the total number
             of control points. See the documentation for the
@@ -794,9 +798,17 @@ class DVGeometry(object):
 
         Examples
         --------
-        >>> # Add all control points in FFD as local shape variables
-        >>> # moving in the 1 direction, within +/- 1.0 units
-        >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
+        >>> # Add all variables in FFD as local shape variables
+        >>> # moving in the y direction, within +/- 1.0 units
+        >>> DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper= 1.0, axis='y')
+        >>> # As above, but moving in the x and y directions.
+        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
+        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
+        >>> # Create a point select to use: (box from (0,0,0) to (10,0,10) with
+        >>> # any point projecting into the point along 'y' axis will be selected.
+        >>> PS = geoUtils.pointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
+        >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
+
         """
         if type(config) == str:
             config = [config]
@@ -1741,7 +1753,6 @@ class DVGeometry(object):
                 J_temp += J_local
 
         if J_casc is not None:
-            # print('J_casc', J_casc.todense())
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_casc)
             else:
@@ -3286,7 +3297,7 @@ class DVGeometry(object):
                 ax2 /= numpy.linalg.norm(ax2)
             else:
                 raise Error('orient2 must be \'svd\' or \'ffd\'')
-
+            
             # Options for choosing in-plane axes
             # 1. Align axis '0' with projection of the given vector on section
             #       plane.
@@ -3347,7 +3358,6 @@ class geoDVGlobal(object):
         """When the object is called, actually apply the function"""
         # Run the user-supplied function
         d = numpy.dtype(complex)
-
         if self.config is None or config in self.config:
             # If the geo object is complex, which is indicated by .coef
             # being complex, run with complex numbers. Otherwise, convert
