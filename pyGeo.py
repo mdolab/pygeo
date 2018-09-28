@@ -152,7 +152,7 @@ class pyGeo():
         self.nSurf = nSurf
         for isurf in range(self.nSurf):
             self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=4, kv=4,
-                                               Nctlu=4, Nctlv=4))
+                                               nCtlu=4, nCtlv=4))
 
     def _readIges(self, fileName):
         """Load a Iges file and create the splines to go with each patch
