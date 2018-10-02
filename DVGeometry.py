@@ -2703,7 +2703,9 @@ class DVGeometry(object):
 
             iDV = self.nDVG_count
             for key in self.DV_listGlobal:
-                if self.DV_listGlobal[key].config is None or config in self.DV_listGlobal[key].config:
+                if self.DV_listGlobal[key].config is None or \
+                   config is None or \
+                   any(c0 in config for c0 in self.DV_listGlobal[key].config):
                     nVal = self.DV_listGlobal[key].nVal
                     for j in range(nVal):
 
@@ -2762,7 +2764,8 @@ class DVGeometry(object):
             iDVSectionLocal = self.nDVSL_count
             for key in self.DV_listSectionLocal:
                 if self.DV_listSectionLocal[key].config is None or \
-                   config in self.DV_listSectionLocal[key].config:
+                   config is None or \
+                   any(c0 in config for c0 in self.DV_listSectionLocal[key].config):
                     dv = self.DV_listSectionLocal[key]
                     nVal = dv.nVal
                     for j in range(nVal):
@@ -2839,7 +2842,8 @@ class DVGeometry(object):
             iDVLocal = self.nDVL_count
             for key in self.DV_listLocal:
                 if self.DV_listLocal[key].config is None or \
-                   config in self.DV_listLocal[key].config:
+                   config is None or \
+                   any(c0 in config for c0 in self.DV_listLocal[key].config):
 
                     nVal = self.DV_listLocal[key].nVal
                     for j in range(nVal):
@@ -3348,7 +3352,7 @@ class geoDVGlobal(object):
         # Run the user-supplied function
         d = numpy.dtype(complex)
 
-        if self.config is None or config in self.config:
+        if self.config is None or config is None or any(c0 in config for c0 in self.config):
             # If the geo object is complex, which is indicated by .coef
             # being complex, run with complex numbers. Otherwise, convert
             # to real before calling. This eliminates casting warnings.
@@ -3404,14 +3408,14 @@ class geoDVLocal(object):
     def __call__(self, coef, config):
         """When the object is called, apply the design variable values to
         coefficients"""
-        if self.config is None or config in self.config:
+        if self.config is None or config is None or any(c0 in config for c0 in self.config):
             for i in range(self.nVal):
                 coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].real
 
         return coef
 
     def updateComplex(self, coef, config):
-        if self.config is None or config in self.config:
+        if self.config is None or config is None or any(c0 in config for c0 in self.config):
             for i in range(self.nVal):
                 coef[self.coefList[i, 0], self.coefList[i, 1]] += self.value[i].imag*1j
 
@@ -3498,7 +3502,7 @@ class geoDVSectionLocal(object):
     def __call__(self, coef, coefRotM, config):
         """When the object is called, apply the design variable values to
         coefficients"""
-        if self.config is None or config in self.config:
+        if self.config is None or config is None or any(c0 in config for c0 in self.config):
             for i in range(len(self.coefList)):
                 T = self.sectionTransform[self.sectionLink[self.coefList[i]]]
                 inFrame = numpy.zeros(3)
@@ -3509,7 +3513,7 @@ class geoDVSectionLocal(object):
         return coef
 
     def updateComplex(self, coef, coefRotM, config):
-        if self.config is None or config in self.config:
+        if self.config is None or config is None or any(c0 in config for c0 in self.config):
             for i in range(len(self.coefList)):
                 T = self.sectionTransform[self.sectionLink[self.coefList[i]]]
                 inFrame = numpy.zeros(3, 'D')
