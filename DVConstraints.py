@@ -216,7 +216,7 @@ class DVConstraints(object):
 
             Set to True if you want to embed the triangulated surface mesh
             in the DVGeo object. This is required if you are using the
-            TriangulatedObjectConstraint class.
+            TriangulatedSurfaceConstraint class.
 
         Examples
         --------
@@ -1055,6 +1055,84 @@ class DVConstraints(object):
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
             conName, coords, lower, upper, scale, self.DVGeo, addToPyOpt)
+
+
+    def addTriangulatedSurfaceConstraint(self, objectGeometry,
+                                         dist_tol=0.1, adapt_rho=True, start_rho=300., batch_size=1, perim_scale=10.,
+                                         name=None, scale=1., addToPyOpt=True)
+        """
+        Add a single triangulated surface constraint to an aerosurface.
+        This constraint is designed to keep a general 'blob' of watertight
+        geometry contained within an aerodynamic hull (e.g., a wing)
+
+        Parameters
+        ----------
+        objectGeometry : list
+           A list of three n x 3 arrays, where each array
+           represents the vertices of the object to be contained in
+           the aerosurface, e.g., [objp0, objp1, objp2]
+
+        dist_tol : float
+            This distance is subtracted from the minimum distance.
+            Setting a positive dist_tol will provide margin around the object.
+
+        adapt_rho : bool
+            Set to true to use a variable rho factor when computing
+            the KS function of the minimum distance
+
+        start_rho : float
+            The initial rho factor of the KS function of min distance.
+
+        batch_size : int
+            Batch size controls the number of object mesh points loaded into GPU memory.
+            If GPU returns out of memory / allocation errors, reduce this number.
+            The maximum batch size is the number of object mesh triangles.
+
+        perim_scale : float
+            Apply a scaling factor to the intersection perimeter length.
+            Setting this higher will allow the optimizer to intersect the object
+            less.
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constraint names need to
+             be distinguished **OR** you are using this
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. It may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if this
+            is to be used as a constraint. If this to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+            """
+        self._checkDVGeo()
+
+        typeName = 'triSurfCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = '%s_trisurf_constraint_%d'%(self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+
+        # Finally add constraint object
+        self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName, 
+                                                objectGeometry, scale, self.DVGeo, addToPyOpt, 
+                                                dist_tol, adapt_rho, start_rho, 
+                                                batch_size, perim_scale)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -2734,7 +2812,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     aerodynamic surface. 
     """
     def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt, 
-                 dist_tol=0.1, adapt_rho=True, start_rho=300, batch_size=1, perim_scale = 1e1):
+                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale):
         self.name = name
         if type(objectGeometry) == str:
             # load from file
@@ -2754,6 +2832,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.start_rho = start_rho
         self.batch_size = batch_size
         self.perim_scale = perim_scale
+        self.nCon = 1
+        self.upper = 99999999.0
+        self.lower = 0.0
 
         self.smSize = None
         self.rho_c = self.start_rho
