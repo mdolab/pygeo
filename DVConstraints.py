@@ -198,7 +198,7 @@ class DVConstraints(object):
         self.v1 = None
         self.v2 = None
 
-    def setSurface(self, surf):
+    def setSurface(self, surf, addToDVGeo=False):
         """
         Set the surface DVConstraints will use to perform projections.
 
@@ -211,6 +211,12 @@ class DVConstraints(object):
             used OR a triagnulaed surface in the form [p0, v1, v2] can
             be used. This triangulated surface form can be supplied
             form pyADflow or from pyTrian.
+
+        addToDVGeo : bool
+
+            Set to True if you want to embed the triangulated surface mesh
+            in the DVGeo object. This is required if you are using the
+            TriangulatedObjectConstraint class.
 
         Examples
         --------
@@ -235,6 +241,15 @@ class DVConstraints(object):
 
         else: # Assume it's a pyGeo surface
             self._generateDiscreteSurface(surf)
+
+        # we assume that DVGeo has already been set
+        if addToDVGeo:
+            self.p1 = self.p0 + self.v1
+            self.p2 = self.p0 + self.v2
+            self.DVGeo.addPointSet(self.p0, 'p0')
+            self.DVGeo.addPointSet(self.p1, 'p2')
+            self.DVGeo.addPointSet(self.p2, 'p2')
+
 
     def setDVGeo(self, DVGeo):
         """
@@ -2713,6 +2728,139 @@ class ThicknessToChordConstraint(GeometricConstraint):
         for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
 
+class TriangulatedSurfaceConstraint(GeometricConstraint):
+    """
+    This class is used to enclose a triangulated object inside an 
+    aerodynamic surface. 
+    """
+    def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt, 
+                 dist_tol=0.1, adapt_rho=True, start_rho=300, batch_size=1, perim_scale = 1e1):
+        self.name = name
+        if type(objectGeometry) == str:
+            # load from file
+            raise NotImplementedError
+        elif type(objectGeometry) == list:
+            # for now, do NOT add the object geometry to dvgeo       
+            self.omSize = objectGeometry[0].shape[0]
+            self.objp0 = objectGeometry[0].reshape(self.omSize, 1, 3)
+            self.objp1 = objectGeometry[1].reshape(self.omSize, 1, 3)
+            self.objp2 = objectGeometry[2].reshape(self.omSize, 1, 3)
+
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        self.dist_tol = dist_tol
+        self.adapt_rho = adapt_rho
+        self.start_rho = start_rho
+        self.batch_size = batch_size
+        self.perim_scale = perim_scale
+
+        self.smSize = None
+        self.rho_c = self.start_rho
+        return
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the function this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when 
+        # running setSurface()
+        if self.smSize is None:
+            self.p0 = self.DVGeo.update('p0', config=config)
+            self.smSize = self.p0.shape[0]
+        self.p0 = self.DVGeo.update('p0', config=config).reshape(1, self.smSize, 3)
+        self.p1 = self.DVGeo.update('p1', config=config).reshape(1, self.smSize, 3)
+        self.p2 = self.DVGeo.update('p2', config=config).reshape(1, self.smSize, 3)
+        
+        C = self.evalTriangulatedSurfConstraint()
+
+        funcs[self.name] = C
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dCdp0, dCdp1, dCdp2 = self.evalTriangulatedSurfConstraintSens()
+            # Now compute the DVGeo total sensitivity WRT the surface mesh:
+            funcsSens[self.name] = (self.DVGeo.totalSensitivity(dCdp0, 'p0', config=config)
+                                    + self.DVGeo.totalSensitivity(dCdp1, 'p1', config=config)
+                                    + self.DVGeo.totalSensitivity(dCdp2, 'p2', config=config))
+
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this volume constriant
+        """
+        # Reshape coordinates back to 3D format
+        # x = self.coords.reshape([self.nSpan, self.nChord, 2, 3])
+
+        # handle.write("ZONE T=\"%s\" I=%d J=%d K=%d\n"%(
+        #     self.name, self.nSpan, self.nChord, 2))
+        # handle.write("DATAPACKING=POINT\n")
+        # for k in range(2):
+        #     for j in range(self.nChord):
+        #         for i in range(self.nSpan):
+        #             handle.write('%f %f %f\n'%(x[i, j, k, 0],
+        #                                        x[i, j, k, 1],
+        #                                        x[i, j, k, 2]))
+        pass
+
+    def evalTriangulatedSurfConstraint(self):
+        """
+        Add documentation later
+        """
+        # first compute the length of the intersection surface between the object and surf mesh
+
+        perim_length, pairwise, grad_perim = moller_intersect_tf(self.objp0, self.objp1, self.objp2, 
+                                                                 self.p0, self.p1, self.p2, 
+                                                                 batch_size=self.batch_size, 
+                                                                 complexify=False, 
+                                                                 compute_gradients=True)
+        self.perim_length = perim_length
+
+        if self.perim_length > 0:
+            # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
+            self.grad_perim = grad_perim
+            return self.perim_length * self.perim_scale
+        else:
+            # if the surfaces don't intersect, run the KS distance function
+            KS, min_sd, grad_KS, rho_c = mindist(self.objp0, self.objp1, self.objp2, 
+                                                self.p0, self.p1, self.p2, dist_tol=self.dist_tol, 
+                                                adapt_rho=self.adapt_rho, rho_c=self.rho_c, 
+                                                batch_size=self.batch_size, complexify=False)
+            self.rho_c = rho_c
+            self.grad_KS = grad_KS
+            return KS
+
+    def evalTriangulatedSurfConstraintSens(self):
+        """
+        Add documentation later
+        """
+        # first compute the length of the intersection surface between the object and surf mesh
+
+        if self.perim_length > 0:
+            # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
+            return self.grad_perim[0]*self.perim_scale, self.grad_perim[1]*self.perim_scale, self.grad_perim[2]*self.perim_scale
+        else:
+            return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2]
+
+
+
+
+
 class VolumeConstraint(GeometricConstraint):
     """
     This class is used to represet a single volume constraint. The
@@ -2746,6 +2894,7 @@ class VolumeConstraint(GeometricConstraint):
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
+    
 
     def evalFunctions(self, funcs, config):
         """
