@@ -1301,7 +1301,7 @@ class DVConstraints(object):
             Single integer specifying the volume index
         faceID : str {'iLow', 'iHigh', 'jLow', 'jHigh', 'kLow', 'kHigh'}
             One of above specifying the node on which face to constrain.
-        conDir : str {'i','j', 'k'}
+        topID : str {'i','j', 'k'}
             One of the above specifing the symmetry direction, should 
             only be used on 2x2 faces
         indSetA : array of int
@@ -1348,7 +1348,7 @@ class DVConstraints(object):
             lIndex = DVGeo.getLocalIndex(volID)
             iFace = False
             jFace = False
-            kface = False
+            kFace = False
             if faceID.lower() == 'ilow':
                 indices = lIndex[0, :, :]
                 iFace = True
@@ -1384,14 +1384,14 @@ class DVConstraints(object):
                     if topID.lower()=='i' and not iFace:
                         indSetA = indices[0, :]
                         indSetB = indices[1, :]                        
-                    elif conDir.lower()=='j' and not jFace:
+                    elif topID.lower()=='j' and not jFace:
                         if iFace:                            
                             indSetA = indices[0, :]
                             indSetB = indices[1, :]
                         else:
                             indSetA = indices[:, 0]
                             indSetB = indices[:, 1]
-                    elif conDir.lower()=='k' and not kFace:
+                    elif topID.lower()=='k' and not kFace:
                         indSetA = indices[:, 0]
                         indSetB = indices[:, 1]
                     else:
@@ -1403,8 +1403,8 @@ class DVConstraints(object):
                                 "exactly one) of FFD block dimensions on the"
                                 " specified face must be 2. The dimensions of "
                                 "the selected face are: "
-                                "(%d, %d). For this case you must specify"
-                                "conDir" % (shp[0], shp[1]))
+                                "(%d, %d). For this case you must specify "
+                                "topID" % (shp[0], shp[1]))
 
         elif indSetA is not None and indSetB is not None:
             if len(indSetA) != len(indSetB):
