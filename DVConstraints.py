@@ -1251,7 +1251,7 @@ class DVConstraints(object):
             conName, volCons, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
-    def addLeTeConstraints(self, volID=None, faceID=None,
+    def addLeTeConstraints(self, volID=None, faceID=None,topID=None,
                            indSetA=None, indSetB=None, name=None,
                            config=None, childIdx=None):
         """
@@ -1280,6 +1280,7 @@ class DVConstraints(object):
         the back surface or TE of the FFD). You will see which plane
         it coresponding to. For example, 'I-Plane' with I-index = 1 is
         'iLow'.
+        topID provides a second input for blocks that have 2x2 faces.
 
         Alternatively, two sets of indices can be provided, 'indSetA'
         and 'indSetB'. Both must be the same length. These indices may
@@ -1300,6 +1301,9 @@ class DVConstraints(object):
             Single integer specifying the volume index
         faceID : str {'iLow', 'iHigh', 'jLow', 'jHigh', 'kLow', 'kHigh'}
             One of above specifying the node on which face to constrain.
+        conDir : str {'i','j', 'k'}
+            One of the above specifing the symmetry direction, should 
+            only be used on 2x2 faces
         indSetA : array of int
             Indices of control points on one side of the FFD
         indSetB : array of int
@@ -1342,18 +1346,27 @@ class DVConstraints(object):
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
             lIndex = DVGeo.getLocalIndex(volID)
+            iFace = False
+            jFace = False
+            kface = False
             if faceID.lower() == 'ilow':
                 indices = lIndex[0, :, :]
+                iFace = True
             elif faceID.lower() == 'ihigh':
                 indices = lIndex[-1, :, :]
+                iFace = True
             elif faceID.lower() == 'jlow':
                 indices = lIndex[:, 0, :]
+                jFace = True
             elif faceID.lower() == 'jhigh':
                 indices = lIndex[:, -1, :]
+                jFace = True
             elif faceID.lower() == 'klow':
                 indices = lIndex[:, :, 0]
+                kFace = True
             elif faceID.lower() == 'khigh':
                 indices = lIndex[:, :, -1]
+                kFace = True
             else:
                 raise Error("faceID must be one of iLow, iHigh, jLow, jHigh, "
                             "kLow or kHigh.")
@@ -1367,11 +1380,31 @@ class DVConstraints(object):
                 indSetA = indices[:, 0]
                 indSetB = indices[:, 1]
             else:
-                raise Error("Cannot add leading edge constraints. One (and "
-                            "exactly one) of FFD block dimensions on the"
-                            " specified face must be 2. The dimensions of "
-                            "the selected face are: "
-                            "(%d, %d)" % (shp[0], shp[1]))
+                if topID is not None:
+                    if topID.lower()=='i' and not iFace:
+                        indSetA = indices[0, :]
+                        indSetB = indices[1, :]                        
+                    elif conDir.lower()=='j' and not jFace:
+                        if iFace:                            
+                            indSetA = indices[0, :]
+                            indSetB = indices[1, :]
+                        else:
+                            indSetA = indices[:, 0]
+                            indSetB = indices[:, 1]
+                    elif conDir.lower()=='k' and not kFace:
+                        indSetA = indices[:, 0]
+                        indSetB = indices[:, 1]
+                    else:
+                        raise Error("Invalid value for topID. value must be"
+                                    " i, j or k")
+
+                else:
+                    raise Error("Cannot add leading edge constraints. One (and "
+                                "exactly one) of FFD block dimensions on the"
+                                " specified face must be 2. The dimensions of "
+                                "the selected face are: "
+                                "(%d, %d). For this case you must specify"
+                                "conDir" % (shp[0], shp[1]))
 
         elif indSetA is not None and indSetB is not None:
             if len(indSetA) != len(indSetB):
