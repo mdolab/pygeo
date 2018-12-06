@@ -1062,7 +1062,7 @@ class DVConstraints(object):
 
     def addTriangulatedSurfaceConstraint(self, objectGeometry,
                                          dist_tol=0.1, adapt_rho=True, start_rho=50., batch_size=1, perim_scale=0.1,
-                                         max_perim=3.0,
+                                         max_perim=3.0, two_constraints=False,
                                          name=None, scale=1., addToPyOpt=True, mpi=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
@@ -1139,7 +1139,7 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName, 
                                                 objectGeometry, scale, self.DVGeo, addToPyOpt, 
                                                 dist_tol, adapt_rho, start_rho, 
-                                                batch_size, perim_scale, max_perim, mpi)
+                                                batch_size, perim_scale, max_perim, two_constraints, mpi)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -2820,7 +2820,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt, 
-                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, mpi):
+                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, mpi):
         self.name = name
         if type(objectGeometry) == str:
             # load from file
@@ -2849,13 +2849,17 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.batch_size = batch_size
         self.perim_scale = perim_scale
         self.max_perim = max_perim
-        self.nCon = 1
+        self.two_constraints=two_constraints
+        if two_constraints:
+            self.nCon = 2
+        else:
+            self.nCon = 1
         self.upper = 0.000
         self.lower = -1e10
         self.mpi = mpi
-
         self.smSize = None
         self.rho_c = self.start_rho
+
         return
 
     def evalFunctions(self, funcs, config):
@@ -2878,16 +2882,31 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         
         
         if MPI.COMM_WORLD.rank == 0 or not self.mpi:
-            C, failflag = self.evalTriangulatedSurfConstraint()
+            if self.two_constraints:
+                KS, perim, failflag = self.evalTriangulatedSurfConstraint()
+            else:
+                C, failflag = self.evalTriangulatedSurfConstraint()
         else:
-            C = None
+            if self.two_constraints:
+                KS = None
+                perim = None
+            else:
+                C = None
             failflag = None
 
         if self.mpi:
-            C = MPI.COMM_WORLD.bcast(C, root=0)
+            if self.two_constraints:
+                KS = MPI.COMM_WORLD.bcast(KS, root=0)
+                perim = MPI.COMM_WORLD.bcast(perim, root=0)
+            else:
+                C = MPI.COMM_WORLD.bcast(C, root=0)
             failflag = MPI.COMM_WORLD.bcast(failflag, root=0)
 
-        funcs[self.name] = C
+        if self.two_constraints:
+            funcs[self.name+'_KS'] = KS
+            funcs[self.name+'_perim'] = perim
+        else:
+            funcs[self.name] = C
         if failflag:
             funcs['fail'] = failflag
 
@@ -2905,21 +2924,45 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
             # Now compute the DVGeo total sensitivity WRT the surface mesh:
-            if MPI.COMM_WORLD.rank == 0 or not self.mpi:
-                dCdp0, dCdp1, dCdp2 = self.evalTriangulatedSurfConstraintSens()
-                tmpTotal = {}
-                tmpp0 = self.DVGeo.totalSensitivity(dCdp0, 'p0', config=config)
-                tmpp1 = self.DVGeo.totalSensitivity(dCdp1, 'p1', config=config)
-                tmpp2 = self.DVGeo.totalSensitivity(dCdp2, 'p2', config=config)
-                for key in tmpp0:
-                    tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
-                    print(key+' : '+str(tmpTotal[key]))
-            else:
-                tmpTotal = None
-            if self.mpi:
-                tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
+            if self.two_constraints:
+                if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+                    dKSdp0, dKSdp1, dKSdp2, dperimdp0, dperimdp1, dperimdp2 = self.evalTriangulatedSurfConstraintSens()
+                    tmpTotalKS = {}
+                    tmpTotalPerim = {}
 
-            funcsSens[self.name] = tmpTotal
+                    tmpKSp0 = self.DVGeo.totalSensitivity(dKSdp0, 'p0', config=config)
+                    tmpKSp1 = self.DVGeo.totalSensitivity(dKSdp1, 'p1', config=config)
+                    tmpKSp2 = self.DVGeo.totalSensitivity(dKSdp2, 'p2', config=config)
+                    tmpperimp0 = self.DVGeo.totalSensitivity(dperimdp0, 'p0', config=config)
+                    tmpperimp1 = self.DVGeo.totalSensitivity(dperimdp1, 'p1', config=config)
+                    tmpperimp2 = self.DVGeo.totalSensitivity(dperimdp2, 'p2', config=config)
+                    for key in tmpKSp0:
+                        tmpTotalKS[key] = tmpKSp0[key]+tmpKSp1[key]+tmpKSp2[key]
+                        tmpTotalPerim[key] = tmpperimp0[key]+tmpperimp1[key]+tmpperimp2[key]
+                else:
+                    tmpTotalKS = None
+                    tmpTotalPerim = None
+                if self.mpi:
+                    tmpTotalKS = MPI.COMM_WORLD.bcast(tmpTotalKS, root=0)
+                    tmpTotalPerim = MPI.COMM_WORLD.bcast(tmpTotalPerim, root=0)
+                funcsSens[self.name+'_KS'] = tmpTotalKS
+                funcsSens[self.name+'_perim'] = tmpTotalPerim
+
+            else:
+                if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+                    dCdp0, dCdp1, dCdp2 = self.evalTriangulatedSurfConstraintSens()
+                    tmpTotal = {}
+                    tmpp0 = self.DVGeo.totalSensitivity(dCdp0, 'p0', config=config)
+                    tmpp1 = self.DVGeo.totalSensitivity(dCdp1, 'p1', config=config)
+                    tmpp2 = self.DVGeo.totalSensitivity(dCdp2, 'p2', config=config)
+                    for key in tmpp0:
+                        tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+                        print(key+' : '+str(tmpTotal[key]))
+                else:
+                    tmpTotal = None
+                if self.mpi:
+                    tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
+                funcsSens[self.name] = tmpTotal
 
     def writeTecplot(self, handle):
         """
@@ -2951,42 +2994,70 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                                                                  complexify=False, 
                                                                  compute_gradients=True)
         self.perim_length = perim_length
+        self.grad_perim = grad_perim
 
-        if self.perim_length > 0:
-            # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
-            self.grad_perim = grad_perim
-            print('Perimeter: '+str(perim_length))
-            if self.perim_length > self.max_perim:
-                failflag = True
-                print('Intersection perim exceeds tol - returning fail flag')
-            else:
-                failflag = False
-            return self.perim_length * self.perim_scale, failflag
+       # if self.perim_length > 0:
+            #print('Perimeter: '+str(perim_length))
+
+        if self.perim_length > self.max_perim:
+            failflag = True
+            print('Intersection perim exceeds tol - returning fail flag')
         else:
+            failflag = False
+
+        if not self.two_constraints and self.perim_length > 0:
+            return self.perim_length * self.perim_scale, failflag
+
+        if self.two_constraints or not self.perim_length > 0:
             # if the surfaces don't intersect, run the KS distance function
             KS, min_sd, grad_KS, rho_c = mindist(self.objp0, self.objp1, self.objp2, 
                                                 self.p0, self.p1, self.p2, dist_tol=self.dist_tol, 
                                                 adapt_rho=self.adapt_rho, rho_c=self.rho_c, 
                                                 batch_size=self.batch_size, complexify=False)
+        
             self.rho_c = rho_c
             self.grad_KS = grad_KS
-            print('KS: '+str(KS))
-            # print('Grads KS: '+str(grad_KS))
-            failflag = False
-            return KS, failflag
+            # if not self.perim_length > 0:
+            #     #print('KS: '+str(KS))
+
+            if self.two_constraints:
+                print('KS: '+str(KS))
+                print('Perimeter: '+str(perim_length))
+                return KS, self.perim_length * self.perim_scale, failflag
+            else:
+                return KS, failflag
 
     def evalTriangulatedSurfConstraintSens(self):
         """
         Add documentation later
         """
         # first compute the length of the intersection surface between the object and surf mesh
-
-        if self.perim_length > 0:
-            # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
-            return self.grad_perim[0]*self.perim_scale, self.grad_perim[1]*self.perim_scale, self.grad_perim[2]*self.perim_scale
+        if self.two_constraints:
+            return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2], self.grad_perim[0]*self.perim_scale, self.grad_perim[1]*self.perim_scale, self.grad_perim[2]*self.perim_scale
         else:
-            return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2]
+            if self.perim_length > 0:
+                # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
+                return self.grad_perim[0]*self.perim_scale, self.grad_perim[1]*self.perim_scale, self.grad_perim[2]*self.perim_scale
+            else:
+                return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2]
 
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            if self.two_constraints:
+                optProb.addConGroup(self.name+'_KS', 1, lower=self.lower,
+                                    upper=self.upper, scale=self.scale,
+                                    wrt=self.getVarNames())
+                optProb.addConGroup(self.name+'_perim', 1, lower=self.lower,
+                                    upper=self.upper, scale=self.scale,
+                                    wrt=self.getVarNames())
+
+            else:
+                optProb.addConGroup(self.name, self.nCon, lower=self.lower,
+                                    upper=self.upper, scale=self.scale,
+                                    wrt=self.getVarNames())
 
 
 
