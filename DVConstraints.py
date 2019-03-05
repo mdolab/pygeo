@@ -446,22 +446,24 @@ class DVConstraints(object):
                                   name=None, addToPyOpt=True):
         """
         Add a set of thickness constraints that span a logically a
-        two-dimensional region. A little ASCII art can help here::
+        two-dimensional region. A little ASCII art can help here
+
+        .. code-block:: text
 
           Planform view of the wing: The '+' are the (three dimensional)
           points that are supplied in leList and teList.
 
           Physical extent of wing
-                                   \
+                                   \          
           __________________________\_________
           |                                  |
-          +-----------+--o-----------+       |
+          +-----------+--------------+       |
           |   /                       \      |
           | leList      teList         \     |
           |                   \         \    |
           +------------------------------+   |
-                                             |
-          ___________________________________/
+          |                                  |
+          |__________________________________/
 
 
         Things to consider:
@@ -604,13 +606,15 @@ class DVConstraints(object):
         """
         Add a set of thickness constraints oriented along a poly-line.
 
-        See below for a schematic::
+        See below for a schematic
+
+        .. code-block:: text
 
           Planform view of the wing: The '+' are the (three dimensional)
           points that are supplied in ptList:
 
           Physical extent of wing
-                                   \
+                                   \          
           __________________________\_________
           |                  +               |
           |                -/                |
@@ -929,13 +933,15 @@ class DVConstraints(object):
         """
         Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
 
-        See below for a schematic::
+        See below for a schematic
+
+        .. code-block:: text
 
           Planform view of the wing: The '+' are the (three dimensional)
           points that are supplied in ptList:
 
           Physical extent of wing
-                                   \
+                                   \          
           __________________________\_________
           |                  +               |
           |                -/                |
@@ -1047,13 +1053,15 @@ class DVConstraints(object):
         """
         Add a single volume constraint to the wing. The volume
         constraint is defined over a logically two-dimensional region
-        as shown below::
+        as shown below
+
+        .. code-block:: text
 
           Planform view of the wing: The '+' are the (three dimensional)
           points that are supplied in leList and teList.
 
           Physical extent of wing
-                                   \
+                                   \          
           __________________________\_________
           |                                  |
           +--------------------------+       |
@@ -1061,8 +1069,8 @@ class DVConstraints(object):
           | leList      teList         \     |
           |                   \         \    |
           +------------------------------+   |
-                                             |
-          ___________________________________/
+          |                                  |
+          |__________________________________/
 
         The region defined by the '----' boundary in the figure above
         will be meshed with nSpan x nChord points to form a 2D domain
