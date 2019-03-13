@@ -16,6 +16,9 @@ except ImportError:
         print("Could not find any OrderedDict class. For 2.6 and earlier, "
               "use:\n pip install ordereddict")
 
+from geograd.intersect import moller_intersect_tf
+from geograd.minimum_distance import mindist
+
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
@@ -247,7 +250,7 @@ class DVConstraints(object):
             self.p1 = self.p0 + self.v1
             self.p2 = self.p0 + self.v2
             self.DVGeo.addPointSet(self.p0, 'p0')
-            self.DVGeo.addPointSet(self.p1, 'p2')
+            self.DVGeo.addPointSet(self.p1, 'p1')
             self.DVGeo.addPointSet(self.p2, 'p2')
 
 
@@ -1058,8 +1061,9 @@ class DVConstraints(object):
 
 
     def addTriangulatedSurfaceConstraint(self, objectGeometry,
-                                         dist_tol=0.1, adapt_rho=True, start_rho=300., batch_size=1, perim_scale=10.,
-                                         name=None, scale=1., addToPyOpt=True)
+                                         dist_tol=0.1, adapt_rho=True, start_rho=50., batch_size=1, perim_scale=0.1,
+                                         max_perim=3.0,
+                                         name=None, scale=1., addToPyOpt=True, mpi=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
         This constraint is designed to keep a general 'blob' of watertight
@@ -1116,7 +1120,10 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
-            """
+
+        mpi : bool
+            Set to True if being used in an MPI environment. This computation should only need to be done on one node.
+        """
         self._checkDVGeo()
 
         typeName = 'triSurfCon'
@@ -1132,7 +1139,7 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName, 
                                                 objectGeometry, scale, self.DVGeo, addToPyOpt, 
                                                 dist_tol, adapt_rho, start_rho, 
-                                                batch_size, perim_scale)
+                                                batch_size, perim_scale, max_perim, mpi)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -1591,7 +1598,7 @@ class DVConstraints(object):
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
-            self.DVGeo,config=config)
+            self.DVGeo, config=config)
 
     def addGearPostConstraint(self, wimpressCalc, position, axis,
                               thickLower=1.0, thickUpper=3.0,
@@ -2811,8 +2818,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     This class is used to enclose a triangulated object inside an 
     aerodynamic surface. 
     """
+
     def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt, 
-                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale):
+                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, mpi):
         self.name = name
         if type(objectGeometry) == str:
             # load from file
@@ -2823,6 +2831,14 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.objp0 = objectGeometry[0].reshape(self.omSize, 1, 3)
             self.objp1 = objectGeometry[1].reshape(self.omSize, 1, 3)
             self.objp2 = objectGeometry[2].reshape(self.omSize, 1, 3)
+        elif type(objectGeometry) == numpy.ndarray:
+            self.omSize = objectGeometry[:,0,:].shape[0]
+            self.objp0 = objectGeometry[:,0,:].reshape(self.omSize, 1, 3)
+            self.objp1 = objectGeometry[:,1,:].reshape(self.omSize, 1, 3)
+            self.objp2 = objectGeometry[:,2,:].reshape(self.omSize, 1, 3)
+        else:
+            print(type(objectGeometry))
+            raise NotImplementedError
 
         self.scale = scale
         self.DVGeo = DVGeo
@@ -2832,9 +2848,11 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.start_rho = start_rho
         self.batch_size = batch_size
         self.perim_scale = perim_scale
+        self.max_perim = max_perim
         self.nCon = 1
-        self.upper = 99999999.0
-        self.lower = 0.0
+        self.upper = 0.000
+        self.lower = -1e10
+        self.mpi = mpi
 
         self.smSize = None
         self.rho_c = self.start_rho
@@ -2858,9 +2876,21 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.p1 = self.DVGeo.update('p1', config=config).reshape(1, self.smSize, 3)
         self.p2 = self.DVGeo.update('p2', config=config).reshape(1, self.smSize, 3)
         
-        C = self.evalTriangulatedSurfConstraint()
+        
+        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+            C, failflag = self.evalTriangulatedSurfConstraint()
+        else:
+            C = None
+            failflag = None
+
+        if self.mpi:
+            C = MPI.COMM_WORLD.bcast(C, root=0)
+            failflag = MPI.COMM_WORLD.bcast(failflag, root=0)
 
         funcs[self.name] = C
+        if failflag:
+            funcs['fail'] = failflag
+
 
     def evalFunctionsSens(self, funcsSens, config):
         """
@@ -2874,12 +2904,22 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dCdp0, dCdp1, dCdp2 = self.evalTriangulatedSurfConstraintSens()
             # Now compute the DVGeo total sensitivity WRT the surface mesh:
-            funcsSens[self.name] = (self.DVGeo.totalSensitivity(dCdp0, 'p0', config=config)
-                                    + self.DVGeo.totalSensitivity(dCdp1, 'p1', config=config)
-                                    + self.DVGeo.totalSensitivity(dCdp2, 'p2', config=config))
+            if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+                dCdp0, dCdp1, dCdp2 = self.evalTriangulatedSurfConstraintSens()
+                tmpTotal = {}
+                tmpp0 = self.DVGeo.totalSensitivity(dCdp0, 'p0', config=config)
+                tmpp1 = self.DVGeo.totalSensitivity(dCdp1, 'p1', config=config)
+                tmpp2 = self.DVGeo.totalSensitivity(dCdp2, 'p2', config=config)
+                for key in tmpp0:
+                    tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+                    print(key+' : '+str(tmpTotal[key]))
+            else:
+                tmpTotal = None
+            if self.mpi:
+                tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
 
+            funcsSens[self.name] = tmpTotal
 
     def writeTecplot(self, handle):
         """
@@ -2915,7 +2955,13 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if self.perim_length > 0:
             # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
             self.grad_perim = grad_perim
-            return self.perim_length * self.perim_scale
+            print('Perimeter: '+str(perim_length))
+            if self.perim_length > self.max_perim:
+                failflag = True
+                print('Intersection perim exceeds tol - returning fail flag')
+            else:
+                failflag = False
+            return self.perim_length * self.perim_scale, failflag
         else:
             # if the surfaces don't intersect, run the KS distance function
             KS, min_sd, grad_KS, rho_c = mindist(self.objp0, self.objp1, self.objp2, 
@@ -2924,7 +2970,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                                                 batch_size=self.batch_size, complexify=False)
             self.rho_c = rho_c
             self.grad_KS = grad_KS
-            return KS
+            print('KS: '+str(KS))
+            # print('Grads KS: '+str(grad_KS))
+            failflag = False
+            return KS, failflag
 
     def evalTriangulatedSurfConstraintSens(self):
         """
@@ -3332,8 +3381,10 @@ class LinearConstraint(object):
         Add the constraints to pyOpt. These constraints are added as
         linear constraints.
         """
+        print('Linearconstraint being added to pyoptsparse')
         if self.ncon > 0:
             for key in self.jac:
+                print('Congroup: ' + key)
                 optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
                                     lower=self.lower, upper=self.upper, scale=1.0,
                                     linear=True, wrt=key, jac={key:self.jac[key]})
@@ -3346,15 +3397,18 @@ class LinearConstraint(object):
         DVGeo object.
         """
         self.vizConIndices = {}
-
+        print('Call to finalize')
         # Local Shape Variables
+        print('DVGeo:'+str(self.DVGeo))
+        print('DVGeo listlocal: '+str(self.DVGeo.DV_listLocal))
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
                 # end for (indSet loop)
                 cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
                 ncon = len(cons)
-                if ncon > 0:
+                print('ncon:' + str(ncon))                
+		if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal
                     jacobian = numpy.zeros((ncon, ndv))
