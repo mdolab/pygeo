@@ -18,6 +18,7 @@ except ImportError:
 
 from geograd.intersect import moller_intersect_tf
 from geograd.minimum_distance import mindist
+from stl import mesh
 
 class Error(Exception):
     """
@@ -253,7 +254,6 @@ class DVConstraints(object):
             self.DVGeo.addPointSet(self.p1, 'p1')
             self.DVGeo.addPointSet(self.p2, 'p2')
 
-
     def setDVGeo(self, DVGeo):
         """
         Set the DVGeometry object that will manipulate this object.
@@ -458,6 +458,30 @@ class DVConstraints(object):
 
         f.close()
 
+    def writeSurfaceSTL(self,fileName):
+        """
+        Write the triangulated surface mesh to a .STL file for manipulation and visualization.
+
+        Parameters
+        ----------
+        fileName : str
+            File name for stl file. Should have a .stl extension.
+        """
+        import numpy as np
+        from stl import mesh
+        p0 = self.p0
+        p1 = self.p1
+        p2 = self.p2
+
+        # Create the mesh
+        stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
+        stlmesh.vectors[:][0] = p0
+        stlmesh.vectors[:][1] = p1
+        stlmesh.vectors[:][2] = p2
+
+        # Write the mesh to file "cube.stl"
+        stlmesh.save(fileName)
+        return
 
     def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
                                   lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -1136,9 +1160,9 @@ class DVConstraints(object):
             conName = name
 
         # Finally add constraint object
-        self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName, 
-                                                objectGeometry, scale, self.DVGeo, addToPyOpt, 
-                                                dist_tol, adapt_rho, start_rho, 
+        self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName,
+                                                objectGeometry, scale, self.DVGeo, addToPyOpt,
+                                                dist_tol, adapt_rho, start_rho,
                                                 batch_size, perim_scale, max_perim, two_constraints, constraint_type, mpi)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
@@ -2107,21 +2131,21 @@ class DVConstraints(object):
                                scaled=True, scale=1.0, KSCoeff=None,name=None,addToPyOpt=False):
         """
         Add a curvature contraint for the prescribed surface. The only required input for this
-        constraint is a structured plot 3D file of the surface (there can be multiple 
+        constraint is a structured plot 3D file of the surface (there can be multiple
         surfaces in the file). This value is meant to be corelated with manufacturing costs.
 
         Parameters
         ----------
         surfFile: vector
-            Plot3D file with desired surface, should be sufficiently refined to 
+            Plot3D file with desired surface, should be sufficiently refined to
             accurately capture surface curvature
 
         curvatureType: str
             The type of curvature to calculate. Options are: 'Gaussian', 'mean', 'combined', or 'KSmean'.
-            Here the Gaussian curvature is K=kappa_1*kappa_2, the mean curvature is H = 0.5*(kappa_1+kappa_2), 
-            the combined curvature C = kappa_1^2+kappa_2^2=(2*H)^2-2*K, and the KSmean curvature applies the 
-            KS function to the mean curvature, which is essentially the max local mean curvature on the prescribed 
-            surface. In practice, we compute the squared integrated value over the surface, e.g., sum(H*H*dS), for the 
+            Here the Gaussian curvature is K=kappa_1*kappa_2, the mean curvature is H = 0.5*(kappa_1+kappa_2),
+            the combined curvature C = kappa_1^2+kappa_2^2=(2*H)^2-2*K, and the KSmean curvature applies the
+            KS function to the mean curvature, which is essentially the max local mean curvature on the prescribed
+            surface. In practice, we compute the squared integrated value over the surface, e.g., sum(H*H*dS), for the
             Gaussian, mean and combined curvatures. While for the KSmean, we applied the KS function, i.e., KS(H*H*dS)
 
         lower : float
@@ -2156,9 +2180,9 @@ class DVConstraints(object):
         KSCoeff : float
             The coefficient for KS function when curvatyreType=KSmean.
             This controls how close the KS function approximates the original
-            functions. One should select a KSCoeff such that the printed "Reference curvature" 
+            functions. One should select a KSCoeff such that the printed "Reference curvature"
             is only slightly larger than the printed "Max curvature" for the baseline surface.
-            The default value of KSCoeff is the number of points in the plot3D files. 
+            The default value of KSCoeff is the number of points in the plot3D files.
 
         name : str
              Normally this does not need to be set; a default name will
@@ -2815,18 +2839,18 @@ class ThicknessToChordConstraint(GeometricConstraint):
 
 class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
-    This class is used to enclose a triangulated object inside an 
-    aerodynamic surface. 
+    This class is used to enclose a triangulated object inside an
+    aerodynamic surface.
     """
 
-    def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt, 
+    def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt,
                  dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, constraint_type, mpi):
         self.name = name
         if type(objectGeometry) == str:
             # load from file
             raise NotImplementedError
         elif type(objectGeometry) == list:
-            # for now, do NOT add the object geometry to dvgeo       
+            # for now, do NOT add the object geometry to dvgeo
             self.omSize = objectGeometry[0].shape[0]
             self.objp0 = objectGeometry[0].reshape(self.omSize, 1, 3)
             self.objp1 = objectGeometry[1].reshape(self.omSize, 1, 3)
@@ -2872,7 +2896,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         funcs : dict
             Dictionary to place function values
         """
-        # get the CFD triangulated mesh updates. need addToDVGeo = True when 
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when
         # running setSurface()
         if self.smSize is None:
             self.p0 = self.DVGeo.update('p0', config=config)
@@ -2880,8 +2904,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.p0 = self.DVGeo.update('p0', config=config).reshape(1, self.smSize, 3)
         self.p1 = self.DVGeo.update('p1', config=config).reshape(1, self.smSize, 3)
         self.p2 = self.DVGeo.update('p2', config=config).reshape(1, self.smSize, 3)
-        
-        
+
+
         if MPI.COMM_WORLD.rank == 0 or not self.mpi:
             if self.two_constraints:
                 KS, perim, failflag = self.evalTriangulatedSurfConstraint()
@@ -2989,10 +3013,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         # first compute the length of the intersection surface between the object and surf mesh
 
-        perim_length, pairwise, grad_perim = moller_intersect_tf(self.objp0, self.objp1, self.objp2, 
-                                                                 self.p0, self.p1, self.p2, 
-                                                                 batch_size=self.batch_size, 
-                                                                 complexify=False, 
+        perim_length, pairwise, grad_perim = moller_intersect_tf(self.objp0, self.objp1, self.objp2,
+                                                                 self.p0, self.p1, self.p2,
+                                                                 batch_size=self.batch_size,
+                                                                 complexify=False,
                                                                  compute_gradients=True)
         self.perim_length = perim_length
         #TODO grad perim indices changed downstream
@@ -3012,13 +3036,13 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.two_constraints or not self.perim_length > 0:
             # if the surfaces don't intersect, run the KS distance function
-            KS, min_sd, grad_KS, rho_c = mindist(self.objp0, self.objp1, self.objp2, 
-                                                self.p0, self.p1, self.p2, dist_tol=self.dist_tol, 
-                                                adapt_rho=self.adapt_rho, rho_c=self.rho_c, 
+            KS, min_sd, grad_KS, rho_c = mindist(self.objp0, self.objp1, self.objp2,
+                                                self.p0, self.p1, self.p2, dist_tol=self.dist_tol,
+                                                adapt_rho=self.adapt_rho, rho_c=self.rho_c,
                                                 batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type)
-        
+
             self.rho_c = rho_c
-            
+
             self.grad_KS = grad_KS
             #TODO grad_KS indices changed
             # if not self.perim_length > 0:
@@ -3099,7 +3123,7 @@ class VolumeConstraint(GeometricConstraint):
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
-    
+
 
     def evalFunctions(self, funcs, config):
         """
@@ -3482,7 +3506,7 @@ class LinearConstraint(object):
                 # end for (indSet loop)
                 cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
                 ncon = len(cons)
-                print('ncon:' + str(ncon))                
+                print('ncon:' + str(ncon))
 		if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal
@@ -5224,7 +5248,7 @@ class CurvatureConstraint(GeometricConstraint):
             tec_file: name of TecPlot file.
         '''
         # we ignore the input handle and use this separated name for curvature constraint tecplot file
-        # NOTE: we use this tecplot file to only visualize the local distribution of curctures. 
+        # NOTE: we use this tecplot file to only visualize the local distribution of curctures.
         # The plotted local curvatures are not exactly as that computed in the evalCurvArea function
         handle = open('%s.dat'%self.name,'w')
         handle.write('title = "DVConstraint curvature constraint"\n')
