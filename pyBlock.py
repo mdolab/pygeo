@@ -54,7 +54,7 @@ class pyBlock():
        everywhere. This ensures a seamless FFD.
        """
 
-    def __init__(self, initType, fileName=None, FFD=False,symmPlane=None, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False,symmPlane=None, spline_order=4, **kwargs):
 
         self.initType = initType
         self.FFD = False
@@ -64,7 +64,8 @@ class pyBlock():
         self.coef  = None        # The global (reduced) set of control pts
         self.embededVolumes = {}
         self.symmPlane = symmPlane
-
+        self.spline_order=spline_order
+        self.spline_order
         if initType == 'plot3d':
             self._readPlot3D(fileName, FFD=FFD, **kwargs)
         elif initType == 'create':
@@ -177,10 +178,11 @@ class pyBlock():
                 return knots
 
             for ivol in range(nVol):
-                ku = min(4, sizes[ivol, 0])
-                kv = min(4, sizes[ivol, 1])
-                kw = min(4, sizes[ivol, 2])
+                ku = min(self.spline_order, sizes[ivol, 0])
+                kv = min(self.spline_order, sizes[ivol, 1])
+                kw = min(self.spline_order, sizes[ivol, 2])
 
+                print(self.spline_order, ku, kv, kw)
                 # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by
                 # construction symmetric
