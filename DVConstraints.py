@@ -1061,8 +1061,8 @@ class DVConstraints(object):
 
 
     def addTriangulatedSurfaceConstraint(self, objectGeometry,
-                                         dist_tol=0.1, adapt_rho=True, start_rho=50., batch_size=1, perim_scale=0.1,
-                                         max_perim=3.0, two_constraints=False,
+                                         dist_tol=0.0, adapt_rho=True, start_rho=50., batch_size=1, perim_scale=0.1,
+                                         max_perim=3.0, two_constraints=False, constraint_type='KS',
                                          name=None, scale=1., addToPyOpt=True, mpi=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
@@ -1139,7 +1139,7 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName, 
                                                 objectGeometry, scale, self.DVGeo, addToPyOpt, 
                                                 dist_tol, adapt_rho, start_rho, 
-                                                batch_size, perim_scale, max_perim, two_constraints, mpi)
+                                                batch_size, perim_scale, max_perim, two_constraints, constraint_type, mpi)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -2820,7 +2820,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, objectGeometry, scale, DVGeo, addToPyOpt, 
-                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, mpi):
+                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, constraint_type, mpi):
         self.name = name
         if type(objectGeometry) == str:
             # load from file
@@ -2850,6 +2850,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.perim_scale = perim_scale
         self.max_perim = max_perim
         self.two_constraints=two_constraints
+	self.constraint_type = constraint_type
         if two_constraints:
             self.nCon = 2
         else:
@@ -2994,6 +2995,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                                                                  complexify=False, 
                                                                  compute_gradients=True)
         self.perim_length = perim_length
+        #TODO grad perim indices changed downstream
         self.grad_perim = grad_perim
 
        # if self.perim_length > 0:
@@ -3013,15 +3015,17 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             KS, min_sd, grad_KS, rho_c = mindist(self.objp0, self.objp1, self.objp2, 
                                                 self.p0, self.p1, self.p2, dist_tol=self.dist_tol, 
                                                 adapt_rho=self.adapt_rho, rho_c=self.rho_c, 
-                                                batch_size=self.batch_size, complexify=False)
+                                                batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type)
         
             self.rho_c = rho_c
+            
             self.grad_KS = grad_KS
+            #TODO grad_KS indices changed
             # if not self.perim_length > 0:
             #     #print('KS: '+str(KS))
 
             if self.two_constraints:
-                print('KS: '+str(KS))
+                print('Metric: '+str(KS))
                 print('Perimeter: '+str(perim_length))
                 return KS, self.perim_length * self.perim_scale, failflag
             else:
