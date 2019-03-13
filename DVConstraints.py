@@ -3037,11 +3037,11 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         # first compute the length of the intersection surface between the object and surf mesh
         if self.two_constraints:
-            return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2], self.grad_perim[0]*self.perim_scale, self.grad_perim[1]*self.perim_scale, self.grad_perim[2]*self.perim_scale
+            return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2], self.grad_perim[3]*self.perim_scale, self.grad_perim[4]*self.perim_scale, self.grad_perim[5]*self.perim_scale
         else:
             if self.perim_length > 0:
                 # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
-                return self.grad_perim[0]*self.perim_scale, self.grad_perim[1]*self.perim_scale, self.grad_perim[2]*self.perim_scale
+                return self.grad_perim[3]*self.perim_scale, self.grad_perim[4]*self.perim_scale, self.grad_perim[5]*self.perim_scale
             else:
                 return self.grad_KS[0], self.grad_KS[1], self.grad_KS[2]
 
