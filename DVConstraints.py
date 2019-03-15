@@ -472,12 +472,11 @@ class DVConstraints(object):
         p0 = self.p0
         p1 = self.p1
         p2 = self.p2
-
         # Create the mesh
         stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
-        stlmesh.vectors[:][0] = p0
-        stlmesh.vectors[:][1] = p1
-        stlmesh.vectors[:][2] = p2
+        stlmesh.vectors[:,0,:] = p0
+        stlmesh.vectors[:,1,:] = p1
+        stlmesh.vectors[:,2,:] = p2
 
         # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
