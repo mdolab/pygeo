@@ -19,6 +19,19 @@ Citation
 Please cite pyGeo in any publication for which you find it useful.
 For more background, theory, and figures, see the [pyGeo journal article](http://mdolab.engin.umich.edu/sites/default/files/mao2010_final.pdf).
 
+G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
+
+```
+@conference {Kenway:2010:C,
+	title = {A {CAD}-Free Approach to High-Fidelity Aerostructural Optimization},
+	booktitle = {Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference},
+	year = {2010},
+	note = {AIAA 2010-9231},
+	month = {September},
+	address = {Fort Worth,~TX},
+	author = {Gaetan K. W. Kenway and Graeme J. Kennedy and Joaquim R. R. A. Martins}
+}
+```
 
 License
 -------
