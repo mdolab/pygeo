@@ -454,7 +454,7 @@ class DVConstraints(object):
           points that are supplied in leList and teList.
 
           Physical extent of wing
-                                   \          
+                                   \
           __________________________\_________
           |                                  |
           +-----------+--------------+       |
@@ -614,7 +614,7 @@ class DVConstraints(object):
           points that are supplied in ptList:
 
           Physical extent of wing
-                                   \          
+                                   \
           __________________________\_________
           |                  +               |
           |                -/                |
@@ -941,7 +941,7 @@ class DVConstraints(object):
           points that are supplied in ptList:
 
           Physical extent of wing
-                                   \          
+                                   \
           __________________________\_________
           |                  +               |
           |                -/                |
@@ -1061,7 +1061,7 @@ class DVConstraints(object):
           points that are supplied in leList and teList.
 
           Physical extent of wing
-                                   \          
+                                   \
           __________________________\_________
           |                                  |
           +--------------------------+       |
@@ -1310,7 +1310,7 @@ class DVConstraints(object):
         faceID : str {'iLow', 'iHigh', 'jLow', 'jHigh', 'kLow', 'kHigh'}
             One of above specifying the node on which face to constrain.
         topID : str {'i','j', 'k'}
-            One of the above specifing the symmetry direction, should 
+            One of the above specifing the symmetry direction, should
             only be used on 2x2 faces
         indSetA : array of int
             Indices of control points on one side of the FFD
@@ -1391,9 +1391,9 @@ class DVConstraints(object):
                 if topID is not None:
                     if topID.lower()=='i' and not iFace:
                         indSetA = indices[0, :]
-                        indSetB = indices[1, :]                        
+                        indSetB = indices[1, :]
                     elif topID.lower()=='j' and not jFace:
-                        if iFace:                            
+                        if iFace:
                             indSetA = indices[0, :]
                             indSetB = indices[1, :]
                         else:
@@ -2048,21 +2048,21 @@ class DVConstraints(object):
                                scaled=True, scale=1.0, KSCoeff=None,name=None,addToPyOpt=False):
         """
         Add a curvature contraint for the prescribed surface. The only required input for this
-        constraint is a structured plot 3D file of the surface (there can be multiple 
+        constraint is a structured plot 3D file of the surface (there can be multiple
         surfaces in the file). This value is meant to be corelated with manufacturing costs.
 
         Parameters
         ----------
         surfFile: vector
-            Plot3D file with desired surface, should be sufficiently refined to 
+            Plot3D file with desired surface, should be sufficiently refined to
             accurately capture surface curvature
 
         curvatureType: str
             The type of curvature to calculate. Options are: 'Gaussian', 'mean', 'combined', or 'KSmean'.
-            Here the Gaussian curvature is K=kappa_1*kappa_2, the mean curvature is H = 0.5*(kappa_1+kappa_2), 
-            the combined curvature C = kappa_1^2+kappa_2^2=(2*H)^2-2*K, and the KSmean curvature applies the 
-            KS function to the mean curvature, which is essentially the max local mean curvature on the prescribed 
-            surface. In practice, we compute the squared integrated value over the surface, e.g., sum(H*H*dS), for the 
+            Here the Gaussian curvature is K=kappa_1*kappa_2, the mean curvature is H = 0.5*(kappa_1+kappa_2),
+            the combined curvature C = kappa_1^2+kappa_2^2=(2*H)^2-2*K, and the KSmean curvature applies the
+            KS function to the mean curvature, which is essentially the max local mean curvature on the prescribed
+            surface. In practice, we compute the squared integrated value over the surface, e.g., sum(H*H*dS), for the
             Gaussian, mean and combined curvatures. While for the KSmean, we applied the KS function, i.e., KS(H*H*dS)
 
         lower : float
@@ -2097,9 +2097,9 @@ class DVConstraints(object):
         KSCoeff : float
             The coefficient for KS function when curvatyreType=KSmean.
             This controls how close the KS function approximates the original
-            functions. One should select a KSCoeff such that the printed "Reference curvature" 
+            functions. One should select a KSCoeff such that the printed "Reference curvature"
             is only slightly larger than the printed "Max curvature" for the baseline surface.
-            The default value of KSCoeff is the number of points in the plot3D files. 
+            The default value of KSCoeff is the number of points in the plot3D files.
 
         name : str
              Normally this does not need to be set; a default name will
@@ -3216,15 +3216,15 @@ class LinearConstraint(object):
                 nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
                 nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
-                handle.write('Zone T=%s\n'% (self.name+'_'+key))
-                handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-                    ncon*2, ncon))
-                handle.write('DATAPACKING=POINT\n')
-                for i in range(ncon*2):
-                    handle.write('%f %f %f\n'% (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
+            handle.write('Zone T=%s\n'% (self.name+'_'+key))
+            handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+                ncon*2, ncon))
+            handle.write('DATAPACKING=POINT\n')
+            for i in range(ncon*2):
+                handle.write('%f %f %f\n'% (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
 
-                for i in range(ncon):
-                    handle.write('%d %d\n'% (2*i+1, 2*i+2))
+            for i in range(ncon):
+                handle.write('%d %d\n'% (2*i+1, 2*i+2))
 
 class GearPostConstraint(GeometricConstraint):
     """
@@ -4906,7 +4906,7 @@ class CurvatureConstraint(GeometricConstraint):
             tec_file: name of TecPlot file.
         '''
         # we ignore the input handle and use this separated name for curvature constraint tecplot file
-        # NOTE: we use this tecplot file to only visualize the local distribution of curctures. 
+        # NOTE: we use this tecplot file to only visualize the local distribution of curctures.
         # The plotted local curvatures are not exactly as that computed in the evalCurvArea function
         handle = open('%s.dat'%self.name,'w')
         handle.write('title = "DVConstraint curvature constraint"\n')
