@@ -1,7 +1,8 @@
 pyGeo
 ====================================================
 
-pyGeo provides surface generation, FFD, and geometric constraints for the MACH framework. 
+pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
+It provides a free form deformation based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
 
 
 Documentation
