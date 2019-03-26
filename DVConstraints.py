@@ -266,10 +266,10 @@ class DVConstraints(object):
                 p1 = numpy.array(surf[1])
                 p2 = numpy.array(surf[2])
             elif type(surf) == numpy.ndarray:
-                surf_length = objectGeometry[:,0,:].shape[0]
-                p0 = objectGeometry[:,0,:].reshape(surf_length, 3)
-                p1 = objectGeometry[:,1,:].reshape(surf_length, 3)
-                p2 = objectGeometry[:,2,:].reshape(surf_length, 3)
+                surf_length = surf[:,0,:].shape[0]
+                p0 = surf[:,0,:].reshape(surf_length, 3)
+                p1 = surf[:,1,:].reshape(surf_length, 3)
+                p2 = surf[:,2,:].reshape(surf_length, 3)
 
         self.surfaces[name].append(p0)
         self.surfaces[name].append(p1)
@@ -1123,9 +1123,9 @@ class DVConstraints(object):
             conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt)
 
 
-    def addTriangulatedSurfaceConstraint(self, surface_1_name='default', DVGeo_1_name='default',
-                                         surface_2_name=None, DVGeo_2_name=None,
-                                         dist_tol=0.0, adapt_rho=True, start_rho=50., batch_size=1, perim_scale=0.1,
+    def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name=None,
+                                         surface_2_name='default', DVGeo_2_name='default',
+                                         dist_tol=0.0, adapt_rho=False, start_rho=50., batch_size=1, perim_scale=0.1,
                                          max_perim=3.0, two_constraints=False, constraint_type='KS',
                                          name=None, scale=1., addToPyOpt=True, mpi=True):
         """
@@ -1192,14 +1192,18 @@ class DVConstraints(object):
         mpi : bool
             Set to True if being used in an MPI environment. This computation should only need to be done on one node.
         """
-        self._checkDVGeo(DVGeo_1_name)
-        DVGeo1 = self.DVGeometries[DVGeo_1_name]
+        if DVGeo_1_name is not None:
+            self._checkDVGeo(DVGeo_1_name)
+            DVGeo1 = self.DVGeometries[DVGeo_1_name]
+        else:
+            DVGeo1 = None
         if DVGeo_2_name is not None:
             self._checkDVGeo(DVGeo_2_name)
             DVGeo2 = self.DVGeometries[DVGeo_2_name]
         else:
             DVGeo2 = None
-
+        if DVGeo1 is None and DVGeo2 is None:
+            raise UserError('One DVGeo object must be specified')
 
         typeName = 'triSurfCon'
         if not typeName in self.constraints:
@@ -3034,12 +3038,13 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         tmpTotalPerim = {}
         tmpTotal = {}
 
-        if self.two_constraints:
-            grad_KS, grad_perim = self.evalTriangulatedSurfConstraintSens()
-        else: 
-            grad_C = self.evalTriangulatedSurfConstraintSens()
 
-        if MPI.COMM_WORLD.rank == 0 or not self.mpi:    
+
+        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+            if self.two_constraints:
+                grad_KS, grad_perim = self.evalTriangulatedSurfConstraintSens()
+            else: 
+                grad_C = self.evalTriangulatedSurfConstraintSens()    
             # If first DVGeo is not none, compute total sensitivities
             if self.DVGeo1 is not None:
                 nDV1 = self.DVGeo1.getNDV()
@@ -3107,7 +3112,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             tmpTotalPerim = MPI.COMM_WORLD.bcast(tmpTotalPerim, root=0)
             tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
              
-        if two_constraints:
+        if self.two_constraints:
             funcsSens[self.name+'_KS'] = tmpTotalKS
             funcsSens[self.name+'_perim'] = tmpTotalPerim
         else:
