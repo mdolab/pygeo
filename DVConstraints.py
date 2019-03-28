@@ -1127,7 +1127,7 @@ class DVConstraints(object):
                                          surface_2_name='default', DVGeo_2_name='default',
                                          dist_tol=0.0, adapt_rho=False, start_rho=50., batch_size=1, perim_scale=0.1,
                                          max_perim=3.0, two_constraints=False, constraint_type='KS',
-                                         name=None, scale=1., addToPyOpt=True, mpi=True):
+                                         name=None, scale=1., useGPU=True, addToPyOpt=True, mpi=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
         This constraint is designed to keep a general 'blob' of watertight
@@ -1192,6 +1192,7 @@ class DVConstraints(object):
         mpi : bool
             Set to True if being used in an MPI environment. This computation should only need to be done on one node.
         """
+        self.useGPU=useGPU
         if DVGeo_1_name is not None:
             self._checkDVGeo(DVGeo_1_name)
             DVGeo1 = self.DVGeometries[DVGeo_1_name]
@@ -1222,7 +1223,7 @@ class DVConstraints(object):
                                                 surface_1, surface_1_name, DVGeo1, 
                                                 surface_2, surface_2_name, DVGeo2, scale,
                                                 addToPyOpt, dist_tol, adapt_rho, start_rho,
-                                                batch_size, perim_scale, max_perim, two_constraints, constraint_type, mpi)
+                                                batch_size, perim_scale, max_perim, two_constraints, constraint_type, useGPU, mpi)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -2912,11 +2913,12 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, surface_1, surface_1_name, DVGeo1, surface_2, surface_2_name, DVGeo2, scale, addToPyOpt,
-                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, constraint_type, mpi):
+                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, constraint_type, useGPU, mpi):
         self.name = name
         # get the point sets
         self.surface_1_name = surface_1_name
         self.surface_2_name = surface_2_name
+        self.useGPU = useGPU
         
         if DVGeo1 is None and DVGeo2 is None:
             raise UserError('Must include at least one geometric parametrization in constraint '+str(name))
@@ -3146,7 +3148,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                                                                  self.surf2_p0, self.surf2_p1, self.surf2_p2,
                                                                  batch_size=self.batch_size,
                                                                  complexify=False,
-                                                                 compute_gradients=True)
+                                                                 compute_gradients=True, use_GPU=self.useGPU)
         self.perim_length = perim_length
         self.grad_perim = grad_perim
 
@@ -3164,7 +3166,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             KS, min_sd, grad_KS, rho_c = mindist(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                                                 self.surf2_p0, self.surf2_p1, self.surf2_p2, dist_tol=self.dist_tol,
                                                 adapt_rho=self.adapt_rho, rho_c=self.rho_c,
-                                                batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type)
+                                                batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type, use_GPU=self.useGPU)
 
             self.rho_c = rho_c
 
