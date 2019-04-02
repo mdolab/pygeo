@@ -451,13 +451,13 @@ class DVConstraints(object):
         .. code-block:: text
 
           Planform view of the wing: The '+' are the (three dimensional)
-          points that are supplied in leList and teList.
+          points that are supplied in leList and teList. The 'o' is described below.
 
           Physical extent of wing
                                    \
           __________________________\_________
           |                                  |
-          +-----------+--------------+       |
+          +-----------+--o-----------+       |
           |   /                       \      |
           | leList      teList         \     |
           |                   \         \    |
@@ -476,7 +476,7 @@ class DVConstraints(object):
 
         * The leading and trailing edges are approximated using
           2-order splines (line segments) and nSpan points are
-          interpolated in a linear fashion. Note that the a thickness
+          interpolated in a linear fashion. Note that the thickness
           constraint may not correspond **EXACT** to intermediate
           locations in leList and teList. For example, in the example
           above, with leList=3 and nSpan=3, the three thickness
@@ -493,11 +493,11 @@ class DVConstraints(object):
           the normals of the ruled surface formed by leList and teList
 
         * Normally, leList and teList are in given such that the the two curves
-          entirely line in a plane. This ensure that the projection vectors
+          entirely lie in a plane. This ensure that the projection vectors
           are always exactly normal to this plane.
 
         * If the surface formed by leList and teList is NOT precisely
-          normal, issues can arise near the end of a opensurface (ie
+          normal, issues can arise near the end of an opensurface (ie
           root of a single wing) which can result in failing
           intersections.
 
