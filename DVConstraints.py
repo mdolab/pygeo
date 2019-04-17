@@ -7,6 +7,7 @@ from pygeo import geo_utils, pyGeo
 from pyspline import pySpline
 from mpi4py import MPI
 from scipy.sparse import csr_matrix
+import numpy as np
 try:
     from collections import OrderedDict
 except ImportError:
@@ -3022,14 +3023,14 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.DVGeo2 = DVGeo2
 
         self.surf1_size = surface_1[0].shape[0]
-        self.surf1_p0 = surface_1[0].reshape(self.surf1_size, 1, 3)
-        self.surf1_p1 = surface_1[1].reshape(self.surf1_size, 1, 3)
-        self.surf1_p2 = surface_1[2].reshape(self.surf1_size, 1, 3)
+        self.surf1_p0 = surface_1[0].reshape(self.surf1_size, 1, 3).astype(np.float32)
+        self.surf1_p1 = surface_1[1].reshape(self.surf1_size, 1, 3).astype(np.float32)
+        self.surf1_p2 = surface_1[2].reshape(self.surf1_size, 1, 3).astype(np.float32)
 
         self.surf2_size = surface_2[0].shape[0]
-        self.surf2_p0 = surface_2[0].reshape(1, self.surf2_size, 3)
-        self.surf2_p1 = surface_2[1].reshape(1, self.surf2_size, 3)
-        self.surf2_p2 = surface_2[2].reshape(1, self.surf2_size, 3)
+        self.surf2_p0 = surface_2[0].reshape(1, self.surf2_size, 3).astype(np.float32)
+        self.surf2_p1 = surface_2[1].reshape(1, self.surf2_size, 3).astype(np.float32)
+        self.surf2_p2 = surface_2[2].reshape(1, self.surf2_size, 3).astype(np.float32)
 
         self.scale = scale
 
@@ -3082,17 +3083,17 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         # check if the first mesh has a DVGeo, and if it does, update the points
         if self.DVGeo1 is not None:            
-            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).reshape(self.surf1_size, 1, 3)
-            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).reshape(self.surf1_size, 1, 3)
-            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).reshape(self.surf1_size, 1, 3)
+            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
+            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
+            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
         
         # check if the second mesh has a DVGeo, and if it does, update the points
         if self.DVGeo2 is not None:
-            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).reshape(1, self.surf2_size, 3)
-            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name+'_p1', config=config).reshape(1, self.surf2_size, 3)
-            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name+'_p2', config=config).reshape(1, self.surf2_size, 3)
+            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).reshape(1, self.surf2_size, 3).astype(np.float32)
+            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name+'_p1', config=config).reshape(1, self.surf2_size, 3).astype(np.float32)
+            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name+'_p2', config=config).reshape(1, self.surf2_size, 3).astype(np.float32)
 
-        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+        if MPI.COMM_WORLD.rank == 0 or not self.mpi or (self.mpi and not self.useGPU):
             if self.two_constraints:
                 KS, perim, failflag = self.evalTriangulatedSurfConstraint()
             else:
@@ -3105,7 +3106,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 C = None
             failflag = None
 
-        if self.mpi:
+        if self.mpi and self.useGPU:
             if self.two_constraints:
                 KS = MPI.COMM_WORLD.bcast(KS, root=0)
                 perim = MPI.COMM_WORLD.bcast(perim, root=0)
@@ -3239,30 +3240,42 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         Add documentation later
         """
         # first compute the length of the intersection surface between the object and surf mesh
-
+        if not self.useGPU and self.mpi:
+            # use MPI execution
+            comm = MPI.COMM_WORLD
+        else:
+            comm = None
         perim_length, pairwise, grad_perim = moller_intersect_tf(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                                                                  self.surf2_p0, self.surf2_p1, self.surf2_p2,
                                                                  batch_size=self.batch_size,
                                                                  complexify=False,
-                                                                 compute_gradients=True, use_GPU=self.useGPU)
+                                                                 compute_gradients=True, use_GPU=self.useGPU, comm=comm)
         self.perim_length = perim_length
         self.grad_perim = grad_perim
+        
 
         if self.perim_length > self.max_perim:
             failflag = True
-            print('Intersection perim exceeds tol - returning fail flag')
+            if comm is None:
+                print('Intersection perim exceeds tol - returning fail flag')
+            elif comm.rank == 0:
+                print('Intersection perim exceeds tol - returning fail flag')
+
         else:
             failflag = False
 
         if not self.two_constraints and self.perim_length > 0:
             return self.perim_length * self.perim_scale, failflag
 
+
         if self.two_constraints or not self.perim_length > 0:
             # if the surfaces don't intersect, run the KS distance function
+
             KS, min_sd, grad_KS, rho_c = mindist(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                                                 self.surf2_p0, self.surf2_p1, self.surf2_p2, dist_tol=self.dist_tol,
                                                 adapt_rho=self.adapt_rho, rho_c=self.rho_c,
-                                                batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type, use_GPU=self.useGPU)
+                                                batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type, 
+                                                use_GPU=self.useGPU, comm=comm)
 
             self.rho_c = rho_c
 
@@ -3271,8 +3284,12 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             #     #print('KS: '+str(KS))
 
             if self.two_constraints:
-                print('Metric: '+str(KS))
-                print('Perimeter: '+str(perim_length))
+                if comm is None:
+                    print('Metric: '+str(KS))
+                    print('Perimeter: '+str(perim_length))
+                elif comm.rank == 0:
+                    print('Metric: '+str(KS))
+                    print('Perimeter: '+str(perim_length))
                 return KS, self.perim_length * self.perim_scale, failflag
             else:
                 return KS, failflag
@@ -3362,12 +3379,17 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         self.surf_p1 = self.DVGeo.update(self.surface_name+'_p1', config=config).reshape(self.surf_size, 3)
         self.surf_p2 = self.DVGeo.update(self.surface_name+'_p2', config=config).reshape(self.surf_size, 3)
         
+        if not self.useGPU and self.mpi:
+            # use MPI execution
+            comm = MPI.COMM_WORLD
+        else:
+            comm = None
 
+        # may need to parallelize this in the future?
         if MPI.COMM_WORLD.rank == 0 or not self.mpi:
             volume, grad_volume = compute_volume(self.surf_p0, self.surf_p1, self.surf_p2,
                                                  complexify=False,
                                                  compute_gradients=True, use_GPU=self.useGPU)
-            
             if self.vol_0 is None:
                 self.vol_0 = volume
             
@@ -3382,7 +3404,6 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
 
         if self.mpi:
             volume = MPI.COMM_WORLD.bcast(volume, root=0)
-
         funcs[self.name] = volume
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -3813,10 +3834,10 @@ class LinearConstraint(object):
         Add the constraints to pyOpt. These constraints are added as
         linear constraints.
         """
-        print('Linearconstraint being added to pyoptsparse')
+        #print('Linearconstraint being added to pyoptsparse')
         if self.ncon > 0:
             for key in self.jac:
-                print('Congroup: ' + key)
+         #       print('Congroup: ' + key)
                 optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
                                     lower=self.lower, upper=self.upper, scale=1.0,
                                     linear=True, wrt=key, jac={key:self.jac[key]})
@@ -3829,17 +3850,17 @@ class LinearConstraint(object):
         DVGeo object.
         """
         self.vizConIndices = {}
-        print('Call to finalize')
+        #print('Call to finalize')
         # Local Shape Variables
-        print('DVGeo:'+str(self.DVGeo))
-        print('DVGeo listlocal: '+str(self.DVGeo.DV_listLocal))
+        #print('DVGeo:'+str(self.DVGeo))
+        #print('DVGeo listlocal: '+str(self.DVGeo.DV_listLocal))
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
                 # end for (indSet loop)
                 cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
                 ncon = len(cons)
-                print('ncon:' + str(ncon))
+         #       print('ncon:' + str(ncon))
 		if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal
