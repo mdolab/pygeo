@@ -18,6 +18,7 @@ except ImportError:
 
 from geograd.intersect import moller_intersect_tf
 from geograd.minimum_distance import mindist
+from geograd.volume import compute_volume
 from stl import mesh
 from six import string_types
 
@@ -488,7 +489,7 @@ class DVConstraints(object):
 
         f.close()
 
-    def writeSurfaceSTL(self,fileName,surfaceName='default'):
+    def writeSurfaceSTL(self,fileName,surfaceName='default',fromDVGeo=None):
         """
         Write the triangulated surface mesh to a .STL file for manipulation and visualization.
 
@@ -500,9 +501,13 @@ class DVConstraints(object):
         import numpy as np
         from stl import mesh
 
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        if fromDVGeo is None:
+            p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        else:
+            p0 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p0')
+            p1 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p1')
+            p2 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p2')
 
-        # Create the mesh
         stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
         stlmesh.vectors[:,0,:] = p0
         stlmesh.vectors[:,1,:] = p1
@@ -1225,6 +1230,97 @@ class DVConstraints(object):
                                                 addToPyOpt, dist_tol, adapt_rho, start_rho,
                                                 batch_size, perim_scale, max_perim, two_constraints, constraint_type, useGPU, mpi)
 
+    def addTriangulatedVolumeConstraint(self, lower=1.0, upper=3.0, scaled=True, scale=1.0, 
+                                        name=None, surfaceName='default', DVGeoName='default',
+                                        useGPU=True, addToPyOpt=True, mpi=True):
+        """
+        Add a single triangulated volume constraint to a surface.
+        Computes and constrains the volume of a closed, triangulated surface
+
+        Parameters
+        ----------
+        lower : float
+            The lower bound for the volume constraint.
+
+        upper : float
+            The upper bound for the volume constraint.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial volume is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial volume. lower=0.85, upper=1.15,
+              would allow for 15% change in volume both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              volume. lower and upper refer to the physical volumes.
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        surfaceName : str
+            Name the triangulated surface attached to DVConstraints which should
+            be used for the constraint. 'default' uses the main aerodynamic 
+            surface mesh
+
+        DVGeoName : str
+            Name the DVGeo object affecting the geometry of the 
+            surface. 'default' uses the main DVGeo object of the DVConstraints instance
+
+        useGPU : bool
+            Set to True to use GPU-accelerated computation. False computes on the CPU.
+            Default True
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if the
+            volume is to be used as a constraint. If the volume is to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+
+        mpi : bool
+            Set to True if being used in an MPI environment. This computation should only need to be done on one node.
+        """
+        self._checkDVGeo(DVGeoName)
+        DVGeo = self.DVGeometries[DVGeoName]
+
+        typeName = 'triVolCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = '%s_trivolume_constraint_%d'%(self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+
+        surface = self._getSurfaceVertices(surfaceName)
+
+        # Finally add constraint object
+        self.constraints[typeName][conName] = TriangulatedVolumeConstraint(conName,
+                                                surface, surfaceName, lower, upper,
+                                                scaled, scale, DVGeo, addToPyOpt, useGPU, mpi)
+    
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
                             name=None, addToPyOpt=True,
@@ -3215,6 +3311,114 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 optProb.addConGroup(self.name, self.nCon, lower=self.lower,
                                     upper=self.upper, scale=self.scale,
                                     wrt=self.getVarNames())
+
+
+class TriangulatedVolumeConstraint(GeometricConstraint):
+    """
+    This class is used to compute a volume constraint based on triangulated surface mesh geometry
+    """
+
+    def __init__(self, name, surface, surface_name, lower, upper, scaled, scale, DVGeo, addToPyOpt,
+                 useGPU, mpi):
+
+        self.name = name
+        self.surface = surface
+        self.surface_name = surface_name
+
+        self.surf_size = surface[0].shape[0]
+        self.surf_p0 = surface[0].reshape(self.surf_size, 3)
+        self.surf_p1 = surface[1].reshape(self.surf_size, 3)
+        self.surf_p2 = surface[2].reshape(self.surf_size, 3)
+        
+        self.lower = lower
+        self.upper = upper
+        self.scaled = scaled
+        self.scale = scale
+        self.DVGeo = DVGeo
+
+        self.addToPyOpt = addToPyOpt
+        self.useGPU = useGPU
+        self.mpi = mpi
+
+        self.vol_0 = None
+
+        self.nCon = 1
+        return
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the function this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when
+        # running setSurface()
+
+        # check if the first mesh has a DVGeo, and if it does, update the points
+        self.surf_p0 = self.DVGeo.update(self.surface_name+'_p0', config=config).reshape(self.surf_size, 3)
+        self.surf_p1 = self.DVGeo.update(self.surface_name+'_p1', config=config).reshape(self.surf_size, 3)
+        self.surf_p2 = self.DVGeo.update(self.surface_name+'_p2', config=config).reshape(self.surf_size, 3)
+        
+
+        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+            volume, grad_volume = compute_volume(self.surf_p0, self.surf_p1, self.surf_p2,
+                                                 complexify=False,
+                                                 compute_gradients=True, use_GPU=self.useGPU)
+            
+            if self.vol_0 is None:
+                self.vol_0 = volume
+            
+            if self.scaled:
+                volume = 1.0 * volume / self.vol_0
+
+            # stash the gradient for later
+            self.grad_volume = grad_volume
+
+        else:
+            volume = None
+
+        if self.mpi:
+            volume = MPI.COMM_WORLD.bcast(volume, root=0)
+
+        funcs[self.name] = volume
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+        tmpTotal = {}
+
+        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
+            # assume evalFunctions was called just prior and grad was stashed on rank=0
+            grad_vol = self.grad_volume
+            nDV = self.DVGeo.getNDV()
+            if self.scaled:
+                tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name+'_p0', config=config)
+                tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name+'_p1', config=config)
+                tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2] / self.vol_0, self.surface_name+'_p2', config=config)
+            else:
+                tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0], self.surface_name+'_p0', config=config)
+                tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1], self.surface_name+'_p1', config=config)
+                tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2], self.surface_name+'_p2', config=config)  
+            
+            for key in tmp_p0:
+                tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
+        else:
+            tmpTotal = None
+            
+        if self.mpi:
+            tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
+             
+        funcsSens[self.name] = tmpTotal
 
 
 
