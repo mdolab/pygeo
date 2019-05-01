@@ -20,12 +20,12 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--mode", help='run mode.', choices=['train', 'test'],
                     type=str, default='test')
-parser.add_argument("--task", help='what to do', 
-                    choices=['all', 'test1', 'test2', 'test3', 'test4', 
+parser.add_argument("--task", help='what to do',
+                    choices=['all', 'test1', 'test2', 'test3', 'test4',
                              'test5', 'test6', 'test7', 'test8',
                              'test9', 'test10', 'test11', 'test12',
                              'test13', 'test14', 'test15', 'test16',
-                             'test17', 'test18', 'test19',
+                             'test17', 'test18', 'test19', 'test20',
                          ], default='all')
 
 args = parser.parse_args()
@@ -85,7 +85,7 @@ def setupDVGeoD8(isComplex):
 
     return DVGeo, DVGeoChild
 
-def setupDVGeoAxi(): 
+def setupDVGeoAxi():
     DVGeo = DVGeometryAxi("./inputFiles/axiTestFFD.xyz", center=(0., 0., 0.), collapse_into=("x", "z"))
     axisPoints = [[ 0,   0.  ,   0.],[ 0,  0.,  1.]]
     c1 = Curve(X=axisPoints,k=2)
@@ -93,11 +93,11 @@ def setupDVGeoAxi():
 
     return DVGeo
 
-    
+
 # define a nested global design variable
 def childAxisPoints(val,geo):
     C = geo.extractCoef('nestedAxis')
-    
+
     # Set the coefficients
     C[0,0] = val[0]
 
@@ -108,7 +108,7 @@ def childAxisPoints(val,geo):
 #define a nested global design variable
 def mainAxisPoints(val,geo):
     C = geo.extractCoef('mainAxis')
-    
+
     # Set the coefficients
     C[0,0] = val[0]
 
@@ -119,9 +119,9 @@ def mainAxisPoints(val,geo):
 #define a nested global design variable
 def childAxisPointsD8(val,geo):
     C = geo.extractCoef('nestedAxis')
-    
+
     # Set the coefficients
-    for i in range(len(val)):        
+    for i in range(len(val)):
         C[i,0] = val[i]
 
     geo.restoreCoef(C, 'nestedAxis')
@@ -131,7 +131,7 @@ def childAxisPointsD8(val,geo):
 #define a nested global design variable
 def mainAxisPointsD8(val,geo):
     C = geo.extractCoef('mainAxis')
-    
+
     # Set the coefficients
     for i in range(len(val)):
         C[i,0] = val[i]
@@ -140,12 +140,12 @@ def mainAxisPointsD8(val,geo):
 
     return
 
-def mainAxisPointAxi(val, DVgeo): 
+def mainAxisPointAxi(val, DVgeo):
     C = DVgeo.extractCoef('stretch')
     C[0,2] = val[0]
 
     DVgeo.restoreCoef(C, 'stretch')
-    return 
+    return
 
 def totalSensitivityFD(DVGeo,nPt,ptName):
     xDV = DVGeo.getValues()
@@ -191,7 +191,7 @@ def totalSensitivityCS(DVGeo,nPt,ptName):
 
     return dIdxCS
 
-def testSensitvities(DVGeo,refDeriv):
+def testSensitivities(DVGeo,refDeriv):
     #create test points
     points = numpy.zeros([2,3])
     points[0,:] = [0.25,0,0]
@@ -222,7 +222,7 @@ def testSensitvities(DVGeo,refDeriv):
             for j in range(dIdx[key].shape[1]):
                 reg_write(dIdx[key][i,j],1e-7,1e-7)
 
-def testSensitvitiesD8(DVGeo,refDeriv):
+def testSensitivitiesD8(DVGeo,refDeriv):
     #create test points
     nPoints = 50
     points = numpy.zeros([nPoints,3])
@@ -265,15 +265,15 @@ def test1(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 1: Basic FFD, global DVs")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create global DVs on the parent
     DVGeo.addGeoDVGlobal('mainX', -1.0, mainAxisPoints,
                           lower=-1., upper=0., scale=1.0)
 
-    testSensitvities(DVGeo,refDeriv)
-        
+    testSensitivities(DVGeo,refDeriv)
+
 
     del DVGeo
     del DVGeoChild
@@ -282,7 +282,7 @@ def test2(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 2: Basic FFD, global DVs and local DVs")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create global DVs on the parent
@@ -293,7 +293,7 @@ def test2(refDeriv=False):
     DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
     DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -302,7 +302,7 @@ def test3(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 3: Basic + Nested FFD, global DVs only")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create global DVs on the parent
@@ -313,7 +313,7 @@ def test3(refDeriv=False):
                               lower=-1., upper=0., scale=1.0)
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -322,7 +322,7 @@ def test4(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 4: Basic + Nested FFD, global DVs and local DVs on parent global on child")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create global DVs on the parent
@@ -338,7 +338,7 @@ def test4(refDeriv=False):
                               lower=-1., upper=0., scale=1.0)
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -347,7 +347,7 @@ def test5(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 5: Basic + Nested FFD,  global DVs and local DVs on both parent and child")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create global DVs on the parent
@@ -366,7 +366,7 @@ def test5(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -376,7 +376,7 @@ def test6(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 6: Basic + Nested FFD, local DVs only")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create local DVs on the parent
@@ -390,7 +390,7 @@ def test6(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -399,7 +399,7 @@ def test6b(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 6: Basic + Nested FFD, local DVs only on parent")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create local DVs on the parent
@@ -409,7 +409,7 @@ def test6b(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -418,7 +418,7 @@ def test6c(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 6: Basic + Nested FFD, local DVs only on child")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     DVGeoChild.addGeoDVLocal('childxdir', lower=-1.1, upper=1.1, axis='x', scale=1.0)
@@ -427,7 +427,7 @@ def test6c(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -436,7 +436,7 @@ def test7(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 7: Basic + Nested FFD, local DVs only on parent, global on child")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create local DVs on the parent
@@ -449,7 +449,7 @@ def test7(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -458,7 +458,7 @@ def test8(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 8: Basic + Nested FFD, local DVs only on parent, global and local on child")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create local DVs on the parent
@@ -474,7 +474,7 @@ def test8(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -483,7 +483,7 @@ def test9(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 9: Basic + Nested FFD, global DVs and local DVs on parent local on child")
-  
+
     DVGeo,DVGeoChild = setupDVGeo()
 
     #create global DVs on the parent
@@ -501,7 +501,7 @@ def test9(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvities(DVGeo,refDeriv)
+    testSensitivities(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -524,7 +524,7 @@ def test10(refDeriv=False):
     DVGeo.addGeoDVGlobal('mainX', axisX , mainAxisPoints,
                           lower=0., upper=35., scale=1.0)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 10b: D8 FFD,  random DV perturbation on test 10")
     xDV = DVGeo.getValues()
@@ -533,7 +533,7 @@ def test10(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
@@ -542,7 +542,7 @@ def test11(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 11: D8 FFD, global DVs and local DVs")
-  
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -558,7 +558,7 @@ def test11(refDeriv=False):
     DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
     DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 11b: D8 FFD,  random DV perturbation on test 11")
     xDV = DVGeo.getValues()
@@ -567,7 +567,7 @@ def test11(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -575,7 +575,7 @@ def test12(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 12: D8 + Nozzle FFD, global DVs only")
-  
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -591,7 +591,7 @@ def test12(refDeriv=False):
                               lower=0., upper=35., scale=1.0)
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 12b: D8 + Nozzle FFD,  random DV perturbation on test 12")
     xDV = DVGeo.getValues()
@@ -600,7 +600,7 @@ def test12(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -608,7 +608,7 @@ def test13(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 13: D8 + Nozzle FFD, global DVs and local DVs on parent global on child")
-  
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -629,7 +629,7 @@ def test13(refDeriv=False):
                               lower=0., upper=35., scale=1.0)
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 13b: D8 + Nozzle FFD,  random DV perturbation on test 13")
     xDV = DVGeo.getValues()
@@ -638,7 +638,7 @@ def test13(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -646,7 +646,7 @@ def test14(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 14: D8 + Nozzle FFD,  global DVs and local DVs on both parent and child")
-      
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -670,7 +670,7 @@ def test14(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 14b: D8 + Nozzle FFD,  random DV perturbation on test 14")
     xDV = DVGeo.getValues()
@@ -679,7 +679,7 @@ def test14(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -688,7 +688,7 @@ def test15(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 15: D8 + Nozzle FFD, local DVs only")
-    
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -705,7 +705,7 @@ def test15(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 15b: D8 + Nozzle FFD,  random DV perturbationon test 15")
     xDV = DVGeo.getValues()
@@ -714,7 +714,7 @@ def test15(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -722,7 +722,7 @@ def test16(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 16: D8 + Nozzle FFD, local DVs only on parent, global on child")
-      
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -739,7 +739,7 @@ def test16(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 16b: D8 + Nozzle FFD,  random DV perturbationon test 16")
     xDV = DVGeo.getValues()
@@ -748,7 +748,7 @@ def test16(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -756,7 +756,7 @@ def test17(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 17: D8 + Nozzle FFD, local DVs only on parent, global and local on child")
-  
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -776,7 +776,7 @@ def test17(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 17b: D8 + Nozzle FFD,  random DV perturbationon test 17")
     xDV = DVGeo.getValues()
@@ -785,7 +785,7 @@ def test17(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     del DVGeo
     del DVGeoChild
 
@@ -793,7 +793,7 @@ def test18(refDeriv=False):
     # Test a basic case. Single FFD
     sys.stdout.flush()
     printHeader("Test 18: D8 + Nozzle FFD, global DVs and local DVs on parent local on child")
-  
+
     if refDeriv:
         DVGeo,DVGeoChild = setupDVGeoD8(True)
     else:
@@ -815,7 +815,7 @@ def test18(refDeriv=False):
 
     DVGeo.addChild(DVGeoChild)
 
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
     sys.stdout.flush()
     printHeader("Test 18b: D8 + Nozzle FFD,  random DV perturbationon test 18")
     xDV = DVGeo.getValues()
@@ -824,12 +824,12 @@ def test18(refDeriv=False):
         xDV[key]+=numpy.random.rand(len(xDV[key]))
 
     DVGeo.setDesignVars(xDV)
-    testSensitvitiesD8(DVGeo,refDeriv)
+    testSensitivitiesD8(DVGeo,refDeriv)
 
     del DVGeo
     del DVGeoChild
 
-def test19(refDeriv=False): 
+def test19(refDeriv=False):
     printHeader("Test 19: Axisymmetric FFD, global and local DVs")
     # Test with a single point along the 45 ` degree theta direction
     sys.stdout.flush()
@@ -849,12 +849,12 @@ def test19(refDeriv=False):
 
     DVGeo.computeTotalJacobian("point")
 
-    if not refDeriv: 
+    if not refDeriv:
         J_analytic = DVGeo.JT['point'].T.toarray()
 
         reg_write(J_analytic,1e-7,1e-7)
 
-    else: 
+    else:
         # generate an FD jacobian
         xDV = DVGeo.getValues()
         global_var_names = DVGeo.DV_listGlobal.keys()
@@ -865,7 +865,7 @@ def test19(refDeriv=False):
         step = 1e-5
         J_fd = numpy.empty((3, 0))
 
-        for dv_name in global_var_names + local_var_names: 
+        for dv_name in global_var_names + local_var_names:
             n_dv = xDV[dv_name].shape[0]
 
             dPtdDV_var = numpy.empty((3*n_pt, n_dv))
@@ -883,6 +883,38 @@ def test19(refDeriv=False):
             J_fd = numpy.hstack((J_fd, dPtdDV_var))
 
         reg_write(J_fd,1e-7,1e-7)
+
+def test20(refDeriv=False):
+    printHeader("Test FFD writing function")
+    sys.stdout.flush()
+
+    # Write duplicate of outerbox FFD
+    axes = ['i', 'k', 'j']
+    slices = numpy.array([
+        # Slice 1
+        [[[-1, -1, -1], [-1, 1, -1]],
+        [[-1, -1, 1], [-1, 1, 1]]],
+        # Slice 2
+        [[[1, -1, -1], [1, 1, -1]],
+        [[1, -1, 1], [1, 1, 1]]],
+        # Slice 3
+        [[[2, -1, -1], [2, 1, -1]],
+        [[2, -1, 1], [2, 1, 1]]],
+    ])
+
+    N0 = [2,2]
+    N1 = [2,2]
+    N2 = [2,2]
+
+    copyName = 'inputFiles/test1.xyz'
+    geo_utils.write_wing_FFD_file(copyName, slices, N0, N1, N2, axes=axes)
+
+    # Load original and duplicate
+    origFFD = DVGeometry('inputFiles/outerBoxFFD.xyz')
+    copyFFD = DVGeometry(copyName)
+    norm_diff = numpy.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
+    reg_write(norm_diff, 1e-7, 1e-7)
+    os.remove(copyName)
 
 ######################
 # DV constraints Tests
@@ -915,6 +947,7 @@ if args.task=='all':
     test17(refDeriv)
     test18(refDeriv)
     test19(refDeriv)
+    test20(refDeriv)
 elif args.task=='test1':
     test1(refDeriv)
 elif args.task=='test2':
@@ -955,3 +988,5 @@ elif args.task=='test18':
     test18(refDeriv)
 elif args.task=='test19':
     test19(refDeriv)
+elif args.task=='test20':
+    test20(refDeriv)
