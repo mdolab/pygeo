@@ -1251,28 +1251,29 @@ class DVGeometry(object):
                 numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, temp[:, 1])
                 numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, temp[:, 2])
             else:
+                # We need to save the starting coef locations so that we can
+                # subtract them off in the end to get only the delta for the
+                # child FFD coefs
                 oldCoefLocations = self.FFD.coef.copy()
-                # Coeffients need to be set with delta values
                 temp = numpy.real(new_pts)
                 numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, temp[:, 0])
                 numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, temp[:, 1])
                 numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, temp[:, 2])
 
                 if childDelta:
-                    self.FFD.coef -= oldCoefLocations
+                    # Coeffients need to be set with delta values
+                    self.FFD.coef -= numpy.real(oldCoefLocations)
 
         else:
             # Since we have no ref axis (and thus no global dvs) we
             # just take the original FFD coefficients.
             self.FFD.coef = self.origFFDCoef.copy()
 
-        # end for (ref axis)
-
-        # now add in the section local DVs
+        # Now add in the section local DVs
         for key in self.DV_listSectionLocal:
             self.DV_listSectionLocal[key](self.FFD.coef, self.coefRotM, config)
 
-        # now add in the local DVs
+        # Now add in the local DVs
         for key in self.DV_listLocal:
             self.DV_listLocal[key](self.FFD.coef, config)
 
@@ -1284,22 +1285,21 @@ class DVGeometry(object):
 
         # Propagate the complex part through the volume artificially
         if self.complex:
-            if len(self.children) > 0:
-                print(' Warning: Complex step Does NOT Work with children yet')
-
+            # Above, we only took the real part of the coef because
+            # _updateVolumeCoef gets rid of it anyway. Here, we need to include
+            # the complex part because we want to propagate it through
             tempCoef = self.ptAttachFull.copy().astype('D')
             numpy.put(tempCoef[:, 0], self.ptAttachInd, new_pts[:, 0])
             numpy.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
             numpy.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
+            if self.isChild and childDelta:
+                tempCoef -= oldCoefLocations
 
             # Apply just the complex part of the local varibales
-            # # only do this on the parent, the child will already have this component
-            # # included because the FFD coefficients will already be complex
-            if not self.isChild:
-                for key in self.DV_listLocal:
-                    self.DV_listLocal[key].updateComplex(tempCoef, config)
-                for key in self.DV_listSectionLocal:
-                    self.DV_listSectionLocal[key].updateComplex(tempCoef, config)
+            for key in self.DV_listLocal:
+                self.DV_listLocal[key].updateComplex(tempCoef, config)
+            for key in self.DV_listSectionLocal:
+                self.DV_listSectionLocal[key].updateComplex(tempCoef, self.coefRotM, config)
 
             coords = coords.astype('D')
             imag_part = numpy.imag(tempCoef)
@@ -1309,9 +1309,9 @@ class DVGeometry(object):
             if dPtdCoef is not None:
                 for ii in range(3):
                     coords[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
+
         # Now loop over the children set the FFD and refAxis control
         # points as evaluated from the parent
-
         for iChild in range(len(self.children)):
             self.children[iChild]._finalize()
             self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
@@ -1322,7 +1322,7 @@ class DVGeometry(object):
             self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
             self.children[iChild].refAxis._updateCurveCoef()
             if self.complex:
-                # need to propogate the sensitivity to the children coords here to do this
+                # need to propagate the sensitivity to the children coords here to do this
                 # correctly
                 self.children[iChild]._complexifyCoef()
                 self.children[iChild].FFD.coef = self.children[iChild].FFD.coef.astype('D')
@@ -1340,9 +1340,8 @@ class DVGeometry(object):
                 self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
                 self.children[iChild].refAxis._updateCurveCoef()
 
-            coords += self.children[iChild].update(ptSetName, childDelta, config=config)
-
-
+            foo = self.children[iChild].update(ptSetName, childDelta, config=config)
+            coords += foo
 
         self._unComplexifyCoef()
 
@@ -2736,7 +2735,7 @@ class DVGeometry(object):
         else:
             Jacobian = None
 
-        return  Jacobian
+        return Jacobian
 
     def _sectionlocalDVJacobian(self, config=None):
         """
@@ -2754,19 +2753,17 @@ class DVGeometry(object):
             # Create the storage arrays for the information that must be
             # passed to the children
 
-            # for iChild in range(len(self.children)):
-            #     N = self.FFD.embededVolumes['child%d_axis'%(iChild)].N
-            #     self.children[iChild].dXrefdXdvl = numpy.zeros((N*3, self.nDV_T))
-            #
-            #     N = self.FFD.embededVolumes['child%d_coef'%(iChild)].N
-            #     self.children[iChild].dCcdXdvl = numpy.zeros((N*3, self.nDV_T))
+            for iChild in range(len(self.children)):
+                N = self.FFD.embededVolumes['child%d_axis'%(iChild)].N
+                self.children[iChild].dXrefdXdvl = numpy.zeros((N*3, self.nDV_T))
+
+                N = self.FFD.embededVolumes['child%d_coef'%(iChild)].N
+                self.children[iChild].dCcdXdvl = numpy.zeros((N*3, self.nDV_T))
 
             iDVSectionLocal = self.nDVSL_count
             for key in self.DV_listSectionLocal:
-                if self.DV_listSectionLocal[key].config is None or \
-                   config is None or \
-                   any(c0 in config for c0 in self.DV_listSectionLocal[key].config):
-                    dv = self.DV_listSectionLocal[key]
+                dv = self.DV_listSectionLocal[key]
+                if dv.config is None or config is None or any(c0 in config for c0 in dv.config):
                     nVal = dv.nVal
                     for j in range(nVal):
                         coef = dv.coefList[j]  # affected control point
@@ -2775,34 +2772,34 @@ class DVGeometry(object):
                         # Set axis that is being perturbed to 1.0
                         inFrame[dv.axis] = 1.0
 
-                        R = self.coefRotM[str(coef)]
+                        R = numpy.real(self.coefRotM[str(coef)])
                         rows = range(coef*3,(coef+1)*3)
                         Jacobian[rows, iDVSectionLocal] += R.dot(T.dot(inFrame))
 
-                        # for iChild in range(len(self.children)):
-                        #
-                        #     dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
-                        #     dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
-                        #
-                        #     tmp = numpy.zeros(self.FFD.coef.shape,dtype='d')
-                        #
-                        #     tmp[pt_dv[0],pt_dv[1]] = 1.0
-                        #
-                        #     dXrefdXdvl = numpy.zeros((dXrefdCoef.shape[0]*3),'d')
-                        #     dCcdXdvl   = numpy.zeros((dCcdCoef.shape[0]*3),'d')
-                        #
-                        #     dXrefdXdvl[0::3] = dXrefdCoef.dot(tmp[:, 0])
-                        #     dXrefdXdvl[1::3] = dXrefdCoef.dot(tmp[:, 1])
-                        #     dXrefdXdvl[2::3] = dXrefdCoef.dot(tmp[:, 2])
-                        #
-                        #     dCcdXdvl[0::3] = dCcdCoef.dot(tmp[:, 0])
-                        #     dCcdXdvl[1::3] = dCcdCoef.dot(tmp[:, 1])
-                        #     dCcdXdvl[2::3] = dCcdCoef.dot(tmp[:, 2])
-                        #
-                        #     # TODO: the += here is to allow recursion check this with multiple nesting
-                        #     # levels
-                        #     self.children[iChild].dXrefdXdvl[:, iDVSectionLocal] += dXrefdXdvl
-                        #     self.children[iChild].dCcdXdvl[:, iDVSectionLocal] += dCcdXdvl
+                        for iChild in range(len(self.children)):
+
+                            dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
+                            dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
+
+                            tmp = numpy.zeros(self.FFD.coef.shape, dtype='d')
+
+                            tmp[coef,:] = R.dot(T.dot(inFrame)).flatten()
+
+                            dXrefdXdvl = numpy.zeros((dXrefdCoef.shape[0]*3),'d')
+                            dCcdXdvl   = numpy.zeros((dCcdCoef.shape[0]*3),'d')
+
+                            dXrefdXdvl[0::3] = dXrefdCoef.dot(tmp[:, 0])
+                            dXrefdXdvl[1::3] = dXrefdCoef.dot(tmp[:, 1])
+                            dXrefdXdvl[2::3] = dXrefdCoef.dot(tmp[:, 2])
+
+                            dCcdXdvl[0::3] = dCcdCoef.dot(tmp[:, 0])
+                            dCcdXdvl[1::3] = dCcdCoef.dot(tmp[:, 1])
+                            dCcdXdvl[2::3] = dCcdCoef.dot(tmp[:, 2])
+
+                            # TODO: the += here is to allow recursion check this with multiple nesting
+                            # levels
+                            self.children[iChild].dXrefdXdvl[:, iDVSectionLocal] += dXrefdXdvl
+                            self.children[iChild].dCcdXdvl[:, iDVSectionLocal] += dCcdXdvl
                         iDVSectionLocal += 1
                 else:
                     iDVSectionLocal += self.DV_listSectionLocal[key].nVal
@@ -2921,7 +2918,7 @@ class DVGeometry(object):
                 self.refAxis._updateCurveCoef()
 
                 #Complexify the child FFD coords
-                tmp1 =numpy.zeros_like(self.FFD.coef,dtype='D')
+                tmp1 = numpy.zeros_like(self.FFD.coef,dtype='D')
 
                 # add the effect of the global coordinates on the actual control points
                 tmp1[:,0] = self.dCcdXdvg[0::3, iDV]*h
@@ -3508,7 +3505,7 @@ class geoDVSectionLocal(object):
                 inFrame = numpy.zeros(3)
                 inFrame[self.axis] = self.value[i].real
 
-                R = coefRotM[str(self.coefList[i])]
+                R = coefRotM[str(self.coefList[i])].real
                 coef[self.coefList[i]] += R.dot(T.dot(inFrame))
         return coef
 
