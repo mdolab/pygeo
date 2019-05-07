@@ -1975,12 +1975,9 @@ class DVGeometry(object):
 
         f = pySpline.openTecplot(fileName, 3)
         vol_counter = 0
+
         # Write master volumes:
         vol_counter += self._writeVols(f, vol_counter)
-
-        # Write children volumes:
-        for iChild in range(len(self.children)):
-            vol_counter += self.children[iChild]._writeVols(f, vol_counter)
 
         pySpline.closeTecplot(f)
         if len(self.points)>0:
@@ -2423,7 +2420,7 @@ class DVGeometry(object):
 
                 # create a vector with the derivative of the parent control points wrt the
                 # parent global variables
-                tmp = numpy.zeros(self.FFD.coef.shape,dtype='D')
+                tmp = numpy.zeros(self.FFD.coef.shape, dtype='d')
                 numpy.put(tmp[:, 0], self.ptAttachInd,
                           numpy.imag(new_pts[:,0])*oneoverh)
                 numpy.put(tmp[:, 1], self.ptAttachInd,
@@ -2433,8 +2430,8 @@ class DVGeometry(object):
 
                 # create variables for the total derivative of the child axis and control
                 # points wrt the parent global variables
-                dXrefdXdv = numpy.zeros((dXrefdCoef.shape[0]*3),'D')
-                dCcdXdv   = numpy.zeros((dCcdCoef.shape[0]*3),'D')
+                dXrefdXdv = numpy.zeros((dXrefdCoef.shape[0]*3), 'd')
+                dCcdXdv   = numpy.zeros((dCcdCoef.shape[0]*3), 'd')
 
                 # multiply the derivative of the child axis wrt the parent control points
                 # by the derivative of the parent control points wrt the parent global vars.
@@ -2447,10 +2444,10 @@ class DVGeometry(object):
                 dCcdXdv[0::3] = dCcdCoef.dot(tmp[:, 0])
                 dCcdXdv[1::3] = dCcdCoef.dot(tmp[:, 1])
                 dCcdXdv[2::3] = dCcdCoef.dot(tmp[:, 2])
-                if localDV:
+                if localDV and self._getNDVLocalSelf():
                     self.children[iChild].dXrefdXdvl[:, iDV] += dXrefdXdv # This is for recursion, check??
                     self.children[iChild].dCcdXdvl[:, iDV] += dCcdXdv  # This is for recursion, check??
-                else:
+                elif self._getNDVGlobalSelf():
                     self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv.real # This is for recursion, check??
                     self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv.real  # This is for recursion, check??
         return new_pts
@@ -2690,7 +2687,6 @@ class DVGeometry(object):
 
             # Create the storage arrays for the information that must be
             # passed to the children
-
             for iChild in range(len(self.children)):
                 N = self.FFD.embededVolumes['child%d_axis'%(iChild)].N
                 # Derivative of reference axis points wrt global DVs at this level
@@ -2828,7 +2824,6 @@ class DVGeometry(object):
 
             # Create the storage arrays for the information that must be
             # passed to the children
-
             for iChild in range(len(self.children)):
                 N = self.FFD.embededVolumes['child%d_axis'%(iChild)].N
                 self.children[iChild].dXrefdXdvl = numpy.zeros((N*3, self.nDV_T))
@@ -3014,6 +3009,10 @@ class DVGeometry(object):
         for i in range(len(self.FFD.vols)):
             pySpline.writeTecplot3D(handle, 'vol%d'%i, self.FFD.vols[i].coef)
             vol_counter += 1
+
+        # Write children volumes:
+        for iChild in range(len(self.children)):
+            vol_counter += self.children[iChild]._writeVols(handle, vol_counter)
 
         return vol_counter
 
