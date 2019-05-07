@@ -1173,10 +1173,12 @@ class DVGeometry(object):
 
                 # if necessary, assign rotation matrix for each ffd coef
                 if self.coefRotM is not None:
+                    attachedPoint = self.ptAttachInd[ipt]
                     if isComplex:
-                        self.coefRotM[str(ipt)] = rotM
+                        self.coefRotM[attachedPoint] = rotM
                     else:
-                        self.coefRotM[str(ipt)] = numpy.real(rotM)
+                        self.coefRotM[attachedPoint] = numpy.real(rotM)
+
                 D = numpy.dot(rotM, D)
                 if rotType == 7:
                     # only apply the theta rotations in certain cases
@@ -2768,7 +2770,7 @@ class DVGeometry(object):
                         # Set axis that is being perturbed to 1.0
                         inFrame[dv.axis] = 1.0
 
-                        R = numpy.real(self.coefRotM[str(coef)])
+                        R = numpy.real(self.coefRotM[coef])
                         rows = range(coef*3,(coef+1)*3)
                         Jacobian[rows, iDVSectionLocal] += R.dot(T.dot(inFrame))
 
@@ -3319,7 +3321,7 @@ class DVGeometry(object):
             # global design variables
             for slice in rolledlIndex[i,:,:]:
                 for coef in slice:
-                    self.coefRotM[str(coef)] = numpy.eye(3)
+                    self.coefRotM[coef] = numpy.eye(3)
 
         return nSections
 
@@ -3504,7 +3506,7 @@ class geoDVSectionLocal(object):
                 inFrame = numpy.zeros(3)
                 inFrame[self.axis] = self.value[i].real
 
-                R = coefRotM[str(self.coefList[i])].real
+                R = coefRotM[self.coefList[i]].real
                 coef[self.coefList[i]] += R.dot(T.dot(inFrame))
         return coef
 
@@ -3515,7 +3517,7 @@ class geoDVSectionLocal(object):
                 inFrame = numpy.zeros(3, 'D')
                 inFrame[self.axis] = self.value[i].imag*1j
 
-                R = coefRotM[str(self.coefList[i])]
+                R = coefRotM[self.coefList[i]]
                 coef[self.coefList[i]] += R.dot(T.dot(inFrame))
         return coef
 
