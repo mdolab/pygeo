@@ -694,6 +694,14 @@ class DVGeometry(object):
                 aligned with the rotated cross-section plane, which may not be
                 the x, y, or z directions.
 
+        ** Warnings **
+            - Rotations in an upper level (parent) FFD will not propagate down
+                to the lower level FFDs due to limitations of the current
+                implementation.
+            - Section local design variables should not be specified at the same
+                time as local design variables. This will most likely not result
+                in the desired behavior.
+
         Parameters
         ----------
         dvName : str
@@ -1290,12 +1298,13 @@ class DVGeometry(object):
             # Above, we only took the real part of the coef because
             # _updateVolumeCoef gets rid of it anyway. Here, we need to include
             # the complex part because we want to propagate it through
-            tempCoef = self.ptAttachFull.copy().astype('D')
-            numpy.put(tempCoef[:, 0], self.ptAttachInd, new_pts[:, 0])
-            numpy.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
-            numpy.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
-            if self.isChild and childDelta:
-                tempCoef -= oldCoefLocations
+            tempCoef = self.FFD.coef.copy().astype('D')
+            if len(self.axis) > 0:
+                numpy.put(tempCoef[:, 0], self.ptAttachInd, new_pts[:, 0])
+                numpy.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
+                numpy.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
+                if self.isChild and childDelta:
+                    tempCoef -= oldCoefLocations
 
             # Apply just the complex part of the local varibales
             for key in self.DV_listLocal:
@@ -3466,11 +3475,10 @@ class geoDVSectionLocal(object):
 
     def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask,
                 config, sectionTransform, sectionLink):
-
-        """Create a set of geometric design variables which change the shape
-        of a surface surface_id. Local design variables change the surface
-        in all three axis.
-        See addGeoDVLocal for more information
+        """
+        Create a set of geometric design variables which change the shape
+        of a surface.
+        See addGeoDVSectionLocal for more information
         """
 
         self.coefList = []
