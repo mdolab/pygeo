@@ -448,9 +448,9 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
         elif name == 'cosine':
             dist = (1 - np.cos(np.linspace(0, np.pi, N))) / 2.0
         elif name == 'left':
-            dist = np.linspace(0, 1, N)**2.0
+            dist = np.linspace(0, 1, N)**(3.0/2.0)
         elif name == 'right':
-            dist = np.linspace(0, 1, N)**0.5
+            dist = np.linspace(0, 1, N)**(2.0/3.0)
         return dist
 
     for i in range(Nvol):

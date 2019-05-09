@@ -678,7 +678,7 @@ class pyBlock():
                 i     = self.topo.gIndex[ii][jj][1]
                 j     = self.topo.gIndex[ii][jj][2]
                 k     = self.topo.gIndex[ii][jj][3]
-                self.vols[ivol].coef[i, j, k] = self.coef[ii].astype('d')
+                self.vols[ivol].coef[i, j, k] = self.coef[ii].real.astype('d')
 
     def _setVolumeCoef(self):
         """Set the global coefficient array self.coef from the

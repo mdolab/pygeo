@@ -66,7 +66,7 @@ def setupDVGeo():
 def setupDVGeoD8(isComplex):
     #create the Parent FFD
     FFDFile = './inputFiles/bodyFFD.xyz'
-    DVGeo = DVGeometry(FFDFile)#,complex=isComplex)
+    DVGeo = DVGeometry(FFDFile,complex=isComplex)
 
     # create a reference axis for the parent
     axisPoints = [[0.,0.,0.],[26.,0.,0.],[30.5,0.,0.9],
@@ -76,7 +76,7 @@ def setupDVGeoD8(isComplex):
 
     # create the child FFD
     FFDFile =  './inputFiles/nozzleFFD.xyz'
-    DVGeoChild = DVGeometry(FFDFile,child=True)#,complex=isComplex)
+    DVGeoChild = DVGeometry(FFDFile,child=True,complex=isComplex)
 
     # create a reference axis for the child
     axisPoints = [[32.4,   1.  ,   1.],[ 34,   1.,   0.9]]
@@ -248,8 +248,8 @@ def testSensitivitiesD8(DVGeo,refDeriv):
             counter+=1
     #get analitic sensitivity
     if refDeriv:
-        dIdx = totalSensitivityFD(DVGeo,nPt,ptName)
-        #dIdx = totalSensitivityCS(DVGeo,nPt,ptName)
+        # dIdx = totalSensitivityFD(DVGeo,nPt,ptName)
+        dIdx = totalSensitivityCS(DVGeo,nPt,ptName)
     else:
         dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
 
