@@ -625,7 +625,7 @@ def uniqueIndex(s, sHash=None):
     if sHash is not specified for sorting, s is used
 
     """
-    if sHash != None:
+    if sHash is not None:
         ind = np.argsort(np.argsort(sHash))
     else:
         ind = np.argsort(np.argsort(s))
@@ -1781,7 +1781,7 @@ class CurveTopology(Topology):
         self.gIndex = None
         self.lIndex = None
         self.nGlobal = None
-        if file != None:
+        if file is not None:
             self.readConnectivity(file)
             return
 
@@ -1822,7 +1822,7 @@ class CurveTopology(Topology):
         for i in range(len(sizes)):
             self.edges[self.edgeLink[i][0]].N = sizes[i]
 
-        if curveList == None:
+        if curveList is None:
             curveList = np.arange(self.nEdge)
 
         # ----------------- Start of Edge Computation ---------------------
@@ -1897,7 +1897,7 @@ class SurfaceTopology(Topology):
         self.gIndex = None
         self.lIndex = None
         self.nGlobal = None
-        if fileName != None:
+        if fileName is not None:
             self.readConnectivity(fileName)
             return
 
@@ -2037,7 +2037,7 @@ class SurfaceTopology(Topology):
             self.edges[self.edgeLink[i][2]].N = sizes[i][1]
             self.edges[self.edgeLink[i][3]].N = sizes[i][1]
 
-        if surfaceList == None:
+        if surfaceList is None:
             surfaceList = np.arange(0, self.nFace)
 
         # ----------------- Start of Edge Computation ---------------------
@@ -2090,7 +2090,7 @@ the list of surfaces must be the same length'
             self.edges[self.edgeLink[i][2]].N = sizes[i][1]
             self.edges[self.edgeLink[i][3]].N = sizes[i][1]
 
-        if surfaceList == None:
+        if surfaceList is None:
             surfaceList = np.arange(0, self.nFace)
 
         # ----------------- Start of Edge Computation ---------------------
@@ -2273,7 +2273,7 @@ class BlockTopology(Topology):
         self.gIndex = None
         self.lIndex = None
         self.nGlobal = None
-        if fileName != None:
+        if fileName is not None:
             self.readConnectivity(fileName)
             return
 
@@ -2411,7 +2411,7 @@ class BlockTopology(Topology):
         """Internal function to calculate the global/local numbering
         for each volume"""
 
-        if sizes != None:
+        if sizes is not None:
             for i in range(len(sizes)):
                 self.edges[self.edgeLink[i][0]].N = sizes[i][0]
                 self.edges[self.edgeLink[i][1]].N = sizes[i][0]
@@ -2434,7 +2434,7 @@ class BlockTopology(Topology):
                 sizes[ivol][1] = self.edges[self.edgeLink[ivol][2]].N
                 sizes[ivol][2] = self.edges[self.edgeLink[ivol][8]].N
 
-        if volumeList == None:
+        if volumeList is None:
             volumeList = np.arange(0, self.nVol)
 
         # ----------------- Start of Edge Computation ---------------------
@@ -2682,7 +2682,7 @@ the list of volumes must be the same length'
                            greedyReorder=False):
         """Internal function to calculate the global/local numbering
         for each volume"""
-        if sizes != None:
+        if sizes is not None:
             for i in range(len(sizes)):
                 self.edges[self.edgeLink[i][0]].N = sizes[i][0]
                 self.edges[self.edgeLink[i][1]].N = sizes[i][0]
@@ -2705,7 +2705,7 @@ the list of volumes must be the same length'
                 sizes[ivol][1] = self.edges[self.edgeLink[ivol][2]].N
                 sizes[ivol][2] = self.edges[self.edgeLink[ivol][8]].N
 
-        if volumeList == None:
+        if volumeList is None:
             volumeList = np.arange(0, self.nVol)
 
         # ----------------- Start of Edge Computation ---------------------
@@ -3759,7 +3759,7 @@ Using a linear type'%(edgeType[iedge]))
     fp.close()
 
     # Write out the default specFile
-    if specsFile == None:
+    if specsFile is None:
         (dirName, fileName) = os.path.split(tripanFile)
         (fileBaseName, fileExtension) = os.path.splitext(fileName)
         if dirName != '':
@@ -4085,7 +4085,7 @@ class DCEL(object):
             nh -= 1
 
             #We check if the hedge already points to a face
-            if h.face == None:
+            if h.face is None:
                 f = DCELFace()
                 nf += 1
                 #We link the hedge to the new face
