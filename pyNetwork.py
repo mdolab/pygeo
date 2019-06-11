@@ -11,7 +11,7 @@ from .geo_utils import CurveTopology
 class pyNetwork():
     """
     A class for manipulating a collection of curve objects.
-    
+
     pyNetwork is the 1 dimensional analog of pyGeo (surfaces 2D) and
     pyBlock (volumes 3D). The idea is that a 'network' is a collection
     of 1D splines that are connected in some manner. This module
@@ -22,14 +22,14 @@ class pyNetwork():
     curves : list of pySpline.Curve objects
         Individual curves to form the network.
         """
-	
+
     def __init__(self, curves):
-        self.curves = curves    
+        self.curves = curves
         self.nCurve = len(curves)
         self.topo = None
         self.coef = None
         self._doConnectivity()
-        
+
     def _doConnectivity(self):
         """
         Compute the connectivity of the set of curve objects.
@@ -51,12 +51,12 @@ class pyNetwork():
             icurve = self.topo.gIndex[i][0][0]
             ii     = self.topo.gIndex[i][0][1]
             self.coef[i] = self.curves[icurve].coef[ii]
-   
+
 # ----------------------------------------------------------------------
 #               Curve Writing Output Functions
 # ----------------------------------------------------------------------
 
-    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, 
+    def writeTecplot(self, fileName, orig=False, curves=True, coef=True,
                      curveLabels=False, nodeLabels=False):
         """Write the pyNetwork Object to Tecplot .dat file
 
@@ -88,7 +88,7 @@ class pyNetwork():
             for icurve in range(self.nCurve):
                 pySpline.writeTecplot1D(f, 'coef',
                                         self.curves[icurve].X)
-                
+
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)
         fileBaseName, fileExtension = os.path.splitext(fileName)
@@ -105,7 +105,7 @@ class pyNetwork():
                     self.curves[icurve].coef[mid, 2], icurve+1, icurve)
                 f2.write('%s'%(textString))
             f2.close()
-        
+
         if nodeLabels:
             # First we need to figure out where the corners actually *are*
             nNodes = len(numpy.unique(self.topo.nodeLink.flatten()))
@@ -155,7 +155,7 @@ class pyNetwork():
         curves : list
             Optional list of the indices of the curve objects to
             include.
-            
+
         Returns
         -------
         xMin : array of length 3
@@ -165,12 +165,12 @@ class pyNetwork():
             """
         if curves is None:
             curves = numpy.arange(self.nCurve)
-    
+
         Xmin0, Xmax0 = self.curves[curves[0]].getBounds()
         for i in range(1, len(curves)):
             icurve = curves[i]
             Xmin, Xmax = self.curves[icurve].getBounds()
-            # Now check them 
+            # Now check them
             if Xmin[0] < Xmin0[0]:
                 Xmin0[0] = Xmin[0]
             if Xmin[1] < Xmin0[1]:
@@ -183,13 +183,13 @@ class pyNetwork():
                 Xmax0[1] = Xmax[1]
             if Xmax[2] > Xmax0[2]:
                 Xmax0[2] = Xmax[2]
-      
+
         return Xmin0, Xmax0
 
     def projectRays(self, points, axis, curves=None, **kwargs):
         """ Given a set of points and a vector defining a direction,
         i.e. a ray, determine the minimum distance between these rays
-        and any of the curves this object has. 
+        and any of the curves this object has.
 
         Parameters
         ----------
@@ -212,33 +212,38 @@ class pyNetwork():
             The curve parameter on self.curves[curveID] that is cloested
             to the point(s).
             """
-       
+
         # Do point project to determine the approximate distance such
-        # that we know how large to make the line representing the ray. 
+        # that we know how large to make the line representing the ray.
         curveID0, s0 = self.projectPoints(points, curves=curves, **kwargs)
-      
+
         D0 = numpy.zeros((len(s0), 3), 'd')
         for i in range(len(s0)):
             D0[i, :] = self.curves[curveID0[i]](s0[i])-points[i]
-     
+
         if curves == None:
             curves = numpy.arange(self.nCurve)
 
         # Now do the same calc as before
         N = len(points)
         S = numpy.zeros((N, len(curves)))
-        D = numpy.zeros((N, len(curves), 3))     
-        
+        D = numpy.zeros((N, len(curves), 3))
+
         for i in range(len(curves)):
             icurve = curves[i]
             for j in range(N):
                 ray = pySpline.line(
-                    points[j]-axis*1.5*numpy.linalg.norm(D0[j]), 
-                    points[j]+axis*1.5*numpy.linalg.norm(D0[j]))
+                    points[j]-axis*3.0*numpy.linalg.norm(D0[j]),
+                    points[j]+axis*3.0*numpy.linalg.norm(D0[j]))
 
                 S[j, i], t, D[j, i, :] = self.curves[icurve].projectCurve(
                     ray, nIter=2000)
-   
+                if t == 0.0 or t == 1.0:
+                    print('Warning: The link for attached point {:d} was drawn'
+                          'from the curve to the end of the ray,'
+                          'indicating that the ray might not have been long'
+                          'enough to intersect the nearest curve.'.format(j))
+
         s = numpy.zeros(N)
         curveID = numpy.zeros(N, 'intc')
 
@@ -252,7 +257,7 @@ class pyNetwork():
                     d0 = numpy.linalg.norm(D[i, j])
                     s[i] = S[i, j]
                     curveID[i] = curves[j]
-           
+
         return curveID, s
 
     def projectPoints(self, points, curves=None, *args, **kwargs):
@@ -281,15 +286,15 @@ class pyNetwork():
 
         if curves is None:
             curves = numpy.arange(self.nCurve)
-        
+
         N = len(points)
         S = numpy.zeros((N, len(curves)))
-        D = numpy.zeros((N, len(curves), 3))     
+        D = numpy.zeros((N, len(curves), 3))
         for i in range(len(curves)):
             icurve = curves[i]
             S[:, i], D[:, i, :] = self.curves[icurve].projectPoint(
                 points, *args, **kwargs)
-        
+
         s = numpy.zeros(N)
         curveID = numpy.zeros(N, 'intc')
 
@@ -303,6 +308,6 @@ class pyNetwork():
                     d0 = numpy.linalg.norm(D[i, j])
                     s[i] = S[i, j]
                     curveID[i] = curves[j]
-             
+
         return curveID, s
-    
+
