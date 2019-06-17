@@ -8,6 +8,7 @@ import numpy
 from pyspline import pySpline
 from .geo_utils import CurveTopology
 
+
 class pyNetwork():
     """
     A class for manipulating a collection of curve objects.
@@ -49,7 +50,7 @@ class pyNetwork():
         self.coef = numpy.zeros((self.topo.nGlobal, 3))
         for i in range(len(self.coef)):
             icurve = self.topo.gIndex[i][0][0]
-            ii     = self.topo.gIndex[i][0][1]
+            ii = self.topo.gIndex[i][0][1]
             self.coef[i] = self.curves[icurve].coef[ii]
 
 # ----------------------------------------------------------------------
@@ -99,11 +100,11 @@ class pyNetwork():
             f2 = open(labelFilename, 'w')
             for icurve in range(self.nCurve):
                 mid = numpy.floor(self.curves[icurve].nCtl/2)
-                textString = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d,T=\"S%d\"\n'% (
+                textString = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d,T=\"S%d\"\n' % (
                     self.curves[icurve].coef[mid, 0],
                     self.curves[icurve].coef[mid, 1],
                     self.curves[icurve].coef[mid, 2], icurve+1, icurve)
-                f2.write('%s'%(textString))
+                f2.write('%s' % (textString))
             f2.close()
 
         if nodeLabels:
@@ -132,9 +133,9 @@ class pyNetwork():
             f2 = open(labelFilename, 'w')
 
             for i in range(nNodes):
-                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, T=\"n%d\"\n'% (
+                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, T=\"n%d\"\n' % (
                     nodeCoord[i][0], nodeCoord[i][1], nodeCoord[i][2], i)
-                f2.write('%s'%(textString))
+                f2.write('%s' % (textString))
             f2.close()
 
         pySpline.closeTecplot(f)
@@ -144,7 +145,7 @@ class pyNetwork():
         for ii in range(len(self.coef)):
             for jj in range(len(self.topo.gIndex[ii])):
                 icurve = self.topo.gIndex[ii][jj][0]
-                i      = self.topo.gIndex[ii][jj][1]
+                i = self.topo.gIndex[ii][jj][1]
                 self.curves[icurve].coef[i] = self.coef[ii]
 
     def getBounds(self, curves=None):
@@ -186,7 +187,7 @@ class pyNetwork():
 
         return Xmin0, Xmax0
 
-    def projectRays(self, points, axis, curves=None, **kwargs):
+    def projectRays(self, points, axis, curves=None, rayFact=1.5, **kwargs):
         """ Given a set of points and a vector defining a direction,
         i.e. a ray, determine the minimum distance between these rays
         and any of the curves this object has.
@@ -211,7 +212,9 @@ class pyNetwork():
         s : float or array
             The curve parameter on self.curves[curveID] that is cloested
             to the point(s).
-            """
+        rayFact : float
+            multiplication factor on the number of rays created
+        """
 
         # Do point project to determine the approximate distance such
         # that we know how large to make the line representing the ray.
@@ -233,8 +236,8 @@ class pyNetwork():
             icurve = curves[i]
             for j in range(N):
                 ray = pySpline.line(
-                    points[j]-axis*3.0*numpy.linalg.norm(D0[j]),
-                    points[j]+axis*3.0*numpy.linalg.norm(D0[j]))
+                    points[j]-axis*rayFact*numpy.linalg.norm(D0[j]),
+                    points[j]+axis*rayFact*numpy.linalg.norm(D0[j]))
 
                 S[j, i], t, D[j, i, :] = self.curves[icurve].projectCurve(
                     ray, nIter=2000)
@@ -310,4 +313,3 @@ class pyNetwork():
                     curveID[i] = curves[j]
 
         return curveID, s
-
