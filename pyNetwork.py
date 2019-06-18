@@ -187,7 +187,7 @@ class pyNetwork():
 
         return Xmin0, Xmax0
 
-    def projectRays(self, points, axis, curves=None, rayFact=1.5, **kwargs):
+    def projectRays(self, points, axis, curves=None, raySize=1.5, **kwargs):
         """ Given a set of points and a vector defining a direction,
         i.e. a ray, determine the minimum distance between these rays
         and any of the curves this object has.
@@ -202,6 +202,18 @@ class pyNetwork():
         curves : list
             An optional list of curve indices to you. If not given, all
             curve objects are used.
+        raySize : float
+            The ray direction is based on the axis vector. The magnitude of the
+            ray is estimated based on the minimum distance between the point and
+            the set of curves. That distance is then multiplied by "raySize" to
+            get the final ray vector. Then we find the intersection between the
+            ray and the curves. If the ray is not long enough to actually
+            intersect with any of the curves, then the link will be drawn to the
+            location on the curve that is closest to the end of the ray, which
+            will not be a projection along "axis" unless the curve is
+            perpendicular to the axis vector. The default of 1.5 works in most
+            cases but can cause unexpected behavior sometimes which can be fixed
+            by increasing the default.
         kwargs : dict
             Keyword arguments passed to pySpline.Curve.projectCurve() function
 
@@ -212,8 +224,6 @@ class pyNetwork():
         s : float or array
             The curve parameter on self.curves[curveID] that is cloested
             to the point(s).
-        rayFact : float
-            multiplication factor on the number of rays created
         """
 
         # Do point project to determine the approximate distance such
@@ -236,8 +246,8 @@ class pyNetwork():
             icurve = curves[i]
             for j in range(N):
                 ray = pySpline.line(
-                    points[j]-axis*rayFact*numpy.linalg.norm(D0[j]),
-                    points[j]+axis*rayFact*numpy.linalg.norm(D0[j]))
+                    points[j]-axis*raySize*numpy.linalg.norm(D0[j]),
+                    points[j]+axis*raySize*numpy.linalg.norm(D0[j]))
 
                 S[j, i], t, D[j, i, :] = self.curves[icurve].projectCurve(
                     ray, nIter=2000)
