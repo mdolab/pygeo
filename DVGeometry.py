@@ -2079,6 +2079,77 @@ class DVGeometry(object):
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
 
+    def demoDesignVars(self, directory, includeLocal=True, pointSet=None):
+        """
+        This function can be used to "test" the design variable parametrization
+        for a given optimization problem. It should be called in the script
+        after DVGeo has been set up. The function will loop through all the
+        design variables and write out a deformed FFD volume for the upper
+        and lower bound of every design variable. It will also write out the
+        deformed pointset of choice.
+
+        Parameters
+        ----------
+        directory : str
+            The directory where the FFD files should be written.
+        includeLocal : boolean
+            False if you don't want to include the shape variables.
+        pointSet : str
+            Name of the pointset to write out. If this is not specified, it will
+            take the first one in the list.
+        """
+        # Generate directories
+        os.system('mkdir -p {:s}/ffd'.format(directory))
+        os.system('mkdir -p {:s}/pointset'.format(directory))
+
+        # Get design variables
+        dvDict = self.getValues()
+
+        # Get pointSet
+        if pointSet is None:
+            if self.ptSetNames:
+                pointSet = self.ptSetNames[0]
+            else:
+                raise Error('DVGeo must have a point set to update for\
+                            demoDesignVars to work.')
+
+        # Loop through design variables
+        count = 0
+        for key in dvDict:
+            if key in self.DV_listLocal or key in self.DV_listSectionLocal:
+                if not includeLocal:
+                    continue
+                lower = self.DV_listLocal[key].lower
+                upper = self.DV_listLocal[key].upper
+            elif key in self.DV_listGlobal:
+                lower = self.DV_listGlobal[key].lower
+                upper = self.DV_listGlobal[key].upper
+            else:
+                print('Fail')
+
+            x = dvDict[key].flatten()
+            nDV = len(x)
+            for j in range(nDV):
+                for h in [lower[j], upper[j]]:
+                    # Add perturbation to the design variable and update
+                    x[j] += h
+                    dvDict.update({key:x})
+                    self.setDesignVars(dvDict)
+                    X = self.update(pointSet)
+
+                    # Write FFD
+                    self.writeTecplot('{}/ffd/iter_{:03d}.dat'.format(directory, count))
+
+                    # Write pointset
+                    self.writePointSet(pointSet, '{}/{}/iter_{:03d}'.format(directory, pointSet, count))
+
+                    # Reset variable
+                    x[j] -= h
+                    dvDict.update({key:x})
+
+                    # Iterate counter
+                    count += 1
+
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
