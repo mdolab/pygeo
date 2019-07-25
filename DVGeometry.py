@@ -197,7 +197,8 @@ class DVGeometry(object):
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
                    rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
-                   xFractionOrder=2, includeVols=[], ignoreInd=[]):
+                   xFractionOrder=2, includeVols=[], ignoreInd=[],
+                   raySize=1.5):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -436,6 +437,9 @@ class DVGeometry(object):
 
         # Specify indices to be ignored
         self.axis[name]['ignoreInd'] = ignoreInd
+
+        # Add the raySize multiplication factor for this axis
+        self.axis[name]['raySize'] = raySize
 
         return nAxis
 
@@ -2273,7 +2277,8 @@ class DVGeometry(object):
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
                 tmpIDs, tmpS0 = self.refAxis.projectRays(
-                    curPts, self.axis[key]['axis'], curves=[curveID])
+                    curPts, self.axis[key]['axis'], curves=[curveID],
+                    raySize=self.axis[key]['raySize'])
 
             curveIDs.extend(tmpIDs)
             s.extend(tmpS0)
