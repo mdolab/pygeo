@@ -17,6 +17,7 @@ from mpi4py import MPI
 from pyspline import pySpline
 from . import pyNetwork, pyBlock, geo_utils
 import pdb
+import os
 
 class Error(Exception):
     """
@@ -196,7 +197,8 @@ class DVGeometry(object):
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
                    rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
-                   xFractionOrder=2, includeVols=[], ignoreInd=[]):
+                   xFractionOrder=2, includeVols=[], ignoreInd=[],
+                   raySize=1.5):
         """
         This function is used to add a 'reference' axis to the
         DVGeometry object.  Adding a reference axis is only required
@@ -435,6 +437,9 @@ class DVGeometry(object):
 
         # Specify indices to be ignored
         self.axis[name]['ignoreInd'] = ignoreInd
+
+        # Add the raySize multiplication factor for this axis
+        self.axis[name]['raySize'] = raySize
 
         return nAxis
 
@@ -2079,6 +2084,94 @@ class DVGeometry(object):
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
 
+    def demoDesignVars(self, directory, includeLocal=True, pointSet=None, callBack=None):
+        """
+        This function can be used to "test" the design variable parametrization
+        for a given optimization problem. It should be called in the script
+        after DVGeo has been set up. The function will loop through all the
+        design variables and write out a deformed FFD volume for the upper
+        and lower bound of every design variable. It will also write out the
+        deformed pointset of choice.
+
+        Parameters
+        ----------
+        directory : str
+            The directory where the FFD files should be written.
+        includeLocal : boolean
+            False if you don't want to include the shape variables.
+        pointSet : str
+            Name of the pointset to write out. If this is not specified, it will
+            take the first one in the list.
+	callBack : function
+	    This allows the user to perform an additional task at each new design
+	    variable iteration (e.g. write out a deformed mesh). The callback
+	    function must take two inputs: 1) the output directory name (str) and
+	    2) the iteration count (int).
+        """
+        # Generate directories
+        os.system('mkdir -p {:s}/ffd'.format(directory))
+        os.system('mkdir -p {:s}/pointset'.format(directory))
+
+        # Get design variables
+        dvDict = self.getValues()
+
+        # Get pointSet
+        if pointSet is None:
+	    writePointSet = False
+            if self.ptSetNames:
+                pointSet = self.ptSetNames[0]
+            else:
+                raise Error('DVGeo must have a point set to update for\
+                            demoDesignVars to work.')
+	else:
+	    writePointSet = True
+
+        # Loop through design variables
+        count = 0
+        for key in dvDict:
+            if key in self.DV_listLocal or key in self.DV_listSectionLocal:
+                if not includeLocal:
+                    continue
+                lower = self.DV_listLocal[key].lower
+                upper = self.DV_listLocal[key].upper
+            elif key in self.DV_listGlobal:
+                lower = self.DV_listGlobal[key].lower
+                upper = self.DV_listGlobal[key].upper
+            else:
+                print('Fail')
+
+            x = dvDict[key].flatten()
+            nDV = len(x)
+            for j in range(nDV):
+		if count == 0:
+		    stops = [0, lower[j], upper[j]]
+		else:
+		    stops = [lower[j], upper[j]]
+                for h in stops:
+                    # Add perturbation to the design variable and update
+                    x[j] += h
+                    dvDict.update({key:x})
+                    self.setDesignVars(dvDict)
+                    X = self.update(pointSet)
+
+                    # Write FFD
+                    self.writeTecplot('{}/ffd/iter_{:03d}.dat'.format(directory, count))
+
+                    # Write pointset
+		    if writePointSet:
+                        self.writePointSet(pointSet, '{}/pointset/iter_{:03d}'.format(directory, count))
+
+		    # Call user function
+		    if callBack is not None:
+			callBack(directory, count)
+
+                    # Reset variable
+                    x[j] -= h
+                    dvDict.update({key:x})
+
+                    # Iterate counter
+                    count += 1
+
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
@@ -2184,7 +2277,8 @@ class DVGeometry(object):
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
                 tmpIDs, tmpS0 = self.refAxis.projectRays(
-                    curPts, self.axis[key]['axis'], curves=[curveID])
+                    curPts, self.axis[key]['axis'], curves=[curveID],
+                    raySize=self.axis[key]['raySize'])
 
             curveIDs.extend(tmpIDs)
             s.extend(tmpS0)
