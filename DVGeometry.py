@@ -2102,11 +2102,11 @@ class DVGeometry(object):
         pointSet : str
             Name of the pointset to write out. If this is not specified, it will
             take the first one in the list.
-	callBack : function
-	    This allows the user to perform an additional task at each new design
-	    variable iteration (e.g. write out a deformed mesh). The callback
-	    function must take two inputs: 1) the output directory name (str) and
-	    2) the iteration count (int).
+	    callBack : function
+            This allows the user to perform an additional task at each new design
+            variable iteration (e.g. write out a deformed mesh). The callback
+            function must take two inputs: 1) the output directory name (str) and
+            2) the iteration count (int).
         """
         # Generate directories
         os.system('mkdir -p {:s}/ffd'.format(directory))
@@ -2126,51 +2126,52 @@ class DVGeometry(object):
 	else:
 	    writePointSet = True
 
-        # Loop through design variables
+        # Loop through design variables on self and children
+        geoList = [self] + self.children
         count = 0
-        for key in dvDict:
-            if key in self.DV_listLocal or key in self.DV_listSectionLocal:
-                if not includeLocal:
-                    continue
-                lower = self.DV_listLocal[key].lower
-                upper = self.DV_listLocal[key].upper
-            elif key in self.DV_listGlobal:
-                lower = self.DV_listGlobal[key].lower
-                upper = self.DV_listGlobal[key].upper
-            else:
-                print('Fail')
+        for geo in geoList:
+            for key in dvDict:
+                lower = []
+                if key in geo.DV_listLocal or key in geo.DV_listSectionLocal:
+                    if not includeLocal:
+                        continue
+                    lower = geo.DV_listLocal[key].lower
+                    upper = geo.DV_listLocal[key].upper
+                elif key in geo.DV_listGlobal:
+                    lower = geo.DV_listGlobal[key].lower
+                    upper = geo.DV_listGlobal[key].upper
 
-            x = dvDict[key].flatten()
-            nDV = len(x)
-            for j in range(nDV):
-		if count == 0:
-		    stops = [0, lower[j], upper[j]]
-		else:
-		    stops = [lower[j], upper[j]]
-                for h in stops:
-                    # Add perturbation to the design variable and update
-                    x[j] += h
-                    dvDict.update({key:x})
-                    self.setDesignVars(dvDict)
-                    X = self.update(pointSet)
+                x = dvDict[key].flatten()
+                nDV = len(lower)
+                for j in range(nDV):
+                    if count == 0:
+                        stops = [0, lower[j], upper[j]]
+                    else:
+                        stops = [lower[j], upper[j]]
+                    for h in stops:
+                        # Add perturbation to the design variable and update
+                        x[j] += h
+                        dvDict.update({key:x})
+                        self.setDesignVars(dvDict)
+                        X = self.update(pointSet)
 
-                    # Write FFD
-                    self.writeTecplot('{}/ffd/iter_{:03d}.dat'.format(directory, count))
+                        # Write FFD
+                        self.writeTecplot('{}/ffd/iter_{:03d}.dat'.format(directory, count))
 
-                    # Write pointset
-		    if writePointSet:
-                        self.writePointSet(pointSet, '{}/pointset/iter_{:03d}'.format(directory, count))
+                        # Write pointset
+                        if writePointSet:
+                            self.writePointSet(pointSet, '{}/pointset/iter_{:03d}'.format(directory, count))
 
-		    # Call user function
-		    if callBack is not None:
-			callBack(directory, count)
+                        # Call user function
+                        if callBack is not None:
+                            callBack(directory, count)
 
-                    # Reset variable
-                    x[j] -= h
-                    dvDict.update({key:x})
+                        # Reset variable
+                        x[j] -= h
+                        dvDict.update({key:x})
 
-                    # Iterate counter
-                    count += 1
+                        # Iterate counter
+                        count += 1
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
