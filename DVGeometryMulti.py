@@ -203,9 +203,23 @@ class DVGeometryMulti(object):
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
-        return list(self.DVs.keys())
+        dvNames = []
+        # create a list of DVs from each comp
+        for comp in self.compNames:
+            # first get the list of DVs from this component
+            varNames = self.comps[comp].DVGeo.getVarNames()
 
-    def addVariablesPyOpt(self, optProb):
+            for var in varNames:
+                # then add the component's name to the DV name
+                dvName = '%s:%s'%(comp, var)
+
+                # finally append to the list
+                dvNames.append(dvName)
+
+        return dvNames
+
+    def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True,
+                          sectionlocalVars=True, ignoreVars=None, freezeVars=None, comps=None):
         """
         Add the current set of variables to the optProb object.
 
@@ -213,23 +227,41 @@ class DVGeometryMulti(object):
         ----------
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
+
+        globalVars : bool
+            Flag specifying whether global variables are to be added
+
+        localVars : bool
+            Flag specifying whether local variables are to be added
+
+        ignoreVars : list of strings
+            List of design variables the user DOESN'T want to use
+            as optimization variables.
+
+        freezeVars : list of string
+            List of design variables the user WANTS to add as optimization
+            variables, but to have the lower and upper bounds set at the current
+            variable. This effectively eliminates the variable, but it the variable
+            is still part of the optimization.
+
+        comps : list of components we want to add DVs of. If no list is passed,
+            we will add all dvs of all components
         """
 
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            optProb.addVar(dvName, 'c', value=dv.value, lower=dv.lower,
-                           upper=dv.upper, scale=dv.scale)
+        # if no list was provided, we use all components
+        if comps is None:
+            comps = self.compNames
 
-    def printDesignVariables(self):
-        """
-        Print a formatted list of design variables to the screen
-        """
-        # print ('-'*85)
-        # print ('%30s%20s%20s%15s'%('Component','Group','Parm','Value'))
-        # print ('-'*85)
-        # for dvName in self.DVs:
-        #     DV = self.DVs[dvName]
-        #     print('%30s%20s%20s%15g'%(DV.component, DV.group, DV.parm, DV.value))
+        # we can simply loop over all DV objects and call their respective
+        # addVariablesPyOpt function with the correct prefix.
+        for comp in comps:
+            self.comps[comp].DVGeo.addVariablesPyOpt(optProb,
+                                                     globalVars=globalVars,
+                                                     localVars=localVars,
+                                                     sectionlocalVars=sectionlocalVars,
+                                                     ignoreVars=ignoreVars,
+                                                     freezeVars=freezeVars,
+                                                     prefix=comp.join(':'))
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER

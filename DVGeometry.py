@@ -1920,7 +1920,7 @@ class DVGeometry(object):
         return
 
     def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True,
-                          sectionlocalVars=True, ignoreVars=None, freezeVars=None):
+                          sectionlocalVars=True, ignoreVars=None, freezeVars=None, prefix=''):
         """
         Add the current set of variables to the optProb object.
 
@@ -1944,6 +1944,10 @@ class DVGeometry(object):
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
+
+        prefix : A prefix for the name of the DV. We use this with DVGeometryMulti
+            where each dv name will get a componentName: before the actual DV.
+
         """
         if ignoreVars is None:
             ignoreVars = set()
@@ -1960,12 +1964,13 @@ class DVGeometry(object):
                 for key in varLists[lst]:
                     if key not in ignoreVars:
                         dv = varLists[lst][key]
+                        dvName = prefix.join(dv.name)
                         if key not in freezeVars:
-                            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
+                            optProb.addVarGroup(dvName, dv.nVal, 'c', value=dv.value,
                                                 lower=dv.lower, upper=dv.upper,
                                                 scale=dv.scale)
                         else:
-                            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
+                            optProb.addVarGroup(dvName, dv.nVal, 'c', value=dv.value,
                                                 lower=dv.value, upper=dv.value,
                                                 scale=dv.scale)
 
