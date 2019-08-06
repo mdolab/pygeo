@@ -108,6 +108,24 @@ class DVGeometryMulti(object):
             additional keys in the dfvdictionary are simply ignored.
         """
 
+        # first get the list of DVs from each comp so we can ignore extra entries
+        for comp in self.compNames:
+            self.comps[comp].dvDict = self.comps[comp].DVGeo.getValues()
+
+        # loop over all dvs we get as the input
+        for k,v in dvDict.items():
+            # get the component name
+            comp, dvName = k.split(':',1)
+
+            # now check if this comp has this dv
+            if dvName in self.comps[comp].dvDict:
+                # set the value
+                self.comps[comp].dvDict[dvName] = v
+
+        # loop over the components and set the values
+        for comp in self.compNames:
+            self.comps[comp].DVGeo.setDesignVars(self.comps[comp].dvDict)
+
     def getValues(self):
         """
         Generic routine to return the current set of design
@@ -119,9 +137,18 @@ class DVGeometryMulti(object):
         dvDict : dict
             Dictionary of design variables
         """
-        dvDict = OrderedDict()
-        for dvName in self.DVs:
-            dvDict[dvName] = self.DVs[dvName].value
+
+        dvDict = {}
+        # we need to loop over each DVGeo object and get the DVs
+        for comp in self.compNames:
+            dvDictComp = self.comps[comp].DVGeo.getValues()
+            # we need to loop over these DVs.
+            for k,v in dvDictComp.items():
+                # We will add the name of the comp and a : to the full DV name
+                dvName = '%s:%s'%(comp, k)
+                dvDict[dvName] = v
+
+        return dvDict
 
     def update(self, ptSetName, config=None):
         """This is the main routine for returning coordinates that have been
@@ -263,3 +290,6 @@ class component(object):
 
         # Create a dictionary for pointset information
         self.ptSets = OrderedDict()
+
+        # also a dictionary for DV names
+        self.dvDict = {}
