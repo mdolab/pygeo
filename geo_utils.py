@@ -6,6 +6,7 @@ from __future__ import division
 # =============================================================================
 import numpy as np
 import sys, os
+import functools
 from pyspline import pySpline
 # Set a (MUCH) larger recursion limit. For meshes with extremely large
 # numbers of blocs (> 5000) the recursive edge propagation may hit a
@@ -3836,8 +3837,8 @@ class DCELVertex:
         self.hedgelist = []
 
     def sortincident(self):
-
-        self.hedgelist.sort(self.hsort, reverse=True)
+        key = functools.cmp_to_key(self.hsort)
+        self.hedgelist.sort(key=key, reverse=True)
 
     def hsort(self, h1, h2):
         """Sorts two half edges counterclockwise"""
