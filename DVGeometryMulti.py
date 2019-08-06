@@ -20,6 +20,11 @@ from pygeo import DVGeometry
 import pdb
 import os
 
+# directly import the interface to the fortran APIs
+from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools
+# generic import for all pysurf codes
+import pysurf
+
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
@@ -41,23 +46,44 @@ class Error(Exception):
 
 
 class DVGeometryMulti(object):
-    """ Class for manipulating multiple components using FFDs"""
+    """A class for manipulating multiple components using multiple FFDs
 
-    def __init__(self):
+    """
 
+    def __init__(self, comps, FFDFiles, triMeshFiles, intersectedComps=None, comm=MPI.COMM_WORLD):
 
-        # initialize each component FFDs
+        self.compNames = comps
+        self.comps = OrderedDict()
+        self.DVGeoDict = OrderedDict()
 
-        # read triangulated surface meshes
+        for (comp, filename, triMesh) in zip(comps, FFDFiles, triMeshFiles):
+            # we need to create a new DVGeo object for this component
+            DVGeo = DVGeometry(filename)
 
-        # add triangulated surface meshes to respective FFDs
+            # We also need to read the triMesh and save the points
+            nodes, triConn, barsConn = self._readCGNSFile(filename)
 
+            # add these points to the corresponding dvgeo
+            DVGeo.addPointSet(nodes, 'triNodes')
 
-        # return DVGeo objects
+            # initialize the component object
+            self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn)
+
+            # also save the DVGeometry pointer in the dictionary we pass back
+            self.DVGeoDict[comp] = DVGeo
+
+        # return DVGeo objects so that users can add design variables
+        return self.DVGeoDict
 
     def addPointSet(self, points, ptName, **kwargs):
 
         # first figure out which points are inside which FFD.
+
+        # we need to loop over each point and figure out if they are inside the bbox of a single FFD.
+
+        # if they are in both FFDs, then we need to project these points to both triangulated surfaces
+
+        # then pick the one that has a shorter distance.
 
         # we know that if points are outside one FFD, they must be inside the other...
 
@@ -181,3 +207,59 @@ class DVGeometryMulti(object):
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
+
+    def _readCGNSFile(self, filename):
+        # this function reads the unstructured CGNS grid in filename and returns
+        # node coordinates and element connectivities.
+        # Here, only the root proc reads the cgns file, broadcasts node and connectivity info.
+
+        # create the featurecurve dictionary
+        curveConn = OrderedDict()
+
+        # only root proc reads the file
+        if rank == 0:
+            print('Reading file %s'%filename)
+            # use the default routine in tsurftools
+            t1 = time.time()
+            nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm = MPI.COMM_SELF)
+            t2 = time.time()
+            print('Finished reading the cgns file')
+            print('Reading the cgns file took', (t2-t1))
+
+            triConn = numpy.zeros((0,3), dtype = numpy.int8)
+            # print('Part names in triangulated cgns file for %s'%filename)
+            for part in sectionDict:
+                # print(part)
+                if 'triaConnF' in sectionDict[part].keys():
+                    #this is a surface, read the tri connectivities
+                    triConn = numpy.vstack((triConn, sectionDict[part]['triaConnF']))
+
+                if 'barsConn' in sectionDict[part].keys():
+                    # this is a curve, save the curve connectivity
+                    barsConn[part] = sectionDict[part]['barsConn']
+        else:
+            # create these to recieve the data
+            nodes = None
+            triConn = None
+            barsConn = None
+
+        # each proc gets the nodes and connectivities
+        # CHECK if this should be bcast or Bcast...
+        nodes = self.comm.bcast(nodes, root=0)
+        triConn = self.comm.bcast(triConn, root=0)
+        barsConn = self.comm.bcast(barsConn, root=0)
+
+        return nodes, triConn, barsConn
+
+class component(object):
+    def __init__(self, name, DVGeo, nodes, triConn, barsConn):
+
+        # save the info
+        self.name = name
+        self.DVGeo = DVGeo
+        self.nodes = nodes
+        self.triConn = triConn
+        self.barsConn = barsConn
+
+        # Create a dictionary for pointset information
+        self.ptSets = OrderedDict()
