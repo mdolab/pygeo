@@ -9,4 +9,7 @@ try:
     from .DVGeometryVSP import DVGeometryVSP
 except ImportError:
     pass
-    
+try:
+    from .DVGeometryMulti import DVGeometryMulti
+except ImportError:
+    pass

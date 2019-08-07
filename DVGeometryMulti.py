@@ -46,7 +46,8 @@ class Error(Exception):
 
 
 class DVGeometryMulti(object):
-    """A class for manipulating multiple components using multiple FFDs
+    """
+    A class for manipulating multiple components using multiple FFDs
 
     """
 
@@ -55,43 +56,96 @@ class DVGeometryMulti(object):
         self.compNames = comps
         self.comps = OrderedDict()
         self.DVGeoDict = OrderedDict()
+        self.ptSets = OrderedDict()
+        self.comm = comm
 
         for (comp, filename, triMesh) in zip(comps, FFDFiles, triMeshFiles):
             # we need to create a new DVGeo object for this component
             DVGeo = DVGeometry(filename)
 
-            # We also need to read the triMesh and save the points
-            nodes, triConn, barsConn = self._readCGNSFile(filename)
+            if triMesh is not None:
+                # We also need to read the triMesh and save the points
+                nodes, triConn, barsConn = self._readCGNSFile(triMesh)
 
-            # add these points to the corresponding dvgeo
-            DVGeo.addPointSet(nodes, 'triNodes')
+                # add these points to the corresponding dvgeo
+                DVGeo.addPointSet(nodes, 'triNodes')
+            else:
+                # the user has not provided a triangulated surface mesh for this file
+                nodes = None
+                triConn = None
+                barsConn = None
+
+            # we will need the bounding box information later on, so save this here
+            xMin, xMax = DVGeo.FFD.getBounds()
 
             # initialize the component object
-            self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn)
+            self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn, xMin, xMax)
 
             # also save the DVGeometry pointer in the dictionary we pass back
             self.DVGeoDict[comp] = DVGeo
 
+    def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
         return self.DVGeoDict
 
     def addPointSet(self, points, ptName, **kwargs):
 
-        # first figure out which points are inside which FFD.
+        # create the pointset class
+        self.ptSets[ptName] = PointSet(points)
 
-        # we need to loop over each point and figure out if they are inside the bbox of a single FFD.
+        for comp in self.compNames:
+            # initialize the list for this component
+            self.ptSets[ptName].compMap[comp] = []
 
-        # if they are in both FFDs, then we need to project these points to both triangulated surfaces
+        # we now need to create the component mapping information
+        for i in range(self.ptSets[ptName].nPts):
 
-        # then pick the one that has a shorter distance.
+            # initial flags
+            inFFD = False
+            proj = False
 
-        # we know that if points are outside one FFD, they must be inside the other...
+            # loop over components and check if this point is in a single BBox
+            for comp in self.compNames:
 
-        # for points in both FFDs, project to triangulated surfaces and figure out which component they correspond to
+                # check if inside
+                xMin = self.comps[comp].xMin
+                xMax = self.comps[comp].xMax
+                print(comp, xMin, xMax)
+                if (xMin[0] < points[i,0] < xMax[0] and
+                   xMin[1] < points[i,1] < xMax[1] and
+                   xMin[2] < points[i,2] < xMax[2]):
 
-        # create the mapping array that picks components from each ptSet.
+                    print('point',i,'is in comp',comp)
+
+                    # this point was not inside any other FFD before
+                    if not inFFD:
+                        inFFD  = True
+                        inComp = comp
+                    # this point was inside another FFD, so we need to project it...
+                    else:
+                        # set the projection flag
+                        proj = True
+
+            # # project this point to components, we need to set inComp string
+            # if proj:
+
+
+            # this point was inside at least one FFD. If it was inside multiple,
+            # we projected it before to figure out which component it should belong to
+            if inFFD:
+                # we can add the point index to the list of points inComp owns
+                self.ptSets[ptName].compMap[inComp].append(i)
+
+            # this point is outside any FFD...
+            else:
+                raise Error('The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is not inside any FFDs'%(points[i,0], points[i,1], points[i,1], ptName))
+
 
         # using the mapping array, add the pointsets to respective DVGeo objects
+        for comp in self.compNames:
+            compMap = self.ptSets[ptName].compMap[comp]
+            print(comp,compMap)
+            self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
 
         # loop over the intersections and add pointsets
 
@@ -276,7 +330,7 @@ class DVGeometryMulti(object):
         curveConn = OrderedDict()
 
         # only root proc reads the file
-        if rank == 0:
+        if self.comm.rank == 0:
             print('Reading file %s'%filename)
             # use the default routine in tsurftools
             t1 = time.time()
@@ -286,6 +340,7 @@ class DVGeometryMulti(object):
             print('Reading the cgns file took', (t2-t1))
 
             triConn = numpy.zeros((0,3), dtype = numpy.int8)
+            barsConn = {}
             # print('Part names in triangulated cgns file for %s'%filename)
             for part in sectionDict:
                 # print(part)
@@ -311,7 +366,7 @@ class DVGeometryMulti(object):
         return nodes, triConn, barsConn
 
 class component(object):
-    def __init__(self, name, DVGeo, nodes, triConn, barsConn):
+    def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
 
         # save the info
         self.name = name
@@ -319,9 +374,14 @@ class component(object):
         self.nodes = nodes
         self.triConn = triConn
         self.barsConn = barsConn
-
-        # Create a dictionary for pointset information
-        self.ptSets = OrderedDict()
+        self.xMin = xMin
+        self.xMax = xMax
 
         # also a dictionary for DV names
         self.dvDict = {}
+
+class PointSet(object):
+    def __init__(self, points):
+        self.points = points
+        self.nPts = len(self.points)
+        self.compMap = OrderedDict()
