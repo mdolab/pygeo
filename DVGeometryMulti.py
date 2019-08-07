@@ -21,7 +21,7 @@ import pdb
 import os
 
 # directly import the interface to the fortran APIs
-from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools
+from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools, adtAPI
 # generic import for all pysurf codes
 import pysurf
 
@@ -90,6 +90,42 @@ class DVGeometryMulti(object):
 
     def addPointSet(self, points, ptName, **kwargs):
 
+        # before we do anything, we need to create surface ADTs
+        # for which the user provided triangulated meshes
+        # TODO Time these, we can do them once and keep the ADTs
+        for comp in self.compNames:
+
+            # check if we have a trimesh for this component
+            if self.comps[comp].triMesh:
+
+                # now we build the ADT
+                # from ney's code:
+                 # Set bounding box for new tree
+                BBox = numpy.zeros((2, 3))
+                useBBox = False
+
+                # dummy connectivity data for quad elements since we have all tris
+                quadConn = numpy.zeros((0,4))
+
+                t0 = time.time()
+
+                # Compute set of nodal normals by taking the average normal of all
+                # elements surrounding the node. This allows the meshing algorithms,
+                # for instance, to march in an average direction near kinks.
+                nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(self.comps[comp].nodes.T,
+                                                                     self.comps[comp].triConn.T,
+                                                                     quadConn.T)
+                self.comps[comp].nodal_normals = nodal_normals.T
+
+                # Create new tree (the tree itself is stored in Fortran level)
+                adtAPI.adtapi.adtbuildsurfaceadt(self.comps[comp].nodes.T,
+                                                 self.comps[comp].triConn.T,
+                                                 quadConn.T, BBox.T, useBBox,
+                                                 self.comm.py2f(), comp)
+                t1 = time.time()
+                # if self.comm.rank == 0:
+                #     print("Building surface ADT for component",comp,"took",t1-t0,'seconds')
+
         # create the pointset class
         self.ptSets[ptName] = PointSet(points)
 
@@ -103,6 +139,7 @@ class DVGeometryMulti(object):
             # initial flags
             inFFD = False
             proj = False
+            projList = []
 
             # loop over components and check if this point is in a single BBox
             for comp in self.compNames:
@@ -110,12 +147,13 @@ class DVGeometryMulti(object):
                 # check if inside
                 xMin = self.comps[comp].xMin
                 xMax = self.comps[comp].xMax
-                print(comp, xMin, xMax)
                 if (xMin[0] < points[i,0] < xMax[0] and
                    xMin[1] < points[i,1] < xMax[1] and
                    xMin[2] < points[i,2] < xMax[2]):
 
-                    print('point',i,'is in comp',comp)
+                    # print('point',i,'is in comp',comp)
+                    # add this component to the projection list
+                    projList.append(comp)
 
                     # this point was not inside any other FFD before
                     if not inFFD:
@@ -126,8 +164,38 @@ class DVGeometryMulti(object):
                         # set the projection flag
                         proj = True
 
-            # # project this point to components, we need to set inComp string
-            # if proj:
+            # project this point to components, we need to set inComp string
+            if proj:
+
+                # set a high initial distance
+                dMin2 = 1e10
+
+                # loop over the components
+                for comp in self.compNames:
+                    # check if this component is in the projList
+                    if comp in projList:
+
+                        # check if we have an ADT:
+                        if self.comps[comp].triMesh:
+                            # Initialize reference values (see explanation above)
+                            numPts = 1
+                            dist2 = numpy.ones(numPts)*1e10
+                            xyzProj = numpy.zeros((numPts, 3))
+                            normProjNotNorm = numpy.zeros((numPts, 3))
+
+                            # Call projection function
+                            _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(points[i].T, comp,
+                                                                            dist2, xyzProj.T,
+                                                                            self.comps[comp].nodal_normals.T,
+                                                                            normProjNotNorm.T)
+                            # print('Distance of point',points[i],'to comp',comp,'is',numpy.sqrt(dist2))
+                            # if this is closer than the previous min, take this comp
+                            if dist2 < dMin2:
+                                dMin2 = dist2[0]
+                                inComp = comp
+
+                        else:
+                            raise Error('The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is inside multiple FFDs but a triangulated mesh for component %s is not provided to determine which component owns this point.'%(points[i,0], points[i,1], points[i,1], ptName, comp))
 
 
             # this point was inside at least one FFD. If it was inside multiple,
@@ -138,16 +206,21 @@ class DVGeometryMulti(object):
 
             # this point is outside any FFD...
             else:
-                raise Error('The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is not inside any FFDs'%(points[i,0], points[i,1], points[i,1], ptName))
-
+                raise Error('The point at (x, y, z) = (%.3f, %.3f, %.3f) in pointset %s is not inside any FFDs'%(points[i,0], points[i,1], points[i,1], ptName))
 
         # using the mapping array, add the pointsets to respective DVGeo objects
         for comp in self.compNames:
             compMap = self.ptSets[ptName].compMap[comp]
-            print(comp,compMap)
+            # print(comp,compMap)
             self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
 
         # loop over the intersections and add pointsets
+
+        # finally, we can deallocate the ADTs
+        for comp in self.compNames:
+            if self.comps[comp].triMesh:
+                adtAPI.adtapi.adtdeallocateadts(comp)
+                # print('Deallocated ADT for component',comp)
 
     def setDesignVars(self, dvDict):
         """
@@ -379,6 +452,12 @@ class component(object):
 
         # also a dictionary for DV names
         self.dvDict = {}
+
+        # set a flag for triangulated meshes
+        if nodes is None:
+            self.triMesh = False
+        else:
+            self.triMesh = True
 
 class PointSet(object):
     def __init__(self, points):
