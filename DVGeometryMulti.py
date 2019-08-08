@@ -58,6 +58,8 @@ class DVGeometryMulti(object):
         self.DVGeoDict = OrderedDict()
         self.ptSets = OrderedDict()
         self.comm = comm
+        self.intersectComps = []
+        self.updated = {}
 
         for (comp, filename, triMesh) in zip(comps, FFDFiles, triMeshFiles):
             # we need to create a new DVGeo object for this component
@@ -222,6 +224,9 @@ class DVGeometryMulti(object):
                 adtAPI.adtapi.adtdeallocateadts(comp)
                 # print('Deallocated ADT for component',comp)
 
+        # mark this pointset as up to date
+        self.updated[ptName] = False
+
     def setDesignVars(self, dvDict):
         """
         Standard routine for setting design variables from a design
@@ -252,6 +257,10 @@ class DVGeometryMulti(object):
         # loop over the components and set the values
         for comp in self.compNames:
             self.comps[comp].DVGeo.setDesignVars(self.comps[comp].dvDict)
+
+        # Flag all the pointSets as not being up to date:
+        for pointSet in self.updated:
+            self.updated[pointSet] = False
 
     def getValues(self):
         """
@@ -289,13 +298,31 @@ class DVGeometryMulti(object):
             given in an :func:`addPointSet()` call.
         """
 
-        # we first need to update all points with their respective DVGeo objects
+        # get the new points
+        newPts = numpy.zeros((self.ptSets[ptSetName].nPts, 3))
 
+        # we first need to update all points with their respective DVGeo objects
+        for comp in self.compNames:
+            ptsComp = self.comps[comp].DVGeo.update(ptSetName)
+
+            # now save this info with the pointset mapping
+            ptMap = self.ptSets[ptSetName].compMap[comp]
+            newPts[ptMap] = ptsComp
+
+        # get the delta
+        delta = newPts - self.ptSets[ptSetName].points
 
         # then apply the intersection treatment
+        for IC in self.intersectComps:
+            delta = IC.update(ptSetName, delta)
 
+        # now we are ready to take the delta which may be modified by the intersections
+        newPts = self.ptSets[ptSetName].points + delta
 
-        # set the jacobian to be out of date
+        # set the pointset up to date
+        self.updated[ptSetName] = True
+
+        return newPts
 
     def pointSetUpToDate(self, ptSetName):
         """
@@ -319,7 +346,11 @@ class DVGeometryMulti(object):
 
     def getNDV(self):
         """ Return the number of DVs"""
-        return len(self.DVs)
+        # loop over components and sum number of DVs
+        nDV = 0
+        for comp in self.compNames:
+            nDV += self.comps[comp].DVGeo.getNDV()
+        return nDV
 
     def getVarNames(self):
         """
