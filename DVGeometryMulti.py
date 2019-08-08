@@ -984,7 +984,9 @@ class CompIntersection(object):
             # we need to reverse the order of our feature curves
             # and we will flip the elements too so keep track of this change
             # print(breakList)
-            breakList = numpy.mod(seamConn.shape[0] - numpy.flip(breakList, axis=0), seamConn.shape[0])
+            breakList = numpy.mod(seamConn.shape[0] - numpy.array(breakList), seamConn.shape[0])
+            # TODO we had a bug in this line
+            # breakList = numpy.mod(seamConn.shape[0] - numpy.flip(breakList, axis=0), seamConn.shape[0])
             # print(breakList)
 
             # and we need to invert the curves themselves
