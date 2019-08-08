@@ -71,7 +71,7 @@ class DVGeometryMulti(object):
                 nodes, triConn, barsConn = self._readCGNSFile(triMesh)
 
                 # add these points to the corresponding dvgeo
-                DVGeo.addPointSet(nodes, 'triNodes')
+                DVGeo.addPointSet(nodes, 'triMesh')
             else:
                 # the user has not provided a triangulated surface mesh for this file
                 nodes = None
@@ -272,6 +272,12 @@ class DVGeometryMulti(object):
         # loop over the components and set the values
         for comp in self.compNames:
             self.comps[comp].DVGeo.setDesignVars(self.comps[comp].dvDict)
+
+        # We need to give the updated coordinates to each of the
+        # intersectComps (if we have any) so they can update the new
+        # intersection curve
+        for IC in self.intersectComps:
+            IC.setSurface(self.comm)
 
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
@@ -897,11 +903,11 @@ class CompIntersection(object):
             breakList.append(numpy.argmin(dist2))
 
         # print("after feature detection")
-        # these are the elements at "features"
+        # # these are the elements at "features"
         # print(breakList)
-        # these are the nodes of the element
+        # # these are the nodes of the element
         # print(seamConn[breakList])
-        # these are the feature nodes (i.e. the first nodes of feature elements)
+        # # these are the feature nodes (i.e. the first nodes of feature elements)
         # print(intNodes[seamConn[breakList,0]])
 
         nFeature = len(breakList)
