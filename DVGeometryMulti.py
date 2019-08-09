@@ -95,6 +95,9 @@ class DVGeometryMulti(object):
             # we will just initialize the intersections by passing in the dictionary
             self.intersectComps.append(CompIntersection(intersectedComps[i], self))
 
+        # flag to keep track of IC jacobians
+        self.ICJupdated = False
+
         if comm.rank == 0:
             t1 = time.time()
             print("Initialized DVGeometryMulti in",(t1-t0),"seconds.")
@@ -147,6 +150,7 @@ class DVGeometryMulti(object):
         for comp in self.compNames:
             # initialize the list for this component
             self.ptSets[ptName].compMap[comp] = []
+            self.ptSets[ptName].compMapFlat[comp] = []
 
         # we now need to create the component mapping information
         for i in range(self.ptSets[ptName].nPts):
@@ -219,6 +223,10 @@ class DVGeometryMulti(object):
                 # we can add the point index to the list of points inComp owns
                 self.ptSets[ptName].compMap[inComp].append(i)
 
+                # also create a flattened version of the compMap
+                for j in range(3):
+                    self.ptSets[ptName].compMapFlat[inComp].append(3*i + j)
+
             # this point is outside any FFD...
             else:
                 raise Error('The point at (x, y, z) = (%.3f, %.3f, %.3f) in pointset %s is not inside any FFDs'%(points[i,0], points[i,1], points[i,1], ptName))
@@ -282,6 +290,9 @@ class DVGeometryMulti(object):
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
             self.updated[pointSet] = False
+
+        # also set IC Jacobians as out of date
+        self.ICJupdated = False
 
     def getValues(self):
         """
@@ -397,6 +408,99 @@ class DVGeometryMulti(object):
 
         return dvNames
 
+    def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
+        """
+        This function computes sensitivty information.
+
+        Specificly, it computes the following:
+        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
+
+        Parameters
+        ----------
+        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
+
+            This is the total derivative of the objective or function
+            of interest with respect to the coordinates in
+            'ptSetName'. This can be a single array of size (Npt, 3)
+            **or** a group of N vectors of size (Npt, 3, N). If you
+            have many to do, it is faster to do many at once.
+
+        ptSetName : str
+            The name of set of points we are dealing with
+
+        comm : MPI.IntraComm
+            The communicator to use to reduce the final derivative. If
+            comm is None, no reduction takes place.
+
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable appies to *ALL* configurations.
+
+
+        Returns
+        -------
+        dIdxDict : dic
+            The dictionary containing the derivatives, suitable for
+            pyOptSparse
+
+        Notes
+        -----
+        The ``child`` and ``nDVStore`` options are only used
+        internally and should not be changed by the user.
+        """
+
+        # compute intersection jacobians if out of date
+        if not self.ICJupdated:
+            self._computeICJacobian()
+
+        # compute the total jacobian for this pointset
+        self._computeTotalJacobian(ptSetName)
+
+        # Make dIdpt at least 3D
+        if len(dIdpt.shape) == 2:
+            dIdpt = numpy.array([dIdpt])
+        N = dIdpt.shape[0]
+
+        # do the transpose multiplication
+
+        # get the pointset
+        ptSet = self.ptSets[ptSetName]
+
+        # now that we have self.JT compute the Mat-Mat multiplication
+        nDV = ptSet.jac.shape[1]
+
+        dIdx_local = numpy.zeros((N, nDV), 'd')
+        for i in range(N):
+            if ptSet.jac is not None:
+                dIdx_local[i,:] = ptSet.jac.T.dot(dIdpt[i,:,:].flatten())
+
+        if comm: # If we have a comm, globaly reduce with sum
+            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        else:
+            dIdx = dIdx_local
+
+        # use respective DVGeo's convert to dict functionality
+        dIdxDict = OrderedDict()
+        dvOffset = 0
+        for comp in self.compNames:
+            DVGeo = self.comps[comp].DVGeo
+            nDVComp = DVGeo.getNDV()
+
+            # this part of the sensitivity matrix is owned by this dvgeo
+            dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:,dvOffset:dvOffset+nDVComp])
+
+            # add the component names in front of the dictionary keys
+            for k,v in dIdxComp.items():
+                dvName = '%s:%s'%(comp,k)
+                dIdxDict[dvName] = v
+
+            # also increment the offset
+            dvOffset += nDVComp
+
+        return dIdxDict
+
     def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True,
                           sectionlocalVars=True, ignoreVars=None, freezeVars=None, comps=None):
         """
@@ -490,6 +594,59 @@ class DVGeometryMulti(object):
 
         return nodes, triConn, barsConn
 
+    def _computeTotalJacobian(self, ptSetName):
+        """
+        This routine computes the total jacobian. It takes the jacobians
+        from respective DVGeo objects and also computes the jacobians for
+        the intersection seams. We then use this information in the
+        totalSensitivity function.
+        """
+
+        # number of design variables
+        nDV = self.getNDV()
+
+        # allocate space for the jacobian.
+        jac = numpy.zeros((self.ptSets[ptSetName].nPts*3, nDV))
+
+        # ptset
+        ptSet = self.ptSets[ptSetName]
+
+        dvOffset = 0
+        # we need to call computeTotalJacobian from all comps and get the jacobians for this pointset
+        for comp in self.compNames:
+
+            # number of design variables
+            nDVComp = self.comps[comp].DVGeo.getNDV()
+
+            # call the function to compute the total jacobian
+            self.comps[comp].DVGeo.computeTotalJacobian(ptSetName)
+
+            if self.comps[comp].DVGeo.JT[ptSetName] is not None:
+                # we convert to dense storage.
+                # this is probably not a good way to do this...
+                compJ = self.comps[comp].DVGeo.JT[ptSetName].todense().T
+
+                # loop over the entries and add one by one....
+                # for i in range(len(ptSet.compMapFlat[comp])):
+                #     jac[ptSet.compMapFlat[comp][i], dvOffset:dvOffset+nDVComp] = compJ[i,:]
+
+                # or, do it (kinda) vectorized!
+                jac[ptSet.compMapFlat[comp], dvOffset:dvOffset+nDVComp] = compJ[:,:]
+
+            # increment the offset
+            dvOffset += nDVComp
+
+        # now we can save this jacobian in the pointset
+        ptSet.jac = jac
+
+    def _computeICJacobian(self):
+
+        # loop over design variables and compute jacobians for all ICs
+
+
+        self.ICJupdated = True
+
+
 class component(object):
     def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
 
@@ -520,6 +677,7 @@ class PointSet(object):
         self.points = points
         self.nPts = len(self.points)
         self.compMap = OrderedDict()
+        self.compMapFlat = OrderedDict()
 
 # object to keep track of feature curves if the user supplies them to track intersections
 class featureCurve(object):
