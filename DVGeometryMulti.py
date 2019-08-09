@@ -51,7 +51,7 @@ class DVGeometryMulti(object):
 
     """
 
-    def __init__(self, comps, FFDFiles, triMeshFiles, intersectedComps=[], comm=MPI.COMM_WORLD):
+    def __init__(self, comps, FFDFiles, triMeshFiles, intersectedComps=[], comm=MPI.COMM_WORLD, dh=1e-6):
 
         t0 = time.time()
 
@@ -61,6 +61,7 @@ class DVGeometryMulti(object):
         self.ptSets = OrderedDict()
         self.comm = comm
         self.updated = {}
+        self.dh = dh
 
         for (comp, filename, triMesh) in zip(comps, FFDFiles, triMeshFiles):
             # we need to create a new DVGeo object for this component
@@ -452,7 +453,8 @@ class DVGeometryMulti(object):
         """
 
         # compute intersection jacobians if out of date
-        if not self.ICJupdated:
+        if not self.ICJupdated and self.intersectComps:
+            # this needs to be called with the full comm for the FD calcs to make any sense to do in parallel
             self._computeICJacobian()
 
         # compute the total jacobian for this pointset
@@ -468,13 +470,51 @@ class DVGeometryMulti(object):
         # get the pointset
         ptSet = self.ptSets[ptSetName]
 
-        # now that we have self.JT compute the Mat-Mat multiplication
+        # number of design variables
         nDV = ptSet.jac.shape[1]
 
-        dIdx_local = numpy.zeros((N, nDV), 'd')
+        # We should keep track of the intersections that this pointset is close to. There is no point in including the intersections far from this pointset in the sensitivity calc as the derivative seeds will be just zeros there.
+        ptSetICs = []
+        nSeams  = 0
+        for IC in self.intersectComps:
+            # This checks if we have any entries in the affected indices on this point set with this intersection
+            if IC.ptSets[ptSetName][1]:
+                # this pointset is affected by this intersection. save this info.
+                ptSetICs.append(IC)
+                # this keeps the cumulative number of nodes on the seams this point set is effected by
+                nSeams += len(IC.seam)
+
+        # allocate the matrix
+        dIdSeam = numpy.zeros((N, nSeams*3))
+
+        # go over the dI values
         for i in range(N):
-            if ptSet.jac is not None:
-                dIdx_local[i,:] = ptSet.jac.T.dot(dIdpt[i,:,:].flatten())
+            n = 0
+            for IC in ptSetICs:
+                dIdpt_i = dIdpt[i, :, :].copy()
+                seamBar = IC.sens(dIdpt_i, ptSetName)
+                dIdpt[i, :, :] = dIdpt_i
+                dIdSeam[i, 3*n:3*(n+len(seamBar))] = seamBar.flatten()
+                n += len(IC.seam)
+
+        # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
+        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
+
+        # transpose dIdpt and vstack;
+        # Now vstack the result with seamBar as that is far as the
+        # forward FD jacobian went.
+        tmp = numpy.vstack([dIdpt.T, dIdSeam.T])
+
+        # we also stack the pointset jacobian and the seam jacobians.
+        jac = self.ptSets[ptSetName].jac.copy()
+        for IC in ptSetICs:
+            jac = numpy.vstack((jac, IC.jac))
+
+        # Remember the jacobian contains the surface poitns *and* the
+        # the seam nodes. dIdx_compact is the final derivative for the
+        # points this proc owns.
+        dIdxT_local = jac.T.dot(tmp)
+        dIdx_local = dIdxT_local.T
 
         if comm: # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -643,9 +683,170 @@ class DVGeometryMulti(object):
 
         # loop over design variables and compute jacobians for all ICs
 
+        # counts
+        nDV = self.getNDV()
+        nproc = self.comm.size
+        rank  = self.comm.rank
 
+        # save the reference seams
+        for IC in self.intersectComps:
+            IC.seamRef = IC.seam.flatten()
+            IC.jac = numpy.zeros((len(IC.seamRef), nDV))
+
+        # We need to evaluate all the points on respective procs for FD computations
+
+        # determine how many DVs this proc will perturb.
+        n = 0
+        for iDV in range(nDV):
+            # I have to do this one.
+            if iDV % nproc == rank:
+                n += 1
+
+        # perturb the DVs on different procs and compute the new point coordinates.
+        reqs = []
+        for iDV in range(nDV):
+            # I have to do this one.
+            if iDV % nproc == rank:
+
+                # TODO Use separate step sizes for different DVs?
+                dh =  self.dh
+
+                # Perturb the DV
+                dvSave = self._getIthDV(iDV)
+                self._setIthDV(iDV, dvSave+dh)
+
+                # Do any required intersections:
+                for IC in self.intersectComps:
+                    IC.setSurface(MPI.COMM_SELF)
+                    IC.jac[:,iDV] = (IC.seam.flatten() - IC.seamRef) / dh
+
+                # Reset the DV
+                self._setIthDV(iDV, dvSave)
+
+        # Restore the seams
+        for IC in self.intersectComps:
+            IC.seam = IC.seamRef.reshape(len(IC.seam), 3)
+
+        # loop over the DVs and scatter the perturbed points to original procs
+        for iDV in range(nDV):
+
+            # also bcast the intersection jacobians
+            for IC in self.intersectComps:
+
+                # create send/recv buffers
+                if iDV%nproc == rank:
+                    # we have to copy this because we need a contiguous array for bcast
+                    buf = IC.jac[:,iDV].copy()
+                else:
+                    # receive buffer for procs that will get the result
+                    buf = numpy.zeros(len(IC.seamRef))
+
+                # bcast the intersection jacobian directly from the proc that perturbed this DV
+                self.comm.Bcast([buf, len(IC.seamRef), MPI.DOUBLE], root=iDV%nproc)
+
+                # set the value in the procs that dont have it
+                if iDV%nproc != rank:
+                    IC.jac[:,iDV] = buf.copy()
+
+                # the slower version of the same bcast code
+                # IC.jac[:,i] = self.comm.bcast(IC.jac[:,i], root=i%nproc)
+
+        # set the flag
         self.ICJupdated = True
 
+    def _setIthDV(self, iDV, val):
+        # this function sets the design variable. The order is important, and we count every DV.
+
+        nDVCum = 0
+        # get the number of DVs from different DVGeos to figure out which DVGeo owns this DV
+        for comp in self.compNames:
+            # get the DVGeo object
+            DVGeo = self.comps[comp].DVGeo
+            # get the number of DVs on this DVGeo
+            nDVComp = DVGeo.getNDV()
+            # increment the cumulative number of DVs
+            nDVCum += nDVComp
+
+            # if we went past the index of the DV we are interested in
+            if nDVCum > iDV:
+                # this DVGeo owns the DV we want to set.
+                xDV = DVGeo.getValues()
+
+                # take back the global counter
+                nDVCum -= nDVComp
+
+                # loop over the DVs owned by this geo
+                for k,v in xDV.items():
+                    nDVKey = len(v)
+
+                    # add the number of DVs for this DV key
+                    nDVCum += nDVKey
+
+                    # check if we went past the value we want to set
+                    if nDVCum > iDV:
+                        # take back the counter
+                        nDVCum -= nDVKey
+
+                        # this was an array...
+                        if nDVKey > 1:
+                            for i in range(nDVKey):
+                                nDVCum += 1
+                                if nDVCum > iDV:
+                                    # finally...
+                                    xDV[k][i] = val
+                                    DVGeo.setDesignVars(xDV)
+                                    return
+
+                        # this is the value we want to set!
+                        else:
+                            xDV[k] = val
+                            DVGeo.setDesignVars(xDV)
+                            return
+
+    def _getIthDV(self, iDV):
+        # this function sets the design variable. The order is important, and we count every DV.
+
+        nDVCum = 0
+        # get the number of DVs from different DVGeos to figure out which DVGeo owns this DV
+        for comp in self.compNames:
+            # get the DVGeo object
+            DVGeo = self.comps[comp].DVGeo
+            # get the number of DVs on this DVGeo
+            nDVComp = DVGeo.getNDV()
+            # increment the cumulative number of DVs
+            nDVCum += nDVComp
+
+            # if we went past the index of the DV we are interested in
+            if nDVCum > iDV:
+                # this DVGeo owns the DV we want to set.
+                xDV = DVGeo.getValues()
+
+                # take back the global counter
+                nDVCum -= nDVComp
+
+                # loop over the DVs owned by this geo
+                for k,v in xDV.items():
+                    nDVKey = len(v)
+
+                    # add the number of DVs for this DV key
+                    nDVCum += nDVKey
+
+                    # check if we went past the value we want to set
+                    if nDVCum > iDV:
+                        # take back the counter
+                        nDVCum -= nDVKey
+
+                        # this was an array...
+                        if nDVKey > 1:
+                            for i in range(nDVKey):
+                                nDVCum += 1
+                                if nDVCum > iDV:
+                                    # finally...
+                                    return xDV[k][i]
+
+                        # this is the value we want to get!
+                        else:
+                            return xDV[k]
 
 class component(object):
     def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
@@ -678,13 +879,6 @@ class PointSet(object):
         self.nPts = len(self.points)
         self.compMap = OrderedDict()
         self.compMapFlat = OrderedDict()
-
-# object to keep track of feature curves if the user supplies them to track intersections
-class featureCurve(object):
-    def __init__(self, name, conn):
-        # TODO we can remove this and just add the conn to a list.
-        self.name = name
-        self.conn=conn
 
 class CompIntersection(object):
     def __init__(self, intDict, DVGeo):
