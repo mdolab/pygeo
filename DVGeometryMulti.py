@@ -51,57 +51,62 @@ class DVGeometryMulti(object):
 
     """
 
-    def __init__(self, comps, FFDFiles, triMeshFiles, intersectedComps=[], comm=MPI.COMM_WORLD, dh=1e-6):
+    def __init__(self, comm=MPI.COMM_WORLD, dh=1e-6):
 
-        t0 = time.time()
-
-        self.compNames = comps
+        self.compNames = []
         self.comps = OrderedDict()
         self.DVGeoDict = OrderedDict()
         self.ptSets = OrderedDict()
         self.comm = comm
         self.updated = {}
         self.dh = dh
-
-        for (comp, filename, triMesh) in zip(comps, FFDFiles, triMeshFiles):
-            # we need to create a new DVGeo object for this component
-            DVGeo = DVGeometry(filename)
-
-            if triMesh is not None:
-                # We also need to read the triMesh and save the points
-                nodes, triConn, barsConn = self._readCGNSFile(triMesh)
-
-                # add these points to the corresponding dvgeo
-                DVGeo.addPointSet(nodes, 'triMesh')
-            else:
-                # the user has not provided a triangulated surface mesh for this file
-                nodes = None
-                triConn = None
-                barsConn = None
-
-            # we will need the bounding box information later on, so save this here
-            xMin, xMax = DVGeo.FFD.getBounds()
-
-            # initialize the component object
-            self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn, xMin, xMax)
-
-            # also save the DVGeometry pointer in the dictionary we pass back
-            self.DVGeoDict[comp] = DVGeo
-
-        # initialize intersections
-        if comm.rank == 0:
-            print("Computing intersections")
         self.intersectComps = []
-        for i in range(len(intersectedComps)):
-            # we will just initialize the intersections by passing in the dictionary
-            self.intersectComps.append(CompIntersection(intersectedComps[i], self))
 
         # flag to keep track of IC jacobians
         self.ICJupdated = False
 
-        if comm.rank == 0:
-            t1 = time.time()
-            print("Initialized DVGeometryMulti in",(t1-t0),"seconds.")
+    def addComponent(self, comp, ffdFile, triMesh=None):
+        """
+        Method to add components to the DVGeometryMulti object.
+        Returns the DVGeo object for this component
+        """
+
+        # we need to create a new DVGeo object for this component
+        DVGeo = DVGeometry(ffdFile)
+
+        if triMesh is not None:
+            # We also need to read the triMesh and save the points
+            nodes, triConn, barsConn = self._readCGNSFile(triMesh)
+
+            # add these points to the corresponding dvgeo
+            DVGeo.addPointSet(nodes, 'triMesh')
+        else:
+            # the user has not provided a triangulated surface mesh for this file
+            nodes = None
+            triConn = None
+            barsConn = None
+
+        # we will need the bounding box information later on, so save this here
+        xMin, xMax = DVGeo.FFD.getBounds()
+
+        # initialize the component object
+        self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn, xMin, xMax)
+
+        # add the name to the list
+        self.compNames.append(comp)
+
+        # also save the DVGeometry pointer in the dictionary we pass back
+        self.DVGeoDict[comp] = DVGeo
+
+        return DVGeo
+
+    def addIntersection(self, compA, compB, dStar=0.2, featureCurves=[], distTol=1e-14):
+        """
+        Method that defines intersections between components
+        """
+
+        # just initialize the intersection object
+        self.intersectComps.append(CompIntersection(compA, compB, dStar, featureCurves, distTol, self))
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
@@ -881,7 +886,7 @@ class PointSet(object):
         self.compMapFlat = OrderedDict()
 
 class CompIntersection(object):
-    def __init__(self, intDict, DVGeo):
+    def __init__(self, compA, compB, dStar, featureCurves, distTol, DVGeo):
         '''Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
@@ -900,30 +905,25 @@ class CompIntersection(object):
         # same communicator with DVGeo
         self.comm = DVGeo.comm
 
-        # here we grab the useful information from the dictionary,
-        # or revert to defaults if no information is provided.
 
-        # first make all dict. keys lowercase
-        intDict = dict((k.lower(), v) for k,v in intDict.items())
+        # names of compA and compB must be provided
+        self.compA = DVGeo.comps[compA]
+        self.compB = DVGeo.comps[compB]
 
-        # names of compA and compB must be in the dictionary
-        self.compA = DVGeo.comps[intDict['compa']]
-        self.compB = DVGeo.comps[intDict['compb']]
-
-        self.dStar = intDict['dstar']
+        self.dStar = dStar
         self.halfdStar = self.dStar/2.0
         self.ptSets = OrderedDict()
 
         # feature curve names
-        self.featureCurveNames = intDict['featurecurves']
+        self.featureCurveNames = featureCurves
         for i in range(len(self.featureCurveNames)):
             self.featureCurveNames[i] = self.featureCurveNames[i].lower()
 
-        self.distTol = 1e-14 # Ney's default was 1e-7
-        if 'disttol' in intDict:
-            self.distTol = intDict['disttol']
+        self.distTol = distTol
 
         # only the node coordinates will be modified for the intersection calculations because we have calculated and saved all the connectivity information
+        if self.comm.rank == 0:
+            print('Computing initial intersection between %s and %s'%(compA, compB))
         self.seam0 = self._getIntersectionSeam(self.comm , firstCall = True)
         self.seam = self.seam0.copy()
 
