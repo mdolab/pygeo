@@ -56,7 +56,7 @@ class DVGeometryMulti(object):
         self.compNames = []
         self.comps = OrderedDict()
         self.DVGeoDict = OrderedDict()
-        self.ptSets = OrderedDict()
+        self.points = OrderedDict()
         self.comm = comm
         self.updated = {}
         self.dh = dh
@@ -154,15 +154,15 @@ class DVGeometryMulti(object):
                 #     print("Building surface ADT for component",comp,"took",t1-t0,'seconds')
 
         # create the pointset class
-        self.ptSets[ptName] = PointSet(points)
+        self.points[ptName] = PointSet(points)
 
         for comp in self.compNames:
             # initialize the list for this component
-            self.ptSets[ptName].compMap[comp] = []
-            self.ptSets[ptName].compMapFlat[comp] = []
+            self.points[ptName].compMap[comp] = []
+            self.points[ptName].compMapFlat[comp] = []
 
         # we now need to create the component mapping information
-        for i in range(self.ptSets[ptName].nPts):
+        for i in range(self.points[ptName].nPts):
 
             # initial flags
             inFFD = False
@@ -230,11 +230,11 @@ class DVGeometryMulti(object):
             # we projected it before to figure out which component it should belong to
             if inFFD:
                 # we can add the point index to the list of points inComp owns
-                self.ptSets[ptName].compMap[inComp].append(i)
+                self.points[ptName].compMap[inComp].append(i)
 
                 # also create a flattened version of the compMap
                 for j in range(3):
-                    self.ptSets[ptName].compMapFlat[inComp].append(3*i + j)
+                    self.points[ptName].compMapFlat[inComp].append(3*i + j)
 
             # this point is outside any FFD...
             else:
@@ -242,7 +242,7 @@ class DVGeometryMulti(object):
 
         # using the mapping array, add the pointsets to respective DVGeo objects
         for comp in self.compNames:
-            compMap = self.ptSets[ptName].compMap[comp]
+            compMap = self.points[ptName].compMap[comp]
             # print(comp,compMap)
             self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
 
@@ -340,25 +340,25 @@ class DVGeometryMulti(object):
         """
 
         # get the new points
-        newPts = numpy.zeros((self.ptSets[ptSetName].nPts, 3))
+        newPts = numpy.zeros((self.points[ptSetName].nPts, 3))
 
         # we first need to update all points with their respective DVGeo objects
         for comp in self.compNames:
             ptsComp = self.comps[comp].DVGeo.update(ptSetName)
 
             # now save this info with the pointset mapping
-            ptMap = self.ptSets[ptSetName].compMap[comp]
+            ptMap = self.points[ptSetName].compMap[comp]
             newPts[ptMap] = ptsComp
 
         # get the delta
-        delta = newPts - self.ptSets[ptSetName].points
+        delta = newPts - self.points[ptSetName].points
 
         # then apply the intersection treatment
         for IC in self.intersectComps:
             delta = IC.update(ptSetName, delta)
 
         # now we are ready to take the delta which may be modified by the intersections
-        newPts = self.ptSets[ptSetName].points + delta
+        newPts = self.points[ptSetName].points + delta
 
         # set the pointset up to date
         self.updated[ptSetName] = True
@@ -476,7 +476,7 @@ class DVGeometryMulti(object):
         # do the transpose multiplication
 
         # get the pointset
-        ptSet = self.ptSets[ptSetName]
+        ptSet = self.points[ptSetName]
 
         # number of design variables
         nDV = ptSet.jac.shape[1]
@@ -514,7 +514,7 @@ class DVGeometryMulti(object):
         tmp = numpy.vstack([dIdpt.T, dIdSeam.T])
 
         # we also stack the pointset jacobian and the seam jacobians.
-        jac = self.ptSets[ptSetName].jac.copy()
+        jac = self.points[ptSetName].jac.copy()
         for IC in ptSetICs:
             jac = numpy.vstack((jac, IC.jac))
 
@@ -654,10 +654,10 @@ class DVGeometryMulti(object):
         nDV = self.getNDV()
 
         # allocate space for the jacobian.
-        jac = numpy.zeros((self.ptSets[ptSetName].nPts*3, nDV))
+        jac = numpy.zeros((self.points[ptSetName].nPts*3, nDV))
 
         # ptset
-        ptSet = self.ptSets[ptSetName]
+        ptSet = self.points[ptSetName]
 
         dvOffset = 0
         # we need to call computeTotalJacobian from all comps and get the jacobians for this pointset
@@ -915,7 +915,7 @@ class CompIntersection(object):
 
         self.dStar = dStar
         self.halfdStar = self.dStar/2.0
-        self.ptSets = OrderedDict()
+        self.points = OrderedDict()
 
         # feature curve names
         self.featureCurveNames = featureCurves
@@ -995,16 +995,16 @@ class CompIntersection(object):
         #     print('DVGEO VSP:\n%d points associated with intersection %s'%(nPointGlobal, intName))
 
         # Save the affected indices and the factor in the little dictionary
-        self.ptSets[ptSetName] = [pts.copy(), indices, factors]
+        self.points[ptSetName] = [pts.copy(), indices, factors]
 
     def update(self, ptSetName, delta):
 
         """Update the delta in ptSetName with our correction. The delta need
         to be supplied as we will be changing it and returning them
         """
-        pts     = self.ptSets[ptSetName][0]
-        indices = self.ptSets[ptSetName][1]
-        factors = self.ptSets[ptSetName][2]
+        pts     = self.points[ptSetName][0]
+        indices = self.points[ptSetName][1]
+        factors = self.points[ptSetName][2]
         seamDiff = self.seam - self.seam0
         for i in range(len(factors)):
 
@@ -1048,9 +1048,9 @@ class CompIntersection(object):
         """forward mode differentiated version of the update routine.
         Note that dPt and dSeam are both one dimensional arrays
         """
-        pts     = self.ptSets[ptSetName][0]
-        indices = self.ptSets[ptSetName][1]
-        factors = self.ptSets[ptSetName][2]
+        pts     = self.points[ptSetName][0]
+        indices = self.points[ptSetName][1]
+        factors = self.points[ptSetName][2]
 
         # we need to reshape the arrays for simpler code
         dSeam = dSeam.reshape((len(self.seam0), 3))
@@ -1080,9 +1080,9 @@ class CompIntersection(object):
         # Return the reverse accumulation of dIdpt on the seam
         # nodes. Also modifies the dIdp array accordingly.
 
-        pts     = self.ptSets[ptSetName][0]
-        indices = self.ptSets[ptSetName][1]
-        factors = self.ptSets[ptSetName][2]
+        pts     = self.points[ptSetName][0]
+        indices = self.points[ptSetName][1]
+        factors = self.points[ptSetName][2]
 
         seamBar = numpy.zeros_like(self.seam0)
         for i in range(len(factors)):
