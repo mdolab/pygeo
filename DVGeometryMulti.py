@@ -148,7 +148,7 @@ class DVGeometryMulti(object):
                 adtAPI.adtapi.adtbuildsurfaceadt(self.comps[comp].nodes.T,
                                                  self.comps[comp].triConn.T,
                                                  quadConn.T, BBox.T, useBBox,
-                                                 self.comm.py2f(), comp)
+                                                 MPI.COMM_SELF.py2f(), comp)
                 t1 = time.time()
                 # if self.comm.rank == 0:
                 #     print("Building surface ADT for component",comp,"took",t1-t0,'seconds')
@@ -278,13 +278,15 @@ class DVGeometryMulti(object):
 
         # loop over all dvs we get as the input
         for k,v in dvDict.items():
-            # get the component name
-            comp, dvName = k.split(':',1)
+            # we only set dvgeomulti DVs. Then k should always have a : in it
+            if ':' in k:
+                # get the component name
+                comp, dvName = k.split(':',1)
 
-            # now check if this comp has this dv
-            if dvName in self.comps[comp].dvDict:
-                # set the value
-                self.comps[comp].dvDict[dvName] = v
+                # now check if this comp has this dv
+                if dvName in self.comps[comp].dvDict:
+                    # set the value
+                    self.comps[comp].dvDict[dvName] = v
 
         # loop over the components and set the values
         for comp in self.compNames:
@@ -486,7 +488,7 @@ class DVGeometryMulti(object):
         nSeams  = 0
         for IC in self.intersectComps:
             # This checks if we have any entries in the affected indices on this point set with this intersection
-            if IC.ptSets[ptSetName][1]:
+            if IC.points[ptSetName][1]:
                 # this pointset is affected by this intersection. save this info.
                 ptSetICs.append(IC)
                 # this keeps the cumulative number of nodes on the seams this point set is effected by
@@ -592,7 +594,7 @@ class DVGeometryMulti(object):
                                                      sectionlocalVars=sectionlocalVars,
                                                      ignoreVars=ignoreVars,
                                                      freezeVars=freezeVars,
-                                                     prefix=comp.join(':'))
+                                                     prefix=comp+':')
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER

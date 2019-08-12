@@ -1964,7 +1964,7 @@ class DVGeometry(object):
                 for key in varLists[lst]:
                     if key not in ignoreVars:
                         dv = varLists[lst][key]
-                        dvName = prefix.join(dv.name)
+                        dvName = prefix+dv.name
                         if key not in freezeVars:
                             optProb.addVarGroup(dvName, dv.nVal, 'c', value=dv.value,
                                                 lower=dv.lower, upper=dv.upper,
