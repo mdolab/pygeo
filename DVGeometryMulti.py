@@ -65,7 +65,7 @@ class DVGeometryMulti(object):
         # flag to keep track of IC jacobians
         self.ICJupdated = False
 
-    def addComponent(self, comp, ffdFile, triMesh=None):
+    def addComponent(self, comp, ffdFile, triMesh=None, scale=1.0):
         """
         Method to add components to the DVGeometryMulti object.
         Returns the DVGeo object for this component
@@ -77,6 +77,9 @@ class DVGeometryMulti(object):
         if triMesh is not None:
             # We also need to read the triMesh and save the points
             nodes, triConn, barsConn = self._readCGNSFile(triMesh)
+
+            # scale the nodes
+            nodes *= scale
 
             # add these points to the corresponding dvgeo
             DVGeo.addPointSet(nodes, 'triMesh')
