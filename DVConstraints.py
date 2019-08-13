@@ -1261,7 +1261,7 @@ class DVConstraints(object):
 
     def addLeTeConstraints(self, volID=None, faceID=None,topID=None,
                            indSetA=None, indSetB=None, name=None,
-                           config=None, childIdx=None):
+                           config=None, childIdx=None,comp=None):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
         DVConstraints. These are just a particular form of linear
@@ -1353,7 +1353,7 @@ class DVConstraints(object):
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
-            lIndex = DVGeo.getLocalIndex(volID)
+            lIndex = DVGeo.getLocalIndex(volID, comp)
             iFace = False
             jFace = False
             kFace = False

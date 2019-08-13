@@ -2084,7 +2084,7 @@ class DVGeometry(object):
             """
         self.FFD.writePlot3dCoef(fileName)
 
-    def getLocalIndex(self, iVol):
+    def getLocalIndex(self, iVol, comp=None):
         """ Return the local index mapping that points to the global
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()

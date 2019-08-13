@@ -103,17 +103,49 @@ class DVGeometryMulti(object):
 
         return DVGeo
 
-    def addIntersection(self, compA, compB, dStar=0.2, featureCurves=[], distTol=1e-14):
+    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14):
         """
         Method that defines intersections between components
         """
 
         # just initialize the intersection object
-        self.intersectComps.append(CompIntersection(compA, compB, dStar, featureCurves, distTol, self))
+        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self))
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
         return self.DVGeoDict
+
+    def finalizeDVs(self):
+        """
+        This function should be called after adding all DVGeoDVs
+        """
+
+        self.DV_listGlobal  = OrderedDict() # Global Design Variable List
+        self.DV_listLocal = OrderedDict() # Local Design Variable List
+        self.DV_listSectionLocal = OrderedDict() # Local Normal Design Variable List
+
+        # we loop over all components and add the dv objects
+        for comp in self.compNames:
+
+            # get this DVGeo
+            DVGeoComp = self.comps[comp].DVGeo
+
+            # loop over the DVGeo's DV lists
+
+            for k,v in DVGeoComp.DV_listGlobal.items():
+                # change the key and add it to our dictionary...
+                knew = comp + ':' + k
+                self.DV_listGlobal[knew] = v
+
+            for k,v in DVGeoComp.DV_listLocal.items():
+                # change the key and add it to our dictionary...
+                knew = comp + ':' + k
+                self.DV_listLocal[knew] = v
+
+            for k,v in DVGeoComp.DV_listSectionLocal.items():
+                # change the key and add it to our dictionary...
+                knew = comp + ':' + k
+                self.DV_listSectionLocal[knew] = v
 
     def addPointSet(self, points, ptName, **kwargs):
 
@@ -248,7 +280,7 @@ class DVGeometryMulti(object):
 
         # loop over the intersections and add pointsets
         for IC in self.intersectComps:
-            IC.addPointSet(points, ptName)
+            IC.addPointSet(points, ptName, self.points[ptName].compMap)
 
         # finally, we can deallocate the ADTs
         for comp in self.compNames:
@@ -596,6 +628,13 @@ class DVGeometryMulti(object):
                                                      freezeVars=freezeVars,
                                                      prefix=comp+':')
 
+    def getLocalIndex(self, iVol, comp):
+        """ Return the local index mapping that points to the global
+        coefficient list for a given volume"""
+        # call this on the respective DVGeo
+        DVGeo = self.comps[comp].DVGeo
+        return DVGeo.FFD.topo.lIndex[iVol].copy()
+
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
 # ----------------------------------------------------------------------
@@ -891,7 +930,7 @@ class PointSet(object):
         self.compMapFlat = OrderedDict()
 
 class CompIntersection(object):
-    def __init__(self, compA, compB, dStar, featureCurves, distTol, DVGeo):
+    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo):
         '''Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
@@ -915,8 +954,9 @@ class CompIntersection(object):
         self.compA = DVGeo.comps[compA]
         self.compB = DVGeo.comps[compB]
 
-        self.dStar = dStar
-        self.halfdStar = self.dStar/2.0
+        self.dStarA = dStarA
+        self.dStarB = dStarB
+        # self.halfdStar = self.dStar/2.0
         self.points = OrderedDict()
 
         # feature curve names
@@ -940,7 +980,7 @@ class CompIntersection(object):
 
         self.seam = self._getIntersectionSeam(comm)
 
-    def addPointSet(self, pts, ptSetName):
+    def addPointSet(self, pts, ptSetName, compMap):
 
         # Figure out which points this intersection object has to deal with.
 
@@ -978,13 +1018,24 @@ class CompIntersection(object):
         indices = []
         factors = []
         for i in range(len(pts)):
-            if d[i] < self.dStar:
+            # figure out which component this point is mapped to
+            if i in compMap[self.compA.name]:
+                # component A owns this
+                dStar = self.dStarA
+            else:
+                # comp B owns this point
+                dStar = self.dStarB
+
+            # then get the halfdStar for that component
+            halfdStar = dStar / 2.0
+
+            if d[i] < dStar:
 
                 # Compute the factor
-                if d[i] < self.halfdStar:
-                    factor = .5*(d[i]/self.halfdStar)**3
+                if d[i] < halfdStar:
+                    factor = .5*(d[i]/halfdStar)**3
                 else:
-                    factor = .5*(2-((self.dStar - d[i])/self.halfdStar)**3)
+                    factor = .5*(2-((dStar - d[i])/halfdStar)**3)
 
                 # Save the index and factor
                 indices.append(i)
