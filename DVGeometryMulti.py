@@ -103,13 +103,13 @@ class DVGeometryMulti(object):
 
         return DVGeo
 
-    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14):
+    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False):
         """
         Method that defines intersections between components
         """
 
         # just initialize the intersection object
-        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self))
+        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project))
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
@@ -393,6 +393,11 @@ class DVGeometryMulti(object):
 
         # now we are ready to take the delta which may be modified by the intersections
         newPts = self.points[ptSetName].points + delta
+
+        # now, project the points that were warped back onto the trimesh
+        for IC in self.intersectComps:
+            if IC.projectFlag:
+                newPts = IC.project(ptSetName, newPts, self.points[ptSetName].compMap)
 
         # set the pointset up to date
         self.updated[ptSetName] = True
@@ -930,7 +935,7 @@ class PointSet(object):
         self.compMapFlat = OrderedDict()
 
 class CompIntersection(object):
-    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo):
+    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project):
         '''Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
@@ -965,6 +970,9 @@ class CompIntersection(object):
             self.featureCurveNames[i] = self.featureCurveNames[i].lower()
 
         self.distTol = distTol
+
+        # flag to determine if we want to project nodes after intersection treatment
+        self.projectFlag = project
 
         # only the node coordinates will be modified for the intersection calculations because we have calculated and saved all the connectivity information
         if self.comm.rank == 0:
@@ -1161,6 +1169,105 @@ class CompIntersection(object):
                 seamBar[:, iDim] += Wi*localVal[iDim]/den
 
         return seamBar
+
+    def project(self, ptSetName, newPts, compMap):
+        # we need to build ADTs for both components if we have any components that lie on either
+
+        flagA = False
+        flagB = False
+
+        indices = self.points[ptSetName][1]
+
+        # maybe we can do this vectorized
+        for i in range(len(indices)):
+
+            # index of the point in pointset
+            ind = indices[i]
+
+            # check compA
+            if ind in compMap[self.compA.name]:
+                flagA = True
+
+            # check compB
+            if ind in compMap[self.compB.name]:
+                flagB = True
+
+            # we can terminate early if we hit both surfaces
+            if flagA and flagB:
+                break
+
+        # now we know which surfaces we will use for projections.
+
+        # build the ADT for compA
+        if flagA:
+            self._buildSurfaceADT(self.compA)
+
+        # build the ADT for compB
+        if flagB:
+            self._buildSurfaceADT(self.compB)
+
+        # loop over the affected points and project
+        for i in range(len(indices)):
+            ind = indices[i]
+
+            # project this to compA
+            if ind in compMap[self.compA.name]:
+                newPoint = self._projectToSurface(newPts[ind], self.compA)
+            # project this to compB
+            else:
+                newPoint = self._projectToSurface(newPts[ind], self.compB)
+
+            # after we do the projections, we can get the new points and update in the newPts array.
+            newPts[ind] = newPoint
+
+        # finally, we can deallocate the ADTs
+        if flagA:
+            adtAPI.adtapi.adtdeallocateadts(self.compA.name)
+        if flagB:
+            adtAPI.adtapi.adtdeallocateadts(self.compB.name)
+
+        return newPts
+
+    def _buildSurfaceADT(self, comp):
+        # we build an ADT using this component
+        # from ney's code:
+        # Set bounding box for new tree
+        BBox = numpy.zeros((2, 3))
+        useBBox = False
+
+        # dummy connectivity data for quad elements since we have all tris
+        quadConn = numpy.zeros((0,4))
+
+        t0 = time.time()
+
+        # Compute set of nodal normals by taking the average normal of all
+        # elements surrounding the node. This allows the meshing algorithms,
+        # for instance, to march in an average direction near kinks.
+        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T,
+                                                             comp.triConn.T,
+                                                             quadConn.T)
+        comp.nodal_normals = nodal_normals.T
+
+        # Create new tree (the tree itself is stored in Fortran level)
+        adtAPI.adtapi.adtbuildsurfaceadt(comp.nodes.T,
+                                         comp.triConn.T,
+                                         quadConn.T, BBox.T, useBBox,
+                                         MPI.COMM_SELF.py2f(), comp.name)
+
+    def _projectToSurface(self, point, comp):
+        numPts = 1
+        dist2 = numpy.ones(numPts)*1e10
+        xyzProj = numpy.zeros((numPts, 3))
+        normProjNotNorm = numpy.zeros((numPts, 3))
+
+        # Call projection function
+        _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(point.T, comp.name,
+                                                        dist2, xyzProj.T,
+                                                        comp.nodal_normals.T,
+                                                        normProjNotNorm.T)
+
+        # return the projected point
+        return xyzProj
 
     def _getUpdatedCoords(self):
         # this code returns the updated coordinates
