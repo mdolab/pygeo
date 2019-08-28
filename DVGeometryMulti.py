@@ -147,12 +147,22 @@ class DVGeometryMulti(object):
                 knew = comp + ':' + k
                 self.DV_listSectionLocal[knew] = v
 
-    def addPointSet(self, points, ptName, **kwargs):
+    def addPointSet(self, points, ptName, compNames=None, **kwargs):
+
+        # if the user passes a list of compNames, we only use these comps.
+        # we will still use all points to add the pointset, but by default,
+        # the components not in this list will get 0 npoints. This is for
+        # consistency, each dvgeo will have all pointsets and book keeping
+        # becomes easier this way.
+
+        # if compList is not provided, we use all components
+        if compNames is None:
+            compNames = self.compNames
 
         # before we do anything, we need to create surface ADTs
         # for which the user provided triangulated meshes
         # TODO Time these, we can do them once and keep the ADTs
-        for comp in self.compNames:
+        for comp in compNames:
 
             # check if we have a trimesh for this component
             if self.comps[comp].triMesh:
@@ -202,7 +212,7 @@ class DVGeometryMulti(object):
             projList = []
 
             # loop over components and check if this point is in a single BBox
-            for comp in self.compNames:
+            for comp in compNames:
 
                 # check if inside
                 xMin = self.comps[comp].xMin
@@ -231,7 +241,7 @@ class DVGeometryMulti(object):
                 dMin2 = 1e10
 
                 # loop over the components
-                for comp in self.compNames:
+                for comp in compNames:
                     # check if this component is in the projList
                     if comp in projList:
 
@@ -283,7 +293,7 @@ class DVGeometryMulti(object):
             IC.addPointSet(points, ptName, self.points[ptName].compMap)
 
         # finally, we can deallocate the ADTs
-        for comp in self.compNames:
+        for comp in compNames:
             if self.comps[comp].triMesh:
                 adtAPI.adtapi.adtdeallocateadts(comp)
                 # print('Deallocated ADT for component',comp)
