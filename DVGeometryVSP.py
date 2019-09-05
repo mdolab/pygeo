@@ -977,7 +977,7 @@ class DVGeometryVSP(object):
                 dh =  self.DVs[dvKeys[iDV]].dh
 
                 # Perturb the DV
-                dvSave = self.DVs[dvKeys[iDV]].value
+                dvSave = self.DVs[dvKeys[iDV]].value.copy()
                 self.DVs[dvKeys[iDV]].value += dh
 
                 # update the vsp model
@@ -1006,7 +1006,7 @@ class DVGeometryVSP(object):
                 tint += (t12-t11)
 
                 # Reset the DV
-                self.DVs[dvKeys[iDV]].value = dvSave
+                self.DVs[dvKeys[iDV]].value = dvSave.copy()
 
                 # reset the model.
                 t11 = time.time()
@@ -1085,11 +1085,11 @@ class DVGeometryVSP(object):
                 self.comm.Bcast([buf, len(IC.seamRef), MPI.DOUBLE], root=iDV%nproc)
 
                 # set the value in the procs that dont have it
-                if i%nproc != rank:
+                if iDV%nproc != rank:
                     IC.jac[:,iDV] = buf.copy()
 
                 # the slower version of the same bcast code
-                # IC.jac[:,i] = self.comm.bcast(IC.jac[:,i], root=i%nproc)
+                # IC.jac[:,iDV] = self.comm.bcast(IC.jac[:,iDV], root=i%nproc)
 
             # pertrub the local counter on this proc.
             # This loops over the DVs that this proc perturbed
