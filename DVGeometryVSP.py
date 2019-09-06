@@ -1009,10 +1009,10 @@ class DVGeometryVSP(object):
                 self.DVs[dvKeys[iDV]].value = dvSave.copy()
 
                 # reset the model.
-                t11 = time.time()
-                self._updateVSPModel()
-                t12 = time.time()
-                tvsp += (t12-t11)
+                # t11 = time.time()
+                # self._updateVSPModel()
+                # t12 = time.time()
+                # tvsp += (t12-t11)
 
                 # increment the counter
                 i += 1

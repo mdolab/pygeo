@@ -103,13 +103,13 @@ class DVGeometryMulti(object):
 
         return DVGeo
 
-    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False):
+    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False, marchDir=1, includeCurves=False):
         """
         Method that defines intersections between components
         """
 
         # just initialize the intersection object
-        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project))
+        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project, marchDir, includeCurves))
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
@@ -910,7 +910,8 @@ class DVGeometryMulti(object):
 
                         # this is the value we want to get!
                         else:
-                            return xDV[k]
+                            # assume single DVs come in arrays...
+                            return xDV[k].copy()
 
 class component(object):
     def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
@@ -945,7 +946,7 @@ class PointSet(object):
         self.compMapFlat = OrderedDict()
 
 class CompIntersection(object):
-    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project):
+    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project, marchDir, includeCurves):
         '''Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
@@ -983,6 +984,12 @@ class CompIntersection(object):
 
         # flag to determine if we want to project nodes after intersection treatment
         self.projectFlag = project
+
+        # get the marching direction for feature curves so that we know if we need to flip them..
+        self.marchDir = marchDir
+
+        # flag to include feature curves in ID-warping
+        self.incCurves = includeCurves
 
         # only the node coordinates will be modified for the intersection calculations because we have calculated and saved all the connectivity information
         if self.comm.rank == 0:
@@ -1381,8 +1388,25 @@ class CompIntersection(object):
 
         # we need to track the nodes that are closest to the supplied feature curves
         breakList = []
+        curveBeg = {}
         # loop over the feature curves
         for curveName in self.featureCurveNames:
+            # if this is the first call, we probably need to reorder the connectivity info for the feature curves
+            if firstCall:
+                newConn, newMap = tsurf_tools.FEsort(self.compB.barsConn[curveName].tolist())
+
+                if len(newConn) > 1:
+                    raise Error('the curve %s generated more than one curve with FESort'%curveName)
+                newConn = newConn[0]
+
+                # we may also need to flip the curve, just do it here.
+                nodesB = self.compB.nodes
+                if nodesB[newConn[0][0]][self.marchDir] > nodesB[newConn[0][1]][self.marchDir]:
+                    # flip on both axes
+                    newConn = numpy.flip(newConn)
+
+                self.compB.barsConn[curveName] = newConn
+
             curveConn = self.compB.barsConn[curveName]
 
             # find the closest point on the intersection to this curve
@@ -1426,6 +1450,9 @@ class CompIntersection(object):
             # now, find the index of the smallest distance
             # print('index with smallest dist' , numpy.argmin(dist2))
             breakList.append(numpy.argmin(dist2))
+
+            # also get which element is the closest to the feature point
+            curveBeg[curveName] = elemIDs[numpy.argmin(dist2)]
 
         # print("after feature detection")
         # # these are the elements at "features"
@@ -1638,6 +1665,160 @@ class CompIntersection(object):
             seam = numpy.vstack((seam, newCoor[:-1]))
 
         # We need to add the last node on the intersection if this is not a closed curve.
+
+        # we need to re-mesh feature curves if the user wants...
+        if self.incCurves:
+
+            # we need to set up some variables
+            if firstCall:
+                self.nNodeFeature = {}
+                self.distFeature = {}
+
+            remeshedCurves = numpy.zeros((0,3))
+
+            # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
+            for curveName in self.featureCurveNames:
+
+                # connectivity for this curve.
+                curveConn = self.compB.barsConn[curveName]
+
+                # we already have the element that is closest to the intersection
+                elemBeg = curveBeg[curveName]
+                # print(curveName)
+                # print(elemBeg)
+                # print(curveConn)
+                # print('curve begins at',self.compB.nodes[curveConn[0]])
+                # print('curve ends   at',self.compB.nodes[curveConn[-1]])
+                # print(curveConn[elemBeg])
+                # print(numpy.array(curveConn))
+                # print(self.compB.nodes[curveConn[elemBeg]])
+
+                # compute the element lengths starting from elemBeg
+                firstNodes  = self.compB.nodes[curveConn[elemBeg:, 0]]
+                secondNodes = self.compB.nodes[curveConn[elemBeg:, 1]]
+                diff = secondNodes - firstNodes
+                dist2 = diff[:,0]**2 + diff[:,1]**2 + diff[:,2]**2
+                elemDist = numpy.sqrt(dist2)
+                # print(elemDist)
+
+                # get the cumulative distance
+                cumDist = numpy.cumsum(elemDist)
+                # print(cumDist)
+
+                if firstCall:
+
+                    # compute the distances from curve nodes to intersection seam
+                    curvePts = self.compB.nodes[curveConn[elemBeg:,0]]
+                    # print(curvePts)
+
+                    # Get number of points
+                    nPoints = len(curvePts)
+
+                    # Initialize references if user provided none
+                    dist2 = numpy.ones(nPoints)*1e10
+                    xyzProj = numpy.zeros((nPoints,3))
+                    tanProj = numpy.zeros((nPoints,3))
+                    elemIDs = numpy.zeros((nPoints),dtype='int32')
+
+                    # then find the closest point to the curve
+
+                    # only call the fortran code if we have at least one point
+                    if nPoints > 0:
+                        # Call fortran code
+                        # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
+                        # Remember that we should adjust some indices before calling the Fortran code
+                        # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
+                        elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                        curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(curvePts.T,
+                                                                                self.nodes0.T,
+                                                                                self.conn0.T + 1,
+                                                                                xyzProj.T,
+                                                                                tanProj.T,
+                                                                                dist2,
+                                                                                elemIDs)
+
+                    dNodes = numpy.sqrt(dist2)
+                    # print(dNodes)
+
+                    # number of elements to use
+                    nElem = (numpy.abs(dNodes - self.dStarB)).argmin()
+                    elemEnd = elemBeg + nElem
+
+                    # print(nElem)
+                    # print(dNodes[nElem])
+
+                    # print(curveConn[elemBeg], curveConn[elemEnd])
+                    # print(self.compB.nodes[curveConn[elemBeg:elemEnd+1]] )
+
+                    # get the total curve distance from elemBeg to this element.
+                    distCurve = cumDist[nElem]
+                    # print(distCurve)
+
+                    # save this distance as the remesh distance
+                    self.distFeature[curveName] = distCurve
+
+                    # also save how many nodes we have, we want 2 times this when re-meshing
+                    self.nNodeFeature[curveName] = nElem
+
+                else:
+                    # figure out how many elements we need to go in this direction
+                    elemEnd = (numpy.abs(cumDist - self.distFeature[curveName])).argmin()+elemBeg
+
+                    # print('beg')
+                    # print(elemBeg)
+                    # print(curveConn[elemBeg])
+                    # print(self.compB.nodes[curveConn[elemBeg]])
+
+                    # print('end')
+                    # print(elemEnd)
+                    # print(curveConn[elemEnd])
+                    # print(self.compB.nodes[curveConn[elemEnd]])
+
+                # get the new connectivity data between the initial and final elements
+                curveConnTrim = curveConn[elemBeg:elemEnd+1]
+
+                # print(curveName)
+
+                # print(curveConnTrim)
+                # print(elemBeg, elemEnd)
+
+                # remesh the new connectivity curve, using nNode*2 times nodes
+                nNewNodes = 2*self.nNodeFeature[curveName]
+                coor = self.compB.nodes
+                barsConn = curveConnTrim
+                method = 'linear'
+                spacing = 'linear'
+                initialSpacing = 0.1
+                finalSpacing = 0.1
+
+                # print("remeshing curve %d"%i)
+                # print(barsConn)
+                #
+                # for j in range(len(barsConn) - 1):
+                #     if barsConn[j,1] != barsConn[j+1,0]:
+                #         print(barsConn[j-1:j+1], j)
+
+                # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
+                # Call Fortran code. Remember to adjust transposes and indices
+                newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodes,
+                                                                        coor.T,
+                                                                        barsConn.T + 1,
+                                                                        method,
+                                                                        spacing,
+                                                                        initialSpacing,
+                                                                        finalSpacing)
+                newCoor = newCoor.T
+                newBarsConn = newBarsConn.T - 1
+
+                # print(newCoor)
+
+                # append this new curve to the featureCurve data
+                remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+
+            # now we are done going over curves,
+            # so we can append all the new curves to the "seam",
+            # which now contains the intersection, and re-meshed feature curves
+            seam = numpy.vstack((seam, remeshedCurves))
 
         # print(seam)
         return seam.copy()
