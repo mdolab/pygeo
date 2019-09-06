@@ -1403,7 +1403,8 @@ class CompIntersection(object):
                 nodesB = self.compB.nodes
                 if nodesB[newConn[0][0]][self.marchDir] > nodesB[newConn[0][1]][self.marchDir]:
                     # flip on both axes
-                    newConn = numpy.flip(newConn)
+                    newConn = numpy.flip(newConn, axis=0)
+                    newConn = numpy.flip(newConn, axis=1)
 
                 self.compB.barsConn[curveName] = newConn
 
