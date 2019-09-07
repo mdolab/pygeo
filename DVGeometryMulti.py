@@ -1809,7 +1809,7 @@ class CompIntersection(object):
                 # print(elemBeg, elemEnd)
 
                 # remesh the new connectivity curve, using nNode*2 times nodes
-                nNewNodes = 2*self.nNodeFeature[curveName]
+                nNewNodes = 20*self.nNodeFeature[curveName]
                 coor = self.compB.nodes
                 barsConn = curveConnTrim
                 method = 'linear'
