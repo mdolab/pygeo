@@ -1389,6 +1389,7 @@ class CompIntersection(object):
         # we need to track the nodes that are closest to the supplied feature curves
         breakList = []
         curveBeg = {}
+        curveBegCoor = {}
         # loop over the feature curves
         for curveName in self.featureCurveNames:
             # if this is the first call, we probably need to reorder the connectivity info for the feature curves
@@ -1454,6 +1455,9 @@ class CompIntersection(object):
 
             # also get which element is the closest to the feature point
             curveBeg[curveName] = elemIDs[numpy.argmin(dist2)]
+
+            # get which point on this element we projected to.
+            curveBegCoor[curveName] = xyzProj[numpy.argmin(dist2)]
 
         # print("after feature detection")
         # # these are the elements at "features"
@@ -1685,6 +1689,15 @@ class CompIntersection(object):
 
                 # we already have the element that is closest to the intersection
                 elemBeg = curveBeg[curveName]
+
+                # now lets split this element so that we get a better initial point...
+
+                # save the original coordinate of the first point
+                ptBegSave = self.compB.nodes[curveConn[elemBeg,0]]
+
+                # and replace this with the starting point we want
+                self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName]
+
                 # print(curveName)
                 # print(elemBeg)
                 # print(curveConn)
@@ -1741,14 +1754,19 @@ class CompIntersection(object):
                     dNodes = numpy.sqrt(dist2)
                     # print(dNodes)
 
-                    # number of elements to use
-                    nElem = (numpy.abs(dNodes - self.dStarB)).argmin()
+                    # number of elements to use, subtract one to get the correct element count
+                    nElem = (numpy.abs(dNodes - self.dStarB)).argmin() - 1
+
+                    # we want to be one after the actual distance, so correct if needed
+                    if dNodes[nElem] < self.dStarB:
+                        nElem += 1
+
                     elemEnd = elemBeg + nElem
 
                     # print(nElem)
-                    # print(dNodes[nElem])
+                    # print(dNodes[:nElem+1])
 
-                    # print(curveConn[elemBeg], curveConn[elemEnd])
+                    # print(curveConn[elemEnd])
                     # print(self.compB.nodes[curveConn[elemBeg:elemEnd+1]] )
 
                     # get the total curve distance from elemBeg to this element.
@@ -1774,6 +1792,13 @@ class CompIntersection(object):
                     # print(elemEnd)
                     # print(curveConn[elemEnd])
                     # print(self.compB.nodes[curveConn[elemEnd]])
+
+                # now, we need to modify the last node to finish exactly where we want it...
+                # dError = cumDist[nElem] - self.dStarB
+                # print(distCurve)
+                # print(cumDist)
+                # print(cumDist[nElem])
+                # print(dError)
 
                 # get the new connectivity data between the initial and final elements
                 curveConnTrim = curveConn[elemBeg:elemEnd+1]
@@ -1811,15 +1836,19 @@ class CompIntersection(object):
                 newCoor = newCoor.T
                 newBarsConn = newBarsConn.T - 1
 
-                # print(newCoor)
+                # print('newcor',newCoor)
 
                 # append this new curve to the featureCurve data
                 remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+
+                # finally, put the modified initial and final points back in place.
+                self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
             # which now contains the intersection, and re-meshed feature curves
             seam = numpy.vstack((seam, remeshedCurves))
+            # quit()
 
         # print(seam)
         return seam.copy()
