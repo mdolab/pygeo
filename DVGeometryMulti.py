@@ -407,7 +407,8 @@ class DVGeometryMulti(object):
         # now, project the points that were warped back onto the trimesh
         for IC in self.intersectComps:
             if IC.projectFlag:
-                newPts = IC.project(ptSetName, newPts, self.points[ptSetName].compMap)
+                # new points will be modified in place using .... newPts array
+                IC.project(ptSetName, newPts)
 
         # set the pointset up to date
         self.updated[ptSetName] = True
@@ -522,6 +523,22 @@ class DVGeometryMulti(object):
             dIdpt = numpy.array([dIdpt])
         N = dIdpt.shape[0]
 
+        # create a dictionary to save total sensitivity info that might come out of the ICs
+        compSensList = []
+
+        # if we projected points for any intersection treatment,
+        # we need to propagate the derivative seed of the projected points
+        # back to the seeds for the initial points we get after ID-warping
+        for IC in self.intersectComps:
+            if IC.projectFlag:
+                # we pass in dIdpt and the intersection object, along with pointset information
+                # the intersection object adjusts the entries corresponding to projected points
+                # and passes back dIdpt in place.
+                compSens = IC.project_b(ptSetName, dIdpt, comm)
+
+                # append this to the dictionary list...
+                compSensList.append(compSens)
+
         # do the transpose multiplication
 
         # get the pointset
@@ -595,6 +612,12 @@ class DVGeometryMulti(object):
 
             # also increment the offset
             dvOffset += nDVComp
+
+        # finally, we can add the contributions from triangulated component meshes
+        for compSens in compSensList:
+            # loop over the items of compSens, which are guaranteed to be in dIdxDict
+            for k,v in compSens.items():
+                dIdxDict[k] += v
 
         return dIdxDict
 
@@ -791,6 +814,17 @@ class DVGeometryMulti(object):
         for IC in self.intersectComps:
             IC.seam = IC.seamRef.reshape(len(IC.seam), 3)
 
+        # also do the computation again on processors that perturbed the design
+        for iDV in range(nDV):
+            # I have to do this one.
+            if iDV % nproc == rank:
+                for IC in self.intersectComps:
+                    # we only need to do this if we are using the projection for this intersection
+                    # because we will need the intermediate values to be consistent when we are
+                    # propagating the derivative seeds backward
+                    if IC.projectFlag:
+                        IC.setSurface(MPI.COMM_SELF)
+
         # loop over the DVs and scatter the perturbed points to original procs
         for iDV in range(nDV):
 
@@ -985,6 +1019,10 @@ class CompIntersection(object):
         # flag to determine if we want to project nodes after intersection treatment
         self.projectFlag = project
 
+        # create the dictionary if we are projecting.
+        if project:
+            self.projData = {}
+
         # get the marching direction for feature curves so that we know if we need to flip them..
         self.marchDir = marchDir
 
@@ -1074,6 +1112,45 @@ class CompIntersection(object):
 
         # Save the affected indices and the factor in the little dictionary
         self.points[ptSetName] = [pts.copy(), indices, factors]
+
+        # now we need to figure out which components we are projecting to if projection is enabled
+        # this can be done faster above but whatever
+        if self.projectFlag:
+            flagA = False
+            flagB = False
+
+            indices = self.points[ptSetName][1]
+
+            # create the list we use to map the points to projection components
+            indA = []
+            indB = []
+
+            # maybe we can do this vectorized
+            for ind in indices:
+
+                # check compA
+                if ind in compMap[self.compA.name]:
+                    flagA = True
+                    indA.append(ind)
+
+                # check compB
+                if ind in compMap[self.compB.name]:
+                    flagB = True
+                    indB.append(ind)
+
+            # now we create the dictionaries to propogate projection data
+            self.projData[ptSetName] = {
+                # we need two dictionaries.
+                # we will save more data here, but for now, just save the flag and indices
+                'compA': {
+                    'flag': flagA,
+                    'ind' : indA
+                },
+                'compB': {
+                    'flag': flagB,
+                    'ind' : indB
+                },
+            }
 
     def update(self, ptSetName, delta):
 
@@ -1187,65 +1264,79 @@ class CompIntersection(object):
 
         return seamBar
 
-    def project(self, ptSetName, newPts, compMap):
+    def project(self, ptSetName, newPts):
         # we need to build ADTs for both components if we have any components that lie on either
+        # we also need to save ALL intermediate variables for gradient computations in reverse mode
 
-        flagA = False
-        flagB = False
+        # get the flags for components
+        flagA = self.projData[ptSetName]['compA']['flag']
+        flagB = self.projData[ptSetName]['compB']['flag']
 
-        indices = self.points[ptSetName][1]
-
-        # maybe we can do this vectorized
-        for i in range(len(indices)):
-
-            # index of the point in pointset
-            ind = indices[i]
-
-            # check compA
-            if ind in compMap[self.compA.name]:
-                flagA = True
-
-            # check compB
-            if ind in compMap[self.compB.name]:
-                flagB = True
-
-            # we can terminate early if we hit both surfaces
-            if flagA and flagB:
-                break
-
-        # now we know which surfaces we will use for projections.
-
-        # build the ADT for compA
+        # call the actual driver with the info to prevent code multiplication
         if flagA:
-            self._buildSurfaceADT(self.compA)
+            # get the indices of points that get projected to compA
+            indA = self.projData[ptSetName]['compA']['ind']
+            # get the points using the mapping
+            ptsA = newPts[indA]
+            # call the projection routine with the info
+            # this returns the projected points and we use the same mapping to put them back in place
+            newPts[indA] = self._projectToComponent(ptsA, self.compA, self.projData[ptSetName]['compA'])
 
-        # build the ADT for compB
+        # do the same for B
         if flagB:
-            self._buildSurfaceADT(self.compB)
+            indB = self.projData[ptSetName]['compB']['ind']
+            ptsB = newPts[indB]
+            newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]['compB'])
 
-        # loop over the affected points and project
-        for i in range(len(indices)):
-            ind = indices[i]
+    def project_b(self, ptSetName, dIdpt, comm=None):
+        # call the functions to propagate ad seeds bwd
+        # we need to build ADTs for both components if we have any components that lie on either
+        # we also need to save ALL intermediate variables for gradient computations in reverse mode
 
-            # project this to compA
-            if ind in compMap[self.compA.name]:
-                newPoint = self._projectToSurface(newPts[ind], self.compA)
-            # project this to compB
-            else:
-                newPoint = self._projectToSurface(newPts[ind], self.compB)
+        # get the flags for components
+        flagA = self.projData[ptSetName]['compA']['flag']
+        flagB = self.projData[ptSetName]['compB']['flag']
 
-            # after we do the projections, we can get the new points and update in the newPts array.
-            newPts[ind] = newPoint
+        # dictionary to accumulate triangulated mesh sensitivities
+        compSens_local = {}
 
-        # finally, we can deallocate the ADTs
+        # call the actual driver with the info to prevent code multiplication
         if flagA:
-            adtAPI.adtapi.adtdeallocateadts(self.compA.name)
+            # get the indices of points that get projected to compA
+            indA = self.projData[ptSetName]['compA']['ind']
+            # get the points using the mapping
+            dIdptA = dIdpt[:,indA]
+            # call the projection routine with the info
+            # this returns the projected points and we use the same mapping to put them back in place
+            dIdpt[:,indA], compSensA = self._projectToComponent_b(dIdptA, self.compA, self.projData[ptSetName]['compA'])
+
+            for k,v in compSensA.items():
+                kNew = '%s:%s'%(self.compA.name, k)
+                compSens_local[kNew] = v
+
+        # do the same for B
         if flagB:
-            adtAPI.adtapi.adtdeallocateadts(self.compB.name)
+            indB = self.projData[ptSetName]['compB']['ind']
+            dIdptB = dIdpt[:,indB]
+            dIdpt[:,indB], compSensB = self._projectToComponent_b(dIdptB, self.compB, self.projData[ptSetName]['compB'])
 
-        return newPts
+            for k,v in compSensB.items():
+                kNew = '%s:%s'%(self.compB.name, k)
+                compSens_local[kNew] = v
 
-    def _buildSurfaceADT(self, comp):
+        # finally sum the results across procs if we are provided with a comm
+        if comm:
+            compSens = {}
+            # because the results are in a dictionary, we need to loop over the items and sum
+            for k,v in compSens_local.items():
+                compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
+        else:
+            # we can just pass the dictionary
+            compSens = compSens_local
+
+        return compSens
+
+    def _projectToComponent(self, pts, comp, projDict):
         # we build an ADT using this component
         # from ney's code:
         # Set bounding box for new tree
@@ -1254,8 +1345,6 @@ class CompIntersection(object):
 
         # dummy connectivity data for quad elements since we have all tris
         quadConn = numpy.zeros((0,4))
-
-        t0 = time.time()
 
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
@@ -1271,20 +1360,136 @@ class CompIntersection(object):
                                          quadConn.T, BBox.T, useBBox,
                                          MPI.COMM_SELF.py2f(), comp.name)
 
-    def _projectToSurface(self, point, comp):
-        numPts = 1
+        # project
+        numPts = pts.shape[0]
         dist2 = numpy.ones(numPts)*1e10
         xyzProj = numpy.zeros((numPts, 3))
         normProjNotNorm = numpy.zeros((numPts, 3))
 
         # Call projection function
-        _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(point.T, comp.name,
-                                                        dist2, xyzProj.T,
-                                                        comp.nodal_normals.T,
-                                                        normProjNotNorm.T)
+        procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(pts.T, comp.name,
+                                                                                 dist2, xyzProj.T,
+                                                                                 comp.nodal_normals.T,
+                                                                                 normProjNotNorm.T)
 
-        # return the projected point
+        # Adjust indices and ordering
+        elementID = elementID - 1
+        uvw = uvw.T
+
+        # normalize the normals
+        normProj = tsurf_tools.normalize(normProjNotNorm)
+
+        # deallocate ADT
+        adtAPI.adtapi.adtdeallocateadts(comp.name)
+
+        # save the data
+        projDict['procID'] = procID
+        projDict['elementType'] = elementType
+        projDict['elementID'] = elementID
+        projDict['uvw'] = uvw
+        projDict['dist2'] = dist2
+        projDict['normProjNotNorm'] = normProjNotNorm
+        projDict['normProj'] = normProj
+
+        # also save the original and projected points
+        projDict['xyz'] = pts.copy()
+        projDict['xyzProj'] = xyzProj.copy()
+
+        # return projected points
         return xyzProj
+
+    def _projectToComponent_b(self, dIdpt, comp, projDict):
+
+        # we build an ADT using this component
+        # from ney's code:
+        # Set bounding box for new tree
+        BBox = numpy.zeros((2, 3))
+        useBBox = False
+
+        # dummy connectivity data for quad elements since we have all tris
+        quadConn = numpy.zeros((0,4))
+
+        # Compute set of nodal normals by taking the average normal of all
+        # elements surrounding the node. This allows the meshing algorithms,
+        # for instance, to march in an average direction near kinks.
+        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T,
+                                                             comp.triConn.T,
+                                                             quadConn.T)
+        comp.nodal_normals = nodal_normals.T
+
+        # Create new tree (the tree itself is stored in Fortran level)
+        adtAPI.adtapi.adtbuildsurfaceadt(comp.nodes.T,
+                                         comp.triConn.T,
+                                         quadConn.T, BBox.T, useBBox,
+                                         MPI.COMM_SELF.py2f(), comp.name)
+
+        # also extract the projection data we have from the fwd pass
+        procID = projDict['procID']
+        elementType = projDict['elementType']
+        elementID = projDict['elementID']
+        uvw = projDict['uvw']
+        dist2 = projDict['dist2']
+        normProjNotNorm = projDict['normProjNotNorm']
+        normProj = projDict['normProj']
+
+        # get the original and projected points too
+        xyz = projDict['xyz']
+        xyzProj = projDict['xyzProj']
+
+        # also, we dont care about the normals, so the AD seeds for them should (?) be zero
+        normProjb = numpy.zeros_like(normProjNotNorm)
+
+        # also create the dIdtp for the triangulated surface nodes
+        dIdptComp = numpy.zeros((dIdpt.shape[0], comp.nodes.shape[0], 3))
+
+        # now propagate the ad seeds back for each function
+        for i in range(dIdpt.shape[0]):
+            # the derivative seeds for the projected points
+            xyzProjb = dIdpt[i]
+
+            # Compute derivatives of the normalization process
+            normProjNotNormb = tsurf_tools.normalize_b(normProjNotNorm, normProjb)
+
+            # Call projection function
+            # ATTENTION: The variable "xyz" here in Python corresponds to the variable "coor" in the Fortran code.
+            # On the other hand, the variable "coor" here in Python corresponds to the variable "adtCoor" in Fortran.
+            # I could not change this because the original ADT code already used "coor" to denote nodes that should be
+            # projected.
+            # print('\n\nbefore fortran')
+            xyzb, coorb, nodal_normalsb = adtAPI.adtapi.adtmindistancesearch_b(xyz.T, comp.name,
+                                                                            procID, elementType,
+                                                                            elementID+1, uvw.T,
+                                                                            dist2, xyzProj.T,
+                                                                            xyzProjb.T, comp.nodal_normals.T,
+                                                                            normProjNotNorm.T, normProjNotNormb.T)
+
+            # Transpose results to make them consistent
+            xyzb = xyzb.T
+            coorb = coorb.T
+
+            # Compute derivative seed contributions of the normal vectors
+            # we dont need this...
+            # deltaCoorb = adtAPI.adtapi.adtcomputenodalnormals_b(comp.nodes.T,
+                                                                # comp.triConn.T, quadConn.T,
+                                                                # comp.nodal_normals.T, nodal_normalsb.T)
+
+            # Transpose Fortran results to make them consistent
+            # deltaCoorb = deltaCoorb.T
+
+            # put the reverse ad seed back into dIdpt
+            dIdpt[i] = xyzb
+            # also save the triangulated surface node seeds
+            dIdptComp[i] = coorb
+
+        # now we are done with the adt
+        adtAPI.adtapi.adtdeallocateadts(comp.name)
+
+        # call the total sensitivity of the component's dvgeo
+        compSens = comp.DVGeo.totalSensitivity(dIdptComp, 'triMesh')
+
+        # the entries in dIdpt is replaced with AD seeds of initial points that were projected
+        # we also return the total sensitivity contributions from components' triMeshes
+        return dIdpt, compSens
 
     def _getUpdatedCoords(self):
         # this code returns the updated coordinates
@@ -1633,7 +1838,7 @@ class CompIntersection(object):
         seam = numpy.zeros((0,3))
         for i in range(nFeature):
             # just use the same number of points *2 for now
-            nNewNodes = 2*self.nNodes[i]
+            nNewNodes = 10*self.nNodes[i]
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
             # print('remeshing from feature',i)
@@ -1755,10 +1960,10 @@ class CompIntersection(object):
                     # print(dNodes)
 
                     # number of elements to use, subtract one to get the correct element count
-                    nElem = (numpy.abs(dNodes - self.dStarB)).argmin() - 1
+                    nElem = (numpy.abs(dNodes - self.dStarB*1.3)).argmin() - 1
 
                     # we want to be one after the actual distance, so correct if needed
-                    if dNodes[nElem] < self.dStarB:
+                    if dNodes[nElem] < self.dStarB*1.3:
                         nElem += 1
 
                     elemEnd = elemBeg + nElem
@@ -1839,6 +2044,31 @@ class CompIntersection(object):
                 # print('newcor',newCoor)
 
                 # append this new curve to the featureCurve data
+                remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+
+                # also re-mesh the initial part of the curve, to prevent any negative volumes there
+                curveConnTrim = curveConn[:elemBeg]
+
+                nNewNodes = 10*self.nNodeFeature[curveName]
+                coor = self.compB.nodes
+                barsConn = curveConnTrim
+                method = 'linear'
+                spacing = 'linear'
+                initialSpacing = 0.1
+                finalSpacing = 0.1
+
+
+                # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
+                # Call Fortran code. Remember to adjust transposes and indices
+                newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodes,
+                                                                        coor.T,
+                                                                        barsConn.T + 1,
+                                                                        method,
+                                                                        spacing,
+                                                                        initialSpacing,
+                                                                        finalSpacing)
+                newCoor = newCoor.T
+                newBarsConn = newBarsConn.T - 1
                 remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
 
                 # finally, put the modified initial and final points back in place.
