@@ -1288,7 +1288,7 @@ class CompIntersection(object):
             ptsB = newPts[indB]
             newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]['compB'])
 
-    def project_b(self, ptSetName, dIdpt, comm=None):
+    def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
         # we need to build ADTs for both components if we have any components that lie on either
         # we also need to save ALL intermediate variables for gradient computations in reverse mode
@@ -1314,6 +1314,21 @@ class CompIntersection(object):
                 kNew = '%s:%s'%(self.compA.name, k)
                 compSens_local[kNew] = v
 
+        # set the compSens entries to all zeros on these procs
+        else:
+            # get the values from each DVGeo
+            xA = self.compA.DVGeo.getValues()
+
+            # now get how many functions we have
+            N = dIdpt.shape[0]
+
+            # loop over each entry in xA and xB and create a dummy zero gradient array for all
+            for k,v in xA.items():
+                kNew = '%s:%s'%(self.compA.name, k)
+                # create the zero array:
+                zeroSens = numpy.zeros((N, v.shape[0]))
+                compSens_local[kNew] = zeroSens
+
         # do the same for B
         if flagB:
             indB = self.projData[ptSetName]['compB']['ind']
@@ -1323,6 +1338,20 @@ class CompIntersection(object):
             for k,v in compSensB.items():
                 kNew = '%s:%s'%(self.compB.name, k)
                 compSens_local[kNew] = v
+        # set the compSens entries to all zeros on these procs
+        else:
+            # get the values from each DVGeo
+            xB = self.compB.DVGeo.getValues()
+
+            # now get how many functions we have
+            N = dIdpt.shape[0]
+
+            # loop over each entry in xA and xB and create a dummy zero gradient array for all
+            for k,v in xB.items():
+                kNew = '%s:%s'%(self.compB.name, k)
+                # create the zero array:
+                zeroSens = numpy.zeros((N, v.shape[0]))
+                compSens_local[kNew] = zeroSens
 
         # finally sum the results across procs if we are provided with a comm
         if comm:
