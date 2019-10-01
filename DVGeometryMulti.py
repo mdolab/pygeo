@@ -1559,8 +1559,14 @@ class CompIntersection(object):
                 # We need to do actual copies, otherwise data will be overwritten if we compute another intersection.
                 # We subtract one to make indices consistent with the Python 0-based indices.
                 # We also need to transpose it since Python and Fortran use different orderings to store matrices in memory.
-                intNodes = numpy.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
+                # TODO Bug here?
+                intNodes = numpy.array(intersectionArrays[0]).T # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
+                # intNodes = numpy.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
                 barsConn = numpy.array(intersectionArrays[1]).T - 1
+                # print('right after intersection code')
+                # print(numpy.array(intersectionArrays[0]).T)
+                # print()
+                # quit()
                 # parentTria = numpy.array(intersectionArrays[2]).T - 1
 
                 # write this to a file to check.
@@ -1568,7 +1574,7 @@ class CompIntersection(object):
                 # if comm.size > 1:
                 #     self.count += 1
                 #     fileName = 'int_'+vsp.GetContainerName(self.compA)+'_'+vsp.GetContainerName(self.compB)+'_%d'%self.count
-                #     pysurf.tecplot_interface.writeTecplotFEdata(intNodes,barsConn,fileName,fileName)
+                # pysurf.tecplot_interface.writeTecplotFEdata(intNodes,barsConn,'wing_fuse1','wing_fuse1')
                     # pysurf.tecplot_interface.writeTecplotFEdata(intNodes * self.meshScale,barsConn,fileName,fileName)
 
             else:
@@ -1651,6 +1657,11 @@ class CompIntersection(object):
 
             # use Ney's fortran code to project the point on curve
             # first, we need to get a list of nodes that define the intersection
+            # if comm.rank == 0:
+            #     print('before we fail')
+            #     print(seamConn)
+            #     print(intNodes[seamConn[:,0]])
+            # quit()
             intNodesOrd = intNodes[seamConn[:,0]]
             # print('ordered array of intersection nodes', intNodesOrd)
 
@@ -2071,6 +2082,7 @@ class CompIntersection(object):
                 newBarsConn = newBarsConn.T - 1
 
                 # print('newcor',newCoor)
+                pysurf.tecplot_interface.writeTecplotFEdata(newCoor,newBarsConn,curveName,curveName)
 
                 # append this new curve to the featureCurve data
                 remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
