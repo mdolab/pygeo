@@ -1604,7 +1604,10 @@ class CompIntersection(object):
             # we have a single intersection curve, just take this.
             seamConn = newConn[0].copy()
         else:
-            raise Error('more than one intersection curve between comps %s and %s'%(self.compA.name, self.compB.name))
+            for i in range(len(newConn)):
+                curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, i)
+                pysurf.tecplot_interface.writeTecplotFEdata(intNodes,newConn[i],curvename, curvename)
+            raise Error('more than one intersection curve between comps %s and %s\nThe curves are written as tecplot files in the current directory'%(self.compA.name, self.compB.name))
         # we might have two of the same curve on both sides of the symmetry plane, if so, get the one on the positive side
         # elif len(newConn) == 2:
         #     # check which curve is on the positive side
