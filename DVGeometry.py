@@ -2084,7 +2084,8 @@ class DVGeometry(object):
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
 
-    def demoDesignVars(self, directory, includeLocal=True, pointSet=None, callBack=None):
+    def demoDesignVars(self, directory, includeLocal=True, includeGlobal=True,
+                       pointSet=None, callBack=None, freq=2):
         """
         This function can be used to "test" the design variable parametrization
         for a given optimization problem. It should be called in the script
@@ -2107,6 +2108,9 @@ class DVGeometry(object):
             variable iteration (e.g. write out a deformed mesh). The callback
             function must take two inputs: 1) the output directory name (str) and
             2) the iteration count (int).
+        freq : int
+            Number of snapshots to take between the upper and lower bounds of
+            a given variable. If greater than 2, will do a sinusoidal sweep.
         """
         # Generate directories
         os.system('mkdir -p {:s}/ffd'.format(directory))
@@ -2117,14 +2121,14 @@ class DVGeometry(object):
 
         # Get pointSet
         if pointSet is None:
-	    writePointSet = False
+            writePointSet = False
             if self.ptSetNames:
                 pointSet = self.ptSetNames[0]
             else:
                 raise Error('DVGeo must have a point set to update for\
                             demoDesignVars to work.')
-	else:
-	    writePointSet = True
+        else:
+	        writePointSet = True
 
         # Loop through design variables on self and children
         geoList = [self] + self.children
@@ -2132,25 +2136,37 @@ class DVGeometry(object):
         for geo in geoList:
             for key in dvDict:
                 lower = []
-                if key in geo.DV_listLocal or key in geo.DV_listSectionLocal:
+                if key in geo.DV_listLocal:
                     if not includeLocal:
                         continue
                     lower = geo.DV_listLocal[key].lower
                     upper = geo.DV_listLocal[key].upper
+                elif key in geo.DV_listSectionLocal:
+                    if not includeLocal:
+                        continue
+                    lower = geo.DV_listSectionLocal[key].lower
+                    upper = geo.DV_listSectionLocal[key].upper
                 elif key in geo.DV_listGlobal:
+                    if not includeGlobal:
+                        continue
                     lower = geo.DV_listGlobal[key].lower
                     upper = geo.DV_listGlobal[key].upper
 
                 x = dvDict[key].flatten()
                 nDV = len(lower)
                 for j in range(nDV):
-                    if count == 0:
-                        stops = [0, lower[j], upper[j]]
-                    else:
+                    if freq == 2:
                         stops = [lower[j], upper[j]]
-                    for h in stops:
+                    elif freq > 2:
+                        sinusoid = numpy.sin(numpy.linspace(0, numpy.pi, freq))
+                        down_swing = x[j] + (lower[j] - x[j]) * sinusoid
+                        up_swing = x[j] + (upper[j] - x[j]) * sinusoid
+                        stops = numpy.concatenate((down_swing[:-1], up_swing[:-1]))
+
+                    for val in stops:
                         # Add perturbation to the design variable and update
-                        x[j] += h
+                        old_val = x[j]
+                        x[j] = val
                         dvDict.update({key:x})
                         self.setDesignVars(dvDict)
                         X = self.update(pointSet)
@@ -2167,7 +2183,7 @@ class DVGeometry(object):
                             callBack(directory, count)
 
                         # Reset variable
-                        x[j] -= h
+                        x[j] = old_val
                         dvDict.update({key:x})
 
                         # Iterate counter

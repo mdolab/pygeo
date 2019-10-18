@@ -442,14 +442,17 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     f = open(fileName, 'w')
     f.write('{}\n'.format(Nvol))
 
-    def getDistribution(name, N):
-        if name == 'linear':
+    def getDistribution(distIn, N):
+        if type(distIn) is not str:
+            assert(len(distIn) == N)
+            dist = distIn.copy()
+        elif distIn == 'linear':
             dist = np.linspace(0, 1, N)
-        elif name == 'cosine':
+        elif distIn == 'cosine':
             dist = (1 - np.cos(np.linspace(0, np.pi, N))) / 2.0
-        elif name == 'left':
+        elif distIn == 'left':
             dist = np.linspace(0, 1, N)**(3.0/2.0)
-        elif name == 'right':
+        elif distIn == 'right':
             dist = np.linspace(0, 1, N)**(2.0/3.0)
         return dist
 
