@@ -2154,7 +2154,8 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = CurvatureConstraint(
             conName, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, self.DVGeo,addToPyOpt)
 
-    def addMonotonicConstraints(self, key, slope=1.0, name=None, config=None):
+    def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0,
+                                stop=-1, config=None):
         """
         Parameters
         ----------
@@ -2165,18 +2166,23 @@ class DVConstraints(object):
                 1.0 - from left to right along design variable vector
                 -1.0 - from right to left along design variable vector
         name : str
-             Normally this does not need to be set; a default name will
-             be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
-             be distinguished
+            Normally this does not need to be set; a default name will
+            be generated automatically. Only use this if you have
+            multiple DVCon objects and the constriant names need to
+            be distinguished
+        start/stop: int
+            This allows the user to specify a slice of the design variable to
+            constrain if it is not desired to set a monotonic constraint on the
+            entire vector. The start/stop indices are inclusive indices, so for
+            a design variable vector [4, 3, 6.5, 2, -5.4, -1], start=1 and
+            stop=4 would constrain [3, 6.5, 2, -5.4] to be a monotonic sequence.
         config : str
-             The DVGeo configuration to apply this LETE con to. Must be either None
-             which will allpy to *ALL* the local DV groups or a single string specifying
-             a particular configuration.
+            The DVGeo configuration to apply this LETE con to. Must be either None
+            which will allpy to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
 
         Examples
         --------
-        >>> # Preferred way: Constraints at the front and back (ifaces) of volume 0
         >>> DVCon.addMonotonicConstraints('chords', 1.0)
         """
         self._checkDVGeo()
@@ -2186,7 +2192,11 @@ class DVConstraints(object):
         else:
             conName = name
 
-        options = {'slope':slope}
+        options = {
+            'slope':slope,
+            'start':start,
+            'stop':stop,
+        }
         # Finally add the global linear constraint object
         self.linearCon[conName] = GlobalLinearConstraint(
             conName, key, type='monotonic', options=options,
@@ -4991,16 +5001,25 @@ class GlobalLinearConstraint(object):
                                     linear=True, wrt=key, jac={key:self.jac[key]})
     def setMonotonic(self, options):
         """
-        Set up monotonicty jacobian for the given global design variable
+        Set up monotonicity jacobian for the given global design variable
         """
         self.vizConIndices = {}
 
         if self.config is None or self.config in self.DVGeo.DV_listGlobal[self.key].config:
             ndv = self.DVGeo.DV_listGlobal[self.key].nVal
-            ncon = ndv - 1
+            start = options['start']
+            stop = options['stop']
+            if stop == -1:
+                stop = ndv
+
+            # Since start and stop are inclusive, we need to add one to stop to
+            # account for python indexing
+            stop += 1
+            ncon = len(numpy.zeros(ndv)[start:stop]) - 1
+
             jacobian = numpy.zeros((ncon, ndv))
             slope = options['slope']
-            for i in range(ncon):
+            for i in range(start, start+ncon):
                 jacobian[i, i] = 1.0*slope
                 jacobian[i, i+1] = -1.0*slope
             self.jac[self.key] = jacobian
