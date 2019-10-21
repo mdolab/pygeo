@@ -5019,9 +5019,9 @@ class GlobalLinearConstraint(object):
 
             jacobian = numpy.zeros((ncon, ndv))
             slope = options['slope']
-            for i in range(start, start+ncon):
-                jacobian[i, i] = 1.0*slope
-                jacobian[i, i+1] = -1.0*slope
+            for i in range(ncon):
+                jacobian[i, start+i] = 1.0*slope
+                jacobian[i, start+i+1] = -1.0*slope
             self.jac[self.key] = jacobian
             self.ncon += ncon
 
