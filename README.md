@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/mdolab/pygeo.svg?branch=pyGeo)](https://travis-ci.com/mdolab/pygeo)
+
 pyGeo
 ====================================================
 
