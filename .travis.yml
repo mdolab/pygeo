@@ -9,4 +9,4 @@ before_script:
 - docker pull benjaminbrelje/mdolabfull:latest
 
 script:
-- ./run_tests.ps1
+- bash run_tests.ps1
