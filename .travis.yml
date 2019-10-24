@@ -3,8 +3,10 @@ language: python
 services:
   - docker
 
+install: skip
+
 before_script:
 - docker pull benjaminbrelje/mdolabfull:latest
 
 script:
-- docker run --rm benjaminbrelje/mdolabfull:latest /bin/sh -c ". /root/.bashrc && cd /root/repos/pygeo/tests && python -m pytest reg_tests"
+- docker run -v /mdolab/pygeo:/root/test/pygeo --rm benjaminbrelje/mdolabfull:latest /bin/sh -c ". /root/.bashrc && cd /root/test && python -m pytest pygeo/tests/reg_tests"
