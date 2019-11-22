@@ -1195,7 +1195,7 @@ class vspDV(object):
         self.component = component
         self.group = group
         self.parm = parm
-        self.value = value
+        self.value = numpy.array(value)
         self.lower = lower
         self.upper = upper
         self.dh = dh
