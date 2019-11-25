@@ -561,36 +561,24 @@ class DVGeometryMulti(object):
                 # this keeps the cumulative number of nodes on the seams this point set is effected by
                 nSeams += len(IC.seam)
 
-        # allocate the matrix
-        dIdSeam = numpy.zeros((N, nSeams*3))
+        # loop over the intersections
+        for IC in ptSetICs:
+            # dIdpt is input/output
+            compSens = IC.sens(dIdpt, ptSetName, comm)
 
-        # go over the dI values
-        for i in range(N):
-            n = 0
-            for IC in ptSetICs:
-                dIdpt_i = dIdpt[i, :, :].copy()
-                seamBar = IC.sens(dIdpt_i, ptSetName)
-                dIdpt[i, :, :] = dIdpt_i
-                dIdSeam[i, 3*n:3*(n+len(seamBar))] = seamBar.flatten()
-                n += len(IC.seam)
+            # save the sensitivities from the intersection stuff
+            compSensList.append(compSens)
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
 
-        # transpose dIdpt and vstack;
-        # Now vstack the result with seamBar as that is far as the
-        # forward FD jacobian went.
-        tmp = numpy.vstack([dIdpt.T, dIdSeam.T])
+        # jacobian for the pointset
+        jac = self.points[ptSetName].jac
 
-        # we also stack the pointset jacobian and the seam jacobians.
-        jac = self.points[ptSetName].jac.copy()
-        for IC in ptSetICs:
-            jac = numpy.vstack((jac, IC.jac))
-
-        # Remember the jacobian contains the surface poitns *and* the
-        # the seam nodes. dIdx_compact is the final derivative for the
-        # points this proc owns.
-        dIdxT_local = jac.T.dot(tmp)
+        # this is the mat-vec product for the remaining seeds.
+        # this only contains the effects of the FFD motion,
+        # projections and intersections are handled separately in compSens
+        dIdxT_local = jac.T.dot(dIdpt.T)
         dIdx_local = dIdxT_local.T
 
         if comm: # If we have a comm, globaly reduce with sum
@@ -620,6 +608,7 @@ class DVGeometryMulti(object):
         for compSens in compSensList:
             # loop over the items of compSens, which are guaranteed to be in dIdxDict
             for k,v in compSens.items():
+                # these will bring in effects from projections and intersection computations
                 dIdxDict[k] += v
 
         return dIdxDict
@@ -754,6 +743,7 @@ class DVGeometryMulti(object):
             if self.comps[comp].DVGeo.JT[ptSetName] is not None:
                 # we convert to dense storage.
                 # this is probably not a good way to do this...
+                # TODO: use sparse storage for these...
                 compJ = self.comps[comp].DVGeo.JT[ptSetName].todense().T
 
                 # loop over the entries and add one by one....
@@ -1297,7 +1287,7 @@ class CompIntersection(object):
 
         return
 
-    def sens(self, dIdPt, ptSetName):
+    def sens(self, dIdPt, ptSetName, comm):
         # Return the reverse accumulation of dIdpt on the seam
         # nodes. Also modifies the dIdp array accordingly.
 
@@ -1305,30 +1295,38 @@ class CompIntersection(object):
         indices = self.points[ptSetName][1]
         factors = self.points[ptSetName][2]
 
-        seamBar = numpy.zeros_like(self.seam0)
-        for i in range(len(factors)):
+        # if we are handling more than one function,
+        # seamBar will contain the seeds for each function separately
+        seamBar = numpy.zeros((dIdPt.shape[0], self.seam0.shape[0], self.seam0.shape[1]))
+        for k in range(dIdPt.shape[0]):
+            for i in range(len(factors)):
 
-            # j is the index of the point in the full set we are
-            # working with.
-            j = indices[i]
+                # j is the index of the point in the full set we are
+                # working with.
+                j = indices[i]
 
-            # This is the local seed (well the 3 seeds for the point)
-            localVal = dIdPt[j]*(1 - factors[i])
+                # This is the local seed (well the 3 seeds for the point)
+                localVal = dIdPt[k,j,:]*(1 - factors[i])
 
-            # Scale the dIdpt by the factor..dIdpt is input/output
-            dIdPt[j] *= factors[i]
+                # Scale the dIdpt by the factor..dIdpt is input/output
+                dIdPt[k,j,:] *= factors[i]
 
-            # Do it vectorized
-            rr = pts[j] - self.seam0
-            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-            LdefoDist3 = LdefoDist**3
-            Wi = LdefoDist3
-            den = numpy.sum(Wi)
-            interp = numpy.zeros(3)
-            for iDim in range(3):
-                seamBar[:, iDim] += Wi*localVal[iDim]/den
+                # Do it vectorized
+                rr = pts[j] - self.seam0
+                LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
+                LdefoDist3 = LdefoDist**3
+                Wi = LdefoDist3
+                den = numpy.sum(Wi)
+                for iDim in range(3):
+                    seamBar[k, :, iDim] += Wi*localVal[iDim]/den
 
-        return seamBar
+        # seamBar is the bwd seeds for the intersection curve...
+        # it is N,nseampt,3 in size
+
+        # now call the reverse differentiated seam computation
+        compSens = self._getIntersectionSeam_b(seamBar, comm)
+
+        return compSens
 
     def project(self, ptSetName, newPts):
         # we need to build ADTs for both components if we have any components that lie on either
@@ -1602,17 +1600,20 @@ class CompIntersection(object):
 
         # this function computes the intersection curve, cleans up the data and splits the curve based on features or curves specified by the user.
 
+        # create the dictionary to save all intermediate variables for reverse differentiation
+        self.seamDict = {}
+
         # Call Ney's code with the quad information.
         dummyConn = numpy.zeros((0,4))
         # compute the intersection curve, in the first step we just get the array sizes to hide allocatable arrays from python
         arraySizes = intersectionAPI.intersectionapi.computeintersection(self.compA.nodes.T,
-                                                                            self.compA.triConn.T,
-                                                                            dummyConn.T,
-                                                                            self.compB.nodes.T,
-                                                                            self.compB.triConn.T,
-                                                                            dummyConn.T,
-                                                                            self.distTol,
-                                                                            comm.py2f())
+                                                                         self.compA.triConn.T,
+                                                                         dummyConn.T,
+                                                                         self.compB.nodes.T,
+                                                                         self.compB.triConn.T,
+                                                                         dummyConn.T,
+                                                                         self.distTol,
+                                                                         comm.py2f())
 
         # Retrieve results from Fortran if we have an intersection
         if numpy.max(arraySizes[1:]) > 0:
@@ -1628,6 +1629,10 @@ class CompIntersection(object):
             # intNodes = numpy.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
             barsConn = numpy.array(intersectionArrays[1]).T - 1
             parentTria = numpy.array(intersectionArrays[2]).T - 1
+
+            # save these intermediate variables
+            self.seamDict['barsConn'] = barsConn
+            self.seamDict['parentTria'] = parentTria
 
         else:
             raise Error('DVGeometryMulti Error: The components %s and %s do not intersect.'%(self.compA.name, self.compB.name))
@@ -1828,6 +1833,13 @@ class CompIntersection(object):
             # we don't need the connectivity info for now? we just need the coords
             seam = numpy.vstack((seam, newCoor[:-1]))
 
+        # save stuff to the dictionary for sensitivity computations...
+        self.seamDict['intNodes'] = intNodes
+        self.seamDict['seamConn'] = seamConn
+        self.seamDict['curveSizes'] = curveSizes
+        # size of the intersection seam w/o any feature curves
+        self.seamDict['seamSize'] = len(seam)
+
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
 
@@ -1840,6 +1852,7 @@ class CompIntersection(object):
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
+                self.seamDict[curveName] = {}
 
                 # figure out which comp owns this curve...
                 if curveName in self.compB.barsConn:
@@ -1986,9 +1999,203 @@ class CompIntersection(object):
                     # finally, put the modified initial and final points back in place.
                     self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave
 
+                # save some info for gradient computations later on
+                self.seamDict[curveName]['nNewNodes'] = nNewNodes
+                self.seamDict[curveName]['elemBeg'] = elemBeg
+                self.seamDict[curveName]['elemEnd'] = elemEnd
+                # this includes the initial coordinates of the points for each curve
+                # that has a modified initial curve
+                self.seamDict['curveBegCoor'] = curveBegCoor
+
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
             # which now contains the intersection, and re-meshed feature curves
             seam = numpy.vstack((seam, remeshedCurves))
 
         return seam.copy()
+
+    def _getIntersectionSeam_b(self, seamBar, comm):
+        # seamBar contains all the bwd seeds for all coordinates in self.seam
+
+        # seam bar has shape [N, nSeamPt, 3]
+        # seeds for N functions
+        N = seamBar.shape[0]
+        # n points in total in the combined seam
+        # 3 coordinates for each point
+
+        # allocate the space for component coordinate seeds
+        coorAb = numpy.zeros((N, self.compA.nodes.shape[0], self.compA.nodes.shape[1]))
+        coorBb = numpy.zeros((N, self.compB.nodes.shape[0], self.compB.nodes.shape[1]))
+
+        # first, extract the actual intersection coordinates from feature curves.
+        # we might not have any feature curves but the intersection curve will be there
+        seamSize = self.seamDict['seamSize']
+
+        intBar = seamBar[:,:seamSize, :]
+        curveBar = seamBar[:,seamSize:, :]
+
+        # check if we included feature curves
+        if self.incCurves:
+
+            # offset for the derivative seeds for this curve
+            iBeg = 0
+
+            # loop over each curve
+            for curveName in self.featureCurveNames:
+                # get the fwd data
+                fwDict = self.seamDict[curveName]
+                nNewNodes = seamDict['nNewNodes']
+                elemBeg = seamDict['elemBeg']
+                elemEnd = seamDict['elemEnd']
+
+                # get the derivative seeds
+                newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:]
+                iBeg += nNewNodes
+
+                # figure out which comp owns this curve...
+                if curveName in self.compB.barsConn:
+                    curveComp = self.compB
+                    coorb = coorBb
+                    # dStarComp = self.dStarB
+
+                elif curveName in self.compA.barsConn:
+                    curveComp = self.compA
+                    coorb = coorAb
+                    # dStarComp = self.dStarA
+
+                # adjust the first coordinate of the curve
+
+
+                # get the coordinates of points
+                coor = curveComp.nodes
+
+                # connectivity for this curve.
+                curveConn = curveComp.barsConn[curveName]
+
+                # trim the connectivity data
+                barsConn = curveComp.barsConn[curveName][elemBeg:elemEnd+1]
+
+                # constant inputs
+                method = 'linear'
+                spacing = 'linear'
+                initialSpacing = 0.1
+                finalSpacing = 0.1
+
+                # loop over functions
+                for ii in range(N):
+                    # Call Fortran code. Remember to adjust transposes and indices
+                    _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes,
+                                                                  coor.T,
+                                                                  newCoorb[ii].T,
+                                                                  barsConn.T + 1,
+                                                                  method,
+                                                                  spacing,
+                                                                  initialSpacing,
+                                                                  finalSpacing)
+                    # derivative seeds for the coordinates.
+                    cb = cb.T
+
+                    # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
+                    # if elemBeg > 0:
+                        # save this and zero out the contribution that used to be here
+
+                        # we need to call the curve projection routine to propagate the seed...
+
+
+                        # get the remaining seeds
+
+                        # add to cb...
+
+                    # all the remaining seeds in coorb live on the component tri-mesh...
+                    coorb[ii] += cb
+
+
+        # now we only have the intersection seam...
+        nFeature = len(self.nNodes)
+        intNodes = self.seamDict['intNodes']
+        seamConn = self.seamDict['seamConn']
+        curveSizes = self.seamDict['curveSizes']
+
+        # seeds for the original intersection
+        intNodesb = numpy.zeros((N, intNodes.shape[0], intNodes.shape[1]))
+
+        # loop over each feature and propagate the sensitivities
+        curInd = 0
+        curSeed = 0
+        seam = numpy.zeros((0,3))
+        for i in range(nFeature):
+            # just use the same number of points *2 for now
+            nNewNodes = 10*self.nNodes[i]
+            coor = intNodes
+            barsConn = seamConn[curInd:curInd+curveSizes[i]]
+            curInd += curveSizes[i]
+            method = 'linear'
+            spacing = 'linear'
+            initialSpacing = 0.1
+            finalSpacing = 0.1
+
+            # allocate newCoorb since we want to zero out the last element
+            newCoorb = numpy.zeros((nNewNodes, 3))
+
+            for ii in range(N):
+                newCoorb[:-1, :] = intBar[ii, curSeed:curSeed+nNewNodes-1, :]
+                # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
+                # Call Fortran code. Remember to adjust transposes and indices
+                _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes,
+                                                            coor.T,
+                                                            newCoorb.T,
+                                                            barsConn.T + 1,
+                                                            method,
+                                                            spacing,
+                                                            initialSpacing,
+                                                            finalSpacing)
+                intNodesb[ii] += cb.T
+
+            curSeed += nNewNodes - 1
+
+        dummyConn = numpy.zeros((0,4))
+        barsConn = self.seamDict['barsConn']
+        parentTria = self.seamDict['parentTria']
+        # do the reverse intersection computation to get the seeds of coordinates
+        for ii in range(N):
+            cAb, cBb = intersectionAPI.intersectionapi.computeintersection_b(self.compA.nodes.T,
+                                                                                self.compA.triConn.T,
+                                                                                dummyConn.T,
+                                                                                self.compB.nodes.T,
+                                                                                self.compB.triConn.T,
+                                                                                dummyConn.T,
+                                                                                intNodes.T,
+                                                                                intNodesb[ii].T,
+                                                                                barsConn.T + 1,
+                                                                                parentTria.T + 1,
+                                                                                self.distTol)
+
+            coorAb[ii] += cAb.T
+            coorBb[ii] += cBb.T
+
+        # get the total sensitivities from both components
+        compSens_local = {}
+        compSensA = self.compA.DVGeo.totalSensitivity(coorAb, 'triMesh')
+        for k,v in compSensA.items():
+            kNew = '%s:%s'%(self.compA.name, k)
+            compSens_local[kNew] = v
+
+        compSensB = self.compB.DVGeo.totalSensitivity(coorBb, 'triMesh')
+        for k,v in compSensB.items():
+            kNew = '%s:%s'%(self.compB.name, k)
+            compSens_local[kNew] = v
+
+        # finally sum the results across procs if we are provided with a comm
+        if comm:
+            compSens = {}
+            # because the results are in a dictionary, we need to loop over the items and sum
+            for k,v in compSens_local.items():
+                compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
+        else:
+            # we can just pass the dictionary
+            compSens = compSens_local
+
+        return compSens
+
+
+
