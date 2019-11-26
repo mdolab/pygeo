@@ -10,9 +10,9 @@ services:
 #- TEST_ENV=new-baseline
 
 before_install:
-- docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:current
-- docker run -d --name app mdolab/public:current /bin/sh
+- docker run -t -d --name app mdolab/public:current /bin/sh
 - docker ps -a
 
 install:
