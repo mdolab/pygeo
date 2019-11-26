@@ -1,0 +1,25 @@
+branches:
+  only:
+  - master
+
+os:
+- linux
+
+language: generic
+
+services:
+  - docker
+
+
+before_install:
+- docker pull mdolab/public:current
+- docker run -d mdolab/public:current /bin/sh
+
+install:
+- ls
+- pwd
+- echo "IN INSTALL"
+
+script:
+- ls
+- echo "IN SCRIPT"
