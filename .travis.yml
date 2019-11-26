@@ -1,25 +1,25 @@
-#branches:
-#  only:
-#  - master
-
 os:
 - linux
 
 language: generic
 
 services:
-  - docker
-
+- docker
+#env:
+#- TEST_ENV=current
+#- TEST_ENV=new-baseline
 
 before_install:
+- docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
 - docker pull mdolab/public:current
-- docker run -d mdolab/public:current /bin/sh
+- docker run -d --name app mdolab/public:current /bin/sh
+- docker ps -a
 
 install:
-- ls
-- pwd
-- echo "IN INSTALL"
+- docker exec app -c "rm -r $HOME/repos/pygeo; cp -r $TRAVIS_BUILD_DIR $HOME/repos/"
 
 script:
-- ls
-- echo "IN SCRIPT"
+- docker exec app -c "cd $HOME/repos/pygeo/reg_tests; python run_reg_tests.py -nodiff"
+
+after_script:
+- docker rm -f app
