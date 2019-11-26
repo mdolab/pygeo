@@ -1689,6 +1689,10 @@ class CompIntersection(object):
         # loop over the feature curves
         for curveName in self.featureCurveNames:
 
+            # we need to initialize the dictionary here
+            # to get the intermediate output from mindistancecurve call
+            self.seamDict[curveName] = {}
+
             # if this curve is on compB, we use it to track intersection features
             if curveName in self.compB.barsConn:
 
@@ -1727,6 +1731,15 @@ class CompIntersection(object):
 
                     # Adjust indices back to Python standards
                     elemIDs[:] = elemIDs - 1
+
+                    self.seamDict[curveName]['curveMask'] = curveMask
+                    self.seamDict[curveName]['elemIDs'] = elemIDs
+                    self.seamDict[curveName]['intNodesOrd'] = intNodesOrd
+                    self.seamDict[curveName]['xyzProj'] = xyzProj
+                    self.seamDict[curveName]['tanProj'] = tanProj
+                    self.seamDict[curveName]['dist2'] = dist2
+                    self.seamDict[curveName]['projPtIndx'] = seamConn[:,0][numpy.argmin(dist2)]
+
 
                 # now, find the index of the smallest distance
                 breakList.append(numpy.argmin(dist2))
@@ -1839,6 +1852,7 @@ class CompIntersection(object):
         self.seamDict['curveSizes'] = curveSizes
         # size of the intersection seam w/o any feature curves
         self.seamDict['seamSize'] = len(seam)
+        self.seamDict['curveBegCoor'] = curveBegCoor
 
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
@@ -1852,7 +1866,6 @@ class CompIntersection(object):
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
-                self.seamDict[curveName] = {}
 
                 # figure out which comp owns this curve...
                 if curveName in self.compB.barsConn:
@@ -2031,8 +2044,14 @@ class CompIntersection(object):
         # we might not have any feature curves but the intersection curve will be there
         seamSize = self.seamDict['seamSize']
 
+        # coordinates of the beginning points for feature curves on compB
+        curveBegCoor = self.seamDict['curveBegCoor']
+
         intBar = seamBar[:,:seamSize, :]
         curveBar = seamBar[:,seamSize:, :]
+
+        # dictionary to save the accumulation of curve projection seeds
+        curveProjb = {}
 
         # check if we included feature curves
         if self.incCurves:
@@ -2043,10 +2062,10 @@ class CompIntersection(object):
             # loop over each curve
             for curveName in self.featureCurveNames:
                 # get the fwd data
-                fwDict = self.seamDict[curveName]
-                nNewNodes = seamDict['nNewNodes']
-                elemBeg = seamDict['elemBeg']
-                elemEnd = seamDict['elemEnd']
+                curveDict = self.seamDict[curveName]
+                nNewNodes = curveDict['nNewNodes']
+                elemBeg = curveDict['elemBeg']
+                elemEnd = curveDict['elemEnd']
 
                 # get the derivative seeds
                 newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:]
@@ -2063,8 +2082,15 @@ class CompIntersection(object):
                     coorb = coorAb
                     # dStarComp = self.dStarA
 
-                # adjust the first coordinate of the curve
+                # connectivity for this curve.
+                curveConn = curveComp.barsConn[curveName]
 
+                # adjust the first coordinate of the curve
+                if curveName in curveBegCoor:
+                    # save the original coordinate of the first point
+                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]]
+                    # and replace this with the starting point we want
+                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName]
 
                 # get the coordinates of points
                 coor = curveComp.nodes
@@ -2081,10 +2107,12 @@ class CompIntersection(object):
                 initialSpacing = 0.1
                 finalSpacing = 0.1
 
+                cb = numpy.zeros((N, coor.shape[0], coor.shape[1]))
+
                 # loop over functions
                 for ii in range(N):
                     # Call Fortran code. Remember to adjust transposes and indices
-                    _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes,
+                    _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes,
                                                                   coor.T,
                                                                   newCoorb[ii].T,
                                                                   barsConn.T + 1,
@@ -2093,21 +2121,61 @@ class CompIntersection(object):
                                                                   initialSpacing,
                                                                   finalSpacing)
                     # derivative seeds for the coordinates.
-                    cb = cb.T
+                    cb[ii] = cbi.T
 
-                    # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
-                    # if elemBeg > 0:
-                        # save this and zero out the contribution that used to be here
+                # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
+                if elemBeg > 0:
+                    # the first seed is for the projected point...
+                    projb = cb[:,0:1,:]
 
-                        # we need to call the curve projection routine to propagate the seed...
+                    # zero out the seed of the replaced node
+                    cb[:,0:1,:] = numpy.zeros((N,1,3))
+
+                    # put the modified initial and final points back in place.
+                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave
+
+                    # we need to call the curve projection routine to propagate the seed...
+                    intNodesOrd = self.seamDict[curveName]['intNodesOrd']
+                    curveMask = self.seamDict[curveName]['curveMask']
+                    elemIDs = self.seamDict[curveName]['elemIDs']
+                    xyzProj = self.seamDict[curveName]['xyzProj']
+                    tanProj = self.seamDict[curveName]['tanProj']
+                    dist2 = self.seamDict[curveName]['dist2']
+
+                    # we need the full bars conn for this
+                    barsConn = curveComp.barsConn[curveName]
+
+                    # allocate zero seeds
+                    xyzProjb = numpy.zeros_like(xyzProj)
+                    tanProjb = numpy.zeros_like(tanProj)
+
+                    curveProjb[curveName] = numpy.zeros((N, 3))
+
+                    for ii in range(N):
+
+                        # the only nonzero seed is indexed by argmin dist2
+                        xyzProjb[numpy.argmin(dist2)] = projb[ii]
 
 
-                        # get the remaining seeds
+                        xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(intNodesOrd.T,
+                                                                               self.compB.nodes.T,
+                                                                               barsConn.T + 1,
+                                                                               xyzProj.T,
+                                                                               xyzProjb.T,
+                                                                               tanProj.T,
+                                                                               tanProjb.T,
+                                                                               elemIDs + 1,
+                                                                               curveMask)
 
-                        # add to cb...
+                        # add the coorb_new to coorBb[ii] since coorb_new has the seeds from mindistancecurve_b
+                        coorBb[ii] += coorb_new.T
 
-                    # all the remaining seeds in coorb live on the component tri-mesh...
-                    coorb[ii] += cb
+                        # xyzb_new is the seed for the intersection seam node
+                        # instead of saving the array full of zeros, we just save the entry we know is nonzero
+                        curveProjb[curveName][ii] = xyzb_new.T[numpy.argmin(dist2)]
+
+                # all the remaining seeds in coorb live on the component tri-mesh...
+                coorb += cb
 
 
         # now we only have the intersection seam...
@@ -2152,6 +2220,14 @@ class CompIntersection(object):
                 intNodesb[ii] += cb.T
 
             curSeed += nNewNodes - 1
+
+        # add the contributions from the curve projection if we have any
+        for curveName,v in curveProjb.items():
+            # get the index
+            idx = self.seamDict[curveName]['projPtIndx']
+            for ii in range(N):
+                # add the contribution
+                intNodesb[ii,idx] += v[ii]
 
         dummyConn = numpy.zeros((0,4))
         barsConn = self.seamDict['barsConn']
