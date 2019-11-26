@@ -513,12 +513,8 @@ class DVGeometryMulti(object):
         internally and should not be changed by the user.
         """
 
-        # compute intersection jacobians if out of date
-        if not self.ICJupdated and self.intersectComps:
-            # this needs to be called with the full comm for the FD calcs to make any sense to do in parallel
-            self._computeICJacobian()
-
         # compute the total jacobian for this pointset
+        # TODO, we dont even need to do this
         self._computeTotalJacobian(ptSetName)
 
         # Make dIdpt at least 3D
@@ -552,14 +548,12 @@ class DVGeometryMulti(object):
 
         # We should keep track of the intersections that this pointset is close to. There is no point in including the intersections far from this pointset in the sensitivity calc as the derivative seeds will be just zeros there.
         ptSetICs = []
-        nSeams  = 0
+
         for IC in self.intersectComps:
             # This checks if we have any entries in the affected indices on this point set with this intersection
             if IC.points[ptSetName][1]:
                 # this pointset is affected by this intersection. save this info.
                 ptSetICs.append(IC)
-                # this keeps the cumulative number of nodes on the seams this point set is effected by
-                nSeams += len(IC.seam)
 
         # loop over the intersections
         for IC in ptSetICs:
@@ -1298,6 +1292,7 @@ class CompIntersection(object):
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
         seamBar = numpy.zeros((dIdPt.shape[0], self.seam0.shape[0], self.seam0.shape[1]))
+        # TODO we can vectorize the k-loop
         for k in range(dIdPt.shape[0]):
             for i in range(len(factors)):
 
@@ -2190,7 +2185,6 @@ class CompIntersection(object):
         # loop over each feature and propagate the sensitivities
         curInd = 0
         curSeed = 0
-        seam = numpy.zeros((0,3))
         for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewNodes = 10*self.nNodes[i]
@@ -2266,7 +2260,7 @@ class CompIntersection(object):
             compSens = {}
             # because the results are in a dictionary, we need to loop over the items and sum
             for k,v in compSens_local.items():
-                compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
+                compSens[k] = comm.allreduce(v, op=MPI.SUM)
         else:
             # we can just pass the dictionary
             compSens = compSens_local
