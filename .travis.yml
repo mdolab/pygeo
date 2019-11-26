@@ -12,14 +12,16 @@ services:
 before_install:
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:current
-- docker run -t -d --name app mdolab/public:current /bin/bash
+- docker run -t -d --name app mdolab/public:current
+        --mount "type=volume,src=$TRAVIS_HOME,target=/travis"
+        /bin/bash
 - docker ps -a
 
 install:
-- docker exec -it app -c "ls; pwd; rm -r $HOME/repos/pygeo;"
+- docker exec -it app /bin/bash -c "ls; pwd; rm -r $HOME/repos/pygeo;"
 
 script:
-- docker exec -it app-c "ls; pwd; cd $HOME/travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
+- docker exec -it app /bin/bash -c "ls; pwd; cd $HOME/travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
 
 after_script:
 - docker rm -f app
