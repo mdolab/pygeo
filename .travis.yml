@@ -12,9 +12,7 @@ services:
 before_install:
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:current
-- docker run -t -d --name app mdolab/public:current
-       --workdir="${home}"
-       /bin/bash
+- docker run -t -d --name app mdolab/public:current --volume="${home}:/travis" /bin/bash
 - docker ps -a
 
 install:
