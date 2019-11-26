@@ -16,10 +16,10 @@ before_install:
 - docker ps -a
 
 install:
-- docker exec app -it -c "ls; pwd; rm -r $HOME/repos/pygeo;"
+- docker exec -it app -c "ls; pwd; rm -r $HOME/repos/pygeo;"
 
 script:
-- docker exec app -it -c "ls; pwd; cd $HOME/travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
+- docker exec -it app-c "ls; pwd; cd $HOME/travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
 
 after_script:
 - docker rm -f app
