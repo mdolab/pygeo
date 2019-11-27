@@ -23,7 +23,7 @@ before_install:
 - docker pull mdolab/public:current
 - docker run -t -d 
         --name app
-        --mount "type=bind,src=$(pwd),target=/home/mdolabuser/travis-pygeo"
+        --mount "type=bind,src=$(pwd),target=/home/mdolabuser/pygeo"
         mdolab/public:current
         /bin/bash
 - docker ps -a
@@ -32,7 +32,7 @@ install:
 - docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo;"
 
 script:
-- docker exec -it app /bin/bash -c "echo $PYTHONPATH; cd travis-pygeo/reg_tests; python run_reg_tests.py -nodiff"
+- docker exec -it app /bin/bash -c "echo $PYTHONPATH; cd pygeo/reg_tests; python run_reg_tests.py -nodiff"
 
 after_script:
 - docker rm -f app
