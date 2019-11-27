@@ -32,7 +32,7 @@ install:
 - docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo;"
 
 script:
-- docker exec -it app /bin/bash -c "cd travis-pygeo/reg_tests; python run_reg_tests.py -nodiff"
+- docker exec -it app /bin/bash -c "echo $PYTHONPATH; cd travis-pygeo/reg_tests; python run_reg_tests.py -nodiff"
 
 after_script:
 - docker rm -f app
