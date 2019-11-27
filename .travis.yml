@@ -14,6 +14,7 @@ before_install:
 # Note that the 1000/1000 is the uid/gid in Docker, already pre-set
 - ls -ltr ../
 - sudo chown -R 1000:1000 .
+- sudo chmod 755 .
 - ls -ltr ../
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:current
