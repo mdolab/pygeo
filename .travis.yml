@@ -18,12 +18,12 @@ before_install:
 - sudo chmod -R 755 ../
 - ls -ltr ../
 - ls -ltr
+- pwd
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-- echo $HOME
 - docker pull mdolab/public:current
 - docker run -t -d 
         --name app
-        --mount "type=bind,src=$HOME,target=/home/mdolabuser/travis"
+        --mount "type=bind,src=$(pwd),target=/home/mdolabuser/travis"
         mdolab/public:current
         /bin/bash
 - docker ps -a
