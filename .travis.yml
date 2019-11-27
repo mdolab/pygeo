@@ -10,6 +10,9 @@ services:
 #- TEST_ENV=new-baseline
 
 before_install:
+# the chown makes the mount in Docker owned by the user.
+# Note that the 1000/1000 is the uid/gid in Docker, already pre-set
+- chown -R 1000:1000 $pwd
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:current
 - docker run -t -d 
