@@ -12,21 +12,21 @@ env:
 before_install:
 # the chown makes the mount in Docker owned by the user.
 # Note that the 1000/1000 is the uid/gid in Docker, already pre-set
-- sudo chown -R 1000:1000 ../
-- sudo chmod -R 755 ../
+#- sudo chown -R 1000:1000 ../
+#- sudo chmod -R 755 ../
 # login to Docker using Travis encrypted credentials
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:$DOCKER_TAG
 # run Docker, key is we mount the current Travis directory into Docker to access content of repo
 - docker run -t -d 
         --name app
-        --mount "type=bind,src=$(pwd),target=/home/mdolabuser/pygeo"
+        --mount "type=bind,src=$(pwd),target=/home/mdolabuser/travis/pygeo"
         mdolab/public:current
         /bin/bash
 
 install:
 # We thrown away the existing repo in Docker, and copy the new one in-place
-- docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo; ls -ltr /home/mdolabuser/; cp -r /home/mdolabuser/pygeo /home/mdolabuser/repos/pygeo"
+- docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo; ls -ltr /home/mdolabuser/; cp -r /home/mdolabuser/travis/pygeo /home/mdolabuser/repos/pygeo"
 # There are no build steps for this repo
 
 script:
