@@ -13,9 +13,11 @@ before_install:
 # the chown makes the mount in Docker owned by the user.
 # Note that the 1000/1000 is the uid/gid in Docker, already pre-set
 - ls -ltr ../
-- sudo chown -R 1000:1000 .
-- sudo chmod 755 .
+- ls -ltr
+- sudo chown -R 1000:1000 ../
+- sudo chmod -R 755 ../
 - ls -ltr ../
+- ls -ltr
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - docker pull mdolab/public:current
 - docker run -t -d 
@@ -29,7 +31,7 @@ install:
 - docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo;"
 
 script:
-- docker exec -it app /bin/bash -c "ls -ltr; pwd; cd /travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
+- docker exec -it app /bin/bash -c "ls -ltr; pwd; cd /home/mdolabuser/travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
 
 after_script:
 - docker rm -f app
