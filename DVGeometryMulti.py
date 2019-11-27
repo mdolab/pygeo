@@ -2203,7 +2203,7 @@ class CompIntersection(object):
                 newCoorb[:-1, :] = intBar[ii, curSeed:curSeed+nNewNodes-1, :]
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes,
+                _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
                                                             coor.T,
                                                             newCoorb.T,
                                                             barsConn.T + 1,
