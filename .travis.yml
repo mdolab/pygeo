@@ -29,7 +29,7 @@ before_install:
 - docker ps -a
 
 install:
-- docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo; ls -ltr /home/mdolabuser/; mv /home/mdolabuser/pygeo /home/mdolabuser/repos/pygeo"
+- docker exec -it app /bin/bash -c "rm -rf /home/mdolabuser/repos/pygeo; ls -ltr /home/mdolabuser/; cp -r /home/mdolabuser/pygeo /home/mdolabuser/repos/pygeo"
 
 script:
 - docker exec -it app /bin/bash -c ". \$HOME/.bashrc_mdolab; cd repos/pygeo/reg_tests; python run_reg_tests.py -nodiff"
