@@ -1814,9 +1814,10 @@ class CompIntersection(object):
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
         curInd = 0
         seam = numpy.zeros((0,3))
+        finalConn = numpy.zeros((0,2))
         for i in range(nFeature):
             # just use the same number of points *2 for now
-            nNewNodes = 10*self.nNodes[i]
+            nNewNodes = self.nNodes[i]
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
             curInd += curveSizes[i]
@@ -1839,7 +1840,14 @@ class CompIntersection(object):
 
             # add these n -resampled nodes back to back in seam and return a copy of the array
             # we don't need the connectivity info for now? we just need the coords
-            seam = numpy.vstack((seam, newCoor[:-1]))
+            # first increment the new connectivity by number of coordinates already in seam
+            newBarsConn += len(seam)
+
+            # now stack the nodes
+            seam = numpy.vstack((seam, newCoor))
+
+            # and the conn
+            finalConn = numpy.vstack((finalConn, newBarsConn))
 
         # save stuff to the dictionary for sensitivity computations...
         self.seamDict['intNodes'] = intNodes
@@ -1858,6 +1866,7 @@ class CompIntersection(object):
                 self.distFeature = {}
 
             remeshedCurves = numpy.zeros((0,3))
+            remeshedCurveConn = numpy.zeros((0,2))
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
@@ -1955,7 +1964,7 @@ class CompIntersection(object):
                 curveConnTrim = curveConn[elemBeg:elemEnd+1]
 
                 # remesh the new connectivity curve, using nNode*2 times nodes
-                nNewNodes = 20*self.nNodeFeature[curveName]
+                nNewNodes = self.nNodeFeature[curveName]
                 coor = curveComp.nodes
                 barsConn = curveConnTrim
                 method = 'linear'
@@ -1975,8 +1984,13 @@ class CompIntersection(object):
                 newCoor = newCoor.T
                 newBarsConn = newBarsConn.T - 1
 
+                # increment the connectivitiy data
+                newBarsConn += len(remeshedCurves)
+
                 # append this new curve to the featureCurve data
                 remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+
+                remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
 
                 if elemBeg > 0:
                     # also re-mesh the initial part of the curve, to prevent any negative volumes there
@@ -2018,7 +2032,19 @@ class CompIntersection(object):
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
             # which now contains the intersection, and re-meshed feature curves
+
+            # increment the conn from curves
+            remeshedCurveConn += len(seam)
+            # stack the nodes
             seam = numpy.vstack((seam, remeshedCurves))
+            # stack the conn
+            finalConn = numpy.vstack((finalConn, remeshedCurveConn))
+
+            # save the connectivity
+            self.seamConn = finalConn
+
+            # write to file to check
+            # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
 
         return seam.copy()
 
@@ -2187,7 +2213,7 @@ class CompIntersection(object):
         curSeed = 0
         for i in range(nFeature):
             # just use the same number of points *2 for now
-            nNewNodes = 10*self.nNodes[i]
+            nNewNodes = self.nNodes[i]
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
             curInd += curveSizes[i]
@@ -2196,11 +2222,8 @@ class CompIntersection(object):
             initialSpacing = 0.1
             finalSpacing = 0.1
 
-            # allocate newCoorb since we want to zero out the last element
-            newCoorb = numpy.zeros((nNewNodes, 3))
-
             for ii in range(N):
-                newCoorb[:-1, :] = intBar[ii, curSeed:curSeed+nNewNodes-1, :]
+                newCoorb = intBar[ii, curSeed:curSeed+nNewNodes, :]
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
                 _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
@@ -2213,7 +2236,7 @@ class CompIntersection(object):
                                                             finalSpacing)
                 intNodesb[ii] += cb.T
 
-            curSeed += nNewNodes - 1
+            curSeed += nNewNodes
 
         # add the contributions from the curve projection if we have any
         for curveName,v in curveProjb.items():
