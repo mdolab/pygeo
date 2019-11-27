@@ -14,7 +14,7 @@ before_install:
 - docker pull mdolab/public:current
 - docker run -t -d 
         --name app
-        --mount "type=volume,src=$HOME,target=/travis"
+        --mount "type=bind,src=$HOME,target=/travis"
         mdolab/public:current
         /bin/bash
 - docker ps -a
