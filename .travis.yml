@@ -19,6 +19,7 @@ before_install:
 - ls -ltr ../
 - ls -ltr
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+- echo $HOME
 - docker pull mdolab/public:current
 - docker run -t -d 
         --name app
