@@ -14,7 +14,7 @@ except ImportError:
 import numpy
 from scipy import sparse
 from mpi4py import MPI
-from pyspline import pySpline
+#from pyspline import pySpline
 from . import pyNetwork, pyBlock, geo_utils
 import pdb
 
