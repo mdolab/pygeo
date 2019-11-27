@@ -20,7 +20,7 @@ before_install:
 - docker ps -a
 
 install:
-- docker exec -it app /bin/bash -c "ls; pwd; ls /; ls /travis; rm -r /home/mdolabuser/repos/pygeo;"
+- docker exec -it app /bin/bash -c "echo "host" >> host.txt; ls -l; rm -rf /home/mdolabuser/repos/pygeo;"
 
 script:
 - docker exec -it app /bin/bash -c "ls; pwd; cd $HOME/travis/pygeo/reg_tests; python run_reg_tests.py -nodiff"
