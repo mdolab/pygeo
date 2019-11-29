@@ -1332,7 +1332,7 @@ class CompIntersection(object):
             delta[j] = factors[i]*delta[j] + (1-factors[i])*interp
 
         t1 = time.time()
-        print('Time required to warp %d points is %.4f seconds'%(len(factors), t1-t0))
+        print('Time required to warp %d points using %d line elements is %.4f seconds'%(len(factors), len(conn), t1-t0))
 
         return delta
 
