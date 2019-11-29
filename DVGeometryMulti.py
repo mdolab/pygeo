@@ -1373,9 +1373,21 @@ class CompIntersection(object):
         # Return the reverse accumulation of dIdpt on the seam
         # nodes. Also modifies the dIdp array accordingly.
 
+        # original coordinates of the added pointset
         pts     = self.points[ptSetName][0]
+        # indices of the points that get affected by this intersection
         indices = self.points[ptSetName][1]
+        # factors for each node in pointSet
         factors = self.points[ptSetName][2]
+
+        # coordinates for the remeshed curves
+        # we use the initial seam coordinates here
+        coor = self.seam0
+        # bar connectivity for the remeshed elements
+        conn = self.seamConn
+
+        # define an epsilon to avoid dividing by zero later on
+        eps = 1e-16
 
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
@@ -1384,9 +1396,11 @@ class CompIntersection(object):
         for k in range(dIdPt.shape[0]):
             for i in range(len(factors)):
 
-                # j is the index of the point in the full set we are
-                # working with.
+                # j is the index of the point in the full set we are working with.
                 j = indices[i]
+
+                # coordinates of the original point
+                rp = pts[j]
 
                 # This is the local seed (well the 3 seeds for the point)
                 localVal = dIdPt[k,j,:]*(1 - factors[i])
@@ -1394,14 +1408,39 @@ class CompIntersection(object):
                 # Scale the dIdpt by the factor..dIdpt is input/output
                 dIdPt[k,j,:] *= factors[i]
 
-                # Do it vectorized
-                rr = pts[j] - self.seam0
-                LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-                LdefoDist3 = LdefoDist**3
-                Wi = LdefoDist3
-                den = numpy.sum(Wi)
+                # get the two end points for the line elements
+                r0 = coor[conn[:,0]]
+                r1 = coor[conn[:,1]]
+                # compute a, b, and c coefficients
+                a = (r1[:,0]-r0[:,0])**2 + (r1[:,1]-r0[:,1])**2 + (r1[:,2]-r0[:,2])**2
+                b = 2 * ((r1[:,0]-r0[:,0])*(r0[:,0]-rp[0]) + (r1[:,1]-r0[:,1])*(r0[:,1]-rp[1]) + (r1[:,2]-r0[:,2])*(r0[:,2]-rp[2]))
+                c = (r0[:,0]-rp[0])**2 + (r0[:,1]-rp[1])**2 + (r0[:,2]-rp[2])**2
+                # distances for each element
+                dists = numpy.sqrt(numpy.maximum(a,0.0))
+
+                # compute some re-occurring terms
+                det = b*b - 4*a*c
+                sabc = numpy.sqrt(numpy.maximum(a+b+c, 0.0))
+                sc   = numpy.sqrt(numpy.maximum(c, 0.0))
+                # denominators on the integral evaluations
+                den1 = det*sabc - eps
+                den2 = det*sc - eps
+                # integral evaluations
+                eval1 = (-2*(2*a +b)/den1 + 2*b/den2)*dists
+                eval2 = ((2*b + 4*c)/den1 - 4*c/den2)*dists
+
+                # denominator only gets one integral
+                den = numpy.sum(eval1)
+
+                evalDiff = eval1-eval2
+
+                # do each direction separately
                 for iDim in range(3):
-                    seamBar[k, :, iDim] += Wi*localVal[iDim]/den
+                    # seeds for the r0 point
+                    seamBar[k, conn[:,0], iDim] += localVal[iDim] * evalDiff / den
+
+                    # seeds for the r1 point
+                    seamBar[k, conn[:,1], iDim] += localVal[iDim] * eval2 / den
 
         # seamBar is the bwd seeds for the intersection curve...
         # it is N,nseampt,3 in size
@@ -2302,6 +2341,7 @@ class CompIntersection(object):
         for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewElems = self.nElems[i]
+            nNewNodes = nNewElems+1
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
             curInd += curveSizes[i]
