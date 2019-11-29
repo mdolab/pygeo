@@ -1207,44 +1207,122 @@ class CompIntersection(object):
         """Update the delta in ptSetName with our correction. The delta need
         to be supplied as we will be changing it and returning them
         """
-        pts     = self.points[ptSetName][0]
-        indices = self.points[ptSetName][1]
-        factors = self.points[ptSetName][2]
-        seamDiff = self.seam - self.seam0
-        for i in range(len(factors)):
 
-            # j is the index of the point in the full set we are
-            # working with.
+        # original coordinates of the added pointset
+        pts     = self.points[ptSetName][0]
+        # indices of the points that get affected by this intersection
+        indices = self.points[ptSetName][1]
+        # factors for each node in pointSet
+        factors = self.points[ptSetName][2]
+
+        # coordinates for the remeshed curves
+        coor = self.seam
+        # bar connectivity for the remeshed elements
+        conn = self.seamConn
+        # deltas for each point (nNode, 3) in size
+        dr = self.seam - self.seam0
+
+        t0 = time.time()
+
+        eps = 1e-32
+
+        # loop over the points that get affected
+        for i in range(len(factors)):
+            # j is the index of the point in the full set we are working with.
             j = indices[i]
+
+            # coordinates of the original point
+            rp = pts[j]
 
             #Run the weighted interp:
             # num = numpy.zeros(3)
             # den = 0.0
-            # for k in range(len(seamDiff)):
-            #     rr = pts[j] - self.seam0[k]
-            #     LdefoDist = 1.0/numpy.sqrt(rr[0]**2 + rr[1]**2 + rr[2]**2+1e-16)
-            #     LdefoDist3 = LdefoDist**3
-            #     Wi = LdefoDist3
-            #     Si = seamDiff[k]
-            #     num = num + Wi*Si
-            #     den = den + Wi
+
+            # # we loop over elements and compute the elemnent-wise integral on each line
+            # for k in range(len(conn)):
+            #     # get the two end points for this line
+            #     r0 = coor[conn[k,0]]
+            #     r1 = coor[conn[k,1]]
+
+            #     # get the deltas for two end points
+            #     dr0 = dr[conn[k,0]]
+            #     dr1 = dr[conn[k,1]]
+
+            #     # compute a, b, and c coefficients
+            #     a = (r1[0]-r0[0])**2 + (r1[1]-r0[1])**2 + (r1[2]-r0[2])**2
+            #     b = 2 * ((r1[0]-r0[0])*(r0[0]-rp[0]) + (r1[1]-r0[1])*(r0[1]-rp[1]) + (r1[2]-r0[2])*(r0[2]-rp[2]))
+            #     c = (r0[0]-rp[0])**2 + (r0[1]-rp[1])**2 + (r0[2]-rp[2])**2
+
+            #     # compute some re-occurring terms
+            #     det = b*b - 4*a*c + 1e-32 # add an epsilon so that the determinant never becomes zero
+            #     sabc = numpy.sqrt(a+b+c)
+            #     sc   = numpy.sqrt(c)
+
+            #     # denominators on the integral evaluations
+            #     den1 = det*sabc
+            #     den2 = det*sc
+
+            #     # integral evaluations
+            #     eval1 = -2*(2*a +b)/den1 + 2*b/den2
+            #     eval2 = (2*b + 4*c)/den1 - 4*c/den2
+
+            #     # numerator gets two integrals with the delta components
+            #     num += (dr1-dr0) * eval2 + dr0 * eval1
+
+            #     # denominator only gets one integral
+            #     den += eval1
 
             # interp = num / den
 
             # Do it vectorized
-            rr = pts[j] - self.seam0
-            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-            LdefoDist3 = LdefoDist**3
-            Wi = LdefoDist3
-            den = numpy.sum(Wi)
+
+            # get the two end points for the line elements
+            r0 = coor[conn[:,0]]
+            r1 = coor[conn[:,1]]
+
+            # get the deltas for two end points
+            dr0 = dr[conn[:,0]]
+            dr1 = dr[conn[:,1]]
+
+            # compute a, b, and c coefficients
+            a = (r1[:,0]-r0[:,0])**2 + (r1[:,1]-r0[:,1])**2 + (r1[:,2]-r0[:,2])**2
+            b = 2 * ((r1[:,0]-r0[:,0])*(r0[:,0]-rp[0]) + (r1[:,1]-r0[:,1])*(r0[:,1]-rp[1]) + (r1[:,2]-r0[:,2])*(r0[:,2]-rp[2]))
+            c = (r0[:,0]-rp[0])**2 + (r0[:,1]-rp[1])**2 + (r0[:,2]-rp[2])**2
+
+            # compute some re-occurring terms
+            det = b*b - 4*a*c
+            # these might be negative 1e-20sth so clip them...
+            sabc = numpy.sqrt(numpy.maximum(a+b+c, 0.0))
+            sc   = numpy.sqrt(numpy.maximum(c, 0.0))
+
+            # denominators on the integral evaluations
+            # add an epsilon so that these terms never become zero
+            den1 = det*sabc + eps
+            den2 = det*sc + eps
+
+            # integral evaluations
+            eval1 = -2*(2*a +b)/den1 + 2*b/den2
+            eval2 = (2*b + 4*c)/den1 - 4*c/den2
+
+            # denominator only gets one integral
+            den = numpy.sum(eval1)
+
+            # do each direction separately
             interp = numpy.zeros(3)
             for iDim in range(3):
-                interp[iDim] = numpy.sum(Wi*seamDiff[:, iDim])/den
+                # numerator gets two integrals with the delta components
+                num = numpy.sum((dr1[:,iDim]-dr0[:,iDim]) * eval2 + dr0[:,iDim] * eval1)
+                # final result
+                interp[iDim] = num/den
 
             # Now the delta is replaced by 1-factor times the weighted
             # interp of the seam * factor of the original:
 
             delta[j] = factors[i]*delta[j] + (1-factors[i])*interp
+
+        t1 = time.time()
+
+        print('Time required to warp %d points is %.4f seconds'%(len(factors), t1-t0))
 
         return delta
 
@@ -1814,7 +1892,7 @@ class CompIntersection(object):
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
         curInd = 0
         seam = numpy.zeros((0,3))
-        finalConn = numpy.zeros((0,2))
+        finalConn = numpy.zeros((0,2), dtype='int32')
         for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewNodes = self.nNodes[i]
@@ -1866,7 +1944,7 @@ class CompIntersection(object):
                 self.distFeature = {}
 
             remeshedCurves = numpy.zeros((0,3))
-            remeshedCurveConn = numpy.zeros((0,2))
+            remeshedCurveConn = numpy.zeros((0,2), dtype='int32')
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
@@ -2040,11 +2118,11 @@ class CompIntersection(object):
             # stack the conn
             finalConn = numpy.vstack((finalConn, remeshedCurveConn))
 
-            # save the connectivity
-            self.seamConn = finalConn
+        # save the connectivity
+        self.seamConn = finalConn
 
-            # write to file to check
-            # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
+        # write to file to check
+        pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
 
         return seam.copy()
 
