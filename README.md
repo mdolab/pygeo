@@ -4,8 +4,9 @@ pyGeo
 ====================================================
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
-It provides a free form deformation based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
+It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
 
+![](images/DPW4_FFD-27745.gif)
 
 Documentation
 -------------
@@ -20,7 +21,7 @@ Citation
 --------
 
 Please cite pyGeo in any publication for which you find it useful.
-For more background, theory, and figures, see the [pyGeo journal article](http://mdolab.engin.umich.edu/sites/default/files/mao2010_final.pdf).
+For more background, theory, and figures, see the [this paper](http://mdolab.engin.umich.edu/sites/default/files/mao2010_final.pdf).
 
 G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
 
