@@ -1216,15 +1216,18 @@ class CompIntersection(object):
         factors = self.points[ptSetName][2]
 
         # coordinates for the remeshed curves
-        coor = self.seam
+        # we use the initial seam coordinates here
+        coor = self.seam0
         # bar connectivity for the remeshed elements
         conn = self.seamConn
         # deltas for each point (nNode, 3) in size
         dr = self.seam - self.seam0
 
-        t0 = time.time()
+        # define an epsilon to avoid dividing by zero later on
+        eps = 1e-16
 
-        eps = 1e-32
+        # time it!
+        t0 = time.time()
 
         # loop over the points that get affected
         for i in range(len(factors)):
@@ -1234,7 +1237,7 @@ class CompIntersection(object):
             # coordinates of the original point
             rp = pts[j]
 
-            #Run the weighted interp:
+            # Run the weighted interp:
             # num = numpy.zeros(3)
             # den = 0.0
 
@@ -1274,7 +1277,7 @@ class CompIntersection(object):
 
             # interp = num / den
 
-            # Do it vectorized
+            # Do it vectorized!
 
             # get the two end points for the line elements
             r0 = coor[conn[:,0]]
@@ -1289,20 +1292,29 @@ class CompIntersection(object):
             b = 2 * ((r1[:,0]-r0[:,0])*(r0[:,0]-rp[0]) + (r1[:,1]-r0[:,1])*(r0[:,1]-rp[1]) + (r1[:,2]-r0[:,2])*(r0[:,2]-rp[2]))
             c = (r0[:,0]-rp[0])**2 + (r0[:,1]-rp[1])**2 + (r0[:,2]-rp[2])**2
 
+            # distances for each element
+            dists = numpy.sqrt(numpy.maximum(a,0.0))
+
             # compute some re-occurring terms
+            # the determinant can be zero or negative, but it CANNOT be positive
+            # this is because the quadratic that defines the distance from the line cannot have two roots.
+            # if the point is on the line, the quadratic will have a single root...
             det = b*b - 4*a*c
             # these might be negative 1e-20sth so clip them...
+            # these will be strictly zero or greater than zero.
+            # Numerically, they cannot be negative bec. we are working with real numbers
             sabc = numpy.sqrt(numpy.maximum(a+b+c, 0.0))
             sc   = numpy.sqrt(numpy.maximum(c, 0.0))
 
             # denominators on the integral evaluations
             # add an epsilon so that these terms never become zero
-            den1 = det*sabc + eps
-            den2 = det*sc + eps
+            # det <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0
+            den1 = det*sabc - eps
+            den2 = det*sc - eps
 
             # integral evaluations
-            eval1 = -2*(2*a +b)/den1 + 2*b/den2
-            eval2 = (2*b + 4*c)/den1 - 4*c/den2
+            eval1 = (-2*(2*a +b)/den1 + 2*b/den2)*dists
+            eval2 = ((2*b + 4*c)/den1 - 4*c/den2)*dists
 
             # denominator only gets one integral
             den = numpy.sum(eval1)
@@ -1317,11 +1329,9 @@ class CompIntersection(object):
 
             # Now the delta is replaced by 1-factor times the weighted
             # interp of the seam * factor of the original:
-
             delta[j] = factors[i]*delta[j] + (1-factors[i])*interp
 
         t1 = time.time()
-
         print('Time required to warp %d points is %.4f seconds'%(len(factors), t1-t0))
 
         return delta
@@ -1887,7 +1897,7 @@ class CompIntersection(object):
 
         # copy the curveSizes for the first call
         if firstCall:
-            self.nNodes = curveSizes[:]
+            self.nElems = curveSizes[:]
 
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
         curInd = 0
@@ -1895,7 +1905,7 @@ class CompIntersection(object):
         finalConn = numpy.zeros((0,2), dtype='int32')
         for i in range(nFeature):
             # just use the same number of points *2 for now
-            nNewNodes = self.nNodes[i]
+            nNewNodes = self.nElems[i]+1
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
             curInd += curveSizes[i]
@@ -2032,7 +2042,7 @@ class CompIntersection(object):
                     self.distFeature[curveName] = distCurve
 
                     # also save how many nodes we have, we want 2 times this when re-meshing
-                    self.nNodeFeature[curveName] = nElem
+                    self.nNodeFeature[curveName] = nElem+1
 
                 else:
                     # figure out how many elements we need to go in this direction
@@ -2211,7 +2221,7 @@ class CompIntersection(object):
                 # loop over functions
                 for ii in range(N):
                     # Call Fortran code. Remember to adjust transposes and indices
-                    _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes,
+                    _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
                                                                   coor.T,
                                                                   newCoorb[ii].T,
                                                                   barsConn.T + 1,
@@ -2278,7 +2288,7 @@ class CompIntersection(object):
 
 
         # now we only have the intersection seam...
-        nFeature = len(self.nNodes)
+        nFeature = len(self.nElems)
         intNodes = self.seamDict['intNodes']
         seamConn = self.seamDict['seamConn']
         curveSizes = self.seamDict['curveSizes']
@@ -2291,7 +2301,7 @@ class CompIntersection(object):
         curSeed = 0
         for i in range(nFeature):
             # just use the same number of points *2 for now
-            nNewNodes = self.nNodes[i]
+            nNewElems = self.nElems[i]
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
             curInd += curveSizes[i]
@@ -2304,7 +2314,7 @@ class CompIntersection(object):
                 newCoorb = intBar[ii, curSeed:curSeed+nNewNodes, :]
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
+                _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewElems,
                                                             coor.T,
                                                             newCoorb.T,
                                                             barsConn.T + 1,
