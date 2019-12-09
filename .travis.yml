@@ -1,0 +1,12 @@
+language: python
+
+services:
+  - docker
+
+install: skip
+
+before_script:
+- docker pull benjaminbrelje/mdolabfull:latest
+
+script:
+- bash run_tests.bash
