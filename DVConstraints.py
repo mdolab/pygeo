@@ -440,7 +440,6 @@ class DVConstraints(object):
 
         f.close()
 
-
     def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
                                   lower=1.0, upper=3.0, scaled=True, scale=1.0,
                                   name=None, addToPyOpt=True):
@@ -717,6 +716,157 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
+
+    def addLERadiusConstraints(self, leList, nSpan, axis,
+                               lower=1.0, upper=3.0, scaled=True,
+                               scale=1.0, name=None,
+                               addToPyOpt=True):
+        """
+        Add a set of thickness constraints oriented along a poly-line.
+
+        See below for a schematic
+
+        .. code-block:: text
+
+          Planform view of the wing: The '+' are the (three dimensional)
+          points that are supplied in leList:
+
+          Physical extent of wing
+                                   \
+          __________________________\_________
+          |                  +               |
+          |                -/                |
+          |                /                 |
+          | +-------+-----+                  |
+          |              4-points defining   |
+          |              poly-line           |
+          |                                  |
+          |__________________________________/
+
+
+        Parameters
+        ----------
+        leList : list or array of size (N x 3) where N >=2
+            The list of points forming a poly-line along which the
+            thickness constraints will be added.
+
+        nSpan : int
+            The number of thickness constraints to add
+
+        axis : list or array of length 3
+            The direction along which the up-down projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+
+        lower : float or array of size nSpan
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        upper : float or array of size nSpan
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial length of each thickness
+              constraint is defined to be 1.0. In this case, the lower
+              and upper bounds are given in multiple of the initial
+              length. lower=0.85, upper=1.15, would allow for 15%
+              change in each direction from the original length. For
+              aerodynamic shape optimizations, this option is used
+              most often.
+
+            * scaled=False: No scaling is applied and the phyical lengths
+              must be specified for the lower and upper bounds.
+
+        scale : float or array of size nSpan
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the thickness constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value of the resulting physical
+            thickness have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constriant names
+            need to be distinguished **or** you are using this set of
+            thickness constraints for something other than a direct
+            constraint in pyOptSparse.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) BEFORE they are
+            given to the optimizer, set this flag to False.
+        """
+        self._checkDVGeo()
+
+        # Create mesh of itersections
+        constr_line = pySpline.Curve(X=leList, k=2)
+        s = numpy.linspace(0, 1, nSpan)
+        X = constr_line(s)
+        coords = numpy.zeros((nSpan, 3, 3))
+
+        # Project all the points
+        for i in range(nSpan):
+            # Project actual node:
+            up, down, fail = geo_utils.projectNode(
+                X[i], axis, self.p0, self.v1, self.v2)
+            if fail > 0:
+                raise Error("There was an error projecting a node "
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
+                                X[i, 0], X[i, 1], X[i, 2],
+                                axis[0], axis[1], axis[2]))
+            coords[i, 0] = up
+            coords[i, 1] = down
+
+        # Calculate mid-points
+        midPts = (coords[:,0,:] + coords[:,1,:]) / 2.0
+
+        # Project to get leading edge point
+        lePts = numpy.zeros((nSpan, 3))
+        streamwise = numpy.array([-1.0, 0, 0])
+        for i in range(nSpan):
+            # Project actual node:
+            up, down, fail = geo_utils.projectNode(
+                X[i], streamwise, self.p0, self.v1, self.v2)
+            if fail > 0:
+                raise Error("There was an error projecting a node "
+                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
+                                X[i, 0], X[i, 1], X[i, 2],
+                                streamwise[0], streamwise[1], streamwise[2]))
+            lePts[i] = up
+
+        # Check that points can form radius
+        d = numpy.linalg.norm(coords[:,0,:] - coords[:,1,:], axis=1)
+        r = numpy.linalg.norm(midPts - lePts, axis=1)
+        for i in range(nSpan):
+            if d[i] < 2*r[i]:
+                raise Error("Leading edge radius points are too far from the "
+                            "leading edge point to form a circle between the "
+                            "three points.")
+
+        # Add leading edge points and stack points into shape accepted by DVGeo
+        coords[:,2,:] = lePts
+        coords = numpy.vstack((coords[:,0,:], coords[:,1,:], coords[:,2,:]))
+
+        # Create the thickness constraint object
+        typeName = 'radiusCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = '%s_leradius_constraints_%d'%(self.name,len(self.constraints[typeName]))
+        else:
+            conName = name
+        self.constraints[typeName][conName] = RadiusConstraint(
+            conName, coords, lower, upper, scaled, scale, self.DVGeo,
+            addToPyOpt)
+
 
     def addLocationConstraints1D(self, ptList, nCon,lower=None, upper=None,
                                  scaled=False, scale=1.0, name=None,
@@ -2562,6 +2712,180 @@ class ThicknessConstraint(GeometricConstraint):
 
         for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
+
+class RadiusConstraint(GeometricConstraint):
+    """
+    DVConstraints representation of a set of radius of curvature
+    constraints. One of these objects is created each time a
+    addLERadiusConstraints call is made. The user should not have
+    to deal with this class directly.
+    """
+
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
+                 addToPyOpt):
+        self.name = name
+        self.coords = coords
+        self.nCon = len(self.coords)//3
+        self.lower = lower
+        self.upper = upper
+        self.scaled = scaled
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+
+        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
+                                     self.upper, self.scale, self.DVGeo,
+                                     self.addToPyOpt)
+
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name)
+
+        # Now get the reference lengths
+        self.r0, self.c0 = self.computeCircle(self.coords)
+
+    def computeCircle(self, coords):
+        p1 = coords[:self.nCon]
+        p2 = coords[self.nCon:self.nCon*2]
+        p3 = coords[self.nCon*2:]
+
+        # Compute origin and unit vectors (xi, eta) of 2d space
+        origin = (p1 + p2) / 2.0
+        nxi = p1 - origin
+        neta = p3 - origin
+        for i in range(self.nCon):
+            nxi[i] /= geo_utils.euclideanNorm(nxi[i])
+            neta[i] /= geo_utils.euclideanNorm(neta[i])
+
+        # Compute component of eta in the xi direction
+        eta_on_xi = numpy.einsum('ij,ij->i', nxi, neta)
+        xi_of_eta = numpy.einsum('ij,i->ij', nxi, eta_on_xi)
+
+        # Remove component of eta in the xi direction
+        neta = neta - xi_of_eta
+        for i in range(self.nCon):
+            neta[i] /= geo_utils.euclideanNorm(neta[i])
+
+        # Compute xi component of p1, p2, and p3
+        xi1 = numpy.einsum('ij,ij->i', p1 - origin, nxi)
+        xi2 = numpy.einsum('ij,ij->i', p2 - origin, nxi)
+        xi3 = numpy.einsum('ij,ij->i', p3 - origin, nxi)
+
+        # Compute eta component of p1, p2, and p3
+        eta1 = numpy.einsum('ij,ij->i', p1 - origin, neta)
+        eta2 = numpy.einsum('ij,ij->i', p2 - origin, neta)
+        eta3 = numpy.einsum('ij,ij->i', p3 - origin, neta)
+
+        # Compute the radius of curvature
+        A = xi1*(eta2 - eta3) - eta1*(xi2 - xi3) + xi2*eta3 - xi3*eta2
+        B = (xi1**2 + eta1**2)*(eta3 - eta2) + (xi2**2 + eta2**2)*(eta1 - eta3) \
+            + (xi3**2 + eta3**2)*(eta2 - eta1)
+        C = (xi1**2 + eta1**2)*(xi2 - xi3) + (xi2**2 + eta2**2)*(xi3 - xi1) \
+            +  (xi3**2 + eta3**2)*(xi1 - xi2)
+        D = (xi1**2 + eta1**2)*(xi3*eta2 - xi2*eta3) \
+            + (xi2**2 + eta2**2)*(xi1*eta3 - xi3*eta1) \
+            + (xi3**2 + eta3**2)*(xi2*eta1 - xi1*eta2)
+
+        xiC = -B / 2 / A
+        etaC = -C / 2 / A
+        r = numpy.sqrt((B**2 + C**2 - 4*A*D) / 4 / A**2)
+
+        # Convert center coordinates back
+        center = origin + nxi*xiC[:,None] + neta*etaC[:,None]
+
+        return r, center
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.coords = self.DVGeo.update(self.name, config=config)
+        r, c = self.computeCircle(self.coords)
+        if self.scaled:
+            r /= self.r0
+        funcs[self.name] = r
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            # This is the sensitivity of the radius of curvature w.r.t. the
+            # coordinates of each of the three points that make it up
+            # row 0: dr0dp0x dr0dp0y dr0dp0z dr0dp1x dr0dp1y dr0dp1z dr0dp2x ...
+            # row 1: dr1dp0x dr1dp0y dr1dp0z dr1dp1x dr1dp1y dr1dp1z dr1dp2x ...
+            # :
+            drdPt = numpy.zeros((self.nCon, 9))
+
+            coords = self.coords.astype('D')
+            for i in range(3): # loop over pts at given slice
+                for j in range(3): # loop over coordinates in pt
+                    print(i*self.nCon, (i+1)*self.nCon)
+                    coords[i*self.nCon:(i+1)*self.nCon,j] += 1e-40j
+                    r, c = self.computeCircle(coords)
+
+                    drdPt[:,i*3+j] = r.imag / 1e-40
+                    coords[i*self.nCon:(i+1)*self.nCon,j] -= 1e-40j
+
+            # We now need to convert to the 3d sparse matrix form of the jacobian.
+            # We need the derivative of each radius w.r.t. all of the points
+            # in coords w.r.t. all of the coordinates for a given point.
+            # So the final matrix dimensions are (ncon, ncon*3, 3)
+
+            # We also have to scale the sensitivities if scale is True.
+            if self.scaled:
+                eye = numpy.diag(1/self.r0)
+            else:
+                eye = numpy.eye(self.nCon)
+            drdPt_sparse = numpy.einsum('ij,jk->ijk', eye, drdPt)
+            drdPt_sparse = drdPt_sparse.reshape(self.nCon, self.nCon*3, 3)
+            drdPt_sparse = numpy.hstack([
+                drdPt_sparse[:,::3,:],
+                drdPt_sparse[:,1::3,:],
+                drdPt_sparse[:,2::3,:],
+            ])
+
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(
+                drdPt_sparse, self.name, config=config)
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+        r, c = self.computeCircle(self.coords)
+
+        nres = 50
+        theta = numpy.linspace(0, 2*numpy.pi, nres+1)[:-1]
+        handle.write('Zone T=%s\n'% self.name)
+        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
+            self.nCon*nres, self.nCon*nres))
+        handle.write('DATAPACKING=POINT\n')
+        for i in range(self.nCon):
+            x = c[i,0] + r[i]*numpy.cos(theta)
+            y = c[i,1] * numpy.ones(nres)
+            z = c[i,2] + r[i]*numpy.sin(theta)
+
+            for j in range(nres):
+                handle.write('%f %f %f\n'% (x[j], y[j], z[j]))
+
+        for i in range(self.nCon):
+            for j in range(nres):
+                handle.write('%d %d\n'% (i*nres + j + 1, i*nres + (j+1)%nres + 1))
 
 class LocationConstraint(GeometricConstraint):
     """
