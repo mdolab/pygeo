@@ -2129,11 +2129,16 @@ class DVGeometry(object):
         # Loop through design variables
         count = 0
         for key in dvDict:
-            if key in self.DV_listLocal or key in self.DV_listSectionLocal:
+            if key in self.DV_listLocal:
                 if not includeLocal:
                     continue
                 lower = self.DV_listLocal[key].lower
                 upper = self.DV_listLocal[key].upper
+            elif key in self.DV_listSectionLocal:
+                if not includeLocal:
+                    continue
+                lower = self.DV_listSectionLocal[key].lower
+                upper = self.DV_listSectionLocal[key].upper
             elif key in self.DV_listGlobal:
                 lower = self.DV_listGlobal[key].lower
                 upper = self.DV_listGlobal[key].upper
