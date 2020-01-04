@@ -42,9 +42,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
-        ni = 0
-        for k in d_inputs:
-            ni+=1
+        ni = len(list(d_inputs.keys()))
 
         if mode == 'rev' and ni > 0:
             for ptSetName in self.DVGeo.ptSetNames:
