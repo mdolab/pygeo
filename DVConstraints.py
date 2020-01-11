@@ -3082,7 +3082,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         # running setSurface()
 
         # check if the first mesh has a DVGeo, and if it does, update the points
-        if self.DVGeo1 is not None:            
+        
+        if MPI.COMM_WORLD.rank == 0:
+	    print('Point updates')
+	if self.DVGeo1 is not None:            
             self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
             self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
             self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
@@ -3243,6 +3246,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if not self.useGPU and self.mpi:
             # use MPI execution
             comm = MPI.COMM_WORLD
+            if comm.rank == 0:
+                print('Distributed mode pre intersection')
         else:
             comm = None
         perim_length, pairwise, grad_perim = moller_intersect_tf(self.surf1_p0, self.surf1_p1, self.surf1_p2,
@@ -3271,6 +3276,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if self.two_constraints or not self.perim_length > 0:
             # if the surfaces don't intersect, run the KS distance function
 
+            if comm.rank == 0:
+                print('Pre mindist')
             KS, min_sd, grad_KS, rho_c = mindist(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                                                 self.surf2_p0, self.surf2_p1, self.surf2_p2, dist_tol=self.dist_tol,
                                                 adapt_rho=self.adapt_rho, rho_c=self.rho_c,
