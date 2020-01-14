@@ -3233,7 +3233,7 @@ class VolumeConstraint(GeometricConstraint):
         p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
         V = 0.0
         V += self.volpym(x0, x1, x3, x2, p)
-        V += self.volpym(x0, x2, x4, x6, p)
+        V += self.volpym(x0, x2, x6, x4, p)
         V += self.volpym(x0, x4, x5, x1, p)
         V += self.volpym(x1, x5, x7, x3, p)
         V += self.volpym(x2, x3, x7, x6, p)
@@ -3277,7 +3277,7 @@ class VolumeConstraint(GeometricConstraint):
         p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
         pb = numpy.zeros(3)
         self.volpym_b(x0, x1, x3, x2, p, x0b, x1b, x3b, x2b, pb)
-        self.volpym_b(x0, x2, x4, x6, p, x0b, x2b, x4b, x6b, pb)
+        self.volpym_b(x0, x2, x6, x4, p, x0b, x2b, x6b, x4b, pb)
         self.volpym_b(x0, x4, x5, x1, p, x0b, x4b, x5b, x1b, pb)
         self.volpym_b(x1, x5, x7, x3, p, x1b, x5b, x7b, x3b, pb)
         self.volpym_b(x2, x3, x7, x6, p, x2b, x3b, x7b, x6b, pb)
