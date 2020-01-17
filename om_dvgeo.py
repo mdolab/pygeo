@@ -4,23 +4,26 @@ from mpi4py import MPI
 
 # class that actually calls the dvgeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
+
     def initialize(self):
+
         self.options.declare('DVGeo', allow_none=False)
         self.options['distributed'] = True
+
     def setup(self):
+
+        # set the DVGeo object that does the computations
         self.DVGeo = self.options['DVGeo']
 
     def compute(self, inputs, outputs):
-        DVGeo = self.DVGeo
 
         # inputs are the geometric design variables
-        DVGeo.setDesignVars(inputs)
-        # print(inputs['twist'])
+        self.DVGeo.setDesignVars(inputs)
 
         # ouputs are the coordinates of the pointsets we have
-        for ptSet in DVGeo.points:
+        for ptSet in self.DVGeo.points:
             # update this pointset and write it as output
-            outputs[ptSet] = DVGeo.update(ptSet).flatten()
+            outputs[ptSet] = self.DVGeo.update(ptSet).flatten()
 
     def addPointSet(self, points, ptName, **kwargs):
         # add the points to the dvgeo object
@@ -28,38 +31,39 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add an output to the om component
         self.add_output(ptName, val=points.flatten())
-        # print(points.shape)
 
-        # TODO check if we need to flatten the points
-
-    def addGeoDVGlobal(self, dvName, value, **kwargs):
+    def addGeoDVGlobal(self, dvName, value, func):
         # define the input
         self.add_input(dvName, shape=value.shape)
 
         # call the dvgeo object and add this dv
-        self.DVGeo.addGeoDVGlobal(dvName, value, **kwargs)
-
+        self.DVGeo.addGeoDVGlobal(dvName, value, func)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-        DVGeo = self.DVGeo
 
-        if mode == 'rev':
-            print(DVGeo.ptSetNames)
-            for ptSetName in DVGeo.ptSetNames:
+        # only do the computations when we have more than zero entries in d_inputs in the reverse mode
+        ni = len(list(d_inputs.keys()))
+
+        if mode == 'rev' and ni > 0:
+            for ptSetName in self.DVGeo.ptSetNames:
                 dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName])//3, 3)
-                xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
+                xdot = self.DVGeo.totalSensitivityTransProd(dout, ptSetName)
 
-                # TODO
-                # reduce the result. ideally we want to do this in the dvgeocomp
-                xdotg = self.comm.allreduce(xdot, op=MPI.SUM)
+                # loop over dvs and accumulate
+                xdotg = {}
+                for k in xdot:
+                    # check if this dv is present
+                    if k in d_inputs:
+                        # do the allreduce
+                        # TODO reove the allreduce when this is fixed in openmdao
+                        # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
+                        xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
 
-                print("[%d] called jacbec product"%self.comm.rank)
-                if 'twist' in d_inputs:
-                    print("[%d] twist in d_inputs"%self.comm.rank)
-                    d_inputs['twist'] += xdotg['twist']
+                        # accumulate in the dict
+                        d_inputs[k] += xdotg[k]
 
-# a group to contain the des_vars and dvgeocomp
 class OM_DVGEO(om.Group):
+    # a group to contain the des_vars and dvgeocomp
 
     def initialize(self):
         # define the geoOpts to take in all the options we need
@@ -67,10 +71,9 @@ class OM_DVGEO(om.Group):
         self.options.declare('geoOpts', allow_none=False)
 
     def setup(self):
+
         # add an indepvarcomp to contain the design variables
         des_vars = self.add_subsystem('des_vars', om.IndepVarComp())
-        # just add a dummy output
-        des_vars.add_output('foo', val=1)
 
         # get options and make all lowercase
         geoOpts = self.options['geoOpts']
@@ -94,19 +97,22 @@ class OM_DVGEO(om.Group):
         # we just pass this through
         return self.DVGeo.addRefAxis(**kwargs)
 
-    def addGeoDVGlobal(self, dvName, value, **kwargs):
-        # we need to add the dv as output to the indepvar comp,
-        # input to the dvgeocomp
-        # and actually call the dvgeocomp routine to add the design variable
+    def addGeoDVGlobal(self, dvName, value, func, active_dv=True, **kwargs):
 
         # first add the output to the indepvarcomp
         self.des_vars.add_output(dvName, shape=value.shape, val=value)
 
         # call the dvgeocomp to add this dv
-        self.dvgeocomp.addGeoDVGlobal(dvName, value, **kwargs)
+        self.dvgeocomp.addGeoDVGlobal(dvName, value, func)
 
         # now connect the two
         self.connect('des_vars.%s'%dvName, 'dvgeocomp.%s'%dvName)
+
+        if active_dv:
+            self.add_design_var('des_vars.%s'%dvName, **kwargs)
+
+    def addRefAxis(self, name, **kwargs):
+        return self.DVGeo.addRefAxis(name, **kwargs)
 
 
 
