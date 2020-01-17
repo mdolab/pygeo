@@ -2183,7 +2183,7 @@ class CompIntersection(object):
         self.seamConn = finalConn
 
         # write to file to check
-        pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
+        # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
 
         return seam.copy()
 
