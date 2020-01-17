@@ -65,7 +65,7 @@ class DVGeometryMulti(object):
         # flag to keep track of IC jacobians
         self.ICJupdated = False
 
-    def addComponent(self, comp, ffdFile, triMesh=None, scale=1.0):
+    def addComponent(self, comp, ffdFile, triMesh=None, scale=1.0, bbox={}):
         """
         Method to add components to the DVGeometryMulti object.
         Returns the DVGeo object for this component
@@ -92,8 +92,19 @@ class DVGeometryMulti(object):
         # we will need the bounding box information later on, so save this here
         xMin, xMax = DVGeo.FFD.getBounds()
 
-        # TODO also we might want to modify the bounding box
-        # provide the option for this and adjust as necessary
+        # also we might want to modify the bounding box if the user specified any coordinates
+        if 'xmin' in bbox:
+            xMin[0] = bbox['xmin']
+        if 'ymin' in bbox:
+            xMin[1] = bbox['ymin']
+        if 'zmin' in bbox:
+            xMin[2] = bbox['zmin']
+        if 'xmax' in bbox:
+            xMax[0] = bbox['xmax']
+        if 'ymax' in bbox:
+            xMax[1] = bbox['ymax']
+        if 'zmax' in bbox:
+            xMax[2] = bbox['zmax']
 
         # initialize the component object
         self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn, xMin, xMax)
@@ -1224,7 +1235,7 @@ class CompIntersection(object):
         dr = self.seam - self.seam0
 
         # define an epsilon to avoid dividing by zero later on
-        eps = 1e-16
+        eps = 1e-50# 1e-32
 
         # time it!
         t0 = time.time()
@@ -1330,6 +1341,7 @@ class CompIntersection(object):
             # Now the delta is replaced by 1-factor times the weighted
             # interp of the seam * factor of the original:
             delta[j] = factors[i]*delta[j] + (1-factors[i])*interp
+            # delta[j] = interp
 
         t1 = time.time()
         print('Time required to warp %d points using %d line elements is %.4f seconds'%(len(factors), len(conn), t1-t0))
@@ -1387,7 +1399,7 @@ class CompIntersection(object):
         conn = self.seamConn
 
         # define an epsilon to avoid dividing by zero later on
-        eps = 1e-16
+        eps = 1e-50
 
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
