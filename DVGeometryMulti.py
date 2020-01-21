@@ -587,7 +587,13 @@ class DVGeometryMulti(object):
         dIdx_local = dIdxT_local.T
 
         if comm: # If we have a comm, globaly reduce with sum
+            comm.Barrier()
+            print('[%d] before allreduce dIdx =', dIdx_local)
+            comm.Barrier()
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+            comm.Barrier()
+            print('[%d] after  allreduce dIdx =', dIdx_local)
+            comm.Barrier()
         else:
             dIdx = dIdx_local
 
@@ -598,16 +604,21 @@ class DVGeometryMulti(object):
             DVGeo = self.comps[comp].DVGeo
             nDVComp = DVGeo.getNDV()
 
-            # this part of the sensitivity matrix is owned by this dvgeo
-            dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:,dvOffset:dvOffset+nDVComp])
+            print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
+            # print('[%d] dIdx shape:'%self.comm.rank, dIdx.shape)
 
-            # add the component names in front of the dictionary keys
-            for k,v in dIdxComp.items():
-                dvName = '%s:%s'%(comp,k)
-                dIdxDict[dvName] = v
+            # we only do this if this component has at least one DV
+            if nDVComp > 0:
+                # this part of the sensitivity matrix is owned by this dvgeo
+                dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:,dvOffset:dvOffset+nDVComp])
 
-            # also increment the offset
-            dvOffset += nDVComp
+                # add the component names in front of the dictionary keys
+                for k,v in dIdxComp.items():
+                    dvName = '%s:%s'%(comp,k)
+                    dIdxDict[dvName] = v
+
+                # also increment the offset
+                dvOffset += nDVComp
 
         # finally, we can add the contributions from triangulated component meshes
         for compSens in compSensList:
@@ -2131,7 +2142,7 @@ class CompIntersection(object):
 
                 remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
 
-                if elemBeg > 0:
+                # if elemBeg > 0:
                     # also re-mesh the initial part of the curve, to prevent any negative volumes there
                     # curveConnTrim = curveConn[:elemBeg]
 
@@ -2157,8 +2168,10 @@ class CompIntersection(object):
                     # newBarsConn = newBarsConn.T - 1
                     # remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
 
+                if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
-                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave
+                    # print('putting it back in fwd pass')
+                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave[:]
 
                 # save some info for gradient computations later on
                 self.seamDict[curveName]['nNewNodes'] = nNewNodes
@@ -2292,7 +2305,7 @@ class CompIntersection(object):
                     cb[:,0:1,:] = numpy.zeros((N,1,3))
 
                     # put the modified initial and final points back in place.
-                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave
+                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave[:]
 
                     # we need to call the curve projection routine to propagate the seed...
                     intNodesOrd = self.seamDict[curveName]['intNodesOrd']
