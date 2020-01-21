@@ -604,11 +604,12 @@ class DVGeometryMulti(object):
             DVGeo = self.comps[comp].DVGeo
             nDVComp = DVGeo.getNDV()
 
-            print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
+            print('[%d] full dIdx:'%(self.comm.rank), dIdx)
             # print('[%d] dIdx shape:'%self.comm.rank, dIdx.shape)
 
             # we only do this if this component has at least one DV
             if nDVComp > 0:
+                print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
                 # this part of the sensitivity matrix is owned by this dvgeo
                 dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:,dvOffset:dvOffset+nDVComp])
 
