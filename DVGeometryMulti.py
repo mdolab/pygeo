@@ -523,6 +523,12 @@ class DVGeometryMulti(object):
         The ``child`` and ``nDVStore`` options are only used
         internally and should not be changed by the user.
         """
+        if comm:
+            commPresent = True
+        else:
+            commPresent = False
+
+        print('[%d] called totalSensitivity with comm:'%self.comm.rank, commPresent)
 
         # compute the total jacobian for this pointset
         # TODO, we dont even need to do this
@@ -551,6 +557,8 @@ class DVGeometryMulti(object):
 
         # do the transpose multiplication
 
+        print('[%d] finished project_b'%self.comm.rank)
+
         # get the pointset
         ptSet = self.points[ptSetName]
 
@@ -574,6 +582,8 @@ class DVGeometryMulti(object):
             # save the sensitivities from the intersection stuff
             compSensList.append(compSens)
 
+        print('[%d] finished IC.sens'%self.comm.rank)
+
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
 
@@ -587,11 +597,9 @@ class DVGeometryMulti(object):
         dIdx_local = dIdxT_local.T
 
         if comm: # If we have a comm, globaly reduce with sum
-            comm.Barrier()
             print('[%d] before allreduce dIdx =', dIdx_local)
             comm.Barrier()
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
-            comm.Barrier()
             print('[%d] after  allreduce dIdx =', dIdx_local)
             comm.Barrier()
         else:
