@@ -117,13 +117,13 @@ class DVGeometryMulti(object):
 
         return DVGeo
 
-    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False, marchDir=1, includeCurves=False, intDir = None):
+    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False, marchDir=1, includeCurves=False, intDir = None, curveEpsDict={}):
         """
         Method that defines intersections between components
         """
 
         # just initialize the intersection object
-        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project, marchDir, includeCurves, intDir))
+        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project, marchDir, includeCurves, intDir, curveEpsDict))
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
@@ -998,7 +998,7 @@ class PointSet(object):
         self.compMapFlat = OrderedDict()
 
 class CompIntersection(object):
-    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project, marchDir, includeCurves, intDir):
+    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project, marchDir, includeCurves, intDir, curveEpsDict):
         '''Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
@@ -1027,6 +1027,23 @@ class CompIntersection(object):
         # same communicator with DVGeo
         self.comm = DVGeo.comm
 
+        # counter for outputting curves etc at each update
+        self.counter = 0
+
+        # tolerance used for each curve when mapping nodes to curves
+        self.curveEpsDict = curveEpsDict
+
+        # beginning and end element indices for each curve
+        self.seamBeg = {}
+        self.seamEnd = {}
+
+        # indices of nodes to be projected to curves.
+        self.curveProjIdx = {}
+
+        # indices of surface points on comp that will be warped
+        # self.surfaceWarpIdx = {}
+
+        self.curveWarpIdx = {}
 
         # names of compA and compB must be provided
         self.compA = DVGeo.comps[compA]
@@ -1232,6 +1249,140 @@ class CompIntersection(object):
                     'ind' : indB
                 },
             }
+
+            # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
+            if self.incCurves:
+
+                indices = numpy.array(indices)
+
+                # first, get the coordinates of all points affected by this intersection
+                ptsToCurves = pts[indices]
+
+                # project these to the combined curves
+                # use Ney's fortran code to project the point on curve
+                # Get number of points
+                nPoints = len(ptsToCurves)
+
+                # Initialize references if user provided none
+                dist2 = numpy.ones(nPoints)*1e10
+                xyzProj = numpy.zeros((nPoints,3))
+                tanProj = numpy.zeros((nPoints,3))
+                elemIDs = numpy.zeros((nPoints),dtype='int32')
+
+                # only call the fortran code if we have at least one point
+                if nPoints > 0:
+                    # Call fortran code
+                    # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
+                    # Remember that we should adjust some indices before calling the Fortran code
+                    # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
+                    elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(ptsToCurves.T,
+                                                                            self.seam0.T,
+                                                                            self.seamConn.T + 1,
+                                                                            xyzProj.T,
+                                                                            tanProj.T,
+                                                                            dist2,
+                                                                            elemIDs)
+
+                    # Adjust indices back to Python standards
+                    elemIDs[:] = elemIDs - 1
+
+                # dist2 has the array of squared distances
+                d = numpy.sqrt(dist2)
+
+
+                # now loop over feature curves and use the epsilon that each curve has to determine which points maps to where...
+
+                # get the names of all curves including the intersection
+                allCurves = ['intersection']
+                for curveName in self.featureCurveNames:
+                    allCurves.append(curveName)
+
+                # track the points that dont get associated with any curve
+                # get a full masking array with zeros
+                allNodesBool = numpy.zeros(len(elemIDs))
+
+                # dict to save the pt indices
+                self.curveProjIdx[ptSetName] = {}
+
+                for curveName in allCurves:
+
+                    # get the epsilon for this curve
+                    eps = self.curveEpsDict[curveName]
+
+                    # also get the range of element IDs this curve owns
+                    seamBeg = self.seamBeg[curveName]
+                    seamEnd = self.seamEnd[curveName]
+
+                    # get the boolean array
+                    curveBool = numpy.all( [ d<eps , elemIDs >= seamBeg  , elemIDs < seamEnd ], axis=0)
+
+                    # now, get the indices of the points mapped to this element
+                    idxs= numpy.nonzero(curveBool)
+                    # print(idxs)
+
+                    # and the coordinates
+                    ptCoords = ptsToCurves[idxs]
+
+                    self.curveProjIdx[ptSetName][curveName] = indices[idxs]
+                    # print(curveName,indices[idxs].shape, indices[idxs] )
+
+                    pysurf.tecplot_interface.write_tecplot_scatter('%s.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptCoords)
+
+                    # also update the masking array
+                    allNodesBool = numpy.any( [curveBool, allNodesBool ] , axis = 0)
+                    # print('after %s, allNodesBool'%curveName, allNodesBool)
+
+                    # get the list of points smaller than this epsilon
+
+                # negate the surface mask and get indices
+                # print(numpy.logical_not(allNodesBool) )
+                surfPtIdx = numpy.nonzero( numpy.logical_not(allNodesBool)  )
+
+                surfNodes = ptsToCurves[surfPtIdx]
+
+                # figure out which of these surfNodes live only on component B
+                # surfNodesOnCompB = indices[numpy.nonzero( numpy.isin(surfPtIdx[0] , indB)  )]
+
+                # save this information
+                # self.curveWarpIdx[ptSetName] = surfNodesOnCompB
+                self.curveWarpIdx[ptSetName] = numpy.array(indices[surfPtIdx[0]])
+
+                pysurf.tecplot_interface.write_tecplot_scatter('surface_nodes.plt', 'surface_nodes', ['X', 'Y', 'Z'], surfNodes)
+
+
+                # print('finished')
+                # quit()
+                # now check the indices of points closer than d to any curve
+                # eps = 0.0004
+                # print('distance less than eps = ', eps)
+                # print(d<eps)
+                # print('indices of points on curves')
+                # print(numpy.nonzero(d<eps))
+                # ptsOnCurves =  ptsToCurves[numpy.nonzero(d<eps)]
+
+                # pysurf.tecplot_interface.write_tecplot_scatter('points_on_curves.plt', 'curvePoints', ['X', 'Y', 'Z'], ptsOnCurves)
+
+
+
+                # get the list of points that achieved a projection distance of our target or better
+                # any point farther than this will not get modified with the curves
+
+
+                # loop over remaining points and figure out which curve it was mapped to
+
+                # we also need to track the ones that got projected to the intersection to set their deltas to zero during warping
+
+                # finally, we get the indices of warped points as this takes a long time to do every iteration
+                # self.surfaceWarpIdx[ptSetName] = []
+
+                # for
+
+
+
+
+
+
 
     def update(self, ptSetName, delta):
 
@@ -1485,6 +1636,132 @@ class CompIntersection(object):
     def project(self, ptSetName, newPts):
         # we need to build ADTs for both components if we have any components that lie on either
         # we also need to save ALL intermediate variables for gradient computations in reverse mode
+
+        #  we project all of the curves that were on feature curves initially, to the respective feature curves
+
+        # first, we do the pts on the intersection outside the loop, their deltas are zero
+        idx = self.curveProjIdx[ptSetName]['intersection']
+        # print('idx', idx.shape, idx)
+        delta = numpy.zeros((len(idx), 3))
+        curvePtCoords = self.points[ptSetName][0][idx]
+
+        # loop over the feature curves that we need to project
+        for curveName in self.featureCurveNames:
+
+            # get the indices of points we need to project
+            idx = self.curveProjIdx[ptSetName][curveName]
+            # print('idx', idx.shape, idx)
+
+            # get the coordinates of these and add to the long array
+            curvePtCoordsNew = self.points[ptSetName][0][idx]
+
+            # these are the updated coordinates that will be projected to the curve
+            ptsOnCurve = newPts[idx]
+
+            # conn of the current curve
+            seamBeg = self.seamBeg[curveName]
+            seamEnd = self.seamEnd[curveName]
+            curveConn = self.seamConn[seamBeg:seamEnd]
+
+            # project these to the combined curves
+            # use Ney's fortran code to project the point on curve
+            # Get number of points
+            nPoints = len(ptsOnCurve)
+
+            # Initialize references if user provided none
+            dist2 = numpy.ones(nPoints)*1e10
+            xyzProj = numpy.zeros((nPoints,3))
+            tanProj = numpy.zeros((nPoints,3))
+            elemIDs = numpy.zeros((nPoints),dtype='int32')
+
+            # only call the fortran code if we have at least one point
+            if nPoints > 0:
+                # Call fortran code
+                # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
+                # Remember that we should adjust some indices before calling the Fortran code
+                # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
+                elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(ptsOnCurve.T,
+                                                                        self.seam.T,
+                                                                        curveConn.T + 1,
+                                                                        xyzProj.T,
+                                                                        tanProj.T,
+                                                                        dist2,
+                                                                        elemIDs)
+
+                # Adjust indices back to Python standards
+                elemIDs[:] = elemIDs - 1
+
+            # dist2 has the array of squared distances
+            d = numpy.sqrt(dist2)
+
+            # get the delta for this point
+            deltaNew = xyzProj - ptsOnCurve
+
+            # update the point coordinates
+            newPts[idx] = xyzProj
+
+            # stack the coordinates and deltas
+            curvePtCoords = numpy.vstack((curvePtCoords, curvePtCoordsNew ))
+            delta = numpy.vstack((delta, deltaNew))
+
+        # then, we warp all of the nodes that were affected by the intersection treatment, using the deltas from the previous project to curve step
+
+        # first, we need to communicate all curvePtCoords and deltas across all procs...
+
+
+        # finally, we are ready to project to component surfaces
+        t0 = time.time()
+        tcum = 0
+
+        # get the surface indices
+        for j in self.curveWarpIdx[ptSetName]:
+            # check if this is on compB
+            if numpy.isin(j, self.projData[ptSetName]['compB']['ind'], assume_unique=True):
+            # if j in self.projData[ptSetName]['compB']['ind']:
+
+                t00 = time.time()
+
+                # now we are ready to warp!!!!
+
+                # updated ptCoords
+
+
+                # original pt coords
+                ptCoords = self.points[ptSetName][0][j]
+
+                # print('ptCoords',ptCoords.shape, ptCoords)
+                # print('curvePtCoords',curvePtCoords.shape, curvePtCoords)
+                # print('delta', delta.shape, delta)
+                # print('rr', rr.shape, rr)
+
+                # jsut the pt based stuff...
+
+                # Do it vectorized
+                rr = ptCoords - curvePtCoords
+                LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
+                LdefoDist3 = LdefoDist**3
+                Wi = LdefoDist3
+                den = numpy.sum(Wi)
+                interp = numpy.zeros(3)
+                for iDim in range(3):
+                    interp[iDim] = numpy.sum(Wi* delta[:, iDim])/den
+
+                # finally, update the coord in place
+                newPts[j] = newPts[j] + interp
+
+                t11 = time.time()
+
+                tcum += t11 - t00
+
+            # else:
+                # print('this should not happen at j=',j)
+
+        t1 = time.time()
+
+        print('time required to warp %d points using %d points is %.4f'%(len(self.curveWarpIdx[ptSetName]), len(delta), t1-t0))
+
+        print('time required for the actual computation: %.4f'%tcum)
 
         # get the flags for components
         flagA = self.projData[ptSetName]['compA']['flag']
@@ -2008,6 +2285,11 @@ class CompIntersection(object):
             # and the conn
             finalConn = numpy.vstack((finalConn, newBarsConn))
 
+        if firstCall:
+            # save the beginning and end indices of these elements
+            self.seamBeg['intersection'] = 0
+            self.seamEnd['intersection'] = len(finalConn)
+
         # save stuff to the dictionary for sensitivity computations...
         self.seamDict['intNodes'] = intNodes
         self.seamDict['seamConn'] = seamConn
@@ -2015,6 +2297,10 @@ class CompIntersection(object):
         # size of the intersection seam w/o any feature curves
         self.seamDict['seamSize'] = len(seam)
         self.seamDict['curveBegCoor'] = curveBegCoor
+
+        # save the intersection curve for the paper
+        curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
+        pysurf.tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
 
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
@@ -2151,31 +2437,37 @@ class CompIntersection(object):
 
                 remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
 
-                # if elemBeg > 0:
+                # number of new nodes added in the opposite direction
+                nNewNodesReverse = 0
+                if elemBeg > 0:
                     # also re-mesh the initial part of the curve, to prevent any negative volumes there
-                    # curveConnTrim = curveConn[:elemBeg]
+                    curveConnTrim = curveConn[:elemBeg]
 
-                    # nNewNodes = 10*self.nNodeFeature[curveName]
-                    # coor = self.compB.nodes
-                    # barsConn = curveConnTrim
-                    # method = 'linear'
-                    # spacing = 'linear'
-                    # initialSpacing = 0.1
-                    # finalSpacing = 0.1
+                    nNewNodesReverse = self.nNodeFeature[curveName]
+                    coor = self.compB.nodes
+                    barsConn = curveConnTrim
+                    method = 'linear'
+                    spacing = 'linear'
+                    initialSpacing = 0.1
+                    finalSpacing = 0.1
 
 
-                    # # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
-                    # # Call Fortran code. Remember to adjust transposes and indices
-                    # newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodes,
-                    #                                                         coor.T,
-                    #                                                         barsConn.T + 1,
-                    #                                                         method,
-                    #                                                         spacing,
-                    #                                                         initialSpacing,
-                    #                                                         finalSpacing)
-                    # newCoor = newCoor.T
-                    # newBarsConn = newBarsConn.T - 1
-                    # remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+                    # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
+                    # Call Fortran code. Remember to adjust transposes and indices
+                    newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodesReverse,
+                                                                            coor.T,
+                                                                            barsConn.T + 1,
+                                                                            method,
+                                                                             spacing,
+                                                                            initialSpacing,
+                                                                            finalSpacing)
+                    newCoor = newCoor.T
+                    newBarsConn = newBarsConn.T - 1
+
+                    newBarsConn = newBarsConn + len(remeshedCurves)
+
+                    remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+                    remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
@@ -2184,11 +2476,21 @@ class CompIntersection(object):
 
                 # save some info for gradient computations later on
                 self.seamDict[curveName]['nNewNodes'] = nNewNodes
+                self.seamDict[curveName]['nNewNodesReverse'] = nNewNodesReverse
                 self.seamDict[curveName]['elemBeg'] = elemBeg
                 self.seamDict[curveName]['elemEnd'] = elemEnd
                 # this includes the initial coordinates of the points for each curve
                 # that has a modified initial curve
                 self.seamDict['curveBegCoor'] = curveBegCoor
+
+                if firstCall:
+                    # save the beginning and end indices of these elements
+                    self.seamBeg[curveName] = len(finalConn) + len(remeshedCurveConn) - (nNewNodes+nNewNodesReverse) + 2
+                    self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
+
+            # now save the feature curves
+            curvename = 'featureCurves_%d'%(self.counter)
+            pysurf.tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
@@ -2206,6 +2508,8 @@ class CompIntersection(object):
 
         # write to file to check
         # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
+
+        self.counter += 1
 
         return seam.copy()
 
