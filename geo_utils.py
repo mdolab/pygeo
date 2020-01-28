@@ -352,7 +352,7 @@ def getCoordinatesFromFile(fileName):
 
     return coordinates
 
-def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
+def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None, custom_dist=None):
     '''
     This function can be used to generate a simple FFD. The FFD can be made up
     of more than one volume, but the volumes will be connected. It is meant for
@@ -392,6 +392,12 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
             - left (tighter spacing on the left side)
             - right (tighter spacing on the other left side)
 
+    custom_dist : list, same size of dist
+        Besides the provided funtions to compute the point distribution,
+        the user can provide the distribution of points along each dimention.
+        For the volume dimension where user wants to use provided options to 
+        compute point dist, just specify None.
+
     Example of two volumes
     -------
     axes = ['k', 'j', 'i']
@@ -415,6 +421,23 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
         ['left', 'linear', 'linear'],
         ['cosine', 'linear', 'right']
     ]
+
+    Custom distribution
+    -------------------------------
+    dist = [
+        ['custom', 'linear', 'linear'],
+        ['custom', 'linear', 'linear']
+    ]
+
+    dist_1 = np.array([0, 0.2, 0.3, 0.6, 1])
+    dist_2 = np.array([0, 0.4, 0.7, 0.8, 1])
+
+    custom_dist = [
+    [dist_1, None, None],
+    [dist_2, None, None],
+    ]
+
+    write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None, custom_dist=custom_dist)
 
     '''
 
@@ -442,7 +465,7 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     f = open(fileName, 'w')
     f.write('{}\n'.format(Nvol))
 
-    def getDistribution(name, N):
+    def getDistribution(name, N, custom_dist):
         if name == 'linear':
             dist = np.linspace(0, 1, N)
         elif name == 'cosine':
@@ -451,6 +474,15 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
             dist = np.linspace(0, 1, N)**(3.0/2.0)
         elif name == 'right':
             dist = np.linspace(0, 1, N)**(2.0/3.0)
+        elif name == 'custom':
+            if custom_dist is not None:
+                if len(custom_dist) == N:
+                    dist = custom_dist
+                else:
+                    print('Size of customed distribution does not match the specified size.')
+            elif custom_dist is None:
+                print('Need to specify customized distribution.')
+
         return dist
 
     for i in range(Nvol):
@@ -466,9 +498,9 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
         Nj = size[axes.index('j')]
         Nk = size[axes.index('k')]
         # Get distributions for each axis
-        d0 = getDistribution(dist[i][0], size[0])
-        d1 = getDistribution(dist[i][1], size[1])
-        d2 = getDistribution(dist[i][2], size[2])
+        d0 = getDistribution(dist[i][0], size[0], custom_dist[i][0])
+        d1 = getDistribution(dist[i][1], size[1], custom_dist[i][1])
+        d2 = getDistribution(dist[i][2], size[2], custom_dist[i][2])
 
         # Initialize coordinate arrays
         X = np.zeros(size + [3])
