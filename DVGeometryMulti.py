@@ -1040,10 +1040,9 @@ class CompIntersection(object):
         # indices of nodes to be projected to curves.
         self.curveProjIdx = {}
 
-        # indices of surface points on comp that will be warped
-        # self.surfaceWarpIdx = {}
-
-        self.curveWarpIdx = {}
+        # dictionaries to save the indices of points mapped to surfaces for each comp
+        self.surfIdxA = {}
+        self.surfIdxB = {}
 
         # names of compA and compB must be provided
         self.compA = DVGeo.comps[compA]
@@ -1253,9 +1252,10 @@ class CompIntersection(object):
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
             if self.incCurves:
 
+                # convert the list to an array
                 indices = numpy.array(indices)
 
-                # first, get the coordinates of all points affected by this intersection
+                # get the coordinates of all points affected by this intersection
                 ptsToCurves = pts[indices]
 
                 # project these to the combined curves
@@ -1290,9 +1290,6 @@ class CompIntersection(object):
                 # dist2 has the array of squared distances
                 d = numpy.sqrt(dist2)
 
-
-                # now loop over feature curves and use the epsilon that each curve has to determine which points maps to where...
-
                 # get the names of all curves including the intersection
                 allCurves = ['intersection']
                 for curveName in self.featureCurveNames:
@@ -1305,84 +1302,50 @@ class CompIntersection(object):
                 # dict to save the pt indices
                 self.curveProjIdx[ptSetName] = {}
 
+                # now loop over feature curves and use the epsilon that each curve has
+                # to determine which points maps to which curve
                 for curveName in allCurves:
 
                     # get the epsilon for this curve
+                    # we map the points closer than eps to this curve
                     eps = self.curveEpsDict[curveName]
 
                     # also get the range of element IDs this curve owns
                     seamBeg = self.seamBeg[curveName]
                     seamEnd = self.seamEnd[curveName]
 
-                    # get the boolean array
+                    # this returns a bool array of indices that satisfy the conditions
+                    # we check for elemIDs because we projected to all curves at once
                     curveBool = numpy.all( [ d<eps , elemIDs >= seamBeg  , elemIDs < seamEnd ], axis=0)
 
-                    # now, get the indices of the points mapped to this element
+                    # get the indices of the points mapped to this element
                     idxs= numpy.nonzero(curveBool)
-                    # print(idxs)
 
-                    # and the coordinates
-                    ptCoords = ptsToCurves[idxs]
-
+                    # save the indices. idx has the indices of the "indices" array
+                    # that had the indices of points that get any intersection treatment
                     self.curveProjIdx[ptSetName][curveName] = indices[idxs]
-                    # print(curveName,indices[idxs].shape, indices[idxs] )
 
-                    pysurf.tecplot_interface.write_tecplot_scatter('%s.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptCoords)
+                    # uncomment to get the output
+                    # ptCoords = ptsToCurves[idxs]
+                    # pysurf.tecplot_interface.write_tecplot_scatter('%s.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptCoords)
 
                     # also update the masking array
-                    allNodesBool = numpy.any( [curveBool, allNodesBool ] , axis = 0)
-                    # print('after %s, allNodesBool'%curveName, allNodesBool)
-
-                    # get the list of points smaller than this epsilon
+                    # we will use this to figure out the indices that did not get attached to any curves
+                    allNodesBool = numpy.any([curveBool, allNodesBool], axis=0)
 
                 # negate the surface mask and get indices
-                # print(numpy.logical_not(allNodesBool) )
-                surfPtIdx = numpy.nonzero( numpy.logical_not(allNodesBool)  )
+                surfPtIdx = numpy.nonzero( numpy.logical_not(allNodesBool) )
 
-                surfNodes = ptsToCurves[surfPtIdx]
+                # figure out which of these surfNodes live only on components A and B
+                allSurfIdx = numpy.array(indices[surfPtIdx[0]])
 
-                # figure out which of these surfNodes live only on component B
-                # surfNodesOnCompB = indices[numpy.nonzero( numpy.isin(surfPtIdx[0] , indB)  )]
+                # component A
+                mask = numpy.isin(allSurfIdx, indA, assume_unique=True)
+                self.surfIdxA[ptSetName] = allSurfIdx[numpy.nonzero(mask)]
 
-                # save this information
-                # self.curveWarpIdx[ptSetName] = surfNodesOnCompB
-                self.curveWarpIdx[ptSetName] = numpy.array(indices[surfPtIdx[0]])
-
-                pysurf.tecplot_interface.write_tecplot_scatter('surface_nodes.plt', 'surface_nodes', ['X', 'Y', 'Z'], surfNodes)
-
-
-                # print('finished')
-                # quit()
-                # now check the indices of points closer than d to any curve
-                # eps = 0.0004
-                # print('distance less than eps = ', eps)
-                # print(d<eps)
-                # print('indices of points on curves')
-                # print(numpy.nonzero(d<eps))
-                # ptsOnCurves =  ptsToCurves[numpy.nonzero(d<eps)]
-
-                # pysurf.tecplot_interface.write_tecplot_scatter('points_on_curves.plt', 'curvePoints', ['X', 'Y', 'Z'], ptsOnCurves)
-
-
-
-                # get the list of points that achieved a projection distance of our target or better
-                # any point farther than this will not get modified with the curves
-
-
-                # loop over remaining points and figure out which curve it was mapped to
-
-                # we also need to track the ones that got projected to the intersection to set their deltas to zero during warping
-
-                # finally, we get the indices of warped points as this takes a long time to do every iteration
-                # self.surfaceWarpIdx[ptSetName] = []
-
-                # for
-
-
-
-
-
-
+                # component B
+                mask = numpy.isin(allSurfIdx, indB, assume_unique=True)
+                self.surfIdxB[ptSetName] = allSurfIdx[numpy.nonzero(mask)]
 
     def update(self, ptSetName, delta):
 
@@ -1645,6 +1608,8 @@ class CompIntersection(object):
         delta = numpy.zeros((len(idx), 3))
         curvePtCoords = self.points[ptSetName][0][idx]
 
+        # pysurf.tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
+
         # loop over the feature curves that we need to project
         for curveName in self.featureCurveNames:
 
@@ -1657,6 +1622,8 @@ class CompIntersection(object):
 
             # these are the updated coordinates that will be projected to the curve
             ptsOnCurve = newPts[idx]
+
+            # pysurf.tecplot_interface.write_tecplot_scatter('%s_warped_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptsOnCurve)
 
             # conn of the current curve
             seamBeg = self.seamBeg[curveName]
@@ -1698,6 +1665,8 @@ class CompIntersection(object):
             # get the delta for this point
             deltaNew = xyzProj - ptsOnCurve
 
+            # pysurf.tecplot_interface.write_tecplot_scatter('%s_projected_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], xyzProj)
+
             # update the point coordinates
             newPts[idx] = xyzProj
 
@@ -1712,56 +1681,30 @@ class CompIntersection(object):
 
         # finally, we are ready to project to component surfaces
         t0 = time.time()
-        tcum = 0
 
         # get the surface indices
-        for j in self.curveWarpIdx[ptSetName]:
-            # check if this is on compB
-            if numpy.isin(j, self.projData[ptSetName]['compB']['ind'], assume_unique=True):
-            # if j in self.projData[ptSetName]['compB']['ind']:
+        for j in self.surfIdxB[ptSetName]:
 
-                t00 = time.time()
+            # point coordinates with the baseline design
+            # this is the point we will warp
+            ptCoords = self.points[ptSetName][0][j]
 
-                # now we are ready to warp!!!!
+            # the vectorized point-based warping we had from older versions.
+            rr = ptCoords - curvePtCoords
+            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
+            LdefoDist3 = LdefoDist**3
+            Wi = LdefoDist3
+            den = numpy.sum(Wi)
+            interp = numpy.zeros(3)
+            for iDim in range(3):
+                interp[iDim] = numpy.sum(Wi* delta[:, iDim])/den
 
-                # updated ptCoords
+            # finally, update the coord in place
+            newPts[j] = newPts[j] + interp
 
-
-                # original pt coords
-                ptCoords = self.points[ptSetName][0][j]
-
-                # print('ptCoords',ptCoords.shape, ptCoords)
-                # print('curvePtCoords',curvePtCoords.shape, curvePtCoords)
-                # print('delta', delta.shape, delta)
-                # print('rr', rr.shape, rr)
-
-                # jsut the pt based stuff...
-
-                # Do it vectorized
-                rr = ptCoords - curvePtCoords
-                LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-                LdefoDist3 = LdefoDist**3
-                Wi = LdefoDist3
-                den = numpy.sum(Wi)
-                interp = numpy.zeros(3)
-                for iDim in range(3):
-                    interp[iDim] = numpy.sum(Wi* delta[:, iDim])/den
-
-                # finally, update the coord in place
-                newPts[j] = newPts[j] + interp
-
-                t11 = time.time()
-
-                tcum += t11 - t00
-
-            # else:
-                # print('this should not happen at j=',j)
-
+        # print timing result
         t1 = time.time()
-
-        print('time required to warp %d points using %d points is %.4f'%(len(self.curveWarpIdx[ptSetName]), len(delta), t1-t0))
-
-        print('time required for the actual computation: %.4f'%tcum)
+        print('time required to warp %d points using %d points is %.4f'%(len(self.surfIdxB[ptSetName]), len(delta), t1-t0))
 
         # get the flags for components
         flagA = self.projData[ptSetName]['compA']['flag']
@@ -2299,8 +2242,8 @@ class CompIntersection(object):
         self.seamDict['curveBegCoor'] = curveBegCoor
 
         # save the intersection curve for the paper
-        curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
-        pysurf.tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
+        # curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
+        # pysurf.tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
 
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
@@ -2489,8 +2432,8 @@ class CompIntersection(object):
                     self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
 
             # now save the feature curves
-            curvename = 'featureCurves_%d'%(self.counter)
-            pysurf.tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
+            # curvename = 'featureCurves_%d'%(self.counter)
+            # pysurf.tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
