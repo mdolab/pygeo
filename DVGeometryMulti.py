@@ -528,7 +528,7 @@ class DVGeometryMulti(object):
         else:
             commPresent = False
 
-        print('[%d] called totalSensitivity with comm:'%self.comm.rank, commPresent)
+        # print('[%d] called totalSensitivity with comm:'%self.comm.rank, commPresent)
 
         # compute the total jacobian for this pointset
         # TODO, we dont even need to do this
@@ -557,7 +557,7 @@ class DVGeometryMulti(object):
 
         # do the transpose multiplication
 
-        print('[%d] finished project_b'%self.comm.rank)
+        # print('[%d] finished project_b'%self.comm.rank)
 
         # get the pointset
         ptSet = self.points[ptSetName]
@@ -568,21 +568,14 @@ class DVGeometryMulti(object):
         # We should keep track of the intersections that this pointset is close to. There is no point in including the intersections far from this pointset in the sensitivity calc as the derivative seeds will be just zeros there.
         ptSetICs = []
 
+        # we need to go through all ICs bec even though some procs might not have points on the intersection,
+        # communication is easier and we can reduce compSens as we compute them
         for IC in self.intersectComps:
-            # This checks if we have any entries in the affected indices on this point set with this intersection
-            if IC.points[ptSetName][1]:
-                # this pointset is affected by this intersection. save this info.
-                ptSetICs.append(IC)
-
-        # loop over the intersections
-        for IC in ptSetICs:
-            # dIdpt is input/output
             compSens = IC.sens(dIdpt, ptSetName, comm)
-
             # save the sensitivities from the intersection stuff
             compSensList.append(compSens)
 
-        print('[%d] finished IC.sens'%self.comm.rank)
+        # print('[%d] finished IC.sens'%self.comm.rank)
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
@@ -597,11 +590,11 @@ class DVGeometryMulti(object):
         dIdx_local = dIdxT_local.T
 
         if comm: # If we have a comm, globaly reduce with sum
-            print('[%d] before allreduce dIdx =', dIdx_local)
-            comm.Barrier()
+            # print('[%d] before allreduce dIdx ='%self.comm.rank, dIdx_local)
+            # comm.Barrier()
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
-            print('[%d] after  allreduce dIdx =', dIdx_local)
-            comm.Barrier()
+            # print('[%d] after  allreduce dIdx ='%self.comm.rank, dIdx_local)
+            # comm.Barrier()
         else:
             dIdx = dIdx_local
 
@@ -612,12 +605,12 @@ class DVGeometryMulti(object):
             DVGeo = self.comps[comp].DVGeo
             nDVComp = DVGeo.getNDV()
 
-            print('[%d] full dIdx:'%(self.comm.rank), dIdx)
+            # print('[%d] full dIdx:'%(self.comm.rank), dIdx)
             # print('[%d] dIdx shape:'%self.comm.rank, dIdx.shape)
 
             # we only do this if this component has at least one DV
             if nDVComp > 0:
-                print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
+                # print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
                 # this part of the sensitivity matrix is owned by this dvgeo
                 dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:,dvOffset:dvOffset+nDVComp])
 
@@ -1655,9 +1648,10 @@ class CompIntersection(object):
 
         # seamBar is the bwd seeds for the intersection curve...
         # it is N,nseampt,3 in size
-
+        # print('[%d] calling getIntersectionSeam_b'%comm.rank)
         # now call the reverse differentiated seam computation
         compSens = self._getIntersectionSeam_b(seamBar, comm)
+        # print('[%d] after getIntersectionSeam_b'%comm.rank)
 
         return compSens
 
@@ -2429,8 +2423,9 @@ class CompIntersection(object):
         self.seamDict['curveBegCoor'] = curveBegCoor
 
         # save the intersection curve for the paper
-        # curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
-        # pysurf.tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
+        # if self.comm.rank == 0:
+        #     curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
+        #     pysurf.tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
 
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
@@ -2619,8 +2614,9 @@ class CompIntersection(object):
                     self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
 
             # now save the feature curves
-            # curvename = 'featureCurves_%d'%(self.counter)
-            # pysurf.tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
+            # if self.comm.rank == 0:
+            #     curvename = 'featureCurves_%d'%(self.counter)
+            #     pysurf.tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
