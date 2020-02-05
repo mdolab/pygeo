@@ -1836,6 +1836,10 @@ class CompIntersection(object):
                 # we dont have a comm, so this is a "serial" pointset
                 deltaGlobal = deltaLocal
 
+                # also save the sizes and disp stuff as if we have one proc
+                self.curveProjData[ptSetName][curveName]['sizes'] = self.curvePtCounts[ptSetName][curveName]
+                self.curveProjData[ptSetName][curveName]['disp'] = [0]
+
             # we only add the deltaLocal to deltaA if this curve is on compA,
             # and we have points on compA surface
             if curveName in self.curvesOnA and flagA:
@@ -1901,6 +1905,9 @@ class CompIntersection(object):
         # we need to build ADTs for both components if we have any components that lie on either
         # we also need to save ALL intermediate variables for gradient computations in reverse mode
 
+        # number of functions we have
+        N = dIdpt.shape[0]
+
         # get the flags for components
         flagA = self.projData[ptSetName]['compA']['flag']
         flagB = self.projData[ptSetName]['compB']['flag']
@@ -1927,9 +1934,6 @@ class CompIntersection(object):
             # get the values from each DVGeo
             xA = self.compA.DVGeo.getValues()
 
-            # now get how many functions we have
-            N = dIdpt.shape[0]
-
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
             for k,v in xA.items():
                 kNew = '%s:%s'%(self.compA.name, k)
@@ -1951,9 +1955,6 @@ class CompIntersection(object):
             # get the values from each DVGeo
             xB = self.compB.DVGeo.getValues()
 
-            # now get how many functions we have
-            N = dIdpt.shape[0]
-
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
             for k,v in xB.items():
                 kNew = '%s:%s'%(self.compB.name, k)
@@ -1961,10 +1962,20 @@ class CompIntersection(object):
                 zeroSens = numpy.zeros((N, v.shape[0]))
                 compSens_local[kNew] = zeroSens
 
-        # get the comm for this point set
-        ptSetComm = self.points[ptSetName][3]
+        # finally sum the results across procs if we are provided with a comm
+        if comm:
+            compSens = {}
+            # because the results are in a dictionary, we need to loop over the items and sum
+            for k,v in compSens_local.items():
+                compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
+        else:
+            # we can just pass the dictionary
+            compSens = compSens_local
 
         # now we do the warping
+
+        # get the comm for this point set
+        ptSetComm = self.points[ptSetName][3]
 
         # check if any processor did any warping on compA
         curvePtCoordsA = self.curveProjData[ptSetName]['curvePtCoordsA']
@@ -1996,62 +2007,103 @@ class CompIntersection(object):
         if flagA:
             deltaA_b_local = self._warpSurfPts_b(dIdpt, self.points[ptSetName][0], self.surfIdxA[ptSetName], curvePtCoordsA)
         else:
-            deltaA_b_local = numpy.zeros((dIdpt.shape[0], nCurvePtCoordsAG, 3))
-
-        # we need to reduce this across all procs
-        if ptSetComm:
-            deltaA_b = ptSetComm.allreduce(deltaA_b_local, op=MPI.SUM)
-        # no comm, local is global
-        else:
-            deltaA_b = deltaA_b_local
+            deltaA_b_local = numpy.zeros((N, nCurvePtCoordsAG, 3))
 
         # do the same for comp B
         if flagB:
             deltaB_b_local = self._warpSurfPts_b(dIdpt, self.points[ptSetName][0], self.surfIdxB[ptSetName], curvePtCoordsB)
         else:
-            deltaB_b_local = numpy.zeros((dIdpt.shape[0], nCurvePtCoordsBG, 3))
+            deltaB_b_local = numpy.zeros((N, nCurvePtCoordsBG, 3))
 
+        # reduce seeds for both
         if ptSetComm:
+            deltaA_b = ptSetComm.allreduce(deltaA_b_local, op=MPI.SUM)
             deltaB_b = ptSetComm.allreduce(deltaB_b_local, op=MPI.SUM)
         # no comm, local is global
         else:
+            deltaA_b = deltaA_b_local
             deltaB_b = deltaB_b_local
 
         # remove the seeds for the intersection, the disps are zero (constant) so no need to diff. those
         if flagA:
             # this just returns the seeds w/o the intersection seeds
-            deltaA_b = deltaA_b[ self.nCurvePts[ptSetName]['intersection']: ]
+            deltaA_b = deltaA_b[:, self.nCurvePts[ptSetName]['intersection']: ]
         if flagB:
             # this just returns the seeds w/o the intersection seeds
-            deltaB_b = deltaB_b[ self.nCurvePts[ptSetName]['intersection']: ]
+            deltaB_b = deltaB_b[:, self.nCurvePts[ptSetName]['intersection']: ]
 
         # loop over the curves
-        # for curveName in self.featureCurveNames:
+        for curveName in self.featureCurveNames:
+
+            # sizes and displacements for this curve
+            sizes = self.curveProjData[ptSetName][curveName]['sizes']
+            disp  = self.curveProjData[ptSetName][curveName]['disp']
+
+            # we get the seeds from compA seeds
+            if curveName in self.curvesOnA:
+
+                if flagA:
+                    # contribution on this proc
+                    xyzProjb = deltaA_b[:, disp[rank] : disp[rank] + sizes[rank]]
+
+                # this proc does not have any pts projected, so set the seed to zero
+                else:
+                    xyzProjb = numpy.zeros((N,0,3))
+
+                # remove the seeds for this curve from deltaA_b seeds
+                deltaA_b = deltaA_b[:, disp[-1]+sizes[-1]:  ]
+
+            # seeds from compB
+            elif curveName in self.curvesOnB:
+
+                if flagB:
+                    # contribution on this proc
+                    xyzProjb = deltaB_b[:, disp[rank] : disp[rank] + sizes[rank]]
+
+                # this proc does not have any pts projected, so set the seed to zero
+                else:
+                    xyzProjb = numpy.zeros((N,0,3))
+
+                # remove the seeds for this curve from deltaA_b seeds
+                deltaB_b = deltaB_b[:, disp[-1]+sizes[-1]:  ]
+
+            else:
+                print('This should not happen')
+            # now we have the local seeds of projection points for all functions in xyzProjb
 
 
-        # check if this curve is on comp A or compB
 
-        # slice the delta array so that we have the seeds for this curve, and the remaining stuff
+            # # run the reverse projection code
 
-        #
-
-        # get the seeds for the points on curves that I own and run the bwd projection routine
+            # # xyz is the projected points
 
 
+            # xyzb_new =
 
-        # run the bwd projection to curve
+            # # loop over functions
+            # for k in range(N):
+
+            # # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
+            # xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(xyz.T,
+            #                                                                     self.coor.T,
+            #                                                                     self.barsConn.T + 1,
+            #                                                                     xyzProj.T,
+            #                                                                     xyzProjb.T,
+            #                                                                     tanProj.T,
+            #                                                                     tanProjb.T,
+            #                                                                     elemIDs + 1,
+            #                                                                     curveMask)
+
+            # # Accumulate derivatives
+            # xyzb[:,:] = xyzb + xyzb_new.T
+            # self.coorb = self.coorb + coorb_new.T
 
 
+            # replace the dIdpt with the seeds for the points that were projected
 
-        # finally sum the results across procs if we are provided with a comm
-        if comm:
-            compSens = {}
-            # because the results are in a dictionary, we need to loop over the items and sum
-            for k,v in compSens_local.items():
-                compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
-        else:
-            # we can just pass the dictionary
-            compSens = compSens_local
+
+            # add the contribution of seeds to the seam seed
+
 
         return compSens
 
