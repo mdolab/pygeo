@@ -534,6 +534,10 @@ class DVGeometryMulti(object):
         # TODO, we dont even need to do this
         self._computeTotalJacobian(ptSetName)
 
+        # compute IC jacobians if they are out of date
+        if not self.ICJupdated:
+            self._computeICJacobian()
+
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
             dIdpt = numpy.array([dIdpt])
@@ -547,6 +551,9 @@ class DVGeometryMulti(object):
         # back to the seeds for the initial points we get after ID-warping
         for IC in self.intersectComps:
             if IC.projectFlag:
+                # initialize the seed contribution to the intersection seam and feature curves from project_b
+                IC.seamBarProj[ptSetName] = numpy.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
+
                 # we pass in dIdpt and the intersection object, along with pointset information
                 # the intersection object adjusts the entries corresponding to projected points
                 # and passes back dIdpt in place.
@@ -571,9 +578,12 @@ class DVGeometryMulti(object):
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
         for IC in self.intersectComps:
-            compSens = IC.sens(dIdpt, ptSetName, comm)
+            # compSens = IC.sens(dIdpt, ptSetName, comm)
             # save the sensitivities from the intersection stuff
-            compSensList.append(compSens)
+            # compSensList.append(compSens)
+
+            # instead this saves the dIdx for this intersection in the IC object
+            IC.sens(dIdpt, ptSetName, comm)
 
         # print('[%d] finished IC.sens'%self.comm.rank)
 
@@ -588,6 +598,10 @@ class DVGeometryMulti(object):
         # projections and intersections are handled separately in compSens
         dIdxT_local = jac.T.dot(dIdpt.T)
         dIdx_local = dIdxT_local.T
+
+        # now add the contributions from the intersections
+        for IC in self.intersectComps:
+            dIdx_local = dIdx_local + IC.dIdx
 
         if comm: # If we have a comm, globaly reduce with sum
             # print('[%d] before allreduce dIdx ='%self.comm.rank, dIdx_local)
@@ -717,6 +731,8 @@ class DVGeometryMulti(object):
                 if 'barsConn' in sectionDict[part].keys():
                     # this is a curve, save the curve connectivity
                     barsConn[part.lower()] = sectionDict[part]['barsConn']
+
+            print('The %s mesh has %d nodes and %d elements.'%(filename, len(nodes), len(triConn)))
         else:
             # create these to recieve the data
             nodes = None
@@ -1025,7 +1041,9 @@ class CompIntersection(object):
         self.counter = 0
 
         # tolerance used for each curve when mapping nodes to curves
-        self.curveEpsDict = curveEpsDict
+        self.curveEpsDict = {}
+        for k,v in curveEpsDict.items():
+            self.curveEpsDict[k.lower()] = v
 
         # beginning and end element indices for each curve
         self.seamBeg = {}
@@ -1049,6 +1067,9 @@ class CompIntersection(object):
 
         # dict to keep track of the total number of points on each curve
         self.nCurvePts = {}
+
+        # dictionary to keep the seam seeds that come from curve projections
+        self.seamBarProj = {}
 
         # dictionaries to save the indices of points mapped to surfaces for each comp
         self.surfIdxA = {}
@@ -1131,6 +1152,9 @@ class CompIntersection(object):
         # create the dictionary if we are projecting.
         if project:
             self.projData = {}
+            if includeCurves:
+                # dict to save the data related to projection to curves
+                self.curveProjData = {}
 
         # flag to include feature curves in ID-warping
         self.incCurves = includeCurves
@@ -1314,6 +1338,8 @@ class CompIntersection(object):
 
                 # dict to save the pt indices
                 self.curveProjIdx[ptSetName] = {}
+                # dict to save other data
+                self.curveProjData[ptSetName] = {}
 
                 # now loop over feature curves and use the epsilon that each curve has
                 # to determine which points maps to which curve
@@ -1345,6 +1371,9 @@ class CompIntersection(object):
                     # also update the masking array
                     # we will use this to figure out the indices that did not get attached to any curves
                     allNodesBool = numpy.any([curveBool, allNodesBool], axis=0)
+
+                    # create an empty dict to save aux data later on
+                    self.curveProjData[ptSetName][curveName] = {}
 
                 # negate the surface mask and get indices
                 surfPtIdx = numpy.nonzero( numpy.logical_not(allNodesBool) )
@@ -1596,6 +1625,11 @@ class CompIntersection(object):
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
         seamBar = numpy.zeros((dIdPt.shape[0], self.seam0.shape[0], self.seam0.shape[1]))
+
+        # if we have the projection flag, then we need to add the contribution to seamBar from that
+        if self.projectFlag:
+            seamBar += self.seamBarProj[ptSetName]
+
         # TODO we can vectorize the k-loop
         for k in range(dIdPt.shape[0]):
             for i in range(len(factors)):
@@ -1650,10 +1684,26 @@ class CompIntersection(object):
         # it is N,nseampt,3 in size
         # print('[%d] calling getIntersectionSeam_b'%comm.rank)
         # now call the reverse differentiated seam computation
-        compSens = self._getIntersectionSeam_b(seamBar, comm)
+        # compSens = self._getIntersectionSeam_b(seamBar, comm)
         # print('[%d] after getIntersectionSeam_b'%comm.rank)
 
-        return compSens
+        # instead, multiply this with the transpose of the jacobian
+        # seamBar = seamBar.reshape( [dIdPt.shape[0], 3*self.seam0.shape[0]] )
+
+        sb = numpy.zeros((dIdPt.shape[0],3*self.seam0.shape[0] ))
+        for i in range(dIdPt.shape[0]):
+            sb[i,:] = seamBar[i,:,:].flatten()
+
+        dIdx = ((self.jac.T).dot(sb.T)).T
+
+        # print(dIdx.shape)
+        # quit()
+
+        # now convert dIdx to dictionary
+
+        self.dIdx = dIdx
+
+        # return dIdx
 
     def project(self, ptSetName, newPts):
         # we need to build ADTs for both components if we have any components that lie on either
@@ -1688,12 +1738,14 @@ class CompIntersection(object):
             curvePtCoordsA = self.curvePtCoords[ptSetName]['intersection'].copy()
         else:
             deltaA = numpy.zeros((0,3))
+            curvePtCoordsA = numpy.zeros((0,3))
 
         if flagB:
             deltaB = numpy.zeros((nptsg, 3))
             curvePtCoordsB = self.curvePtCoords[ptSetName]['intersection'].copy()
         else:
             deltaB = numpy.zeros((0,3))
+            curvePtCoordsB = numpy.zeros((0,3))
 
         # pysurf.tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
 
@@ -1761,6 +1813,10 @@ class CompIntersection(object):
                 sizes = self.curvePtCounts[ptSetName][curveName]
                 disp = numpy.array([numpy.sum(sizes[:i]) for i in range(comm.size)], dtype='intc')
 
+                # save these for grad comp
+                self.curveProjData[ptSetName][curveName]['sizes'] = sizes
+                self.curveProjData[ptSetName][curveName]['disp'] = disp
+
                 # sendbuf
                 deltaLocal = deltaLocal.flatten()
                 sendbuf = [deltaLocal, sizes[comm.rank]*3]
@@ -1810,11 +1866,15 @@ class CompIntersection(object):
         if flagB:
             self._warpSurfPts(self.points[ptSetName][0], newPts, self.surfIdxB[ptSetName], curvePtCoordsB, deltaB)
 
+        # save some info for the sens. computations
+        self.curveProjData[ptSetName]['curvePtCoordsA'] = curvePtCoordsA
+        self.curveProjData[ptSetName]['curvePtCoordsB'] = curvePtCoordsB
+
         # print timing result
         t1 = time.time()
         print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
-        if comm:
-            comm.Barrier()
+        # if comm:
+            # comm.Barrier()
 
         # get the flags for components
         flagA = self.projData[ptSetName]['compA']['flag']
@@ -1901,6 +1961,88 @@ class CompIntersection(object):
                 zeroSens = numpy.zeros((N, v.shape[0]))
                 compSens_local[kNew] = zeroSens
 
+        # get the comm for this point set
+        ptSetComm = self.points[ptSetName][3]
+
+        # now we do the warping
+
+        # check if any processor did any warping on compA
+        curvePtCoordsA = self.curveProjData[ptSetName]['curvePtCoordsA']
+        curvePtCoordsB = self.curveProjData[ptSetName]['curvePtCoordsB']
+        if ptSetComm:
+            nCurvePtCoordsAG = ptSetComm.allreduce(len( curvePtCoordsA), op=MPI.MAX)
+            nCurvePtCoordsBG = ptSetComm.allreduce(len( curvePtCoordsB), op=MPI.MAX)
+        else:
+            nCurvePtCoordsAG = len( curvePtCoordsA)
+            nCurvePtCoordsBG = len( curvePtCoordsB)
+
+        # check if we need to worry about either surface
+        # we will use these flags to figure out if we need to do warping.
+        # we need to do the comm for the updated curves regardless
+        flagA = False
+        flagB = False
+        if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
+            flagA = True
+        if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
+            flagB = True
+
+        if ptSetComm:
+            rank = ptSetComm.rank
+        else:
+            rank = 0
+
+        # call the bwd warping routine
+        # deltaA_b is the seed for the points projected to curves
+        if flagA:
+            deltaA_b_local = self._warpSurfPts_b(dIdpt, self.points[ptSetName][0], self.surfIdxA[ptSetName], curvePtCoordsA)
+        else:
+            deltaA_b_local = numpy.zeros((dIdpt.shape[0], nCurvePtCoordsAG, 3))
+
+        # we need to reduce this across all procs
+        if ptSetComm:
+            deltaA_b = ptSetComm.allreduce(deltaA_b_local, op=MPI.SUM)
+        # no comm, local is global
+        else:
+            deltaA_b = deltaA_b_local
+
+        # do the same for comp B
+        if flagB:
+            deltaB_b_local = self._warpSurfPts_b(dIdpt, self.points[ptSetName][0], self.surfIdxB[ptSetName], curvePtCoordsB)
+        else:
+            deltaB_b_local = numpy.zeros((dIdpt.shape[0], nCurvePtCoordsBG, 3))
+
+        if ptSetComm:
+            deltaB_b = ptSetComm.allreduce(deltaB_b_local, op=MPI.SUM)
+        # no comm, local is global
+        else:
+            deltaB_b = deltaB_b_local
+
+        # remove the seeds for the intersection, the disps are zero (constant) so no need to diff. those
+        if flagA:
+            # this just returns the seeds w/o the intersection seeds
+            deltaA_b = deltaA_b[ self.nCurvePts[ptSetName]['intersection']: ]
+        if flagB:
+            # this just returns the seeds w/o the intersection seeds
+            deltaB_b = deltaB_b[ self.nCurvePts[ptSetName]['intersection']: ]
+
+        # loop over the curves
+        # for curveName in self.featureCurveNames:
+
+
+        # check if this curve is on comp A or compB
+
+        # slice the delta array so that we have the seeds for this curve, and the remaining stuff
+
+        #
+
+        # get the seeds for the points on curves that I own and run the bwd projection routine
+
+
+
+        # run the bwd projection to curve
+
+
+
         # finally sum the results across procs if we are provided with a comm
         if comm:
             compSens = {}
@@ -1983,6 +2125,36 @@ class CompIntersection(object):
 
             # finally, update the coord in place
             ptsNew[j] = ptsNew[j] + interp
+
+    def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
+
+        # seeds for the bwd
+        curvePtBar = numpy.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
+
+        for k in range(dIdPt.shape[0]):
+
+            for j in indices:
+
+                # point coordinates with the baseline design
+                # this is the point we will warp
+                ptCoords = pts0[j]
+
+                # local seed for 3 coords
+                localVal = dIdPt[k,j]
+
+                # the vectorized point-based warping we had from older versions.
+                rr = ptCoords - curvePtCoords
+                LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
+                LdefoDist3 = LdefoDist**3
+                Wi = LdefoDist3
+                den = numpy.sum(Wi)
+                interp = numpy.zeros(3)
+
+                for iDim in range(3):
+                    curvePtBar[k,:,iDim] += Wi*localVal[iDim]/den
+
+        # return the seeds for pts. that were projected to curves
+        return curvePtBar
 
     def _projectToComponent(self, pts, comp, projDict):
         # we build an ADT using this component
@@ -2119,7 +2291,7 @@ class CompIntersection(object):
             # we dont need this...
             # deltaCoorb = adtAPI.adtapi.adtcomputenodalnormals_b(comp.nodes.T,
                                                                 # comp.triConn.T, quadConn.T,
-                                                                # comp.nodal_normals.T, nodal_normalsb.T)
+                                                                # comp.nodal_normals.T, nodal_normalsb)
 
             # Transpose Fortran results to make them consistent
             # deltaCoorb = deltaCoorb.T
