@@ -1795,8 +1795,19 @@ class CompIntersection(object):
                 # Adjust indices back to Python standards
                 elemIDs[:] = elemIDs - 1
 
+                # we only have the curvemask if we do the projection on this proc
+                self.curveProjData[ptSetName][curveName]['curveMask'] = curveMask
+
             # dist2 has the array of squared distances
             d = numpy.sqrt(dist2)
+
+            # save some information for gradient comp
+            self.curveProjData[ptSetName][curveName]['xyz'] = ptsOnCurve.copy()
+            self.curveProjData[ptSetName][curveName]['coor'] = self.seam.copy()
+            self.curveProjData[ptSetName][curveName]['barsConn'] = curveConn.copy()
+            self.curveProjData[ptSetName][curveName]['xyzProj'] = xyzProj
+            self.curveProjData[ptSetName][curveName]['tanProj'] = tanProj
+            self.curveProjData[ptSetName][curveName]['elemIDs'] = elemIDs
 
             # get the delta for the points on this proc
             deltaLocal = xyzProj - ptsOnCurve
@@ -2071,39 +2082,49 @@ class CompIntersection(object):
                 print('This should not happen')
             # now we have the local seeds of projection points for all functions in xyzProjb
 
+            # get the indices of points we need to project
+            idx = self.curveProjIdx[ptSetName][curveName]
+            nPoints = len(idx)
 
+            # get some data from the fwd run
+            xyz = self.curveProjData[ptSetName][curveName]['xyz']
+            coor = self.curveProjData[ptSetName][curveName]['coor']
+            barsConn = self.curveProjData[ptSetName][curveName]['barsConn']
+            xyzProj = self.curveProjData[ptSetName][curveName]['xyzProj']
+            tanProj = self.curveProjData[ptSetName][curveName]['tanProj']
+            elemIDs = self.curveProjData[ptSetName][curveName]['elemIDs']
 
-            # # run the reverse projection code
+            # we dont use tangents so seeds are zero
+            tanProjb = numpy.zeros_like(tanProj)
 
-            # # xyz is the projected points
+            if nPoints > 0:
+                # also get the curveMask
+                curveMask = self.curveProjData[ptSetName][curveName]['curveMask']
 
+                # run the bwd projection for everyfunction
+                for k in range(N):
 
-            # xyzb_new =
+                    # add the contribution from dIdpt for the idx points themselves
+                    xyzProjb[k] += dIdpt[k,idx]
 
-            # # loop over functions
-            # for k in range(N):
+                    # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
+                    xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(xyz.T,
+                                                                                           coor.T,
+                                                                                           barsConn.T + 1,
+                                                                                           xyzProj.T,
+                                                                                           xyzProjb[k].T,
+                                                                                           tanProj.T,
+                                                                                           tanProjb.T,
+                                                                                           elemIDs + 1,
+                                                                                           curveMask)
 
-            # # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
-            # xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(xyz.T,
-            #                                                                     self.coor.T,
-            #                                                                     self.barsConn.T + 1,
-            #                                                                     xyzProj.T,
-            #                                                                     xyzProjb.T,
-            #                                                                     tanProj.T,
-            #                                                                     tanProjb.T,
-            #                                                                     elemIDs + 1,
-            #                                                                     curveMask)
+                    # Accumulate derivatives with the correct k
 
-            # # Accumulate derivatives
-            # xyzb[:,:] = xyzb + xyzb_new.T
-            # self.coorb = self.coorb + coorb_new.T
+                    # replace the seed in dIdpt
+                    dIdpt[k, idx, :] = xyzb_new.T
 
-
-            # replace the dIdpt with the seeds for the points that were projected
-
-
-            # add the contribution of seeds to the seam seed
-
+                    # add the seed to the seam seed
+                    self.seamBarProj[ptSetName][k,:,:] += coorb_new.T
 
         return compSens
 
