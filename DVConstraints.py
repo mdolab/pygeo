@@ -2744,10 +2744,14 @@ class RadiusConstraint(GeometricConstraint):
         # Now get the reference lengths
         self.r0, self.c0 = self.computeCircle(self.coords)
 
-    def computeCircle(self, coords):
+    def splitPointSets(self, coords):
         p1 = coords[:self.nCon]
         p2 = coords[self.nCon:self.nCon*2]
         p3 = coords[self.nCon*2:]
+        return p1, p2, p3
+
+    def computeReferenceFrames(self, coords):
+        p1, p2, p3 = self.splitPointSets(coords)
 
         # Compute origin and unit vectors (xi, eta) of 2d space
         origin = (p1 + p2) / 2.0
@@ -2765,6 +2769,14 @@ class RadiusConstraint(GeometricConstraint):
         neta = neta - xi_of_eta
         for i in range(self.nCon):
             neta[i] /= geo_utils.euclideanNorm(neta[i])
+
+        return origin, nxi, neta
+
+    def computeCircle(self, coords):
+        p1, p2, p3 = self.splitPointSets(coords)
+
+        # Compute origin and unit vectors (xi, eta) of 2d space
+        origin, nxi, neta = self.computeReferenceFrames(coords)
 
         # Compute xi component of p1, p2, and p3
         xi1 = numpy.einsum('ij,ij->i', p1 - origin, nxi)
@@ -2834,7 +2846,6 @@ class RadiusConstraint(GeometricConstraint):
             coords = self.coords.astype('D')
             for i in range(3): # loop over pts at given slice
                 for j in range(3): # loop over coordinates in pt
-                    print(i*self.nCon, (i+1)*self.nCon)
                     coords[i*self.nCon:(i+1)*self.nCon,j] += 1e-40j
                     r, c = self.computeCircle(coords)
 
@@ -2869,6 +2880,9 @@ class RadiusConstraint(GeometricConstraint):
         """
         r, c = self.computeCircle(self.coords)
 
+        # Compute origin and unit vectors (xi, eta) of 2d space
+        origin, nxi, neta = self.computeReferenceFrames(self.coords)
+
         nres = 50
         theta = numpy.linspace(0, 2*numpy.pi, nres+1)[:-1]
         handle.write('Zone T=%s\n'% self.name)
@@ -2876,9 +2890,11 @@ class RadiusConstraint(GeometricConstraint):
             self.nCon*nres, self.nCon*nres))
         handle.write('DATAPACKING=POINT\n')
         for i in range(self.nCon):
-            x = c[i,0] + r[i]*numpy.cos(theta)
-            y = c[i,1] * numpy.ones(nres)
-            z = c[i,2] + r[i]*numpy.sin(theta)
+            cos_part = numpy.outer(numpy.cos(theta), nxi*r[i])
+            sin_part = numpy.outer(numpy.sin(theta), neta*r[i])
+            x = c[i,0] + cos_part[:,0] + sin_part[:,0]
+            y = c[i,1] + cos_part[:,1] + sin_part[:,1]
+            z = c[i,2] + cos_part[:,2] + sin_part[:,2]
 
             for j in range(nres):
                 handle.write('%f %f %f\n'% (x[j], y[j], z[j]))
