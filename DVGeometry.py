@@ -2084,6 +2084,16 @@ class DVGeometry(object):
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
 
+    def getFlattenedChildren(self):
+        """
+        Return a flattened list of all DVGeo objects in the family heirarchy.
+        """
+        flatChildren = [self]
+        for child in self.children:
+            flatChildren += child.getFlattenedChildren()
+
+        return flatChildren
+
     def demoDesignVars(self, directory, includeLocal=True, includeGlobal=True,
                        pointSet=None, callBack=None, freq=2):
         """
@@ -2131,7 +2141,7 @@ class DVGeometry(object):
 	        writePointSet = True
 
         # Loop through design variables on self and children
-        geoList = [self] + self.children
+        geoList = self.getFlattenedChildren()
         count = 0
         for geo in geoList:
             for key in dvDict:
