@@ -2055,11 +2055,11 @@ class CompIntersection(object):
 
                 if flagA:
                     # contribution on this proc
-                    xyzProjb = deltaA_b[:, disp[rank] : disp[rank] + sizes[rank]]
+                    deltaBar = deltaA_b[:, disp[rank] : disp[rank] + sizes[rank]]
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
-                    xyzProjb = numpy.zeros((N,0,3))
+                    deltaBar = numpy.zeros((N,0,3))
 
                 # remove the seeds for this curve from deltaA_b seeds
                 deltaA_b = deltaA_b[:, disp[-1]+sizes[-1]:  ]
@@ -2069,11 +2069,11 @@ class CompIntersection(object):
 
                 if flagB:
                     # contribution on this proc
-                    xyzProjb = deltaB_b[:, disp[rank] : disp[rank] + sizes[rank]]
+                    deltaBar = deltaB_b[:, disp[rank] : disp[rank] + sizes[rank]]
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
-                    xyzProjb = numpy.zeros((N,0,3))
+                    deltaBar = numpy.zeros((N,0,3))
 
                 # remove the seeds for this curve from deltaA_b seeds
                 deltaB_b = deltaB_b[:, disp[-1]+sizes[-1]:  ]
@@ -2104,15 +2104,18 @@ class CompIntersection(object):
                 # run the bwd projection for everyfunction
                 for k in range(N):
 
+                    # contribution from delta
+                    xyzProjb = deltaBar[k].copy()
+
                     # add the contribution from dIdpt for the idx points themselves
-                    xyzProjb[k] += dIdpt[k,idx]
+                    xyzProjb += dIdpt[k,idx]
 
                     # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
                     xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(xyz.T,
                                                                                            coor.T,
                                                                                            barsConn.T + 1,
                                                                                            xyzProj.T,
-                                                                                           xyzProjb[k].T,
+                                                                                           xyzProjb.T,
                                                                                            tanProj.T,
                                                                                            tanProjb.T,
                                                                                            elemIDs + 1,
@@ -2120,8 +2123,11 @@ class CompIntersection(object):
 
                     # Accumulate derivatives with the correct k
 
-                    # replace the seed in dIdpt
-                    dIdpt[k, idx, :] = xyzb_new.T
+                    # replace the seed in dIdpt. we subtract deltaBar here
+                    # because delta was equal to the projected points minus the original points.
+                    # So the delta seeds contribute with a negative sign
+                    # to the seeds of the points before projection
+                    dIdpt[k, idx, :] = xyzb_new.T - deltaBar[k]
 
                     # add the seed to the seam seed
                     self.seamBarProj[ptSetName][k,:,:] += coorb_new.T
@@ -2201,8 +2207,8 @@ class CompIntersection(object):
 
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
 
-        # seeds for the bwd
-        curvePtBar = numpy.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
+        # seeds for delta
+        deltaBar = numpy.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
 
         for k in range(dIdPt.shape[0]):
 
@@ -2224,10 +2230,10 @@ class CompIntersection(object):
                 interp = numpy.zeros(3)
 
                 for iDim in range(3):
-                    curvePtBar[k,:,iDim] += Wi*localVal[iDim]/den
+                    deltaBar[k,:,iDim] += Wi*localVal[iDim]/den
 
-        # return the seeds for pts. that were projected to curves
-        return curvePtBar
+        # return the seeds for the delta vector
+        return deltaBar
 
     def _projectToComponent(self, pts, comp, projDict):
         # we build an ADT using this component
