@@ -535,8 +535,8 @@ class DVGeometryMulti(object):
         self._computeTotalJacobian(ptSetName)
 
         # compute IC jacobians if they are out of date
-        if not self.ICJupdated:
-            self._computeICJacobian()
+        # if not self.ICJupdated:
+        #     self._computeICJacobian()
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -578,12 +578,12 @@ class DVGeometryMulti(object):
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
         for IC in self.intersectComps:
-            # compSens = IC.sens(dIdpt, ptSetName, comm)
+            compSens = IC.sens(dIdpt, ptSetName, comm)
             # save the sensitivities from the intersection stuff
-            # compSensList.append(compSens)
+            compSensList.append(compSens)
 
             # instead this saves the dIdx for this intersection in the IC object
-            IC.sens(dIdpt, ptSetName, comm)
+            # IC.sens(dIdpt, ptSetName, comm)
 
         # print('[%d] finished IC.sens'%self.comm.rank)
 
@@ -599,9 +599,9 @@ class DVGeometryMulti(object):
         dIdxT_local = jac.T.dot(dIdpt.T)
         dIdx_local = dIdxT_local.T
 
-        # now add the contributions from the intersections
-        for IC in self.intersectComps:
-            dIdx_local = dIdx_local + IC.dIdx
+        # # now add the contributions from the intersections
+        # for IC in self.intersectComps:
+        #     dIdx_local = dIdx_local + IC.dIdx
 
         if comm: # If we have a comm, globaly reduce with sum
             # print('[%d] before allreduce dIdx ='%self.comm.rank, dIdx_local)
@@ -1563,7 +1563,7 @@ class CompIntersection(object):
             # delta[j] = interp
 
         t1 = time.time()
-        print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
+        # print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
         if comm:
             comm.Barrier()
 
@@ -1684,26 +1684,26 @@ class CompIntersection(object):
         # it is N,nseampt,3 in size
         # print('[%d] calling getIntersectionSeam_b'%comm.rank)
         # now call the reverse differentiated seam computation
-        # compSens = self._getIntersectionSeam_b(seamBar, comm)
+        compSens = self._getIntersectionSeam_b(seamBar, comm)
         # print('[%d] after getIntersectionSeam_b'%comm.rank)
 
         # instead, multiply this with the transpose of the jacobian
         # seamBar = seamBar.reshape( [dIdPt.shape[0], 3*self.seam0.shape[0]] )
 
-        sb = numpy.zeros((dIdPt.shape[0],3*self.seam0.shape[0] ))
-        for i in range(dIdPt.shape[0]):
-            sb[i,:] = seamBar[i,:,:].flatten()
+        # sb = numpy.zeros((dIdPt.shape[0],3*self.seam0.shape[0] ))
+        # for i in range(dIdPt.shape[0]):
+        #     sb[i,:] = seamBar[i,:,:].flatten()
 
-        dIdx = ((self.jac.T).dot(sb.T)).T
+        # dIdx = ((self.jac.T).dot(sb.T)).T
 
         # print(dIdx.shape)
         # quit()
 
         # now convert dIdx to dictionary
 
-        self.dIdx = dIdx
+        # self.dIdx = dIdx
 
-        # return dIdx
+        return compSens
 
     def project(self, ptSetName, newPts):
         # we need to build ADTs for both components if we have any components that lie on either
@@ -1887,7 +1887,7 @@ class CompIntersection(object):
 
         # print timing result
         t1 = time.time()
-        print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
+        # print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
         # if comm:
             # comm.Barrier()
 
@@ -2609,6 +2609,7 @@ class CompIntersection(object):
 
         # do we need this?
         # TODO figure this out?
+        # print(breakList)
         # breakList.sort()
 
         # get the number of elements between each feature
@@ -2617,20 +2618,25 @@ class CompIntersection(object):
             curveSizes.append(numpy.mod(breakList[i+1] - breakList[i], nElem))
         # check the last curve outside the loop
         curveSizes.append(numpy.mod(breakList[0] - breakList[-1], nElem))
+        # print('breaklist', breakList, "Curvesizes", curveSizes)
+
+        # print("first node on the int:", seamConn[breakList[0], 0])
+        # print("last node on the int:", seamConn[breakList[-1]+curveSizes[-1]-1, 1])
 
         # copy the curveSizes for the first call
         if firstCall:
             self.nElems = curveSizes[:]
 
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
-        curInd = 0
+        curInd = 0 #curveSizes[0] #+curveSizes[1]
         seam = numpy.zeros((0,3))
         finalConn = numpy.zeros((0,2), dtype='int32')
-        for i in range(nFeature):
+        for i in [0,1]:#range(nFeature):
             # just use the same number of points *2 for now
             nNewNodes = self.nElems[i]+1
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
+            # print('i feature: %d nNewNodes: %d, curind: %d, curveSizes[i]: %d'%(i, nNewNodes, curInd, curveSizes[i]))
             curInd += curveSizes[i]
             method = 'linear'
             spacing = 'linear'
@@ -2648,6 +2654,8 @@ class CompIntersection(object):
                                                                     finalSpacing)
             newCoor = newCoor.T
             newBarsConn = newBarsConn.T - 1
+
+            # print('number of new nodes',len(newCoor))
 
             # add these n -resampled nodes back to back in seam and return a copy of the array
             # we don't need the connectivity info for now? we just need the coords
@@ -2712,9 +2720,9 @@ class CompIntersection(object):
                 # this has to be on compB
                 if curveName in curveBegCoor:
                     # save the original coordinate of the first point
-                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]]
+                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]].copy()
                     # and replace this with the starting point we want
-                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName]
+                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName].copy()
 
                 # compute the element lengths starting from elemBeg
                 firstNodes  = curveComp.nodes[curveConn[elemBeg:, 0]]
@@ -2815,40 +2823,40 @@ class CompIntersection(object):
 
                 # number of new nodes added in the opposite direction
                 nNewNodesReverse = 0
-                if elemBeg > 0:
-                    # also re-mesh the initial part of the curve, to prevent any negative volumes there
-                    curveConnTrim = curveConn[:elemBeg]
+                # if elemBeg > 0:
+                #     # also re-mesh the initial part of the curve, to prevent any negative volumes there
+                #     curveConnTrim = curveConn[:elemBeg]
 
-                    nNewNodesReverse = self.nNodeFeature[curveName]
-                    coor = self.compB.nodes
-                    barsConn = curveConnTrim
-                    method = 'linear'
-                    spacing = 'linear'
-                    initialSpacing = 0.1
-                    finalSpacing = 0.1
+                #     nNewNodesReverse = self.nNodeFeature[curveName]
+                #     coor = self.compB.nodes
+                #     barsConn = curveConnTrim
+                #     method = 'linear'
+                #     spacing = 'linear'
+                #     initialSpacing = 0.1
+                #     finalSpacing = 0.1
 
 
-                    # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
-                    # Call Fortran code. Remember to adjust transposes and indices
-                    newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodesReverse,
-                                                                            coor.T,
-                                                                            barsConn.T + 1,
-                                                                            method,
-                                                                             spacing,
-                                                                            initialSpacing,
-                                                                            finalSpacing)
-                    newCoor = newCoor.T
-                    newBarsConn = newBarsConn.T - 1
+                #     # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
+                #     # Call Fortran code. Remember to adjust transposes and indices
+                #     newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodesReverse,
+                #                                                             coor.T,
+                #                                                             barsConn.T + 1,
+                #                                                             method,
+                #                                                              spacing,
+                #                                                             initialSpacing,
+                #                                                             finalSpacing)
+                #     newCoor = newCoor.T
+                #     newBarsConn = newBarsConn.T - 1
 
-                    newBarsConn = newBarsConn + len(remeshedCurves)
+                #     newBarsConn = newBarsConn + len(remeshedCurves)
 
-                    remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
-                    remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
+                #     remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+                #     remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
                     # print('putting it back in fwd pass')
-                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave[:]
+                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave.copy()
 
                 # save some info for gradient computations later on
                 self.seamDict[curveName]['nNewNodes'] = nNewNodes
@@ -2931,7 +2939,8 @@ class CompIntersection(object):
                 elemEnd = curveDict['elemEnd']
 
                 # get the derivative seeds
-                newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:]
+                newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:].copy()
+                # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
                 iBeg += nNewNodes
 
                 # figure out which comp owns this curve...
@@ -2951,9 +2960,9 @@ class CompIntersection(object):
                 # adjust the first coordinate of the curve
                 if curveName in curveBegCoor:
                     # save the original coordinate of the first point
-                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]]
+                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]].copy()
                     # and replace this with the starting point we want
-                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName]
+                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName].copy()
 
                 # get the coordinates of points
                 coor = curveComp.nodes
@@ -2984,18 +2993,22 @@ class CompIntersection(object):
                                                                   initialSpacing,
                                                                   finalSpacing)
                     # derivative seeds for the coordinates.
-                    cb[ii] = cbi.T
+                    cb[ii] = cbi.T.copy()
+
+                # print('cb',curveName, numpy.linalg.norm(cb), cb)
 
                 # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
                 if elemBeg > 0:
                     # the first seed is for the projected point...
-                    projb = cb[:,0:1,:]
+                    projb = cb[:,curveConn[elemBeg,0],:].copy()
+                    # projb = cb[:,0:1,:].copy()
+                    # print(curveName, projb)
 
                     # zero out the seed of the replaced node
-                    cb[:,0:1,:] = numpy.zeros((N,1,3))
+                    cb[:,curveConn[elemBeg,0],:] = numpy.zeros((N,3))
 
                     # put the modified initial and final points back in place.
-                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave[:]
+                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave.copy()
 
                     # we need to call the curve projection routine to propagate the seed...
                     intNodesOrd = self.seamDict[curveName]['intNodesOrd']
@@ -3017,7 +3030,7 @@ class CompIntersection(object):
                     for ii in range(N):
 
                         # the only nonzero seed is indexed by argmin dist2
-                        xyzProjb[numpy.argmin(dist2)] = projb[ii]
+                        xyzProjb[numpy.argmin(dist2)] = projb[ii].copy()
 
 
                         xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(intNodesOrd.T,
@@ -3051,14 +3064,16 @@ class CompIntersection(object):
         intNodesb = numpy.zeros((N, intNodes.shape[0], intNodes.shape[1]))
 
         # loop over each feature and propagate the sensitivities
-        curInd = 0
+        curInd = 0 # curveSizes[0] +curveSizes[1]
         curSeed = 0
-        for i in range(nFeature):
+        for i in [0,1]:#range(nFeature):
             # just use the same number of points *2 for now
             nNewElems = self.nElems[i]
             nNewNodes = nNewElems+1
             coor = intNodes
             barsConn = seamConn[curInd:curInd+curveSizes[i]]
+            # print('SENS i feature: %d nNewNodes: %d, curind: %d, curveSizes[i]: %d'%(i, nNewNodes, curInd, curveSizes[i]))
+
             curInd += curveSizes[i]
             method = 'linear'
             spacing = 'linear'
@@ -3069,7 +3084,7 @@ class CompIntersection(object):
                 newCoorb = intBar[ii, curSeed:curSeed+nNewNodes, :]
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                _, _, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewElems,
+                newCoor, newBarsConn, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewElems,
                                                             coor.T,
                                                             newCoorb.T,
                                                             barsConn.T + 1,
@@ -3078,6 +3093,17 @@ class CompIntersection(object):
                                                             initialSpacing,
                                                             finalSpacing)
                 intNodesb[ii] += cb.T
+                # print('i=%d ii=%d, len(cb)'%(i,ii),len(cb.T))
+                # print(cb.T)
+
+
+            # test if newCoor is what we actually have in the intersection
+            # print("sizes of the seed and pts")
+            # print('i feature: %d'%i)
+            # print("shape of intBar",intBar.shape)
+            # print('curSeed : curseed+nNewNodes', curSeed, curSeed+nNewNodes)
+            # print('checking newcoor')
+            # print(newCoor.T - self.seam[curSeed:curSeed+nNewNodes])
 
             curSeed += nNewNodes
 
@@ -3085,6 +3111,7 @@ class CompIntersection(object):
         for curveName,v in curveProjb.items():
             # get the index
             idx = self.seamDict[curveName]['projPtIndx']
+            # print('adding contributions from', curveName, v)
             for ii in range(N):
                 # add the contribution
                 intNodesb[ii,idx] += v[ii]
