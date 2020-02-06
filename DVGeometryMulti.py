@@ -2823,35 +2823,35 @@ class CompIntersection(object):
 
                 # number of new nodes added in the opposite direction
                 nNewNodesReverse = 0
-                # if elemBeg > 0:
-                #     # also re-mesh the initial part of the curve, to prevent any negative volumes there
-                #     curveConnTrim = curveConn[:elemBeg]
+                if elemBeg > 0:
+                    # also re-mesh the initial part of the curve, to prevent any negative volumes there
+                    curveConnTrim = curveConn[:elemBeg]
 
-                #     nNewNodesReverse = self.nNodeFeature[curveName]
-                #     coor = self.compB.nodes
-                #     barsConn = curveConnTrim
-                #     method = 'linear'
-                #     spacing = 'linear'
-                #     initialSpacing = 0.1
-                #     finalSpacing = 0.1
+                    nNewNodesReverse = self.nNodeFeature[curveName]
+                    coor = self.compB.nodes
+                    barsConn = curveConnTrim
+                    method = 'linear'
+                    spacing = 'linear'
+                    initialSpacing = 0.1
+                    finalSpacing = 0.1
 
 
-                #     # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
-                #     # Call Fortran code. Remember to adjust transposes and indices
-                #     newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodesReverse,
-                #                                                             coor.T,
-                #                                                             barsConn.T + 1,
-                #                                                             method,
-                #                                                              spacing,
-                #                                                             initialSpacing,
-                #                                                             finalSpacing)
-                #     newCoor = newCoor.T
-                #     newBarsConn = newBarsConn.T - 1
+                    # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
+                    # Call Fortran code. Remember to adjust transposes and indices
+                    newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodesReverse,
+                                                                            coor.T,
+                                                                            barsConn.T + 1,
+                                                                            method,
+                                                                             spacing,
+                                                                            initialSpacing,
+                                                                            finalSpacing)
+                    newCoor = newCoor.T
+                    newBarsConn = newBarsConn.T - 1
 
-                #     newBarsConn = newBarsConn + len(remeshedCurves)
+                    newBarsConn = newBarsConn + len(remeshedCurves)
 
-                #     remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
-                #     remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
+                    remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+                    remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
@@ -2999,6 +2999,33 @@ class CompIntersection(object):
 
                 # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
                 if elemBeg > 0:
+                    # first, we need to do the re-meshing of the other direction
+
+                    # get the fwd data
+                    nNewNodes = curveDict['nNewNodesReverse']
+
+                    # get the derivative seeds
+                    newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:].copy()
+                    # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
+                    iBeg += nNewNodes
+
+                    # bars conn is everything up to elemBeg
+                    barsConn = curveComp.barsConn[curveName][:elemBeg]
+
+                    # loop over functions
+                    for ii in range(N):
+                        # Call Fortran code. Remember to adjust transposes and indices
+                        _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
+                                                                    coor.T,
+                                                                    newCoorb[ii].T,
+                                                                    barsConn.T + 1,
+                                                                    method,
+                                                                    spacing,
+                                                                    initialSpacing,
+                                                                    finalSpacing)
+                        # derivative seeds for the coordinates.
+                        cb[ii] += cbi.T.copy()
+
                     # the first seed is for the projected point...
                     projb = cb[:,curveConn[elemBeg,0],:].copy()
                     # projb = cb[:,0:1,:].copy()
