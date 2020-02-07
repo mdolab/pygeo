@@ -612,6 +612,8 @@ class DVGeometryMulti(object):
         else:
             dIdx = dIdx_local
 
+        # print('[%d] finished comm.allreduce'%self.comm.rank)
+
         # use respective DVGeo's convert to dict functionality
         dIdxDict = OrderedDict()
         dvOffset = 0
@@ -642,6 +644,8 @@ class DVGeometryMulti(object):
             for k,v in compSens.items():
                 # these will bring in effects from projections and intersection computations
                 dIdxDict[k] += v
+
+        # print('[%d] finished DVGeo.totalSensitivity!'%self.comm.rank)
 
         return dIdxDict
 
@@ -1380,7 +1384,8 @@ class CompIntersection(object):
 
                     # save the indices. idx has the indices of the "indices" array
                     # that had the indices of points that get any intersection treatment
-                    self.curveProjIdx[ptSetName][curveName] = indices[idxs]
+                    # print("[%d] curvename: %s indices[idxs] idxs"%(self.comm.rank, curveName), indices[idxs], idxs)
+                    self.curveProjIdx[ptSetName][curveName] = numpy.array(indices[idxs])
 
                     # uncomment to get the output
                     # ptCoords = ptsToCurves[idxs]
@@ -1400,12 +1405,12 @@ class CompIntersection(object):
                 allSurfIdx = numpy.array(indices[surfPtIdx[0]])
 
                 # component A
-                mask = numpy.isin(allSurfIdx, indA, assume_unique=True)
+                mask = numpy.in1d(allSurfIdx, indA, assume_unique=True)
                 # this is the local indices of the points affected
                 self.surfIdxA[ptSetName] = allSurfIdx[numpy.nonzero(mask)]
 
                 # component B
-                mask = numpy.isin(allSurfIdx, indB, assume_unique=True)
+                mask = numpy.in1d(allSurfIdx, indB, assume_unique=True)
                 self.surfIdxB[ptSetName] = allSurfIdx[numpy.nonzero(mask)]
 
                 # initialize the bool dict for this pointset
@@ -1418,7 +1423,7 @@ class CompIntersection(object):
                 for curveName in allCurves:
 
                     # initialize the flag to false
-                    self.curveProjFlag[ptSetName][curveName] = False
+                    # self.curveProjFlag[ptSetName][curveName] = False
 
                     # get the indices mapped to this curve, on this proc
                     idxs = self.curveProjIdx[ptSetName][curveName]
@@ -1432,16 +1437,16 @@ class CompIntersection(object):
                         # comm.Barrier()
 
                     # check if we have at least one point globally that mapped to this curve
-                    if nPtsTotal > 0:
-                        # set the flag, we do have projected points on this curve
-                        self.curveProjFlag[ptSetName][curveName] = True
+                    # if nPtsTotal > 0:
+                    # set the flag, we do have projected points on this curve
+                    # self.curveProjFlag[ptSetName][curveName] = True
 
-                        # save the displacements and points
-                        self.curvePtCounts[ptSetName][curveName] = nPtsProcs
-                        self.curvePtCoords[ptSetName][curveName] = curvePtCoords
+                    # save the displacements and points
+                    self.curvePtCounts[ptSetName][curveName] = nPtsProcs
+                    self.curvePtCoords[ptSetName][curveName] = curvePtCoords
 
-                        # also save the total number for convenience
-                        self.nCurvePts[ptSetName][curveName] = nPtsTotal
+                    # also save the total number for convenience
+                    self.nCurvePts[ptSetName][curveName] = nPtsTotal
 
     def update(self, ptSetName, delta):
 
@@ -1581,7 +1586,7 @@ class CompIntersection(object):
             # delta[j] = interp
 
         t1 = time.time()
-        # print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
+        print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
         # if comm:
         #     comm.Barrier()
 
@@ -1740,9 +1745,11 @@ class CompIntersection(object):
         # we need to do the comm for the updated curves regardless
         flagA = False
         flagB = False
-        if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
+        if len(self.curvesOnA) > 0:
+        # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
             flagA = True
-        if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
+        if len(self.curvesOnB) > 0:
+        # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
             flagB = True
 
         # do the pts on the intersection outside the loop
@@ -1772,10 +1779,10 @@ class CompIntersection(object):
 
             # get the indices of points we need to project
             idx = self.curveProjIdx[ptSetName][curveName]
-            # print('idx', idx.shape, idx)
+            # print('[%d] curvename: %s idx'%(rank, curveName), idx.shape, idx)
 
             # these are the updated coordinates that will be projected to the curve
-            ptsOnCurve = newPts[idx]
+            ptsOnCurve = newPts[idx,:].copy()
 
             # pysurf.tecplot_interface.write_tecplot_scatter('%s_warped_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptsOnCurve)
 
@@ -1787,7 +1794,8 @@ class CompIntersection(object):
             # project these to the combined curves
             # use Ney's fortran code to project the point on curve
             # Get number of points
-            nPoints = len(ptsOnCurve)
+            nPoints = ptsOnCurve.shape[0]
+            # print('[%d] curveName: %s, nPoints on the fwd pass: %d'%(self.comm.rank, curveName, nPoints))
 
             # Initialize references if user provided none
             dist2 = numpy.ones(nPoints)*1e10
@@ -1823,9 +1831,9 @@ class CompIntersection(object):
             self.curveProjData[ptSetName][curveName]['xyz'] = ptsOnCurve.copy()
             self.curveProjData[ptSetName][curveName]['coor'] = self.seam.copy()
             self.curveProjData[ptSetName][curveName]['barsConn'] = curveConn.copy()
-            self.curveProjData[ptSetName][curveName]['xyzProj'] = xyzProj
-            self.curveProjData[ptSetName][curveName]['tanProj'] = tanProj
-            self.curveProjData[ptSetName][curveName]['elemIDs'] = elemIDs
+            self.curveProjData[ptSetName][curveName]['xyzProj'] = xyzProj.copy()
+            self.curveProjData[ptSetName][curveName]['tanProj'] = tanProj.copy()
+            self.curveProjData[ptSetName][curveName]['elemIDs'] = elemIDs.copy()
 
             # get the delta for the points on this proc
             deltaLocal = xyzProj - ptsOnCurve
@@ -1905,7 +1913,7 @@ class CompIntersection(object):
 
         # print timing result
         t1 = time.time()
-        # print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
+        print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
         # if comm:
             # comm.Barrier()
 
@@ -2021,9 +2029,11 @@ class CompIntersection(object):
         # we need to do the comm for the updated curves regardless
         flagA = False
         flagB = False
-        if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
+        if len(self.curvesOnA) > 0:
+        # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
             flagA = True
-        if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
+        if len(self.curvesOnB) > 0:
+        # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
             flagB = True
 
         if ptSetComm:
@@ -2073,7 +2083,7 @@ class CompIntersection(object):
 
                 if flagA:
                     # contribution on this proc
-                    deltaBar = deltaA_b[:, disp[rank] : disp[rank] + sizes[rank]]
+                    deltaBar = deltaA_b[:, disp[rank] : disp[rank] + sizes[rank]].copy()
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
@@ -2085,9 +2095,11 @@ class CompIntersection(object):
             # seeds from compB
             elif curveName in self.curvesOnB:
 
+                # print("[%d] checking curve: %s, flagB:"%(self.comm.rank, curveName), flagB)
+
                 if flagB:
                     # contribution on this proc
-                    deltaBar = deltaB_b[:, disp[rank] : disp[rank] + sizes[rank]]
+                    deltaBar = deltaB_b[:, disp[rank] : disp[rank] + sizes[rank]].copy()
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
@@ -2129,6 +2141,8 @@ class CompIntersection(object):
                     xyzProjb += dIdpt[k,idx]
 
                     # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
+                    # print("[%d] right before crashing, xyzProjb.shape"%rank, xyzProjb.shape)
+                    # print("[%d] right before crashing, nPoints: %d len(idx): %d, idx:"%(rank, nPoints, len(idx)), idx)
                     xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(xyz.T,
                                                                                            coor.T,
                                                                                            barsConn.T + 1,
@@ -2283,6 +2297,8 @@ class CompIntersection(object):
         xyzProj = numpy.zeros((numPts, 3))
         normProjNotNorm = numpy.zeros((numPts, 3))
 
+        # print("[%d] projecting to comp %s, pts.shape = "%(self.comm.rank, comp.name), pts.shape)
+
         # Call projection function
         procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(pts.T, comp.name,
                                                                                  dist2, xyzProj.T,
@@ -2300,13 +2316,13 @@ class CompIntersection(object):
         adtAPI.adtapi.adtdeallocateadts(comp.name)
 
         # save the data
-        projDict['procID'] = procID
-        projDict['elementType'] = elementType
-        projDict['elementID'] = elementID
-        projDict['uvw'] = uvw
-        projDict['dist2'] = dist2
-        projDict['normProjNotNorm'] = normProjNotNorm
-        projDict['normProj'] = normProj
+        projDict['procID'] = procID.copy()
+        projDict['elementType'] = elementType.copy()
+        projDict['elementID'] = elementID.copy()
+        projDict['uvw'] = uvw.copy()
+        projDict['dist2'] = dist2.copy()
+        projDict['normProjNotNorm'] = normProjNotNorm.copy()
+        projDict['normProj'] = normProj.copy()
 
         # also save the original and projected points
         projDict['xyz'] = pts.copy()
@@ -2556,13 +2572,13 @@ class CompIntersection(object):
                     # Adjust indices back to Python standards
                     elemIDs[:] = elemIDs - 1
 
-                    self.seamDict[curveName]['curveMask'] = curveMask
-                    self.seamDict[curveName]['elemIDs'] = elemIDs
-                    self.seamDict[curveName]['intNodesOrd'] = intNodesOrd
-                    self.seamDict[curveName]['xyzProj'] = xyzProj
-                    self.seamDict[curveName]['tanProj'] = tanProj
-                    self.seamDict[curveName]['dist2'] = dist2
-                    self.seamDict[curveName]['projPtIndx'] = seamConn[:,0][numpy.argmin(dist2)]
+                    self.seamDict[curveName]['curveMask'] = curveMask.copy()
+                    self.seamDict[curveName]['elemIDs'] = elemIDs.copy()
+                    self.seamDict[curveName]['intNodesOrd'] = intNodesOrd.copy()
+                    self.seamDict[curveName]['xyzProj'] = xyzProj.copy()
+                    self.seamDict[curveName]['tanProj'] = tanProj.copy()
+                    self.seamDict[curveName]['dist2'] = dist2.copy()
+                    self.seamDict[curveName]['projPtIndx'] = seamConn[:,0][numpy.argmin(dist2)].copy()
 
 
                 # now, find the index of the smallest distance
@@ -2692,12 +2708,12 @@ class CompIntersection(object):
             self.seamEnd['intersection'] = len(finalConn)
 
         # save stuff to the dictionary for sensitivity computations...
-        self.seamDict['intNodes'] = intNodes
-        self.seamDict['seamConn'] = seamConn
-        self.seamDict['curveSizes'] = curveSizes
+        self.seamDict['intNodes'] = intNodes.copy()
+        self.seamDict['seamConn'] = seamConn.copy()
+        self.seamDict['curveSizes'] = curveSizes.copy()
         # size of the intersection seam w/o any feature curves
         self.seamDict['seamSize'] = len(seam)
-        self.seamDict['curveBegCoor'] = curveBegCoor
+        self.seamDict['curveBegCoor'] = curveBegCoor.copy()
 
         # save the intersection curve for the paper
         # if self.comm.rank == 0:
@@ -2877,8 +2893,8 @@ class CompIntersection(object):
                     self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave.copy()
 
                 # save some info for gradient computations later on
-                self.seamDict[curveName]['nNewNodes'] = nNewNodes
-                self.seamDict[curveName]['nNewNodesReverse'] = nNewNodesReverse
+                self.seamDict[curveName]['nNewNodes'] = nNewNodes.copy()
+                self.seamDict[curveName]['nNewNodesReverse'] = nNewNodesReverse.copy()
                 self.seamDict[curveName]['elemBeg'] = elemBeg
                 self.seamDict[curveName]['elemEnd'] = elemEnd
                 # this includes the initial coordinates of the points for each curve
