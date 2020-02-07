@@ -1582,8 +1582,8 @@ class CompIntersection(object):
 
         t1 = time.time()
         # print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
-        if comm:
-            comm.Barrier()
+        # if comm:
+        #     comm.Barrier()
 
         return delta
 
