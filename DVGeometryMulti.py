@@ -825,14 +825,32 @@ class DVGeometryMulti(object):
                 # TODO Use separate step sizes for different DVs?
                 dh =  self.dh
 
-                # Perturb the DV
+                # second order FD
                 dvSave = self._getIthDV(iDV)
                 self._setIthDV(iDV, dvSave+dh)
 
-                # Do any required intersections:
+                # fwd step
                 for IC in self.intersectComps:
                     IC.setSurface(MPI.COMM_SELF)
-                    IC.jac[:,iDV] = (IC.seam.flatten() - IC.seamRef) / dh
+                    IC.seamPlus = IC.seam.copy()
+
+                # bwd step and the actual FD comp
+                self._setIthDV(iDV, dvSave-dh)
+                for IC in self.intersectComps:
+                    IC.setSurface(MPI.COMM_SELF)
+                    IC.seamMinus = IC.seam.copy()
+
+                    IC.jac[:,iDV] = (IC.seamPlus.flatten() - IC.seamMinus.flatten()) / (2*dh)
+
+                # first order FD
+                # # Perturb the DV
+                # dvSave = self._getIthDV(iDV)
+                # self._setIthDV(iDV, dvSave+dh)
+
+                # # Do any required intersections:
+                # for IC in self.intersectComps:
+                #     IC.setSurface(MPI.COMM_SELF)
+                #     IC.jac[:,iDV] = (IC.seam.flatten() - IC.seamRef) / dh
 
                 # Reset the DV
                 self._setIthDV(iDV, dvSave)
@@ -2344,7 +2362,7 @@ class CompIntersection(object):
         # now propagate the ad seeds back for each function
         for i in range(dIdpt.shape[0]):
             # the derivative seeds for the projected points
-            xyzProjb = dIdpt[i]
+            xyzProjb = dIdpt[i].copy()
 
             # Compute derivatives of the normalization process
             normProjNotNormb = tsurf_tools.normalize_b(normProjNotNorm, normProjb)
@@ -2631,7 +2649,7 @@ class CompIntersection(object):
         curInd = 0 #curveSizes[0] #+curveSizes[1]
         seam = numpy.zeros((0,3))
         finalConn = numpy.zeros((0,2), dtype='int32')
-        for i in [0,1]:#range(nFeature):
+        for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewNodes = self.nElems[i]+1
             coor = intNodes
@@ -3093,7 +3111,7 @@ class CompIntersection(object):
         # loop over each feature and propagate the sensitivities
         curInd = 0 # curveSizes[0] +curveSizes[1]
         curSeed = 0
-        for i in [0,1]:#range(nFeature):
+        for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewElems = self.nElems[i]
             nNewNodes = nNewElems+1
