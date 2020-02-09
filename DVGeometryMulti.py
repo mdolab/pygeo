@@ -161,7 +161,7 @@ class DVGeometryMulti(object):
                 knew = comp + ':' + k
                 self.DV_listSectionLocal[knew] = v
 
-    def addPointSet(self, points, ptName, compNames=None, comm=None, **kwargs):
+    def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=True, **kwargs):
 
         # if the user passes a list of compNames, we only use these comps.
         # we will still use all points to add the pointset, but by default,
@@ -302,9 +302,11 @@ class DVGeometryMulti(object):
             # print(comp,compMap)
             self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
 
-        # loop over the intersections and add pointsets
-        for IC in self.intersectComps:
-            IC.addPointSet(points, ptName, self.points[ptName].compMap, comm)
+        # check if this pointset will get the IC treatment
+        if applyIC:
+            # loop over the intersections and add pointsets
+            for IC in self.intersectComps:
+                IC.addPointSet(points, ptName, self.points[ptName].compMap, comm)
 
         # finally, we can deallocate the ADTs
         for comp in compNames:
@@ -413,14 +415,16 @@ class DVGeometryMulti(object):
 
         # then apply the intersection treatment
         for IC in self.intersectComps:
-            delta = IC.update(ptSetName, delta)
+            # check if this IC is active for this ptSet
+            if ptSetName in IC.points:
+                delta = IC.update(ptSetName, delta)
 
         # now we are ready to take the delta which may be modified by the intersections
         newPts = self.points[ptSetName].points + delta
 
         # now, project the points that were warped back onto the trimesh
         for IC in self.intersectComps:
-            if IC.projectFlag:
+            if IC.projectFlag and ptSetName in IC.points:
                 # new points will be modified in place using .... newPts array
                 IC.project(ptSetName, newPts)
 
@@ -550,7 +554,7 @@ class DVGeometryMulti(object):
         # we need to propagate the derivative seed of the projected points
         # back to the seeds for the initial points we get after ID-warping
         for IC in self.intersectComps:
-            if IC.projectFlag:
+            if IC.projectFlag and ptSetName in IC.points:
                 # initialize the seed contribution to the intersection seam and feature curves from project_b
                 IC.seamBarProj[ptSetName] = numpy.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
 
@@ -578,9 +582,10 @@ class DVGeometryMulti(object):
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
         for IC in self.intersectComps:
-            compSens = IC.sens(dIdpt, ptSetName, comm)
-            # save the sensitivities from the intersection stuff
-            compSensList.append(compSens)
+            if ptSetName in IC.points:
+                compSens = IC.sens(dIdpt, ptSetName, comm)
+                # save the sensitivities from the intersection stuff
+                compSensList.append(compSens)
 
             # instead this saves the dIdx for this intersection in the IC object
             # IC.sens(dIdpt, ptSetName, comm)

@@ -443,7 +443,7 @@ class DVConstraints(object):
 
     def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
                                   lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                                  name=None, addToPyOpt=True):
+                                  name=None, addToPyOpt=True, compNames=None, applyIC=False):
         """
         Add a set of thickness constraints that span a logically a
         two-dimensional region. A little ASCII art can help here
@@ -596,7 +596,7 @@ class DVConstraints(object):
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
-            addToPyOpt)
+            addToPyOpt, compNames=compNames, applyIC=applyIC)
 
 
     def addThicknessConstraints1D(self, ptList, nCon, axis,
@@ -2464,7 +2464,7 @@ class ThicknessConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
-                 addToPyOpt):
+                 addToPyOpt, compNames=None, applyIC=False):
         self.name = name
         self.coords = coords
         self.nCon = len(self.coords)//2
@@ -2481,7 +2481,13 @@ class ThicknessConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+
+        # if we are provided with a compNames, we are using a DVGeoMulti that has a different api
+        if compNames:
+            self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames, applyIC=applyIC)
+        else:
+            # just a regular DVGeo (could still be a DVGeoMulti but we use the regular api)
+            self.DVGeo.addPointSet(self.coords, self.name)
 
         # Now get the reference lengths
         self.D0 = numpy.zeros(self.nCon)
