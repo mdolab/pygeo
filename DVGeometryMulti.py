@@ -117,13 +117,13 @@ class DVGeometryMulti(object):
 
         return DVGeo
 
-    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False, marchDir=1, includeCurves=False, intDir = None, curveEpsDict={}):
+    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False, marchDir=1, includeCurves=False, intDir = None, curveEpsDict={}, remeshBwd=True):
         """
         Method that defines intersections between components
         """
 
         # just initialize the intersection object
-        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project, marchDir, includeCurves, intDir, curveEpsDict))
+        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project, marchDir, includeCurves, intDir, curveEpsDict, remeshBwd))
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
@@ -1035,7 +1035,7 @@ class PointSet(object):
         self.comm = comm
 
 class CompIntersection(object):
-    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project, marchDir, includeCurves, intDir, curveEpsDict):
+    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project, marchDir, includeCurves, intDir, curveEpsDict, remeshBwd):
         '''Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
@@ -1066,6 +1066,9 @@ class CompIntersection(object):
 
         # counter for outputting curves etc at each update
         self.counter = 0
+
+        # flag that determines if we will remesh the other side of the feature curves on compB
+        self.remeshBwd = remeshBwd
 
         # tolerance used for each curve when mapping nodes to curves
         self.curveEpsDict = {}
@@ -1159,7 +1162,7 @@ class CompIntersection(object):
             curveNodes = curveComp.nodes
 
             # get the direction we want to march
-            mdir = abs(marchDirs[ii])
+            mdir = abs(marchDirs[ii])-1
             msign= numpy.sign(marchDirs[ii])
 
             # check if we need to flip
@@ -2510,7 +2513,8 @@ class CompIntersection(object):
                     int_pts = intNodes[newConn[i]][:,0]
 
                     # average the values
-                    int_centers[i] = numpy.average(int_pts[abs(self.intDir)])
+                    # the API uses a 1 based indexing, but here, we convert to a zero based indexing
+                    int_centers[i] = numpy.average(int_pts[abs(self.intDir)-1])
 
                 # multiply the values with the sign of intDir
                 int_centers *= numpy.sign(self.intDir)
@@ -2862,7 +2866,7 @@ class CompIntersection(object):
 
                 # number of new nodes added in the opposite direction
                 nNewNodesReverse = 0
-                if elemBeg > 0:
+                if elemBeg > 0 and self.remeshBwd:
                     # also re-mesh the initial part of the curve, to prevent any negative volumes there
                     curveConnTrim = curveConn[:elemBeg]
 
@@ -2899,7 +2903,7 @@ class CompIntersection(object):
 
                 # save some info for gradient computations later on
                 self.seamDict[curveName]['nNewNodes'] = nNewNodes.copy()
-                self.seamDict[curveName]['nNewNodesReverse'] = nNewNodesReverse.copy()
+                self.seamDict[curveName]['nNewNodesReverse'] = nNewNodesReverse
                 self.seamDict[curveName]['elemBeg'] = elemBeg
                 self.seamDict[curveName]['elemEnd'] = elemEnd
                 # this includes the initial coordinates of the points for each curve
@@ -3038,32 +3042,33 @@ class CompIntersection(object):
 
                 # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
                 if elemBeg > 0:
-                    # first, we need to do the re-meshing of the other direction
+                    if self.remeshBwd:
+                        # first, we need to do the re-meshing of the other direction
 
-                    # get the fwd data
-                    nNewNodes = curveDict['nNewNodesReverse']
+                        # get the fwd data
+                        nNewNodes = curveDict['nNewNodesReverse']
 
-                    # get the derivative seeds
-                    newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:].copy()
-                    # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
-                    iBeg += nNewNodes
+                        # get the derivative seeds
+                        newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:].copy()
+                        # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
+                        iBeg += nNewNodes
 
-                    # bars conn is everything up to elemBeg
-                    barsConn = curveComp.barsConn[curveName][:elemBeg]
+                        # bars conn is everything up to elemBeg
+                        barsConn = curveComp.barsConn[curveName][:elemBeg]
 
-                    # loop over functions
-                    for ii in range(N):
-                        # Call Fortran code. Remember to adjust transposes and indices
-                        _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
-                                                                    coor.T,
-                                                                    newCoorb[ii].T,
-                                                                    barsConn.T + 1,
-                                                                    method,
-                                                                    spacing,
-                                                                    initialSpacing,
-                                                                    finalSpacing)
-                        # derivative seeds for the coordinates.
-                        cb[ii] += cbi.T.copy()
+                        # loop over functions
+                        for ii in range(N):
+                            # Call Fortran code. Remember to adjust transposes and indices
+                            _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
+                                                                        coor.T,
+                                                                        newCoorb[ii].T,
+                                                                        barsConn.T + 1,
+                                                                        method,
+                                                                        spacing,
+                                                                        initialSpacing,
+                                                                        finalSpacing)
+                            # derivative seeds for the coordinates.
+                            cb[ii] += cbi.T.copy()
 
                     # the first seed is for the projected point...
                     projb = cb[:,curveConn[elemBeg,0],:].copy()
