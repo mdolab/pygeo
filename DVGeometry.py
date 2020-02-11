@@ -1329,34 +1329,30 @@ class DVGeometry(object):
         # Now loop over the children set the FFD and refAxis control
         # points as evaluated from the parent
         for iChild in range(len(self.children)):
-            self.children[iChild]._finalize()
-            self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
-                'child%d_coef'%(iChild))
+            child = self.children[iChild]
+            child._finalize()
+            self.applyToChild(iChild, childDelta)
 
-            self.children[iChild].coef = self.FFD.getAttachedPoints(
-                'child%d_axis'%(iChild))
-            self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
-            self.children[iChild].refAxis._updateCurveCoef()
             if self.complex:
                 # need to propagate the sensitivity to the children coords here to do this
                 # correctly
-                self.children[iChild]._complexifyCoef()
-                self.children[iChild].FFD.coef = self.children[iChild].FFD.coef.astype('D')
+                child._complexifyCoef()
+                child.FFD.coef = child.FFD.coef.astype('D')
 
                 dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
                 dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
 
                 if dXrefdCoef is not None:
                     for ii in range(3):
-                        self.children[iChild].coef[:, ii] += imag_j*dXrefdCoef.dot(imag_part[:, ii])
+                        child.coef[:, ii] += imag_j*dXrefdCoef.dot(imag_part[:, ii])
 
                 if dCcdCoef is not None:
                     for ii in range(3):
-                        self.children[iChild].FFD.coef[:, ii] += imag_j*dCcdCoef.dot(imag_part[:, ii])
-                self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
-                self.children[iChild].refAxis._updateCurveCoef()
+                        child.FFD.coef[:, ii] += imag_j*dCcdCoef.dot(imag_part[:, ii])
+                child.refAxis.coef = child.coef.copy()
+                child.refAxis._updateCurveCoef()
 
-            foo = self.children[iChild].update(ptSetName, childDelta, config=config)
+            foo = child.update(ptSetName, childDelta, config=config)
             coords += foo
 
         self._unComplexifyCoef()
@@ -1365,6 +1361,28 @@ class DVGeometry(object):
         self.updated[ptSetName] = True
 
         return coords
+
+    def applyToChild(self, iChild, childDelta):
+        """
+        This function is used to apply the changes in the parent FFD to the
+        child FFD points. In the case where the parent is also a child,
+        self.FFD.getAttachedPoints will return a delta, so we have to add that
+        to the original value of the attached points.
+        """
+        child = self.children[iChild]
+
+        if self.isChild and childDelta:
+            # Need to apply deltas to the original FFD points
+            child.FFD.coef = child.origFFDCoef + self.FFD.getAttachedPoints('child%d_coef'%(iChild))
+            child.coef = child.coef0 + self.FFD.getAttachedPoints('child%d_axis'%(iChild))
+
+        else:
+            # Can set FFD points directly
+            child.FFD.coef = self.FFD.getAttachedPoints('child%d_coef'%(iChild))
+            child.coef = self.FFD.getAttachedPoints('child%d_axis'%(iChild))
+
+        child.refAxis.coef = child.coef.copy()
+        child.refAxis._updateCurveCoef()
 
     def pointSetUpToDate(self, ptSetName):
         """
@@ -1818,15 +1836,8 @@ class DVGeometry(object):
             # Add in child portion
             for iChild in range(len(self.children)):
 
-                # reset control points on child for child link derivatives
-                self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
-                    'child%d_coef'%(iChild))
-
-                self.children[iChild].coef = self.FFD.getAttachedPoints(
-                    'child%d_axis'%(iChild))
-                self.children[iChild].refAxis.coef = (
-                    self.children[iChild].coef.copy())
-                self.children[iChild].refAxis._updateCurveCoef()
+                # Reset control points on child for child link derivatives
+                self.applyToChild(iChild, childDelta=True)
                 self.children[iChild].computeTotalJacobian(ptSetName,config=config)
 
                 if self.JT[ptSetName] is not None:
@@ -3192,7 +3203,7 @@ class DVGeometry(object):
                 print('========================================')
 
                 if self.isChild:
-                    self.FFD.coef=  refFFDCoef.copy()
+                    self.FFD.coef = refFFDCoef.copy()
                     self.coef = refCoef.copy()
                     self.refAxis.coef = self.coef.copy()
                     self.refAxis._updateCurveCoef()
@@ -3225,7 +3236,7 @@ class DVGeometry(object):
                 print('========================================')
 
                 if self.isChild:
-                    self.FFD.coef=  refFFDCoef.copy()
+                    self.FFD.coef = refFFDCoef.copy()
                     self.coef = refCoef.copy()
                     self.refAxis.coef = self.coef.copy()
                     self.refAxis._updateCurveCoef()
@@ -3256,7 +3267,7 @@ class DVGeometry(object):
                 print('========================================')
 
                 if self.isChild:
-                    self.FFD.coef=  refFFDCoef.copy()
+                    self.FFD.coef = refFFDCoef.copy()
                     self.coef = refCoef.copy()
                     self.refAxis.coef = self.coef.copy()
                     self.refAxis._updateCurveCoef()
