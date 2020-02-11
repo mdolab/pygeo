@@ -2113,7 +2113,7 @@ class DVGeometry(object):
         pointSet : str
             Name of the pointset to write out. If this is not specified, it will
             take the first one in the list.
-	    callBack : function
+        callBack : function
             This allows the user to perform an additional task at each new design
             variable iteration (e.g. write out a deformed mesh). The callback
             function must take two inputs: 1) the output directory name (str) and
@@ -2135,10 +2135,10 @@ class DVGeometry(object):
             if self.ptSetNames:
                 pointSet = self.ptSetNames[0]
             else:
-                raise Error('DVGeo must have a point set to update for\
-                            demoDesignVars to work.')
+                raise Error('DVGeo must have a point set to update for'
+                            'demoDesignVars to work.')
         else:
-	        writePointSet = True
+            writePointSet = True
 
         # Loop through design variables on self and children
         geoList = self.getFlattenedChildren()
@@ -2161,6 +2161,10 @@ class DVGeometry(object):
                         continue
                     lower = geo.DV_listGlobal[key].lower
                     upper = geo.DV_listGlobal[key].upper
+
+                if lower is None or upper is None:
+                    raise Error('demoDesignVars requires upper and lower bounds'
+                                'on all design variables.')
 
                 x = dvDict[key].flatten()
                 nDV = len(lower)

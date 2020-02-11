@@ -717,7 +717,7 @@ class DVConstraints(object):
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
             addToPyOpt)
 
-    def addLERadiusConstraints(self, leList, nSpan, axis,
+    def addLERadiusConstraints(self, leList, nSpan, axis, chordDir,
                                lower=1.0, upper=3.0, scaled=True,
                                scale=1.0, name=None,
                                addToPyOpt=True):
@@ -756,6 +756,11 @@ class DVConstraints(object):
         axis : list or array of length 3
             The direction along which the up-down projections will occur.
             Typically this will be y or z axis ([0,1,0] or [0,0,1])
+
+        chordDir : list or array or length 3
+            The vector pointing from the leList to the leading edge. This will
+            typically be the negative xaxis ([-1,0,0]). The magnitude of the
+            vector doesn't matter.
 
         lower : float or array of size nSpan
             The lower bound for the constraint. A single float will
@@ -829,16 +834,16 @@ class DVConstraints(object):
 
         # Project to get leading edge point
         lePts = numpy.zeros((nSpan, 3))
-        streamwise = numpy.array([-1.0, 0, 0])
+        chordDir /= numpy.linalg.norm(numpy.array(chordDir, 'd'))
         for i in range(nSpan):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], streamwise, self.p0, self.v1, self.v2)
+                X[i], chordDir, self.p0, self.v1, self.v2)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
                                 X[i, 0], X[i, 1], X[i, 2],
-                                streamwise[0], streamwise[1], streamwise[2]))
+                                chordDir[0], chordDir[1], chordDir[2]))
             lePts[i] = up
 
         # Check that points can form radius
@@ -2773,6 +2778,23 @@ class RadiusConstraint(GeometricConstraint):
         return origin, nxi, neta
 
     def computeCircle(self, coords):
+        '''
+        A circle in a 2D coordinate system is defined by the equation:
+
+            A*xi**2 + A*eta**2 + B*xi + C*eta + D = 0
+
+        First, we get the coordinates of our three points in 2D reference space.
+        Then, we can get the coefficients A, B, C, and D by solving for some
+        determinants. Then the radius and center of the circle can be calculated
+        from:
+
+            x = -B / 2 / A
+            y = -C / 2 / A
+            r = sqrt((B**2 + C**2 - 4*A*D) / 4 / A**2)
+
+        Finally, we convert the reference coordinates of the center back into
+        3D space.
+        '''
         p1, p2, p3 = self.splitPointSets(coords)
 
         # Compute origin and unit vectors (xi, eta) of 2d space
