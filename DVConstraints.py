@@ -719,10 +719,23 @@ class DVConstraints(object):
 
     def addLERadiusConstraints(self, leList, nSpan, axis, chordDir,
                                lower=1.0, upper=3.0, scaled=True,
-                               scale=1.0, name=None,
-                               addToPyOpt=True):
+                               scale=1.0, name=None, addToPyOpt=True):
         """
-        Add a set of thickness constraints oriented along a poly-line.
+        Add a set of leading edge radius constraints. The constraint is set up
+        similar to the 1D thickness or thickness-to-chord constraints. The user
+        provides a polyline near the leading edge and specifies how many
+        locations should be sampled along the polyline. The sampled points are
+        then projected to the upper and lower surface along the provided axis.
+        A third projection is made to the leading edge along chordDir. We then
+        compute the radius of the circle circumscribed by these three points.
+
+        In order for this radius calculation to be a reasonable approximation
+        for the actual leading edge radius, it is critical that the polyline be
+        drawn very close to the leading edge (less than 0.5% chord). We include
+        a check to make sure that the points fall on the same hemisphere of the
+        circumscribed circle, however we recommend that the user export the
+        Tecplot view of the constraint using the writeTecplot function to verify
+        that the circles do coincide with the leading edge radius.
 
         See below for a schematic
 
@@ -734,12 +747,11 @@ class DVConstraints(object):
           Physical extent of wing
                                    \
           __________________________\_________
-          |                  +               |
-          |                -/                |
-          |                /                 |
-          | +-------+-----+                  |
-          |              4-points defining   |
+          | +-------+-----+-------+-----+    |
+          |              5 points defining   |
           |              poly-line           |
+          |                                  |
+          |                                  |
           |                                  |
           |__________________________________/
 
@@ -760,7 +772,7 @@ class DVConstraints(object):
         chordDir : list or array or length 3
             The vector pointing from the leList to the leading edge. This will
             typically be the negative xaxis ([-1,0,0]). The magnitude of the
-            vector doesn't matter.
+            vector doesn't matter, but the direction does.
 
         lower : float or array of size nSpan
             The lower bound for the constraint. A single float will
@@ -776,32 +788,27 @@ class DVConstraints(object):
             Flag specifying whether or not the constraint is to be
             implemented in a scaled fashion or not.
 
-            * scaled=True: The initial length of each thickness
-              constraint is defined to be 1.0. In this case, the lower
-              and upper bounds are given in multiple of the initial
-              length. lower=0.85, upper=1.15, would allow for 15%
-              change in each direction from the original length. For
-              aerodynamic shape optimizations, this option is used
-              most often.
+            * scaled=True: The initial radius of each constraint is defined to
+              be 1.0. In this case, the lower and upper bounds are given in
+              multiples of the initial radius. lower=0.85, upper=1.15, would
+              allow for 15% change in each direction from the original radius.
 
-            * scaled=False: No scaling is applied and the phyical lengths
+            * scaled=False: No scaling is applied and the phyical radii
               must be specified for the lower and upper bounds.
 
         scale : float or array of size nSpan
-            This is the optimization scaling of the
-            constraint. Typically this parameter will not need to be
-            changed. If the thickness constraints are scaled, this
-            already results in well-scaled constraint values, and
-            scale can be left at 1.0. If scaled=False, it may changed
-            to a more suitable value of the resulting physical
-            thickness have magnitudes vastly different than O(1).
+            This is the optimization scaling of the constraint. Typically this
+            parameter will not need to be changed. If the radius constraints are
+            scaled, this already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may  be changed to a
+            more suitable value if the resulting physical thickness have
+            magnitudes vastly different than O(1).
 
         name : str
-            Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
-            need to be distinguished **or** you are using this set of
-            thickness constraints for something other than a direct
-            constraint in pyOptSparse.
+            Normally this does not need to be set. Only use this if you have
+            multiple DVCon objects and the constriant names need to be
+            distinguished **or** you are using this set of thickness constraints
+            for something other than a direct constraint in pyOptSparse.
 
         addToPyOpt : bool
             Normally this should be left at the default of True. If
@@ -834,7 +841,8 @@ class DVConstraints(object):
 
         # Project to get leading edge point
         lePts = numpy.zeros((nSpan, 3))
-        chordDir /= numpy.linalg.norm(numpy.array(chordDir, 'd'))
+        chordDir = numpy.array(chordDir, dtype='d').flatten()
+        chordDir /= numpy.linalg.norm(chordDir)
         for i in range(nSpan):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
