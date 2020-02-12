@@ -2084,7 +2084,18 @@ class DVGeometry(object):
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
 
-    def demoDesignVars(self, directory, includeLocal=True, pointSet=None, callBack=None):
+    def getFlattenedChildren(self):
+        """
+        Return a flattened list of all DVGeo objects in the family heirarchy.
+        """
+        flatChildren = [self]
+        for child in self.children:
+            flatChildren += child.getFlattenedChildren()
+
+        return flatChildren
+
+    def demoDesignVars(self, directory, includeLocal=True, includeGlobal=True,
+                       pointSet=None, callBack=None, freq=2):
         """
         This function can be used to "test" the design variable parametrization
         for a given optimization problem. It should be called in the script
@@ -2107,6 +2118,9 @@ class DVGeometry(object):
             variable iteration (e.g. write out a deformed mesh). The callback
             function must take two inputs: 1) the output directory name (str) and
             2) the iteration count (int).
+        freq : int
+            Number of snapshots to take between the upper and lower bounds of
+            a given variable. If greater than 2, will do a sinusoidal sweep.
         """
         # Generate directories
         os.system('mkdir -p {:s}/ffd'.format(directory))
@@ -2121,61 +2135,73 @@ class DVGeometry(object):
             if self.ptSetNames:
                 pointSet = self.ptSetNames[0]
             else:
-                raise Error('DVGeo must have a point set to update for\
-                            demoDesignVars to work.')
+                raise Error('DVGeo must have a point set to update for'
+                            'demoDesignVars to work.')
         else:
             writePointSet = True
 
-        # Loop through design variables
+        # Loop through design variables on self and children
+        geoList = self.getFlattenedChildren()
         count = 0
-        for key in dvDict:
-            if key in self.DV_listLocal:
-                if not includeLocal:
-                    continue
-                lower = self.DV_listLocal[key].lower
-                upper = self.DV_listLocal[key].upper
-            elif key in self.DV_listSectionLocal:
-                if not includeLocal:
-                    continue
-                lower = self.DV_listSectionLocal[key].lower
-                upper = self.DV_listSectionLocal[key].upper
-            elif key in self.DV_listGlobal:
-                lower = self.DV_listGlobal[key].lower
-                upper = self.DV_listGlobal[key].upper
-            else:
-                print('Fail')
+        for geo in geoList:
+            for key in dvDict:
+                lower = []
+                if key in geo.DV_listLocal:
+                    if not includeLocal:
+                        continue
+                    lower = geo.DV_listLocal[key].lower
+                    upper = geo.DV_listLocal[key].upper
+                elif key in geo.DV_listSectionLocal:
+                    if not includeLocal:
+                        continue
+                    lower = geo.DV_listSectionLocal[key].lower
+                    upper = geo.DV_listSectionLocal[key].upper
+                elif key in geo.DV_listGlobal:
+                    if not includeGlobal:
+                        continue
+                    lower = geo.DV_listGlobal[key].lower
+                    upper = geo.DV_listGlobal[key].upper
 
-            x = dvDict[key].flatten()
-            nDV = len(x)
-            for j in range(nDV):
-                if count == 0:
-                    stops = [0, lower[j], upper[j]]
-                else:
-                    stops = [lower[j], upper[j]]
-                for h in stops:
-                    # Add perturbation to the design variable and update
-                    x[j] += h
-                    dvDict.update({key:x})
-                    self.setDesignVars(dvDict)
-                    X = self.update(pointSet)
+                if lower is None or upper is None:
+                    raise Error('demoDesignVars requires upper and lower bounds'
+                                'on all design variables.')
 
-                    # Write FFD
-                    self.writeTecplot('{}/ffd/iter_{:03d}.dat'.format(directory, count))
+                x = dvDict[key].flatten()
+                nDV = len(lower)
+                for j in range(nDV):
+                    if freq == 2:
+                        stops = [lower[j], upper[j]]
+                    elif freq > 2:
+                        sinusoid = numpy.sin(numpy.linspace(0, numpy.pi, freq))
+                        down_swing = x[j] + (lower[j] - x[j]) * sinusoid
+                        up_swing = x[j] + (upper[j] - x[j]) * sinusoid
+                        stops = numpy.concatenate((down_swing[:-1], up_swing[:-1]))
 
-                    # Write pointset
-                    if writePointSet:
-                        self.writePointSet(pointSet, '{}/pointset/iter_{:03d}'.format(directory, count))
+                    for val in stops:
+                        # Add perturbation to the design variable and update
+                        old_val = x[j]
+                        x[j] = val
+                        dvDict.update({key:x})
+                        self.setDesignVars(dvDict)
+                        X = self.update(pointSet)
 
-                    # Call user function
-                    if callBack is not None:
-                        callBack(directory, count)
+                        # Write FFD
+                        self.writeTecplot('{}/ffd/iter_{:03d}.dat'.format(directory, count))
 
-                    # Reset variable
-                    x[j] -= h
-                    dvDict.update({key:x})
+                        # Write pointset
+                        if writePointSet:
+                            self.writePointSet(pointSet, '{}/pointset/iter_{:03d}'.format(directory, count))
 
-                    # Iterate counter
-                    count += 1
+                        # Call user function
+                        if callBack is not None:
+                            callBack(directory, count)
+
+                        # Reset variable
+                        x[j] = old_val
+                        dvDict.update({key:x})
+
+                        # Iterate counter
+                        count += 1
 
 # ----------------------------------------------------------------------
 #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
