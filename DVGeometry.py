@@ -1861,8 +1861,7 @@ class DVGeometry(object):
 
         if self.isChild:
             refFFDCoef = copy.copy(self.FFD.coef)
-        # end if
-
+            refCoef = copy.copy(self.coef)
 
         if self.nPts[ptSetName] == None:
             self.nPts[ptSetName] = len(self.update(ptSetName).flatten())
@@ -1878,8 +1877,10 @@ class DVGeometry(object):
         for key in self.DV_listGlobal:
             for j in range(self.DV_listGlobal[key].nVal):
                 if self.isChild:
-                    self.FFD.coef=  refFFDCoef.copy()
-                # end if
+                    self.FFD.coef = refFFDCoef.copy()
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = refCoef.copy()
+                    self.refAxis._updateCurveCoef()
 
                 refVal = self.DV_listGlobal[key].value[j]
 
@@ -1891,42 +1892,58 @@ class DVGeometry(object):
 
                 DVGlobalCount += 1
                 self.DV_listGlobal[key].value[j] = refVal
-            # end for
-        # end for
+
         self._unComplexifyCoef()
         for key in self.DV_listSectionLocal:
             for j in range(self.DV_listSectionLocal[key].nVal):
+                if self.isChild:
+                    self.FFD.coef = refFFDCoef.copy()
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = refCoef.copy()
+                    self.refAxis._updateCurveCoef()
 
                 refVal = self.DV_listSectionLocal[key].value[j]
 
                 self.DV_listSectionLocal[key].value[j] += h
                 deriv = numpy.imag(self._update_deriv_cs(ptSetName,config=config).flatten())/numpy.imag(h)
 
-                self.JT[ptSetName][DVSecLocCount,:]=deriv
+                self.JT[ptSetName][DVSecLocCount,:] = deriv
 
                 DVSecLocCount += 1
                 self.DV_listSectionLocal[key].value[j] = refVal
-            # end for
-        # end for
+
         for key in self.DV_listLocal:
             for j in range(self.DV_listLocal[key].nVal):
+                if self.isChild:
+                    self.FFD.coef = refFFDCoef.copy()
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = refCoef.copy()
+                    self.refAxis._updateCurveCoef()
 
                 refVal = self.DV_listLocal[key].value[j]
 
                 self.DV_listLocal[key].value[j] += h
                 deriv = numpy.imag(self._update_deriv_cs(ptSetName,config=config).flatten())/numpy.imag(h)
 
-                self.JT[ptSetName][DVLocalCount,:]=deriv
+                self.JT[ptSetName][DVLocalCount,:] = deriv
 
                 DVLocalCount += 1
                 self.DV_listLocal[key].value[j] = refVal
-            # end for
-        # end for
 
-        for child in self.children:
+
+        for iChild in range(len(self.children)):
+            child = self.children[iChild]
+            child._finalize()
+
+            # In the updates applied previously, the FFD points on the children
+            # will have been set as deltas. We need to set them as absolute
+            # coordinates based on the changes in the parent before moving down
+            # to the next level
+            self.applyToChild(iChild, childDelta=True)
+
+            # Now get jacobian from child and add to parent jacobian
             child.computeTotalJacobianCS(ptSetName,config=config)
             self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
-        # end for
 
         return
 
@@ -2661,33 +2678,29 @@ class DVGeometry(object):
 
         # now do the same for the children
         for iChild in range(len(self.children)):
-            self.children[iChild]._finalize()
             #first, update the coef. to their new locations
-            self.children[iChild].FFD.coef = self.FFD.getAttachedPoints(
-                'child%d_coef'%(iChild))
-            self.children[iChild].coef = self.FFD.getAttachedPoints(
-                'child%d_axis'%(iChild))
-            self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
-            self.children[iChild].refAxis._updateCurveCoef()
+            child = self.children[iChild]
+            child._finalize()
+            self.applyToChild(iChild, childDelta)
 
             # now cast forward the complex part of the derivative
-            self.children[iChild]._complexifyCoef()
-            self.children[iChild].FFD.coef = self.children[iChild].FFD.coef.astype('D')
+            child._complexifyCoef()
+            child.FFD.coef = child.FFD.coef.astype('D')
 
             dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
             dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
 
             if dXrefdCoef is not None:
                 for ii in range(3):
-                    self.children[iChild].coef[:, ii] += imag_j*dXrefdCoef.dot(imag_part[:, ii])
+                    child.coef[:, ii] += imag_j*dXrefdCoef.dot(imag_part[:, ii])
 
             if dCcdCoef is not None:
                 for ii in range(3):
-                    self.children[iChild].FFD.coef[:, ii] += imag_j*dCcdCoef.dot(imag_part[:, ii])
-            self.children[iChild].refAxis.coef = self.children[iChild].coef.copy()
-            self.children[iChild].refAxis._updateCurveCoef()
-            coords += self.children[iChild]._update_deriv_cs(ptSetName, config=config)
-            self.children[iChild]._unComplexifyCoef()
+                    child.FFD.coef[:, ii] += imag_j*dCcdCoef.dot(imag_part[:, ii])
+            child.refAxis.coef = child.coef.copy()
+            child.refAxis._updateCurveCoef()
+            coords += child._update_deriv_cs(ptSetName, config=config)
+            child._unComplexifyCoef()
 
         self.FFD.coef = self.FFD.coef.astype('d')
 
@@ -2752,18 +2765,18 @@ class DVGeometry(object):
 
         if self.isChild:
             refFFDCoef = copy.copy(self.FFD.coef)
-        # end if
+            refCoef = copy.copy(self.coef)
+
+        coords0 = self.update(ptSetName, config=config).flatten()
 
         if self.nPts[ptSetName] == None:
-            self.nPts[ptSetName] = len(self.update(ptSetName).flatten())
+            self.nPts[ptSetName] = len(coords0.flatten())
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
         DVGlobalCount, DVLocalCount, DVSecLocCount = self._getDVOffsets()
 
-        coords0 = self.update(ptSetName,config).flatten()
-
-        h = 1e-1#6
+        h = 1e-6
 
         self.JT[ptSetName] = numpy.zeros([self.nDV_T,self.nPts[ptSetName]])
 
@@ -2771,42 +2784,72 @@ class DVGeometry(object):
             for j in range(self.DV_listGlobal[key].nVal):
                 if self.isChild:
                     self.FFD.coef = refFFDCoef.copy()
-                # end if
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = refCoef.copy()
+                    self.refAxis._updateCurveCoef()
 
                 refVal = self.DV_listGlobal[key].value[j]
 
                 self.DV_listGlobal[key].value[j] += h
 
-                coordsph = self.update(ptSetName,config).flatten()
+                coordsph = self.update(ptSetName, config=config).flatten()
 
                 deriv = (coordsph-coords0)/h
                 self.JT[ptSetName][DVGlobalCount,:]=deriv
 
                 DVGlobalCount += 1
                 self.DV_listGlobal[key].value[j] = refVal
-            # end for
-        # end for
+
+        for key in self.DV_listSectionLocal:
+            for j in range(self.DV_listSectionLocal[key].nVal):
+                if self.isChild:
+                    self.FFD.coef = refFFDCoef.copy()
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = refCoef.copy()
+                    self.refAxis._updateCurveCoef()
+
+                refVal = self.DV_listSectionLocal[key].value[j]
+
+                self.DV_listSectionLocal[key].value[j] += h
+                coordsph = self.update(ptSetName, config=config).flatten()
+
+                deriv = (coordsph-coords0)/h
+                self.JT[ptSetName][DVSecLocCount,:]=deriv
+
+                DVSecLocCount += 1
+                self.DV_listSectionLocal[key].value[j] = refVal
 
         for key in self.DV_listLocal:
             for j in range(self.DV_listLocal[key].nVal):
+                if self.isChild:
+                    self.FFD.coef = refFFDCoef.copy()
+                    self.coef = refCoef.copy()
+                    self.refAxis.coef = refCoef.copy()
+                    self.refAxis._updateCurveCoef()
 
                 refVal = self.DV_listLocal[key].value[j]
 
                 self.DV_listLocal[key].value[j] += h
-                coordsph = self.update(ptSetName,config).flatten()
+                coordsph = self.update(ptSetName, config=config).flatten()
 
                 deriv = (coordsph-coords0)/h
                 self.JT[ptSetName][DVLocalCount,:]=deriv
 
                 DVLocalCount += 1
                 self.DV_listLocal[key].value[j] = refVal
-            # end for
-        # end for
 
-        # reset coords
-        # self.update(ptSetName,config) # do we need to reset the coords here?
-        for child in self.children:
-            child.computeTotalJacobianFD(ptSetName,config=config)
+        for iChild in range(len(self.children)):
+            child = self.children[iChild]
+            child._finalize()
+
+            # In the updates applied previously, the FFD points on the children
+            # will have been set as deltas. We need to set them as absolute
+            # coordinates based on the changes in the parent before moving down
+            # to the next level
+            self.applyToChild(iChild, childDelta=True)
+
+            # Now get jacobian from child and add to parent jacobian
+            child.computeTotalJacobianFD(ptSetName, config=config)
             self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
 
         return
