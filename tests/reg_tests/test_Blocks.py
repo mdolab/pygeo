@@ -7,6 +7,7 @@ from baseclasses import BaseRegTest
 import commonUtils
 from pygeo import DVGeometry, geo_utils
 
+
 class RegTestPyGeo(unittest.TestCase):
 
     N_PROCS = 1
@@ -40,56 +41,30 @@ class RegTestPyGeo(unittest.TestCase):
         # Make tiny FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/tiny_cube.xyz')
         self.make_cube_ffd(ffd_name, 1, 1, 1, 1, 1, 1)
-        tiny = DVGeometry(ffd_name, child=True)
-        tiny.addRefAxis('y', xFraction=0.5, alignIndex='j')
+        tiny = DVGeometry(ffd_name, child=True, name='tiny')
+        tiny.addRefAxis('ref', xFraction=0.5, alignIndex='j', rotType=7)
 
         # Make tiny FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/small_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 2, 2, 2)
-        small = DVGeometry(ffd_name, child=True)
-        small.addRefAxis('y', xFraction=0.5, alignIndex='j')
+        small = DVGeometry(ffd_name, child=True, name='small')
+        small.addRefAxis('ref', xFraction=0.5, alignIndex='j')
 
         # Make big FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/big_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 3, 3, 3)
-        big = DVGeometry(ffd_name)
-        big.addRefAxis('x', xFraction=0.5, alignIndex='i')
+        big = DVGeometry(ffd_name, name='big')
+        big.addRefAxis('ref', xFraction=0.5, alignIndex='i')
         big.addChild(small)
         small.addChild(tiny)
 
         # Add point set
         points = numpy.array([
-                # [0.5, 0.5, 0.5],
+                [0.5, 0.5, 0.5],
                 [1.25, 1.25, 1.25],
-                # [1.5, 1.5, 1.5]
+                [1.5, 1.5, 1.5]
                 ])
         big.addPointSet(points, 'X')
-
-        # Add translation design variables
-        def translate(val, geo):
-            C = geo.extractCoef('y')
-            for i in range(len(val)):
-                C[:,i] += val[i]
-            geo.restoreCoef(C, 'y')
-
-        tiny.addGeoDVGlobal('moveTiny', [0]*3, translate)
-        small.addGeoDVGlobal('moveSmall', [0]*3, translate)
-
-        # Add rotation design variables
-        def rotate_y(val, geo):
-            geo.rot_y['y'].coef[:] = val[0]
-
-        def rotate_x(val, geo):
-            geo.rot_x['x'].coef[:] = val[0]
-
-        tiny.addGeoDVGlobal('rotTiny', 0, rotate_y)
-        small.addGeoDVGlobal('rotSmall', 0, rotate_y)
-        big.addGeoDVGlobal('rotBig', 0, rotate_x)
-
-        # Add shape variables
-        small.addGeoDVLocal('smallLocal', axis='x')
-        tiny.addGeoDVSectionLocal('tinySectionLocal', secIndex='j', axis=1,
-                                  orient0='i', orient2='ffd')
 
         return big, small, tiny
 
@@ -104,14 +79,17 @@ class RegTestPyGeo(unittest.TestCase):
 
         # Calculate Jacobians
         DVGeo.setDesignVars(x)
+        DVGeo.update('X')
         DVGeo.computeTotalJacobian('X')
         Jac = DVGeo.JT['X'].toarray()
 
         DVGeo.setDesignVars(x)
+        DVGeo.update('X')
         DVGeo.computeTotalJacobianCS('X')
         JacCS = DVGeo.JT['X']
 
         DVGeo.setDesignVars(x)
+        DVGeo.update('X')
         DVGeo.computeTotalJacobianFD('X')
         JacFD = DVGeo.JT['X']
 
@@ -120,11 +98,11 @@ class RegTestPyGeo(unittest.TestCase):
         else:
             handler.root_add_val(Jac, 1e-12, 1e-12, msg='Check jacobian')
 
-        # print(Jac-JacCS)
-        # print(Jac-JacFD)
-        # print('\n', Jac)
-        # print('\n', JacCS)
-        # print('\n', JacFD)
+        # Create dIdPt with one function for each point coordinate
+        Npt = 3
+        dIdPt = numpy.zeros([Npt*3, Npt,3])
+        for i in range(Npt):
+            dIdPt[i*3:(i+1)*3,i] = numpy.eye(3)
 
         # Test that they are equal to eachother
         numpy.testing.assert_allclose(Jac, JacCS, rtol=1e-12, atol=1e-12,
@@ -132,15 +110,9 @@ class RegTestPyGeo(unittest.TestCase):
         numpy.testing.assert_allclose(Jac, JacFD, rtol=1e-6, atol=1e-6,
                                         err_msg='Analytic vs finite difference')
 
-        # Create dIdPt with one function for each point coordinate
-        Npt = 1
-        dIdPt = numpy.zeros([Npt*3, Npt,3])
-        for i in range(Npt):
-            dIdPt[i*3:(i+1)*3,i] = numpy.eye(3)
-
-        # sens = commonUtils.totalSensitivityFD(DVGeo, Npt*3, 'X', step=1e-6)
-        # print(sens)
-        # exit()
+        # Make sure we reset everything
+        DVGeo.setDesignVars(x)
+        DVGeo.update('X')
 
         # Test sensitivity dictionaries
         if refDeriv:
@@ -162,11 +134,13 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 1")
 
             big, small, tiny = self.setup_blocks()
+            add_vars(small, 'small', rotate='y')
+            add_vars(tiny, 'tiny', rotate='y')
 
             # Rotate small cube by 45 and then rotate tiny cube by -45
             x = {}
-            x['rotSmall'] = 45
-            x['rotTiny'] = -45
+            x['rotate_y_small'] = 45
+            x['rotate_y_tiny'] = -45
             big.setDesignVars(x)
 
             # Compute tests
@@ -182,12 +156,15 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 2")
 
             big, small, tiny = self.setup_blocks()
+            add_vars(big, 'big', rotate='x')
+            add_vars(small, 'small', translate=True)
+            add_vars(tiny, 'tiny', rotate='y')
 
             # Modify design variables
             x = {}
-            x['rotBig'] = 10
-            x['moveSmall'] = [0.5, -1, 0.7]
-            x['rotTiny'] = -20
+            x['rotate_x_big'] = 10
+            x['translate_small'] = [0.5, -1, 0.7]
+            x['rotate_y_tiny'] = -20
             big.setDesignVars(x)
 
             # Compute tests
@@ -203,13 +180,62 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 3")
 
             big, small, tiny = self.setup_blocks()
+            add_vars(small, 'small', rotate='y')
+            add_vars(tiny, 'tiny', rotate='y', slocal=True)
 
             # Modify design variables
             x = big.getValues()
-            x['rotSmall'] = 10
+            x['rotate_y_small'] = 10
+            x['rotate_y_tiny'] = -20
             numpy.random.seed(11)
-            x['tinySectionLocal'] = numpy.random.random(*x['tinySectionLocal'].shape)
+            x['sectionlocal_tiny'] = numpy.random.random(*x['sectionlocal_tiny'].shape)
             big.setDesignVars(x)
 
             # Compute tests
             self.compute_values(big, handler, refDeriv)
+
+def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, slocal=False):
+
+    if translate:
+        dvName = 'translate_{}'.format(name)
+        geo.addGeoDVGlobal(dvName=dvName, value=[0]*3, func=f_translate)
+
+    if rotate is not None:
+        rot_funcs = {
+            'x':f_rotate_x,
+            'y':f_rotate_y,
+            'z':f_rotate_z,
+            'theta':f_rotate_theta
+        }
+        assert(rotate in rot_funcs.keys())
+
+        dvName = 'rotate_{}_{}'.format(rotate, name)
+        dvFunc = rot_funcs[rotate]
+        geo.addGeoDVGlobal(dvName=dvName, value=0, func=dvFunc)
+
+    if local is not None:
+        assert(local in ['x', 'y', 'z'])
+        dvName = 'local_{}_{}'.format(local, name)
+        geo.addGeoDVLocal(dvName, axis=local)
+
+    if slocal:
+        dvName = 'sectionlocal_{}'.format(name)
+        geo.addGeoDVSectionLocal(dvName, secIndex='j', axis=1, orient0='i', orient2='ffd')
+
+def f_translate(val, geo):
+    C = geo.extractCoef('ref')
+    for i in range(len(val)):
+        C[:,i] += val[i]
+    geo.restoreCoef(C, 'ref')
+
+def f_rotate_x(val, geo):
+    geo.rot_x['ref'].coef[:] = val[0]
+
+def f_rotate_y(val, geo):
+    geo.rot_y['ref'].coef[:] = val[0]
+
+def f_rotate_z(val, geo):
+    geo.rot_z['ref'].coef[:] = val[0]
+
+def f_rotate_theta(val, geo):
+    geo.rot_theta['ref'].coef[:] = val[0]
