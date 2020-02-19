@@ -1349,7 +1349,7 @@ class DVGeometry(object):
         # Finally flag this pointSet as being up to date:
         self.updated[ptSetName] = True
 
-        if self.isChild:
+        if self.isChild and childDelta:
             return Xfinal - Xstart
         else:
             return Xfinal
