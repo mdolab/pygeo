@@ -62,7 +62,8 @@ class RegTestPyGeo(unittest.TestCase):
         points = numpy.array([
                 [0.5, 0.5, 0.5],
                 [1.25, 1.25, 1.25],
-                [1.5, 1.5, 1.5]
+                [1.5, 1.5, 1.5],
+                [2.0, 2.5, 0.5],
                 ])
         big.addPointSet(points, 'X')
 
@@ -98,12 +99,6 @@ class RegTestPyGeo(unittest.TestCase):
         else:
             handler.root_add_val(Jac, 1e-12, 1e-12, msg='Check jacobian')
 
-        # Create dIdPt with one function for each point coordinate
-        Npt = 3
-        dIdPt = numpy.zeros([Npt*3, Npt,3])
-        for i in range(Npt):
-            dIdPt[i*3:(i+1)*3,i] = numpy.eye(3)
-
         # Test that they are equal to eachother
         numpy.testing.assert_allclose(Jac, JacCS, rtol=1e-12, atol=1e-12,
                                         err_msg='Analytic vs complex-step')
@@ -113,6 +108,12 @@ class RegTestPyGeo(unittest.TestCase):
         # Make sure we reset everything
         DVGeo.setDesignVars(x)
         DVGeo.update('X')
+
+        # Create dIdPt with one function for each point coordinate
+        Npt = 4
+        dIdPt = numpy.zeros([Npt*3, Npt,3])
+        for i in range(Npt):
+            dIdPt[i*3:(i+1)*3,i] = numpy.eye(3)
 
         # Test sensitivity dictionaries
         if refDeriv:
@@ -189,6 +190,33 @@ class RegTestPyGeo(unittest.TestCase):
             x['rotate_y_tiny'] = -20
             numpy.random.seed(11)
             x['sectionlocal_tiny'] = numpy.random.random(*x['sectionlocal_tiny'].shape)
+            big.setDesignVars(x)
+
+            # Compute tests
+            self.compute_values(big, handler, refDeriv)
+
+    def train_4(self, train=True, refDeriv=True):
+        self.test_4(train=train, refDeriv=refDeriv)
+
+    def test_4(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_Blocks_04.ref')
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 3")
+
+            big, small, tiny = self.setup_blocks()
+
+            # Add only translation variables
+            add_vars(big, 'big', translate=True)
+            add_vars(small, 'small', translate=True)
+            add_vars(tiny, 'tiny', translate=True)
+
+            # Modify design variables
+            x = big.getValues()
+            numpy.random.seed(11)
+            x['translate_big'] = numpy.random.random(3)
+            x['translate_small'] = numpy.random.random(3)
+            x['translate_tiny'] = numpy.random.random(3)
             big.setDesignVars(x)
 
             # Compute tests
