@@ -100,9 +100,6 @@ class DVGeometry(object):
       """
     def __init__(self, fileName, complex=False, child=False, faceFreeze=None, *args, **kwargs):
 
-        if 'name' in kwargs:
-            self.name = kwargs.pop('name')
-
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
         self.DV_listLocal = OrderedDict() # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict() # Local Normal Design Variable List

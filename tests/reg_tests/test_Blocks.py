@@ -41,19 +41,19 @@ class RegTestPyGeo(unittest.TestCase):
         # Make tiny FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/tiny_cube.xyz')
         self.make_cube_ffd(ffd_name, 1, 1, 1, 1, 1, 1)
-        tiny = DVGeometry(ffd_name, child=True, name='tiny')
+        tiny = DVGeometry(ffd_name, child=True)
         tiny.addRefAxis('ref', xFraction=0.5, alignIndex='j', rotType=7)
 
         # Make tiny FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/small_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 2, 2, 2)
-        small = DVGeometry(ffd_name, child=True, name='small')
+        small = DVGeometry(ffd_name, child=True)
         small.addRefAxis('ref', xFraction=0.5, alignIndex='j')
 
         # Make big FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/big_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 3, 3, 3)
-        big = DVGeometry(ffd_name, name='big')
+        big = DVGeometry(ffd_name)
         big.addRefAxis('ref', xFraction=0.5, alignIndex='i')
         big.addChild(small)
         small.addChild(tiny)
