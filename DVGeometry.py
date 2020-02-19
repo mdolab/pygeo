@@ -1731,8 +1731,6 @@ class DVGeometry(object):
 
         # This is going to be DENSE in general
         J_attach = self._attachedPtJacobian(config=config)
-        # if J_attach is not None:
-        #     print('J_attach', self.name, J_attach)
 
         # Compute local normal jacobian
         J_sectionlocal = self._sectionlocalDVJacobian(config=config)
@@ -1743,8 +1741,6 @@ class DVGeometry(object):
 
         # this is the jacobian from accumulated derivative dependence from parent to child
         J_casc = self._cascadedDVJacobian(config=config)
-        # if J_casc is not None:
-        #     print('J_casc', self.name, J_casc.toarray())
 
         J_temp = None
 
@@ -1765,7 +1761,6 @@ class DVGeometry(object):
                 J_temp += J_local
 
         if J_casc is not None:
-            # print('J_casc', J_casc.todense())
             if J_temp is None:
                 J_temp =  sparse.lil_matrix(J_casc)
             else:
@@ -1781,8 +1776,8 @@ class DVGeometry(object):
         self._finalize()
         self.curPtSet = ptSetName
 
-        # if not(self.JT[ptSetName] is None):
-        #     return
+        if not(self.JT[ptSetName] is None):
+            return
 
         # compute the derivatives of the coeficients of this level wrt all of the design
         # variables at this level and all levels above
@@ -2591,14 +2586,14 @@ class DVGeometry(object):
                 dCcdXdv[1::3] = dCcdCoef.dot(tmp[:, 1])
                 dCcdXdv[2::3] = dCcdCoef.dot(tmp[:, 2])
                 if localDV and self._getNDVLocalSelf():
-                    self.children[iChild].dXrefdXdvl[:, iDV] += dXrefdXdv # This is for recursion, check??
-                    self.children[iChild].dCcdXdvl[:, iDV] += dCcdXdv  # This is for recursion, check??
+                    self.children[iChild].dXrefdXdvl[:, iDV] += dXrefdXdv
+                    self.children[iChild].dCcdXdvl[:, iDV] += dCcdXdv
                 elif self._getNDVGlobalSelf():
-                    self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv.real # This is for recursion, check??
-                    self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv.real  # This is for recursion, check??
+                    self.children[iChild].dXrefdXdvg[:, iDV] += dXrefdXdv.real
+                    self.children[iChild].dCcdXdvg[:, iDV] += dCcdXdv.real
         return new_pts
 
-    def _update_deriv_cs(self,ptSetName, childDelta = True, config=None):
+    def _update_deriv_cs(self, ptSetName, config=None):
 
         """
         A version of the update_deriv function specifically for use
@@ -2876,6 +2871,8 @@ class DVGeometry(object):
                 # derivative of the control points wrt the global DVs at this level
                 self.children[iChild].dCcdXdvg = numpy.zeros((N*3, self.nDV_T))
 
+            # We need to save the reference state so that we can always start
+            # from the same place when calling _update_deriv
             refFFDCoef = copy.copy(self.FFD.coef)
             refCoef = copy.copy(self.coef)
 
@@ -3072,7 +3069,7 @@ class DVGeometry(object):
 
         return Jacobian
 
-    def _cascadedDVJacobian(self, childDelta=True, config=None):
+    def _cascadedDVJacobian(self, config=None):
         """
         Compute the cascading derivatives from the parent to the child
         """
@@ -3083,7 +3080,9 @@ class DVGeometry(object):
         # we are now on a child. Add in dependence passed from parent
         Jacobian = sparse.lil_matrix((self.nPtAttachFull*3, self.nDV_T))
 
-        # Save reference values
+        # Save reference values (these are necessary so that we always start
+        # from the base state on the current DVGeo, and then apply the design
+        # variables from there).
         refFFDCoef = copy.copy(self.FFD.coef)
         refCoef = copy.copy(self.coef)
 
@@ -3134,8 +3133,12 @@ class DVGeometry(object):
                 numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, new_pts[:, 0])
                 numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, new_pts[:, 2])
-                if childDelta:
-                    self.FFD.coef -= oldCoefLocations
+
+                # We have to subtract off the oldCoefLocations because we only
+                # want the cascading effect on the current design variables. The
+                # complex part on oldCoefLocations was already accounted for on
+                # the parent.
+                self.FFD.coef -= oldCoefLocations
 
                 # sum up all of the various influences
                 Jacobian[0::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,0:1])
@@ -3187,12 +3190,15 @@ class DVGeometry(object):
                 # compute the deriv of the child FFD coords wrt the parent by processing
                 # the above CS perturbation
                 new_pts = self._update_deriv(iDV, h, oneoverh, config=config,localDV=True)
-
                 numpy.put(self.FFD.coef[:, 0], self.ptAttachInd, new_pts[:, 0])
                 numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, new_pts[:, 2])
-                if childDelta:
-                    self.FFD.coef -= oldCoefLocations
+
+                # We have to subtract off the oldCoefLocations because we only
+                # want the cascading effect on the current design variables. The
+                # complex part on oldCoefLocations was already accounted for on
+                # the parent.
+                self.FFD.coef -= oldCoefLocations
 
                 # sum up all of the various influences
                 Jacobian[0::3, iDV] += oneoverh*numpy.imag(self.FFD.coef[:,0:1])

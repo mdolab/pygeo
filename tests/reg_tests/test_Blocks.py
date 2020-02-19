@@ -222,6 +222,10 @@ class RegTestPyGeo(unittest.TestCase):
             # Compute tests
             self.compute_values(big, handler, refDeriv)
 
+'''
+The following are some helper functions for setting up the design variables for
+the different test cases.
+'''
 def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, slocal=False):
 
     if translate:
