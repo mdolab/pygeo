@@ -117,8 +117,10 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setDVGeo(DVGeo)
 
             leList = [[0, 0, 0 ], [-radius/2, 0, height]]
+            xAxis = [-1, 0, 0]
             yAxis = [0, 1, 0]
-            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis, scaled=False)
+            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis,
+                                         chordDir=xAxis, scaled=False)
             # DVCon.writeTecplot('cylinder_constraints.dat')
 
             funcs = {}
