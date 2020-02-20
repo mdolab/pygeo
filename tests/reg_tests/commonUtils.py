@@ -149,16 +149,16 @@ def totalSensitivityFD(DVGeo,nPt,ptName,step=1e-1):
 
 def totalSensitivityCS(DVGeo,nPt,ptName):
     xDV = DVGeo.getValues()
-    
+
     #now get CS Sensitivity
     dIdxCS = {}
     step = 1e-40j
     for key in xDV:
         baseVar = xDV[key].copy()
-        dIdxCS[key] =numpy.zeros([nPt,len(baseVar)])
+        dIdxCS[key] = numpy.zeros([nPt,len(baseVar)])
         for i in range(len(baseVar)):
             xDV[key][i] = baseVar[i]+step
-            
+
             DVGeo.setDesignVars(xDV)
             newPoints = DVGeo.update(ptName)
 
