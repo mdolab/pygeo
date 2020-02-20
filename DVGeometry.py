@@ -1220,7 +1220,7 @@ class DVGeometry(object):
                 else:
                     new_pts[ipt] = numpy.real(base_pt + D*scale)
 
-    def update(self, ptSetName, childDelta=False, config=None):
+    def update(self, ptSetName, childDelta=True, config=None):
         """
         This is the main routine for returning coordinates that have
         been updated by design variables.
@@ -2795,7 +2795,11 @@ class DVGeometry(object):
 
                 self.DV_listGlobal[key].value[j] += h
 
-                coordsph = self.update(ptSetName, config=config).flatten()
+                # Here we set childDelta as False, but it really doesn't matter
+                # whether it is True or False because we take a difference
+                # between coordsph and coords0, so the Xstart would be cancelled
+                # out in the end.
+                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
 
                 deriv = (coordsph-coords0)/h
                 self.JT[ptSetName][DVGlobalCount,:]=deriv
@@ -2814,7 +2818,7 @@ class DVGeometry(object):
                 refVal = self.DV_listSectionLocal[key].value[j]
 
                 self.DV_listSectionLocal[key].value[j] += h
-                coordsph = self.update(ptSetName, config=config).flatten()
+                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
 
                 deriv = (coordsph-coords0)/h
                 self.JT[ptSetName][DVSecLocCount,:]=deriv
@@ -2833,7 +2837,7 @@ class DVGeometry(object):
                 refVal = self.DV_listLocal[key].value[j]
 
                 self.DV_listLocal[key].value[j] += h
-                coordsph = self.update(ptSetName, config=config).flatten()
+                coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
 
                 deriv = (coordsph-coords0)/h
                 self.JT[ptSetName][DVLocalCount,:]=deriv
