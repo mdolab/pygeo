@@ -1260,6 +1260,18 @@ class DVGeometry(object):
             # Evaluate starting pointset
             Xstart = self.FFD.getAttachedPoints(ptSetName)
 
+            if self.complex:
+                # Now we have to propagate the complex part through Xstart
+                tempCoef = self.FFD.coef.copy().astype('D')
+                Xstart = Xstart.astype('D')
+                imag_part = numpy.imag(tempCoef)
+                imag_j = 1j
+
+                dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+                if dPtdCoef is not None:
+                    for ii in range(3):
+                        Xstart[:, ii] += imag_j*dPtdCoef.dot(imag_part[:, ii])
+
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
             if self.complex:
@@ -1357,9 +1369,7 @@ class DVGeometry(object):
     def applyToChild(self, iChild):
         """
         This function is used to apply the changes in the parent FFD to the
-        child FFD points. In the case where the parent is also a child,
-        self.FFD.getAttachedPoints will return a delta, so we have to add that
-        to the original value of the attached points.
+        child FFD points and child reference axis points.
         """
         child = self.children[iChild]
 

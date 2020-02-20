@@ -37,23 +37,23 @@ class RegTestPyGeo(unittest.TestCase):
 
         geo_utils.write_wing_FFD_file(file_name, slices, N0, N1, N2, axes=axes)
 
-    def setup_blocks(self):
+    def setup_blocks(self, isComplex=False):
         # Make tiny FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/tiny_cube.xyz')
         self.make_cube_ffd(ffd_name, 1, 1, 1, 1, 1, 1)
-        tiny = DVGeometry(ffd_name, child=True)
+        tiny = DVGeometry(ffd_name, child=True, complex=isComplex)
         tiny.addRefAxis('ref', xFraction=0.5, alignIndex='j', rotType=7)
 
         # Make tiny FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/small_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 2, 2, 2)
-        small = DVGeometry(ffd_name, child=True)
+        small = DVGeometry(ffd_name, child=True, complex=isComplex)
         small.addRefAxis('ref', xFraction=0.5, alignIndex='j')
 
         # Make big FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/big_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 3, 3, 3)
-        big = DVGeometry(ffd_name)
+        big = DVGeometry(ffd_name, complex=isComplex)
         big.addRefAxis('ref', xFraction=0.5, alignIndex='i')
         big.addChild(small)
         small.addChild(tiny)
@@ -202,7 +202,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path,'ref/test_Blocks_04.ref')
 
         with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test 3")
+            handler.root_print("Test 4")
 
             big, small, tiny = self.setup_blocks()
 
@@ -221,6 +221,54 @@ class RegTestPyGeo(unittest.TestCase):
 
             # Compute tests
             self.compute_values(big, handler, refDeriv)
+
+    def train_5(self, train=True, refDeriv=True):
+        self.test_5(train=train, refDeriv=refDeriv)
+
+    def test_5(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_Blocks_05.ref')
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 5")
+
+            if refDeriv:
+                isComplex = True
+            else:
+                isComplex = False
+            big, small, tiny = self.setup_blocks(isComplex=isComplex)
+
+            # Add only translation variables
+            add_vars(big, 'big', translate=True)
+            add_vars(small, 'small', rotate='y')
+            add_vars(tiny, 'tiny', rotate='y')
+
+            # Modify design variables
+            x = big.getValues()
+            numpy.random.seed(11)
+            x['translate_big'] = numpy.random.random(3)
+            x['rotate_y_small'] = 45
+            x['rotate_y_tiny'] = -45
+            big.setDesignVars(x)
+
+            # Compute tests
+            big.setDesignVars(x)
+            big.update('X')
+
+            # Create dIdPt with one function for each point coordinate
+            Npt = 4
+            dIdPt = numpy.zeros([Npt*3, Npt,3])
+            for i in range(Npt):
+                dIdPt[i*3:(i+1)*3,i] = numpy.eye(3)
+
+            # Test sensitivity dictionaries
+            if refDeriv:
+                # Generate reference from finite differences
+                sens = commonUtils.totalSensitivityCS(big, Npt*3, 'X')
+                handler.root_add_dict(sens, 1e-12, 1e-12, msg='Check sens dict')
+            else:
+                # Compute the analytic derivatives
+                sens = big.totalSensitivity(dIdPt, 'X')
+                handler.root_add_dict(sens, 1e-12, 1e-12, msg='Check sens dict')
 
 '''
 The following are some helper functions for setting up the design variables for
