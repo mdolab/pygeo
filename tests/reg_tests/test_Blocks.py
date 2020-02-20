@@ -37,23 +37,29 @@ class RegTestPyGeo(unittest.TestCase):
 
         geo_utils.write_wing_FFD_file(file_name, slices, N0, N1, N2, axes=axes)
 
-    def setup_blocks(self, isComplex=False):
+    def setup_blocks(self, testID, isComplex=False):
         # Make tiny FFD
-        ffd_name = os.path.join(self.base_path,'../inputFiles/tiny_cube.xyz')
-        self.make_cube_ffd(ffd_name, 1, 1, 1, 1, 1, 1)
-        tiny = DVGeometry(ffd_name, child=True, complex=isComplex)
+        ffd_name = '../inputFiles/tiny_cube_{:02d}.xyz'.format(testID)
+        file_name = os.path.join(self.base_path, ffd_name)
+        self.make_cube_ffd(file_name, 1, 1, 1, 1, 1, 1)
+        tiny = DVGeometry(file_name, child=True, complex=isComplex)
+        os.remove(file_name)
         tiny.addRefAxis('ref', xFraction=0.5, alignIndex='j', rotType=7)
 
         # Make tiny FFD
-        ffd_name = os.path.join(self.base_path,'../inputFiles/small_cube.xyz')
-        self.make_cube_ffd(ffd_name, 0, 0, 0, 2, 2, 2)
-        small = DVGeometry(ffd_name, child=True, complex=isComplex)
+        ffd_name = '../inputFiles/small_cube_{:02d}.xyz'.format(testID)
+        file_name = os.path.join(self.base_path, ffd_name)
+        self.make_cube_ffd(file_name, 0, 0, 0, 2, 2, 2)
+        small = DVGeometry(file_name, child=True, complex=isComplex)
+        os.remove(file_name)
         small.addRefAxis('ref', xFraction=0.5, alignIndex='j')
 
         # Make big FFD
-        ffd_name = os.path.join(self.base_path,'../inputFiles/big_cube.xyz')
-        self.make_cube_ffd(ffd_name, 0, 0, 0, 3, 3, 3)
-        big = DVGeometry(ffd_name, complex=isComplex)
+        ffd_name = '../inputFiles/big_cube_{:02d}.xyz'.format(testID)
+        file_name = os.path.join(self.base_path, ffd_name)
+        self.make_cube_ffd(file_name, 0, 0, 0, 3, 3, 3)
+        big = DVGeometry(file_name, complex=isComplex)
+        os.remove(file_name)
         big.addRefAxis('ref', xFraction=0.5, alignIndex='i')
         big.addChild(small)
         small.addChild(tiny)
@@ -134,7 +140,7 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 1")
 
-            big, small, tiny = self.setup_blocks()
+            big, small, tiny = self.setup_blocks(testID=1)
             add_vars(small, 'small', rotate='y')
             add_vars(tiny, 'tiny', rotate='y')
 
@@ -156,7 +162,7 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 2")
 
-            big, small, tiny = self.setup_blocks()
+            big, small, tiny = self.setup_blocks(testID=2)
             add_vars(big, 'big', rotate='x')
             add_vars(small, 'small', translate=True)
             add_vars(tiny, 'tiny', rotate='y')
@@ -180,7 +186,7 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 3")
 
-            big, small, tiny = self.setup_blocks()
+            big, small, tiny = self.setup_blocks(testID=3)
             add_vars(small, 'small', rotate='y')
             add_vars(tiny, 'tiny', rotate='y', slocal=True)
 
@@ -204,7 +210,7 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 4")
 
-            big, small, tiny = self.setup_blocks()
+            big, small, tiny = self.setup_blocks(testID=4)
 
             # Add only translation variables
             add_vars(big, 'big', translate=True)
@@ -235,7 +241,7 @@ class RegTestPyGeo(unittest.TestCase):
                 isComplex = True
             else:
                 isComplex = False
-            big, small, tiny = self.setup_blocks(isComplex=isComplex)
+            big, small, tiny = self.setup_blocks(testID=5, isComplex=isComplex)
 
             # Add only translation variables
             add_vars(big, 'big', translate=True)
