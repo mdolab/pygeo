@@ -1848,7 +1848,6 @@ class DVGeometry(object):
         """ Return the total point jacobian in CSR format since we
         need this for TACS"""
 
-        print('Calculate DV Jacobian using CS...')
         self._finalize()
         self.curPtSet = ptSetName
 
@@ -1888,8 +1887,6 @@ class DVGeometry(object):
 
                 DVGlobalCount += 1
                 self.DV_listGlobal[key].value[j] = refVal
-
-        print('local')
 
         self._unComplexifyCoef()
         for key in self.DV_listSectionLocal:
@@ -2759,7 +2756,6 @@ class DVGeometry(object):
         and should eventually be replaced by an analytic version.
         """
 
-        print('Calculate DV Jacobian using FD...')
         self._finalize()
         self.curPtSet = ptSetName
 
@@ -2770,7 +2766,11 @@ class DVGeometry(object):
             refFFDCoef = copy.copy(self.FFD.coef)
             refCoef = copy.copy(self.coef)
 
-        coords0 = self.update(ptSetName, config=config).flatten()
+        # Here we set childDelta as False, but it really doesn't matter
+        # whether it is True or False because we take a difference
+        # between coordsph and coords0, so the Xstart would be cancelled
+        # out in the end.
+        coords0 = self.update(ptSetName, childDelta=False, config=config).flatten()
 
         if self.nPts[ptSetName] == None:
             self.nPts[ptSetName] = len(coords0.flatten())
@@ -2795,10 +2795,6 @@ class DVGeometry(object):
 
                 self.DV_listGlobal[key].value[j] += h
 
-                # Here we set childDelta as False, but it really doesn't matter
-                # whether it is True or False because we take a difference
-                # between coordsph and coords0, so the Xstart would be cancelled
-                # out in the end.
                 coordsph = self.update(ptSetName, childDelta=False, config=config).flatten()
 
                 deriv = (coordsph-coords0)/h
@@ -3108,7 +3104,6 @@ class DVGeometry(object):
         oneoverh = 1.0/1e-40
         if self.dXrefdXdvg is not None:
             for iDV in range(self.dXrefdXdvg.shape[1]):
-                # print('Coef', self.FFD.coef)
                 nz1 = numpy.count_nonzero(self.dXrefdXdvg[:, iDV])
                 nz2 = numpy.count_nonzero(self.dCcdXdvg[:, iDV])
                 if nz1 + nz2 == 0:
