@@ -44,7 +44,7 @@ class RegTestPyGeo(unittest.TestCase):
         tiny = DVGeometry(ffd_name, child=True)
         tiny.addRefAxis('ref', xFraction=0.5, alignIndex='j', rotType=7)
 
-        # Make tiny FFD
+        # Make small FFD
         ffd_name = os.path.join(self.base_path,'../inputFiles/small_cube.xyz')
         self.make_cube_ffd(ffd_name, 0, 0, 0, 2, 2, 2)
         small = DVGeometry(ffd_name, child=True)
@@ -202,7 +202,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path,'ref/test_Blocks_04.ref')
 
         with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test 3")
+            handler.root_print("Test 4")
 
             big, small, tiny = self.setup_blocks()
 
@@ -271,3 +271,7 @@ def f_rotate_z(val, geo):
 
 def f_rotate_theta(val, geo):
     geo.rot_theta['ref'].coef[:] = val[0]
+            
+
+if __name__ == '__main__':
+    unittest.main()
