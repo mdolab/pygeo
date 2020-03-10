@@ -11,7 +11,9 @@ env:
   - DOCKER_WORKING_DIR=/home/mdolabuser/repos/$REPO_NAME
   - DOCKER_MOUNT_DIR=/home/mdolabuser/travis/$REPO_NAME
   jobs:
-  - DOCKER_TAG=py2
+  - DOCKER_TAG=py2-stable
+  - DOCKER_TAG=py2-latest
+  - DOCKER_TAG=py2-impi
 
 before_install:
   - docker pull mdolab/public:$DOCKER_TAG
