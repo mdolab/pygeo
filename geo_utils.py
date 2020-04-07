@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import division
 # =============================================================================
 # Utility Functions for Use in pyNetwork, pyGeo, pyBlock, DVGeometry,
 # and pyLayout

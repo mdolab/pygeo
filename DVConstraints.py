@@ -1,7 +1,6 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-from __future__ import print_function
 import numpy,copy
 from pygeo import geo_utils, pyGeo
 from pyspline import pySpline
