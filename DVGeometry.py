@@ -1,7 +1,6 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-from __future__ import print_function
 import copy,time
 try:
     from collections import OrderedDict
@@ -1974,9 +1973,9 @@ class DVGeometry(object):
             freezeVars = set()
 
         # Add design variables from the master:
-        varLists = {'globalVars':self.DV_listGlobal,
-                   'localVars':self.DV_listLocal,
-                   'sectionlocalVars':self.DV_listSectionLocal}
+        varLists = OrderedDict([('globalVars',self.DV_listGlobal),
+                   ('localVars',self.DV_listLocal),
+                   ('sectionlocalVars',self.DV_listSectionLocal)])
         for lst in varLists:
             if lst == 'globalVars' and globalVars or lst=='localVars' and localVars \
                or lst=='sectionlocalVars' and sectionlocalVars:
