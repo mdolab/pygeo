@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy,copy
-from pygeo import geo_utils, pyGeo
+from . import geo_utils, pyGeo
 from pyspline import pySpline
 from mpi4py import MPI
 from scipy.sparse import csr_matrix

@@ -15,7 +15,6 @@ from scipy import sparse
 from mpi4py import MPI
 from pyspline import pySpline
 from . import pyNetwork, pyBlock, geo_utils
-import pdb
 import os
 
 class Error(Exception):
@@ -255,11 +254,11 @@ class DVGeometry(object):
 
         axis: str
             Axis along which to project points/control points onto the
-            ref axis. Default is 'x' which will project rays.
+            ref axis. Default is `x` which will project rays.
 
         alignIndex: str
-            FFD axis along which the reference axis will lie. Can be 'i', 'j',
-            or 'k'. Only necessary when using xFraction.
+            FFD axis along which the reference axis will lie. Can be `i`, `j`,
+            or `k`. Only necessary when using xFraction.
 
         rotAxisVar: str
             If rotType == 8, then you must specify the name of the section local
@@ -355,7 +354,7 @@ class DVGeometry(object):
             #   - 'x' is streamwise direction
 
             # This is the block direction along which the reference axis will lie
-            # alignIndex = 'K'
+            # alignIndex = 'k'
             if alignIndex is None:
                 raise Error('Must specify alignIndex to use xFraction.')
 
@@ -609,9 +608,9 @@ class DVGeometry(object):
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
 
-        axis : str. Default is 'y'
-            The coordinate directions to move. Permissible values are 'x',
-            'y' and 'z'. If more than one direction is required, use multiple
+        axis : str. Default is `y`
+            The coordinate directions to move. Permissible values are `x`,
+            `y` and `z`. If more than one direction is required, use multiple
             calls to addGeoDVLocal with different axis values.
 
         volList : list
@@ -683,20 +682,22 @@ class DVGeometry(object):
     def addGeoDVSectionLocal(self, dvName, secIndex, lower=None, upper=None,
                              scale=1.0, axis=1, pointSelect=None, volList=None,
                              orient0=None, orient2='svd', config=None):
-        """Add one or more section local design variables to the DVGeometry
+        """
+        Add one or more section local design variables to the DVGeometry
         object. Section local variables are used as an alternative to local
         variables when it is desirable to deform a cross-section shape within a
         plane that is consistent with the original cross-section orientation.
         This is helpful in at least two common scenarios:
-            1) The original geometry has cross-sections that are not aligned with
-                the global coordinate axes. For instance, with a winglet, we want
-                the shape variables to deform normal to the winglet surface
-                instead of in the x, y, or z directions.
-            2) The global design variables cause changes in the geometry that
-                rotate the orientation of the original cross-section planes. In
-                this case, we want the shape variables to deform in directions
-                aligned with the rotated cross-section plane, which may not be
-                the x, y, or z directions.
+
+        1. The original geometry has cross-sections that are not aligned with
+            the global coordinate axes. For instance, with a winglet, we want
+            the shape variables to deform normal to the winglet surface
+            instead of in the x, y, or z directions.
+        2. The global design variables cause changes in the geometry that
+            rotate the orientation of the original cross-section planes. In
+            this case, we want the shape variables to deform in directions
+            aligned with the rotated cross-section plane, which may not be
+            the x, y, or z directions.
 
         ** Warnings **
             - Rotations in an upper level (parent) FFD will not propagate down
@@ -729,8 +730,10 @@ class DVGeometry(object):
                 0: longitudinal direction (in section plane)
                 1: latitudinal direction (in section plane)
                 2: transverse direction (out of section plane)
+
             If more than one direction is required, use multiple calls to
-            addGeoDVSectionLocal with different axis values.
+            `addGeoDVSectionLocal` with different axis values.
+            ::
 
                                     1
                                     ^
@@ -744,13 +747,12 @@ class DVGeometry(object):
                                 /
                                2
 
-        pointSelect : pointSelect object. Default is None Use a
-            pointSelect object to select a subset of the total number
-            of control points. See the documentation for the
-            pointSelect class in geo_utils. Using pointSelect discards everything in
-            volList.
+        pointSelect : pointSelect object. Default is None
+            Use a pointSelect object to select a subset of the total number
+            of control points. See the documentation for the pointSelect
+            class in geo_utils. Using pointSelect discards everything in volList.
             You can create a PointSelect object by using, for instance:
-            >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
+            >>> PS = geo_utils.PointSelect(type = `y`, pt1=[0,0,0], pt2=[10, 0, 10])
             Check the other PointSelect options in geo_utils.py
 
         volList : list
@@ -761,34 +763,35 @@ class DVGeometry(object):
 
         secIndex : char or list of chars
             For each volume, we need to specify along which index we would like
-            to subdivide the volume into sections. Entries in list can be 'i',
-            'j', or 'k'. This index will be designated as the transverse (2)
+            to subdivide the volume into sections. Entries in list can be `i`,
+            `j`, or `k`. This index will be designated as the transverse (2)
             direction in terms of the direction of perturbation for the 'axis'
             parameter.
 
-        orient0 : None, 'i', 'j', 'k', or numpy vector. Default is None.
-            Although secIndex defines the '2' axis, the '0' and '1' axes are still
+        orient0 : None, `i`, `j`, `k`, or numpy vector. Default is None.
+            Although secIndex defines the `2` axis, the `0` and `1` axes are still
             free to rotate within the section plane. We will choose the orientation
-            of the '0' axis and let '1' be orthogonal. We have three options:
-                1. <None> (default) If nothing is prescribed, the 0 direction will
-                    be the best fit line through the section points. In the case
-                    of an airfoil, this would roughly align with the chord.
-                2. <'i','j' or 'k'> In this case, the '0' axis will be aligned
-                    with the mean vector between the FFD edges corresponding to
-                    this index. In the ascii art above, if 'j' were given for this
-                    option, we would average the vectors between the points on the
-                    top and bottom surfaces and project this vector on to the
-                    section plane as the '0' axis. If a list is given, each index
-                    will be applied to its corresponding volume in volList.
-                3. <[x, y, z]> If a numpy vector is given, the '0' axis
-                    will be aligned with a projection of this vector onto the
-                    section plane. If a numpy array of len(volList) x 3 is given,
-                    each vector will apply to its corresponding volume.
+            of the `0` axis and let `1` be orthogonal. We have three options:
 
-        orient2: 'svd' or 'ffd. Default is 'svd'
-            How to compute the orientation '2' axis. SVD is the
+            1. <None> (default) If nothing is prescribed, the `0` direction will
+                be the best fit line through the section points. In the case
+                of an airfoil, this would roughly align with the chord.
+            2. <`i`,`j` or `k`> In this case, the `0` axis will be aligned
+                with the mean vector between the FFD edges corresponding to
+                this index. In the ascii art above, if `j` were given for this
+                option, we would average the vectors between the points on the
+                top and bottom surfaces and project this vector on to the
+                section plane as the `0` axis. If a list is given, each index
+                will be applied to its corresponding volume in volList.
+            3. <[`x`, `y`, `z`]> If a numpy vector is given, the `0` axis
+                will be aligned with a projection of this vector onto the
+                section plane. If a numpy array of len(volList) x 3 is given,
+                each vector will apply to its corresponding volume.
+
+        orient2 : `svd` or `ffd`. Default is `svd`
+            How to compute the orientation `2` axis. SVD is the
             default bevaviour and is taken from the svd of the plane
-            points. 'ffd' Uses the vector along the FFD direction of
+            points. `ffd` Uses the vector along the FFD direction of
             secIndex. This is requied to get consistent normals if you
             have a circular-type FFD when the SVD will swap the
             normals.
@@ -2073,6 +2076,7 @@ class DVGeometry(object):
         ----------
         name : str
              The name of the point set to write to a file
+
         fileName : str
            Filename for tecplot file. Should have no extension, an
            extension will be added
@@ -3402,34 +3406,40 @@ class DVGeometry(object):
         these airfoil sections so that we can constrain local control points to
         deform within the sectional plane. Let's say the wing FFD is oriented
         with indices:
-            'i' - along chord
-            'j' - normal to wing surface
-            'k' - along span
-        If we choose sectionIndex='k', this function will compute a frame which
+
+        `i`
+            along chord
+        `j`
+            normal to wing surface
+        `k`
+            along span
+
+        If we choose `sectionIndex='k'`, this function will compute a frame which
         has two axes aligned with the k-planes of the FFD volume. This is useful
         because in some cases (as with a winglet), we want to perturb sectional
         control points within the section plane instead of in the global
         coordinate directions.
 
         Assumptions:
-            - the normal direction is computed along the block index with size 2
-            - all point for a given sectionIndex lie within a plane
+
+        * the normal direction is computed along the block index with size 2
+        * all point for a given sectionIndex lie within a plane
 
         Parameters
         ----------
-        sectionIndex : 'i', 'j', or 'k'
+        sectionIndex : `i`, `j`, or `k`
             This the index of the FFD which defines a section plane.
 
-        orient0 : None, 'i', 'j', 'k', or numpy vector. Default is None.
+        orient0 : None, `i`, `j`, `k`, or numpy vector. Default is None.
             Although secIndex defines the '2' axis, the '0' and '1' axes are still
             free to rotate within the section plane. We will choose the orientation
-            of the '0' axis and let '1' be orthogonal. See addGeoDVSectionLocal
+            of the '0' axis and let '1' be orthogonal. See `addGeoDVSectionLocal`
             for a more detailed description.
 
         ivol : integer
             Volume ID for the volume in which section normals will be computed.
 
-        alignStreamwise : 'x', 'y', or 'z' (optional)
+        alignStreamwise : `x`, `y`, or `z` (optional)
             If given, section frames are rotated about the k-plane normal
             so that the longitudinal axis is parallel with the given streamwise
             direction.
@@ -3686,7 +3696,7 @@ class geoDVSectionLocal(object):
         """
         Create a set of geometric design variables which change the shape
         of a surface.
-        See addGeoDVSectionLocal for more information
+        See `addGeoDVSectionLocal` for more information
         """
 
         self.coefList = []
