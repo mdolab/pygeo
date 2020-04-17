@@ -3448,8 +3448,8 @@ class DVGeometry(object):
             List of sections along specified axis that will be fixed to the
             global coordinate frame.
 
-        Output
-        ------
+        Returns
+        -------
         sectionTransform : list of 3x3 arrays
             List of transformation matrices for the sections of a given volume.
             Transformations are set up from local section frame to global frame.
