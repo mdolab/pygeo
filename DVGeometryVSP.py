@@ -1,7 +1,7 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-from __future__ import print_function
+# from __future__ import print_function
 import copy
 import tempfile
 import shutil
@@ -18,12 +18,12 @@ import vsp
 
 # analysis error
 # TODO: Ultimately, we want to avoid importing and using this if we dont have OM installed
-from openmdao.core.analysis_error import AnalysisError
+# from openmdao.core.analysis_error import AnalysisError
 
 # directly import the interface to the fortran APIs
-from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools
+# from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools
 # generic import for all pysurf codes
-import pysurf
+# import pysurf
 
 
 class Error(Exception):
@@ -107,6 +107,7 @@ class DVGeometryVSP(object):
 
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
+        self.ptSetNames = []
         self.updated = {}
         self.updatedJac = {}
         # normal vector of the symmetry plane. We will use this when removing the duplicate intersection curves on the other side of the symmetry plane.
@@ -197,6 +198,8 @@ class DVGeometryVSP(object):
             updating the coordinates or when getting the derivatives
             of the coordinates.
         """
+
+        self.ptSetNames.append(ptName)
 
         # save this name so that we can zero out the jacobians properly
         self.points[ptName] = True # ADFlow checks self.points to see
@@ -656,6 +659,102 @@ class DVGeometryVSP(object):
             IC.update_d(ptSetName, dPt, dSeam)
 
         return dPt
+
+    def totalSensitivityTransProd(self, dIdpt, ptSetName, comm=None, config=None):
+        """
+        This is probably incorrect
+        """
+
+        # We may not have set the variables so the surf jac might not be computed.
+        if self.pointSets[ptSetName].jac is None:
+            # in this case, we updated our pts when we added our pointset,
+            # therefore the reference pts are up to date.
+            self._computeSurfJacobian()
+
+        # if the jacobian for this pointset is not up to date
+        # update all the points
+        if not self.updatedJac[ptSetName]:
+            self._computeSurfJacobian()
+
+        # Make dIdpt at least 3D
+        if len(dIdpt.shape) == 2:
+            dIdpt = numpy.array([dIdpt])
+        N = dIdpt.shape[0]
+
+        nDV = self.getNDV()
+
+        # The following code computes the final sensitivity product:
+        #
+        #        T       T
+        #   pXpt     pI
+        #  ------  ------
+        #   pXdv    pXpt
+        #
+        # Where I is the objective, Xpt are the externally coordinates
+        # supplied in addPointSet
+
+        # number of projection points on this proc for this pointset
+        # this can also be the number of surface points since we have equally many
+        nPts = len(self.pointSets[ptSetName].pts)
+
+        # Extract just the single dIdpt we are working with. Make
+        # a copy because we may need to modify it.
+
+        # We should keep track of the intersections that this pointset is close to. There is no point in including the intersections far from this pointset in the sensitivity calc as the derivative seeds will be just zeros there.
+        ptSetICs = []
+        nSeams  = 0
+        for IC in self.intersectComps:
+            # This checks if we have any entries in the affected indices on this point set with this intersection
+            if IC.ptSets[ptSetName][1]:
+                # this pointset is affected by this intersection. save this info.
+                ptSetICs.append(IC)
+                # this keeps the cumulative number of nodes on the seams this point set is effected by
+                nSeams += len(IC.seam)
+
+        dIdSeam = numpy.zeros((N, nSeams*3))
+
+        # go over the dI values
+        for i in range(N):
+            n = 0
+            for IC in ptSetICs:
+                dIdpt_i = dIdpt[i, :, :].copy()
+                seamBar = IC.sens(dIdpt_i, ptSetName)
+                dIdpt[i, :, :] = dIdpt_i
+                dIdSeam[i, 3*n:3*(n+len(seamBar))] = seamBar.flatten()
+                n += len(IC.seam)
+
+        # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
+        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
+
+        # transpose dIdpt and vstack;
+        # Now vstack the result with seamBar as that is far as the
+        # forward FD jacobian went.
+        tmp = numpy.vstack([dIdpt.T, dIdSeam.T])
+
+        # we also stack the pointset jacobian and the seam jacobians.
+        jac = self.pointSets[ptSetName].jac.copy()
+        for IC in ptSetICs:
+            jac = numpy.vstack((jac, IC.jac))
+
+        # Remember the jacobian contains the surface poitns *and* the
+        # the seam nodes. dIdx_compact is the final derivative for the
+        # points this proc owns.
+        dIdxT_local = jac.T.dot(tmp)
+        dIdx_local = dIdxT_local.T
+
+        if comm:
+            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+        else:
+            dIdx = dIdx_local
+
+        # Now convert to dict:
+        dIdxDict = {}
+        i = 0
+        for dvName in self.DVs:
+            dIdxDict[dvName] = numpy.array([dIdx[0, i]]).T
+            i += 1
+
+        return dIdxDict
 
     def addVariable(self, component, group, parm, value=None,
                     lower=None, upper=None, scale=1.0, scaledStep=True,
