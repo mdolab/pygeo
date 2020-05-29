@@ -1598,7 +1598,7 @@ class DVConstraints(object):
             lower=0, upper=0, DVGeo=DVGeo, config=config)
 
     def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
-                                  lower=0, upper=0, name=None, config=None):
+                                  lower=0, upper=0, name=None, config=None, comp=None):
         """
         Add a complete generic set of linear constraints for the shape
         variables that have been added to DVGeo. The constraints are
@@ -1668,7 +1668,10 @@ class DVConstraints(object):
                         "the same length")
 
         if name is None:
-            conName = '%s_linear_constraint_%d'%(self.name, len(self.linearCon))
+            if comp is None:
+                conName = '%s_linear_constraint_%d'%(self.name, len(self.linearCon))
+            else:
+                conName = '%s:%s_linear_constraint_%d'%(comp, self.name, len(self.linearCon))
         else:
             conName = name
 
@@ -1702,7 +1705,7 @@ class DVConstraints(object):
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
-            self.DVGeo,config=config)
+            self.DVGeo,config=config, comp=comp)
 
     def addGearPostConstraint(self, wimpressCalc, position, axis,
                               thickLower=1.0, thickUpper=3.0,
@@ -3483,7 +3486,12 @@ class LinearConstraint(object):
         self.factorB = factorB
         self.lower = lower
         self.upper = upper
-        self.DVGeo = DVGeo
+        # if no comp is specified, this is a regular dvgeo
+        if comp is None:
+            self.DVGeo = DVgeo
+        # if we have a comp name specified, just use the correct DVGeo
+        else:
+            self.DVGeo = DVgeo.DVGeoDict[comp]
         self.ncon = 0
         self.wrt = []
         self.jac = {}
