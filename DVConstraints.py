@@ -4683,7 +4683,7 @@ class CurvatureConstraint(GeometricConstraint):
             # every node on each surface
             # For example: node_map[iSurf][i,j] gives the node number
             # of the node in the i-th row and j-th column on surface iSurf
-            self.node_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size/3)),(surfs[iSurf].X.shape[0],surfs[iSurf].X.shape[1]))]
+            self.node_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size//3)),(surfs[iSurf].X.shape[0],surfs[iSurf].X.shape[1]))]
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
             self.coords += [numpy.reshape(self.X[iSurf],(surfs[iSurf].X.shape[0]*surfs[iSurf].X.shape[1],3))]
         self.nCon = 1
@@ -5073,7 +5073,7 @@ class CurvatureConstraint(GeometricConstraint):
         Evaluate the norm of vector field on the surface
          (u o u)**1/2
         '''
-        u_norm = numpy.zeros(self.X[iSurf].size/3)
+        u_norm = numpy.zeros(self.X[iSurf].size//3)
         u_norm[self.node_map[iSurf][:,:]] = numpy.sqrt(u[self.X_map[iSurf][:,:,0]]**2 + \
             u[self.X_map[iSurf][:,:,1]]**2 + u[self.X_map[iSurf][:,:,2]]**2)
         return u_norm
@@ -5082,7 +5082,7 @@ class CurvatureConstraint(GeometricConstraint):
         '''
         Evaluate the sensitivity of the norm wrt input vector u
         '''
-        u_norm = numpy.zeros(self.X[iSurf].size/3)
+        u_norm = numpy.zeros(self.X[iSurf].size//3)
         u_norm[self.node_map[iSurf][:,:]] = numpy.sqrt(u[self.X_map[iSurf][:,:,0]]**2 + \
             u[self.X_map[iSurf][:,:,1]]**2 + u[self.X_map[iSurf][:,:,2]]**2)
         ii = []
