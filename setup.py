@@ -59,7 +59,7 @@ setup(name='pygeo',
       },
       install_requires=[
             'numpy>=1.16.4',
-            'pyspline>=1.0.0',
+            'pyspline>=1.1.0',
             'scipy>=1.2.1'
 
       ],
