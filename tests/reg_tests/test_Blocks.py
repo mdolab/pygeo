@@ -325,3 +325,7 @@ def f_rotate_z(val, geo):
 
 def f_rotate_theta(val, geo):
     geo.rot_theta['ref'].coef[:] = val[0]
+            
+
+if __name__ == '__main__':
+    unittest.main()

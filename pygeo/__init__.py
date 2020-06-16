@@ -1,3 +1,5 @@
+__version__ = '1.2.0'
+
 from . import geo_utils
 from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
