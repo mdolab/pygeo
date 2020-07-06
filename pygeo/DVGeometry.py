@@ -278,6 +278,13 @@ class DVGeometry(object):
             added to this reference axis. This can be handy if you have a single
             volume but you want to link different sets of indices to different
             reference axes.
+
+        raySize : float
+            Used in projection to find attachment point on reference axis.
+            See full description in pyNetwork.projectRays function doc string.
+            In most cases the default value is sufficient. In the case of highly
+            swept wings its sometimes necessary to increase this value.
+
         Notes
         -----
         One of curve or xFraction must be specified.
