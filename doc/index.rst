@@ -7,8 +7,16 @@
 pyGeo
 =====
 ``pyGeo`` is a repository that contains several modules for working with
-geometry and the manipulation of geometry. This package consists of
-the following modules:
+geometry and the manipulation of geometry.
+
+To install, first clone the repo, then go into the root directory and type::
+
+   pip install .
+
+For stability we recommend cloning or checking out a tagged release.
+
+
+This package consists of the following modules:
 
 .. toctree::
    :maxdepth: 2

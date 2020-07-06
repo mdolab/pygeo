@@ -1,15 +1,13 @@
+# pyGeo
 [![Build Status](https://travis-ci.com/mdolab/pygeo.svg?branch=pyGeo)](https://travis-ci.com/mdolab/pygeo)
-
-pyGeo
-====================================================
+[![Documentation Status](https://readthedocs.com/projects/mdolab-pygeo/badge/?version=latest)](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/?badge=latest)
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
 It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
 
 ![](images/DPW4_FFD-27745.gif)
 
-Documentation
--------------
+## Documentation
 
 Please see the [documentation](http://mdolab.engin.umich.edu/docs/packages/pygeo/doc/index.html) for installation details and API documentation.
 This link requires credentials currently only available to MDO Lab members.
@@ -17,8 +15,7 @@ This link requires credentials currently only available to MDO Lab members.
 To locally build the documentation, enter the `doc` folder and enter `make html` in terminal.
 You can then view the built documentation in the `_build` folder.
 
-Citation
---------
+## Citation
 
 Please cite pyGeo in any publication for which you find it useful.
 For more background, theory, and figures, see the [this paper](http://mdolab.engin.umich.edu/sites/default/files/mao2010_final.pdf).
@@ -37,7 +34,6 @@ G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approac
 }
 ```
 
-License
--------
+## License
 
 Copyright 2019 MDO Lab. See the LICENSE file for details.
