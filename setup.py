@@ -58,9 +58,9 @@ setup(name='pygeo',
           'pygeo': ['*.so']
       },
       install_requires=[
-            'numpy>=1.16.4',
-            'pyspline>=1.1.0',
-            'scipy>=1.2.1'
+            'numpy>=1.16',
+            'pyspline>=1.1',
+            'scipy>=1.2'
 
       ],
       classifiers=[
