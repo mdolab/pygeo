@@ -402,6 +402,7 @@ class DVGeometryMulti(object):
         # get the new points
         newPts = numpy.zeros((self.points[ptSetName].nPts, 3))
 
+        t0 = time.time()
         # we first need to update all points with their respective DVGeo objects
         for comp in self.compNames:
             ptsComp = self.comps[comp].DVGeo.update(ptSetName)
@@ -412,6 +413,9 @@ class DVGeometryMulti(object):
 
         # get the delta
         delta = newPts - self.points[ptSetName].points
+
+        t1 = time.time()
+        print("[%d] timing one %.6f"%(self.comm.rank, t1-t0))
 
         # then apply the intersection treatment
         for IC in self.intersectComps:
@@ -1210,7 +1214,10 @@ class CompIntersection(object):
         """ This set the new udpated surface on which we need to comptue the new intersection curve"""
 
         # get the updated surface coordinates
+        t0 = time.time()
         self._getUpdatedCoords()
+        t1 = time.time()
+        print("[%d] timing trimesh %.6f"%(self.comm.rank, t1-t0))
 
         self.seam = self._getIntersectionSeam(comm)
 
@@ -1603,6 +1610,7 @@ class CompIntersection(object):
 
         t1 = time.time()
         print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
+        print("[%d] timing four %.6f"%(self.comm.rank, t1-t0))
         # if comm:
         #     comm.Barrier()
 
@@ -1756,6 +1764,9 @@ class CompIntersection(object):
         else:
             rank = 0
 
+        self.comm.Barrier()
+
+        t00 = time.time()
         # check if we need to worry about either surface
         # we will use these flags to figure out if we need to do warping.
         # we need to do the comm for the updated curves regardless
@@ -1913,6 +1924,9 @@ class CompIntersection(object):
                 curvePtCoordsNew = self.curvePtCoords[ptSetName][curveName]
                 curvePtCoordsB = numpy.vstack((curvePtCoordsB, curvePtCoordsNew ))
 
+        self.comm.Barrier()
+        t01 = time.time()
+        print("[%d] timing six %.6f"%(self.comm.rank, t01-t00))
 
         # then, we warp all of the nodes that were affected by the intersection treatment, using the deltas from the previous project to curve step
         t0 = time.time()
@@ -1930,6 +1944,7 @@ class CompIntersection(object):
         # print timing result
         t1 = time.time()
         print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
+        print("[%d] timing seven %.6f"%(self.comm.rank, t1-t0))
         # if comm:
             # comm.Barrier()
 
@@ -1952,6 +1967,9 @@ class CompIntersection(object):
             indB = self.projData[ptSetName]['compB']['ind']
             ptsB = newPts[indB]
             newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]['compB'])
+
+        t2 = time.time()
+        print("[%d] timing eight %.6f"%(self.comm.rank, t2-t1))
 
     def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
@@ -2456,6 +2474,8 @@ class CompIntersection(object):
 
         # this function computes the intersection curve, cleans up the data and splits the curve based on features or curves specified by the user.
 
+        t0 = time.time()
+
         # create the dictionary to save all intermediate variables for reverse differentiation
         self.seamDict = {}
 
@@ -2732,6 +2752,9 @@ class CompIntersection(object):
         self.seamDict['seamSize'] = len(seam)
         self.seamDict['curveBegCoor'] = curveBegCoor.copy()
 
+
+        t1 = time.time()
+        print("[%d] timing two %.6f"%(self.comm.rank, t1-t0))
         # save the intersection curve for the paper
         # if self.comm.rank == 0:
         #     curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
@@ -2951,6 +2974,9 @@ class CompIntersection(object):
 
         # save the connectivity
         self.seamConn = finalConn
+
+        t2 = time.time()
+        print("[%d] timing three %.6f"%(self.comm.rank, t2-t1))
 
         # write to file to check
         # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')

@@ -1594,7 +1594,7 @@ class DVConstraints(object):
         n = len(indSetA)
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, numpy.ones(n), numpy.ones(n),
-            lower=0, upper=0, DVGeo=DVGeo, config=config)
+            lower=0, upper=0, DVGeo=DVGeo, config=config, comp=comp)
 
     def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
                                   lower=0, upper=0, name=None, config=None, comp=None):
@@ -3475,7 +3475,7 @@ class LinearConstraint(object):
     constriants coupling local shape variables together.
     """
     def __init__(self, name, indSetA, indSetB, factorA, factorB,
-                 lower, upper, DVGeo, config):
+                 lower, upper, DVGeo, config, comp):
         # No error checking here since the calling routine should have
         # already done it.
         self.name = name
@@ -3487,7 +3487,7 @@ class LinearConstraint(object):
         self.upper = upper
         # if no comp is specified, this is a regular dvgeo
         if comp is None:
-            self.DVGeo = DVgeo
+            self.DVGeo = DVGeo
         # if we have a comp name specified, just use the correct DVGeo
         else:
             self.DVGeo = DVgeo.DVGeoDict[comp]
