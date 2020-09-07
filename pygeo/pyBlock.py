@@ -657,11 +657,11 @@ class pyBlock():
         f.write('\n')
         for ivol in range(self.nVol):
             vals = self.vols[ivol].coef
-            vals[:, :, :, 0].flatten().tofile(f, sep="\n")
+            vals[:, :, :, 0].flatten(order='F').tofile(f, sep="\n")
             f.write('\n')
-            vals[:, :, :, 1].flatten().tofile(f, sep="\n")
+            vals[:, :, :, 1].flatten(order='F').tofile(f, sep="\n")
             f.write('\n')
-            vals[:, :, :, 2].flatten().tofile(f, sep="\n")
+            vals[:, :, :, 2].flatten(order='F').tofile(f, sep="\n")
             f.write('\n')
         f.close()
 
