@@ -15,13 +15,12 @@ env:
     - DOCKER_WORKING_DIR=/home/mdolabuser/repos/$REPO_NAME
     - DOCKER_MOUNT_DIR=/home/mdolabuser/travis/$REPO_NAME
   jobs:
-    # - DOCKER_TAG=c7-gcc-ompi-py3-latest
-    - DOCKER_TAG=c7-intel-impi-py3-latest
-    - DOCKER_TAG=u18-gcc-ompi-py2-stable
-    - DOCKER_TAG=u18-gcc-ompi-py3-latest
-    - DOCKER_TAG=u18-gcc-ompi-py3-stable
-    - DOCKER_TAG=u20-gcc-ompi-py3-latest
-    - DOCKER_TAG=u20-gcc-ompi-py3-stable
+    - DOCKER_TAG=c7-gcc-ompi-latest
+    - DOCKER_TAG=c7-intel-impi-latest
+    - DOCKER_TAG=u18-gcc-ompi-latest
+    - DOCKER_TAG=u18-gcc-ompi-stable
+    - DOCKER_TAG=u20-gcc-ompi-latest
+    - DOCKER_TAG=u20-gcc-ompi-stable
 
 before_install:
   - docker pull mdolab/public:$DOCKER_TAG
