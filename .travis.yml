@@ -1,22 +1,13 @@
-os: linux
-language: generic
 
-branches:
-  only:
-  - master
-
-services:
-  - docker
+import:
+  - mdolab/.github:travis-env.yml
+  - mdolab/.github:travis-before-install.yml
 
 env:
   global:
     - DOCKER_REPO=public
     - GCC_CONFIG=config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk
     - INTEL_CONFIG=config/defaults/config.LINUX_INTEL_OPENMPI.mk
-
-import:
-  - mdolab/.github:travis-env.yml
-  - mdolab/.github:travis-before-install.yml
 
 install:
   # We thrown away the existing repo in Docker, and copy the new one in-place
