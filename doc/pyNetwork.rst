@@ -2,7 +2,7 @@
 
 pyNetwork
 ---------
-.. currentmodule:: pygeo.pyNetwork
+.. currentmodule:: pygeo
 
-.. autoclass:: pygeo.pyNetwork.pyNetwork
+.. autoclass:: pyNetwork
     :members: 
