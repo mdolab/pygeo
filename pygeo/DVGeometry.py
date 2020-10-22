@@ -651,9 +651,9 @@ class DVGeometry(object):
 
         Examples
         --------
-        >>> # Add all control points in FFD as local shape variables
-        >>> # moving in the 1 direction, within +/- 1.0 units
-        >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
+        >>> # Add all variables in FFD as local shape variables
+        >>> # moving in the y direction, within +/- 1.0 units
+        >>> DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper= 1.0, axis='y')
         >>> # As above, but moving in the x and y directions.
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
@@ -827,8 +827,8 @@ class DVGeometry(object):
 
         Examples
         --------
-        >>> # Add all variables in FFD as local shape variables
-        >>> # moving in the 1 direction, within +/- 1.0 units	
+        >>> # Add all control points in FFD as local shape variables
+        >>> # moving in the 1 direction, within +/- 1.0 units
         >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
         if self.name is not None:

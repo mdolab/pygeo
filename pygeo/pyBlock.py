@@ -62,6 +62,7 @@ class pyBlock():
         self.coef  = None        # The global (reduced) set of control pts
         self.embededVolumes = {}
         self.symmPlane = symmPlane
+
         if initType == 'plot3d':
             self._readPlot3D(fileName, FFD=FFD, **kwargs)
         elif initType == 'create':
