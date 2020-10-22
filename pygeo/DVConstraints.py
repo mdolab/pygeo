@@ -16,9 +16,12 @@ except ImportError:
         print("Could not find any OrderedDict class. For 2.6 and earlier, "
               "use:\n pip install ordereddict")
 
-from geograd.intersect import moller_intersect_tf
-from geograd.minimum_distance import mindist
-from geograd.volume import compute_volume
+try:
+    from geograd.intersect import moller_intersect_tf
+    from geograd.minimum_distance import mindist
+    from geograd.volume import compute_volume
+except:
+    pass
 from stl import mesh
 from six import string_types
 
@@ -798,7 +801,8 @@ class DVConstraints(object):
 
     def addLERadiusConstraints(self, leList, nSpan, axis, chordDir,
                                lower=1.0, upper=3.0, scaled=True,
-                               scale=1.0, name=None, addToPyOpt=True):
+                               scale=1.0, name=None, addToPyOpt=True,
+                               surfaceName='default', DVGeoName='default'):
         """
         Add a set of leading edge radius constraints. The constraint is set up
         similar to the 1D thickness or thickness-to-chord constraints. The user
@@ -894,19 +898,19 @@ class DVConstraints(object):
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         # Create mesh of itersections
         constr_line = pySpline.Curve(X=leList, k=2)
         s = numpy.linspace(0, 1, nSpan)
         X = constr_line(s)
         coords = numpy.zeros((nSpan, 3, 3))
-
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
         for i in range(nSpan):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], axis, self.p0, self.v1, self.v2)
+                X[i], axis, p0, p1-p0, p2-p0)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -925,7 +929,7 @@ class DVConstraints(object):
         for i in range(nSpan):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], chordDir, self.p0, self.v1, self.v2)
+                X[i], chordDir, p0, p1-p0, p2-p0)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -956,7 +960,7 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = RadiusConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeo,
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
 
@@ -3505,8 +3509,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         # check if the first mesh has a DVGeo, and if it does, update the points
         
         if MPI.COMM_WORLD.rank == 0:
-	    print('Point updates')
-	if self.DVGeo1 is not None:            
+	        print('Point updates')
+        if self.DVGeo1 is not None:       
             self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
             self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
             self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
@@ -4289,7 +4293,7 @@ class LinearConstraint(object):
                 cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
                 ncon = len(cons)
          #       print('ncon:' + str(ncon))
-		if ncon > 0:
+                if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal
                     jacobian = numpy.zeros((ncon, ndv))
