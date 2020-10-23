@@ -657,12 +657,12 @@ class RegTestPyGeo(unittest.TestCase):
                 nPt = 3*refPoints.shape[0]
                 step = 1e-5
                 J_fd = commonUtils.totalSensitivityFD(DVGeo,nPt,ptName,step)
-                handler.root_add_dict(J_fd,1e-7,1e-7)
+                handler.root_add_dict(J_fd,rtol=1e-7,atol=1e-7)
 
             else:
                 # Compute the analytic derivatives
                 dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
-                handler.root_add_dict(dIdx,1e-7,1e-7)
+                handler.root_add_dict('dIdx',dIdx,rtol=1e-7,atol=1e-7)
 
 
     def train_22(self, train=True, refDeriv=True):
@@ -701,7 +701,7 @@ class RegTestPyGeo(unittest.TestCase):
             origFFD = DVGeometry(os.path.join(self.base_path,'../inputFiles/outerBoxFFD.xyz'))
             copyFFD = DVGeometry(copyName)
             norm_diff = numpy.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
-            handler.par_add_norm(norm_diff, 1e-7, 1e-7)
+            handler.par_add_norm('norm', norm_diff, rtol=1e-7, atol=1e-7)
             os.remove(copyName)
 
             
