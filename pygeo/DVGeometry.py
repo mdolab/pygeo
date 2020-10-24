@@ -2980,9 +2980,11 @@ class DVGeometry(object):
                         inFrame[dv.axis] = 1.0
 
                         R = numpy.real(self.coefRotM[coef])
-                        rows = range(coef*3,(coef+1)*3)
-                        Jacobian[rows, iDVSectionLocal] += R.dot(T.dot(inFrame))
-
+                        # this is a bug fix for scipy 1.3+ related to fancy indexing
+                        # the original was:
+                        # rows = range(coef*3,(coef+1)*3)
+                        # Jacobian[rows, iDVSectionLocal] += R.dot(T.dot(inFrame))
+                        Jacobian[coef*3:(coef+1)*3, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         for iChild in range(len(self.children)):
 
                             dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
