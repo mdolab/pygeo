@@ -135,12 +135,12 @@ class RegTestPyGeo(unittest.TestCase):
 
 
             funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
-            # 1D thickness should be all ones at the start
+            # 2D thickness should be all ones at the start
             handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(25), 
                                     name='thickness_base', rtol=1e-7, atol=1e-7)
             
             funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
-            # 1D thickness shouldn't change much under only twist
+            # 2D thickness shouldn't change much under only twist
             handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(25), 
                                     name='thickness_twisted', rtol=1e-2, atol=1e-2)
             
@@ -166,12 +166,12 @@ class RegTestPyGeo(unittest.TestCase):
 
 
             funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
-            # 1D thickness should be all ones at the start
+            # Volume should be normalized to 1 at the start
             handler.assert_allclose(funcs['DVCon1_volume_constraint_0'], np.ones(1), 
                                     name='volume_base', rtol=1e-7, atol=1e-7)
             
             funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
-            # 1D thickness shouldn't change much under only twist
+            # Volume shouldn't change much with twist only
             handler.assert_allclose(funcs['DVCon1_volume_constraint_0'], np.ones(1), 
                                     name='volume_twisted', rtol=1e-2, atol=1e-2)
             
@@ -180,13 +180,13 @@ class RegTestPyGeo(unittest.TestCase):
     def train_4(self, train=True, refDeriv=True):
         self.test_4(train=train, refDeriv=refDeriv)
     
-    def test_4(self, train=True, refDeriv=False):
+    def test_4(self, train=False, refDeriv=False):
         """
         Test 4: LeTe Constraint using the ilow, ihigh method
         """
         refFile = os.path.join(self.base_path,'ref/test_DVConstraints_04.ref')
         with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test 3: Volume constraint, C172 wing")
+            handler.root_print("Test 4: LETE constraint, C172 wing")
 
             DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
 
@@ -195,16 +195,67 @@ class RegTestPyGeo(unittest.TestCase):
 
 
             funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
-            # 1D thickness should be all ones at the start
+            # LeTe constraints should be all zero at the start
             for i in range(2):
                 handler.assert_allclose(funcs['DVCon1_lete_constraint_'+str(i)], np.zeros(4), 
                                         name='lete_'+str(i), rtol=1e-7, atol=1e-7)
             
             funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
-            # 1D thickness shouldn't change much under only twist
+            # Global DVs should produce no change, especially twist
             for i in range(2):
                 handler.assert_allclose(funcs['DVCon1_lete_constraint_'+str(i)], np.zeros(4), 
                                         name='lete_twisted_'+str(i), rtol=1e-7, atol=1e-7)
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    def train_5(self, train=True, refDeriv=True):
+        self.test_5(train=train, refDeriv=refDeriv)
+    
+    def test_5(self, train=False, refDeriv=False):
+        """
+        Test 5: Thickness-to-chord constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_05.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 5: t/c constraint, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+
+            ptList = [[0.8, 0.0, 0.1],[0.8, 0.0, 5.0]]
+            DVCon.addThicknessToChordConstraints1D(ptList, nCon=10, axis=[0,1,0], chordDir=[1,0,0])
+
+            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_thickness_to_chord_constraints_0'], np.ones(10), 
+                                    name='toverc_base', rtol=1e-7, atol=1e-7)
+            
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_thickness_to_chord_constraints_0'], np.ones(10), 
+                                    name='toverc_twisted', rtol=1e-3, atol=1e-3)
+
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    def train_6(self, train=True, refDeriv=True):
+        self.test_6(train=train, refDeriv=refDeriv)
+    
+    def test_6(self, train=False, refDeriv=False):
+        """
+        Test 6: Thickness-to-chord constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_06.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 6: t/c constraint, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+
+            DVCon.addSurfaceAreaConstraint()
+
+            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_surfaceArea_constraints_0'], np.ones(1), 
+                                    name='surface_area_base', rtol=1e-7, atol=1e-7)
+            
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_surfaceArea_constraints_0'], np.ones(1), 
+                                    name='surface_area_twisted', rtol=1e-3, atol=1e-3)
+                                    
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
 if __name__ == '__main__':
