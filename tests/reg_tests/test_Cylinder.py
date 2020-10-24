@@ -126,18 +126,19 @@ class RegTestPyGeo(unittest.TestCase):
             funcs = {}
             DVCon.evalFunctions(funcs)
             print(funcs)
-            handler.root_add_dict(funcs, 1e-6, 1e-6)
+            handler.root_add_dict('funcs1', funcs, rtol=1e-6, atol=1e-6)
 
             DVGeo.setDesignVars({'scale_circle':0.5})
 
             funcs = {}
             DVCon.evalFunctions(funcs)
-            handler.root_add_dict(funcs, 1e-6, 1e-6)
+            handler.root_add_dict('funcs2', funcs, rtol=1e-6, atol=1e-6)
             print(funcs)
 
             funcsSens = {}
             DVCon.evalFunctionsSens(funcsSens)
-            handler.root_add_dict(funcsSens, 1e-6, 1e-6)
+            print(funcsSens)
+            handler.root_add_dict('funcsSens', funcsSens, rtol=1e-6, atol=1e-6)
             print(funcsSens)
 
 
