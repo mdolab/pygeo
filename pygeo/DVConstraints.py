@@ -20,9 +20,10 @@ try:
     from geograd.intersect import moller_intersect_tf
     from geograd.minimum_distance import mindist
     from geograd.volume import compute_volume
+    from stl import mesh
 except:
     pass
-from stl import mesh
+
 from six import string_types
 
 class Error(Exception):
