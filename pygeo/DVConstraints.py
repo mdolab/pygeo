@@ -1412,7 +1412,7 @@ class DVConstraints(object):
         volCons = []
         for vol in vols:
             try:
-                volCons.append(self.volumeCon[vol])
+                volCons.append(self.constraints[typeName][vol])
             except KeyError:
                 raise Error("The supplied volume name '%s' has not"
                             " already been added with a call to "
