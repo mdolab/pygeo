@@ -437,28 +437,28 @@ class RegTestPyGeo(unittest.TestCase):
                                     name='circularity_twisted', rtol=1e-7, atol=1e-7)            
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
-    def test_9(self, train=False, refDeriv=False):
-        """
-        Test 9: Colinearity constraint
+    # def test_9(self, train=False, refDeriv=False):
+    #     """
+    #     Test 9: Colinearity constraint
 
-        No need to test this with the rectangular box
-        because it only depends on the FFD, no projected points
-        """
-        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_09.ref')
-        with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test 9: Colinearity constraint, C172 wing")
+    #     No need to test this with the rectangular box
+    #     because it only depends on the FFD, no projected points
+    #     """
+    #     refFile = os.path.join(self.base_path,'ref/test_DVConstraints_09.ref')
+    #     with BaseRegTest(refFile, train=train) as handler:
+    #         handler.root_print("Test 9: Colinearity constraint, C172 wing")
 
-            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+    #         DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
 
-            DVCon.addColinearityConstraint(np.array([0.7, 0.0, 1.0]), lineAxis=np.array([0.,0.,1.]), 
-                                           distances=[0., 1., 2.5])
+    #         DVCon.addColinearityConstraint(np.array([0.7, 0.0, 1.0]), lineAxis=np.array([0.,0.,1.]), 
+    #                                        distances=[0., 1., 2.5])
 
-            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
-            handler.assert_allclose(funcs['DVCon1_colinearity_constraints_0'], np.zeros(3), 
-                                    name='colinearity_base', rtol=1e-7, atol=1e-7)
+    #         funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+    #         handler.assert_allclose(funcs['DVCon1_colinearity_constraints_0'], np.zeros(3), 
+    #                                 name='colinearity_base', rtol=1e-7, atol=1e-7)
             
-            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
-            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+    #         funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
+    #         funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
     def test_10(self, train=False, refDeriv=False):
         """
@@ -483,6 +483,149 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+    
+    def test_11(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_11.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 11: CompositeVolumeConstraint, rectangular box")
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            # this projects in the z direction which is of dimension 8
+            # 1x0.5x8 = 4
+            leList = [[-0.5, -0.25, 0.1],[0.5, -0.25, 0.1]]
+            teList = [[-0.5, 0.25, 0.1],[0.5, 0.25, 0.1]]
+            
+            # this projects in the x direction which is of dimension 2
+            # 2x0.6x7.8 = 9.36
+            leList2 = [[0., -0.25, 0.1],[0., -0.25, 7.9]]
+            teList2 = [[0., 0.35, 0.1],[0., 0.35, 7.9]]
+            DVCon.addVolumeConstraint(leList, teList, 4, 4, scaled=False, addToPyOpt=False)
+            DVCon.addVolumeConstraint(leList2, teList2, 4, 4, scaled=False, addToPyOpt=False)
+            vols = ['DVCon1_volume_constraint_0',
+                    'DVCon1_volume_constraint_1']
+            DVCon.addCompositeVolumeConstraint(vols=vols, scaled=False)
+
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            # Volume should be normalized to 1 at the start
+            handler.assert_allclose(funcs['DVCon1_volume_constraint_0'], 4.0*np.ones(1), 
+                                    name='volume1_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_volume_constraint_1'], 9.36*np.ones(1), 
+                                    name='volume2_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_composite_volume_constraint_2'], 13.36*np.ones(1), 
+                                    name='volume_composite_base', rtol=1e-7, atol=1e-7)
+
+    def test_12(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_12.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 12: LocationConstraints1D, rectangular box")
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            ptList = [[0.0, 0.0, 0.0],[0.0, 0.0, 8.0]]
+            ptList2 = [[0.0, 0.2, 0.0],[0.0, -0.2, 8.0]]
+
+            # TODO this constraint seems buggy. for example, when scaled, returns a bunch of NaNs
+            DVCon.addLocationConstraints1D(ptList=ptList, nCon=10, scaled=False)
+            DVCon.addProjectedLocationConstraints1D(ptList=ptList2, nCon=10, scaled=False, axis=[0.,1.,0.])
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+
+            exact_vals = np.zeros((30,))
+            exact_vals[2::3] = np.linspace(0,8,10)
+            # should be 10 evenly spaced points along the z axis originating from 0,0,0
+            handler.assert_allclose(funcs['DVCon1_location_constraints_0'], 
+                                    exact_vals, 
+                                    name='locations_match', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_location_constraints_1'], 
+                                    exact_vals, 
+                                    name='projected_locations_match', rtol=1e-7, atol=1e-7)
+
+    def test_13(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_13.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 13: PlanarityConstraint, rectangular box")
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            DVCon.addPlanarityConstraint(origin=[0.,0.5,0.0], planeAxis=[0.,1.,0.])
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+    
+    def test_13b(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_13b.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 13: PlanarityConstraint, rectangular box")
+            ffdfile = os.path.join(self.base_path, '../inputFiles/2x1x8_rectangle.xyz')
+            DVGeo = DVGeometry(ffdfile)
+            DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+
+            # create a DVConstraints object with a simple plane consisting of 2 triangles
+            DVCon =DVConstraints()
+            DVCon.setDVGeo(DVGeo)
+
+            p0 = np.zeros(shape=(2,3))
+            p1 = np.zeros(shape=(2,3))
+            p2 = np.zeros(shape=(2,3))
+
+            vertex1 = np.array([0.5, -0.25, 0.0])
+            vertex2 = np.array([0.5, -0.25, 4.0])
+            vertex3 = np.array([-0.5, -0.25, 0.0])
+            vertex4 = np.array([-0.5, -0.25, 4.0])
+
+            p0[:,:] = vertex1
+            p2[:,:] = vertex4
+            p1[0,:] = vertex2
+            p1[1,:] = vertex3
+
+            v1 = p1 - p0
+            v2 = p2 - p0
+            DVCon.setSurface([p0, v1, v2])
+
+            DVCon.addPlanarityConstraint(origin=[0.,-0.25,2.0], planeAxis=[0.,1.,0.])
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+
+            # this should be coplanar and the planarity constraint shoudl be zero
+            handler.assert_allclose(funcs['DVCon1_planarity_constraints_0'], np.zeros(1), 
+                                    name='planarity', rtol=1e-7, atol=1e-7)
+
+    def test_14(self, train=False, refDeriv=False):
+        """
+        Test 14: Monotonic constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_14.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 14: Monotonic constraint, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+
+            DVCon.addMonotonicConstraints("twist")
+            DVCon.addMonotonicConstraints("twist", start=1, stop=2)
+
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_monotonic_constraint_0'], np.zeros(2), 
+                                    name='monotonicity', rtol=1e-7, atol=1e-7)
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_monotonic_constraint_0'], -5.0*np.ones(2), 
+                                    name='monotonicity_twisted', rtol=1e-7, atol=1e-7)
+
+            funcs = dict()
+            funcsSens = dict()
+            # change the DVs arbitrarily
+            xDV = DVGeo.getValues()
+            xDV['twist'][0] = 1.0
+            xDV['twist'][1] = -3.5
+            xDV['twist'][2] = -2.5
+            DVGeo.setDesignVars(xDV)
+            # check the constraint values changed
+            DVCon.evalFunctions(funcs, includeLinear=True)
+            handler.root_add_dict('funcs_arb_twist', funcs, rtol=1e-6, atol=1e-6)
+            # check the derivatives are still right
+            DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
+            # regress the derivatives
+            handler.root_add_dict('derivs_arb_twist', funcsSens, rtol=1e-6, atol=1e-6)
+            handler.assert_allclose(funcs['DVCon1_monotonic_constraint_0'], np.array([4.5, -1.0]), 
+                                    name='monotonicity_arb_twist', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_monotonic_constraint_1'], np.array([-1.0]), 
+                                    name='monotonicity_arb_twist_1', rtol=1e-7, atol=1e-7)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,182 @@
+{
+    "derivs_arb_twist": {
+        "DVCon1_monotonic_constraint_0": {
+            "twist": {
+                "__ndarray__": [
+                    [
+                        1.0,
+                        -1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        -1.0
+                    ]
+                ],
+                "dtype": "float64",
+                "shape": [
+                    2,
+                    3
+                ]
+            }
+        },
+        "DVCon1_monotonic_constraint_1": {
+            "twist": {
+                "__ndarray__": [
+                    [
+                        0.0,
+                        1.0,
+                        -1.0
+                    ]
+                ],
+                "dtype": "float64",
+                "shape": [
+                    1,
+                    3
+                ]
+            }
+        }
+    },
+    "derivs_base": {
+        "DVCon1_monotonic_constraint_0": {
+            "twist": {
+                "__ndarray__": [
+                    [
+                        1.0,
+                        -1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        -1.0
+                    ]
+                ],
+                "dtype": "float64",
+                "shape": [
+                    2,
+                    3
+                ]
+            }
+        },
+        "DVCon1_monotonic_constraint_1": {
+            "twist": {
+                "__ndarray__": [
+                    [
+                        0.0,
+                        1.0,
+                        -1.0
+                    ]
+                ],
+                "dtype": "float64",
+                "shape": [
+                    1,
+                    3
+                ]
+            }
+        }
+    },
+    "derivs_twisted": {
+        "DVCon1_monotonic_constraint_0": {
+            "twist": {
+                "__ndarray__": [
+                    [
+                        1.0,
+                        -1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        -1.0
+                    ]
+                ],
+                "dtype": "float64",
+                "shape": [
+                    2,
+                    3
+                ]
+            }
+        },
+        "DVCon1_monotonic_constraint_1": {
+            "twist": {
+                "__ndarray__": [
+                    [
+                        0.0,
+                        1.0,
+                        -1.0
+                    ]
+                ],
+                "dtype": "float64",
+                "shape": [
+                    1,
+                    3
+                ]
+            }
+        }
+    },
+    "funcs_arb_twist": {
+        "DVCon1_monotonic_constraint_0": {
+            "__ndarray__": [
+                4.5,
+                -1.0
+            ],
+            "dtype": "float64",
+            "shape": [
+                2
+            ]
+        },
+        "DVCon1_monotonic_constraint_1": {
+            "__ndarray__": [
+                -1.0
+            ],
+            "dtype": "float64",
+            "shape": [
+                1
+            ]
+        }
+    },
+    "funcs_base": {
+        "DVCon1_monotonic_constraint_0": {
+            "__ndarray__": [
+                0.0,
+                0.0
+            ],
+            "dtype": "float64",
+            "shape": [
+                2
+            ]
+        },
+        "DVCon1_monotonic_constraint_1": {
+            "__ndarray__": [
+                0.0
+            ],
+            "dtype": "float64",
+            "shape": [
+                1
+            ]
+        }
+    },
+    "funcs_twisted": {
+        "DVCon1_monotonic_constraint_0": {
+            "__ndarray__": [
+                -5.0,
+                -5.0
+            ],
+            "dtype": "float64",
+            "shape": [
+                2
+            ]
+        },
+        "DVCon1_monotonic_constraint_1": {
+            "__ndarray__": [
+                -5.0
+            ],
+            "dtype": "float64",
+            "shape": [
+                1
+            ]
+        }
+    }
+}
