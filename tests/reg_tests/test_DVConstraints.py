@@ -17,6 +17,34 @@ class RegTestPyGeo(unittest.TestCase):
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
+    def generate_dvgeo_dvcon_rect(self):
+        meshfile = os.path.join(self.base_path, '../inputFiles/2x1x8_rectangle.stl')
+        ffdfile = os.path.join(self.base_path, '../inputFiles/2x1x8_rectangle.xyz')
+        testmesh = mesh.Mesh.from_file(meshfile)
+        # test mesh dim 0 is triangle index
+        # dim 1 is each vertex of the triangle
+        # dim 2 is x, y, z dimension
+
+        # create a DVGeo object with a few local thickness variables
+        DVGeo = DVGeometry(ffdfile)
+        nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.5, alignIndex="k")
+        self.nTwist = nRefAxPts - 1
+        def twist(val, geo):
+            for i in range(1, nRefAxPts):
+                geo.rot_z["wing"].coef[i] = val[i - 1]
+        DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+        DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+
+        # create a DVConstraints object for the wing
+        DVCon =DVConstraints()
+        DVCon.setDVGeo(DVGeo)
+        p0 = testmesh.vectors[:,0,:]
+        v1 = testmesh.vectors[:,1,:] - p0
+        v2 = testmesh.vectors[:,2,:] - p0
+        DVCon.setSurface([p0, v1, v2])
+
+        return DVGeo, DVCon
+
     def generate_dvgeo_dvcon_c172(self):
         meshfile = os.path.join(self.base_path, '../inputFiles/c172.stl')
         ffdfile = os.path.join(self.base_path, '../inputFiles/c172.xyz')
@@ -45,7 +73,7 @@ class RegTestPyGeo(unittest.TestCase):
 
         return DVGeo, DVCon
 
-    def c172_test_base(self, DVGeo, DVCon, handler):
+    def generic_test_base(self, DVGeo, DVCon, handler):
         funcs = dict()
         DVCon.evalFunctions(funcs, includeLinear=True)
         handler.root_add_dict('funcs_base', funcs, rtol=1e-6, atol=1e-6)
@@ -85,9 +113,6 @@ class RegTestPyGeo(unittest.TestCase):
         handler.root_add_dict('funcs_deformed', funcs, rtol=1e-6, atol=1e-6)
         handler.root_add_dict('derivs_deformed', funcsSens, rtol=1e-6, atol=1e-6)
         return funcs, funcsSens
-
-    def train_1(self, train=True, refDeriv=True):
-        self.test_1(train=train, refDeriv=refDeriv)
     
     def test_1(self, train=False, refDeriv=False):
         """
@@ -103,7 +128,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addThicknessConstraints1D(ptList, nCon=10, axis=[0,1,0])
 
 
-            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             # 1D thickness should be all ones at the start
             handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(10), 
                                     name='thickness_base', rtol=1e-7, atol=1e-7)
@@ -115,8 +140,30 @@ class RegTestPyGeo(unittest.TestCase):
             
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
-    def train_2(self, train=True, refDeriv=True):
-        self.test_2(train=train, refDeriv=refDeriv)
+    def test_1b(self, train=False, refDeriv=False):
+        """
+        Test 1b: 1D Thickness Constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_01b.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 1b: 1D thickness constraint, rectangular box")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            ptList = [[0.0, 0.0, 0.1],[0.0, 0.0, 5.0]]
+            ptList2 = [[-0.5, 0.0, 2.0],[0.5, 0.0, 2.0]]
+            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[0,1,0], scaled=False)
+            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[1,0,0], scaled=False)
+            DVCon.addThicknessConstraints1D(ptList2, nCon=3, axis=[0,0,1], scaled=False)
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            # check that unscaled thicknesses are being computed correctly at baseline
+            handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(3), 
+                                    name='thickness_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_thickness_constraints_1'], 2.0*np.ones(3), 
+                                    name='thickness_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_thickness_constraints_2'], 8.0*np.ones(3), 
+                                    name='thickness_base', rtol=1e-7, atol=1e-7)
     
     def test_2(self, train=False, refDeriv=False):
         """
@@ -134,7 +181,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addThicknessConstraints2D(leList, teList, 5, 5)
 
 
-            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             # 2D thickness should be all ones at the start
             handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(25), 
                                     name='thickness_base', rtol=1e-7, atol=1e-7)
@@ -146,8 +193,37 @@ class RegTestPyGeo(unittest.TestCase):
             
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
     
-    def train_3(self, train=True, refDeriv=True):
-        self.test_3(train=train, refDeriv=refDeriv)
+    def test_2b(self, train=False, refDeriv=False):
+        """
+        Test 2b: 2D Thickness Constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_02b.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 2: 2D thickness constraint, rectangular box")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            leList = [[-0.25, 0.0, 0.1],[-0.25, 0.0, 7.9]]
+            teList = [[0.75, 0.0, 0.1],[0.75, 0.0, 7.9]]
+
+            leList2 = [[0.0, -0.25, 0.1],[0.0, -0.25, 7.9]]
+            teList2 = [[0.0, 0.25, 0.1],[0.0, 0.25, 7.9]]
+
+            leList3 = [[-0.5, -0.25, 0.1],[0.5, -0.25, 0.1]]
+            teList3 = [[-0.5, 0.25, 0.1],[0.5, 0.25, 0.1]]
+
+            DVCon.addThicknessConstraints2D(leList, teList, 2, 2, scaled=False)
+            DVCon.addThicknessConstraints2D(leList2, teList2, 2, 2, scaled=False)
+            DVCon.addThicknessConstraints2D(leList3, teList3, 2, 2, scaled=False)
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            # 2D thickness should be all ones at the start
+            handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(4), 
+                                    name='thickness_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_thickness_constraints_1'], 2.0*np.ones(4), 
+                                    name='thickness_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_thickness_constraints_2'], 8.0*np.ones(4), 
+                                    name='thickness_base', rtol=1e-7, atol=1e-7)
     
     def test_3(self, train=False, refDeriv=False):
         """
@@ -165,7 +241,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addVolumeConstraint(leList, teList, 5, 5)
 
 
-            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             # Volume should be normalized to 1 at the start
             handler.assert_allclose(funcs['DVCon1_volume_constraint_0'], np.ones(1), 
                                     name='volume_base', rtol=1e-7, atol=1e-7)
@@ -177,12 +253,34 @@ class RegTestPyGeo(unittest.TestCase):
             
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
-    def train_4(self, train=True, refDeriv=True):
-        self.test_4(train=train, refDeriv=refDeriv)
-    
+    def test_3b(self, train=False, refDeriv=False):
+        """
+        Test 3b: Volume Constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_03b.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 3b: Volume constraint, rectangular box")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            # this projects in the z direction which is of dimension 8
+            # 1x0.5x8 = 4
+            leList = [[-0.5, -0.25, 0.1],[0.5, -0.25, 0.1]]
+            teList = [[-0.5, 0.25, 0.1],[0.5, 0.25, 0.1]]
+
+            DVCon.addVolumeConstraint(leList, teList, 4, 4, scaled=False)
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            # Volume should be normalized to 1 at the start
+            handler.assert_allclose(funcs['DVCon1_volume_constraint_0'], 4.0*np.ones(1), 
+                                    name='volume_base', rtol=1e-7, atol=1e-7)
+
     def test_4(self, train=False, refDeriv=False):
         """
         Test 4: LeTe Constraint using the ilow, ihigh method
+
+        There's no need to test this with the rectangular box
+        because it doesn't depend on a projected pointset (only the FFD)
         """
         refFile = os.path.join(self.base_path,'ref/test_DVConstraints_04.ref')
         with BaseRegTest(refFile, train=train) as handler:
@@ -194,7 +292,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addLeTeConstraints(0, 'iHigh')
 
 
-            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             # LeTe constraints should be all zero at the start
             for i in range(2):
                 handler.assert_allclose(funcs['DVCon1_lete_constraint_'+str(i)], np.zeros(4), 
@@ -207,12 +305,12 @@ class RegTestPyGeo(unittest.TestCase):
                                         name='lete_twisted_'+str(i), rtol=1e-7, atol=1e-7)
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
-    def train_5(self, train=True, refDeriv=True):
-        self.test_5(train=train, refDeriv=refDeriv)
-    
     def test_5(self, train=False, refDeriv=False):
         """
         Test 5: Thickness-to-chord constraint
+
+        There's no need to test this with the rectangular box
+        because it doesn't depend on a projected pointset (only the FFD)
         """
         refFile = os.path.join(self.base_path,'ref/test_DVConstraints_05.ref')
         with BaseRegTest(refFile, train=train) as handler:
@@ -223,7 +321,7 @@ class RegTestPyGeo(unittest.TestCase):
             ptList = [[0.8, 0.0, 0.1],[0.8, 0.0, 5.0]]
             DVCon.addThicknessToChordConstraints1D(ptList, nCon=10, axis=[0,1,0], chordDir=[1,0,0])
 
-            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             handler.assert_allclose(funcs['DVCon1_thickness_to_chord_constraints_0'], np.ones(10), 
                                     name='toverc_base', rtol=1e-7, atol=1e-7)
             
@@ -233,22 +331,19 @@ class RegTestPyGeo(unittest.TestCase):
 
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
-    def train_6(self, train=True, refDeriv=True):
-        self.test_6(train=train, refDeriv=refDeriv)
-    
     def test_6(self, train=False, refDeriv=False):
         """
-        Test 6: Thickness-to-chord constraint
+        Test 6: Surface area constraint
         """
         refFile = os.path.join(self.base_path,'ref/test_DVConstraints_06.ref')
         with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test 6: t/c constraint, C172 wing")
+            handler.root_print("Test 6: surface area constraint, C172 wing")
 
             DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
 
             DVCon.addSurfaceAreaConstraint()
 
-            funcs, funcsSens = self.c172_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
             handler.assert_allclose(funcs['DVCon1_surfaceArea_constraints_0'], np.ones(1), 
                                     name='surface_area_base', rtol=1e-7, atol=1e-7)
             
@@ -256,6 +351,137 @@ class RegTestPyGeo(unittest.TestCase):
             handler.assert_allclose(funcs['DVCon1_surfaceArea_constraints_0'], np.ones(1), 
                                     name='surface_area_twisted', rtol=1e-3, atol=1e-3)
                                     
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    def test_6b(self, train=False, refDeriv=False):
+        """
+        Test 6b: Surface area constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_06b.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 6: surface area constraint, rectangular box")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            DVCon.addSurfaceAreaConstraint(scaled=False)
+            # 2x1x8 box has surface area 2*(8*2+1*2+8*1) = 52
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_surfaceArea_constraints_0'], 52.*np.ones(1), 
+                                    name='surface_area_base', rtol=1e-7, atol=1e-7)
+
+    def test_7(self, train=False, refDeriv=False):
+        """
+        Test 7: Projected area constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_07.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 7: projected area constraint, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+
+            DVCon.addProjectedAreaConstraint()
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_projectedArea_constraints_0'], np.ones(1), 
+                                    name='projected_area_base', rtol=1e-7, atol=1e-7)
+            
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
+                                    
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    def test_7b(self, train=False, refDeriv=False):
+        """
+        Test 7b: Projected area constraint
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_07b.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 7b: projected area constraint, rectangular box")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
+
+            DVCon.addProjectedAreaConstraint(scaled=False)
+            DVCon.addProjectedAreaConstraint(axis='z', scaled=False)
+            DVCon.addProjectedAreaConstraint(axis='x', scaled=False)
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_projectedArea_constraints_0'], 8*2*np.ones(1), 
+                                    name='projected_area_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_projectedArea_constraints_1'], 1*2*np.ones(1), 
+                                    name='projected_area_base', rtol=1e-7, atol=1e-7)
+            handler.assert_allclose(funcs['DVCon1_projectedArea_constraints_2'], 8*1*np.ones(1), 
+                                    name='projected_area_base', rtol=1e-7, atol=1e-7)                                        
+
+    def test_8(self, train=False, refDeriv=False):
+        """
+        Test 8: Circularity constraint
+
+        No need to test this with the rectangular box
+        because it only depends on the FFD, no projected points
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_08.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 8: Circularity constraint, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+
+            DVCon.addCircularityConstraint(origin=[0.8, 0.0, 2.5], rotAxis=[0., 0., 1.], 
+                                           radius=0.1, zeroAxis=[0.,1.,0.], angleCW=180., angleCCW=180.,
+                                           nPts=10)
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_circularity_constraints_0'], np.ones(9), 
+                                    name='circularity_base', rtol=1e-7, atol=1e-7)
+            
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_circularity_constraints_0'], np.ones(9), 
+                                    name='circularity_twisted', rtol=1e-7, atol=1e-7)            
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    def test_9(self, train=False, refDeriv=False):
+        """
+        Test 9: Colinearity constraint
+
+        No need to test this with the rectangular box
+        because it only depends on the FFD, no projected points
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_09.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 9: Colinearity constraint, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+
+            DVCon.addColinearityConstraint(np.array([0.7, 0.0, 1.0]), lineAxis=np.array([0.,0.,1.]), 
+                                           distances=[0., 1., 2.5])
+
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            handler.assert_allclose(funcs['DVCon1_colinearity_constraints_0'], np.zeros(3), 
+                                    name='colinearity_base', rtol=1e-7, atol=1e-7)
+            
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    def test_10(self, train=False, refDeriv=False):
+        """
+        Test 10: LinearConstraintShape
+
+        No need to test this with the rectangular box
+        because it only depends on the FFD, no projected points
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_10.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 10: LinearConstraintShape, C172 wing")
+
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+            lIndex = DVGeo.getLocalIndex(0)
+            indSetA = []; indSetB = [];
+            for i in range(lIndex.shape[0]):
+                indSetA.append(lIndex[i, 0, 0])
+                indSetB.append(lIndex[i, 0, 1])
+            DVCon.addLinearConstraintsShape(indSetA, indSetB,
+                                           factorA=1.0, factorB=-1.0,
+                                           lower=0, upper=0)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
 if __name__ == '__main__':
