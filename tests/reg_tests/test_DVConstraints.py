@@ -626,6 +626,10 @@ class RegTestPyGeo(unittest.TestCase):
             handler.assert_allclose(funcs['DVCon1_monotonic_constraint_1'], np.array([-1.0]), 
                                     name='monotonicity_arb_twist_1', rtol=1e-7, atol=1e-7)
 
+    def test_15_fake(self):
+        # TODO this is temporary to figure out why only some Travis images are failing
+        import scipy
+        raise ValueError(scipy.__version__, numpy.__version__)
 
 if __name__ == '__main__':
     unittest.main()
