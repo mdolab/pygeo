@@ -629,7 +629,7 @@ class RegTestPyGeo(unittest.TestCase):
     def test_15_fake(self):
         # TODO this is temporary to figure out why only some Travis images are failing
         import scipy
-        raise ValueError(scipy.__version__, numpy.__version__)
+        raise ValueError(scipy.__version__, np.__version__)
 
 if __name__ == '__main__':
     unittest.main()
