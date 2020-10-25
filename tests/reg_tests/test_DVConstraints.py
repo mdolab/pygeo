@@ -73,14 +73,15 @@ class RegTestPyGeo(unittest.TestCase):
 
         return DVGeo, DVCon
 
-    def generic_test_base(self, DVGeo, DVCon, handler):
+    def generic_test_base(self, DVGeo, DVCon, handler, checkDerivs=True):
         funcs = dict()
         DVCon.evalFunctions(funcs, includeLinear=True)
         handler.root_add_dict('funcs_base', funcs, rtol=1e-6, atol=1e-6)
         funcsSens=dict()
         DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
         # regress the derivatives
-        handler.root_add_dict('derivs_base', funcsSens, rtol=1e-6, atol=1e-6)
+        if checkDerivs:
+            handler.root_add_dict('derivs_base', funcsSens, rtol=1e-6, atol=1e-6)
 
         return funcs, funcsSens
 
@@ -437,28 +438,29 @@ class RegTestPyGeo(unittest.TestCase):
                                     name='circularity_twisted', rtol=1e-7, atol=1e-7)            
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
-    # def test_9(self, train=False, refDeriv=False):
-    #     """
-    #     Test 9: Colinearity constraint
+    def test_9(self, train=False, refDeriv=False):
+        """
+        Test 9: Colinearity constraint
 
-    #     No need to test this with the rectangular box
-    #     because it only depends on the FFD, no projected points
-    #     """
-    #     refFile = os.path.join(self.base_path,'ref/test_DVConstraints_09.ref')
-    #     with BaseRegTest(refFile, train=train) as handler:
-    #         handler.root_print("Test 9: Colinearity constraint, C172 wing")
+        No need to test this with the rectangular box
+        because it only depends on the FFD, no projected points
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVConstraints_09.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 9: Colinearity constraint, C172 wing")
 
-    #         DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
 
-    #         DVCon.addColinearityConstraint(np.array([0.7, 0.0, 1.0]), lineAxis=np.array([0.,0.,1.]), 
-    #                                        distances=[0., 1., 2.5])
+            DVCon.addColinearityConstraint(np.array([0.7, 0.0, 1.0]), lineAxis=np.array([0.,0.,1.]), 
+                                           distances=[0., 1., 2.5])
 
-    #         funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
-    #         handler.assert_allclose(funcs['DVCon1_colinearity_constraints_0'], np.zeros(3), 
-    #                                 name='colinearity_base', rtol=1e-7, atol=1e-7)
+            # Skip derivatives check here because true zero values cause difficulties for the partials
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
+            handler.assert_allclose(funcs['DVCon1_colinearity_constraints_0'], np.zeros(3), 
+                                    name='colinearity_base', rtol=1e-7, atol=1e-7)
             
-    #         funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
-    #         funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)       
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
 
     def test_10(self, train=False, refDeriv=False):
         """
@@ -579,7 +581,8 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setSurface([p0, v1, v2])
 
             DVCon.addPlanarityConstraint(origin=[0.,-0.25,2.0], planeAxis=[0.,1.,0.])
-            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            # skip the deriv check here because true zero values cause repeatability issues
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
 
             # this should be coplanar and the planarity constraint shoudl be zero
             handler.assert_allclose(funcs['DVCon1_planarity_constraints_0'], np.zeros(1), 
@@ -625,11 +628,6 @@ class RegTestPyGeo(unittest.TestCase):
                                     name='monotonicity_arb_twist', rtol=1e-7, atol=1e-7)
             handler.assert_allclose(funcs['DVCon1_monotonic_constraint_1'], np.array([-1.0]), 
                                     name='monotonicity_arb_twist_1', rtol=1e-7, atol=1e-7)
-
-    def test_15_fake(self):
-        # TODO this is temporary to figure out why only some Travis images are failing
-        import scipy
-        raise ValueError(scipy.__version__, np.__version__)
 
 if __name__ == '__main__':
     unittest.main()
