@@ -17,6 +17,55 @@ class RegTestPyGeo(unittest.TestCase):
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
+    def evalFunctionsSensFD(self, DVGeo, DVCon, fdstep=1e-4):
+        funcs = dict()
+        DVCon.evalFunctions(funcs, includeLinear=True)
+        # make a deep copy of this
+        outdims = dict()
+        for key in funcs.keys():
+            val = funcs[key]
+            if isinstance(val, np.ndarray):
+                outdims[key] = val.shape[0]
+                funcs[key] = val.copy()   
+            elif isinstance(val, (list, tuple)):
+                outdims[key] = len(val)
+            else:
+                outdims[key] = 1
+
+        xDV = DVGeo.getValues()
+        indims = dict()
+        for key in xDV.keys():
+            val = xDV[key]
+            indims[key] = val.shape[0]
+
+        # setup the output data structure
+        funcsSens = dict()
+        for outkey in funcs.keys():
+            funcsSens[outkey] = dict()
+            for inkey in xDV.keys():
+                nRows = outdims[outkey]
+                nCols = indims[inkey]
+                funcsSens[outkey][inkey] = np.zeros((nRows, nCols))
+        # now do finite differencing
+        for inkey in xDV.keys():
+            baseVar = xDV[inkey].copy()
+            nDV = len(baseVar)
+            for array_ind in range(nDV):
+                xDV[inkey][array_ind] = baseVar[array_ind] + fdstep
+                DVGeo.setDesignVars(xDV)
+                funcs_fd = dict()
+                DVCon.evalFunctions(funcs_fd, includeLinear=True)
+                for outkey in funcs.keys():
+                    temp_a = funcs_fd[outkey]
+                    temp_b = funcs[outkey]
+                    diff = temp_a - temp_b
+                    deriv_temp = diff / fdstep
+                    funcsSens[outkey][inkey][:,array_ind] = deriv_temp
+                xDV[inkey][array_ind] = baseVar[array_ind]
+        DVGeo.setDesignVars(xDV)
+        DVCon.evalFunctions(dict())
+        return funcsSens
+
     def generate_dvgeo_dvcon_rect(self):
         meshfile = os.path.join(self.base_path, '../inputFiles/2x1x8_rectangle.stl')
         ffdfile = os.path.join(self.base_path, '../inputFiles/2x1x8_rectangle.xyz')
@@ -74,6 +123,7 @@ class RegTestPyGeo(unittest.TestCase):
         return DVGeo, DVCon
 
     def generic_test_base(self, DVGeo, DVCon, handler, checkDerivs=True):
+        linear_constraint_keywords = ['lete', 'monotonic', 'linear_constraint']
         funcs = dict()
         DVCon.evalFunctions(funcs, includeLinear=True)
         handler.root_add_dict('funcs_base', funcs, rtol=1e-6, atol=1e-6)
@@ -82,7 +132,20 @@ class RegTestPyGeo(unittest.TestCase):
         # regress the derivatives
         if checkDerivs:
             handler.root_add_dict('derivs_base', funcsSens, rtol=1e-6, atol=1e-6)
-
+            funcsSensFD = self.evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-4)
+            for outkey in funcs.keys():
+                for inkey in DVGeo.getValues().keys():
+                    try: 
+                        analytic = funcsSens[outkey][inkey]
+                        fd = funcsSensFD[outkey][inkey]
+                        handler.assert_allclose(analytic, fd, 
+                            name='finite_diff_check', rtol=1e-3, atol=1e-3)
+                    except KeyError:
+                        if any(sbstr in outkey for sbstr in linear_constraint_keywords):
+                            # linear constraints only have their affected DVs in the dict
+                            pass
+                        else:
+                            raise
         return funcs, funcsSens
 
     def c172_test_twist(self, DVGeo, DVCon, handler):
@@ -129,7 +192,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addThicknessConstraints1D(ptList, nCon=10, axis=[0,1,0])
 
 
-            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler, checkDerivs=True)
             # 1D thickness should be all ones at the start
             handler.assert_allclose(funcs['DVCon1_thickness_constraints_0'], np.ones(10), 
                                     name='thickness_base', rtol=1e-7, atol=1e-7)
@@ -404,7 +467,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addProjectedAreaConstraint(axis='z', scaled=False)
             DVCon.addProjectedAreaConstraint(axis='x', scaled=False)
 
-            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
             handler.assert_allclose(funcs['DVCon1_projectedArea_constraints_0'], 8*2*np.ones(1), 
                                     name='projected_area_base', rtol=1e-7, atol=1e-7)
             handler.assert_allclose(funcs['DVCon1_projectedArea_constraints_1'], 1*2*np.ones(1), 
@@ -581,7 +644,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setSurface([p0, v1, v2])
 
             DVCon.addPlanarityConstraint(origin=[0.,-0.25,2.0], planeAxis=[0.,1.,0.])
-            # skip the deriv check here because true zero values cause repeatability issues
+
             funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
 
             # this should be coplanar and the planarity constraint shoudl be zero
