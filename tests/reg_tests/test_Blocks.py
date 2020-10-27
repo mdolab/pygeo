@@ -78,8 +78,7 @@ class RegTestPyGeo(unittest.TestCase):
     def compute_values(self, DVGeo, handler, refDeriv):
         # Calculate updated point coordinates
         Xnew = DVGeo.update('X')
-        handler.root_add_val(Xnew, 1e-12, 1e-12, msg='Updated points')
-
+        handler.root_add_val('pointvals', Xnew, rtol=1e-12, atol=1e-12, msg='Updated points')
         # Need to get design variables so that we can reset the Jacobians
         # for each call
         x = DVGeo.getValues()
@@ -101,9 +100,9 @@ class RegTestPyGeo(unittest.TestCase):
         JacFD = DVGeo.JT['X']
 
         if refDeriv:
-            handler.root_add_val(JacCS, 1e-12, 1e-12, msg='Check jacobian')
+            handler.root_add_val('jacobian', JacCS, rtol=1e-12, atol=1e-12, msg='Check jacobian')
         else:
-            handler.root_add_val(Jac, 1e-12, 1e-12, msg='Check jacobian')
+            handler.root_add_val('jacobian', Jac, rtol=1e-12, atol=1e-12, msg='Check jacobian')
 
         # Test that they are equal to eachother
         numpy.testing.assert_allclose(Jac, JacCS, rtol=1e-12, atol=1e-12,
@@ -125,11 +124,11 @@ class RegTestPyGeo(unittest.TestCase):
         if refDeriv:
             # Generate reference from finite differences
             sens = commonUtils.totalSensitivityFD(DVGeo, Npt*3, 'X', step=1e-6)
-            handler.root_add_dict(sens, 1e-6, 1e-6, msg='Check sens dict')
+            handler.root_add_dict('dIdx', sens, rtol=1e-6, atol=1e-6, msg='Check sens dict')
         else:
             # Compute the analytic derivatives
             sens = DVGeo.totalSensitivity(dIdPt, 'X')
-            handler.root_add_dict(sens, 1e-6, 1e-6, msg='Check sens dict')
+            handler.root_add_dict('dIdx', sens, rtol=1e-6, atol=1e-6, msg='Check sens dict')
 
     def train_1(self, train=True, refDeriv=True):
         self.test_1(train=train, refDeriv=refDeriv)
@@ -270,11 +269,11 @@ class RegTestPyGeo(unittest.TestCase):
             if refDeriv:
                 # Generate reference from finite differences
                 sens = commonUtils.totalSensitivityCS(big, Npt*3, 'X')
-                handler.root_add_dict(sens, 1e-12, 1e-12, msg='Check sens dict')
+                handler.root_add_dict('dIdx', sens, rtol=1e-12, atol=1e-12, msg='Check sens dict')
             else:
                 # Compute the analytic derivatives
                 sens = big.totalSensitivity(dIdPt, 'X')
-                handler.root_add_dict(sens, 1e-12, 1e-12, msg='Check sens dict')
+                handler.root_add_dict('dIdx', sens, rtol=1e-12, atol=1e-12, msg='Check sens dict')
 
 '''
 The following are some helper functions for setting up the design variables for

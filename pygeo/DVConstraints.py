@@ -1412,7 +1412,7 @@ class DVConstraints(object):
         volCons = []
         for vol in vols:
             try:
-                volCons.append(self.volumeCon[vol])
+                volCons.append(self.constraints[typeName][vol])
             except KeyError:
                 raise Error("The supplied volume name '%s' has not"
                             " already been added with a call to "
@@ -2047,7 +2047,7 @@ class DVConstraints(object):
 
         # Create a name
         if name is None:
-            conName = 'projectedArea_constraints_%d'% len(self.constraints[typeName])
+            conName = '%s_projectedArea_constraints_%d'%(self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ProjectedAreaConstraint(
@@ -2138,10 +2138,10 @@ class DVConstraints(object):
         Parameters
         ----------
         origin: vector
-              The coordinate of the origin
+              The coordinate of the origin (3x numpy array)
 
         lineAxis: vector
-              The line of colinearity
+              The line of colinearity (3x numpy array)
 
         distances: list
               List of distances from origin to constrain
