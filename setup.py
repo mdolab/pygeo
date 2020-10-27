@@ -60,10 +60,11 @@ setup(name='pygeo',
       install_requires=[
             'numpy>=1.16',
             'pyspline>=1.1',
-            'scipy>=1.2',
-            'numpy-stl'
-
+            'scipy>=1.2'
       ],
+      extras_require = {
+        'testing':  ["numpy-stl"]
+      },
       classifiers=[
         "Operating System :: OS Independent",
         "Programming Language :: Python"]
