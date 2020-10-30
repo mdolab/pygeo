@@ -827,7 +827,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo1.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVGeo object with a few local thickness variables
-            DVGeo2 = DVGeometry(ffdfile)
+            DVGeo2 = DVGeometry(ffdfile, name='blobdvgeo')
             DVGeo2.addGeoDVLocal("local_2", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # check that DVGeos with duplicate var names are not allowed
