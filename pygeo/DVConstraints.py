@@ -16,13 +16,6 @@ except ImportError:
         print("Could not find any OrderedDict class. For 2.6 and earlier, "
               "use:\n pip install ordereddict")
 
-try:
-    from geograd.intersect import moller_intersect_tf
-    from geograd.minimum_distance import mindist
-    from geograd.volume import compute_volume
-except:
-    pass
-from stl import mesh
 from six import string_types
 
 class Error(Exception):
@@ -231,6 +224,12 @@ class DVConstraints(object):
             Name associated with the surface. Must be unique. For backward compatibility,
             the name is 'default' by default
 
+        DVGeoName : str
+
+            Name of the DVGeo object to set the surface to. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
         Examples
         --------
         >>> CFDsolver = ADFLOW(comm=comm, options=aeroOptions)
@@ -303,7 +302,18 @@ class DVConstraints(object):
         >>> dvCon.setDVGeo(DVGeo)
         """
 
+        # double check that there are no design variables with shared names
+        # must be unique
+        for existing_DVGeo_name in self.DVGeometries:
+            existing_DVGeo = self.DVGeometries[existing_DVGeo_name]
+            for dvname in DVGeo.getVarNames():
+                for existing_dvname in existing_DVGeo.getVarNames():
+                    if dvname == existing_dvname:
+                        msg = f"Design variable {dvname} in the newly-added DVGeo already exists in DVGeo" \
+                              f"object named {existing_DVGeo_name} on this DVCon"
+                        raise ValueError(msg)
         self.DVGeometries[name] = DVGeo
+
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -502,8 +512,10 @@ class DVConstraints(object):
             File name for stl file. Should have a .stl extension.
         """
         import numpy as np
-        from stl import mesh
-
+        try:
+            from stl import mesh
+        except:
+            raise ImportError('numpy-stl package must be installed')
         if fromDVGeo is None:
             p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         else:
@@ -643,6 +655,16 @@ class DVConstraints(object):
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
 
+        surfaceName : str
+            Name of the surface to project to. This should be the same 
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
         Examples
         --------
         >>> # Take unique square in x-z plane and and 10 along z-direction (spanWise)
@@ -762,6 +784,16 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same 
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
         self._checkDVGeo(DVGeoName)
 
@@ -897,6 +929,17 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same 
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
         """
         self._checkDVGeo(DVGeoName)
 
@@ -1028,6 +1071,11 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
         self._checkDVGeo(DVGeoName)
         # Create the points to constrain
@@ -1133,6 +1181,10 @@ class DVConstraints(object):
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
 
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
         self._checkDVGeo(DVGeoName)
         # Create the points to constrain
@@ -1259,6 +1311,11 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+            
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
         self._checkDVGeo(DVGeoName)
 
@@ -1304,9 +1361,8 @@ class DVConstraints(object):
 
     def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name=None,
                                          surface_2_name='default', DVGeo_2_name='default',
-                                         dist_tol=0.0, adapt_rho=False, start_rho=50., batch_size=1, perim_scale=0.1,
-                                         max_perim=3.0, two_constraints=False, constraint_type='KS',
-                                         name=None, scale=1., useGPU=True, addToPyOpt=True, mpi=True):
+                                         rho=50., perim_scale=0.1,
+                                         max_perim=3.0, name=None, scale=1., addToPyOpt=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
         This constraint is designed to keep a general 'blob' of watertight
@@ -1323,26 +1379,15 @@ class DVConstraints(object):
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
 
-        dist_tol : float
-            This distance is subtracted from the minimum distance.
-            Setting a positive dist_tol will provide margin around the object.
+        rho : float
+            The rho factor of the KS function of min distance.
 
-        adapt_rho : bool
-            Set to true to use a variable rho factor when computing
-            the KS function of the minimum distance
-
-        start_rho : float
-            The initial rho factor of the KS function of min distance.
-
-        batch_size : int
-            Batch size controls the number of object mesh points loaded into GPU memory.
-            If GPU returns out of memory / allocation errors, reduce this number.
-            The maximum batch size is the number of object mesh triangles.
 
         perim_scale : float
             Apply a scaling factor to the intersection perimeter length.
-            Setting this higher will allow the optimizer to intersect the object
-            less.
+
+        max_perim : float
+            Maximum allowable intersection length before fail flag is returned
 
         name : str
              Normally this does not need to be set; a default name will
@@ -1367,11 +1412,11 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
-
-        mpi : bool
-            Set to True if being used in an MPI environment. This computation should only need to be done on one node.
         """
-        self.useGPU=useGPU
+        try:
+            import geograd
+        except ImportError:
+            raise ImportError('Geograd package must be installed to use triangulated surface constraint')
         if DVGeo_1_name is not None:
             self._checkDVGeo(DVGeo_1_name)
             DVGeo1 = self.DVGeometries[DVGeo_1_name]
@@ -1383,7 +1428,7 @@ class DVConstraints(object):
         else:
             DVGeo2 = None
         if DVGeo1 is None and DVGeo2 is None:
-            raise UserError('One DVGeo object must be specified')
+            raise UserError('At least one DVGeo object must be specified')
 
         typeName = 'triSurfCon'
         if not typeName in self.constraints:
@@ -1401,12 +1446,11 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName,
                                                 surface_1, surface_1_name, DVGeo1, 
                                                 surface_2, surface_2_name, DVGeo2, scale,
-                                                addToPyOpt, dist_tol, adapt_rho, start_rho,
-                                                batch_size, perim_scale, max_perim, two_constraints, constraint_type, useGPU, mpi)
+                                                addToPyOpt, rho, perim_scale, max_perim)
 
     def addTriangulatedVolumeConstraint(self, lower=1.0, upper=3.0, scaled=True, scale=1.0, 
                                         name=None, surfaceName='default', DVGeoName='default',
-                                        useGPU=True, addToPyOpt=True, mpi=True):
+                                        addToPyOpt=True):
         """
         Add a single triangulated volume constraint to a surface.
         Computes and constrains the volume of a closed, triangulated surface
@@ -1460,10 +1504,6 @@ class DVConstraints(object):
             Name the DVGeo object affecting the geometry of the 
             surface. 'default' uses the main DVGeo object of the DVConstraints instance
 
-        useGPU : bool
-            Set to True to use GPU-accelerated computation. False computes on the CPU.
-            Default True
-
         addToPyOpt : bool
             Normally this should be left at the default of True if the
             volume is to be used as a constraint. If the volume is to
@@ -1472,10 +1512,13 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
-
-        mpi : bool
-            Set to True if being used in an MPI environment. This computation should only need to be done on one node.
         """
+        try:
+            import geograd
+        except ImportError:
+            raise ImportError('Geograd package must be installed to use triangulated vol constraint')
+        
+        raise NotImplementedError('Triangulated volume constraint not yet ported from geograd_tf')
         self._checkDVGeo(DVGeoName)
         DVGeo = self.DVGeometries[DVGeoName]
 
@@ -1493,7 +1536,7 @@ class DVConstraints(object):
         # Finally add constraint object
         self.constraints[typeName][conName] = TriangulatedVolumeConstraint(conName,
                                                 surface, surfaceName, lower, upper,
-                                                scaled, scale, DVGeo, addToPyOpt, useGPU, mpi)
+                                                scaled, scale, DVGeo, addToPyOpt)
     
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
@@ -1594,6 +1637,16 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same 
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
             """
         self._checkDVGeo(DVGeoName)
 
@@ -2605,7 +2658,7 @@ class DVConstraints(object):
             conName, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, self.DVGeometries[DVGeoName], addToPyOpt)
 
     def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0,
-                                stop=-1, config=None):
+                                stop=-1, config=None, DVGeoName='default'):
         """
         Parameters
         ----------
@@ -3435,49 +3488,44 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, surface_1, surface_1_name, DVGeo1, surface_2, surface_2_name, DVGeo2, scale, addToPyOpt,
-                 dist_tol, adapt_rho, start_rho, batch_size, perim_scale, max_perim, two_constraints, constraint_type, useGPU, mpi):
+                 rho, perim_scale, max_perim):
         self.name = name
         # get the point sets
         self.surface_1_name = surface_1_name
-        self.surface_2_name = surface_2_name
-        self.useGPU = useGPU
-        
+        self.surface_2_name = surface_2_name        
         if DVGeo1 is None and DVGeo2 is None:
             raise UserError('Must include at least one geometric parametrization in constraint '+str(name))
         self.DVGeo1 = DVGeo1
         self.DVGeo2 = DVGeo2
 
         self.surf1_size = surface_1[0].shape[0]
-        self.surf1_p0 = surface_1[0].reshape(self.surf1_size, 1, 3).astype(np.float32)
-        self.surf1_p1 = surface_1[1].reshape(self.surf1_size, 1, 3).astype(np.float32)
-        self.surf1_p2 = surface_1[2].reshape(self.surf1_size, 1, 3).astype(np.float32)
+        # todo double check that these are in proper fortran array order
+        self.surf1_p0 = surface_1[0].transpose()
+        self.surf1_p1 = surface_1[1].transpose()
+        self.surf1_p2 = surface_1[2].transpose()
 
         self.surf2_size = surface_2[0].shape[0]
-        self.surf2_p0 = surface_2[0].reshape(1, self.surf2_size, 3).astype(np.float32)
-        self.surf2_p1 = surface_2[1].reshape(1, self.surf2_size, 3).astype(np.float32)
-        self.surf2_p2 = surface_2[2].reshape(1, self.surf2_size, 3).astype(np.float32)
+        self.surf2_p0 = surface_2[0].transpose()
+        self.surf2_p1 = surface_2[1].transpose()
+        self.surf2_p2 = surface_2[2].transpose()
 
+        maxdim = np.max(np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), 
+                                                   self.surf2_p2.max(axis=1)) - 
+                             np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), 
+                                                   self.surf2_p2.min(axis=1)))
+        # TODO make this user-settable
+        self.maxdim = maxdim*1.05
         self.scale = scale
 
         self.addToPyOpt = addToPyOpt
-        self.dist_tol = dist_tol
-        self.adapt_rho = adapt_rho
-        self.start_rho = start_rho
-        self.batch_size = batch_size
+        self.rho = rho
         self.perim_scale = perim_scale
         self.max_perim = max_perim
-        self.two_constraints = two_constraints
-        self.constraint_type = constraint_type
-        if two_constraints:
-            self.nCon = 2
-        else:
-            self.nCon = 1
+        self.nCon = 2
+
         self.upper = 0.000
         self.lower = -1e10
-        self.mpi = mpi
         self.smSize = None
-        self.rho_c = self.start_rho
-
         return
 
     def getVarNames(self):
@@ -3508,45 +3556,20 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         # check if the first mesh has a DVGeo, and if it does, update the points
         
-        if MPI.COMM_WORLD.rank == 0:
-	        print('Point updates')
         if self.DVGeo1 is not None:       
-            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
-            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
-            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).reshape(self.surf1_size, 1, 3).astype(np.float32)
+            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).transpose()
+            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).transpose()
+            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).transpose()
         
         # check if the second mesh has a DVGeo, and if it does, update the points
         if self.DVGeo2 is not None:
-            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).reshape(1, self.surf2_size, 3).astype(np.float32)
-            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name+'_p1', config=config).reshape(1, self.surf2_size, 3).astype(np.float32)
-            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name+'_p2', config=config).reshape(1, self.surf2_size, 3).astype(np.float32)
+            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).transpose()
+            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name+'_p1', config=config).transpose()
+            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name+'_p2', config=config).transpose()
 
-        if MPI.COMM_WORLD.rank == 0 or not self.mpi or (self.mpi and not self.useGPU):
-            if self.two_constraints:
-                KS, perim, failflag = self.evalTriangulatedSurfConstraint()
-            else:
-                C, failflag = self.evalTriangulatedSurfConstraint()
-        else:
-            if self.two_constraints:
-                KS = None
-                perim = None
-            else:
-                C = None
-            failflag = None
-
-        if self.mpi and self.useGPU:
-            if self.two_constraints:
-                KS = MPI.COMM_WORLD.bcast(KS, root=0)
-                perim = MPI.COMM_WORLD.bcast(perim, root=0)
-            else:
-                C = MPI.COMM_WORLD.bcast(C, root=0)
-            failflag = MPI.COMM_WORLD.bcast(failflag, root=0)
-
-        if self.two_constraints:
-            funcs[self.name+'_KS'] = KS
-            funcs[self.name+'_perim'] = perim
-        else:
-            funcs[self.name] = C
+        KS, perim, failflag = self.evalTriangulatedSurfConstraint()
+        funcs[self.name+'_KS'] = KS
+        funcs[self.name+'_perim'] = perim
         if failflag:
             funcs['fail'] = failflag
 
@@ -3563,203 +3586,106 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         tmpTotalKS = {}
         tmpTotalPerim = {}
-        tmpTotal = {}
 
 
 
-        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
-            if self.two_constraints:
-                grad_KS, grad_perim = self.evalTriangulatedSurfConstraintSens()
-            else: 
-                grad_C = self.evalTriangulatedSurfConstraintSens()    
-            # If first DVGeo is not none, compute total sensitivities
-            if self.DVGeo1 is not None:
-                nDV1 = self.DVGeo1.getNDV()
-            else:
-                nDV1 = 0
+        deriv_outputs = self.evalTriangulatedSurfConstraintSens()
+        # deriv outputs contains:
+        # KS, intersect_length, mindist, timings, unbalance (index 0 through 4)
+        # dKSdA1, dKSdB1, dKSdC1, dKSdA2, dKSdB2, dKSdC2 (index 5 through 10)
+        # dPdA1, dPdB1, dPdC1, dPdA2, dPdB2, dPdC2 (index 11 through 16)
 
-            if nDV1 > 0:
-                # compute sensitivity with respect to the first mesh
-                # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
-                if self.two_constraints:
-                    tmpTotal = None
-                    tmp_KS_p0 = self.DVGeo1.totalSensitivity(grad_KS[0], self.surface_1_name+'_p0', config=config)
-                    tmp_KS_p1 = self.DVGeo1.totalSensitivity(grad_KS[1], self.surface_1_name+'_p1', config=config)
-                    tmp_KS_p2 = self.DVGeo1.totalSensitivity(grad_KS[2], self.surface_1_name+'_p2', config=config)
-                    tmp_perim_p0 = self.DVGeo1.totalSensitivity(grad_perim[0], self.surface_1_name+'_p0', config=config)
-                    tmp_perim_p1 = self.DVGeo1.totalSensitivity(grad_perim[1], self.surface_1_name+'_p1', config=config)
-                    tmp_perim_p2 = self.DVGeo1.totalSensitivity(grad_perim[2], self.surface_1_name+'_p2', config=config)
-                    for key in tmp_KS_p0:
-                        tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
-                        tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
-                else:
-                    tmpTotalKS = None
-                    tmpTotalPerim = None
-                    tmp_p0 = self.DVGeo1.totalSensitivity(grad_C[0], self.surface_1_name+'_p0', config=config)
-                    tmp_p1 = self.DVGeo1.totalSensitivity(grad_C[1], self.surface_1_name+'_p1', config=config)
-                    tmp_p2 = self.DVGeo1.totalSensitivity(grad_C[2], self.surface_1_name+'_p2', config=config)
-                    for key in tmp_p0:
-                        tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
-
-            if self.DVGeo2 is not None:
-                nDV2 = self.DVGeo2.getNDV()
-            else:
-                nDV2 = 0
-
-            if nDV2 > 0:
-                # compute sensitivity with respect to the first mesh
-                # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
-                if self.two_constraints:
-                    tmpTotal = None
-                    tmp_KS_p0 = self.DVGeo2.totalSensitivity(grad_KS[3], self.surface_2_name+'_p0', config=config)
-                    tmp_KS_p1 = self.DVGeo2.totalSensitivity(grad_KS[4], self.surface_2_name+'_p1', config=config)
-                    tmp_KS_p2 = self.DVGeo2.totalSensitivity(grad_KS[5], self.surface_2_name+'_p2', config=config)
-                    tmp_perim_p0 = self.DVGeo2.totalSensitivity(grad_perim[3], self.surface_2_name+'_p0', config=config)
-                    tmp_perim_p1 = self.DVGeo2.totalSensitivity(grad_perim[4], self.surface_2_name+'_p1', config=config)
-                    tmp_perim_p2 = self.DVGeo2.totalSensitivity(grad_perim[5], self.surface_2_name+'_p2', config=config)
-                    for key in tmp_KS_p0:
-                        tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
-                        tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
-                else:
-                    tmpTotalKS = None
-                    tmpTotalPerim = None
-                    tmp_p0 = self.DVGeo2.totalSensitivity(grad_C[3], self.surface_2_name+'_p0', config=config)
-                    tmp_p1 = self.DVGeo2.totalSensitivity(grad_C[4], self.surface_2_name+'_p1', config=config)
-                    tmp_p2 = self.DVGeo2.totalSensitivity(grad_C[5], self.surface_2_name+'_p2', config=config)
-                    for key in tmp_p0:
-                        tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
-
+        if self.DVGeo1 is not None:
+            nDV1 = self.DVGeo1.getNDV()
         else:
-            tmpTotalKS = None
-            tmpTotalPerim = None
-            tmpTotal = None
-            
-        if self.mpi:
-            tmpTotalKS = MPI.COMM_WORLD.bcast(tmpTotalKS, root=0)
-            tmpTotalPerim = MPI.COMM_WORLD.bcast(tmpTotalPerim, root=0)
-            tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
-             
-        if self.two_constraints:
-            funcsSens[self.name+'_KS'] = tmpTotalKS
-            funcsSens[self.name+'_perim'] = tmpTotalPerim
-        else:
-            funcsSens[self.name] = tmpTotal
-        
-    def writeTecplot(self, handle):
-        """
-        Write the visualization of this volume constriant
-        """
-        # Reshape coordinates back to 3D format
-        # x = self.coords.reshape([self.nSpan, self.nChord, 2, 3])
+            nDV1 = 0
 
-        # handle.write("ZONE T=\"%s\" I=%d J=%d K=%d\n"%(
-        #     self.name, self.nSpan, self.nChord, 2))
-        # handle.write("DATAPACKING=POINT\n")
-        # for k in range(2):
-        #     for j in range(self.nChord):
-        #         for i in range(self.nSpan):
-        #             handle.write('%f %f %f\n'%(x[i, j, k, 0],
-        #                                        x[i, j, k, 1],
-        #                                        x[i, j, k, 2]))
-        pass
+        if nDV1 > 0:
+            # compute sensitivity with respect to the first mesh
+            # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
+            tmp_KS_p0 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[5]), self.surface_1_name+'_p0', config=config)
+            tmp_KS_p1 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[6]), self.surface_1_name+'_p1', config=config)
+            tmp_KS_p2 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[7]), self.surface_1_name+'_p2', config=config)
+            tmp_perim_p0 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[11]), self.surface_1_name+'_p0', config=config)
+            tmp_perim_p1 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[12]), self.surface_1_name+'_p1', config=config)
+            tmp_perim_p2 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[13]), self.surface_1_name+'_p2', config=config)
+            for key in tmp_KS_p0:
+                tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
+                tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
+
+
+        if self.DVGeo2 is not None:
+            nDV2 = self.DVGeo2.getNDV()
+        else:
+            nDV2 = 0
+
+        if nDV2 > 0:
+            # compute sensitivity with respect to the first mesh
+            # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
+            tmp_KS_p0 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[8]), self.surface_2_name+'_p0', config=config)
+            tmp_KS_p1 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[9]), self.surface_2_name+'_p1', config=config)
+            tmp_KS_p2 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[10]), self.surface_2_name+'_p2', config=config)
+            tmp_perim_p0 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[14]), self.surface_2_name+'_p0', config=config)
+            tmp_perim_p1 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[15]), self.surface_2_name+'_p1', config=config)
+            tmp_perim_p2 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[16]), self.surface_2_name+'_p2', config=config)
+            for key in tmp_KS_p0:
+                tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
+                tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
+        funcsSens[self.name+'_KS'] = tmpTotalKS
+        funcsSens[self.name+'_perim'] = tmpTotalPerim
 
     def evalTriangulatedSurfConstraint(self):
         """
         Add documentation later
         """
         # first compute the length of the intersection surface between the object and surf mesh
-        if not self.useGPU and self.mpi:
-            # use MPI execution
-            comm = MPI.COMM_WORLD
-            if comm.rank == 0:
-                print('Distributed mode pre intersection')
-        else:
-            comm = None
-        perim_length, pairwise, grad_perim = moller_intersect_tf(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                                                                 self.surf2_p0, self.surf2_p1, self.surf2_p2,
-                                                                 batch_size=self.batch_size,
-                                                                 complexify=False,
-                                                                 compute_gradients=True, use_GPU=self.useGPU, comm=comm)
+        from geograd import geograd_parallel
+        mindist_tmp = 0.0
+
+        # first run to get the minimum distance
+        foo, perim_length, mindist, foo2, foo3 = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist_tmp, self.rho, self.maxdim)
+        # second run gets the well-conditioned KS
+        KS, perim_length, mindist, foo2, foo3 = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist, self.rho, self.maxdim)
+
         self.perim_length = perim_length
-        self.grad_perim = grad_perim
-        
+        self.minimum_distance = mindist
 
         if self.perim_length > self.max_perim:
             failflag = True
-            if comm is None:
-                print('Intersection perim exceeds tol - returning fail flag')
-            elif comm.rank == 0:
-                print('Intersection perim exceeds tol - returning fail flag')
-
+            if mpi4py.COMM_WORLD.rank == 0:
+                print('Intersection length ', str(perim_length), ' exceeds tol, returning fail flag')
         else:
             failflag = False
-
-        if not self.two_constraints and self.perim_length > 0:
-            return self.perim_length * self.perim_scale, failflag
-
-
-        if self.two_constraints or not self.perim_length > 0:
-            # if the surfaces don't intersect, run the KS distance function
-
-            if comm.rank == 0:
-                print('Pre mindist')
-            KS, min_sd, grad_KS, rho_c = mindist(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                                                self.surf2_p0, self.surf2_p1, self.surf2_p2, dist_tol=self.dist_tol,
-                                                adapt_rho=self.adapt_rho, rho_c=self.rho_c,
-                                                batch_size=self.batch_size, complexify=False, constraint_type=self.constraint_type, 
-                                                use_GPU=self.useGPU, comm=comm)
-
-            self.rho_c = rho_c
-
-            self.grad_KS = grad_KS
-            # if not self.perim_length > 0:
-            #     #print('KS: '+str(KS))
-
-            if self.two_constraints:
-                if comm is None:
-                    print('Metric: '+str(KS))
-                    print('Perimeter: '+str(perim_length))
-                elif comm.rank == 0:
-                    print('Metric: '+str(KS))
-                    print('Perimeter: '+str(perim_length))
-                return KS, self.perim_length * self.perim_scale, failflag
-            else:
-                return KS, failflag
+        # TODO should the perim scale be applied here or elsewhere
+        return KS, perim_length, failflag
 
     def evalTriangulatedSurfConstraintSens(self):
         """
         Add documentation later
         """
         # first compute the length of the intersection surface between the object and surf mesh
-        
-        scaled_grad_perim = [(self.perim_scale * grad_component) for grad_component in self.grad_perim]
-        
-        if self.two_constraints:    
-            return self.grad_KS, scaled_grad_perim
-        else:
-            if self.perim_length > 0:
-                # if the surfaces intersect, don't both running the KS function. Just return the perimeter length
-                return scaled_grad_perim
-            else:
-                return self.grad_KS
+        from geograd import geograd_parallel
+
+
+        deriv_output = geograd_parallel.compute_derivs(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+                                                       self.surf2_p0, self.surf2_p1, self.surf2_p2,
+                                                       self.minimum_distance, self.rho, self.maxdim)
+        return deriv_output
 
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
-            if self.two_constraints:
-                optProb.addConGroup(self.name+'_KS', 1, lower=self.lower,
-                                    upper=self.upper, scale=self.scale,
-                                    wrt=self.getVarNames())
-                optProb.addConGroup(self.name+'_perim', 1, lower=self.lower,
-                                    upper=self.upper, scale=self.scale,
-                                    wrt=self.getVarNames())
+            optProb.addConGroup(self.name+'_KS', 1, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.getVarNames())
+            optProb.addConGroup(self.name+'_perim', 1, lower=self.lower,
+                                upper=self.upper, scale=self.perim_scale,
+                                wrt=self.getVarNames())
 
-            else:
-                optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                    upper=self.upper, scale=self.scale,
-                                    wrt=self.getVarNames())
 
 
 class TriangulatedVolumeConstraint(GeometricConstraint):
