@@ -16,8 +16,6 @@ except ImportError:
         print("Could not find any OrderedDict class. For 2.6 and earlier, "
               "use:\n pip install ordereddict")
 
-from six import string_types
-
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
@@ -194,7 +192,6 @@ class DVConstraints(object):
         self.constraints = OrderedDict()
         self.linearCon = OrderedDict()
 
-        # self.DVGeo = None
         # Data for the discrete surface
 
         self.surfaces = {}
@@ -1361,7 +1358,7 @@ class DVConstraints(object):
 
     def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name=None,
                                          surface_2_name='default', DVGeo_2_name='default',
-                                         rho=50., perim_scale=0.1,
+                                         rho=50., heuristic_dist=None, perim_scale=0.1, 
                                          max_perim=3.0, name=None, scale=1., addToPyOpt=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
@@ -1382,6 +1379,12 @@ class DVConstraints(object):
         rho : float
             The rho factor of the KS function of min distance.
 
+        heuristic_dist : float
+            The triangulated surface constraint uses a procedure to skip
+            pairs of facets that are farther apart than a heuristic distance
+            in order to save computation time. By default, this is set 
+            to the maximum linear dimension of the second object's bounding box.
+            You can set this to a large number to compute an "exact" KS.
 
         perim_scale : float
             Apply a scaling factor to the intersection perimeter length.
@@ -1446,7 +1449,7 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName,
                                                 surface_1, surface_1_name, DVGeo1, 
                                                 surface_2, surface_2_name, DVGeo2, scale,
-                                                addToPyOpt, rho, perim_scale, max_perim)
+                                                addToPyOpt, rho, perim_scale, max_perim, heuristic_dist)
 
     def addTriangulatedVolumeConstraint(self, lower=1.0, upper=3.0, scaled=True, scale=1.0, 
                                         name=None, surfaceName='default', DVGeoName='default',
@@ -3488,7 +3491,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, surface_1, surface_1_name, DVGeo1, surface_2, surface_2_name, DVGeo2, scale, addToPyOpt,
-                 rho, perim_scale, max_perim):
+                 rho, perim_scale, max_perim, heuristic_dist):
         self.name = name
         # get the point sets
         self.surface_1_name = surface_1_name
@@ -3509,12 +3512,21 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.surf2_p1 = surface_2[1].transpose()
         self.surf2_p2 = surface_2[2].transpose()
 
-        maxdim = np.max(np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), 
-                                                   self.surf2_p2.max(axis=1)) - 
-                             np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), 
-                                                   self.surf2_p2.min(axis=1)))
-        # TODO make this user-settable
-        self.maxdim = maxdim*1.05
+        xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), 
+                                       self.surf2_p2.max(axis=1))
+        xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), 
+                                                   self.surf2_p2.min(axis=1))
+
+
+        computed_maxdim = np.sqrt(np.sum((xyzmax-xyzmin)**2))
+
+        if heuristic_dist is not None:
+            if heuristic_dist < computed_maxdim:
+                raise ValueError('The heuristic distance must be less than the max diagonal' \
+                                 'dimension of the bounding box, '+str(computed_maxdim))
+            self.maxdim = heuristic_dist
+        else:
+            self.maxdim = computed_maxdim*1.05
         self.scale = scale
 
         self.addToPyOpt = addToPyOpt
@@ -3636,7 +3648,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
     def evalTriangulatedSurfConstraint(self):
         """
-        Add documentation later
+        Call geograd to compute the KS function and intersection length
         """
         # first compute the length of the intersection surface between the object and surf mesh
         from geograd import geograd_parallel
@@ -3663,7 +3675,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
     def evalTriangulatedSurfConstraintSens(self):
         """
-        Add documentation later
+        Call geograd to compute the derivatives of the KS function and intersection length
         """
         # first compute the length of the intersection surface between the object and surf mesh
         from geograd import geograd_parallel
@@ -4192,10 +4204,8 @@ class LinearConstraint(object):
         Add the constraints to pyOpt. These constraints are added as
         linear constraints.
         """
-        #print('Linearconstraint being added to pyoptsparse')
         if self.ncon > 0:
             for key in self.jac:
-         #       print('Congroup: ' + key)
                 optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
                                     lower=self.lower, upper=self.upper, scale=1.0,
                                     linear=True, wrt=key, jac={key:self.jac[key]})
@@ -4208,17 +4218,13 @@ class LinearConstraint(object):
         DVGeo object.
         """
         self.vizConIndices = {}
-        #print('Call to finalize')
         # Local Shape Variables
-        #print('DVGeo:'+str(self.DVGeo))
-        #print('DVGeo listlocal: '+str(self.DVGeo.DV_listLocal))
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
                 # end for (indSet loop)
                 cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
                 ncon = len(cons)
-         #       print('ncon:' + str(ncon))
                 if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal

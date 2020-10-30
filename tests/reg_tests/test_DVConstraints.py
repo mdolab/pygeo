@@ -744,7 +744,7 @@ class RegTestPyGeo(unittest.TestCase):
 
 
             funcs, funcsSens = self.generic_test_base(DVGeo, DVCon, handler, fdstep=1e-3)
-            handler.assert_allclose(funcs['DVCon1_trisurf_constraint_0_KS'], 0.3466089344854115, 
+            handler.assert_allclose(funcs['DVCon1_trisurf_constraint_0_KS'], 0.34660627481696404, 
                                     name='KS', rtol=1e-7, atol=1e-7)
             handler.assert_allclose(funcs['DVCon1_trisurf_constraint_0_perim'], 0.0, 
                                     name='perim', rtol=1e-7, atol=1e-7)
