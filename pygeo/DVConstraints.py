@@ -251,11 +251,13 @@ class DVConstraints(object):
                 # Load the surf as a plot3d file
                 p0, v1, v2 = self._readPlot3DSurfFile(surf)
 
-            else: # Assume it's a pyGeo surface
+            elif isinstance(surf, pyGeo): # Assume it's a pyGeo surface
                 p0, v1, v2 = self._generateDiscreteSurface(surf)
+            else:
+                raise TypeError('surf given is not a supported type [List, plot3D file name, or pyGeo surface]')
+            
             p1 = p0 + v1
             p2 = p0 + v2
-        
         elif format == 'point-point':
             if type(surf) == str:
                 # load from file
@@ -270,6 +272,8 @@ class DVConstraints(object):
                 p0 = surf[:,0,:].reshape(surf_length, 3)
                 p1 = surf[:,1,:].reshape(surf_length, 3)
                 p2 = surf[:,2,:].reshape(surf_length, 3)
+            else:
+                raise TypeError('surf given is not supported [list, numpy.ndarray]')
 
         self.surfaces[name].append(p0)
         self.surfaces[name].append(p1)
@@ -475,7 +479,8 @@ class DVConstraints(object):
         ----------
         fileName : str
             File name for tecplot file. Should have a .dat extension.
-
+        surfaceName : str
+            Which DVConstraints surface to write to file (default is 'default')
         """
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
@@ -507,6 +512,10 @@ class DVConstraints(object):
         ----------
         fileName : str
             File name for stl file. Should have a .stl extension.
+        surfaceName : str
+            Which DVConstraints surface to write to file (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None')
         """
         import numpy as np
         try:
@@ -1356,7 +1365,7 @@ class DVConstraints(object):
             conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt)
 
 
-    def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name=None,
+    def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name='default',
                                          surface_2_name='default', DVGeo_2_name='default',
                                          rho=50., heuristic_dist=None, perim_scale=0.1, 
                                          max_perim=3.0, name=None, scale=1., addToPyOpt=True):
@@ -1372,9 +1381,19 @@ class DVConstraints(object):
             This should be the surface with the larger number of triangles.
             By default, it's the ADflow triangulated surface mesh.
 
+        DVGeo_1_name : str
+            The name of the DVGeo object to associate surface_1 to.
+            If None, surface_1 will remain static during optimization.
+            By default, it's the 'default' DVGeo object
+
         surface_2_name : str
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
+
+        DVGeo_2_name : str
+            The name of the DVGeo object to associate surface_2 to.
+            If None, surface_2 will remain static during optimization.
+            By default, it's the 'default' DVGeo object
 
         rho : float
             The rho factor of the KS function of min distance.
@@ -3502,7 +3521,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.DVGeo2 = DVGeo2
 
         self.surf1_size = surface_1[0].shape[0]
-        # todo double check that these are in proper fortran array order
         self.surf1_p0 = surface_1[0].transpose()
         self.surf1_p1 = surface_1[1].transpose()
         self.surf1_p2 = surface_1[2].transpose()
@@ -3562,6 +3580,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         ----------
         funcs : dict
             Dictionary to place function values
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
         """
         # get the CFD triangulated mesh updates. need addToDVGeo = True when
         # running setSurface()
@@ -3595,6 +3617,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         ----------
         funcsSens : dict
             Dictionary to place function values
+            config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
         """
         tmpTotalKS = {}
         tmpTotalPerim = {}
@@ -3655,10 +3681,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         mindist_tmp = 0.0
 
         # first run to get the minimum distance
-        foo, perim_length, mindist, foo2, foo3 = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+        _, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                 self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist_tmp, self.rho, self.maxdim)
         # second run gets the well-conditioned KS
-        KS, perim_length, mindist, foo2, foo3 = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+        KS, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                 self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist, self.rho, self.maxdim)
 
         self.perim_length = perim_length
@@ -3670,7 +3696,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 print('Intersection length ', str(perim_length), ' exceeds tol, returning fail flag')
         else:
             failflag = False
-        # TODO should the perim scale be applied here or elsewhere
         return KS, perim_length, failflag
 
     def evalTriangulatedSurfConstraintSens(self):
@@ -3740,6 +3765,10 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         ----------
         funcs : dict
             Dictionary to place function values
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
         """
         # get the CFD triangulated mesh updates. need addToDVGeo = True when
         # running setSurface()
@@ -3781,10 +3810,17 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         Evaluate the sensitivity of the functions this object has and
         place in the funcsSens dictionary
 
+        Assumes that evalFunctions method was called just prior
+        and results stashed on proc 0
+
         Parameters
         ----------
         funcsSens : dict
             Dictionary to place function values
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
         """
         tmpTotal = {}
 
@@ -4579,6 +4615,7 @@ class PlanarityConstraint(GeometricConstraint):
         # Now embed the coordinates and origin into DVGeo
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
+        # issue 53
         self.DVGeo.addPointSet(self.p0, self.name+'p0')
         self.DVGeo.addPointSet(self.p1, self.name+'p1')
         self.DVGeo.addPointSet(self.p2, self.name+'p2')
