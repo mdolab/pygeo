@@ -3682,10 +3682,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         # first run to get the minimum distance
         _, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist_tmp, self.rho, self.maxdim)
+                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist_tmp, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
         # second run gets the well-conditioned KS
         KS, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist, self.rho, self.maxdim)
+                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
 
         self.perim_length = perim_length
         self.minimum_distance = mindist
@@ -3708,7 +3708,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         deriv_output = geograd_parallel.compute_derivs(self.surf1_p0, self.surf1_p1, self.surf1_p2,
                                                        self.surf2_p0, self.surf2_p1, self.surf2_p2,
-                                                       self.minimum_distance, self.rho, self.maxdim)
+                                                       self.minimum_distance, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
         return deriv_output
 
     def addConstraintsPyOpt(self, optProb):
