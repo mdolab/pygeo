@@ -2,7 +2,7 @@
 
 DVGeometry
 ----------
-.. currentmodule:: pygeo.DVGeometry
+.. currentmodule:: pygeo
 
-.. autoclass:: pygeo.DVGeometry.DVGeometry
+.. autoclass:: DVGeometry
     :members: 
