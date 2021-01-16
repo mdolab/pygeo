@@ -8,14 +8,6 @@ from .DVConstraints import DVConstraints
 from .DVGeometry import DVGeometry
 from .DVGeometryAxi import DVGeometryAxi
 try:
-    from .om_dvgeo import OM_DVGEO
-except ImportError:
-    pass
-try:
     from .DVGeometryVSP import DVGeometryVSP
-except ImportError:
-    pass
-try:
-    from .DVGeometryMulti import DVGeometryMulti
 except ImportError:
     pass
