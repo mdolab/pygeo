@@ -7,11 +7,9 @@ except ImportError:
     try:
         from ordereddict import OrderedDict
     except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, "
-              "use:\n pip install ordereddict")
+        print("Could not find any OrderedDict class. For 2.6 and earlier, " "use:\n pip install ordereddict")
 import time
 import numpy
-from scipy.spatial import cKDTree
 from mpi4py import MPI
 
 # mdolab packages
@@ -20,24 +18,27 @@ from pyspline import pySpline
 # openvsp python interface
 import vsp
 
+
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
     was a explicitly raised exception.
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| DVGeometryVSP Error: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVGeometryVSP Error: "
         i = 22
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
         Exception.__init__(self)
+
 
 class DVGeometryVSP(object):
     """A class for manipulating VSP geometry
@@ -92,7 +93,8 @@ class DVGeometryVSP(object):
       >>>
 
     """
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[],projTol=0.01):
+
+    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
 
         if comm.rank == 0:
             print("Initializing DVGeometryVSP")
@@ -107,8 +109,8 @@ class DVGeometryVSP(object):
         # this scales coordinates from vsp to mesh geometry
         self.vspScale = scale
         # and this scales coordinates from mesh to vsp geometry
-        self.meshScale = 1./scale
-        self.projTol = projTol*self.meshScale # default input is in meters.
+        self.meshScale = 1.0 / scale
+        self.projTol = projTol * self.meshScale  # default input is in meters.
         self.comm = comm
         self.vspFile = vspFile
 
@@ -120,7 +122,7 @@ class DVGeometryVSP(object):
         vsp.ReadVSPFile(vspFile)
         t2 = time.time()
         if self.comm.rank == 0:
-            print('Loading the vsp model took:', (t2-t1))
+            print("Loading the vsp model took:", (t2 - t1))
 
         # List of all componets returned from VSP. Note that this
         # order is important. It is the order that we use to map the
@@ -157,8 +159,7 @@ class DVGeometryVSP(object):
 
         if comm.rank == 0:
             t3 = time.time()
-            print("Initialized DVGeometry VSP in",(t3-t0),"seconds.")
-
+            print("Initialized DVGeometry VSP in", (t3 - t0), "seconds.")
 
     def addPointSet(self, points, ptName, **kwargs):
         """
@@ -185,7 +186,7 @@ class DVGeometryVSP(object):
         # ADFlow checks self.points to see if something is added or not.
         self.points[ptName] = True
 
-        points = numpy.array(points).real.astype('d')
+        points = numpy.array(points).real.astype("d")
 
         # we need to project each of these points onto the VSP geometry,
         # get geometry and surface IDs, u, v values, and coordinates of the projections.
@@ -197,35 +198,34 @@ class DVGeometryVSP(object):
             # faceID has the index of the corresponding quad element.
             # uv has the parametric u and v weights of the projected point.
 
-            faceID, uv = pySpline.libspline.adtprojections(
-                self.pts0.T, (self.conn+1).T, points.T)
+            faceID, uv = pySpline.libspline.adtprojections(self.pts0.T, (self.conn + 1).T, points.T)
             uv = uv.T
-            faceID -= 1 # Convert back to zero-based indexing.
+            faceID -= 1  # Convert back to zero-based indexing.
             # after this point we should have the projected points.
 
         else:
-            faceID = numpy.zeros((0), 'intc')
-            uv = numpy.zeros((0, 2), 'intc')
+            faceID = numpy.zeros((0), "intc")
+            uv = numpy.zeros((0, 2), "intc")
 
         # now we need to figure out which surfaces the points got projected to
         # From the faceID we can back out what component each one is
         # connected to. This way if we have intersecting components we
         # only change the ones that are apart of the two surfaces.
-        cumFaceSizes = numpy.zeros(len(self.sizes) + 1, 'intc')
+        cumFaceSizes = numpy.zeros(len(self.sizes) + 1, "intc")
         for i in range(len(self.sizes)):
-            nCellI = self.sizes[i][0]-1
-            nCellJ = self.sizes[i][1]-1
-            cumFaceSizes[i+1] = cumFaceSizes[i] + nCellI*nCellJ
-        compIDs = numpy.searchsorted(cumFaceSizes, faceID, side='right')-1
+            nCellI = self.sizes[i][0] - 1
+            nCellJ = self.sizes[i][1] - 1
+            cumFaceSizes[i + 1] = cumFaceSizes[i] + nCellI * nCellJ
+        compIDs = numpy.searchsorted(cumFaceSizes, faceID, side="right") - 1
 
         # coordinates to store the projected points
-        pts = numpy.zeros_like(points)
+        pts = numpy.zeros(points.shape)
 
         # npoints * 3 list containing the geomID, u and v values
         # this can be improved if we can group points that get
         # projected to the same geometry.
         npoints = len(points)
-        geom = numpy.zeros(npoints, dtype='intc')
+        geom = numpy.zeros(npoints, dtype="intc")
         u = numpy.zeros(npoints)
         v = numpy.zeros(npoints)
 
@@ -238,39 +238,39 @@ class DVGeometryVSP(object):
         t1 = time.time()
         for i in range(points.shape[0]):
             # this is the geometry our point got projected to in the adt code
-            gind = compIDs[i] # index
-            gid = self.allComps[gind] # ID
+            gind = compIDs[i]  # index
+            gid = self.allComps[gind]  # ID
 
             # set the coordinates of the point object
-            pnt.set_xyz(points[i,0] * self.meshScale, points[i,1] * self.meshScale, points[i,2] * self.meshScale)
+            pnt.set_xyz(points[i, 0] * self.meshScale, points[i, 1] * self.meshScale, points[i, 2] * self.meshScale)
 
             # first, we call the fast projection code with the initial guess
 
             # this is the global index of the first node of the projected element
-            nodeInd = self.conn[faceID[i],0]
+            nodeInd = self.conn[faceID[i], 0]
             # get the local index of this node
             nn = nodeInd - self.cumSizes[gind]
             # figure out the i and j indices of the first point of the element
             # we projected this point to
-            ii = numpy.mod(nn, self.sizes[gind,0])
-            jj = numpy.floor_divide(nn, self.sizes[gind,0])
+            ii = numpy.mod(nn, self.sizes[gind, 0])
+            jj = numpy.floor_divide(nn, self.sizes[gind, 0])
 
             # calculate the global u and v change in this element
-            du = self.uv[gind][0][ii+1] - self.uv[gind][0][ii]
-            dv = self.uv[gind][1][jj+1] - self.uv[gind][1][jj]
+            du = self.uv[gind][0][ii + 1] - self.uv[gind][0][ii]
+            dv = self.uv[gind][1][jj + 1] - self.uv[gind][1][jj]
 
             # now get this points u,v coordinates on the vsp geometry and add
             # compute the initial guess using the  tessalation data of the surface
-            ug = uv[i,0]*du + self.uv[gind][0][ii]
-            vg = uv[i,1]*dv + self.uv[gind][1][jj]
+            ug = uv[i, 0] * du + self.uv[gind][0][ii]
+            vg = uv[i, 1] * dv + self.uv[gind][1][jj]
 
             # project the point
-            d, u[i], v[i] = vsp.ProjPnt01Guess( gid, 0, pnt, ug, vg )
+            d, u[i], v[i] = vsp.ProjPnt01Guess(gid, 0, pnt, ug, vg)
             geom[i] = gind
 
             # if we dont have a good projection, try projecting again to surfaces
             #  with the slow code.
-            if (d > self.projTol):
+            if d > self.projTol:
                 # print('Guess code failed with projection distance',d)
                 # for now, we need to check for all geometries separately.
                 # Just pick the one that yields the smallest d
@@ -278,9 +278,11 @@ class DVGeometryVSP(object):
                 for gid in self.allComps:
 
                     # only project if the point is in the bounding box of the geometry
-                    if ((self.bbox[gid][0,0] < points[i,0] < self.bbox[gid][0,1]) and
-                        (self.bbox[gid][1,0] < points[i,1] < self.bbox[gid][1,1]) and
-                        (self.bbox[gid][2,0] < points[i,2] < self.bbox[gid][2,1])):
+                    if (
+                        (self.bbox[gid][0, 0] < points[i, 0] < self.bbox[gid][0, 1])
+                        and (self.bbox[gid][1, 0] < points[i, 1] < self.bbox[gid][1, 1])
+                        and (self.bbox[gid][2, 0] < points[i, 2] < self.bbox[gid][2, 1])
+                    ):
 
                         # project the point onto the VSP geometry
                         dNew, surf_indx_out, uout, vout = vsp.ProjPnt01I(gid, pnt)
@@ -292,24 +294,24 @@ class DVGeometryVSP(object):
                             v[i] = vout
                             geom[i] = gind
                             d = dNew
-                    gind +=1
+                    gind += 1
 
             # check if the final d is larger than our previous largest value
             dMax = max(d, dMax)
 
             # We need to evaluate this pnt to get its coordinates in physical space
             pnt = vsp.CompPnt01(self.allComps[geom[i]], 0, u[i], v[i])
-            pts[i,0] = pnt.x() * self.vspScale
-            pts[i,1] = pnt.y() * self.vspScale
-            pts[i,2] = pnt.z() * self.vspScale
+            pts[i, 0] = pnt.x() * self.vspScale
+            pts[i, 1] = pnt.y() * self.vspScale
+            pts[i, 2] = pnt.z() * self.vspScale
 
         # some debug info
         dMax_global = self.comm.allreduce(dMax, op=MPI.MAX)
         t2 = time.time()
 
         if self.comm.rank == 0 or self.comm is None:
-            print('DVGeometryVSP note:\nAdding pointset',ptName, 'took', t2-t1, 'seconds.')
-            print('Maximum distance between the added points and the VSP geometry is',dMax_global)
+            print("DVGeometryVSP note:\nAdding pointset", ptName, "took", t2 - t1, "seconds.")
+            print("Maximum distance between the added points and the VSP geometry is", dMax_global)
 
         # Create the little class with the data
         self.pointSets[ptName] = PointSet(points, pts, geom, u, v)
@@ -426,7 +428,6 @@ class DVGeometryVSP(object):
         """
         return list(self.DVs.keys())
 
-
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
         This function computes sensitivty information.
@@ -469,13 +470,6 @@ class DVGeometryVSP(object):
         if not self.updatedJac[ptSetName]:
             self._computeSurfJacobian()
 
-        # Make dIdpt at least 3D
-        if len(dIdpt.shape) == 2:
-            dIdpt = numpy.array([dIdpt])
-        N = dIdpt.shape[0]
-
-        nDV = self.getNDV()
-
         # The following code computes the final sensitivity product:
         #
         #        T       T
@@ -486,8 +480,12 @@ class DVGeometryVSP(object):
         # Where I is the objective, Xpt are the externally coordinates
         # supplied in addPointSet
 
+        # Make dIdpt at least 3D
+        if len(dIdpt.shape) == 2:
+            dIdpt = numpy.array([dIdpt])
+
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
-        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
+        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         # jacobian of the projected points
         jac = self.pointSets[ptSetName].jac
@@ -582,9 +580,6 @@ class DVGeometryVSP(object):
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
             dIdpt = numpy.array([dIdpt])
-        N = dIdpt.shape[0]
-
-        nDV = self.getNDV()
 
         # The following code computes the final sensitivity product:
         #
@@ -597,8 +592,7 @@ class DVGeometryVSP(object):
         # supplied in addPointSet
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
-        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
-
+        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         jac = self.pointSets[ptSetName].jac.copy()
         dIdxT_local = jac.T.dot(dIdpt.T)
@@ -611,9 +605,9 @@ class DVGeometryVSP(object):
 
         return dIdx
 
-    def addVariable(self, component, group, parm, value=None,
-                    lower=None, upper=None, scale=1.0, scaledStep=True,
-                    dh=1e-6):
+    def addVariable(
+        self, component, group, parm, value=None, lower=None, upper=None, scale=1.0, scaledStep=True, dh=1e-6
+    ):
         """
         Add a design variable definition.
 
@@ -644,16 +638,16 @@ class DVGeometryVSP(object):
 
         container_id = vsp.FindContainer(component, 0)
         if container_id == "":
-            raise Error('Bad component for DV: %s'%component)
+            raise Error("Bad component for DV: %s" % component)
 
         parm_id = vsp.FindParm(container_id, parm, group)
         if parm_id == "":
-            raise Error('Bad group or parm: %s %s %s'%(component, group, parm))
+            raise Error("Bad group or parm: %s %s %s" % (component, group, parm))
 
         # Now we know the parmID is ok. So we just get the value
         val = vsp.GetParmVal(parm_id)
 
-        dvName = '%s:%s:%s'%(component, group, parm)
+        dvName = "%s:%s:%s" % (component, group, parm)
 
         if value is None:
             value = val
@@ -662,11 +656,12 @@ class DVGeometryVSP(object):
             dh = dh * value
 
             if value == 0:
-                raise Error('Initial value is exactly 0. scaledStep option cannot be used'
-                            'Specify an explicit dh with scaledStep=False')
+                raise Error(
+                    "Initial value is exactly 0. scaledStep option cannot be used"
+                    "Specify an explicit dh with scaledStep=False"
+                )
 
-        self.DVs[dvName] = vspDV(parm_id, component, group, parm, value, lower,
-                                 upper, scale, dh)
+        self.DVs[dvName] = vspDV(parm_id, component, group, parm, value, lower, upper, scale, dh)
 
     def addVariablesPyOpt(self, optProb):
         """
@@ -680,30 +675,29 @@ class DVGeometryVSP(object):
 
         for dvName in self.DVs:
             dv = self.DVs[dvName]
-            optProb.addVar(dvName, 'c', value=dv.value, lower=dv.lower,
-                           upper=dv.upper, scale=dv.scale)
+            optProb.addVar(dvName, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
     def printDesignVariables(self):
         """
         Print a formatted list of design variables to the screen
         """
-        print ('-'*85)
-        print ('%30s%20s%20s%15s'%('Component','Group','Parm','Value'))
-        print ('-'*85)
+        print("-" * 85)
+        print("%30s%20s%20s%15s" % ("Component", "Group", "Parm", "Value"))
+        print("-" * 85)
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            print('%30s%20s%20s%15g'%(DV.component, DV.group, DV.parm, DV.value))
+            print("%30s%20s%20s%15g" % (DV.component, DV.group, DV.parm, DV.value))
 
     def createDesignFile(self, fileName):
         """Take the current set of design variables and create a .des file"""
-        f = open(fileName, 'w')
-        f.write('%d\n'%len(self.DVs))
+        f = open(fileName, "w")
+        f.write("%d\n" % len(self.DVs))
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            f.write('%s:%s:%s:%s:%20.15g\n'%(DV.parmID, DV.component, DV.group, DV.parm, DV.value))
+            f.write("%s:%s:%s:%s:%20.15g\n" % (DV.parmID, DV.component, DV.group, DV.parm, DV.value))
         f.close()
 
-    def writePlot3D(self, fileName):
+    def writePlot3D(self, fileName, exportSet=0):
         """Write the current design to Plot3D file"""
 
         for dvName in self.DVs:
@@ -715,24 +709,23 @@ class DVGeometryVSP(object):
         vsp.Update()
 
         # First set the export flag for exportSet to False for everyone
-        for comp in allComps:
-            vsp.SetSetFlag(comp, self.exportSet, False)
+        for comp in self.allComps:
+            vsp.SetSetFlag(comp, exportSet, False)
 
         self.exportComps = []
         for comp in self.allComps:
             # Check if this one is in our list:
             compName = vsp.GetContainerName(comp)
-            if compName in comps:
-                vsp.SetSetFlag(comp, self.exportSet, True)
+            if compName in self.compNames:
+                vsp.SetSetFlag(comp, exportSet, True)
                 self.exportComps.append(compName)
 
         # Write the export file.
-        self.exportSet = 9
-        vsp.ExportFile(fileName, self.exportSet, vsp.EXPORT_PLOT3D)
+        vsp.ExportFile(fileName, exportSet, vsp.EXPORT_PLOT3D)
 
-# ----------------------------------------------------------------------
-#        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
-# ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------- #
+    #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
+    # ----------------------------------------------------------------------- #
 
     def _updateVSPModel(self):
         # Set each of the DVs. We have the parmID stored so its easy.
@@ -748,7 +741,7 @@ class DVGeometryVSP(object):
     def _updateProjectedPts(self):
         for ptSetName in self.pointSets:
             # get the current coordinates of projection points
-            n      = len(self.pointSets[ptSetName].points)
+            n = len(self.pointSets[ptSetName].points)
             newPts = numpy.zeros((n, 3))
 
             # newPts should get the new projected coords
@@ -764,7 +757,7 @@ class DVGeometryVSP(object):
                 pnt = vsp.CompPnt01(self.allComps[geom[i]], 0, u[i], v[i])
 
                 # update the coordinates
-                newPts[i,:] = (pnt.x(), pnt.y(), pnt.z())
+                newPts[i, :] = (pnt.x(), pnt.y(), pnt.z())
 
             # scale vsp coordinates to mesh coordinates, do it safely above for now
             newPts *= self.vspScale
@@ -778,36 +771,36 @@ class DVGeometryVSP(object):
         # while adding point sets
 
         # initialize the array
-        bbox = numpy.zeros((3,2))
+        bbox = numpy.zeros((3, 2))
 
         # we need to get the number of main surfaces on this geometry
         nSurf = vsp.GetNumMainSurfs(comp)
         nuv = self.bboxuv.shape[0]
 
         # allocate the arrays
-        nodes = numpy.zeros((nSurf*nuv,3))
+        nodes = numpy.zeros((nSurf * nuv, 3))
 
         # loop over the surfaces
         for iSurf in range(nSurf):
             offset = iSurf * nuv
             # evaluate the points
-            ptVec = vsp.CompVecPnt01(comp, iSurf, self.bboxuv[:,0], self.bboxuv[:,1])
+            ptVec = vsp.CompVecPnt01(comp, iSurf, self.bboxuv[:, 0], self.bboxuv[:, 1])
             # now extract the coordinates from the vec3dvec...sigh...
             for i in range(nuv):
-                nodes[offset + i,:] = (ptVec[i].x(), ptVec[i].y(), ptVec[i].z())
+                nodes[offset + i, :] = (ptVec[i].x(), ptVec[i].y(), ptVec[i].z())
 
         # get the min/max values of the coordinates
         for i in range(3):
             # this might be faster if we specify row/column major
-            bbox[i,0] = nodes[:,i].min()
-            bbox[i,1] = nodes[:,i].max()
+            bbox[i, 0] = nodes[:, i].min()
+            bbox[i, 1] = nodes[:, i].max()
 
         # finally scale the bounding box and return
         bbox *= self.vspScale
 
         # also give some offset on all directions
-        bbox[:,0] -= 0.1
-        bbox[:,1] += 0.1
+        bbox[:, 0] -= 0.1
+        bbox[:, 1] += 0.1
 
         return bbox.copy()
 
@@ -815,17 +808,16 @@ class DVGeometryVSP(object):
         # we need to sample the geometry, just do uniformly now
         nu = 20
         nv = 20
-        nu1 = nu+1
 
         # define the points on the parametric domain to sample
-        ul = numpy.linspace(0, 1, nu+1)
-        vl = numpy.linspace(0, 1, nv+1)
+        ul = numpy.linspace(0, 1, nu + 1)
+        vl = numpy.linspace(0, 1, nv + 1)
         uu, vv = numpy.meshgrid(ul, vl)
         uu = uu.flatten()
         vv = vv.flatten()
 
         # now create a concentrated uv array
-        uv = numpy.dstack((uu,vv)).squeeze()
+        uv = numpy.dstack((uu, vv)).squeeze()
 
         return uv.copy()
 
@@ -841,22 +833,21 @@ class DVGeometryVSP(object):
         tvsp = 0
         teval = 0
         tcomm = 0
-        tint = 0
 
         # counts
         nDV = self.getNDV()
         dvKeys = list(self.DVs.keys())
         nproc = self.comm.size
-        rank  = self.comm.rank
+        rank = self.comm.rank
 
         # arrays to collect local pointset info
         ul = numpy.zeros(0)
         vl = numpy.zeros(0)
-        gl = numpy.zeros(0, dtype = 'intc')
+        gl = numpy.zeros(0, dtype="intc")
 
         for ptSetName in self.pointSets:
             # initialize the Jacobians
-            self.pointSets[ptSetName].jac = numpy.zeros((3*self.pointSets[ptSetName].nPts, nDV))
+            self.pointSets[ptSetName].jac = numpy.zeros((3 * self.pointSets[ptSetName].nPts, nDV))
 
             # first, we need to vstack all the point set info we have
             # counts of these are also important, saved in ptSet.nPts
@@ -865,20 +856,20 @@ class DVGeometryVSP(object):
             gl = numpy.concatenate((gl, self.pointSets[ptSetName].geom))
 
         # now figure out which proc has how many points.
-        sizes = numpy.array(self.comm.allgather(len(ul)), dtype = 'intc')
+        sizes = numpy.array(self.comm.allgather(len(ul)), dtype="intc")
         # displacements for allgather
-        disp = numpy.array([numpy.sum(sizes[:i]) for i in range(nproc)], dtype='intc')
+        disp = numpy.array([numpy.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
         # global number of points
         nptsg = numpy.sum(sizes)
         # create a local new point array. We will use this to get the new
         # coordinates as we perturb DVs. We just need one (instead of nDV times the size)
         # because we get the new points, calculate the jacobian and save it right after
-        ptsNewL = numpy.zeros(len(ul)*3)
+        ptsNewL = numpy.zeros(len(ul) * 3)
 
         # create the arrays to receive the global info
         ug = numpy.zeros(nptsg)
         vg = numpy.zeros(nptsg)
-        gg = numpy.zeros(nptsg, dtype='intc')
+        gg = numpy.zeros(nptsg, dtype="intc")
 
         # Now we do an allGatherv to get a long list of all pointset information
         self.comm.Allgatherv([ul, len(ul)], [ug, sizes, disp, MPI.DOUBLE])
@@ -886,12 +877,12 @@ class DVGeometryVSP(object):
         self.comm.Allgatherv([gl, len(gl)], [gg, sizes, disp, MPI.INT])
 
         # we now have all the point info on all procs.
-        tcomm += (time.time() - t1)
+        tcomm += time.time() - t1
 
         # We need to evaluate all the points on respective procs for FD computations
 
         # allocate memory
-        pts0 = numpy.zeros((nptsg,3))
+        pts0 = numpy.zeros((nptsg, 3))
 
         # evaluate the points
         for j in range(nptsg):
@@ -909,13 +900,13 @@ class DVGeometryVSP(object):
         ptsNew = numpy.zeros((n, nptsg, 3))
 
         # perturb the DVs on different procs and compute the new point coordinates.
-        i = 0 # Counter on local Jac
-        reqs = []
+        i = 0  # Counter on local Jac
+
         for iDV in range(len(dvKeys)):
             # I have to do this one.
             if iDV % nproc == rank:
                 # Step size for this particular DV
-                dh =  self.DVs[dvKeys[iDV]].dh
+                dh = self.DVs[dvKeys[iDV]].dh
 
                 # Perturb the DV
                 dvSave = self.DVs[dvKeys[iDV]].value.copy()
@@ -925,7 +916,7 @@ class DVGeometryVSP(object):
                 t11 = time.time()
                 self._updateVSPModel()
                 t12 = time.time()
-                tvsp += (t12-t11)
+                tvsp += t12 - t11
 
                 t11 = time.time()
                 # evaluate the points
@@ -933,10 +924,10 @@ class DVGeometryVSP(object):
                     pnt = vsp.CompPnt01(self.allComps[gg[j]], 0, ug[j], vg[j])
                     ptsNew[i, j, :] = (pnt.x(), pnt.y(), pnt.z())
                 t12 = time.time()
-                teval += (t12-t11)
+                teval += t12 - t11
 
                 # now we can calculate the jac and put it back in ptsNew
-                ptsNew[i, :, :] = (ptsNew[i, :, :] - pts0[:,:]) / dh
+                ptsNew[i, :, :] = (ptsNew[i, :, :] - pts0[:, :]) / dh
 
                 # Reset the DV
                 self.DVs[dvKeys[iDV]].value = dvSave.copy()
@@ -953,27 +944,27 @@ class DVGeometryVSP(object):
         t11 = time.time()
         self._updateVSPModel()
         t12 = time.time()
-        tvsp += (t12-t11)
+        tvsp += t12 - t11
 
         ii = 0
         # loop over the DVs and scatter the perturbed points to original procs
         for iDV in range(len(dvKeys)):
             # Step size for this particular DV
-            dh =  self.DVs[dvKeys[iDV]].dh
+            dh = self.DVs[dvKeys[iDV]].dh
 
             t11 = time.time()
             # create the send/recv buffers for the scatter
             if iDV % nproc == rank:
-                sendbuf = [ptsNew[ii, :, :].flatten(), sizes*3, disp*3, MPI.DOUBLE]
+                sendbuf = [ptsNew[ii, :, :].flatten(), sizes * 3, disp * 3, MPI.DOUBLE]
             else:
-                sendbuf = [numpy.zeros((0,3)), sizes*3, disp*3, MPI.DOUBLE]
-            recvbuf = [ptsNewL,  MPI.DOUBLE]
+                sendbuf = [numpy.zeros((0, 3)), sizes * 3, disp * 3, MPI.DOUBLE]
+            recvbuf = [ptsNewL, MPI.DOUBLE]
 
             # scatter the info from the proc that perturbed this DV to all procs
             self.comm.Scatterv(sendbuf, recvbuf, root=(iDV % nproc))
 
             t12 = time.time()
-            tcomm += (t12-t11)
+            tcomm += t12 - t11
 
             # calculate the jacobian here for the pointsets
             offset = 0
@@ -982,11 +973,11 @@ class DVGeometryVSP(object):
                 nPts = self.pointSets[ptSet].nPts
 
                 # indices to extract correct points from the long pointset array
-                ibeg = offset*3
-                iend = ibeg + nPts*3
+                ibeg = offset * 3
+                iend = ibeg + nPts * 3
 
                 # ptsNewL has the jacobian itself...
-                self.pointSets[ptSet].jac[0:nPts*3, iDV] = ptsNewL[ibeg:iend].copy()
+                self.pointSets[ptSet].jac[0 : nPts * 3, iDV] = ptsNewL[ibeg:iend].copy()
 
                 # self.pointSets[ptSet].jac[0:nPts*3, iDV] = (ptsNewL[ibeg:iend] - self.pointSets[ptSet].pts.flatten())/dh
 
@@ -1000,10 +991,10 @@ class DVGeometryVSP(object):
 
         t2 = time.time()
         if rank == 0:
-            print('FD jacobian calcs with dvgeovsp took',(t2-t1),'seconds in total')
-            print('updating the vsp model took',tvsp,'seconds')
-            print('evaluating the new points took', teval,'seconds')
-            print('communication took',tcomm,'seconds')
+            print("FD jacobian calcs with dvgeovsp took", (t2 - t1), "seconds in total")
+            print("updating the vsp model took", tvsp, "seconds")
+            print("evaluating the new points took", teval, "seconds")
+            print("communication took", tcomm, "seconds")
 
         # set the update flags
         for ptSet in self.pointSets:
@@ -1011,25 +1002,25 @@ class DVGeometryVSP(object):
 
     def _getQuads(self):
         # here we build the quad data using the internal vsp geometry
-        nSurf    = len(self.allComps)
-        pts      = numpy.zeros((0,3))
-        conn     = numpy.zeros((0,4), dtype='intc')
-        sizes    = numpy.zeros((nSurf,2), 'intc')
-        cumSizes = numpy.zeros(nSurf + 1, 'intc')
-        uv       = [] # this will hold tessalation points
-        offset   = 0
+        nSurf = len(self.allComps)
+        pts = numpy.zeros((0, 3))
+        conn = numpy.zeros((0, 4), dtype="intc")
+        sizes = numpy.zeros((nSurf, 2), "intc")
+        cumSizes = numpy.zeros(nSurf + 1, "intc")
+        uv = []  # this will hold tessalation points
+        offset = 0
 
         gind = 0
         for geom in self.allComps:
             # get uv tessalation
-            utess, wtess = vsp.GetUWTess01( geom, 0 )
+            utess, wtess = vsp.GetUWTess01(geom, 0)
             # check if these values are good, otherwise, do it yourself!
 
             # save these values
             uv.append([numpy.array(utess), numpy.array(wtess)])
             nu = len(utess)
             nv = len(wtess)
-            nElem = (nu-1)*(nv-1)
+            nElem = (nu - 1) * (nv - 1)
 
             # get u,v combinations of nodes
             uu, vv = numpy.meshgrid(utess, wtess)
@@ -1037,40 +1028,40 @@ class DVGeometryVSP(object):
             wtess = vv.flatten()
 
             # get the points
-            ptvec = vsp.CompVecPnt01( geom, 0, utess, wtess )
+            ptvec = vsp.CompVecPnt01(geom, 0, utess, wtess)
 
             # number of nodes for this geometry
             curSize = len(ptvec)
 
             # initialize coordinate and connectivity arrays
-            compPts  = numpy.zeros((curSize, 3))
-            compConn = numpy.zeros((nElem, 4), dtype='intc')
+            compPts = numpy.zeros((curSize, 3))
+            compConn = numpy.zeros((nElem, 4), dtype="intc")
 
             # get the coordinates of the points
             for i in range(curSize):
-                compPts[i,:] = (ptvec[i].x(), ptvec[i].y(), ptvec[i].z())
+                compPts[i, :] = (ptvec[i].x(), ptvec[i].y(), ptvec[i].z())
 
             # build connectivity array
             k = 0
-            for j in range(nv-1):
-                for i in range(nu-1):
-                    compConn[k,0] = j*nu     + i
-                    compConn[k,1] = j*nu     + i+1
-                    compConn[k,2] = (j+1)*nu + i+1
-                    compConn[k,3] = (j+1)*nu + i
+            for j in range(nv - 1):
+                for i in range(nu - 1):
+                    compConn[k, 0] = j * nu + i
+                    compConn[k, 1] = j * nu + i + 1
+                    compConn[k, 2] = (j + 1) * nu + i + 1
+                    compConn[k, 3] = (j + 1) * nu + i
                     k += 1
 
             # apply the offset to the connectivities
             compConn += offset
 
             # stack the results
-            pts = numpy.vstack((pts,compPts))
-            conn = numpy.vstack((conn,compConn))
+            pts = numpy.vstack((pts, compPts))
+            conn = numpy.vstack((conn, compConn))
 
             # number of u and v point count
-            sizes[gind,:]    = (nu, nv)
+            sizes[gind, :] = (nu, nv)
             # cumilative number of points
-            cumSizes[gind+1] = cumSizes[gind] + curSize
+            cumSizes[gind + 1] = cumSizes[gind] + curSize
 
             # increment the offset
             offset += curSize
@@ -1079,14 +1070,14 @@ class DVGeometryVSP(object):
             gind += 1
 
         # finally, scale the points and save the data
-        self.pts0     = pts*self.vspScale
-        self.conn     = conn
-        self.sizes    = sizes
+        self.pts0 = pts * self.vspScale
+        self.conn = conn
+        self.sizes = sizes
         self.cumSizes = cumSizes
-        self.uv       = uv
+        self.uv = uv
+
 
 class vspDV(object):
-
     def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
         """Inernal class for storing VSP design variable information"""
         self.parmID = parmID
@@ -1098,6 +1089,7 @@ class vspDV(object):
         self.upper = upper
         self.dh = dh
         self.scale = scale
+
 
 class PointSet(object):
     def __init__(self, points, pts, geom, u, v):
