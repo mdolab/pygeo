@@ -448,7 +448,7 @@ class DVGeometry(object):
 
         return nAxis
 
-    def addPointSet(self, points, ptName, origConfig=True, comm=None, **kwargs):
+    def addPointSet(self, points, ptName, origConfig=True, **kwargs):
         """
         Add a set of coordinates to DVGeometry
 
@@ -469,11 +469,8 @@ class DVGeometry(object):
             Flag determine if the coordinates are projected into the
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
-            exactly what they are doing.
-        comm : None
-            Comm that is associated with the added point set. Does not
-            work now, just added to be consistent with the API of
-            other DVGeo types."""
+            exactly what they are doing."""
+
 
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
@@ -1955,7 +1952,7 @@ class DVGeometry(object):
         return
 
     def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True,
-                          sectionlocalVars=True, ignoreVars=None, freezeVars=None, prefix=''):
+                          sectionlocalVars=True, ignoreVars=None, freezeVars=None):
         """
         Add the current set of variables to the optProb object.
 
@@ -1979,10 +1976,6 @@ class DVGeometry(object):
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
-
-        prefix : A prefix for the name of the DV. We use this with DVGeometryMulti
-            where each dv name will get a componentName: before the actual DV.
-
         """
         if ignoreVars is None:
             ignoreVars = set()
@@ -1999,13 +1992,12 @@ class DVGeometry(object):
                 for key in varLists[lst]:
                     if key not in ignoreVars:
                         dv = varLists[lst][key]
-                        dvName = prefix+dv.name
                         if key not in freezeVars:
-                            optProb.addVarGroup(dvName, dv.nVal, 'c', value=dv.value,
+                            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
                                                 lower=dv.lower, upper=dv.upper,
                                                 scale=dv.scale)
                         else:
-                            optProb.addVarGroup(dvName, dv.nVal, 'c', value=dv.value,
+                            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
                                                 lower=dv.value, upper=dv.value,
                                                 scale=dv.scale)
 
@@ -2120,7 +2112,7 @@ class DVGeometry(object):
             """
         self.FFD.writePlot3dCoef(fileName)
 
-    def getLocalIndex(self, iVol, comp=None):
+    def getLocalIndex(self, iVol):
         """ Return the local index mapping that points to the global
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
