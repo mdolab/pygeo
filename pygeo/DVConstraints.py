@@ -441,7 +441,7 @@ class DVConstraints(object):
 
     def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
                                   lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                                  name=None, addToPyOpt=True, compNames=None, applyIC=False):
+                                  name=None, addToPyOpt=True):
         """
         Add a set of thickness constraints that span a logically a
         two-dimensional region. A little ASCII art can help here
@@ -594,7 +594,7 @@ class DVConstraints(object):
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
             conName, coords, lower, upper, scaled, scale, self.DVGeo,
-            addToPyOpt, compNames=compNames, applyIC=applyIC)
+            addToPyOpt)
 
 
     def addThicknessConstraints1D(self, ptList, nCon, axis,
@@ -1423,7 +1423,7 @@ class DVConstraints(object):
 
     def addLeTeConstraints(self, volID=None, faceID=None,topID=None,
                            indSetA=None, indSetB=None, name=None,
-                           config=None, childIdx=None,comp=None):
+                           config=None, childIdx=None):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
         DVConstraints. These are just a particular form of linear
@@ -1515,7 +1515,7 @@ class DVConstraints(object):
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
-            lIndex = DVGeo.getLocalIndex(volID, comp)
+            lIndex = DVGeo.getLocalIndex(volID)
             iFace = False
             jFace = False
             kFace = False
@@ -1594,10 +1594,10 @@ class DVConstraints(object):
         n = len(indSetA)
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, numpy.ones(n), numpy.ones(n),
-            lower=0, upper=0, DVGeo=DVGeo, config=config, comp=comp)
+            lower=0, upper=0, DVGeo=DVGeo, config=config)
 
     def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
-                                  lower=0, upper=0, name=None, config=None, comp=None):
+                                  lower=0, upper=0, name=None, config=None):
         """
         Add a complete generic set of linear constraints for the shape
         variables that have been added to DVGeo. The constraints are
@@ -1667,10 +1667,7 @@ class DVConstraints(object):
                         "the same length")
 
         if name is None:
-            if comp is None:
-                conName = '%s_linear_constraint_%d'%(self.name, len(self.linearCon))
-            else:
-                conName = '%s:%s_linear_constraint_%d'%(comp, self.name, len(self.linearCon))
+            conName = '%s_linear_constraint_%d'%(self.name, len(self.linearCon))
         else:
             conName = name
 
@@ -1704,7 +1701,7 @@ class DVConstraints(object):
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
-            self.DVGeo,config=config, comp=comp)
+            self.DVGeo,config=config)
 
     def addGearPostConstraint(self, wimpressCalc, position, axis,
                               thickLower=1.0, thickUpper=3.0,
@@ -2639,7 +2636,7 @@ class ThicknessConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
-                 addToPyOpt, compNames=None, applyIC=False):
+                 addToPyOpt):
         self.name = name
         self.coords = coords
         self.nCon = len(self.coords)//2
@@ -2656,13 +2653,7 @@ class ThicknessConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-
-        # if we are provided with a compNames, we are using a DVGeoMulti that has a different api
-        if compNames:
-            self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames, applyIC=applyIC)
-        else:
-            # just a regular DVGeo (could still be a DVGeoMulti but we use the regular api)
-            self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name)
 
         # Now get the reference lengths
         self.D0 = numpy.zeros(self.nCon)
@@ -3475,7 +3466,7 @@ class LinearConstraint(object):
     constriants coupling local shape variables together.
     """
     def __init__(self, name, indSetA, indSetB, factorA, factorB,
-                 lower, upper, DVGeo, config, comp):
+                 lower, upper, DVGeo, config):
         # No error checking here since the calling routine should have
         # already done it.
         self.name = name
@@ -3485,12 +3476,7 @@ class LinearConstraint(object):
         self.factorB = factorB
         self.lower = lower
         self.upper = upper
-        # if no comp is specified, this is a regular dvgeo
-        if comp is None:
-            self.DVGeo = DVGeo
-        # if we have a comp name specified, just use the correct DVGeo
-        else:
-            self.DVGeo = DVgeo.DVGeoDict[comp]
+        self.DVGeo = DVGeo
         self.ncon = 0
         self.wrt = []
         self.jac = {}
