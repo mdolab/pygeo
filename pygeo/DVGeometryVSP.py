@@ -536,12 +536,13 @@ class DVGeometryVSP(object):
         return dIdxDict
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
-        # [] TODO fix this
         """
         This function computes sensitivty information.
 
-        Specificly, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}} \\vec'`
+        Specifically, it computes the following:
+        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
+
+        This is useful for forward AD mode.
 
         Parameters
         ----------
@@ -552,8 +553,8 @@ class DVGeometryVSP(object):
             The name of set of points we are dealing with
 
         comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
+            inactive parameter, this has no effect on the final result
+            because with this method, the reduction is performed externally
 
         Returns
         -------
@@ -585,9 +586,35 @@ class DVGeometryVSP(object):
         return dPt
 
     def totalSensitivityTransProd(self, dIdpt, ptSetName, comm=None, config=None):
-        # [] TODO fix this
         """
-        This is probably incorrect
+        This function computes sensitivty information.
+
+        Specificly, it computes the following:
+        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}
+
+        Parameters
+        ----------
+        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
+
+            This is the total derivative of the objective or function
+            of interest with respect to the coordinates in
+            'ptSetName'. This can be a single array of size (Npt, 3)
+            **or** a group of N vectors of size (Npt, 3, N). If you
+            have many to do, it is faster to do many at once.
+
+        ptSetName : str
+            The name of set of points we are dealing with
+
+        comm : MPI.IntraComm
+            The communicator to use to reduce the final derivative. If
+            comm is None, no reduction takes place.
+
+        Returns
+        -------
+        dIdxDict : dic
+            The dictionary containing the derivatives, suitable for
+            pyOptSparse
+
         """
 
         # We may not have set the variables so the surf jac might not be computed.
@@ -601,10 +628,6 @@ class DVGeometryVSP(object):
         if not self.updatedJac[ptSetName]:
             self._computeSurfJacobian()
 
-        # Make dIdpt at least 3D
-        if len(dIdpt.shape) == 2:
-            dIdpt = numpy.array([dIdpt])
-
         # The following code computes the final sensitivity product:
         #
         #        T       T
@@ -614,6 +637,10 @@ class DVGeometryVSP(object):
         #
         # Where I is the objective, Xpt are the externally coordinates
         # supplied in addPointSet
+
+        # Make dIdpt at least 3D
+        if len(dIdpt.shape) == 2:
+            dIdpt = numpy.array([dIdpt])
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
@@ -627,7 +654,14 @@ class DVGeometryVSP(object):
         else:
             dIdx = dIdx_local
 
-        return dIdx
+        # Now convert to dict:
+        dIdxDict = {}
+        i = 0
+        for dvName in self.DVs:
+            dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
+            i += 1
+
+        return dIdxDict
 
     def addVariable(
         self, component, group, parm, value=None, lower=None, upper=None, scale=1.0, scaledStep=True, dh=1e-6
