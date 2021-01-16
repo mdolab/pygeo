@@ -64,6 +64,10 @@ class DVGeometryVSP(object):
 
     4. It does not surpport separate configurations.
 
+    5. Because OpenVSP does not provide sensitivities, this class
+    uses parallel finite differencing to obtain the required Jacobian
+    matrices.
+
     Parameters
     ----------
     vspFile : str
@@ -331,7 +335,7 @@ class DVGeometryVSP(object):
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
             additional keys in the dfvdictionary are simply ignored.
-            """
+        """
 
         # Just dump in the values
         for key in dvDict:
@@ -370,7 +374,8 @@ class DVGeometryVSP(object):
         return dvDict
 
     def update(self, ptSetName, config=None):
-        """This is the main routine for returning coordinates that have been
+        """
+        This is the main routine for returning coordinates that have been
         updated by design variables. Multiple configs are not
         supported.
 
@@ -379,6 +384,9 @@ class DVGeometryVSP(object):
         ptSetName : str
             Name of point-set to return. This must match ones of the
             given in an :func:`addPointSet()` call.
+        config : str or list
+            Inactive parameter for DVGeometryVSP.
+            See the same method in DVGeometry.py for its normal use.
         """
 
         # new cfd point coordinates are the updated projections minus the offset
@@ -390,7 +398,16 @@ class DVGeometryVSP(object):
         return newPts
 
     def writeVSPFile(self, fileName, exportSet=0):
-        """Take the current design and write a new FSP file"""
+        """
+        Take the current design and write a new VSP file
+
+        Parameters
+        ----------
+        fileName : str
+            Name of the output VSP file
+        exportSet : int
+            optional input parameter to select an export set in VSP
+        """
         vsp.WriteVSPFile(fileName, exportSet)
 
     def pointSetUpToDate(self, ptSetName):
@@ -414,7 +431,14 @@ class DVGeometryVSP(object):
             return True
 
     def getNDV(self):
-        """ Return the number of DVs"""
+        """
+        Return the number of DVs
+
+        Returns
+        _______
+        len(self.DVs) : int
+            number of design variables
+        """
         return len(self.DVs)
 
     def getVarNames(self):
@@ -454,7 +478,7 @@ class DVGeometryVSP(object):
 
         Returns
         -------
-        dIdxDict : dic
+        dIdxDict : dict
             The dictionary containing the derivatives, suitable for
             pyOptSparse
         """
@@ -689,7 +713,14 @@ class DVGeometryVSP(object):
             print("%30s%20s%20s%15g" % (DV.component, DV.group, DV.parm, DV.value))
 
     def createDesignFile(self, fileName):
-        """Take the current set of design variables and create a .des file"""
+        """
+        Take the current set of design variables and create a .des file
+
+        Parameters
+        __________
+        fileName : str
+            name of the output .des file
+        """
         f = open(fileName, "w")
         f.write("%d\n" % len(self.DVs))
         for dvName in self.DVs:
@@ -698,7 +729,16 @@ class DVGeometryVSP(object):
         f.close()
 
     def writePlot3D(self, fileName, exportSet=0):
-        """Write the current design to Plot3D file"""
+        """
+        Write the current design to Plot3D file
+
+        Parameters
+        __________
+        fileName : str
+            name of the output Plot3D file
+        exportSet : int
+            optional argument to specify the export set in VSP
+        """
 
         for dvName in self.DVs:
             DV = self.DVs[dvName]
@@ -728,7 +768,10 @@ class DVGeometryVSP(object):
     # ----------------------------------------------------------------------- #
 
     def _updateVSPModel(self):
-        # Set each of the DVs. We have the parmID stored so its easy.
+        """
+        Set each of the DVs. We have the parmID stored so its easy.
+        """
+
         for dvName in self.DVs:
             DV = self.DVs[dvName]
             # We use float here since sometimes pyoptsparse will give
@@ -739,6 +782,10 @@ class DVGeometryVSP(object):
         vsp.Update()
 
     def _updateProjectedPts(self):
+        """
+        internally updates the coordinates of the projected points
+        """
+
         for ptSetName in self.pointSets:
             # get the current coordinates of projection points
             n = len(self.pointSets[ptSetName].points)
@@ -766,9 +813,11 @@ class DVGeometryVSP(object):
             self.pointSets[ptSetName].pts = newPts
 
     def _getBBox(self, comp):
-        # this function computes the bounding box of the component. We add some buffer on each
-        # direction because we will use this bbox to determine which components to project points
-        # while adding point sets
+        """
+        this function computes the bounding box of the component. We add some buffer on each
+        direction because we will use this bbox to determine which components to project points
+        while adding point sets
+        """
 
         # initialize the array
         bbox = numpy.zeros((3, 2))
@@ -805,6 +854,10 @@ class DVGeometryVSP(object):
         return bbox.copy()
 
     def _getuv(self):
+        """
+        creates a uniform array of u-v combinations so that we can build a quad mesh ourselves
+        """
+
         # we need to sample the geometry, just do uniformly now
         nu = 20
         nv = 20
@@ -822,10 +875,22 @@ class DVGeometryVSP(object):
         return uv.copy()
 
     def _computeSurfJacobian(self):
-        """This routine comptues the jacobian of the VSP surface with respect
+        """
+        This routine comptues the jacobian of the VSP surface with respect
         to the design variables. Since our point sets are rigidly linked to
         the VSP projection points, this is all we need to calculate. The input
         pointSets is a list or dictionary of pointSets to calculate the jacobian for.
+
+        this routine runs in parallel, so it is important that any call leading to this
+        subroutine is performed synchronously among self.comm
+
+        VSP has a bug they refuse to fix. In a non-deterministic way, the spanwise u-v
+        mapping can differ from run to run. Seems like there are two modes. The differences
+        are small, but if we end up doing the FD with results from another processor
+        the difference is large enough to completely mess up the sensitivity. Due to this
+        we compute both baseline point and perturbed point on the processor that perturbs a given DV
+        this is slightly slower but avoids this issue. the final gradient has some error still,
+        but much more managable and unimportant compared to errors introduced by FD itself
         """
 
         # timing stuff:
@@ -979,6 +1044,8 @@ class DVGeometryVSP(object):
                 # ptsNewL has the jacobian itself...
                 self.pointSets[ptSet].jac[0 : nPts * 3, iDV] = ptsNewL[ibeg:iend].copy()
 
+                # TODO when OpenVSP fixes the bug in spanwise u-v distribution, we can disable the line above and
+                # go back to the proper way below. we also need to clean up the evaluations themselves
                 # self.pointSets[ptSet].jac[0:nPts*3, iDV] = (ptsNewL[ibeg:iend] - self.pointSets[ptSet].pts.flatten())/dh
 
                 # increment the offset
@@ -1001,7 +1068,8 @@ class DVGeometryVSP(object):
             self.updatedJac[ptSet] = True
 
     def _getQuads(self):
-        # here we build the quad data using the internal vsp geometry
+        # build the quad mesh using the internal vsp geometry
+
         nSurf = len(self.allComps)
         pts = numpy.zeros((0, 3))
         conn = numpy.zeros((0, 4), dtype="intc")
@@ -1092,6 +1160,7 @@ class vspDV(object):
 
 
 class PointSet(object):
+    """Internal class for storing the projection details of each pointset"""
     def __init__(self, points, pts, geom, u, v):
         self.points = points
         self.pts = pts
@@ -1101,4 +1170,3 @@ class PointSet(object):
         self.offset = self.pts - self.points
         self.nPts = len(self.pts)
         self.jac = None
-
