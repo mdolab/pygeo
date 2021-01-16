@@ -1195,6 +1195,7 @@ class vspDV(object):
 
 class PointSet(object):
     """Internal class for storing the projection details of each pointset"""
+
     def __init__(self, points, pts, geom, u, v):
         self.points = points
         self.pts = pts
