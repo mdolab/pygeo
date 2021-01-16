@@ -1,29 +1,24 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import copy
-import tempfile
-import shutil
-import os
-import sys
+try:
+    from collections import OrderedDict
+except ImportError:
+    try:
+        from ordereddict import OrderedDict
+    except ImportError:
+        print("Could not find any OrderedDict class. For 2.6 and earlier, "
+              "use:\n pip install ordereddict")
 import time
 import numpy
-from collections import OrderedDict
-from scipy import sparse
 from scipy.spatial import cKDTree
 from mpi4py import MPI
+
+# mdolab packages
 from pyspline import pySpline
+
+# openvsp python interface
 import vsp
-
-# analysis error
-# TODO: Ultimately, we want to avoid importing and using this if we dont have OM installed
-# from openmdao.core.analysis_error import AnalysisError
-
-# directly import the interface to the fortran APIs
-# from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools
-# generic import for all pysurf codes
-# import pysurf
-
 
 class Error(Exception):
     """
@@ -98,7 +93,7 @@ class DVGeometryVSP(object):
 
     """
     def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[],
-                 intersectedComps=None, symNormal = 'k', projTol=0.01, debug=False):
+                 intersectedComps=None, symNormal='k', projTol=0.01, debug=False):
 
         if comm.rank == 0:
             print("Initializing DVGeometryVSP")
