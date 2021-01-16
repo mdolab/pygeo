@@ -627,16 +627,16 @@ class pyBlock():
         for ivol in range(self.nVol):
             vals = self.vols[ivol](self.vols[ivol].U, self.vols[ivol].V,
                                    self.vols[ivol].W)
-            vals[:, :, :, 0].flatten(1).tofile(f, sep="\n")
+            vals[:, :, :, 0].flatten(order="F").tofile(f, sep="\n")
             f.write('\n')
-            vals[:, :, :, 1].flatten(1).tofile(f, sep="\n")
+            vals[:, :, :, 1].flatten(order="F").tofile(f, sep="\n")
             f.write('\n')
-            vals[:, :, :, 2].flatten(1).tofile(f, sep="\n")
+            vals[:, :, :, 2].flatten(order="F").tofile(f, sep="\n")
             f.write('\n')
         f.close()
 
     def writePlot3dCoef(self, fileName):
-        """Write the *coefficients* of the volumes  to a plot3d
+        """Write the *coefficients* of the volumes to a plot3d
         file.
 
         Parameters
@@ -657,11 +657,11 @@ class pyBlock():
         f.write('\n')
         for ivol in range(self.nVol):
             vals = self.vols[ivol].coef
-            vals[:, :, :, 0].flatten(1).tofile(f, sep="\n")
+            vals[:, :, :, 0].flatten(order="F").tofile(f, sep="\n")
             f.write('\n')
-            vals[:, :, :, 1].flatten(1).tofile(f, sep="\n")
+            vals[:, :, :, 1].flatten(order="F").tofile(f, sep="\n")
             f.write('\n')
-            vals[:, :, :, 2].flatten(1).tofile(f, sep="\n")
+            vals[:, :, :, 2].flatten(order="F").tofile(f, sep="\n")
             f.write('\n')
         f.close()
 
