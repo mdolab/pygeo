@@ -197,7 +197,7 @@ def testSensitivities(DVGeo,refDeriv,handler):
     else:
         dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
 
-    handler.root_add_dict(dIdx,1e-7,1e-7)
+    handler.root_add_dict('dIdx',dIdx,rtol=1e-7,atol=1e-7)
 
 def testSensitivitiesD8(DVGeo,refDeriv,handler):
     #create test points
@@ -230,4 +230,4 @@ def testSensitivitiesD8(DVGeo,refDeriv,handler):
     else:
         dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
 
-    handler.root_add_dict(dIdx,1e-7,1e-7)
+    handler.root_add_dict("dIdx",dIdx,rtol=1e-7,atol=1e-7)
