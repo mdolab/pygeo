@@ -924,7 +924,8 @@ class DVGeometryVSP(object):
         the difference is large enough to completely mess up the sensitivity. Due to this
         we compute both baseline point and perturbed point on the processor that perturbs a given DV
         this is slightly slower but avoids this issue. the final gradient has some error still,
-        but much more managable and unimportant compared to errors introduced by FD itself
+        but much more managable and unimportant compared to errors introduced by FD itself.
+        See issue https://github.com/mdolab/pygeo/issues/58 for updates.
         """
 
         # timing stuff:
