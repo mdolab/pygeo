@@ -515,6 +515,10 @@ class DVGeometry(object):
         children. The parent object will take care of that in a call
         to addPointSet().
 
+        See https://github.com/mdolab/pygeo/issues/7 for a description of an
+        issue with Child FFDs that you should be aware of if you are combining
+        shape changes of a parent FFD with rotation or shape changes of a child FFD.
+
         Parameters
         ----------
         childDVGeo : instance of DVGeometry
@@ -1535,7 +1539,6 @@ class DVGeometry(object):
             names.extend(self.children[iChild].getVarNames())
 
         return names
-
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
