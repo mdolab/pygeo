@@ -62,7 +62,7 @@ class DVGeometryVSP(object):
     3. It does not support complex numbers for the complex-step
     method.
 
-    4. It does not surpport separate configurations.
+    4. It does not support separate configurations.
 
     5. Because OpenVSP does not provide sensitivities, this class
     uses parallel finite differencing to obtain the required Jacobian
@@ -334,7 +334,7 @@ class DVGeometryVSP(object):
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dv-dictionary are simply ignored.
         """
 
         # Just dump in the values
@@ -414,7 +414,7 @@ class DVGeometryVSP(object):
         """
         This is used externally to query if the object needs to update
         its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
+        update() is called with a point set, the self.updated dict
         entry for pointSet is flagged as true. Here we just return
         that flag. When design variables are set, we then reset all
         the flags to False since, when DVs are set, nothing (in
@@ -454,9 +454,9 @@ class DVGeometryVSP(object):
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
-        Specificly, it computes the following:
+        Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}
 
         Parameters
@@ -537,7 +537,7 @@ class DVGeometryVSP(object):
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
         Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
@@ -587,9 +587,9 @@ class DVGeometryVSP(object):
 
     def totalSensitivityTransProd(self, dIdpt, ptSetName, comm=None, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
-        Specificly, it computes the following:
+        Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}
 
         Parameters
