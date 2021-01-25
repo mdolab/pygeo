@@ -2921,8 +2921,8 @@ class DVGeometry(object):
                         self.FFD.coef = refFFDCoef.astype('D') # ffd coefficients
                         self.coef = refCoef.astype('D')
                         self.refAxis.coef = refCoef.astype('D')
-                        self.refAxis._updateCurveCoef()
                         self._complexifyCoef()  # Make sure coefficients are complex
+                        self.refAxis._updateCurveCoef()
 
                         deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh,config=config)).flatten()
                         # reset the FFD and axis
