@@ -1157,8 +1157,10 @@ class DVGeometry(object):
             # **Important**: this expects the FFD coef to be clean on this level,
             # meaning that the only changes to FFD.coef can be coming from
             # higher levels.
-            if isComplex:
-                self.links_x = self.links_x.astype('D')
+
+            # just use complex dtype here. we will convert to real in the end
+            self.links_x = self.links_x.astype('D')
+
             for ipt in range(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
                 self.links_x[ipt] = self.FFD.coef[self.ptAttachInd[ipt], :] - base_pt
@@ -2712,7 +2714,7 @@ class DVGeometry(object):
             Xfinal += child._update_deriv_cs(ptSetName, config=config)
             child._unComplexifyCoef()
 
-        self.FFD.coef = self.FFD.coef.astype('d')
+        self.FFD.coef = self.FFD.coef.real.astype('d')
 
         if self.isChild:
             return Xfinal - Xstart
@@ -2919,8 +2921,8 @@ class DVGeometry(object):
                         self.FFD.coef = refFFDCoef.astype('D') # ffd coefficients
                         self.coef = refCoef.astype('D')
                         self.refAxis.coef = refCoef.astype('D')
-                        self.refAxis._updateCurveCoef()
                         self._complexifyCoef()  # Make sure coefficients are complex
+                        self.refAxis._updateCurveCoef()
 
                         deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh,config=config)).flatten()
                         # reset the FFD and axis

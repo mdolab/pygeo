@@ -3503,7 +3503,7 @@ class LinearConstraint(object):
             elif key in self.DVGeo.DV_listSectionLocal:
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listSectionLocal[key].value))
 
-        funcs[self.name] = numpy.array(cons).astype('d')
+        funcs[self.name] = numpy.array(cons).real.astype('d')
 
     def evalFunctionsSens(self, funcsSens):
         """
@@ -5344,7 +5344,7 @@ class GlobalLinearConstraint(object):
         for key in self.jac:
             cons.extend(self.jac[key].dot(self.DVGeo.DV_listGlobal[key].value))
 
-        funcs[self.name] = numpy.array(cons).astype('d')
+        funcs[self.name] = numpy.array(cons).real.astype('d')
 
     def evalFunctionsSens(self, funcsSens):
         """
