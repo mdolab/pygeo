@@ -255,7 +255,7 @@ class DVConstraints(object):
                 p0, v1, v2 = self._generateDiscreteSurface(surf)
             else:
                 raise TypeError('surf given is not a supported type [List, plot3D file name, or pyGeo surface]')
-            
+
             p1 = p0 + v1
             p2 = p0 + v2
         elif format == 'point-point':
@@ -279,7 +279,7 @@ class DVConstraints(object):
         self.surfaces[name].append(p1)
         self.surfaces[name].append(p2)
 
-        
+
         if addToDVGeo:
             self._checkDVGeo(name=DVGeoName)
             self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][0], name + '_p0')
@@ -662,7 +662,7 @@ class DVConstraints(object):
             given to the optimizer, set this flag to False.
 
         surfaceName : str
-            Name of the surface to project to. This should be the same 
+            Name of the surface to project to. This should be the same
             as the surfaceName provided when setSurface() was called.
             For backward compatibility, the name is 'default' by default.
 
@@ -792,7 +792,7 @@ class DVConstraints(object):
             given to the optimizer, set this flag to False.
 
         surfaceName : str
-            Name of the surface to project to. This should be the same 
+            Name of the surface to project to. This should be the same
             as the surfaceName provided when setSurface() was called.
             For backward compatibility, the name is 'default' by default.
 
@@ -937,7 +937,7 @@ class DVConstraints(object):
             given to the optimizer, set this flag to False.
 
         surfaceName : str
-            Name of the surface to project to. This should be the same 
+            Name of the surface to project to. This should be the same
             as the surfaceName provided when setSurface() was called.
             For backward compatibility, the name is 'default' by default.
 
@@ -1317,7 +1317,7 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
-            
+
         DVGeoName : str
             Name of the DVGeo object to compute the constraint with. You only
             need to set this if you're using multiple DVGeo objects
@@ -1367,7 +1367,7 @@ class DVConstraints(object):
 
     def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name='default',
                                          surface_2_name='default', DVGeo_2_name='default',
-                                         rho=50., heuristic_dist=None, perim_scale=0.1, 
+                                         rho=50., heuristic_dist=None, perim_scale=0.1,
                                          max_perim=3.0, name=None, scale=1., addToPyOpt=True):
         """
         Add a single triangulated surface constraint to an aerosurface.
@@ -1401,7 +1401,7 @@ class DVConstraints(object):
         heuristic_dist : float
             The triangulated surface constraint uses a procedure to skip
             pairs of facets that are farther apart than a heuristic distance
-            in order to save computation time. By default, this is set 
+            in order to save computation time. By default, this is set
             to the maximum linear dimension of the second object's bounding box.
             You can set this to a large number to compute an "exact" KS.
 
@@ -1466,16 +1466,19 @@ class DVConstraints(object):
 
         # Finally add constraint object
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName,
-                                                surface_1, surface_1_name, DVGeo1, 
+                                                surface_1, surface_1_name, DVGeo1,
                                                 surface_2, surface_2_name, DVGeo2, scale,
                                                 addToPyOpt, rho, perim_scale, max_perim, heuristic_dist)
 
-    def addTriangulatedVolumeConstraint(self, lower=1.0, upper=3.0, scaled=True, scale=1.0, 
+    def addTriangulatedVolumeConstraint(self, lower=1.0, upper=99999.0, scaled=True, scale=1.0,
                                         name=None, surfaceName='default', DVGeoName='default',
                                         addToPyOpt=True):
         """
         Add a single triangulated volume constraint to a surface.
-        Computes and constrains the volume of a closed, triangulated surface
+        Computes and constrains the volume of a closed, triangulated surface.
+        The surface normals must ALL be outward-oriented!
+        This is typical for most stl files but
+        should be verified in a program like Meshmixer.
 
         Parameters
         ----------
@@ -1519,11 +1522,11 @@ class DVConstraints(object):
 
         surfaceName : str
             Name the triangulated surface attached to DVConstraints which should
-            be used for the constraint. 'default' uses the main aerodynamic 
+            be used for the constraint. 'default' uses the main aerodynamic
             surface mesh
 
         DVGeoName : str
-            Name the DVGeo object affecting the geometry of the 
+            Name the DVGeo object affecting the geometry of the
             surface. 'default' uses the main DVGeo object of the DVConstraints instance
 
         addToPyOpt : bool
@@ -1535,12 +1538,7 @@ class DVConstraints(object):
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
         """
-        try:
-            import geograd
-        except ImportError:
-            raise ImportError('Geograd package must be installed to use triangulated vol constraint')
-        
-        raise NotImplementedError('Triangulated volume constraint not yet ported from geograd_tf')
+
         self._checkDVGeo(DVGeoName)
         DVGeo = self.DVGeometries[DVGeoName]
 
@@ -1559,7 +1557,7 @@ class DVConstraints(object):
         self.constraints[typeName][conName] = TriangulatedVolumeConstraint(conName,
                                                 surface, surfaceName, lower, upper,
                                                 scaled, scale, DVGeo, addToPyOpt)
-    
+
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
                             name=None, addToPyOpt=True,
@@ -1661,7 +1659,7 @@ class DVConstraints(object):
             meaningless
 
         surfaceName : str
-            Name of the surface to project to. This should be the same 
+            Name of the surface to project to. This should be the same
             as the surfaceName provided when setSurface() was called.
             For backward compatibility, the name is 'default' by default.
 
@@ -3514,7 +3512,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.name = name
         # get the point sets
         self.surface_1_name = surface_1_name
-        self.surface_2_name = surface_2_name        
+        self.surface_2_name = surface_2_name
         if DVGeo1 is None and DVGeo2 is None:
             raise UserError('Must include at least one geometric parametrization in constraint '+str(name))
         self.DVGeo1 = DVGeo1
@@ -3530,9 +3528,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.surf2_p1 = surface_2[1].transpose()
         self.surf2_p2 = surface_2[2].transpose()
 
-        xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), 
+        xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)),
                                        self.surf2_p2.max(axis=1))
-        xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), 
+        xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)),
                                                    self.surf2_p2.min(axis=1))
 
 
@@ -3569,7 +3567,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 varnamelist.extend(self.DVGeo2.getVarNames())
         else:
             varnamelist = self.DVGeo2.getVarNames()
-        
+
         return varnamelist
 
     def evalFunctions(self, funcs, config):
@@ -3589,12 +3587,12 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         # running setSurface()
 
         # check if the first mesh has a DVGeo, and if it does, update the points
-        
-        if self.DVGeo1 is not None:       
+
+        if self.DVGeo1 is not None:
             self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).transpose()
             self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).transpose()
             self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).transpose()
-        
+
         # check if the second mesh has a DVGeo, and if it does, update the points
         if self.DVGeo2 is not None:
             self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).transpose()
@@ -3730,8 +3728,7 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
     This class is used to compute a volume constraint based on triangulated surface mesh geometry
     """
 
-    def __init__(self, name, surface, surface_name, lower, upper, scaled, scale, DVGeo, addToPyOpt,
-                 useGPU, mpi):
+    def __init__(self, name, surface, surface_name, lower, upper, scaled, scale, DVGeo, addToPyOpt):
 
         self.name = name
         self.surface = surface
@@ -3741,19 +3738,13 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         self.surf_p0 = surface[0].reshape(self.surf_size, 3)
         self.surf_p1 = surface[1].reshape(self.surf_size, 3)
         self.surf_p2 = surface[2].reshape(self.surf_size, 3)
-        
         self.lower = lower
         self.upper = upper
         self.scaled = scaled
         self.scale = scale
         self.DVGeo = DVGeo
-
         self.addToPyOpt = addToPyOpt
-        self.useGPU = useGPU
-        self.mpi = mpi
-
         self.vol_0 = None
-
         self.nCon = 1
         return
 
@@ -3777,32 +3768,14 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         self.surf_p0 = self.DVGeo.update(self.surface_name+'_p0', config=config).reshape(self.surf_size, 3)
         self.surf_p1 = self.DVGeo.update(self.surface_name+'_p1', config=config).reshape(self.surf_size, 3)
         self.surf_p2 = self.DVGeo.update(self.surface_name+'_p2', config=config).reshape(self.surf_size, 3)
-        
-        if not self.useGPU and self.mpi:
-            # use MPI execution
-            comm = MPI.COMM_WORLD
-        else:
-            comm = None
 
-        # may need to parallelize this in the future?
-        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
-            volume, grad_volume = compute_volume(self.surf_p0, self.surf_p1, self.surf_p2,
-                                                 complexify=False,
-                                                 compute_gradients=True, use_GPU=self.useGPU)
-            if self.vol_0 is None:
-                self.vol_0 = volume
-            
-            if self.scaled:
-                volume = 1.0 * volume / self.vol_0
+        volume = self.compute_volume(self.surf_p0, self.surf_p1, self.surf_p2)
+        if self.vol_0 is None:
+            self.vol_0 = volume
 
-            # stash the gradient for later
-            self.grad_volume = grad_volume
+        if self.scaled:
+            volume = 1.0 * volume / self.vol_0
 
-        else:
-            volume = None
-
-        if self.mpi:
-            volume = MPI.COMM_WORLD.bcast(volume, root=0)
         funcs[self.name] = volume
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -3824,30 +3797,87 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         """
         tmpTotal = {}
 
-        if MPI.COMM_WORLD.rank == 0 or not self.mpi:
-            # assume evalFunctions was called just prior and grad was stashed on rank=0
-            grad_vol = self.grad_volume
-            nDV = self.DVGeo.getNDV()
-            if self.scaled:
-                tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name+'_p0', config=config)
-                tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name+'_p1', config=config)
-                tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2] / self.vol_0, self.surface_name+'_p2', config=config)
-            else:
-                tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0], self.surface_name+'_p0', config=config)
-                tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1], self.surface_name+'_p1', config=config)
-                tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2], self.surface_name+'_p2', config=config)  
-            
-            for key in tmp_p0:
-                tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
+        # assume evalFunctions was called just prior and grad was stashed on rank=0
+        grad_vol = self.compute_volume_sens(self.surf_p0, self.surf_p1, self.surf_p2)
+        nDV = self.DVGeo.getNDV()
+        if self.scaled:
+            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name+'_p0', config=config)
+            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name+'_p1', config=config)
+            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2] / self.vol_0, self.surface_name+'_p2', config=config)
         else:
-            tmpTotal = None
-            
-        if self.mpi:
-            tmpTotal = MPI.COMM_WORLD.bcast(tmpTotal, root=0)
-             
+            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0], self.surface_name+'_p0', config=config)
+            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1], self.surface_name+'_p1', config=config)
+            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2], self.surface_name+'_p2', config=config)
+
+        for key in tmp_p0:
+            tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
+
         funcsSens[self.name] = tmpTotal
 
+    def compute_volume(self, p0, p1, p2):
+        """
+        Compute the volume of a triangulated volume by computing
+        the signed areas.
 
+        The method is described in, among other places,
+        EFFICIENT FEATURE EXTRACTION FOR 2D/3D OBJECTS IN MESH REPRESENTATION
+        by Cha Zhang and Tsuhan Chen,
+        http://chenlab.ece.cornell.edu/Publication/Cha/icip01_Cha.pdf
+
+        Parameters
+        ----------
+        p0, p1, p2 : arrays
+            Coordinates of the vertices of the triangulated mesh
+
+        Returns
+        -------
+        volume : float
+            The volume of the triangulated surface
+        """
+
+        volume = np.sum(p1[:, 0] * p2[:, 1] * p0[:, 2] +
+                        p2[:, 0] * p0[:, 1] * p1[:, 2] +
+                        p0[:, 0] * p1[:, 1] * p2[:, 2] -
+                        p1[:, 0] * p0[:, 1] * p2[:, 2] -
+                        p2[:, 0] * p1[:, 1] * p0[:, 2] -
+                        p0[:, 0] * p2[:, 1] * p1[:, 2]) / 6.0
+
+        return volume
+
+    def compute_volume_sens(self, p0, p1, p2):
+        """
+        Compute the gradients of the volume with respect to
+        the mesh vertices.
+
+        Parameters
+        ----------
+        p0, p1, p2 : arrays
+            Coordinates of the vertices of the triangulated mesh
+
+        Returns
+        -------
+        grad_0, grad_1, grad_2 : arrays
+            Gradients of volume with respect to vertex coordinates
+        """
+
+        num_pts = p0.shape[0]
+        grad_0 = np.zeros((num_pts, 3))
+        grad_1 = np.zeros((num_pts, 3))
+        grad_2 = np.zeros((num_pts, 3))
+
+        grad_0[:, 0] = (p1[:, 1] * p2[:, 2] - p1[:, 2] * p2[:, 1])
+        grad_0[:, 1] = (p1[:, 2] * p2[:, 0] - p1[:, 0] * p2[:, 2])
+        grad_0[:, 2] = (p1[:, 0] * p2[:, 1] - p1[:, 1] * p2[:, 0])
+
+        grad_1[:, 0] = (p0[:, 2] * p2[:, 1] - p0[:, 1] * p2[:, 2])
+        grad_1[:, 1] = (p0[:, 0] * p2[:, 2] - p0[:, 2] * p2[:, 0])
+        grad_1[:, 2] = (p0[:, 1] * p2[:, 0] - p0[:, 0] * p2[:, 1])
+
+        grad_2[:, 0] = (p0[:, 1] * p1[:, 2] - p0[:, 2] * p1[:, 1])
+        grad_2[:, 1] = (p0[:, 2] * p1[:, 0] - p0[:, 0] * p1[:, 2])
+        grad_2[:, 2] = (p0[:, 0] * p1[:, 1] - p0[:, 1] * p1[:, 0])
+
+        return grad_0 / 6.0, grad_1 / 6.0, grad_2 / 6.0
 
 
 class VolumeConstraint(GeometricConstraint):
