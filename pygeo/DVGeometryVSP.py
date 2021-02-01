@@ -530,7 +530,7 @@ class DVGeometryVSP(object):
         dIdxDict = {}
         i = 0
         for dvName in self.DVs:
-            dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
+            dIdxDict[dvName] = numpy.array(dIdx[:, i]).T
             i += 1
 
         return dIdxDict
@@ -658,7 +658,7 @@ class DVGeometryVSP(object):
         dIdxDict = {}
         i = 0
         for dvName in self.DVs:
-            dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
+            dIdxDict[dvName] = numpy.array(dIdx[:, i]).T
             i += 1
 
         return dIdxDict
