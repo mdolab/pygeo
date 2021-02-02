@@ -3,8 +3,9 @@ import os
 import unittest
 import numpy
 from baseclasses import BaseRegTest
-import commonUtils 
+import commonUtils
 from pygeo import geo_utils, DVGeometry
+from parameterized import parameterized
 
 
 class RegTestPyGeo(unittest.TestCase):
@@ -12,7 +13,7 @@ class RegTestPyGeo(unittest.TestCase):
     N_PROCS = 1
 
     def setUp(self):
-        # Store the path where this current script lives 
+        # Store the path where this current script lives
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
@@ -260,6 +261,54 @@ class RegTestPyGeo(unittest.TestCase):
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler)
 
+    def test_10_rot0(self, train=False, refDeriv=False):
+        """
+        Test 10: Basic + Nested FFD, local DVs only on parent, global and local on child
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVGeometry_10.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 10: Basic + Nested FFD, local DVs only on parent, global and local on child")
+            DVGeo,DVGeoChild = commonUtils.setupDVGeo(self.base_path, rotType=0)
+
+            #create local DVs on the parent
+            DVGeo.addGeoDVLocal('xdir', lower=-1.0, upper=1.0, axis='x', scale=1.0)
+            DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
+            DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
+
+            DVGeoChild.addGeoDVGlobal('nestedX', -0.5, commonUtils.childAxisPoints,
+                                    lower=-1., upper=0., scale=1.0)
+            DVGeoChild.addGeoDVLocal('childxdir', lower=-1.1, upper=1.1, axis='x', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childydir', lower=-1.1, upper=1.1, axis='y', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childzdir', lower=-1.1, upper=1.1, axis='z', scale=1.0)
+
+            DVGeo.addChild(DVGeoChild)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler)
+
+    def test_10_rot7(self, train=False, refDeriv=False):
+        """
+        Test 10: Basic + Nested FFD, local DVs only on parent, global and local on child
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVGeometry_10.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 10: Basic + Nested FFD, local DVs only on parent, global and local on child")
+            DVGeo,DVGeoChild = commonUtils.setupDVGeo(self.base_path, rotType=7)
+
+            #create local DVs on the parent
+            DVGeo.addGeoDVLocal('xdir', lower=-1.0, upper=1.0, axis='x', scale=1.0)
+            DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
+            DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
+
+            DVGeoChild.addGeoDVGlobal('nestedX', -0.5, commonUtils.childAxisPoints,
+                                    lower=-1., upper=0., scale=1.0)
+            DVGeoChild.addGeoDVLocal('childxdir', lower=-1.1, upper=1.1, axis='x', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childydir', lower=-1.1, upper=1.1, axis='y', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childzdir', lower=-1.1, upper=1.1, axis='z', scale=1.0)
+
+            DVGeo.addChild(DVGeoChild)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler)
+
 
     def train_11(self, train=True, refDeriv=True):
         self.test_11(train=train, refDeriv=refDeriv)
@@ -272,6 +321,58 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 11: Basic + Nested FFD, global DVs and local DVs on parent local on child")
             DVGeo,DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+
+            #create global DVs on the parent
+            DVGeo.addGeoDVGlobal('mainX', -1.0, commonUtils.mainAxisPoints,
+                                lower=-1., upper=0., scale=1.0)
+            #create local DVs on the parent
+            DVGeo.addGeoDVLocal('xdir', lower=-1.0, upper=1.0, axis='x', scale=1.0)
+            DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
+            DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
+
+            #create global DVs on the child
+            DVGeoChild.addGeoDVLocal('childxdir', lower=-1.1, upper=1.1, axis='x', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childydir', lower=-1.1, upper=1.1, axis='y', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childzdir', lower=-1.1, upper=1.1, axis='z', scale=1.0)
+
+            DVGeo.addChild(DVGeoChild)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler)
+
+    def test_11_rot0(self, train=False, refDeriv=False):
+        """
+        Test 11: Basic + Nested FFD, global DVs and local DVs on parent local on child
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVGeometry_11.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 11: Basic + Nested FFD, global DVs and local DVs on parent local on child, using rotType=0")
+            DVGeo,DVGeoChild = commonUtils.setupDVGeo(self.base_path,rotType=0)
+
+            #create global DVs on the parent
+            DVGeo.addGeoDVGlobal('mainX', -1.0, commonUtils.mainAxisPoints,
+                                lower=-1., upper=0., scale=1.0)
+            #create local DVs on the parent
+            DVGeo.addGeoDVLocal('xdir', lower=-1.0, upper=1.0, axis='x', scale=1.0)
+            DVGeo.addGeoDVLocal('ydir', lower=-1.0, upper=1.0, axis='y', scale=1.0)
+            DVGeo.addGeoDVLocal('zdir', lower=-1.0, upper=1.0, axis='z', scale=1.0)
+
+            #create global DVs on the child
+            DVGeoChild.addGeoDVLocal('childxdir', lower=-1.1, upper=1.1, axis='x', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childydir', lower=-1.1, upper=1.1, axis='y', scale=1.0)
+            DVGeoChild.addGeoDVLocal('childzdir', lower=-1.1, upper=1.1, axis='z', scale=1.0)
+
+            DVGeo.addChild(DVGeoChild)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler)
+
+    def test_11_rot7(self, train=False, refDeriv=False):
+        """
+        Test 11: Basic + Nested FFD, global DVs and local DVs on parent local on child
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVGeometry_11.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 11: Basic + Nested FFD, global DVs and local DVs on parent local on child, using rotType=7")
+            DVGeo,DVGeoChild = commonUtils.setupDVGeo(self.base_path,rotType=7)
 
             #create global DVs on the parent
             DVGeo.addGeoDVGlobal('mainX', -1.0, commonUtils.mainAxisPoints,
