@@ -1188,7 +1188,10 @@ class DVGeometry(object):
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
                 new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
                         self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
-                new_pts[ipt] = base_pt + new_vec*scale
+                if isComplex:
+                    new_pts[ipt] = base_pt + new_vec*scale
+                else:
+                    new_pts[ipt] = numpy.real(base_pt + new_vec*scale)
 
             else:
                 rotX = geo_utils.rotxM(self.rot_x[
