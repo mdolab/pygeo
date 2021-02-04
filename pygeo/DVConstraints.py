@@ -6,6 +6,7 @@ from . import geo_utils, pyGeo
 from pyspline import pySpline
 from mpi4py import MPI
 from scipy.sparse import csr_matrix
+import numpy as np
 try:
     from collections import OrderedDict
 except ImportError:
@@ -191,13 +192,12 @@ class DVConstraints(object):
         self.constraints = OrderedDict()
         self.linearCon = OrderedDict()
 
-        self.DVGeo = None
         # Data for the discrete surface
-        self.p0 = None
-        self.v1 = None
-        self.v2 = None
 
-    def setSurface(self, surf):
+        self.surfaces = {}
+        self.DVGeometries = {}
+
+    def setSurface(self, surf, name='default', addToDVGeo=False, DVGeoName='default', format='point-vector'):
         """
         Set the surface DVConstraints will use to perform projections.
 
@@ -211,6 +211,22 @@ class DVConstraints(object):
             be used. This triangulated surface form can be supplied
             form pyADflow or from pyTrian.
 
+        addToDVGeo : bool or str
+
+            To embed the surface pointset in a DVGeo object,
+            give the DVGeo name as a string. Otherwise, leave False
+
+        name : str
+
+            Name associated with the surface. Must be unique. For backward compatibility,
+            the name is 'default' by default
+
+        DVGeoName : str
+
+            Name of the DVGeo object to set the surface to. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
         Examples
         --------
         >>> CFDsolver = ADFLOW(comm=comm, options=aeroOptions)
@@ -221,21 +237,56 @@ class DVConstraints(object):
         >>> DVCon.setSurface(surf)
 
         """
+        if name in self.surfaces.keys():
+            raise KeyError('Surface names must be unique. Repeated surface name: ' + str(name))
 
-        if type(surf) == list:
-            # Data from ADflow
-            self.p0 = numpy.array(surf[0])
-            self.v1 = numpy.array(surf[1])
-            self.v2 = numpy.array(surf[2])
+        self.surfaces[name] = list()
+        if format == 'point-vector':
+            if type(surf) == list:
+                # Data from ADflow
+                p0 = numpy.array(surf[0])
+                v1 = numpy.array(surf[1])
+                v2 = numpy.array(surf[2])
+            elif isinstance(surf, str):
+                # Load the surf as a plot3d file
+                p0, v1, v2 = self._readPlot3DSurfFile(surf)
 
-        elif isinstance(surf, str):
-            # Load the surf as a plot3d file
-            self.p0, self.v1, self.v2 = self._readPlot3DSurfFile(surf)
+            elif isinstance(surf, pyGeo): # Assume it's a pyGeo surface
+                p0, v1, v2 = self._generateDiscreteSurface(surf)
+            else:
+                raise TypeError('surf given is not a supported type [List, plot3D file name, or pyGeo surface]')
 
-        else: # Assume it's a pyGeo surface
-            self._generateDiscreteSurface(surf)
+            p1 = p0 + v1
+            p2 = p0 + v2
+        elif format == 'point-point':
+            if type(surf) == str:
+                # load from file
+                raise NotImplementedError
+            elif type(surf) == list:
+                # for now, do NOT add the object geometry to dvgeo
+                p0 = numpy.array(surf[0])
+                p1 = numpy.array(surf[1])
+                p2 = numpy.array(surf[2])
+            elif type(surf) == numpy.ndarray:
+                surf_length = surf[:,0,:].shape[0]
+                p0 = surf[:,0,:].reshape(surf_length, 3)
+                p1 = surf[:,1,:].reshape(surf_length, 3)
+                p2 = surf[:,2,:].reshape(surf_length, 3)
+            else:
+                raise TypeError('surf given is not supported [list, numpy.ndarray]')
 
-    def setDVGeo(self, DVGeo):
+        self.surfaces[name].append(p0)
+        self.surfaces[name].append(p1)
+        self.surfaces[name].append(p2)
+
+
+        if addToDVGeo:
+            self._checkDVGeo(name=DVGeoName)
+            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][0], name + '_p0')
+            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][1], name + '_p1')
+            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][2], name + '_p2')
+
+    def setDVGeo(self, DVGeo, name='default'):
         """
         Set the DVGeometry object that will manipulate this object.
         Note that DVConstraints doesn't **strictly** need a DVGeometry
@@ -252,7 +303,18 @@ class DVConstraints(object):
         >>> dvCon.setDVGeo(DVGeo)
         """
 
-        self.DVGeo = DVGeo
+        # double check that there are no design variables with shared names
+        # must be unique
+        for existing_DVGeo_name in self.DVGeometries:
+            existing_DVGeo = self.DVGeometries[existing_DVGeo_name]
+            for dvname in DVGeo.getVarNames():
+                for existing_dvname in existing_DVGeo.getVarNames():
+                    if dvname == existing_dvname:
+                        msg = f"Design variable {dvname} in the newly-added DVGeo already exists in DVGeo" \
+                              f"object named {existing_DVGeo_name} on this DVCon"
+                        raise ValueError(msg)
+        self.DVGeometries[name] = DVGeo
+
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -408,7 +470,7 @@ class DVConstraints(object):
             self.linearCon[key].writeTecplot(f)
         f.close()
 
-    def writeSurfaceTecplot(self,fileName):
+    def writeSurfaceTecplot(self,fileName,surfaceName='default'):
         """
         Write the triangulated surface mesh used in the constraint object
         to a tecplot file for visualization.
@@ -417,31 +479,67 @@ class DVConstraints(object):
         ----------
         fileName : str
             File name for tecplot file. Should have a .dat extension.
-
+        surfaceName : str
+            Which DVConstraints surface to write to file (default is 'default')
         """
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
         f = open(fileName, 'w')
         f.write("TITLE = \"DVConstraints Surface Mesh\"\n")
         f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
         f.write('Zone T=%s\n'%('surf'))
         f.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
-            len(self.p0)*3, len(self.p0)))
+            len(p0)*3, len(p0)))
         f.write('DATAPACKING=POINT\n')
-        for i in range(len(self.p0)):
+        for i in range(len(p0)):
             points = []
-            points.append(self.p0[i])
-            points.append(self.p0[i]+self.v1[i])
-            points.append(self.p0[i]+self.v2[i])
+            points.append(p0[i])
+            points.append(p1[i])
+            points.append(p2[i])
             for i in range(len(points)):
                 f.write('%f %f %f\n'% (points[i][0], points[i][1],points[i][2]))
 
-        for i in range(len(self.p0)):
+        for i in range(len(p0)):
             f.write('%d %d %d\n'% (3*i+1, 3*i+2,3*i+3))
 
         f.close()
 
+    def writeSurfaceSTL(self,fileName,surfaceName='default',fromDVGeo=None):
+        """
+        Write the triangulated surface mesh to a .STL file for manipulation and visualization.
+
+        Parameters
+        ----------
+        fileName : str
+            File name for stl file. Should have a .stl extension.
+        surfaceName : str
+            Which DVConstraints surface to write to file (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None')
+        """
+        import numpy as np
+        try:
+            from stl import mesh
+        except:
+            raise ImportError('numpy-stl package must be installed')
+        if fromDVGeo is None:
+            p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        else:
+            p0 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p0')
+            p1 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p1')
+            p2 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p2')
+
+        stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
+        stlmesh.vectors[:,0,:] = p0
+        stlmesh.vectors[:,1,:] = p1
+        stlmesh.vectors[:,2,:] = p2
+
+        # Write the mesh to file "cube.stl"
+        stlmesh.save(fileName)
+
     def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
                                   lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                                  name=None, addToPyOpt=True):
+                                  name=None, addToPyOpt=True, surfaceName='default', DVGeoName='default'):
         """
         Add a set of thickness constraints that span a logically a
         two-dimensional region. A little ASCII art can help here
@@ -563,6 +661,16 @@ class DVConstraints(object):
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
 
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
         Examples
         --------
         >>> # Take unique square in x-z plane and and 10 along z-direction (spanWise)
@@ -573,12 +681,12 @@ class DVConstraints(object):
                                 lower=1.0, scaled=True)
         """
 
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
         upper = self._convertTo2D(upper, nSpan, nChord).flatten()
         lower = self._convertTo2D(lower, nSpan, nChord).flatten()
         scale = self._convertTo2D(scale, nSpan, nChord).flatten()
 
-        coords = self._generateIntersections(leList, teList, nSpan, nChord)
+        coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
 
         # Create the thickness constraint object:
         coords = coords.reshape((nSpan*nChord*2, 3))
@@ -593,14 +701,14 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeo,
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
 
     def addThicknessConstraints1D(self, ptList, nCon, axis,
                                   lower=1.0, upper=3.0, scaled=True,
-                                  scale=1.0, name=None,
-                                  addToPyOpt=True):
+                                  scale=1.0, name=None, addToPyOpt=True,
+                                  surfaceName='default', DVGeoName='default'):
         """
         Add a set of thickness constraints oriented along a poly-line.
 
@@ -682,8 +790,21 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
         # Create mesh of itersections
         constr_line = pySpline.Curve(X=ptList, k=2)
         s = numpy.linspace(0, 1, nCon)
@@ -693,7 +814,7 @@ class DVConstraints(object):
         for i in range(nCon):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], axis, self.p0, self.v1, self.v2)
+                X[i], axis, p0, p1-p0, p2-p0)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -713,12 +834,13 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeo,
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
     def addLERadiusConstraints(self, leList, nSpan, axis, chordDir,
                                lower=1.0, upper=3.0, scaled=True,
-                               scale=1.0, name=None, addToPyOpt=True):
+                               scale=1.0, name=None, addToPyOpt=True,
+                               surfaceName='default', DVGeoName='default'):
         """
         Add a set of leading edge radius constraints. The constraint is set up
         similar to the 1D thickness or thickness-to-chord constraints. The user
@@ -813,20 +935,31 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         # Create mesh of itersections
         constr_line = pySpline.Curve(X=leList, k=2)
         s = numpy.linspace(0, 1, nSpan)
         X = constr_line(s)
         coords = numpy.zeros((nSpan, 3, 3))
-
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
         for i in range(nSpan):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], axis, self.p0, self.v1, self.v2)
+                X[i], axis, p0, p1-p0, p2-p0)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -845,7 +978,7 @@ class DVConstraints(object):
         for i in range(nSpan):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], chordDir, self.p0, self.v1, self.v2)
+                X[i], chordDir, p0, p1-p0, p2-p0)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -876,13 +1009,13 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = RadiusConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeo,
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
 
     def addLocationConstraints1D(self, ptList, nCon,lower=None, upper=None,
                                  scaled=False, scale=1.0, name=None,
-                                 addToPyOpt=True):
+                                 addToPyOpt=True, DVGeoName='default'):
         """
         Add a polyline in space that cannot move.
 
@@ -944,8 +1077,13 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
         # Create the points to constrain
         constr_line = pySpline.Curve(X=ptList, k=2)
         s = numpy.linspace(0, 1, nCon)
@@ -967,14 +1105,15 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = LocationConstraint(
-            conName, X, lower, upper, scaled, scale, self.DVGeo,
+            conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
 
     def addProjectedLocationConstraints1D(self, ptList, nCon, axis, bias=0.5,
                                           lower=None, upper=None,
-                                          scaled=False, scale=1.0, name=None,
-                                          addToPyOpt=True):
+                                          scaled=False, scale=1.0, name=None, addToPyOpt=True,
+                                          surfaceName='default', DVGeoName='default'):
+
         """This is similar to addLocationConstraints1D except that the actual
         poly line is determined by first projecting points on to the
         surface in a similar manner as addConstraints1D, and then
@@ -1048,9 +1187,16 @@ class DVConstraints(object):
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
 
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
         # Create the points to constrain
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
         constr_line = pySpline.Curve(X=ptList, k=2)
         s = numpy.linspace(0, 1, nCon)
         X = constr_line(s)
@@ -1060,7 +1206,7 @@ class DVConstraints(object):
         for i in range(nCon):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], axis, self.p0, self.v1, self.v2)
+                X[i], axis, p0, p1-p0, p2-p0)
             if fail > 0:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -1086,12 +1232,14 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = LocationConstraint(
-            conName, X, lower, upper, scaled, scale, self.DVGeo,
+            conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
     def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir,
                                          lower=1.0, upper=3.0, scale=1.0,
-                                         name=None, addToPyOpt=True):
+                                         name=None, addToPyOpt=True,
+                                         surfaceName='default',
+                                         DVGeoName='default'):
         """
         Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
 
@@ -1169,8 +1317,15 @@ class DVConstraints(object):
             Normally this should be left at the default of True. If
             the values need to be processed (modified) BEFORE they are
             given to the optimizer, set this flag to False.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         constr_line = pySpline.Curve(X=ptList, k=2)
         s = numpy.linspace(0, 1, nCon)
@@ -1181,7 +1336,7 @@ class DVConstraints(object):
         for i in range(nCon):
             # Project actual node:
             up, down, fail = geo_utils.projectNode(
-                X[i], axis, self.p0, self.v1, self.v2)
+                X[i], axis, p0, p1-p0, p2-p0)
             if fail:
                 raise Error("There was an error projecting a node "
                             "at (%f, %f, %f) with normal (%f, %f, %f)." % (
@@ -1207,11 +1362,206 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
-            conName, coords, lower, upper, scale, self.DVGeo, addToPyOpt)
+            conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt)
+
+
+    def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name='default',
+                                         surface_2_name='default', DVGeo_2_name='default',
+                                         rho=50., heuristic_dist=None, perim_scale=0.1,
+                                         max_perim=3.0, name=None, scale=1., addToPyOpt=True):
+        """
+        Add a single triangulated surface constraint to an aerosurface.
+        This constraint is designed to keep a general 'blob' of watertight
+        geometry contained within an aerodynamic hull (e.g., a wing)
+
+        Parameters
+        ----------
+        surface_1_name : str
+            The name of the first triangulated surface to constrain.
+            This should be the surface with the larger number of triangles.
+            By default, it's the ADflow triangulated surface mesh.
+
+        DVGeo_1_name : str
+            The name of the DVGeo object to associate surface_1 to.
+            If None, surface_1 will remain static during optimization.
+            By default, it's the 'default' DVGeo object
+
+        surface_2_name : str
+            The name of the second triangulated surface to constrain.
+            This should be the surface with the smaller number of triangles.
+
+        DVGeo_2_name : str
+            The name of the DVGeo object to associate surface_2 to.
+            If None, surface_2 will remain static during optimization.
+            By default, it's the 'default' DVGeo object
+
+        rho : float
+            The rho factor of the KS function of min distance.
+
+        heuristic_dist : float
+            The triangulated surface constraint uses a procedure to skip
+            pairs of facets that are farther apart than a heuristic distance
+            in order to save computation time. By default, this is set
+            to the maximum linear dimension of the second object's bounding box.
+            You can set this to a large number to compute an "exact" KS.
+
+        perim_scale : float
+            Apply a scaling factor to the intersection perimeter length.
+
+        max_perim : float
+            Maximum allowable intersection length before fail flag is returned
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constraint names need to
+             be distinguished **OR** you are using this
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. It may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if this
+            is to be used as a constraint. If this to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+        """
+        try:
+            import geograd
+        except ImportError:
+            raise ImportError('Geograd package must be installed to use triangulated surface constraint')
+        if DVGeo_1_name is not None:
+            self._checkDVGeo(DVGeo_1_name)
+            DVGeo1 = self.DVGeometries[DVGeo_1_name]
+        else:
+            DVGeo1 = None
+        if DVGeo_2_name is not None:
+            self._checkDVGeo(DVGeo_2_name)
+            DVGeo2 = self.DVGeometries[DVGeo_2_name]
+        else:
+            DVGeo2 = None
+        if DVGeo1 is None and DVGeo2 is None:
+            raise UserError('At least one DVGeo object must be specified')
+
+        typeName = 'triSurfCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = '%s_trisurf_constraint_%d'%(self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+
+        surface_1 = self._getSurfaceVertices(surface_1_name)
+        surface_2 = self._getSurfaceVertices(surface_2_name)
+
+        # Finally add constraint object
+        self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName,
+                                                surface_1, surface_1_name, DVGeo1,
+                                                surface_2, surface_2_name, DVGeo2, scale,
+                                                addToPyOpt, rho, perim_scale, max_perim, heuristic_dist)
+
+    def addTriangulatedVolumeConstraint(self, lower=1.0, upper=99999.0, scaled=True, scale=1.0,
+                                        name=None, surfaceName='default', DVGeoName='default',
+                                        addToPyOpt=True):
+        """
+        Add a single triangulated volume constraint to a surface.
+        Computes and constrains the volume of a closed, triangulated surface.
+        The surface normals must ALL be outward-oriented!
+        This is typical for most stl files but
+        should be verified in a program like Meshmixer.
+
+        Parameters
+        ----------
+        lower : float
+            The lower bound for the volume constraint.
+
+        upper : float
+            The upper bound for the volume constraint.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial volume is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial volume. lower=0.85, upper=1.15,
+              would allow for 15% change in volume both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              volume. lower and upper refer to the physical volumes.
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        surfaceName : str
+            Name the triangulated surface attached to DVConstraints which should
+            be used for the constraint. 'default' uses the main aerodynamic
+            surface mesh
+
+        DVGeoName : str
+            Name the DVGeo object affecting the geometry of the
+            surface. 'default' uses the main DVGeo object of the DVConstraints instance
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True if the
+            volume is to be used as a constraint. If the volume is to
+            used in a subsequent calculation and not a constraint
+            directly, addToPyOpt should be False, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+        """
+
+        self._checkDVGeo(DVGeoName)
+        DVGeo = self.DVGeometries[DVGeoName]
+
+        typeName = 'triVolCon'
+        if not typeName in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = '%s_trivolume_constraint_%d'%(self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+
+        surface = self._getSurfaceVertices(surfaceName)
+
+        # Finally add constraint object
+        self.constraints[typeName][conName] = TriangulatedVolumeConstraint(conName,
+                                                surface, surfaceName, lower, upper,
+                                                scaled, scale, DVGeo, addToPyOpt)
 
     def addVolumeConstraint(self, leList, teList, nSpan, nChord,
                             lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                            name=None, addToPyOpt=True):
+                            name=None, addToPyOpt=True,
+                            surfaceName='default', DVGeoName='default'):
         """
         Add a single volume constraint to the wing. The volume
         constraint is defined over a logically two-dimensional region
@@ -1307,8 +1657,18 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
             """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         typeName = 'volCon'
         if not typeName in self.constraints:
@@ -1319,18 +1679,18 @@ class DVConstraints(object):
         else:
             conName = name
 
-        coords = self._generateIntersections(leList, teList, nSpan, nChord)
+        coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
         coords = coords.reshape((nSpan*nChord*2, 3))
 
         # Finally add the volume constraint object
         self.constraints[typeName][conName] = VolumeConstraint(
             conName, nSpan, nChord, coords, lower, upper, scaled, scale,
-            self.DVGeo, addToPyOpt)
+            self.DVGeometries[DVGeoName], addToPyOpt)
 
 
     def addCompositeVolumeConstraint(self, vols, lower=1.0, upper=3.0,
                                      scaled=True, scale=1.0, name=None,
-                                     addToPyOpt=True):
+                                     addToPyOpt=True, DVGeoName='default'):
         """
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
@@ -1397,7 +1757,7 @@ class DVConstraints(object):
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
             """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         typeName = 'volCon'
         if not typeName in self.constraints:
@@ -1418,12 +1778,12 @@ class DVConstraints(object):
                             " already been added with a call to "
                             "addVolumeConstraint()"% vol)
         self.constraints[typeName][conName] = CompositeVolumeConstraint(
-            conName, volCons, lower, upper, scaled, scale, self.DVGeo,
+            conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
     def addLeTeConstraints(self, volID=None, faceID=None,topID=None,
                            indSetA=None, indSetB=None, name=None,
-                           config=None, childIdx=None):
+                           config=None, childIdx=None, DVGeoName='default'):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
         DVConstraints. These are just a particular form of linear
@@ -1506,12 +1866,12 @@ class DVConstraints(object):
         >>> # Now add to DVCon
         >>> DVCon.addLeTeConstraints(0, indSetA, indSetB)
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         if childIdx is not None:
-            DVGeo = self.DVGeo.children[childIdx]
+            DVGeo = self.DVGeometries[DVGeoName].children[childIdx]
         else:
-            DVGeo = self.DVGeo
+            DVGeo = self.DVGeometries[DVGeoName]
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
@@ -1597,7 +1957,7 @@ class DVConstraints(object):
             lower=0, upper=0, DVGeo=DVGeo, config=config)
 
     def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
-                                  lower=0, upper=0, name=None, config=None):
+                                  lower=0, upper=0, name=None, config=None, DVGeoName='default'):
         """
         Add a complete generic set of linear constraints for the shape
         variables that have been added to DVGeo. The constraints are
@@ -1657,10 +2017,7 @@ class DVConstraints(object):
         >>>                                lower=0, upper=0)
         """
 
-        if self.DVGeo is None:
-            raise Error("A DVGeometry object must be added to DVCon before "
-                        "using a call to DVCon.setDVGeo(DVGeo) before "
-                        "constraints can be added.")
+        self._checkDVGeo(DVGeoName)
 
         if len(indSetA) != len(indSetB):
             raise Error("The length of the supplied indices are not "
@@ -1701,13 +2058,14 @@ class DVConstraints(object):
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
             conName, indSetA, indSetB, factorA, factorB, lower, upper,
-            self.DVGeo,config=config)
+            self.DVGeometries[DVGeoName], config=config)
 
     def addGearPostConstraint(self, wimpressCalc, position, axis,
                               thickLower=1.0, thickUpper=3.0,
                               thickScaled=True,
                               MACFracLower=0.50, MACFracUpper=0.60,
-                              name=None, addToPyOpt=True):
+                              name=None, addToPyOpt=True,
+                              surfaceName='default', DVGeoName='default'):
 
         """Code for doing landing gear post constraints on the fly in an
         optimization. As it turns out, this is a critical constraint
@@ -1774,7 +2132,8 @@ class DVConstraints(object):
 
         """
 
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         typeName = 'gearCon'
         if not typeName in self.constraints:
@@ -1787,7 +2146,7 @@ class DVConstraints(object):
 
         # Project the actual location we were give:
         up, down, fail = geo_utils.projectNode(
-            position, axis, self.p0, self.v1, self.v2)
+            position, axis, p0, p1-p0, p2-p0)
         if fail > 0:
             raise Error("There was an error projecting a node "
                         "at (%f, %f, %f) with normal (%f, %f, %f)."% (
@@ -1795,7 +2154,7 @@ class DVConstraints(object):
 
         self.constraints[typeName][conName] = GearPostConstraint(
             conName, wimpressCalc, up, down, thickLower, thickUpper,
-            thickScaled, MACFracLower, MACFracUpper, self.DVGeo,
+            thickScaled, MACFracLower, MACFracUpper, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
 
@@ -1803,7 +2162,7 @@ class DVConstraints(object):
                                  zeroAxis,angleCW,angleCCW,
                                  nPts=4,
                                  upper=1.0,lower=1.0, scale=1.0,
-                                 name=None, addToPyOpt=True):
+                                 name=None, addToPyOpt=True, DVGeoName='default'):
         """
         Add a contraint to keep a certain portion of your geometry circular.
         Define the origin, central axis and radius to define the circle.
@@ -1874,7 +2233,7 @@ class DVConstraints(object):
 
         """
 
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
         coords = self._generateCircle(origin,rotAxis,radius,zeroAxis,angleCW,angleCCW,
                                       nPts)
 
@@ -1893,11 +2252,12 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = CircularityConstraint(
-            conName, origin, coords, lower, upper, scale, self.DVGeo,
+            conName, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
     def addSurfaceAreaConstraint(self,lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                                 name=None, addToPyOpt=True):
+                                 name=None, addToPyOpt=True,
+                                 surfaceName='default', DVGeoName='default'):
         """
         Sum up the total surface area of the triangles included in the DVCon surface
 
@@ -1951,11 +2311,10 @@ class DVConstraints(object):
             meaningless
         """
 
-        if self.p0 is None or self.v1 is None or self.v2 is None:
-            raise Error("DVCon surface is not properly defined. Check that setSurface"
-                        "is called.")
 
-        self._checkDVGeo()
+
+        self._checkDVGeo(DVGeoName)
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         typeName = 'surfAreaCon'
         if not typeName in self.constraints:
@@ -1967,11 +2326,12 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = SurfaceAreaConstraint(
-            conName, self.p0, self.v1, self.v2, lower, upper, scale, scaled, self.DVGeo,
+            conName, p0, p1-p0, p2-p0, lower, upper, scale, scaled, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
     def addProjectedAreaConstraint(self, axis='y', lower=1.0, upper=3.0, scaled=True,
-                                 scale=1.0, name=None, addToPyOpt=True):
+                                 scale=1.0, name=None,addToPyOpt=True,
+                                 surfaceName='default', DVGeoName='default'):
         """
         Sum up the total surface area of the triangles included in the
         DVCon surface projected to a plane defined by "axis".
@@ -2028,11 +2388,8 @@ class DVConstraints(object):
             meaningless
         """
 
-        if self.p0 is None or self.v1 is None or self.v2 is None:
-            raise Error("DVCon surface is not properly defined. Check that setSurface"
-                        "is called.")
-
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         if axis=='x':
             axis = numpy.array([1,0,0])
@@ -2051,12 +2408,13 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = ProjectedAreaConstraint(
-            conName, self.p0, self.v1, self.v2, axis, lower, upper, scale, scaled,
-            self.DVGeo, addToPyOpt)
+            conName, p0, p1-p0, p2-p0, axis, lower, upper, scale, scaled,
+            self.DVGeometries[DVGeoName], addToPyOpt)
 
     def addPlanarityConstraint(self,origin,planeAxis,
                                upper=0.0,lower=0.0, scale=1.0,
-                               name=None, addToPyOpt=True):
+                               name=None, addToPyOpt=True,
+                               surfaceName='default', DVGeoName='default'):
         """
         Add a contraint to keep the surface in set in DVCon planar
         Define the origin, and the plane axis.
@@ -2107,7 +2465,8 @@ class DVConstraints(object):
 
         """
 
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         # Create the circularity constraint object:
         origin = numpy.array(origin).reshape((1, 3))
@@ -2123,12 +2482,13 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = PlanarityConstraint(
-            conName, planeAxis, origin, self.p0, self.v1, self.v2, lower, upper, scale, self.DVGeo,
+            conName, planeAxis, origin, p0, p1-p0, p2-p0, lower, upper, scale, self.DVGeometries[DVGeoName],
             addToPyOpt)
 
     def addColinearityConstraint(self, origin, lineAxis, distances,
                                  upper=0.0,lower=0.0, scale=1.0,
-                                 name=None, addToPyOpt=True):
+                                 name=None, addToPyOpt=True,
+                                 DVGeoName='default'):
         """
         Add a contraint to keep a set of points aligned.
         Define the origin, and axis of the line and then a set of distances
@@ -2182,7 +2542,7 @@ class DVConstraints(object):
 
         """
 
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
         nPts = len(distances)
         coords = []
         for dist in distances:
@@ -2204,10 +2564,11 @@ class DVConstraints(object):
             conName = name
         self.constraints[typeName][conName] = ColinearityConstraint(
             conName, lineAxis, origin, coords, lower, upper, scale,
-            self.DVGeo, addToPyOpt)
+            self.DVGeometries[DVGeoName], addToPyOpt)
 
     def addCurvatureConstraint(self, surfFile, curvatureType='Gaussian', lower=-1e20, upper=1e20,
-                               scaled=True, scale=1.0, KSCoeff=None,name=None,addToPyOpt=False):
+                               scaled=True, scale=1.0, KSCoeff=None,
+                               name=None,addToPyOpt=False,DVGeoName='default'):
         """
         Add a curvature contraint for the prescribed surface. The only required input for this
         constraint is a structured plot 3D file of the surface (there can be multiple
@@ -2283,7 +2644,7 @@ class DVConstraints(object):
         """
 
 
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         # Use pyGeo to load the plot3d file
         geo = pyGeo('plot3d', surfFile)
@@ -2314,10 +2675,10 @@ class DVConstraints(object):
         else:
             conName = name
         self.constraints[typeName][conName] = CurvatureConstraint(
-            conName, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, self.DVGeo,addToPyOpt)
+            conName, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, self.DVGeometries[DVGeoName], addToPyOpt)
 
     def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0,
-                                stop=-1, config=None):
+                                stop=-1, config=None, DVGeoName='default'):
         """
         Parameters
         ----------
@@ -2347,7 +2708,7 @@ class DVConstraints(object):
         --------
         >>> DVCon.addMonotonicConstraints('chords', 1.0)
         """
-        self._checkDVGeo()
+        self._checkDVGeo(DVGeoName)
 
         if name is None:
             conName = '%s_monotonic_constraint_%d'%(self.name, len(self.linearCon))
@@ -2362,7 +2723,7 @@ class DVConstraints(object):
         # Finally add the global linear constraint object
         self.linearCon[conName] = GlobalLinearConstraint(
             conName, key, type='monotonic', options=options,
-            lower=0, upper=None, DVGeo=self.DVGeo, config=config)
+            lower=0, upper=None, DVGeo=self.DVGeometries[DVGeoName], config=config)
 
     def _readPlot3DSurfFile(self, fileName):
         """Read a plot3d file and return the points and connectivity in
@@ -2410,13 +2771,21 @@ class DVConstraints(object):
         return p0, v1, v2
 
 
-    def _checkDVGeo(self):
+    def _checkDVGeo(self, name='default'):
 
         """check if DVGeo exists"""
-        if self.DVGeo is None:
+        if name not in self.DVGeometries.keys():
             raise Error("A DVGeometry object must be added to DVCon before "
                         "using a call to DVCon.setDVGeo(DVGeo) before "
                         "constraints can be added.")
+
+    def _getSurfaceVertices(self, surfaceName):
+        if surfaceName not in self.surfaces.keys():
+            raise KeyError('Need to add surface "'+surfaceName+'" to the DVConstraints object')
+        p0 = self.surfaces[surfaceName][0]
+        p1 = self.surfaces[surfaceName][1]
+        p2 = self.surfaces[surfaceName][2]
+        return p0, p1, p2
 
     def _convertTo2D(self, value, dim1, dim2):
         """
@@ -2450,7 +2819,7 @@ class DVConstraints(object):
             else:
                 raise Error('The size of the 1D array was the incorret shape')
 
-    def _generateIntersections(self, leList, teList, nSpan, nChord):
+    def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
         """
         Internal function to generate the grid points (nSpan x nChord)
         and to actual perform the intersections. This is in a separate
@@ -2458,6 +2827,7 @@ class DVConstraints(object):
         constraints use the same conde. The list of projected
         coordinates are returned.
         """
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         # Create mesh of itersections
         le_s = pySpline.Curve(X=leList, k=2)
@@ -2494,7 +2864,7 @@ class DVConstraints(object):
                 upVec = numpy.cross(uVec, vVec)
                 # Project actual node:
                 up, down, fail = geo_utils.projectNode(
-                    X[i ,j], upVec, self.p0, self.v1, self.v2)
+                    X[i ,j], upVec, p0, p1-p0, p2-p0)
 
                 if fail == 0:
                     coords[i, j, 0] = up
@@ -2548,9 +2918,7 @@ class DVConstraints(object):
                     v1.append(P2-P3)
                     v2.append(P1-P3)
 
-        self.p0 = numpy.array(p0)
-        self.v1 = numpy.array(v1)
-        self.v2 = numpy.array(v2)
+        return numpy.array(p0), numpy.array(v1), numpy.array(v2)
 
     def _generateCircle(self,origin,rotAxis,radius,zeroAxis,angleCW,angleCCW,nPts):
         """
@@ -3133,6 +3501,385 @@ class ThicknessToChordConstraint(GeometricConstraint):
         for i in range(len(self.coords)//2):
             handle.write('%d %d\n'% (2*i+1, 2*i+2))
 
+class TriangulatedSurfaceConstraint(GeometricConstraint):
+    """
+    This class is used to enclose a triangulated object inside an
+    aerodynamic surface.
+    """
+
+    def __init__(self, name, surface_1, surface_1_name, DVGeo1, surface_2, surface_2_name, DVGeo2, scale, addToPyOpt,
+                 rho, perim_scale, max_perim, heuristic_dist):
+        self.name = name
+        # get the point sets
+        self.surface_1_name = surface_1_name
+        self.surface_2_name = surface_2_name
+        if DVGeo1 is None and DVGeo2 is None:
+            raise UserError('Must include at least one geometric parametrization in constraint '+str(name))
+        self.DVGeo1 = DVGeo1
+        self.DVGeo2 = DVGeo2
+
+        self.surf1_size = surface_1[0].shape[0]
+        self.surf1_p0 = surface_1[0].transpose()
+        self.surf1_p1 = surface_1[1].transpose()
+        self.surf1_p2 = surface_1[2].transpose()
+
+        self.surf2_size = surface_2[0].shape[0]
+        self.surf2_p0 = surface_2[0].transpose()
+        self.surf2_p1 = surface_2[1].transpose()
+        self.surf2_p2 = surface_2[2].transpose()
+
+        xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)),
+                                       self.surf2_p2.max(axis=1))
+        xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)),
+                                                   self.surf2_p2.min(axis=1))
+
+
+        computed_maxdim = np.sqrt(np.sum((xyzmax-xyzmin)**2))
+
+        if heuristic_dist is not None:
+            if heuristic_dist < computed_maxdim:
+                raise ValueError('The heuristic distance must be less than the max diagonal' \
+                                 'dimension of the bounding box, '+str(computed_maxdim))
+            self.maxdim = heuristic_dist
+        else:
+            self.maxdim = computed_maxdim*1.05
+        self.scale = scale
+
+        self.addToPyOpt = addToPyOpt
+        self.rho = rho
+        self.perim_scale = perim_scale
+        self.max_perim = max_perim
+        self.nCon = 2
+
+        self.upper = 0.000
+        self.lower = -1e10
+        self.smSize = None
+        return
+
+    def getVarNames(self):
+        """
+        return the var names relevant to this constraint. By default, this is the DVGeo
+        variables, but some constraints may extend this to include other variables.
+        """
+        if self.DVGeo1 is not None:
+            varnamelist = self.DVGeo1.getVarNames()
+            if self.DVGeo2 is not None:
+                varnamelist.extend(self.DVGeo2.getVarNames())
+        else:
+            varnamelist = self.DVGeo2.getVarNames()
+
+        return varnamelist
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the function this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
+        """
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when
+        # running setSurface()
+
+        # check if the first mesh has a DVGeo, and if it does, update the points
+
+        if self.DVGeo1 is not None:
+            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).transpose()
+            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).transpose()
+            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).transpose()
+
+        # check if the second mesh has a DVGeo, and if it does, update the points
+        if self.DVGeo2 is not None:
+            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).transpose()
+            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name+'_p1', config=config).transpose()
+            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name+'_p2', config=config).transpose()
+
+        KS, perim, failflag = self.evalTriangulatedSurfConstraint()
+        funcs[self.name+'_KS'] = KS
+        funcs[self.name+'_perim'] = perim
+        if failflag:
+            funcs['fail'] = failflag
+
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+            config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
+        """
+        tmpTotalKS = {}
+        tmpTotalPerim = {}
+
+
+
+        deriv_outputs = self.evalTriangulatedSurfConstraintSens()
+        # deriv outputs contains:
+        # KS, intersect_length, mindist, timings, unbalance (index 0 through 4)
+        # dKSdA1, dKSdB1, dKSdC1, dKSdA2, dKSdB2, dKSdC2 (index 5 through 10)
+        # dPdA1, dPdB1, dPdC1, dPdA2, dPdB2, dPdC2 (index 11 through 16)
+
+        if self.DVGeo1 is not None:
+            nDV1 = self.DVGeo1.getNDV()
+        else:
+            nDV1 = 0
+
+        if nDV1 > 0:
+            # compute sensitivity with respect to the first mesh
+            # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
+            tmp_KS_p0 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[5]), self.surface_1_name+'_p0', config=config)
+            tmp_KS_p1 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[6]), self.surface_1_name+'_p1', config=config)
+            tmp_KS_p2 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[7]), self.surface_1_name+'_p2', config=config)
+            tmp_perim_p0 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[11]), self.surface_1_name+'_p0', config=config)
+            tmp_perim_p1 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[12]), self.surface_1_name+'_p1', config=config)
+            tmp_perim_p2 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[13]), self.surface_1_name+'_p2', config=config)
+            for key in tmp_KS_p0:
+                tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
+                tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
+
+
+        if self.DVGeo2 is not None:
+            nDV2 = self.DVGeo2.getNDV()
+        else:
+            nDV2 = 0
+
+        if nDV2 > 0:
+            # compute sensitivity with respect to the first mesh
+            # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
+            tmp_KS_p0 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[8]), self.surface_2_name+'_p0', config=config)
+            tmp_KS_p1 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[9]), self.surface_2_name+'_p1', config=config)
+            tmp_KS_p2 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[10]), self.surface_2_name+'_p2', config=config)
+            tmp_perim_p0 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[14]), self.surface_2_name+'_p0', config=config)
+            tmp_perim_p1 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[15]), self.surface_2_name+'_p1', config=config)
+            tmp_perim_p2 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[16]), self.surface_2_name+'_p2', config=config)
+            for key in tmp_KS_p0:
+                tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
+                tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
+        funcsSens[self.name+'_KS'] = tmpTotalKS
+        funcsSens[self.name+'_perim'] = tmpTotalPerim
+
+    def evalTriangulatedSurfConstraint(self):
+        """
+        Call geograd to compute the KS function and intersection length
+        """
+        # first compute the length of the intersection surface between the object and surf mesh
+        from geograd import geograd_parallel
+        mindist_tmp = 0.0
+
+        # first run to get the minimum distance
+        _, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist_tmp, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
+        # second run gets the well-conditioned KS
+        KS, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
+
+        self.perim_length = perim_length
+        self.minimum_distance = mindist
+
+        if self.perim_length > self.max_perim:
+            failflag = True
+            if mpi4py.COMM_WORLD.rank == 0:
+                print('Intersection length ', str(perim_length), ' exceeds tol, returning fail flag')
+        else:
+            failflag = False
+        return KS, perim_length, failflag
+
+    def evalTriangulatedSurfConstraintSens(self):
+        """
+        Call geograd to compute the derivatives of the KS function and intersection length
+        """
+        # first compute the length of the intersection surface between the object and surf mesh
+        from geograd import geograd_parallel
+
+
+        deriv_output = geograd_parallel.compute_derivs(self.surf1_p0, self.surf1_p1, self.surf1_p2,
+                                                       self.surf2_p0, self.surf2_p1, self.surf2_p2,
+                                                       self.minimum_distance, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
+        return deriv_output
+
+    def addConstraintsPyOpt(self, optProb):
+        """
+        Add the constraints to pyOpt, if the flag is set
+        """
+        if self.addToPyOpt:
+            optProb.addConGroup(self.name+'_KS', 1, lower=self.lower,
+                                upper=self.upper, scale=self.scale,
+                                wrt=self.getVarNames())
+            optProb.addConGroup(self.name+'_perim', 1, lower=self.lower,
+                                upper=self.upper, scale=self.perim_scale,
+                                wrt=self.getVarNames())
+
+
+
+class TriangulatedVolumeConstraint(GeometricConstraint):
+    """
+    This class is used to compute a volume constraint based on triangulated surface mesh geometry
+    """
+
+    def __init__(self, name, surface, surface_name, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+
+        self.name = name
+        self.surface = surface
+        self.surface_name = surface_name
+
+        self.surf_size = surface[0].shape[0]
+        self.surf_p0 = surface[0].reshape(self.surf_size, 3)
+        self.surf_p1 = surface[1].reshape(self.surf_size, 3)
+        self.surf_p2 = surface[2].reshape(self.surf_size, 3)
+        self.lower = lower
+        self.upper = upper
+        self.scaled = scaled
+        self.scale = scale
+        self.DVGeo = DVGeo
+        self.addToPyOpt = addToPyOpt
+        self.vol_0 = None
+        self.nCon = 1
+        return
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the function this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
+        """
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when
+        # running setSurface()
+
+        # check if the first mesh has a DVGeo, and if it does, update the points
+        self.surf_p0 = self.DVGeo.update(self.surface_name+'_p0', config=config).reshape(self.surf_size, 3)
+        self.surf_p1 = self.DVGeo.update(self.surface_name+'_p1', config=config).reshape(self.surf_size, 3)
+        self.surf_p2 = self.DVGeo.update(self.surface_name+'_p2', config=config).reshape(self.surf_size, 3)
+
+        volume = self.compute_volume(self.surf_p0, self.surf_p1, self.surf_p2)
+        if self.vol_0 is None:
+            self.vol_0 = volume
+
+        if self.scaled:
+            volume = 1.0 * volume / self.vol_0
+
+        funcs[self.name] = volume
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Assumes that evalFunctions method was called just prior
+        and results stashed on proc 0
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
+        """
+        tmpTotal = {}
+
+        # assume evalFunctions was called just prior and grad was stashed on rank=0
+        grad_vol = self.compute_volume_sens(self.surf_p0, self.surf_p1, self.surf_p2)
+        nDV = self.DVGeo.getNDV()
+        if self.scaled:
+            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name+'_p0', config=config)
+            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name+'_p1', config=config)
+            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2] / self.vol_0, self.surface_name+'_p2', config=config)
+        else:
+            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0], self.surface_name+'_p0', config=config)
+            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1], self.surface_name+'_p1', config=config)
+            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2], self.surface_name+'_p2', config=config)
+
+        for key in tmp_p0:
+            tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
+
+        funcsSens[self.name] = tmpTotal
+
+    def compute_volume(self, p0, p1, p2):
+        """
+        Compute the volume of a triangulated volume by computing
+        the signed areas.
+
+        The method is described in, among other places,
+        EFFICIENT FEATURE EXTRACTION FOR 2D/3D OBJECTS IN MESH REPRESENTATION
+        by Cha Zhang and Tsuhan Chen,
+        http://chenlab.ece.cornell.edu/Publication/Cha/icip01_Cha.pdf
+
+        Parameters
+        ----------
+        p0, p1, p2 : arrays
+            Coordinates of the vertices of the triangulated mesh
+
+        Returns
+        -------
+        volume : float
+            The volume of the triangulated surface
+        """
+
+        volume = np.sum(p1[:, 0] * p2[:, 1] * p0[:, 2] +
+                        p2[:, 0] * p0[:, 1] * p1[:, 2] +
+                        p0[:, 0] * p1[:, 1] * p2[:, 2] -
+                        p1[:, 0] * p0[:, 1] * p2[:, 2] -
+                        p2[:, 0] * p1[:, 1] * p0[:, 2] -
+                        p0[:, 0] * p2[:, 1] * p1[:, 2]) / 6.0
+
+        return volume
+
+    def compute_volume_sens(self, p0, p1, p2):
+        """
+        Compute the gradients of the volume with respect to
+        the mesh vertices.
+
+        Parameters
+        ----------
+        p0, p1, p2 : arrays
+            Coordinates of the vertices of the triangulated mesh
+
+        Returns
+        -------
+        grad_0, grad_1, grad_2 : arrays
+            Gradients of volume with respect to vertex coordinates
+        """
+
+        num_pts = p0.shape[0]
+        grad_0 = np.zeros((num_pts, 3))
+        grad_1 = np.zeros((num_pts, 3))
+        grad_2 = np.zeros((num_pts, 3))
+
+        grad_0[:, 0] = (p1[:, 1] * p2[:, 2] - p1[:, 2] * p2[:, 1])
+        grad_0[:, 1] = (p1[:, 2] * p2[:, 0] - p1[:, 0] * p2[:, 2])
+        grad_0[:, 2] = (p1[:, 0] * p2[:, 1] - p1[:, 1] * p2[:, 0])
+
+        grad_1[:, 0] = (p0[:, 2] * p2[:, 1] - p0[:, 1] * p2[:, 2])
+        grad_1[:, 1] = (p0[:, 0] * p2[:, 2] - p0[:, 2] * p2[:, 0])
+        grad_1[:, 2] = (p0[:, 1] * p2[:, 0] - p0[:, 0] * p2[:, 1])
+
+        grad_2[:, 0] = (p0[:, 1] * p1[:, 2] - p0[:, 2] * p1[:, 1])
+        grad_2[:, 1] = (p0[:, 2] * p1[:, 0] - p0[:, 0] * p1[:, 2])
+        grad_2[:, 2] = (p0[:, 0] * p1[:, 1] - p0[:, 1] * p1[:, 0])
+
+        return grad_0 / 6.0, grad_1 / 6.0, grad_2 / 6.0
+
+
 class VolumeConstraint(GeometricConstraint):
     """
     This class is used to represet a single volume constraint. The
@@ -3166,6 +3913,7 @@ class VolumeConstraint(GeometricConstraint):
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
+
 
     def evalFunctions(self, funcs, config):
         """
@@ -3536,7 +4284,6 @@ class LinearConstraint(object):
         DVGeo object.
         """
         self.vizConIndices = {}
-
         # Local Shape Variables
         for key in self.DVGeo.DV_listLocal:
              if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
@@ -3897,6 +4644,8 @@ class PlanarityConstraint(GeometricConstraint):
 
         # Now embed the coordinates and origin into DVGeo
         # with the name provided:
+        # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
+        # issue 53
         self.DVGeo.addPointSet(self.p0, self.name+'p0')
         self.DVGeo.addPointSet(self.p1, self.name+'p1')
         self.DVGeo.addPointSet(self.p2, self.name+'p2')
@@ -4302,6 +5051,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
 
         # Now embed the coordinates into DVGeo
         # with the name provided:
+        # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
         self.DVGeo.addPointSet(self.p0, self.name+'p0')
         self.DVGeo.addPointSet(self.p1, self.name+'p1')
         self.DVGeo.addPointSet(self.p2, self.name+'p2')
@@ -4493,6 +5243,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
 
         # Now embed the coordinates into DVGeo
         # with the name provided:
+        # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
         self.DVGeo.addPointSet(self.p0, self.name+'p0')
         self.DVGeo.addPointSet(self.p1, self.name+'p1')
         self.DVGeo.addPointSet(self.p2, self.name+'p2')
