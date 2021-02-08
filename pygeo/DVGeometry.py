@@ -1261,6 +1261,7 @@ class DVGeometry(object):
 
                 D = self.links_x[ipt]
                 if ang:
+                    raise Warning("if rot0ang != 0, use rotType=0. The derivatives with other rotations are slightly off")
                     # rotate non-aligned FFDs
                     D_    = numpy.copy(D)
                     D = geo_utils.rotVbyW(D_, ax_dir, ang)
