@@ -1205,8 +1205,12 @@ class DVGeometry(object):
             # Variables for rotType = 0 rotation + scaling
             ang = self.axis[self.curveIDNames[ipt]]['rot0ang']
             ax_dir = self.axis[self.curveIDNames[ipt]]['rot0axis']
+            bp_   = numpy.copy(base_pt)  # copy of original pointset - will not be rotated
             if ang:
                 ang *= numpy.pi/180  # conv to [rad]
+                # Rotating the FFD according to inputs
+                # The FFD points should now be aligned with the main system of reference
+                base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
 
             scale = self.scale[self.curveIDNames[ipt]](self.links_s[ipt])
             scale_x = self.scale_x[self.curveIDNames[ipt]](self.links_s[ipt])
@@ -1222,9 +1226,30 @@ class DVGeometry(object):
                 new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
                         self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
                 if isComplex:
-                    new_pts[ipt] = base_pt + new_vec*scale
+                    new_pts[ipt] = bp_ + new_vec*scale  # using "unrotated" bp_ vector
                 else:
-                    new_pts[ipt] = numpy.real(base_pt + new_vec*scale)
+                    new_pts[ipt] = numpy.real(bp_ + new_vec*scale)
+
+                if ang:
+                    # Rotating to be aligned with main sys ref
+                    nv_    = numpy.copy(new_vec)
+                    new_vec = geo_utils.rotVbyW(nv_, ax_dir, ang)
+
+                # Apply scaling
+                new_vec[0] *= scale_x
+                new_vec[1] *= scale_y
+                new_vec[2] *= scale_z
+
+                if ang:
+                    # Rotating back the scaled pointset to its original position
+                    nv_rot = numpy.copy(new_vec) # nv_rot is scaled and rotated
+                    new_vec       = geo_utils.rotVbyW(nv_rot ,ax_dir,-ang)
+
+
+                if isComplex:
+                    new_pts[ipt] = bp_ + new_vec
+                else:
+                    new_pts[ipt] = numpy.real(bp_ + new_vec)
 
             else:
                 rotX = geo_utils.rotxM(self.rot_x[
