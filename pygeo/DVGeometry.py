@@ -1243,7 +1243,7 @@ class DVGeometry(object):
                 if ang:
                     # Rotating back the scaled pointset to its original position
                     nv_rot = numpy.copy(new_vec) # nv_rot is scaled and rotated
-                    new_vec       = geo_utils.rotVbyW(nv_rot ,ax_dir,-ang)
+                    new_vec = geo_utils.rotVbyW(nv_rot , ax_dir, -ang)
 
 
                 if isComplex:
@@ -1260,6 +1260,10 @@ class DVGeometry(object):
                         self.curveIDNames[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
+                if ang:
+                    # rotate non-aligned FFDs
+                    D_    = numpy.copy(D)
+                    D = geo_utils.rotVbyW(D_, ax_dir, ang)
 
                 rotM = self._getRotMatrix(rotX, rotY, rotZ, rotType)
 
@@ -1291,6 +1295,13 @@ class DVGeometry(object):
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
+                if ang:
+                    # rotate non-aligned FFDs back to initial position
+                    D_    = numpy.copy(D)
+                    bp_rot = numpy.copy(base_pt) # here base_pt has been rotated
+                    D       = geo_utils.rotVbyW(D_ , ax_dir, -ang)
+                    base_pt = geo_utils.rotVbyW(bp_rot, ax_dir, -ang)
+
                 if isComplex:
                     new_pts[ipt] = base_pt + D*scale
                 else:
