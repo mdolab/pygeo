@@ -198,6 +198,7 @@ class DVGeometry(object):
 
     def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
                    rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
+                   rot0ang=None, rot0axis=[1, 0, 0],
                    xFractionOrder=2, includeVols=[], ignoreInd=[],
                    raySize=1.5):
         """
@@ -268,6 +269,19 @@ class DVGeometry(object):
             variable which should be used to compute the orientation of the theta
             rotation.
 
+        rot0ang: float
+            If rotType == 0, defines the offset angle of the (child) FFD with respect
+            to the main system of reference. This is necessary to use the scaling functions
+            `scale_x`, `scale_y`, and `scale_z` with rotType == 0. The axis of rotation is
+            defined by `rot0axis`.
+
+        rot0axis: list
+            If rotType == 0, defines the rotation axis for the rotation offset of the
+            FFD grid given by `rot0ang`. The variable has to be a list of 3 floats
+            defining the [x,y,z] components of the axis direction.
+            This is necessary to use the scaling functions `scale_x`, `scale_y`,
+            and `scale_z` with rotType == 0.
+
         xFractionOrder : int
             Order of spline used for refaxis curve.
 
@@ -325,7 +339,7 @@ class DVGeometry(object):
                 if volumes is None:
                     volumes = numpy.arange(self.FFD.nVol)
                 self.axis[name] = {'curve':curve, 'volumes':volumes,
-                                   'rotType':rotType, 'axis':axis}
+                                   'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis}
 
             else:
                 # get the direction of the symmetry plane
@@ -349,9 +363,9 @@ class DVGeometry(object):
                 for coef in curveSymm.coef:
                     curveSymm.coef[:,index]=-curveSymm.coef[:,index]
                 self.axis[name] = {'curve':curve, 'volumes':volumes,
-                                   'rotType':rotType, 'axis':axis}
+                                   'rotType':rotType, 'axis':axis,'rot0ang':rot0ang, 'rot0axis':rot0axis}
                 self.axis[name+'Symm'] = {'curve':curveSymm, 'volumes':volumesSymm,
-                                          'rotType':rotType, 'axis':axis}
+                                          'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis}
             nAxis = len(curve.coef)
         elif xFraction is not None:
             # Some assumptions
@@ -437,7 +451,7 @@ class DVGeometry(object):
             curve = pySpline.Curve(X=refaxisNodes, k=2)
             nAxis = len(curve.coef)
             self.axis[name] = {'curve':curve, 'volumes':volumes,
-                               'rotType':rotType, 'axis':axis,
+                               'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis,
                                'rotAxisVar':rotAxisVar}
         else:
             raise Error("One of 'curve' or 'xFraction' must be "
@@ -1188,6 +1202,12 @@ class DVGeometry(object):
 
         for ipt in range(self.nPtAttach):
             base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
+            # Variables for rotType = 0 rotation + scaling
+            ang = self.axis[self.curveIDNames[ipt]]['rot0ang']
+            ax_dir = self.axis[self.curveIDNames[ipt]]['rot0axis']
+            if ang:
+                ang *= numpy.pi/180  # conv to [rad]
+
             scale = self.scale[self.curveIDNames[ipt]](self.links_s[ipt])
             scale_x = self.scale_x[self.curveIDNames[ipt]](self.links_s[ipt])
             scale_y = self.scale_y[self.curveIDNames[ipt]](self.links_s[ipt])
