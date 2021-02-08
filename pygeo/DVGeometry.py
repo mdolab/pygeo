@@ -96,7 +96,7 @@ class DVGeometry(object):
       >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
       >>>
       """
-    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, *args, **kwargs):
+    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
 
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
         self.DV_listLocal = OrderedDict() # Local Design Variable List
@@ -104,6 +104,9 @@ class DVGeometry(object):
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
+
+        # Name (used for ensuring design variables names are unique to pyoptsparse)
+        self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild = child
@@ -590,6 +593,10 @@ class DVGeometry(object):
             configurations. The default value of None implies that the design
             variable appies to *ALL* configurations.
         """
+        # if the parent DVGeometry object has a name attribute, prepend it
+        if self.name is not None:
+            dvName = self.name + '_' + dvName
+        
         if type(config) == str:
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(
@@ -658,6 +665,9 @@ class DVGeometry(object):
         >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
+        if self.name is not None:
+            dvName = self.name + '_' + dvName
+
         if type(config) == str:
             config = [config]
 
@@ -824,6 +834,9 @@ class DVGeometry(object):
         >>> # moving in the 1 direction, within +/- 1.0 units
         >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
+        if self.name is not None:
+            dvName = self.name + '_' + dvName
+
         if type(config) == str:
             config = [config]
 
@@ -3532,7 +3545,7 @@ class DVGeometry(object):
                 ax2 /= numpy.linalg.norm(ax2)
             else:
                 raise Error('orient2 must be \'svd\' or \'ffd\'')
-
+            
             # Options for choosing in-plane axes
             # 1. Align axis '0' with projection of the given vector on section
             #       plane.
