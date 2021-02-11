@@ -1223,8 +1223,6 @@ class DVGeometry(object):
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
-                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
-                        self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
                 if isComplex:
                     new_pts[ipt] = bp_ + new_vec*scale  # using "unrotated" bp_ vector
                 else:
@@ -1245,6 +1243,7 @@ class DVGeometry(object):
                     nv_rot = numpy.copy(new_vec) # nv_rot is scaled and rotated
                     new_vec = geo_utils.rotVbyW(nv_rot , ax_dir, -ang)
 
+                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
 
                 if isComplex:
                     new_pts[ipt] = bp_ + new_vec
