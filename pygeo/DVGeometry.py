@@ -444,16 +444,45 @@ class DVGeometry(object):
                 if j > 0:
                     skip = 1
                 for i in range(nSections[j]):
-                    x_min = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],0])
-                    x_max = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],0])
-                    y_min = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],1])
-                    y_max = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],1])
-                    z_min = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],2])
-                    z_max = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],2])
+                    # getting all the section control points coordinates
+                    pts_tens = self.FFD.coef[sectionArr[i + skip, :, :], :]  # shape=(A,B,3)
+                    # reshaping into vector to allow rotation (if needed)
+                    pts_vec = numpy.copy(pts_tens.reshape(numpy.shape(pts_tens)[0] * numpy.shape(pts_tens)[1], 3))  # shape=(A*B,3)
 
-                    refaxisNodes[place+i,0] = xFraction * (x_max - x_min) + x_min  # chordwise
-                    refaxisNodes[place+i,1] = y_max - yFraction * (y_max - y_min)  # top-bottom
-                    refaxisNodes[place+i,2] = z_max - zFraction * (z_max - z_min)  # top-bottom
+                    if rotType == 0 and rot0ang:
+                        # rotating the FFD to be aligned with main axes
+                        for ct_ in range(numpy.shape(pts_vec)[0]):
+                            # here we loop over the pts_vec, rotate them and insert them inplace in pts_vec again
+                            p_ = numpy.copy(pts_vec[ct_ , :])
+                            p_rot = geo_utils.rotVbyW(p_, rot0axis, numpy.pi / 180 * (rot0ang))
+                            pts_vec[ct_ , :] = p_rot
+
+                    # getting the bounds of the FFD section
+                    x_min = numpy.min(pts_vec[:, 0])
+                    x_max = numpy.max(pts_vec[:, 0])
+                    y_min = numpy.min(pts_vec[:, 1])
+                    y_max = numpy.max(pts_vec[:, 1])
+                    z_min = numpy.min(pts_vec[:, 2])
+                    z_max = numpy.max(pts_vec[:, 2])
+
+                    # Temporary ref axis nodes coordinates - aligned with main system of reference
+                    x_nodes = xFraction * (x_max - x_min) + x_min  # chordwise
+                    y_nodes = y_max - yFraction * (y_max - y_min)  # top-bottom
+                    z_nodes = z_max - zFraction * (z_max - z_min)  # top-bottom
+
+                    # These are the FFD ref axis nodes - if the block has not been rotated
+                    nds = [x_nodes, y_nodes, z_nodes]
+                    nds_final = numpy.copy(nds)
+
+                    if rotType == 0 and rot0ang:
+                        # rotating the non-aligned FFDs back in position
+                        nds_final[:] = geo_utils.rotVbyW(nds, rot0axis, numpy.pi / 180 * (-rot0ang))
+
+                    # insert the final coordinates in the var to be passed to pySpline:
+                    refaxisNodes[place+i,0] = nds_final[0]
+                    refaxisNodes[place+i,1] = nds_final[1]
+                    refaxisNodes[place+i,2] = nds_final[2]
+
                 place += i + 1
 
             # Add additional volumes
