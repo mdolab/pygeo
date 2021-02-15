@@ -196,7 +196,7 @@ class DVGeometry(object):
                             tmp[ind] = True
         self.masks = tmp
 
-    def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
+    def addRefAxis(self, name, curve=None, xFraction=None, yFraction=None, zFraction=None, volumes=None,
                    rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
                    rot0ang=None, rot0axis=[1, 0, 0],
                    xFractionOrder=2, includeVols=[], ignoreInd=[],
@@ -282,7 +282,7 @@ class DVGeometry(object):
             This is necessary to use the scaling functions `scale_x`, `scale_y`,
             and `scale_z` with rotType == 0.
 
-        xFractionOrder : int
+        xFractionOrder : int  (NOT USED?)
             Order of spline used for refaxis curve.
 
         includeVols : list
@@ -367,7 +367,7 @@ class DVGeometry(object):
                 self.axis[name+'Symm'] = {'curve':curveSymm, 'volumes':volumesSymm,
                                           'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis}
             nAxis = len(curve.coef)
-        elif xFraction is not None:
+        elif xFraction or yFraction or zFraction:
             # Some assumptions
             #   - FFD should be a close approximation of geometry surface so that
             #       xFraction roughly corresponds to airfoil LE, TE, or 1/4 chord
@@ -376,6 +376,14 @@ class DVGeometry(object):
             #   - if no volumes are listed, it is assumed that all volumes are
             #       included
             #   - 'x' is streamwise direction
+
+            # Default to "mean" ref axis location along non-user specified direction
+            if xFraction is None:
+                xFraction = 0.5
+            if yFraction is None:
+                yFraction = 0.5
+            if zFraction is None:
+                zFraction = 0.5
 
             # This is the block direction along which the reference axis will lie
             # alignIndex = 'k'
@@ -430,16 +438,22 @@ class DVGeometry(object):
             # Loop through sections and compute node location
             place = 0
             for j, vol in enumerate(volOrd):
+                # sectionArr: indices of FFD points grouped by section
                 sectionArr = numpy.rollaxis(lIndex[vol], alignIndex, 0)
                 skip = 0
                 if j > 0:
                     skip = 1
                 for i in range(nSections[j]):
-                    LE = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],0])
-                    TE = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],0])
-                    refaxisNodes[place+i,0] = xFraction*(TE - LE) + LE
-                    refaxisNodes[place+i,1] = numpy.mean(self.FFD.coef[sectionArr[i+skip,:,:],1])
-                    refaxisNodes[place+i,2] = numpy.mean(self.FFD.coef[sectionArr[i+skip,:,:],2])
+                    x_min = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],0])
+                    x_max = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],0])
+                    y_min = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],1])
+                    y_max = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],1])
+                    z_min = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],2])
+                    z_max = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],2])
+
+                    refaxisNodes[place+i,0] = xFraction * (x_max - x_min) + x_min  # chordwise
+                    refaxisNodes[place+i,1] = y_max - yFraction * (y_max - y_min)  # top-bottom
+                    refaxisNodes[place+i,2] = z_max - zFraction * (z_max - z_min)  # top-bottom
                 place += i + 1
 
             # Add additional volumes
