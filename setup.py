@@ -64,7 +64,7 @@ setup(name='pygeo',
             'mpi4py>=3.0'
       ],
       extras_require = {
-        'testing':  ["numpy-stl"]
+        'testing':  ["numpy-stl<=2.14.2"]
       },
       classifiers=[
         "Operating System :: OS Independent",

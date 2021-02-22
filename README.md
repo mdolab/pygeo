@@ -1,5 +1,5 @@
 # pyGeo
-[![Build Status](https://travis-ci.com/mdolab/pygeo.svg?branch=pyGeo)](https://travis-ci.com/mdolab/pygeo)
+[![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.pygeo?branchName=master)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=17&branchName=master)
 [![Documentation Status](https://readthedocs.com/projects/mdolab-pygeo/badge/?version=latest)](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/?badge=latest)
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
