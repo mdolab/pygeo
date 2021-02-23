@@ -35,14 +35,10 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         # check if the .csm or .step files are here and if so, remove them
         for ext in ['.csm', '.step']:
             write_fullpath = os.path.join(self.input_path,'reg_tests/fullpath_'+str(self.N_PROCS)+ext)
-            fullpath_relpath = os.path.join(self.input_path,'reg_tests/relpath_'+str(self.N_PROCS)+ext)
             try:
                 os.remove(write_fullpath)
             except OSError:
-                try:
-                    os.remove(fullpath_relpath)
-                except OSError:
-                    pass
+               pass
         
     def setup_cubemodel(self):
         # load the box model and build the box model
@@ -109,17 +105,11 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
     def test_save_cadfile(self):
         DVGeo, initpts = self.setup_cubemodel()
         write_fullpath = os.path.join(self.input_path,'reg_tests/fullpath_'+str(self.N_PROCS)+'.step')
-        fullpath_relpath = os.path.join(self.input_path,'reg_tests/relpath_'+str(self.N_PROCS)+'.step')
-
         DVGeo.writeCADFile(write_fullpath)
         DVGeo.comm.barrier()
-        time.sleep(0.0001)
-        self.assertTrue(os.path.exists(write_fullpath.strip()))
-        DVGeo.writeCADFile('relpath_'+str(self.N_PROCS)+'.step')
-        DVGeo.comm.barrier()
-        time.sleep(0.0001)
-        self.assertTrue(os.path.exists(fullpath_relpath.strip()))
-
+        time.sleep(0.1)
+        self.assertTrue(os.path.exists(write_fullpath))
+        
         # check that bad file extension raises a Python error
         with self.assertRaises(IOError):
             DVGeo.writeCADFile('relpath.wrongext')
@@ -127,17 +117,10 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
     def test_write_csmfile(self):
         DVGeo, initpts = self.setup_cubemodel()
         write_fullpath = os.path.join(self.input_path,'reg_tests/fullpath_'+str(self.N_PROCS)+'.csm')
-        fullpath_relpath = os.path.join(self.input_path,'reg_tests/relpath_'+str(self.N_PROCS)+'.csm')
-
         DVGeo.writeCSMFile(write_fullpath)
         DVGeo.comm.barrier()
-        time.sleep(0.0001)
-        self.assertTrue(os.path.exists(write_fullpath.strip()))
-        DVGeo.writeCSMFile('relpath_'+str(self.N_PROCS)+'.csm')
-        DVGeo.comm.barrier()
-        time.sleep(0.0001)
-        self.assertTrue(os.path.exists(fullpath_relpath.strip()))
-
+        time.sleep(0.1)
+        self.assertTrue(os.path.exists(write_fullpath))
         # check that bad file extension raises a Python error
         with self.assertRaises(IOError):
             DVGeo.writeCADFile('relpath.wrongext')
