@@ -32,13 +32,6 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.input_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        # check if the .csm or .step files are here and if so, remove them
-        for ext in ['.csm', '.step']:
-            write_fullpath = os.path.join(self.input_path,'reg_tests/fullpath_'+str(self.N_PROCS)+ext)
-            try:
-                os.remove(write_fullpath)
-            except OSError:
-               pass
         
     def setup_cubemodel(self):
         # load the box model and build the box model
@@ -103,8 +96,13 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
 
     def test_save_cadfile(self):
-        DVGeo, initpts = self.setup_cubemodel()
         write_fullpath = os.path.join(self.input_path,'reg_tests/fullpath_'+str(self.N_PROCS)+'.step')
+        DVGeo, initpts = self.setup_cubemodel()
+        if DVGeo.comm.rank == 0:
+            try:
+                os.remove(write_fullpath)
+            except:
+                pass
         DVGeo.writeCADFile(write_fullpath)
         DVGeo.comm.barrier()
         time.sleep(0.1)
@@ -117,6 +115,11 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
     def test_write_csmfile(self):
         DVGeo, initpts = self.setup_cubemodel()
         write_fullpath = os.path.join(self.input_path,'reg_tests/fullpath_'+str(self.N_PROCS)+'.csm')
+        if DVGeo.comm.rank == 0:
+            try:
+                os.remove(write_fullpath)
+            except:
+                pass
         DVGeo.writeCSMFile(write_fullpath)
         DVGeo.comm.barrier()
         time.sleep(0.1)
