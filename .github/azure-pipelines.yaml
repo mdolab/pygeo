@@ -1,0 +1,19 @@
+trigger:
+- master
+
+pr:
+- master
+
+resources:
+  repositories:
+  - repository: azure_template
+    type: github
+    name: mdolab/.github
+    endpoint: mdolab
+
+extends:
+  template: azure/azure_template.yaml@azure_template
+  parameters:
+    REPO_NAME: pygeo
+    IGNORE_STYLE: true
+    IMAGE: auto
