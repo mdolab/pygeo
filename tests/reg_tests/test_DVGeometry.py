@@ -824,7 +824,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             handler.root_add_val("RefAxis_nodes_coord",nodes_loc,rtol=1e-12,atol=1e-12)
 
-    def train_24_rot0_nonaligned(self, train=True, refDeriv=True):
+    def train_24_rot0_nonaligned(self, train=True, refDeriv=False):
         self.test_24_rot0_nonaligned(train=train, refDeriv=refDeriv)
 
     def test_24_rot0_nonaligned(self, train=False, refDeriv=False):
