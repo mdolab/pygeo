@@ -805,16 +805,16 @@ class RegTestPyGeo(unittest.TestCase):
             handler.par_add_norm('norm', norm_diff, rtol=1e-7, atol=1e-7)
             os.remove(copyName)
 
-    def train_23_xyzFraction(self, train=True, refDeriv=True):
-        self.test_23_xyzFraction(train=train, refDeriv=refDeriv)
+    def train_23_xyzFraction(self, train=True):
+        self.test_23_xyzFraction(train=train)
 
-    def test_23_xyzFraction(self, train=False, refDeriv=False):
+    def test_23_xyzFraction(self, train=False):
         """
         Test 23
         """
         refFile = os.path.join(self.base_path,'ref/test_DVGeometry_23.ref')
         with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test generalized axis node location section in plane")  
+            handler.root_print("Test generalized axis node location section in plane")
             DVGeo = DVGeometry(os.path.join(self.base_path,'../inputFiles/2x1x8_rectangle.xyz'))
             xfraction = 0.3
             yfraction = 0.6
@@ -822,7 +822,57 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo.addRefAxis("RefAx", xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType)
             nodes_loc = DVGeo.axis['RefAx']['curve'].X
 
-            handler.root_add_val("RefAxis_nodes_coord",nodes_loc,rtol=1e-12,atol=1e-12)   
+            handler.root_add_val("RefAxis_nodes_coord",nodes_loc,rtol=1e-12,atol=1e-12)
+
+    def train_24_rot0_nonaligned(self, train=True, refDeriv=True):
+        self.test_24_rot0_nonaligned(train=train, refDeriv=refDeriv)
+
+    def test_24_rot0_nonaligned(self, train=False, refDeriv=False):
+        """
+        Test 24
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVGeometry_24.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test twist and scaling for FFDs non-aligned to main system of reference")
+            DVGeo = DVGeometry(os.path.join(self.base_path,'../inputFiles/2x1x8_rectangle.xyz'))
+            rotType = 0
+            xfraction = 0.5
+            nRefAxPts = DVGeo.addRefAxis("RefAx", xFraction=xfraction, alignIndex="k", rotType=rotType, rot0ang=-90)
+
+            fix_root_sect = 1
+            nTwist = nRefAxPts - fix_root_sect
+
+            DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * nTwist, func=commonUtils.twist, lower=-90, upper=90, scale=1)
+            DVGeo.addGeoDVGlobal(dvName="thickness", value=[1.0] * nTwist, func=commonUtils.thickness, lower=0.7, upper=5., scale=1)
+            DVGeo.addGeoDVGlobal(dvName="chord", value=[1.0] * nTwist, func=commonUtils.chord, lower=0.7, upper=5., scale=1)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=2)
+
+            x = DVGeo.getValues()
+
+            # Modifying the twist
+            keyName = "twist"
+            twistTest = [30, 0, -30]
+            x[keyName] = twistTest
+
+            # Modifying the chord
+            keyName = "thickness"
+            thickTest = [3.0, 1.0, 1.0]
+            x[keyName] = thickTest
+
+            # Modifying the chord
+            keyName = "chord"
+            chordTest = [1.0, 1.0, 2.0]
+            x[keyName] = chordTest
+
+            DVGeo.setDesignVars(x)
+
+            DVGeo.update('testPoints')
+            FFD_coords = DVGeo.FFD.coef.copy()
+
+            handler.root_add_val("Updated FFD coordinates",FFD_coords,rtol=1e-12,atol=1e-12)
+
+
 
 if __name__ == '__main__':
     unittest.main()
