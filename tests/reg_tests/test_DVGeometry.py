@@ -805,7 +805,24 @@ class RegTestPyGeo(unittest.TestCase):
             handler.par_add_norm('norm', norm_diff, rtol=1e-7, atol=1e-7)
             os.remove(copyName)
 
-            
+    def train_23_xyzFraction(self, train=True, refDeriv=True):
+        self.test_23_xyzFraction(train=train, refDeriv=refDeriv)
+
+    def test_23_xyzFraction(self, train=False, refDeriv=False):
+        """
+        Test 23
+        """
+        refFile = os.path.join(self.base_path,'ref/test_DVGeometry_23.ref')
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test generalized axis node location section in plane")  
+            DVGeo = DVGeometry(os.path.join(self.base_path,'../inputFiles/2x1x8_rectangle.xyz'))
+            xfraction = 0.3
+            yfraction = 0.6
+            rotType = 0
+            DVGeo.addRefAxis("RefAx", xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType)
+            nodes_loc = DVGeo.axis['RefAx']['curve'].X
+
+            handler.root_add_val("RefAxis_nodes_coord",nodes_loc,rtol=1e-12,atol=1e-12)   
 
 if __name__ == '__main__':
     unittest.main()
