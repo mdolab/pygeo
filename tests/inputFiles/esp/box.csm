@@ -1,0 +1,16 @@
+# box.csm written by ocsmSave (v1.15)
+
+# Constant, Design, and Output Parameters:
+despmtr   cubex0      -2.00000
+despmtr   cubey0      -2.00000
+despmtr   cubez0      -2.00000
+despmtr   cubedx       3.50000
+despmtr   cubedy       3.50000
+despmtr   cubedz       3.50000
+
+# Global Attributes:
+
+# Branches:
+box       cubex0   cubey0   cubez0   cubedx   cubedy   cubedz
+
+end
