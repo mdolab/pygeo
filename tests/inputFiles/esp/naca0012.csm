@@ -1,0 +1,11 @@
+despmtr   nacacode     0012
+
+udprim    naca series nacacode
+translate 0 0 -0.2
+
+udprim    naca series nacacode
+translate 0 0 1.2
+
+blend
+
+end
