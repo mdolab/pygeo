@@ -1,5 +1,4 @@
 import unittest
-from mpi4py import MPI
 import os
 import numpy as np
 import os
@@ -7,6 +6,11 @@ from stl import mesh
 from baseclasses import BaseRegTest
 from parameterized import parameterized_class
 import time 
+
+try:
+    from mpi4py import MPI
+except:
+    MPI = None
 
 if MPI:
     try:
