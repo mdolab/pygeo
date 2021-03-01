@@ -292,7 +292,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 if maxderiv > biggest_deriv:
                     biggest_deriv = maxderiv
                 handler.assert_allclose(normalized_error, 0.0,
-                                    name='{}_grad_normalized_error'.format(x), rtol=1e0, atol=1e-6)
+                                    name='{}_grad_normalized_error'.format(x), rtol=1e0, atol=5e-5)
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
 
