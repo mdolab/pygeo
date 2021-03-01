@@ -2063,7 +2063,7 @@ class DVGeometry(object):
            extension will be added.
         """
         # Name here doesnt matter, just take the first one
-        self.update(self.points.keys()[0], childDelta=False)
+        self.update(list(self.points.keys())[0], childDelta=False)
 
         gFileName = fileName+'_parent.dat'
         if not len(self.axis)==0:
