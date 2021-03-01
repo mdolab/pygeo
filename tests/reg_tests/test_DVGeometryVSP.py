@@ -285,10 +285,14 @@ class RegTestPyGeoVSP(unittest.TestCase):
             for x in DVs:
                 err = numpy.array(funcSens[x].squeeze()) - numpy.array(funcSensFD[x])
                 maxderiv = numpy.max(numpy.abs(funcSens[x].squeeze()))
+                normalizer = numpy.median(numpy.abs(funcSensFD[x].squeeze()))
+                if numpy.abs(normalizer) < 1:
+                    normalizer = numpy.ones(1)
+                normalized_error = err / normalizer
                 if maxderiv > biggest_deriv:
                     biggest_deriv = maxderiv
-                handler.assert_allclose(err, 0.0,
-                                    name='%s_grad_error'.format(x), rtol=1e0, atol=1e-6)
+                handler.assert_allclose(normalized_error, 0.0,
+                                    name='{}_grad_normalized_error'.format(x), rtol=1e0, atol=1e-6)
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
 
