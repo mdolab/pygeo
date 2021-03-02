@@ -66,6 +66,7 @@ This package consists of the following modules:
    :maxdepth: 1
 
    getting_started
+   advanced_ffd
    DVConstraints
    DVGeometry
    pyNetwork

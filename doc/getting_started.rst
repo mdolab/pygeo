@@ -50,7 +50,7 @@ As the control points move, they stretch and twist the FFD volume as if it was a
 The points embedded in the volume will also strech and move in a consistent way.
 The image below shows the cylinder we made embedded in a cube-shaped FFD volume. The FFD control points are depicted with the blue dots.
 
-.. image:: ../examples/ffd_cylinder/images/deformed_cylinder.png
+.. image:: ../examples/ffd_cylinder/images/cylinder_ffd_3d.png
    :width: 450
    :align: center
 
@@ -159,4 +159,4 @@ In this tutorial, you've learned the basics of ``pyGeo``'s FFD geometry paramete
 You now know enough to set up a basic shape optimization, such as the `MACH-Aero tutorial <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/>`_.
 More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as EngineeringSketchPad or OpenVSP).
 
-The scripts excerpted for this tutorial are located at ``pygeo/examples/ffd_cylinder/runExample.py`` and ``genFFD.py``.
+The scripts excerpted for this tutorial are located at ``pygeo/examples/ffd_cylinder/runFFDExample.py`` and ``genFFD.py``.
