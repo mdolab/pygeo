@@ -43,7 +43,8 @@ Package Description
 The package consists of the following high-level modules:
 
 - **DVGeometry** (short for "Design Variable Geometry") parameterizes and modifies geometry (point sets) in shape optimization problems, using the Free Form Deformation (FFD) method.
-- **DVGeometryESP** enables CAD-based geometry parameterization using Engineering Sketch Pad software
+- **DVGeometryESP** enables CAD-based geometry parameterization using Engineering Sketch Pad (ESP) software
+- **DVGeometryVSP** enables conceptual geometry parameterization using the Vehicle Sketch Pad (OpenVSP) software
 - **DVConstraints** allows users to constrain important geometric parameters during optimization (such as thicknesses and volumes)
 - **pyGeo** generates spline surfaces, either from geometry files, or *ab initio* wing surfaces.
 
