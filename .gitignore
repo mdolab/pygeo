@@ -1,1 +1,3 @@
 *.pyc
+pygeo.egg-info
+doc/_build
