@@ -465,23 +465,23 @@ class DVGeometry(object):
                     z_min = numpy.min(pts_vec[:, 2])
                     z_max = numpy.max(pts_vec[:, 2])
 
-                    # Temporary ref axis nodes coordinates - aligned with main system of reference
-                    x_nodes = xFraction * (x_max - x_min) + x_min  # chordwise
-                    y_nodes = y_max - yFraction * (y_max - y_min)  # top-bottom
-                    z_nodes = z_max - zFraction * (z_max - z_min)  # top-bottom
+                    # Temporary ref axis node coordinates - aligned with main system of reference
+                    x_node = xFraction * (x_max - x_min) + x_min  # chordwise
+                    y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
+                    z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
 
-                    # These are the FFD ref axis nodes - if the block has not been rotated
-                    nds = [x_nodes, y_nodes, z_nodes]
-                    nds_final = numpy.copy(nds)
+                    # This is the FFD ref axis node - if the block has not been rotated
+                    nd = [x_node, y_node, z_node]
+                    nd_final = numpy.copy(nd)
 
                     if rotType == 0 and rot0ang:
                         # rotating the non-aligned FFDs back in position
-                        nds_final[:] = geo_utils.rotVbyW(nds, rot0axis, numpy.pi / 180 * (-rot0ang))
+                        nd_final[:] = geo_utils.rotVbyW(nd, rot0axis, numpy.pi / 180 * (-rot0ang))
 
                     # insert the final coordinates in the var to be passed to pySpline:
-                    refaxisNodes[place+i,0] = nds_final[0]
-                    refaxisNodes[place+i,1] = nds_final[1]
-                    refaxisNodes[place+i,2] = nds_final[2]
+                    refaxisNodes[place + i, 0] = nd_final[0]
+                    refaxisNodes[place + i, 1] = nd_final[1]
+                    refaxisNodes[place + i, 2] = nd_final[2]
 
                 place += i + 1
 
