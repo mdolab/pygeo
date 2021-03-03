@@ -378,12 +378,6 @@ class DVGeometry(object):
             #   - 'x' is streamwise direction
 
             # Default to "mean" ref axis location along non-user specified direction
-            if xFraction is None:
-                xFraction = 0.5
-            if yFraction is None:
-                yFraction = 0.5
-            if zFraction is None:
-                zFraction = 0.5
 
             # This is the block direction along which the reference axis will lie
             # alignIndex = 'k'
@@ -458,18 +452,28 @@ class DVGeometry(object):
                             p_rot = geo_utils.rotVbyW(p_, rot0axis, numpy.pi / 180 * (rot0ang))
                             pts_vec[ct_ , :] = p_rot
 
-                    # getting the bounds of the FFD section
-                    x_min = numpy.min(pts_vec[:, 0])
-                    x_max = numpy.max(pts_vec[:, 0])
-                    y_min = numpy.min(pts_vec[:, 1])
-                    y_max = numpy.max(pts_vec[:, 1])
-                    z_min = numpy.min(pts_vec[:, 2])
-                    z_max = numpy.max(pts_vec[:, 2])
-
                     # Temporary ref axis node coordinates - aligned with main system of reference
-                    x_node = xFraction * (x_max - x_min) + x_min  # chordwise
-                    y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
-                    z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
+                    if xFraction:
+                        # getting the bounds of the FFD section
+                        x_min = numpy.min(pts_vec[:, 0])
+                        x_max = numpy.max(pts_vec[:, 0])
+                        x_node = xFraction * (x_max - x_min) + x_min  # chordwise
+                    else:
+                        x_node = numpy.mean(pts_vec[:, 0])
+
+                    if yFraction:
+                        y_min = numpy.min(pts_vec[:, 1])
+                        y_max = numpy.max(pts_vec[:, 1])
+                        y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
+                    else:
+                        y_node = numpy.mean(pts_vec[:, 1])
+
+                    if zFraction:
+                        z_min = numpy.min(pts_vec[:, 2])
+                        z_max = numpy.max(pts_vec[:, 2])
+                        z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
+                    else:
+                        z_node = numpy.mean(pts_vec[:, 2])
 
                     # This is the FFD ref axis node - if the block has not been rotated
                     nd = [x_node, y_node, z_node]
