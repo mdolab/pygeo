@@ -445,9 +445,10 @@ class DVGeometry(object):
                     skip = 1
                 for i in range(nSections[j]):
                     # getting all the section control points coordinates
-                    pts_tens = self.FFD.coef[sectionArr[i + skip, :, :], :]  # shape=(A,B,3)
-                    # reshaping into vector to allow rotation (if needed)
-                    pts_vec = numpy.copy(pts_tens.reshape(numpy.shape(pts_tens)[0] * numpy.shape(pts_tens)[1], 3))  # shape=(A*B,3)
+                    pts_tens = self.FFD.coef[sectionArr[i + skip, :, :], :]  # shape=(xAxisNodes,yAxisnodes,3)
+
+                    # reshaping into vector to allow rotation (if needed) - leveraging on pts_tens.shape[2]=3 (FFD cp coordinates)
+                    pts_vec = numpy.copy(pts_tens.reshape(-1, 3))  # new shape=(xAxisNodes*yAxisnodes,3)
 
                     if rotType == 0 and rot0ang:
                         # rotating the FFD to be aligned with main axes
