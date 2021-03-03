@@ -444,7 +444,7 @@ class DVGeometry(object):
                     # reshaping into vector to allow rotation (if needed) - leveraging on pts_tens.shape[2]=3 (FFD cp coordinates)
                     pts_vec = numpy.copy(pts_tens.reshape(-1, 3))  # new shape=(xAxisNodes*yAxisnodes,3)
 
-                    if rotType == 0 and rot0ang:
+                    if rot0ang:
                         # rotating the FFD to be aligned with main axes
                         for ct_ in range(numpy.shape(pts_vec)[0]):
                             # here we loop over the pts_vec, rotate them and insert them inplace in pts_vec again
@@ -479,7 +479,7 @@ class DVGeometry(object):
                     nd = [x_node, y_node, z_node]
                     nd_final = numpy.copy(nd)
 
-                    if rotType == 0 and rot0ang:
+                    if rot0ang:
                         # rotating the non-aligned FFDs back in position
                         nd_final[:] = geo_utils.rotVbyW(nd, rot0axis, numpy.pi / 180 * (-rot0ang))
 
