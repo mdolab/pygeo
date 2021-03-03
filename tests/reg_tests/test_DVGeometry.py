@@ -811,6 +811,11 @@ class RegTestPyGeo(unittest.TestCase):
     def test_23_xyzFraction(self, train=False):
         """
         Test 23
+        This test verifies the correct implementation of the generalized `xFraction`, `yFraction` (and indirectly `zFraction`)
+        Given an arbitrary input for the in-plane location of the reference axis nodes, the test sets up the axis object and compares the nodes location with a reference file.
+        As the geometry of the FFD box is simple, the values can be also hand calculated:
+        xFraction = 0.3, FFD x interval [-1,1] ---> 0.6 displacement from x min (% displ calculated from LE=xmin) --> x = -0.4
+        yFraction = 0.6, FFD y interval [-0.5,0.5] ---> 0.6 displacement from y max (% displ calculated from top of the box=ymax) --> x = -0.1
         """
         refFile = os.path.join(self.base_path,'ref/test_DVGeometry_23.ref')
         with BaseRegTest(refFile, train=train) as handler:
@@ -830,6 +835,14 @@ class RegTestPyGeo(unittest.TestCase):
     def test_24_rot0_nonaligned(self, train=False, refDeriv=False):
         """
         Test 24
+        This test ensures that the scaling attributes (scale_x, scale_y, and scale_z) are effective when rotType=0 is selected.
+        Moreover, this test ensures that rotType=0 reference axis can handle (given appropriate input parameters) FFD blocks that are not aligned with the main system of reference, e.g. the blades of a 3-bladed wind turbine rotor.
+        The newly added input parameters rot0ang and rot0axis are used to provide the user control on this.
+        The operations that pyGeo performs for this test are the following:
+        We start from an initial "vertical" FFD box which, using the combination of rotType=0, rot0ang=-90, and rot0axis=[1,0,0] for addRefAxis(), is first rotated to have its "spanwise" axis along the y axis.
+        Then, the script scales the 2nd section along the z axis for a "thickness" increase and the 4th section along the x axis for "chord" increase, it adds a +/- 30 deg twist respectively, and finally rotates the deformed FFD back in the initial position.
+        The twist is added to ensure that the operation order is maintained, and the scaling preserves the orthogonality of the FFD in the section plane.
+        This is a particular case as the FFD box is already aligned with the main axis and we "flip" the y and z axes, but the same criteria can be applied to a general rotation.
         """
         refFile = os.path.join(self.base_path,'ref/test_DVGeometry_24.ref')
         with BaseRegTest(refFile, train=train) as handler:
