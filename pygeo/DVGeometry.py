@@ -2133,6 +2133,66 @@ class DVGeometry(object):
             """
         self.FFD.writePlot3dCoef(fileName)
 
+    def updatePyGeo(self, geo, outputType, fileName, nRefU=10, nRefV=10):
+        """ Warp a pyGeo object and write to a file of specified type
+        given the (deformed) current state of the FFD object.
+
+        Parameters
+        ----------
+        geo : pyGeo object
+            A pyGeo object containing an initialized object
+        outputType: str
+            Type of output file to be written. Can be `iges` or `tecplot`
+        fileName: str
+            Filename for the output file. Should have no extension, an
+            extension will be added
+        nRefU: int
+            Number of spline refinement points to add in the B-Spline u-direction
+        nRefV: int
+            Number of spline refinement points to add in the B-Spline v-direction
+        """
+        # Refine BSplines by adding knot points
+        Refine_U = numpy.linspace(0.0, 1.0, nRefU)
+        Refine_V = numpy.linspace(0.0, 1.0, nRefV)
+
+        for iSurf in range(geo.nSurf):
+            for iX in Refine_U:
+                geo.surfs[iSurf].insertKnot('u', iX, 1)
+            for iY in Refine_V:
+                geo.surfs[iSurf].insertKnot('v', iY, 1)
+
+        # Remake the object given the refinement
+        if geo.initType == "plot3d":
+            geo.doConnectivity()
+            geo.fitGlobal()
+        elif geo.initType == "iges":
+            geo.doConnectivity()
+        elif geo.initType == "liftingSurface":
+            # Recompute Connectivity
+            geo._calcConnectivity(1e-6, 1e-6)
+            sizes = []
+            for isurf in range(geo.nSurf):
+                sizes.append([geo.surfs[isurf].nCtlu, geo.surfs[isurf].nCtlv])
+            geo.topo.calcGlobalNumbering(sizes)
+            geo.setSurfaceCoef()
+        else:
+            raise ValueError("Unsuppored pyGeo initType: must be 'plot3d', 'iges', or 'liftingSurface'")
+
+        # # Add coefficients to DVGeo
+        self.addPointSet(geo.coef, "coefs")
+
+        # Update points in pyGeo object
+        geo.coef = self.update("coefs", config=None)
+        geo._updateSurfaceCoef()
+
+        # Write File
+        if outputType == "iges":
+            geo.writeIGES(fileName + ".iges")
+        elif outputType == "tecplot":
+            geo.writeTecplot(fileName + ".plt")
+        else:
+            raise ValueError("Type {} not recognized. Must be either 'iges' or 'tecplot'".format(outputType))
+
     def getLocalIndex(self, iVol):
         """ Return the local index mapping that points to the global
         coefficient list for a given volume"""
