@@ -2155,7 +2155,7 @@ class DVGeometry(object):
             If scalar, it is applied across all surfaces. If llist, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
-        # Refine U-Direction
+        # Refine Surface -- U-Direction
         if type(nRefU) is int:
             # Refine BSplines by adding knot points
             Refine_U = numpy.linspace(0.0, 1.0, nRefU)
@@ -2173,7 +2173,7 @@ class DVGeometry(object):
         else:
             raise TypeError("nRefU type not recognized, must be: integer or list of integers")
 
-        # Refine V-Direction
+        # Refine Surface -- V-Direction
         if type(nRefV) is int:
             # Refine BSplines by adding knot points
             Refine_V = numpy.linspace(0.0, 1.0, nRefV)
@@ -2191,28 +2191,14 @@ class DVGeometry(object):
         else:
             raise TypeError("nRefV type not recognized, must be: integer or list of integers")
 
-        # Remake the object given the updated refinement
-        if geo.initType == "plot3d":
-            geo.doConnectivity()
-            geo.fitGlobal()
-        elif geo.initType == "iges":
-            geo.doConnectivity()
-        elif geo.initType == "liftingSurface":
-            geo._calcConnectivity(1e-6, 1e-6)
-            sizes = []
-            for isurf in range(geo.nSurf):
-                sizes.append([geo.surfs[isurf].nCtlu, geo.surfs[isurf].nCtlv])
-            geo.topo.calcGlobalNumbering(sizes)
-            geo.setSurfaceCoef()
-        else:
-            raise ValueError("Unsuppored pyGeo initType: must be 'plot3d', 'iges', or 'liftingSurface'")
+        # Update Coefficients
+        for iSurf in range(geo.nSurf):
+            # Add Point Sets
+            npt = geo.surfs[iSurf].nCtlu*geo.surfs[iSurf].nCtlv
+            self.addPointSet(geo.surfs[iSurf].coef.reshape((npt, 3)), 'coef%d'%iSurf)
 
-        # Add coefficients to DVGeo
-        self.addPointSet(geo.coef, "coefs")
-
-        # Update points in pyGeo object
-        geo.coef = self.update("coefs", config=None)
-        geo._updateSurfaceCoef()
+            # Update and Overwrite Old Values
+            geo.surfs[iSurf].coef = self.update('coef%d'%iSurf).reshape(geo.surfs[iSurf].coef.shape)
 
         # Write File
         if outputType == "iges":
