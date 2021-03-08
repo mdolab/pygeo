@@ -2147,28 +2147,57 @@ class DVGeometry(object):
             Filename for the output file. Should have no extension, an
             extension will be added
         nRefU: int
-            Number of spline refinement points to add in the B-Spline u-direction
+            Number of spline refinement points to add in the surface B-Spline u-direction.
+            If scalar, it is applied across all surfaces. If list, the length must match the
+            number of surfaces in the object and corresponding entries are matched with surfaces.
         nRefV: int
-            Number of spline refinement points to add in the B-Spline v-direction
+            Number of spline refinement points to add in the surface B-Spline v-direction.
+            If scalar, it is applied across all surfaces. If llist, the length must match the
+            number of surfaces in the object and corresponding entries are matched with surfaces
         """
-        # Refine BSplines by adding knot points
-        Refine_U = numpy.linspace(0.0, 1.0, nRefU)
-        Refine_V = numpy.linspace(0.0, 1.0, nRefV)
+        # Refine U-Direction
+        if type(nRefU) is int:
+            # Refine BSplines by adding knot points
+            Refine_U = numpy.linspace(0.0, 1.0, nRefU)
+            for iSurf in range(geo.nSurf):
+                for iX in Refine_U:
+                    geo.surfs[iSurf].insertKnot('u', iX, 1)
+        elif type(nRefU) is list:
+            if len(nRefU) != len(geo.nSurf):
+                raise RuntimeError("Length of nRefU does not match number of surfaces in object")
+            # Refine BSplines by adding knot points
+            for iSurf in range(geo.nSurf):
+                Refine_U = numpy.linspace(0.0, 1.0, nRefU[iSurf])
+                for iX in Refine_U:
+                    geo.surfs[iSurf].insertKnot('u', iX, 1)
+        else:
+            raise TypeError("nRefU type not recognized, must be: integer or list of integers")
 
-        for iSurf in range(geo.nSurf):
-            for iX in Refine_U:
-                geo.surfs[iSurf].insertKnot('u', iX, 1)
-            for iY in Refine_V:
-                geo.surfs[iSurf].insertKnot('v', iY, 1)
+        # Refine V-Direction
+        if type(nRefV) is int:
+            # Refine BSplines by adding knot points
+            Refine_V = numpy.linspace(0.0, 1.0, nRefV)
+            for iSurf in range(geo.nSurf):
+                for iY in Refine_V:
+                    geo.surfs[iSurf].insertKnot('v', iY, 1)
+        elif type(nRefV) is list:
+            if len(nRefU) != len(geo.nSurf):
+                raise RuntimeError("Length of nRefV does not match number of surfaces in object")
+            # Refine BSplines by adding knot points
+            for iSurf in range(geo.nSurf):
+                Refine_V = numpy.linspace(0.0, 1.0, nRefV[iSurf])
+                for iY in Refine_V:
+                    geo.surfs[iSurf].insertKnot('v', iY, 1) 
+        else:
+            raise TypeError("nRefV type not recognized, must be: integer or list of integers")
 
-        # Remake the object given the refinement
+        # Remake the object given the updated refinement
         if geo.initType == "plot3d":
             geo.doConnectivity()
             geo.fitGlobal()
         elif geo.initType == "iges":
             geo.doConnectivity()
         elif geo.initType == "liftingSurface":
-            # Recompute Connectivity
             geo._calcConnectivity(1e-6, 1e-6)
             sizes = []
             for isurf in range(geo.nSurf):
@@ -2178,7 +2207,7 @@ class DVGeometry(object):
         else:
             raise ValueError("Unsuppored pyGeo initType: must be 'plot3d', 'iges', or 'liftingSurface'")
 
-        # # Add coefficients to DVGeo
+        # Add coefficients to DVGeo
         self.addPointSet(geo.coef, "coefs")
 
         # Update points in pyGeo object
