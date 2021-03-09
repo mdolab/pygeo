@@ -25,13 +25,13 @@ The run script and associated files for this example can be found under ``/examp
 
 Geometry Generation
 ===================
-To update a pyGeo object using an FFD in a DVGeometry object, a well defined pyGeo object must be loaded and pass to DVGeometry.
+To update a pyGeo object using an FFD in a DVGeometry object, a pyGeo object must be loaded and passed to DVGeometry.
 This can be done using any of the pyGeo input formats: lifting surface, IGES, or Plot3D.
-Each of these are generated for this example in the runScript, as explained below.
+Each of these options are used for this example in the runScript, as explained below.
 
 Lifting Surface
 ---------------
-The lifting surface object is generated as is done in the `MACH-Aero tutorial geometry generation <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/aero_pygeo.html>`_.
+The lifting surface type is generated as is done in the `MACH-Aero tutorial geometry generation <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/aero_pygeo.html>`_.
 The airfoil sections are defined by text files and matched to spanwise sections, as defined by the ``x``, ``y``, and ``z`` coordinates.
 The airfoil rotations and chords are defined for each section, and pyGeo is called with the provided parameters.
 
@@ -51,7 +51,7 @@ The file can then be loaded into pyGeo using the following calls.
     :start-after: # rst IGES
     :end-before: # rst IGES (end)
 
-The call to `geo.doConnectivity()` is important as otherwise the IGES surfaces are treated as independent.
+The call to ``geo.doConnectivity()`` is important as otherwise the IGES surfaces are treated as independent.
 This function connects the surfaces and ensures that they move together.
 
 Plot3D
@@ -76,9 +76,9 @@ If these functions are not run, the surfaces on the geometry may deform differen
 DVGeometry Setup
 ================
 To show how this feature works, we deform an FFD to twist the wing geometry.
-The FFD file is generated the same way as the MACH-Aero tutorial and is done using the script `./ffd/simple_ffd.py`.
+The FFD file is generated the same way as the `MACH-Aero tutorial FFD generation <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/opt_ffd.html>`_ and is done using the script ``./ffd/simple_ffd.py``.
 Once the FFD is loaded into DVGeometry, we can add a reference axis about which we will deform the geometry.
-Similarly, we can defind the twist variable function which will twist the wing about the reference axis.
+Similarly, we can define the twist variable function which will twist the wing about the reference axis.
 For this case, we will twist the root of the wing five degrees.
 
 .. literalinclude:: ../examples/deform_geometry/runScript.py
@@ -88,9 +88,9 @@ For this case, we will twist the root of the wing five degrees.
 Update pyGeo Object
 ===================
 Once the DVGeometry object is set up, we run our update function to deform our original geometry given the deformed FFD geometry.
-This is done by calling the ``DVGeo.updatePyGeo()`` function, providing the pyGeo geometry object as the first option.
-The second option specifies the output file type, which can be either "tecplot" or "iges", depending on the desired output format.
-The final required option is the name of the output file, provided without an extension as an extension will be added matching the required output type.
+This is done by calling the ``DVGeo.updatePyGeo()`` function, providing the pyGeo geometry object as the first parameter.
+The second parameter specifies the output file type, which can be either ``"tecplot"`` or ``"iges"``, depending on the desired output format.
+The final required parameter is the name of the output file, provided without an extension as an extension will be added matching the required output type.
 
 .. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst UpdatePyGeo
@@ -108,7 +108,7 @@ Increasing the refinement will help create a closer match between the generated 
 
 Result
 ======
-The deformed wing is show in the Figure below, along with the FFD grid.
+The deformed wing is show in the figure below, along with the FFD grid.
 The IGES result can be loaded into CAD to visualize the deformed shape in IGES file format.
 
 .. figure:: images/wingNew.png
