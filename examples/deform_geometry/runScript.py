@@ -6,7 +6,7 @@ from pygeo import pyGeo, DVGeometry
 import numpy as np
 import sys
 
-def warp_liftingsurface():
+def deform_liftingsurface():
     # =========================================================================
     # Load the desired pyGeo object
     # =========================================================================
@@ -79,7 +79,7 @@ def warp_liftingsurface():
     DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
     # rst UpdatePyGeo (end)
 
-def warp_iges():
+def deform_iges():
     # =========================================================================
     # Load the desired pyGeo object
     # =========================================================================
@@ -114,7 +114,7 @@ def warp_iges():
     # =========================================================================
     DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
 
-def warp_plot3d():
+def deform_plot3d():
     # =========================================================================
     # Load the desired pyGeo object
     # =========================================================================
@@ -152,11 +152,11 @@ def warp_plot3d():
 if __name__ == "__main__":
     if len(sys.argv) != 1:
         if sys.argv[1] == "liftingsurface":
-            warp_liftingsurface()
+            deform_liftingsurface()
         elif sys.argv[1] == "iges":
-            warp_iges()
+            deform_iges()
         elif sys.argv[1] == "plot3d":
-            warp_plot3d()
+            deform_plot3d()
         else:
             raise ValueError("Argument {} not recognized".format(sys.argv[1]))
     else:

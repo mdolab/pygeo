@@ -2134,7 +2134,7 @@ class DVGeometry(object):
         self.FFD.writePlot3dCoef(fileName)
 
     def updatePyGeo(self, geo, outputType, fileName, nRefU=10, nRefV=10):
-        """ Warp a pyGeo object and write to a file of specified type
+        """ Deform a pyGeo object and write to a file of specified type
         given the (deformed) current state of the FFD object.
 
         Parameters

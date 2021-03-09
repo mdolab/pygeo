@@ -21,6 +21,8 @@ The geometry used for this example is the same as the one used in the `MACH-Aero
 
     Figure 1: Initial wing geometry and undeformed FFD grid
 
+The run script and associated files for this example can be found under ``/examples/deform_geometry/`` folder within the pyGeo root directory.
+
 Geometry Generation
 ===================
 To update a pyGeo object using an FFD in a DVGeometry object, a well defined pyGeo object must be loaded and pass to DVGeometry.
