@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 This script demonstrates the deformation of a geometry object using FFD and
 the process for exporting the geometry as a tecplot or IGES file.
@@ -12,10 +10,11 @@ def warp_liftingsurface():
     # =========================================================================
     # Load the desired pyGeo object
     # =========================================================================
+    # rst LiftingSurface
     # ---------------------  Lifting Surface Definition --------------------- #
     # Airfoil file
-    airfoil_list = ["./geo/rae2822.dat"] * 2
-    naf = len(airfoil_list)  # number of airfoils
+    naf = 10  # number of airfoils
+    airfoil_list = ["./geo/rae2822.dat"] * naf
 
     # Airfoil leading edge positions
     x = np.linspace(0.0, 7.5, naf)
@@ -32,7 +31,7 @@ def warp_liftingsurface():
     # Airfoil scaling
     chord = np.linspace(5.0, 1.5, naf)
 
-    # rst Run pyGeo
+    # Run pyGeo
     geo = pyGeo(
         "liftingSurface",
         xsections=airfoil_list,
@@ -49,10 +48,12 @@ def warp_liftingsurface():
         squareTeTip=True,
         teHeight=0.25 * 0.0254,
     )
+    # rst LiftingSurface (end)
 
     # =========================================================================
     # Setup DVGeometry object
     # =========================================================================
+    # rst DVGeometry
     DVGeo = DVGeometry("./ffd/ffd.xyz")
 
     # Create reference axis
@@ -69,19 +70,24 @@ def warp_liftingsurface():
 
     # add the twist design variable to DVGeo
     DVGeo.addGeoDVGlobal(dvName="twist", value=twist0, func=twist, lower=-10, upper=10, scale=1.0)
+    # rst DVGeometry (end)
 
     # =========================================================================
     # Update pyGeo Object and output result
     # =========================================================================
+    # rst UpdatePyGeo
     DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
+    # rst UpdatePyGeo (end)
 
 def warp_iges():
     # =========================================================================
     # Load the desired pyGeo object
     # =========================================================================
+    # rst IGES
     # ------------------------------ IGES File ------------------------------ #
     geo = pyGeo(fileName="./geo/wing.igs", initType="iges")
     geo.doConnectivity()
+    # rst IGES (end)
 
     # =========================================================================
     # Setup DVGeometry object
@@ -112,10 +118,12 @@ def warp_plot3d():
     # =========================================================================
     # Load the desired pyGeo object
     # =========================================================================
+    # rst plot3d
     # ----------------------------- Plot3D File ----------------------------- #
     geo = pyGeo(fileName="./geo/wing.xyz", initType="plot3d")
     geo.doConnectivity()
     geo.fitGlobal()
+    # rst plot3d (end)
     # =========================================================================
     # Setup DVGeometry object
     # =========================================================================
@@ -142,7 +150,6 @@ def warp_plot3d():
     DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
 
 if __name__ == "__main__":
-    print(sys.argv)
     if len(sys.argv) != 1:
         if sys.argv[1] == "liftingsurface":
             warp_liftingsurface()
@@ -152,3 +159,5 @@ if __name__ == "__main__":
             warp_plot3d()
         else:
             raise ValueError("Argument {} not recognized".format(sys.argv[1]))
+    else:
+        raise RuntimeError("Type argument must be specified, can be 'liftingsurface', 'iges', or 'plot3d'")

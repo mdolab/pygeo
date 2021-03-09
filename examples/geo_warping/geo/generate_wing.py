@@ -2,12 +2,10 @@
 import numpy as np
 from pygeo import pyGeo
 
-# rst Airfoil file
+# Number of airfoil sections
 naf = 10
-
 airfoil_list = ["rae2822.dat"] * naf
 
-# rst Wing definition
 # Airfoil leading edge positions
 x = np.linspace(0.0, 7.5, naf)
 y = np.linspace(0.0, 0.0, naf)
@@ -21,10 +19,9 @@ rot_y = [0.0] * naf
 rot_z = [0.0] * naf
 
 # Airfoil scaling
-# chord = [5.0, 1.5]  # chord lengths
 chord = np.linspace(5.0, 1.5, naf)
 
-# rst Run pyGeo
+# Run pyGeo
 wing = pyGeo(
     "liftingSurface",
     xsections=airfoil_list,
@@ -42,7 +39,7 @@ wing = pyGeo(
     teHeight=0.25 * 0.0254,
 )
 
-# rst Write output files
+# Write Output File
 wing.writeTecplot("wing.dat")
 wing.writeIGES("wing.igs")
 #wing.writeTin("wing.tin")

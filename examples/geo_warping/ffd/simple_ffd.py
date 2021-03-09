@@ -1,6 +1,5 @@
 import numpy as np
 
-# rst Dimensions
 # Bounding box for root airfoil
 x_root_range = [-0.1, 5.1]
 y_root_range = [-0.5, 0.5]
@@ -15,7 +14,7 @@ z_tip = 14.25
 nX = 6  # streamwise
 nY = 2  # perpendicular to wing planform
 nZ = 8  # spanwise
-# rst Compute
+
 # Compute grid points
 span_dist = np.linspace(0, 1, nZ) ** 0.8
 z_sections = span_dist * (z_tip - z_root) + z_root
@@ -39,7 +38,7 @@ for k in range(nZ):
         Y[row, :] = np.ones(nX) * y_coords[j, k]
         Z[row, :] = np.ones(nX) * z_sections[k]
         row += 1
-# rst Write
+
 # Write FFD to file
 filename = "ffd.xyz"
 f = open(filename, "w")
