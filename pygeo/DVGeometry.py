@@ -2163,7 +2163,7 @@ class DVGeometry(object):
                 for iX in Refine_U:
                     geo.surfs[iSurf].insertKnot('u', iX, 1)
         elif type(nRefU) is list:
-            if len(nRefU) != len(geo.nSurf):
+            if len(nRefU) != geo.nSurf:
                 raise RuntimeError("Length of nRefU does not match number of surfaces in object")
             # Refine BSplines by adding knot points
             for iSurf in range(geo.nSurf):
@@ -2181,7 +2181,7 @@ class DVGeometry(object):
                 for iY in Refine_V:
                     geo.surfs[iSurf].insertKnot('v', iY, 1)
         elif type(nRefV) is list:
-            if len(nRefU) != len(geo.nSurf):
+            if len(nRefU) != geo.nSurf:
                 raise RuntimeError("Length of nRefV does not match number of surfaces in object")
             # Refine BSplines by adding knot points
             for iSurf in range(geo.nSurf):
