@@ -2133,7 +2133,7 @@ class DVGeometry(object):
             """
         self.FFD.writePlot3dCoef(fileName)
 
-    def updatePyGeo(self, geo, outputType, fileName, nRefU=10, nRefV=10):
+    def updatePyGeo(self, geo, outputType, fileName, nRefU=0, nRefV=0):
         """ Deform a pyGeo object and write to a file of specified type
         given the (deformed) current state of the FFD object.
 
@@ -2202,7 +2202,7 @@ class DVGeometry(object):
 
         # Write File
         if outputType == "iges":
-            geo.writeIGES(fileName + ".iges")
+            geo.writeIGES(fileName + ".igs")
         elif outputType == "tecplot":
             geo.writeTecplot(fileName + ".plt")
         else:

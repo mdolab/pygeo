@@ -97,7 +97,7 @@ The final required parameter is the name of the output file, provided without an
     :end-before: # rst UpdatePyGeo (end)
 
 Included in this function call are ``nRefU`` and ``nRefV``, which are refinement parameters.
-The default values are 10, and thus can be left out of the function call if that represents enough refinement.
+The default values are 0, which represent no refinement of the input geometry object.
 These refinement parameters add knot points on the B-spline surfaces to ensure that the deformation of the geometry more closely matches the deformed wing used during the optimization.
 The refinement values can be provided as either integers, as is the case in this example, or as lists whose lengths match the number of surfaces in the geometry.
 Increasing the refinement will help create a closer match between the generated fiile and the mesh used during the optimization, but will increase the filesize.
