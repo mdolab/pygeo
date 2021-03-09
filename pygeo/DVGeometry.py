@@ -2146,13 +2146,13 @@ class DVGeometry(object):
         fileName: str
             Filename for the output file. Should have no extension, an
             extension will be added
-        nRefU: int
+        nRefU: int or list of ints
             Number of spline refinement points to add in the surface B-Spline u-direction.
-            If scalar, it is applied across all surfaces. If list, the length must match the
+            If scalar, it is applied across each surface. If list, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces.
-        nRefV: int
+        nRefV: int or list of ints
             Number of spline refinement points to add in the surface B-Spline v-direction.
-            If scalar, it is applied across all surfaces. If llist, the length must match the
+            If scalar, it is applied across each surface. If list, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
         # Refine Surface -- U-Direction
