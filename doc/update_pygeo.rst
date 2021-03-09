@@ -1,22 +1,129 @@
-Updating pyGeo Geometry using DVGeometry
-----------------------------------------
+.. _update_pygeo:
 
-.. literalinclude:: ../examples/geo_warping/runScript.py
+****************************************
+Updating pyGeo Geometry using DVGeometry
+****************************************
+
+Overview
+========
+After an optimization case has completed successfully, it is useful to extract the optimized geometry in a file format that is useable for Computer-Aided Design (CAD) software.
+This can be done using pyGeo and deforming an object before writing it out in IGES file format.
+This tutorial reviews the process of generating a pyGeo object that is deformed using an FFD in DVGeometry.
+This functionality can be used to generate either an IGES file or Tecplot .plt file to be used after the optimization.
+
+The geometry used for this example is the same as the one used in the `MACH-Aero tutorial <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/index.html>`_ and is shown below.
+
+.. figure:: images/wing.png
+    :scale: 30
+    :align: center
+    :alt: Initial wing geometry and undeformed FFD grid
+    :figclass: align-center
+
+    Figure 1: Initial wing geometry and undeformed FFD grid
+
+Geometry Generation
+===================
+To update a pyGeo object using an FFD in a DVGeometry object, a well defined pyGeo object must be loaded and pass to DVGeometry.
+This can be done using any of the pyGeo input formats: lifting surface, IGES, or Plot3D.
+Each of these are generated for this example in the runScript, as explained below.
+
+Lifting Surface
+---------------
+The lifting surface object is generated as is done in the `MACH-Aero tutorial geometry generation <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/aero_pygeo.html>`_.
+The airfoil sections are defined by text files and matched to spanwise sections, as defined by the ``x``, ``y``, and ``z`` coordinates.
+The airfoil rotations and chords are defined for each section, and pyGeo is called with the provided parameters.
+
+.. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst LiftingSurface
     :end-before: # rst LiftingSurface (end)
 
-.. literalinclude:: ../examples/geo_warping/runScript.py
+This pyGeo object is ready to be provided to DVGeometry to be deformed.
+
+IGES
+----
+The geometry input into pyGeo can also come from an IGES file.
+The IGES input file generated here is done in the ``./geo/generate_wing.py`` script using the same proceedure used in the MACH-Aero tutorial and the lifting surface defined above.
+The file can then be loaded into pyGeo using the following calls.
+
+.. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst IGES
     :end-before: # rst IGES (end)
 
-.. literalinclude:: ../examples/geo_warping/runScript.py
+The call to `geo.doConnectivity()` is important as otherwise the IGES surfaces are treated as independent.
+This function connects the surfaces and ensures that they move together.
+
+Plot3D
+------
+The geometry can also be loaded in Plot3D file format.
+This format cannot easily be generated using pyGeo, so it requires using a separate tool such as ICEM.
+For this example, the Plot3D file (with ``.xyz`` extension) is saved in the ``./geo/`` directory.
+
+.. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst plot3d
     :end-before: # rst plot3d (end)
 
-.. literalinclude:: ../examples/geo_warping/runScript.py
+As with the IGES file, the calls to ``geo.doConnectivity()`` and ``geo.fitGlobal()`` are necessary to finalize importing the geometry and tie all of the components together.
+If these functions are not run, the surfaces on the geometry may deform differently leaving gaps between patches.
+
+.. warning::
+    The output geometry file is highly dependent on the input geometry.
+    If the input file is not sufficiently refined, the output geometry will not match the mesh used during the optimization.
+
+    For example, when using a wing as in this example, it is best to specify several airfoil sections as opposed to one on the root and one on the tip.
+
+DVGeometry Setup
+================
+To show how this feature works, we deform an FFD to twist the wing geometry.
+The FFD file is generated the same way as the MACH-Aero tutorial and is done using the script `./ffd/simple_ffd.py`.
+Once the FFD is loaded into DVGeometry, we can add a reference axis about which we will deform the geometry.
+Similarly, we can defind the twist variable function which will twist the wing about the reference axis.
+For this case, we will twist the root of the wing five degrees.
+
+.. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst DVGeometry
     :end-before: # rst DVGeometry (end)
 
-.. literalinclude:: ../examples/geo_warping/runScript.py
+Update pyGeo Object
+===================
+Once the DVGeometry object is set up, we run our update function to deform our original geometry given the deformed FFD geometry.
+This is done by calling the ``DVGeo.updatePyGeo()`` function, providing the pyGeo geometry object as the first option.
+The second option specifies the output file type, which can be either "tecplot" or "iges", depending on the desired output format.
+The final required option is the name of the output file, provided without an extension as an extension will be added matching the required output type.
+
+.. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst UpdatePyGeo
     :end-before: # rst UpdatePyGeo (end)
+
+Included in this function call are ``nRefU`` and ``nRefV``, which are refinement parameters.
+The default values are 10, and thus can be left out of the function call if that represents enough refinement.
+These refinement parameters add knot points on the B-spline surfaces to ensure that the deformation of the geometry more closely matches the deformed wing used during the optimization.
+The refinement values can be provided as either integers, as is the case in this example, or as lists whose lengths match the number of surfaces in the geometry.
+Increasing the refinement will help create a closer match between the generated fiile and the mesh used during the optimization, but will increase the filesize.
+
+.. warning::
+    Once the deformed geometry file is generated, check it against the deformed mesh from the optimization to ensure that they match.
+    If there is a large difference between the two geometries, increase the refinement points and consider providing a more refined input file.
+
+Result
+======
+The deformed wing is show in the Figure below, along with the FFD grid.
+The IGES result can be loaded into CAD to visualize the deformed shape in IGES file format.
+
+.. figure:: images/wingNew.png
+    :scale: 30
+    :align: center
+    :alt: Deformed wing geometry and FFD grid
+    :figclass: align-center
+
+    Figure 1: Deformed wing geometry and FFD grid
+
+As compared to the undeformed wing and FFD grid shown at the beginning of the tutorial, the root section of this airfoil is deformed given the prescribed FFD deformation.
+
+Run it yourself!
+================
+This example can be run by calling ``runScript.py`` with the desired input file format, for example using the command::
+
+    $ python runScript.py iges
+
+The script will output a ``wingNew.plt`` file which can be viewed in Tecplot.
+To generate an IGES file, edit the calls to ``updatePyGeo()`` to request IGES instead of tecplot.
