@@ -562,7 +562,7 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
         self.input_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.comm = MPI.COMM_WORLD
         
-    def setup_airfoilmodel(self, kulfan=False):
+    def setup_airfoilmodel(self, kulfan=False, projtol=0.01):
         # load the csm file and pointset file
         if kulfan:
             csmFile = os.path.join(self.input_path,'inputFiles/esp/naca0012_kulfan.csm')
@@ -572,7 +572,7 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
             max_dist_tol = 3
         stlFile = os.path.join(self.input_path,'inputFiles/esp/naca0012_esp.stl')
 
-        DVGeo = DVGeometryESP(csmFile)
+        DVGeo = DVGeometryESP(csmFile, projTol=projtol)
         self.assertIsNotNone(DVGeo)
 
         testobj = mesh.Mesh.from_file(stlFile)
@@ -603,6 +603,10 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
 
     def test_add_pointset(self):
         DVGeo, initpts = self.setup_airfoilmodel()
+
+    def test_add_pointset_tighter_tolerance(self):
+        with self.assertRaises(ValueError):
+            DVGeo, initpts = self.setup_airfoilmodel(projtol=1e-5)
 
     def test_add_desvars(self):
         DVGeo, initpts = self.setup_airfoilmodel()
