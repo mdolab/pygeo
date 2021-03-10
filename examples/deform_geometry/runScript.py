@@ -4,11 +4,11 @@ the process for exporting the geometry as a tecplot or IGES file.
 """
 from pygeo import pyGeo, DVGeometry
 import numpy as np
-import sys
+import argparse
 
 def deform_liftingsurface():
     # =========================================================================
-    # Load the desired pyGeo object
+    # Set Up pyGeo Object
     # =========================================================================
     # rst LiftingSurface
     # ---------------------  Lifting Surface Definition --------------------- #
@@ -64,7 +64,7 @@ def deform_liftingsurface():
         for i in range(nRefAxPts):
             geo.rot_z["wing"].coef[i] = val[i]
 
-    # set initial twist, we set the root twist to 5 deg so wingSurfMeshNew should reflect this
+    # set initial twist, we set the root twist to 5 deg
     twist0 = [0] * nRefAxPts
     twist0[0] = 5
 
@@ -81,7 +81,7 @@ def deform_liftingsurface():
 
 def deform_iges():
     # =========================================================================
-    # Load the desired pyGeo object
+    # Set Up pyGeo Object
     # =========================================================================
     # rst IGES
     # ------------------------------ IGES File ------------------------------ #
@@ -102,7 +102,7 @@ def deform_iges():
         for i in range(nRefAxPts):
             geo.rot_z["wing"].coef[i] = val[i]
 
-    # set initial twist, we set the root twist to 5 deg so wingSurfMeshNew should reflect this
+    # set initial twist, we set the root twist to 5 deg
     twist0 = [0] * nRefAxPts
     twist0[0] = 5
 
@@ -116,7 +116,7 @@ def deform_iges():
 
 def deform_plot3d():
     # =========================================================================
-    # Load the desired pyGeo object
+    # Set Up pyGeo Object
     # =========================================================================
     # rst plot3d
     # ----------------------------- Plot3D File ----------------------------- #
@@ -137,7 +137,7 @@ def deform_plot3d():
         for i in range(nRefAxPts):
             geo.rot_z["wing"].coef[i] = val[i]
 
-    # set initial twist, we set the root twist to 5 deg so wingSurfMeshNew should reflect this
+    # set initial twist, we set the root twist to 5 deg
     twist0 = [0] * nRefAxPts
     twist0[0] = 5
 
@@ -150,14 +150,14 @@ def deform_plot3d():
     DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 1:
-        if sys.argv[1] == "liftingsurface":
-            deform_liftingsurface()
-        elif sys.argv[1] == "iges":
-            deform_iges()
-        elif sys.argv[1] == "plot3d":
-            deform_plot3d()
-        else:
-            raise ValueError("Argument {} not recognized".format(sys.argv[1]))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output_type", type=str, default="iges")
+    args = parser.parse_args()
+    if args.output_type == "liftingsurface":
+        deform_liftingsurface()
+    elif args.output_type == "iges":
+        deform_iges()
+    elif args.output_type == "plot3d":
+        deform_plot3d()
     else:
-        raise RuntimeError("Type argument must be specified, can be 'liftingsurface', 'iges', or 'plot3d'")
+        raise ValueError("Argument {} not recognized".format(args.output_type))
