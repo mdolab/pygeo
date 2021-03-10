@@ -523,7 +523,6 @@ class DVGeometryESP(object):
             print('Maximum distance between the added points and the ESP geometry is',dMax_global)
         if dMax_global > self.projTol:
             raise ValueError('Pointset projection error exceeded tolerance')
-        print(numpy.min(uv[:,0]), numpy.max(uv[:,0]), numpy.min(uv[:,1]), numpy.max(uv[:,1]))
         # Create the little class with the data
         self.pointSets[ptName] = PointSet(points, proj_pts, bodyIDArray, faceIDArray, edgeIDArray, uv, t, uvlimArray, tlimArray, distributed)
 

@@ -628,9 +628,9 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
         p0 = testobj.vectors[:,0,:]
         p1 = testobj.vectors[:,1,:] 
         p2 = testobj.vectors[:,2,:]
-        # with self.assertRaises(ValueError):
-        distglobal1 = DVGeo.addPointSet(p0, 'airfoil_p0')
-        self.assertGreater(distglobal1, 0.01)
+        with self.assertRaises(ValueError):
+            distglobal1 = DVGeo.addPointSet(p0, 'airfoil_p0')
+            self.assertGreater(distglobal1, 0.01)
 
     def test_parallel_finite_difference(self, train=False):
         np.random.seed(1)
