@@ -7,7 +7,7 @@
 pyGeo
 =====
 ``pyGeo`` is a repository that contains several modules for working with
-geometry and the manipulation of geometry.
+geometry components and manipulating geometry components.
 
 
 
