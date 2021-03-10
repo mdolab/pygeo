@@ -2156,13 +2156,13 @@ class DVGeometry(object):
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
         # Refine Surface -- U-Direction
-        if type(nRefU) is int:
+        if isinstance(nRefU, int):
             # Refine BSplines by adding knot points
             Refine_U = numpy.linspace(0.0, 1.0, nRefU)
             for iSurf in range(geo.nSurf):
                 for iX in Refine_U:
                     geo.surfs[iSurf].insertKnot('u', iX, 1)
-        elif type(nRefU) is list:
+        elif isinstance(nRefU, list):
             if len(nRefU) != geo.nSurf:
                 raise RuntimeError("Length of nRefU does not match number of surfaces in object")
             # Refine BSplines by adding knot points
@@ -2174,13 +2174,13 @@ class DVGeometry(object):
             raise TypeError("nRefU type not recognized, must be: integer or list of integers")
 
         # Refine Surface -- V-Direction
-        if type(nRefV) is int:
+        if isinstance(nRefV, int):
             # Refine BSplines by adding knot points
             Refine_V = numpy.linspace(0.0, 1.0, nRefV)
             for iSurf in range(geo.nSurf):
                 for iY in Refine_V:
                     geo.surfs[iSurf].insertKnot('v', iY, 1)
-        elif type(nRefV) is list:
+        elif isinstance(nRefV, list):
             if len(nRefU) != geo.nSurf:
                 raise RuntimeError("Length of nRefV does not match number of surfaces in object")
             # Refine BSplines by adding knot points
