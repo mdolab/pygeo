@@ -99,6 +99,19 @@ class DVGeometryESP(object):
        A list of the names of the ESP bodies to consider. 
        They need to be on the top of the ESP body stack (i.e., visible
        in the ESP user interface when all the branches are built)
+    projTol : float
+        The maximum allowable error between point sets and the projected points
+        If exceeded, returns an error during addPointSet.
+        Default 0.01
+    maxproc : int
+        Maximum number of processors to use in the finite difference.
+        Default no limit
+    suppress_stdout : bool
+        Suppress console output from ESP. Default False
+    exclude_edge_projections : bool
+        Disallow projections to edges in the ESP topology (only allow surfaces)
+        This can sometimes fix weird mesh deformation issues near the mesh boundaries
+        Default False
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows:
@@ -109,7 +122,10 @@ class DVGeometryESP(object):
       >>>
     """
     def __init__(self, espFile, comm=MPI.COMM_WORLD, scale=1.0, bodies=[],
-                 intersectedBodies=None, projTol=0.01, debug=False, maxproc=None, suppress_stdout=False):
+                 projTol=0.01, debug=False, maxproc=None, suppress_stdout=False,
+                 exclude_edge_projections=False,
+                 ulimits=None,
+                 vlimits=None):
 
         if comm.rank == 0:
             print("Initializing DVGeometryESP")
@@ -122,11 +138,20 @@ class DVGeometryESP(object):
         self.updatedJac = {}
         self.globalDVList = [] # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
         self.suppress_stdout = suppress_stdout
+        self.exclude_edge_projections = exclude_edge_projections
         # this scales coordinates from esp to mesh geometry
         self.espScale = scale
         # and this scales coordinates from mesh to esp geometry
         self.meshScale = 1./scale
         self.projTol = projTol*self.meshScale # default input is in meters.
+        if ulimits is not None:
+            self.ulimits = ulimits
+        else:
+            self.ulimits = numpy.array([-99999.,99999.])
+        if vlimits is not None:
+            self.vlimits = vlimits
+        else:
+            self.vlimits = numpy.array([-99999.,99999.])
         self.comm = comm
         self.espFile = espFile
         self.debug = debug
@@ -426,24 +451,25 @@ class DVGeometryESP(object):
             for bodyIndex in self.bodyIndices:
                 nEdges = self.espModel.GetBody(bodyIndex)[6]
                 nFaces = self.espModel.GetBody(bodyIndex)[7]
-                for edgeIndex in range(1,nEdges+1):
-                    # try to match point on edges first
-                    with stdout_redirected(self.suppress_stdout):
-                        # get the parametric coordinate along the edge
-                        ttemp = self.espModel.GetUV(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, truexyz.tolist())
-                        # get the xyz location of the newly projected point
-                        xyztemp = numpy.array(self.espModel.GetXYZ(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, ttemp))
-                    dist_temp = numpy.sum((truexyz - xyztemp)**2)
-                    ttemp = ttemp[0]
-                    tlimits = self._getUVLimits(bodyIndex, pyOCSM.EDGE, edgeIndex)
-                    if not(ttemp < tlimits[0]-rejectuvtol or ttemp > tlimits[1]+rejectuvtol):
-                        if dist_temp < dist_best:
-                            tlimits_best = tlimits
-                            t_best = ttemp
-                            bi_best = bodyIndex
-                            ei_best = edgeIndex
-                            dist_best = dist_temp
-                            xyzbest = xyztemp.copy()
+                if not self.exclude_edge_projections:
+                    for edgeIndex in range(1,nEdges+1):
+                        # try to match point on edges first
+                        with stdout_redirected(self.suppress_stdout):
+                            # get the parametric coordinate along the edge
+                            ttemp = self.espModel.GetUV(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, truexyz.tolist())
+                            # get the xyz location of the newly projected point
+                            xyztemp = numpy.array(self.espModel.GetXYZ(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, ttemp))
+                        dist_temp = numpy.sum((truexyz - xyztemp)**2)
+                        ttemp = ttemp[0]
+                        tlimits = self._getUVLimits(bodyIndex, pyOCSM.EDGE, edgeIndex)
+                        if not(ttemp < tlimits[0]-rejectuvtol or ttemp > tlimits[1]+rejectuvtol):
+                            if dist_temp < dist_best:
+                                tlimits_best = tlimits
+                                t_best = ttemp
+                                bi_best = bodyIndex
+                                ei_best = edgeIndex
+                                dist_best = dist_temp
+                                xyzbest = xyztemp.copy()
 
                 for faceIndex in range(1,nFaces+1):
                     with stdout_redirected(self.suppress_stdout):
@@ -457,20 +483,21 @@ class DVGeometryESP(object):
                     vtemp = uvtemp[1]
                     uvlimits = self._getUVLimits(bodyIndex, pyOCSM.FACE, faceIndex)
                     if not(utemp < uvlimits[0]-rejectuvtol or utemp > uvlimits[1] + rejectuvtol or vtemp < uvlimits[2]-rejectuvtol or vtemp > uvlimits[3] + rejectuvtol):
-                        if dist_temp - edgetol < dist_best:
-                            uvlimits_best = uvlimits
-                            uv_best = [utemp, vtemp]
-                            bi_best = bodyIndex
-                            fi_best = faceIndex
-                            # if a face match is better wipe out the best edge match
-                            ei_best = -1
-                            t_best = -1
-                            tlimits_best = None
-                            dist_best = dist_temp
-                            xyzbest = xyztemp.copy()
+                        if not (utemp < self.ulimits[0] or utemp > self.ulimits[1] or vtemp < self.vlimits[0] or vtemp > self.vlimits[1]):
+                            if dist_temp - edgetol < dist_best:
+                                uvlimits_best = uvlimits
+                                uv_best = [utemp, vtemp]
+                                bi_best = bodyIndex
+                                fi_best = faceIndex
+                                # if a face match is better wipe out the best edge match
+                                ei_best = -1
+                                t_best = -1
+                                tlimits_best = None
+                                dist_best = dist_temp
+                                xyzbest = xyztemp.copy()
             if dist_best == 99999999999:
-                # no matches
-                raise ValueError('Point had no projection within tolerance')
+                # all projections failed: this shouldn't occur unless the uv limits are set too tight
+                raise ValueError('All projections failed for this point. Check ulimits and vlimits')
             faceIDArray[ptidx] = fi_best
             edgeIDArray[ptidx] = ei_best
             bodyIDArray[ptidx] = bi_best
@@ -494,7 +521,8 @@ class DVGeometryESP(object):
         if self.comm.rank == 0 or self.comm is None:
             print('Adding pointset',ptName, 'took', t2-t1, 'seconds.')
             print('Maximum distance between the added points and the ESP geometry is',dMax_global)
-
+        if dMax_global > self.projTol:
+            raise ValueError('Pointset projection error exceeded tolerance')
         # Create the little class with the data
         self.pointSets[ptName] = PointSet(points, proj_pts, bodyIDArray, faceIDArray, edgeIDArray, uv, t, uvlimArray, tlimArray, distributed)
 
