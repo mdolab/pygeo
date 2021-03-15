@@ -159,5 +159,3 @@ if __name__ == "__main__":
         deform_iges()
     elif args.output_type == "plot3d":
         deform_plot3d()
-    else:
-        raise ValueError("Argument {} not recognized".format(args.output_type))
