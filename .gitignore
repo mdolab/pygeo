@@ -1,1 +1,5 @@
 *.pyc
+*.DS_Store
+pygeo.egg-info
+reg_tests/pygeo_reg
+reg_tests/pygeo_reg.orig

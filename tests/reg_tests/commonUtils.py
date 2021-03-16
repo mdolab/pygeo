@@ -16,7 +16,7 @@ def printHeader(testName):
 # DVGeometry Tests
 ##################
 
-def setupDVGeo(base_path):
+def setupDVGeo(base_path, rotType=None):
     #create the Parent FFD
     FFDFile =  os.path.join(base_path,'../inputFiles/outerBoxFFD.xyz')
     DVGeo = DVGeometry(FFDFile)
@@ -24,7 +24,11 @@ def setupDVGeo(base_path):
     # create a reference axis for the parent
     axisPoints = [[ -1.0,   0.  ,   0.],[ 1.5,   0.,   0.]]
     c1 = Curve(X=axisPoints,k=2)
-    DVGeo.addRefAxis('mainAxis',curve=c1, axis='y')
+    if rotType is not None:
+        DVGeo.addRefAxis('mainAxis',curve=c1, axis='y', rotType=rotType)
+
+    else:
+        DVGeo.addRefAxis('mainAxis',curve=c1, axis='y')
 
     # create the child FFD
     FFDFile = os.path.join(base_path,'../inputFiles/simpleInnerFFD.xyz')

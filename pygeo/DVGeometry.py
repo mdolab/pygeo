@@ -96,7 +96,7 @@ class DVGeometry(object):
       >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
       >>>
       """
-    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, *args, **kwargs):
+    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
 
         self.DV_listGlobal  = OrderedDict() # Global Design Variable List
         self.DV_listLocal = OrderedDict() # Local Design Variable List
@@ -105,6 +105,9 @@ class DVGeometry(object):
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
+
+        # Name (used for ensuring design variables names are unique to pyoptsparse)
+        self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild = child
@@ -593,6 +596,10 @@ class DVGeometry(object):
             configurations. The default value of None implies that the design
             variable appies to *ALL* configurations.
         """
+        # if the parent DVGeometry object has a name attribute, prepend it
+        if self.name is not None:
+            dvName = self.name + '_' + dvName
+        
         if type(config) == str:
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(
@@ -661,6 +668,9 @@ class DVGeometry(object):
         >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
+        if self.name is not None:
+            dvName = self.name + '_' + dvName
+
         if type(config) == str:
             config = [config]
 
@@ -919,6 +929,9 @@ class DVGeometry(object):
         >>> # moving in the 1 direction, within +/- 1.0 units
         >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
+        if self.name is not None:
+            dvName = self.name + '_' + dvName
+
         if type(config) == str:
             config = [config]
 
@@ -1265,8 +1278,10 @@ class DVGeometry(object):
             # **Important**: this expects the FFD coef to be clean on this level,
             # meaning that the only changes to FFD.coef can be coming from
             # higher levels.
-            if isComplex:
-                self.links_x = self.links_x.astype('D')
+
+            # just use complex dtype here. we will convert to real in the end
+            self.links_x = self.links_x.astype('D')
+
             for ipt in range(self.nPtAttach):
                 base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
                 self.links_x[ipt] = self.FFD.coef[self.ptAttachInd[ipt], :] - base_pt
@@ -1294,7 +1309,10 @@ class DVGeometry(object):
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
                 new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
                         self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
-                new_pts[ipt] = base_pt + new_vec*scale
+                if isComplex:
+                    new_pts[ipt] = base_pt + new_vec*scale
+                else:
+                    new_pts[ipt] = numpy.real(base_pt + new_vec*scale)
 
             else:
                 rotX = geo_utils.rotxM(self.rot_x[
@@ -2923,7 +2941,7 @@ class DVGeometry(object):
             Xfinal += child._update_deriv_cs(ptSetName, config=config)
             child._unComplexifyCoef()
 
-        self.FFD.coef = self.FFD.coef.astype('d')
+        self.FFD.coef = self.FFD.coef.real.astype('d')
 
         if self.isChild:
             return Xfinal - Xstart
@@ -3150,8 +3168,8 @@ class DVGeometry(object):
                         self.FFD.coef = refFFDCoef.astype('D') # ffd coefficients
                         self.coef = refCoef.astype('D')
                         self.refAxis.coef = refCoef.astype('D')
-                        self.refAxis._updateCurveCoef()
                         self._complexifyCoef()  # Make sure coefficients are complex
+                        self.refAxis._updateCurveCoef()
 
                         deriv = oneoverh*numpy.imag(self._update_deriv(iDV,h,oneoverh,config=config)).flatten()
                         # reset the FFD and axis
@@ -3871,7 +3889,7 @@ class DVGeometry(object):
                 ax2 /= numpy.linalg.norm(ax2)
             else:
                 raise Error('orient2 must be \'svd\' or \'ffd\'')
-
+            
             # Options for choosing in-plane axes
             # 1. Align axis '0' with projection of the given vector on section
             #       plane.

@@ -1,4 +1,4 @@
-__version__ = '1.2.1'
+__version__ = '1.4.0'
 
 from . import geo_utils
 from .pyNetwork import pyNetwork
@@ -11,4 +11,4 @@ try:
     from .DVGeometryVSP import DVGeometryVSP
 except ImportError:
     pass
-    
+
