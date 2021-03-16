@@ -3579,6 +3579,27 @@ class LinearConstraint(object):
                 self.ncon += len(cons)
                 self.vizConIndices[key] = cons
 
+        # Section local shape variables
+        for key in self.DVGeo.DV_listSpanwiseLocal:
+             if self.config is None or self.config in self.DVGeo.DV_listSpanwiseLocal[key].config:
+
+                # end for (indSet loop)
+                cons = self.DVGeo.DV_listSpanwiseLocal[key].mapIndexSets(self.indSetA,self.indSetB)
+                ncon = len(cons)
+                if ncon > 0:
+                    # Now form the jacobian:
+                    ndv = self.DVGeo.DV_listSpanwiseLocal[key].nVal
+                    jacobian = numpy.zeros((ncon, ndv))
+                    for i in range(ncon):
+                        jacobian[i, cons[i][0]] = self.factorA[i]
+                        jacobian[i, cons[i][1]] = self.factorB[i]
+                    self.jac[key] = jacobian
+
+                # Add to the number of constraints and store indices which
+                # we need for tecplot visualization
+                self.ncon += len(cons)
+                self.vizConIndices[key] = cons
+
         # with-respect-to are just the keys of the jacobian
         self.wrt = list(self.jac.keys())
 
