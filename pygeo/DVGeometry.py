@@ -1253,12 +1253,6 @@ class DVGeometry(object):
             # Variables for rotType = 0 rotation + scaling
             ang = self.axis[self.curveIDNames[ipt]]['rot0ang']
             ax_dir = self.axis[self.curveIDNames[ipt]]['rot0axis']
-            bp_   = numpy.copy(base_pt)  # copy of original pointset - will not be rotated
-            if isinstance(ang,(float, int)):
-                ang *= numpy.pi/180  # conv to [rad]
-                # Rotating the FFD according to inputs
-                # The FFD points should now be aligned with the main system of reference
-                base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
 
             scale = self.scale[self.curveIDNames[ipt]](self.links_s[ipt])
             scale_x = self.scale_x[self.curveIDNames[ipt]](self.links_s[ipt])
@@ -1267,6 +1261,12 @@ class DVGeometry(object):
 
             rotType = self.axis[self.curveIDNames[ipt]]['rotType']
             if rotType == 0:
+                bp_   = numpy.copy(base_pt)  # copy of original pointset - will not be rotated
+                if isinstance(ang,(float, int)):  # rotation active only if a non-default value is provided
+                    ang *= numpy.pi/180  # conv to [rad]
+                    # Rotating the FFD according to inputs
+                    # The FFD points should now be aligned with the main system of reference
+                    base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv) # Normalize
@@ -1307,11 +1307,6 @@ class DVGeometry(object):
                         self.curveIDNames[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
-                if isinstance(ang,(float, int)):
-                    raise Warning("if rot0ang != 0, use rotType=0. The derivatives with other rotations are slightly off")
-                    # rotate non-aligned FFDs
-                    D_    = numpy.copy(D)
-                    D = geo_utils.rotVbyW(D_, ax_dir, ang)
 
                 rotM = self._getRotMatrix(rotX, rotY, rotZ, rotType)
 
@@ -1343,12 +1338,6 @@ class DVGeometry(object):
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
-                if isinstance(ang,(float, int)):
-                    # rotate non-aligned FFDs back to initial position
-                    D_    = numpy.copy(D)
-                    bp_rot = numpy.copy(base_pt) # here base_pt has been rotated
-                    D       = geo_utils.rotVbyW(D_ , ax_dir, -ang)
-                    base_pt = geo_utils.rotVbyW(bp_rot, ax_dir, -ang)
 
                 if isComplex:
                     new_pts[ipt] = base_pt + D*scale
