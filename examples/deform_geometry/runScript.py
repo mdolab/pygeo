@@ -151,11 +151,11 @@ def deform_plot3d():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_type", type=str, default="iges", choices=["iges", "plot3d", "liftingsurface"])
+    parser.add_argument("--input_type", type=str, default="iges", choices=["iges", "plot3d", "liftingsurface"])
     args = parser.parse_args()
-    if args.output_type == "liftingsurface":
+    if args.input_type == "liftingsurface":
         deform_liftingsurface()
-    elif args.output_type == "iges":
+    elif args.input_type == "iges":
         deform_iges()
-    elif args.output_type == "plot3d":
+    elif args.input_type == "plot3d":
         deform_plot3d()
