@@ -1254,7 +1254,7 @@ class DVGeometry(object):
             ang = self.axis[self.curveIDNames[ipt]]['rot0ang']
             ax_dir = self.axis[self.curveIDNames[ipt]]['rot0axis']
             bp_   = numpy.copy(base_pt)  # copy of original pointset - will not be rotated
-            if ang:
+            if isinstance(ang,(float, int)):
                 ang *= numpy.pi/180  # conv to [rad]
                 # Rotating the FFD according to inputs
                 # The FFD points should now be aligned with the main system of reference
@@ -1276,7 +1276,7 @@ class DVGeometry(object):
                 else:
                     new_pts[ipt] = numpy.real(bp_ + new_vec*scale)
 
-                if ang:
+                if isinstance(ang,(float, int)):
                     # Rotating to be aligned with main sys ref
                     nv_    = numpy.copy(new_vec)
                     new_vec = geo_utils.rotVbyW(nv_, ax_dir, ang)
@@ -1286,7 +1286,7 @@ class DVGeometry(object):
                 new_vec[1] *= scale_y
                 new_vec[2] *= scale_z
 
-                if ang:
+                if isinstance(ang,(float, int)):
                     # Rotating back the scaled pointset to its original position
                     nv_rot = numpy.copy(new_vec) # nv_rot is scaled and rotated
                     new_vec = geo_utils.rotVbyW(nv_rot , ax_dir, -ang)
@@ -1307,7 +1307,7 @@ class DVGeometry(object):
                         self.curveIDNames[ipt]](self.links_s[ipt]))
 
                 D = self.links_x[ipt]
-                if ang:
+                if isinstance(ang,(float, int)):
                     raise Warning("if rot0ang != 0, use rotType=0. The derivatives with other rotations are slightly off")
                     # rotate non-aligned FFDs
                     D_    = numpy.copy(D)
@@ -1343,7 +1343,7 @@ class DVGeometry(object):
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
-                if ang:
+                if isinstance(ang,(float, int)):
                     # rotate non-aligned FFDs back to initial position
                     D_    = numpy.copy(D)
                     bp_rot = numpy.copy(base_pt) # here base_pt has been rotated
