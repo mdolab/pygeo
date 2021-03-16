@@ -142,3 +142,60 @@ class RegTestPyGeo(unittest.TestCase):
             print(funcsSens)
 
 
+    def train_spanwise_dvs(self, train=True, refDeriv=True):
+        self.test_spanwise_dvs(train=train, refDeriv=refDeriv)
+
+
+    def test_spanwise_dvs(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path,'ref/test_Cylinder_spanwise_dvs.ref')
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 1: Basic FFD, global DVs")
+            radius = 1.0
+            height = 10.0
+
+            DVCon = DVConstraints()
+            surf = self.make_cylinder_mesh(radius, height)
+            DVCon.setSurface(surf)
+            # DVCon.writeSurfaceTecplot('cylinder_surface.dat')
+
+            ffd_name = os.path.join(self.base_path,'../inputFiles/cylinder_ffd.xyz')
+            self.make_ffd(ffd_name, radius, height)
+            DVGeo = DVGeometry(ffd_name)
+
+            DVGeo.addGeoDVSpanwiseLocal("shape", 'i', lower=-0.5, upper=0.5, axis="y", scale=1.0)
+
+            size = DVGeo._getNDVSpanwiseLocal()
+            DVCon.setDVGeo(DVGeo)
+
+
+            leList = [[0, 0, 0 ], [-radius/2, 0, height]]
+            xAxis = [-1, 0, 0]
+            yAxis = [0, 1, 0]
+            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis,
+                                         chordDir=xAxis, scaled=False)
+            # DVCon.writeTecplot('cylinder_constraints.dat')
+
+            funcs = {}
+            DVCon.evalFunctions(funcs)
+            print(funcs)
+            handler.root_add_dict('funcs1', funcs, rtol=1e-6, atol=1e-6)
+
+            numpy.random.seed(0)
+            DVGeo.setDesignVars({'shape':(numpy.random.rand(size) - 0.5)})
+
+            funcs = {}
+            DVCon.evalFunctions(funcs)
+            handler.root_add_dict('funcs2', funcs, rtol=1e-6, atol=1e-6)
+            print(funcs)
+
+            funcsSens = {}
+            DVCon.evalFunctionsSens(funcsSens)
+            print(funcsSens)
+            handler.root_add_dict('funcsSens', funcsSens, rtol=1e-6, atol=1e-6)
+            print(funcsSens)
+
+
+
+if __name__ == '__main__':
+    unittest.main()
