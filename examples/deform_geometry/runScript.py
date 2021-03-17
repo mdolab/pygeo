@@ -6,6 +6,7 @@ from pygeo import pyGeo, DVGeometry
 import numpy as np
 import argparse
 
+
 def deform_liftingsurface():
     # =========================================================================
     # Set Up pyGeo Object
@@ -53,6 +54,7 @@ def deform_liftingsurface():
     # Deform Geometry Object and Output
     deform_DVGeo(geo)
 
+
 def deform_iges():
     # =========================================================================
     # Set Up pyGeo Object
@@ -65,6 +67,7 @@ def deform_iges():
 
     # Deform Geometry Object and Output
     deform_DVGeo(geo)
+
 
 def deform_plot3d():
     # =========================================================================
@@ -79,6 +82,7 @@ def deform_plot3d():
 
     # Deform Geometry Object and Output
     deform_DVGeo(geo)
+
 
 def deform_DVGeo(geo):
     # =========================================================================

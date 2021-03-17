@@ -42,4 +42,4 @@ wing = pyGeo(
 # Write Output File
 wing.writeTecplot("wing.dat")
 wing.writeIGES("wing.igs")
-#wing.writeTin("wing.tin")
+# wing.writeTin("wing.tin")
