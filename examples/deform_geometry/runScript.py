@@ -8,6 +8,7 @@ import argparse
 
 input_files = "../../input_files/"
 
+
 def deform_liftingsurface():
     # =========================================================================
     # Set Up pyGeo Object
@@ -62,7 +63,7 @@ def deform_iges():
     # =========================================================================
     # rst IGES
     # ------------------------------ IGES File ------------------------------ #
-    geo = pyGeo(fileName= input_files + "deform_geometry_wing.igs", initType="iges")
+    geo = pyGeo(fileName=input_files + "deform_geometry_wing.igs", initType="iges")
     geo.doConnectivity()
     # rst IGES (end)
 
@@ -76,7 +77,7 @@ def deform_plot3d():
     # =========================================================================
     # rst plot3d
     # ----------------------------- Plot3D File ----------------------------- #
-    geo = pyGeo(fileName= input_files + "deform_geometry_wing.xyz", initType="plot3d")
+    geo = pyGeo(fileName=input_files + "deform_geometry_wing.xyz", initType="plot3d")
     geo.doConnectivity()
     geo.fitGlobal()
     # rst plot3d (end)
