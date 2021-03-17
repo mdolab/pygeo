@@ -50,6 +50,37 @@ def deform_liftingsurface():
     )
     # rst LiftingSurface (end)
 
+    # Deform Geometry Object and Output
+    deform_DVGeo(geo)
+
+def deform_iges():
+    # =========================================================================
+    # Set Up pyGeo Object
+    # =========================================================================
+    # rst IGES
+    # ------------------------------ IGES File ------------------------------ #
+    geo = pyGeo(fileName="./geo/wing.igs", initType="iges")
+    geo.doConnectivity()
+    # rst IGES (end)
+
+    # Deform Geometry Object and Output
+    deform_DVGeo(geo)
+
+def deform_plot3d():
+    # =========================================================================
+    # Set Up pyGeo Object
+    # =========================================================================
+    # rst plot3d
+    # ----------------------------- Plot3D File ----------------------------- #
+    geo = pyGeo(fileName="./geo/wing.xyz", initType="plot3d")
+    geo.doConnectivity()
+    geo.fitGlobal()
+    # rst plot3d (end)
+
+    # Deform Geometry Object and Output
+    deform_DVGeo(geo)
+
+def deform_DVGeo(geo):
     # =========================================================================
     # Setup DVGeometry object
     # =========================================================================
@@ -79,75 +110,6 @@ def deform_liftingsurface():
     DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
     # rst UpdatePyGeo (end)
 
-def deform_iges():
-    # =========================================================================
-    # Set Up pyGeo Object
-    # =========================================================================
-    # rst IGES
-    # ------------------------------ IGES File ------------------------------ #
-    geo = pyGeo(fileName="./geo/wing.igs", initType="iges")
-    geo.doConnectivity()
-    # rst IGES (end)
-
-    # =========================================================================
-    # Setup DVGeometry object
-    # =========================================================================
-    DVGeo = DVGeometry("./ffd/ffd.xyz")
-
-    # Create reference axis
-    nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
-
-    # set the twist variable
-    def twist(val, geo):
-        for i in range(nRefAxPts):
-            geo.rot_z["wing"].coef[i] = val[i]
-
-    # set initial twist, we set the root twist to 5 deg
-    twist0 = [0] * nRefAxPts
-    twist0[0] = 5
-
-    # add the twist design variable to DVGeo
-    DVGeo.addGeoDVGlobal(dvName="twist", value=twist0, func=twist, lower=-10, upper=10, scale=1.0)
-
-    # =========================================================================
-    # Update pyGeo Object and output result
-    # =========================================================================
-    DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
-
-def deform_plot3d():
-    # =========================================================================
-    # Set Up pyGeo Object
-    # =========================================================================
-    # rst plot3d
-    # ----------------------------- Plot3D File ----------------------------- #
-    geo = pyGeo(fileName="./geo/wing.xyz", initType="plot3d")
-    geo.doConnectivity()
-    geo.fitGlobal()
-    # rst plot3d (end)
-    # =========================================================================
-    # Setup DVGeometry object
-    # =========================================================================
-    DVGeo = DVGeometry("./ffd/ffd.xyz")
-
-    # Create reference axis
-    nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
-
-    # set the twist variable
-    def twist(val, geo):
-        for i in range(nRefAxPts):
-            geo.rot_z["wing"].coef[i] = val[i]
-
-    # set initial twist, we set the root twist to 5 deg
-    twist0 = [0] * nRefAxPts
-    twist0[0] = 5
-
-    # add the twist design variable to DVGeo
-    DVGeo.addGeoDVGlobal(dvName="twist", value=twist0, func=twist, lower=-10, upper=10, scale=1.0)
-
-    # =========================================================================
-    # Update pyGeo Object and output result
-    # =========================================================================
-    DVGeo.updatePyGeo(geo, "tecplot", "wingNew", nRefU=10, nRefV=10)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
