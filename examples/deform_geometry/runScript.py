@@ -95,12 +95,17 @@ def deform_DVGeo(geo):
         for i in range(nRefAxPts):
             geo.rot_z["wing"].coef[i] = val[i]
 
-    # set initial twist, we set the root twist to 5 deg
-    twist0 = [0] * nRefAxPts
-    twist0[0] = 5
-
     # add the twist design variable to DVGeo
-    DVGeo.addGeoDVGlobal(dvName="twist", value=twist0, func=twist, lower=-10, upper=10, scale=1.0)
+    DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * nRefAxPts, func=twist, lower=-10, upper=10, scale=1.0)
+
+    # Get Design Variables
+    dvDict = DVGeo.getValues()
+
+    # Set First Twist Section to 5deg
+    dvDict["twist"][0] = 5
+
+    # Set Design Variables
+    DVGeo.setDesignVars(dvDict)
     # rst DVGeometry (end)
 
     # =========================================================================
