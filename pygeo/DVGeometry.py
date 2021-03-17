@@ -2155,13 +2155,21 @@ class DVGeometry(object):
             If scalar, it is applied across each surface. If list, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
+        # Function to check if value matches a knot point
+        def check_mult(val, knots):
+            for iKnot in range(len(knots)):
+                if numpy.isclose(val, knots[iKnot], atol=1e-12):
+                    return True
+            return False
+
         # Refine Surface -- U-Direction
         if isinstance(nRefU, int):
             # Refine BSplines by adding knot points
             Refine_U = numpy.linspace(0.0, 1.0, nRefU + 2)
             for iSurf in range(geo.nSurf):
                 for iX in Refine_U:
-                    geo.surfs[iSurf].insertKnot('u', iX, 1)
+                    if not check_mult(iX, geo.surfs[iSurf].tu):
+                        geo.surfs[iSurf].insertKnot('u', iX, 1)
         elif isinstance(nRefU, list):
             if len(nRefU) != geo.nSurf:
                 raise RuntimeError("Length of nRefU does not match number of surfaces in object")
@@ -2169,7 +2177,8 @@ class DVGeometry(object):
             for iSurf in range(geo.nSurf):
                 Refine_U = numpy.linspace(0.0, 1.0, nRefU[iSurf] + 2)
                 for iX in Refine_U:
-                    geo.surfs[iSurf].insertKnot('u', iX, 1)
+                    if not check_mult(iX, geo.surfs[iSurf].tu):
+                        geo.surfs[iSurf].insertKnot('u', iX, 1)
         else:
             raise TypeError("nRefU type not recognized, must be: integer or list of integers")
 
@@ -2179,7 +2188,8 @@ class DVGeometry(object):
             Refine_V = numpy.linspace(0.0, 1.0, nRefV + 2)
             for iSurf in range(geo.nSurf):
                 for iY in Refine_V:
-                    geo.surfs[iSurf].insertKnot('v', iY, 1)
+                    if not check_mult(iY, geo.surfs[iSurf].tv):
+                        geo.surfs[iSurf].insertKnot('v', iY, 1)
         elif isinstance(nRefV, list):
             if len(nRefU) != geo.nSurf:
                 raise RuntimeError("Length of nRefV does not match number of surfaces in object")
@@ -2187,7 +2197,8 @@ class DVGeometry(object):
             for iSurf in range(geo.nSurf):
                 Refine_V = numpy.linspace(0.0, 1.0, nRefV[iSurf] + 2)
                 for iY in Refine_V:
-                    geo.surfs[iSurf].insertKnot('v', iY, 1) 
+                    if not check_mult(iY, geo.surfs[iSurf].tv):
+                        geo.surfs[iSurf].insertKnot('v', iY, 1) 
         else:
             raise TypeError("nRefV type not recognized, must be: integer or list of integers")
 
