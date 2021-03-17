@@ -2155,7 +2155,8 @@ class DVGeometry(object):
             If scalar, it is applied across each surface. If list, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
-        # Function to check if value matches a knot point
+        # Function to check if value matches a knot point 
+        # (set to 1e-12 to match pySpline mult. tolerance)
         def check_mult(val, knots):
             for iKnot in range(len(knots)):
                 if numpy.isclose(val, knots[iKnot], atol=1e-12):
