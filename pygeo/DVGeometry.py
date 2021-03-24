@@ -599,7 +599,7 @@ class DVGeometry(object):
         # if the parent DVGeometry object has a name attribute, prepend it
         if self.name is not None:
             dvName = self.name + '_' + dvName
-        
+
         if type(config) == str:
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(
@@ -3889,7 +3889,7 @@ class DVGeometry(object):
                 ax2 /= numpy.linalg.norm(ax2)
             else:
                 raise Error('orient2 must be \'svd\' or \'ffd\'')
-            
+
             # Options for choosing in-plane axes
             # 1. Align axis '0' with projection of the given vector on section
             #       plane.
@@ -4143,9 +4143,7 @@ class geoDVSpanwiseLocal(geoDVLocal):
         '''
         Map the index sets from the full coefficient indices to the local set.
         '''
-        # Temp is the list of FFD coefficients that are included
-        # as shape variables in this localDV "key"
-        # tself.dv_to_coefs
+
         cons = []
         for j in range(len(indSetA)):
             # Try to find this index # in the coefList (temp)
@@ -4153,14 +4151,14 @@ class geoDVSpanwiseLocal(geoDVLocal):
             down = None
 
             # Note: We are doing inefficient double looping here
-            for coefs in self.dv_to_coefs:
+            for idx_dv, coefs in enumerate(self.dv_to_coefs):
 
                 for coef in coefs:
 
-                    if coef[k] == indSetA[j]:
-                        up = k
-                    if coef[k] == indSetB[j]:
-                        down = k
+                    if coef == indSetA[j]:
+                        up = idx_dv
+                    if coef == indSetB[j]:
+                        down = idx_dv
 
             # If we haven't found up AND down do nothing
             if up is not None and down is not None:

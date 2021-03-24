@@ -237,8 +237,8 @@ class DVConstraints(object):
         >>> DVCon.setSurface(surf)
 
         """
-        if name in self.surfaces.keys():
-            raise KeyError('Surface names must be unique. Repeated surface name: ' + str(name))
+        # if name in self.surfaces.keys():
+        #     raise KeyError('Surface names must be unique. Repeated surface name: ' + str(name))
 
         self.surfaces[name] = list()
         if format == 'point-vector':
@@ -254,6 +254,7 @@ class DVConstraints(object):
             elif isinstance(surf, pyGeo): # Assume it's a pyGeo surface
                 p0, v1, v2 = self._generateDiscreteSurface(surf)
             else:
+                import ipdb; ipdb.set_trace()
                 raise TypeError('surf given is not a supported type [List, plot3D file name, or pyGeo surface]')
 
             p1 = p0 + v1
@@ -4250,7 +4251,10 @@ class LinearConstraint(object):
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
             elif key in self.DVGeo.DV_listSectionLocal:
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listSectionLocal[key].value))
-
+            elif key in self.DVGeo.DV_listSpanwiseLocal:
+                cons.extend(self.jac[key].dot(self.DVGeo.DV_listSpanwiseLocal[key].value))
+            else:
+                raise Error(f"con {self.name} diffined wrt {key}, but {key} not found in DVGeo")
         funcs[self.name] = numpy.array(cons).real.astype('d')
 
     def evalFunctionsSens(self, funcsSens):
