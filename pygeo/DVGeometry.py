@@ -196,8 +196,9 @@ class DVGeometry(object):
                             tmp[ind] = True
         self.masks = tmp
 
-    def addRefAxis(self, name, curve=None, xFraction=None, volumes=None,
+    def addRefAxis(self, name, curve=None, xFraction=None, yFraction=None, zFraction=None, volumes=None,
                    rotType=5, axis='x', alignIndex=None, rotAxisVar=None,
+                   rot0ang=None, rot0axis=[1, 0, 0],
                    xFractionOrder=2, includeVols=[], ignoreInd=[],
                    raySize=1.5):
         """
@@ -268,7 +269,20 @@ class DVGeometry(object):
             variable which should be used to compute the orientation of the theta
             rotation.
 
-        xFractionOrder : int
+        rot0ang: float
+            If rotType == 0, defines the offset angle of the (child) FFD with respect
+            to the main system of reference. This is necessary to use the scaling functions
+            `scale_x`, `scale_y`, and `scale_z` with rotType == 0. The axis of rotation is
+            defined by `rot0axis`.
+
+        rot0axis: list
+            If rotType == 0, defines the rotation axis for the rotation offset of the
+            FFD grid given by `rot0ang`. The variable has to be a list of 3 floats
+            defining the [x,y,z] components of the axis direction.
+            This is necessary to use the scaling functions `scale_x`, `scale_y`,
+            and `scale_z` with rotType == 0.
+
+        xFractionOrder : int  (NOT USED?)
             Order of spline used for refaxis curve.
 
         includeVols : list
@@ -325,7 +339,7 @@ class DVGeometry(object):
                 if volumes is None:
                     volumes = numpy.arange(self.FFD.nVol)
                 self.axis[name] = {'curve':curve, 'volumes':volumes,
-                                   'rotType':rotType, 'axis':axis}
+                                   'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis}
 
             else:
                 # get the direction of the symmetry plane
@@ -349,11 +363,11 @@ class DVGeometry(object):
                 for coef in curveSymm.coef:
                     curveSymm.coef[:,index]=-curveSymm.coef[:,index]
                 self.axis[name] = {'curve':curve, 'volumes':volumes,
-                                   'rotType':rotType, 'axis':axis}
+                                   'rotType':rotType, 'axis':axis,'rot0ang':rot0ang, 'rot0axis':rot0axis}
                 self.axis[name+'Symm'] = {'curve':curveSymm, 'volumes':volumesSymm,
-                                          'rotType':rotType, 'axis':axis}
+                                          'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis}
             nAxis = len(curve.coef)
-        elif xFraction is not None:
+        elif xFraction or yFraction or zFraction:
             # Some assumptions
             #   - FFD should be a close approximation of geometry surface so that
             #       xFraction roughly corresponds to airfoil LE, TE, or 1/4 chord
@@ -362,6 +376,8 @@ class DVGeometry(object):
             #   - if no volumes are listed, it is assumed that all volumes are
             #       included
             #   - 'x' is streamwise direction
+
+            # Default to "mean" ref axis location along non-user specified direction
 
             # This is the block direction along which the reference axis will lie
             # alignIndex = 'k'
@@ -416,16 +432,62 @@ class DVGeometry(object):
             # Loop through sections and compute node location
             place = 0
             for j, vol in enumerate(volOrd):
+                # sectionArr: indices of FFD points grouped by section
                 sectionArr = numpy.rollaxis(lIndex[vol], alignIndex, 0)
                 skip = 0
                 if j > 0:
                     skip = 1
                 for i in range(nSections[j]):
-                    LE = numpy.min(self.FFD.coef[sectionArr[i+skip,:,:],0])
-                    TE = numpy.max(self.FFD.coef[sectionArr[i+skip,:,:],0])
-                    refaxisNodes[place+i,0] = xFraction*(TE - LE) + LE
-                    refaxisNodes[place+i,1] = numpy.mean(self.FFD.coef[sectionArr[i+skip,:,:],1])
-                    refaxisNodes[place+i,2] = numpy.mean(self.FFD.coef[sectionArr[i+skip,:,:],2])
+                    # getting all the section control points coordinates
+                    pts_tens = self.FFD.coef[sectionArr[i + skip, :, :], :]  # shape=(xAxisNodes,yAxisnodes,3)
+
+                    # reshaping into vector to allow rotation (if needed) - leveraging on pts_tens.shape[2]=3 (FFD cp coordinates)
+                    pts_vec = numpy.copy(pts_tens.reshape(-1, 3))  # new shape=(xAxisNodes*yAxisnodes,3)
+
+                    if rot0ang:
+                        # rotating the FFD to be aligned with main axes
+                        for ct_ in range(numpy.shape(pts_vec)[0]):
+                            # here we loop over the pts_vec, rotate them and insert them inplace in pts_vec again
+                            p_ = numpy.copy(pts_vec[ct_ , :])
+                            p_rot = geo_utils.rotVbyW(p_, rot0axis, numpy.pi / 180 * (rot0ang))
+                            pts_vec[ct_ , :] = p_rot
+
+                    # Temporary ref axis node coordinates - aligned with main system of reference
+                    if xFraction:
+                        # getting the bounds of the FFD section
+                        x_min = numpy.min(pts_vec[:, 0])
+                        x_max = numpy.max(pts_vec[:, 0])
+                        x_node = xFraction * (x_max - x_min) + x_min  # chordwise
+                    else:
+                        x_node = numpy.mean(pts_vec[:, 0])
+
+                    if yFraction:
+                        y_min = numpy.min(pts_vec[:, 1])
+                        y_max = numpy.max(pts_vec[:, 1])
+                        y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
+                    else:
+                        y_node = numpy.mean(pts_vec[:, 1])
+
+                    if zFraction:
+                        z_min = numpy.min(pts_vec[:, 2])
+                        z_max = numpy.max(pts_vec[:, 2])
+                        z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
+                    else:
+                        z_node = numpy.mean(pts_vec[:, 2])
+
+                    # This is the FFD ref axis node - if the block has not been rotated
+                    nd = [x_node, y_node, z_node]
+                    nd_final = numpy.copy(nd)
+
+                    if rot0ang:
+                        # rotating the non-aligned FFDs back in position
+                        nd_final[:] = geo_utils.rotVbyW(nd, rot0axis, numpy.pi / 180 * (-rot0ang))
+
+                    # insert the final coordinates in the var to be passed to pySpline:
+                    refaxisNodes[place + i, 0] = nd_final[0]
+                    refaxisNodes[place + i, 1] = nd_final[1]
+                    refaxisNodes[place + i, 2] = nd_final[2]
+
                 place += i + 1
 
             # Add additional volumes
@@ -437,7 +499,7 @@ class DVGeometry(object):
             curve = pySpline.Curve(X=refaxisNodes, k=2)
             nAxis = len(curve.coef)
             self.axis[name] = {'curve':curve, 'volumes':volumes,
-                               'rotType':rotType, 'axis':axis,
+                               'rotType':rotType, 'axis':axis, 'rot0ang':rot0ang, 'rot0axis':rot0axis,
                                'rotAxisVar':rotAxisVar}
         else:
             raise Error("One of 'curve' or 'xFraction' must be "
@@ -1188,6 +1250,10 @@ class DVGeometry(object):
 
         for ipt in range(self.nPtAttach):
             base_pt = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
+            # Variables for rotType = 0 rotation + scaling
+            ang = self.axis[self.curveIDNames[ipt]]['rot0ang']
+            ax_dir = self.axis[self.curveIDNames[ipt]]['rot0axis']
+
             scale = self.scale[self.curveIDNames[ipt]](self.links_s[ipt])
             scale_x = self.scale_x[self.curveIDNames[ipt]](self.links_s[ipt])
             scale_y = self.scale_y[self.curveIDNames[ipt]](self.links_s[ipt])
@@ -1195,16 +1261,42 @@ class DVGeometry(object):
 
             rotType = self.axis[self.curveIDNames[ipt]]['rotType']
             if rotType == 0:
+                bp_   = numpy.copy(base_pt)  # copy of original pointset - will not be rotated
+                if isinstance(ang,(float, int)):  # rotation active only if a non-default value is provided
+                    ang *= numpy.pi/180  # conv to [rad]
+                    # Rotating the FFD according to inputs
+                    # The FFD points should now be aligned with the main system of reference
+                    base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
                 deriv = self.refAxis.curves[
                     self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv) # Normalize
                 new_vec = -numpy.cross(deriv, self.links_n[ipt])
-                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[
-                        self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
                 if isComplex:
-                    new_pts[ipt] = base_pt + new_vec*scale
+                    new_pts[ipt] = bp_ + new_vec*scale  # using "unrotated" bp_ vector
                 else:
-                    new_pts[ipt] = numpy.real(base_pt + new_vec*scale)
+                    new_pts[ipt] = numpy.real(bp_ + new_vec*scale)
+
+                if isinstance(ang,(float, int)):
+                    # Rotating to be aligned with main sys ref
+                    nv_    = numpy.copy(new_vec)
+                    new_vec = geo_utils.rotVbyW(nv_, ax_dir, ang)
+
+                # Apply scaling
+                new_vec[0] *= scale_x
+                new_vec[1] *= scale_y
+                new_vec[2] *= scale_z
+
+                if isinstance(ang,(float, int)):
+                    # Rotating back the scaled pointset to its original position
+                    nv_rot = numpy.copy(new_vec) # nv_rot is scaled and rotated
+                    new_vec = geo_utils.rotVbyW(nv_rot , ax_dir, -ang)
+
+                new_vec = geo_utils.rotVbyW(new_vec, deriv, self.rot_theta[self.curveIDNames[ipt]](self.links_s[ipt])*numpy.pi/180)
+
+                if isComplex:
+                    new_pts[ipt] = bp_ + new_vec
+                else:
+                    new_pts[ipt] = numpy.real(bp_ + new_vec)
 
             else:
                 rotX = geo_utils.rotxM(self.rot_x[
@@ -1246,6 +1338,7 @@ class DVGeometry(object):
                 D[0] *= scale_x
                 D[1] *= scale_y
                 D[2] *= scale_z
+
                 if isComplex:
                     new_pts[ipt] = base_pt + D*scale
                 else:
