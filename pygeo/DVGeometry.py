@@ -144,15 +144,15 @@ class DVGeometry(object):
         self.dCoefdXdvl = None
 
         # derivative counters for offsets
-        self.nDV_T = None
+        self.nDV_T = None # total number of design variables
         self.nDVG_T = None
         self.nDVL_T = None
         self.nDVSL_T = None
         self.nDVSW_T = None
-        self.nDVG_count = 0
-        self.nDVL_count = 0
-        self.nDVSL_count = 0
-        self.nDVSW_count = 0
+        self.nDVG_count = 0 #  number of global   (G)  variables
+        self.nDVL_count = 0 #  number of local    (L)  variables
+        self.nDVSL_count = 0 # number of section  (SL) local variables
+        self.nDVSW_count = 0 # number of spanwise (SW) local variables
 
         # The set of user supplied axis.
         self.axis = OrderedDict()
@@ -705,7 +705,82 @@ class DVGeometry(object):
 
     def addGeoDVSpanwiseLocal(self, dvName, spanIndex, axis='y', lower=None, upper=None,
                              scale=1.0, pointSelect=None, volList=None, config=None):
+        """
+        Add one or more spanwise local design variables to the DVGeometry
+        object. Spanwise local variables are alternative form of local shape 
+        variables used to apply equal DV changes in a chosen direction. 
+        Some scenarios were this could be useful are:
+        
+        1.  2D airfoil shape optimization. Because adflow works with 3D meshes, 
+            2D problems are represented my a mesh a single cell wide. Therefor, 
+            to change the 2D representation of the airfoil both sides of the 
+            mesh must be moved equally. This can be done with the addition of 
+            linear constraints on a set of local shape variables, however this 
+            approach requires more DVs than necessary (which complicates DV 
+            sweeps) and the constaints are only enforced to a tolerance. Using 
+            spanwise local design variables insures the airfoil is always 
+            correctly represented in the 3D mesh using the correct amount of 
+            design variables. 
+        
+        2.  3D wing optimization with constant airfoil shape. If the initial 
+            wing geometry has a constant airfoil shape  and constant chord, then 
+            spanwise local dvs can be used to change the airfoil shape of the 
+            wing while still keeping it constant along the span of the wing. 
 
+        Parameters
+        ----------
+        dvName : str
+            A unique name to be given to this design variable group
+
+        spanIndex : str, ('i', 'j', 'k')
+            the axis of the FFD along which the DVs are constant
+            all shape variables
+
+        axis : str. Default is `y`
+            The coordinate directions to move. Permissible values are `x`,
+            `y` and `z`. If more than one direction is required, use multiple
+            calls to addGeoDVLocal with different axis values.
+        
+        lower : float
+            The lower bound for the variable(s). This will be applied to
+            all shape variables
+            
+        upper : float
+            The upper bound for the variable(s). This will be applied to
+            all shape variables
+
+        scale : flot
+            The scaling of the variables. A good approximate scale to
+            start with is approximately 1.0/(upper-lower). This gives
+            variables that are of order ~1.0.
+
+        pointSelect : pointSelect object. Default is None Use a
+            pointSelect object to select a subset of the total number
+            of control points. See the documentation for the
+            pointSelect class in geo_utils. Using pointSelect discards everything in
+            volList.
+
+        volList : list
+            Use the control points on the volume indicies given in volList.
+            You should use pointSelect = None, otherwise this will not work.
+
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable applies to *ALL* configurations.
+
+        Returns
+        -------
+        N : int
+            The number of design variables added.
+
+        Examples
+        --------
+        >>> # Add all spanwise local variables
+        >>> # moving in the y direction, within +/- 0.5 units
+        >>> DVGeo.addGeoDVSpanwiseLocal("shape", 'k', lower=-0.5, upper=0.5, axis="z", scale=1.0)
+        """
         if type(config) == str:
                     config = [config]
 
@@ -731,7 +806,6 @@ class DVGeometry(object):
         else:
             # Just take'em all
             volList = numpy.arange(self.FFD.nVol)
-
             ind = numpy.arange(len(self.FFD.coef))
 
 
@@ -763,7 +837,7 @@ class DVGeometry(object):
             # get total number of dvs
             n_dvs = numpy.product(dvs_shape)
 
-            # make a map from dvs to the ind that are controled by that dv.
+            # make a map from dvs to the ind that are controlled by that dv.
             # (phrased another way) map from dv to all ind in the same span size position
             dv_to_coef_ind = numpy.zeros((n_dvs,n_linked_coef), dtype='intc')
 
@@ -1427,7 +1501,7 @@ class DVGeometry(object):
             numpy.put(self.FFD.coef[:, 1], self.ptAttachInd, temp[:, 1])
             numpy.put(self.FFD.coef[:, 2], self.ptAttachInd, temp[:, 2])
 
-        # Now add in the section local DVs
+        # Now add in the spanwise local DVs
         for key in self.DV_listSpanwiseLocal:
             self.DV_listSpanwiseLocal[key](self.FFD.coef, config)
 
@@ -2154,6 +2228,12 @@ class DVGeometry(object):
 
         localVars : bool
             Flag specifying whether local variables are to be added
+        
+        sectionlocalVars : bool
+            Flag specifying whether section local variables are to be added
+            
+        spanwiselocalVars : bool
+            Flag specifying whether spanwiselocal variables are to be added
 
         ignoreVars : list of strings
             List of design variables the user DOESN'T want to use
@@ -3220,18 +3300,30 @@ class DVGeometry(object):
             iDVSpanwiseLocal = self.nDVSW_count
             for key in self.DV_listSpanwiseLocal:
                 dv = self.DV_listSpanwiseLocal[key]
+                
+                # check that the dv is active for this config
                 if dv.config is None or config is None or any(c0 == config for c0 in dv.config):
                     nVal = dv.nVal
-
+                    
+                    #apply this dv to FFD
                     self.DV_listSpanwiseLocal[key](self.FFD.coef, config)
 
+                    # loop over value of the dv 
+                    # (for example a single shape dv may have 20 values that 
+                    # control the shape of the FFD at 20 points)
                     for j in range(nVal):
-                        coefs = dv.dv_to_coefs[j]  # affected control point
+                        coefs = dv.dv_to_coefs[j]  # affected control points of FFD
 
                         # this is map from dvs to coef
                         for coef in coefs:
+                            irow = coef*3 + dv.axis 
+                            # *3 because the jacobian has a row for each x,y,z of the FFD
+                            # It is basically
                             # row number = coef index * n dimensions + dimension index
-                            irow = coef*3 + dv.axis
+                                                    
+                            # value of FFD node location = x0 + dv_SWLocal[j] 
+                            # so partial(FFD node location)/partial(dv_SWLocal) = 1 
+                            # for each node effected by the dv_SWLocal[j]
                             Jacobian[irow, iDVSpanwiseLocal] = 1.0
 
                         for iChild in range(len(self.children)):
@@ -3240,21 +3332,24 @@ class DVGeometry(object):
                             dXrefdCoef = self.FFD.embededVolumes['child%d_axis'%(iChild)].dPtdCoef
                             dCcdCoef   = self.FFD.embededVolumes['child%d_coef'%(iChild)].dPtdCoef
 
-                            tmp = numpy.zeros(self.FFD.coef.shape,dtype='d')
+                            # derivative of Change in the FFD coef due to DVs
+                            # same as Jacobian above, but differnt ordering
+                            dCoefdXdvl = numpy.zeros(self.FFD.coef.shape,dtype='d')
 
                             for coef in coefs:
-                                tmp[coef, dv.axis] = 1.0
+                                dCoefdXdvl[coef, dv.axis] = 1.0
+
 
                             dXrefdXdvl = numpy.zeros((dXrefdCoef.shape[0]*3),'d')
                             dCcdXdvl   = numpy.zeros((dCcdCoef.shape[0]*3),'d')
 
-                            dXrefdXdvl[0::3] = dXrefdCoef.dot(tmp[:, 0])
-                            dXrefdXdvl[1::3] = dXrefdCoef.dot(tmp[:, 1])
-                            dXrefdXdvl[2::3] = dXrefdCoef.dot(tmp[:, 2])
+                            dXrefdXdvl[0::3] = dXrefdCoef.dot(dCoefdXdvl[:, 0])
+                            dXrefdXdvl[1::3] = dXrefdCoef.dot(dCoefdXdvl[:, 1])
+                            dXrefdXdvl[2::3] = dXrefdCoef.dot(dCoefdXdvl[:, 2])
 
-                            dCcdXdvl[0::3] = dCcdCoef.dot(tmp[:, 0])
-                            dCcdXdvl[1::3] = dCcdCoef.dot(tmp[:, 1])
-                            dCcdXdvl[2::3] = dCcdCoef.dot(tmp[:, 2])
+                            dCcdXdvl[0::3] = dCcdCoef.dot(dCoefdXdvl[:, 0])
+                            dCcdXdvl[1::3] = dCcdCoef.dot(dCoefdXdvl[:, 1])
+                            dCcdXdvl[2::3] = dCcdCoef.dot(dCoefdXdvl[:, 2])
 
                             # TODO: the += here is to allow recursion check this with multiple nesting
                             # levels
@@ -4076,7 +4171,6 @@ class geoDVSpanwiseLocal(geoDVLocal):
         self.dv_to_coefs = []
 
 
-
         # add all the coefs to a flat array, but check that it isn't masked first
         for ivol in range(len(vol_dv_to_coefs)):
             for loc_dv in range(len(vol_dv_to_coefs[ivol])):
@@ -4092,9 +4186,6 @@ class geoDVSpanwiseLocal(geoDVLocal):
 
                 self.dv_to_coefs.append(loc_dv_to_coefs)
 
-        print('========')
-        print(self.dv_to_coefs)
-        print('========')
 
         if 'x' == axis.lower():
             self.axis = 0
@@ -4104,8 +4195,6 @@ class geoDVSpanwiseLocal(geoDVLocal):
             self.axis = 2
         else:
             raise NotImplementedError
-
-
 
         self.nVal = len(self.dv_to_coefs)
         self.value = numpy.zeros(self.nVal, 'D')
