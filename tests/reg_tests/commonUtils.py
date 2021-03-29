@@ -176,11 +176,17 @@ def totalSensitivityCS(DVGeo,nPt,ptName):
 
     return dIdxCS
 
-def testSensitivities(DVGeo,refDeriv,handler):
+def testSensitivities(DVGeo,refDeriv,handler,pointset=1):
     #create test points
     points = numpy.zeros([2,3])
-    points[0,:] = [0.25,0,0]
-    points[1,:] = [-0.25,0,0]
+    if pointset == 1:
+        points[0,:] = [0.25,0,0]
+        points[1,:] = [-0.25,0,0]
+    elif pointset == 2:
+        points[0, :] = [0.25, 0.4, 4]
+        points[1, :] = [-0.8, 0.2, 7]
+    else:
+        raise Warning("Enter a valid pointset")
 
     # add points to the geometry object
     ptName = 'testPoints'
@@ -235,3 +241,26 @@ def testSensitivitiesD8(DVGeo,refDeriv,handler):
         dIdx = DVGeo.totalSensitivity(dIdPt,ptName)
 
     handler.root_add_dict("dIdx",dIdx,rtol=1e-7,atol=1e-7)
+
+# --- Adding standard twist and single axis scaling functions ---
+# These functions are added for Test 24 but could be extended to other tests
+
+fix_root_sect=1
+nRefAxPts = 4
+
+def twist(val, geo):
+    axis_key = list(geo.axis.keys())[0]
+    for i in range(fix_root_sect, nRefAxPts):
+        geo.rot_theta[axis_key].coef[i] = val[i - fix_root_sect]
+
+def thickness(val, geo):
+    axis_key = list(geo.axis.keys())[0]
+
+    for i in range(1, nRefAxPts):
+        geo.scale_z[axis_key].coef[i] = val[i - fix_root_sect]
+
+def chord(val, geo):
+    axis_key = list(geo.axis.keys())[0]
+
+    for i in range(1, nRefAxPts):
+        geo.scale_x[axis_key].coef[i] = val[i - fix_root_sect]
