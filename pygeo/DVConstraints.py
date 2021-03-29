@@ -237,8 +237,8 @@ class DVConstraints(object):
         >>> DVCon.setSurface(surf)
 
         """
-        # if name in self.surfaces.keys():
-        #     raise KeyError('Surface names must be unique. Repeated surface name: ' + str(name))
+        if name in self.surfaces.keys():
+            raise KeyError('Surface names must be unique. Repeated surface name: ' + str(name))
 
         self.surfaces[name] = list()
         if format == 'point-vector':
