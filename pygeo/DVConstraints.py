@@ -5254,7 +5254,7 @@ class ColinearityConstraint(GeometricConstraint):
         """
 
         if self.addVarToPyOpt:
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(self.name, self.nVal, "c", value=self.value, lower=self.lower, upper=self.upper, scale=self.scale)
 
     def writeTecplot(self, handle):
         """
@@ -5835,7 +5835,7 @@ class CurvatureConstraint(GeometricConstraint):
         else:
             raise Error(
                 "The curvatureType parameter should be Gaussian, mean, or combined, "
-                "%s is not supported!" % curvatureType
+                "%s is not supported!" % self.curvatureType
             )
 
     def evalCurvAreaSens(self, iSurf):
@@ -5987,7 +5987,7 @@ class CurvatureConstraint(GeometricConstraint):
         else:
             raise Error(
                 "The curvatureType parameter should be Gaussian, mean, or combined, "
-                "%s is not supported!" % curvatureType
+                "%s is not supported!" % self.curvatureType
             )
 
     def evalCross(self, iSurf, u, v):

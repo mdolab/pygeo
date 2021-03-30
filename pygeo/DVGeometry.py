@@ -3571,8 +3571,8 @@ class DVGeometry(object):
 
                             # TODO: the += here is to allow recursion check this with multiple nesting
                             # levels
-                            self.children[iChild].dXrefdXdvl[:, iDVLocal] += dXrefdXdvl
-                            self.children[iChild].dCcdXdvl[:, iDVLocal] += dCcdXdvl
+                            self.children[iChild].dXrefdXdvl[:, iDVSpanwiseLocal] += dXrefdXdvl
+                            self.children[iChild].dCcdXdvl[:, iDVSpanwiseLocal] += dCcdXdvl
 
                         iDVSpanwiseLocal += 1
                 else:
