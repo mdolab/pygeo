@@ -235,7 +235,7 @@ class pyNetwork:
         for i in range(len(s0)):
             D0[i, :] = self.curves[curveID0[i]](s0[i]) - points[i]
 
-        if curves == None:
+        if curves is None:
             curves = numpy.arange(self.nCurve)
 
         # Now do the same calc as before

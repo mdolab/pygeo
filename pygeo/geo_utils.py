@@ -4034,7 +4034,7 @@ class DCELFace:
     def area(self):
         h = self.wedge
         a = 0
-        while not h.nexthedge is self.wedge:
+        while h.nexthedge is not self.wedge:
             p1 = h.origin
             p2 = h.nexthedge.origin
             a += p1.x * p2.y - p2.x * p1.y
@@ -4050,7 +4050,7 @@ class DCELFace:
         center = np.zeros(2)
         center += [h.origin.x, h.origin.y]
         counter = 1
-        while not h.nexthedge is self.wedge:
+        while h.nexthedge is not self.wedge:
             counter += 1
             h = h.nexthedge
             center += [h.origin.x, h.origin.y]
@@ -4063,7 +4063,7 @@ class DCELFace:
         center = np.zeros(3)
         center += h.origin.X
         counter = 1
-        while not h.nexthedge is self.wedge:
+        while h.nexthedge is not self.wedge:
             counter += 1
             h = h.nexthedge
             center += h.origin.X
@@ -4073,7 +4073,7 @@ class DCELFace:
     def perimeter(self):
         h = self.wedge
         p = 0
-        while not h.nexthedge is self.wedge:
+        while h.nexthedge is not self.wedge:
             p += h.length
             h = h.nexthedge
         return p
@@ -4081,7 +4081,7 @@ class DCELFace:
     def vertexlist(self):
         h = self.wedge
         pl = [h.origin]
-        while not h.nexthedge is self.wedge:
+        while h.nexthedge is not self.wedge:
             h = h.nexthedge
             pl.append(h.origin)
         return pl
@@ -4241,7 +4241,7 @@ class DCEL(object):
                 f.wedge = h
                 f.wedge.face = f
                 # And we traverse the boundary of the new face
-                while not h.nexthedge is f.wedge:
+                while h.nexthedge is not f.wedge:
                     h = h.nexthedge
                     h.face = f
                 self.faces.append(f)

@@ -4,13 +4,6 @@ from pygeo import DVGeometry, DVGeometryAxi
 from pyspline import Curve
 
 
-def printHeader(testName):
-    if MPI.COMM_WORLD.rank == 0:
-        print("+" + "-" * 78 + "+")
-        print("| Test Name: " + "%-66s" % testName + "|")
-        print("+" + "-" * 78 + "+")
-
-
 ##################
 # DVGeometry Tests
 ##################

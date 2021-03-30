@@ -2081,7 +2081,7 @@ class DVGeometry(object):
         self.computeTotalJacobian(ptSetName, config=config)
 
         # perform the product
-        if self.JT[ptSetName] == None:
+        if self.JT[ptSetName] is None:
             xsdot = numpy.zeros((0, 3))
         else:
             xsdot = self.JT[ptSetName].dot(numpy.ravel(vec))
@@ -2237,7 +2237,7 @@ class DVGeometry(object):
             refFFDCoef = copy.copy(self.FFD.coef)
             refCoef = copy.copy(self.coef)
 
-        if self.nPts[ptSetName] == None:
+        if self.nPts[ptSetName] is None:
             self.nPts[ptSetName] = len(self.update(ptSetName).flatten())
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]
@@ -3043,11 +3043,11 @@ class DVGeometry(object):
 
         # get the global and local DV numbers on the parents if we don't have them
         if (
-            self.nDV_T == None
-            or self.nDVG_T == None
-            or self.nDVL_T == None
-            or self.nDVSL_T == None
-            or self.nDVSW_T == None
+            self.nDV_T is None
+            or self.nDVG_T is None
+            or self.nDVL_T is None
+            or self.nDVSL_T is None
+            or self.nDVSW_T is None
         ):
             self.nDV_T = self._getNDV()
             self.nDVG_T = self._getNDVGlobal()
@@ -3316,7 +3316,7 @@ class DVGeometry(object):
         # out in the end.
         coords0 = self.update(ptSetName, childDelta=False, config=config).flatten()
 
-        if self.nPts[ptSetName] == None:
+        if self.nPts[ptSetName] is None:
             self.nPts[ptSetName] = len(coords0.flatten())
         for child in self.children:
             child.nPts[ptSetName] = self.nPts[ptSetName]

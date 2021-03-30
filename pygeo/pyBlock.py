@@ -727,7 +727,7 @@ class pyBlock:
 
             rowPtr.append(rowPtr[-1] + kinc)
             if self.embededVolumes[ptSetName].mask is not None:
-                if not i in self.embededVolumes[ptSetName].mask:
+                if i not in self.embededVolumes[ptSetName].mask:
                     # Kill the values we just added
                     vals[rowPtr[-2] : rowPtr[-1]] = 0.0
 

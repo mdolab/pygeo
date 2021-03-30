@@ -703,7 +703,7 @@ class DVConstraints(object):
         coords = coords.reshape((nSpan * nChord * 2, 3))
 
         typeName = "thickCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
@@ -846,7 +846,7 @@ class DVConstraints(object):
         coords = coords.reshape((nCon * 2, 3))
 
         typeName = "thickCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1033,7 +1033,7 @@ class DVConstraints(object):
 
         # Create the thickness constraint object
         typeName = "radiusCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1137,7 +1137,7 @@ class DVConstraints(object):
 
         # Create the location constraint object
         typeName = "locCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1274,7 +1274,7 @@ class DVConstraints(object):
 
         # Create the location constraint object
         typeName = "locCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1414,7 +1414,7 @@ class DVConstraints(object):
         coords = coords.reshape((nCon * 4, 3))
 
         typeName = "thickCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
         if name is None:
             conName = "%s_thickness_to_chord_constraints_%d" % (self.name, len(self.constraints[typeName]))
@@ -1522,7 +1522,7 @@ class DVConstraints(object):
             raise ValueError("At least one DVGeo object must be specified")
 
         typeName = "triSurfCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1631,7 +1631,7 @@ class DVConstraints(object):
         DVGeo = self.DVGeometries[DVGeoName]
 
         typeName = "triVolCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1770,7 +1770,7 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
 
         typeName = "volCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -1858,7 +1858,7 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
 
         typeName = "volCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -2255,7 +2255,7 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         typeName = "gearCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -2378,7 +2378,7 @@ class DVConstraints(object):
         origin = numpy.array(origin).reshape((1, 3))
 
         typeName = "circCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
@@ -2458,7 +2458,7 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         typeName = "surfAreaCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
@@ -2549,7 +2549,7 @@ class DVConstraints(object):
             axis = numpy.array([0, 0, 1])
 
         typeName = "projAreaCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
@@ -2632,7 +2632,7 @@ class DVConstraints(object):
 
         # Create a name
         typeName = "planeCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -2731,7 +2731,7 @@ class DVConstraints(object):
 
         # Create a name
         typeName = "coLinCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
@@ -2842,7 +2842,7 @@ class DVConstraints(object):
         geo._calcConnectivity(node_tol, edge_tol)
         surfs = geo.surfs
         typeName = "curveCon"
-        if not typeName in self.constraints:
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
         # Create a name
         if name is None:
@@ -3937,7 +3937,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.perim_length > self.max_perim:
             failflag = True
-            if mpi4py.COMM_WORLD.rank == 0:
+            if MPI.COMM_WORLD.rank == 0:
                 print("Intersection length ", str(perim_length), " exceeds tol, returning fail flag")
         else:
             failflag = False
@@ -5692,7 +5692,7 @@ class CurvatureConstraint(GeometricConstraint):
         self.scaled = scaled
         self.scale = scale
         self.KSCoeff = KSCoeff
-        if self.KSCoeff == None:
+        if self.KSCoeff is None:
             # set KSCoeff to be the number of points in the plot 3D files
             self.KSCoeff = 0.0
             for i in range(len(self.coords)):

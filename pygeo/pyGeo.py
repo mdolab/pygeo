@@ -1161,7 +1161,7 @@ class pyGeo:
         # Now loop over the componets and each will write the info it
         # has to the .tin file:
         for i in range(self.nSurf):
-            if self.surfs[i].name == None:
+            if self.surfs[i].name is None:
                 name = "surface_%d" % i
             else:
                 name = self.surfs[i].name
@@ -1216,7 +1216,7 @@ class pyGeo:
         xMax : array of length 3
             Upper corner of the bounding box
         """
-        if surfs == None:
+        if surfs is None:
             surfs = numpy.arange(self.nSurf)
 
         Xmin0, Xmax0 = self.surfs[surfs[0]].getBounds()
@@ -1264,7 +1264,7 @@ class pyGeo:
         one of the surfaces.
         """
 
-        if surfs == None:
+        if surfs is None:
             surfs = numpy.arange(self.nSurf)
 
         temp = numpy.zeros((len(surfs), 4))
@@ -1308,7 +1308,7 @@ class pyGeo:
             Patch index corresponding to the u,v parameter values
         """
 
-        if surfs == None:
+        if surfs is None:
             surfs = numpy.arange(self.nSurf)
 
         N = len(points)
