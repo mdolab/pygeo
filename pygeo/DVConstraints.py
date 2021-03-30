@@ -5254,7 +5254,9 @@ class ColinearityConstraint(GeometricConstraint):
         """
 
         if self.addVarToPyOpt:
-            optProb.addVarGroup(self.name, self.nVal, "c", value=self.value, lower=self.lower, upper=self.upper, scale=self.scale)
+            optProb.addVarGroup(
+                self.name, self.nVal, "c", value=self.value, lower=self.lower, upper=self.upper, scale=self.scale
+            )
 
     def writeTecplot(self, handle):
         """
