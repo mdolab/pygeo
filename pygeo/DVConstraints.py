@@ -4250,7 +4250,10 @@ class LinearConstraint(object):
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
             elif key in self.DVGeo.DV_listSectionLocal:
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listSectionLocal[key].value))
-
+            elif key in self.DVGeo.DV_listSpanwiseLocal:
+                cons.extend(self.jac[key].dot(self.DVGeo.DV_listSpanwiseLocal[key].value))
+            else:
+                raise Error(f"con {self.name} diffined wrt {key}, but {key} not found in DVGeo")
         funcs[self.name] = numpy.array(cons).real.astype('d')
 
     def evalFunctionsSens(self, funcsSens):
@@ -4315,6 +4318,27 @@ class LinearConstraint(object):
                 if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listSectionLocal[key].nVal
+                    jacobian = numpy.zeros((ncon, ndv))
+                    for i in range(ncon):
+                        jacobian[i, cons[i][0]] = self.factorA[i]
+                        jacobian[i, cons[i][1]] = self.factorB[i]
+                    self.jac[key] = jacobian
+
+                # Add to the number of constraints and store indices which
+                # we need for tecplot visualization
+                self.ncon += len(cons)
+                self.vizConIndices[key] = cons
+
+        # Section local shape variables
+        for key in self.DVGeo.DV_listSpanwiseLocal:
+             if self.config is None or self.config in self.DVGeo.DV_listSpanwiseLocal[key].config:
+
+                # end for (indSet loop)
+                cons = self.DVGeo.DV_listSpanwiseLocal[key].mapIndexSets(self.indSetA,self.indSetB)
+                ncon = len(cons)
+                if ncon > 0:
+                    # Now form the jacobian:
+                    ndv = self.DVGeo.DV_listSpanwiseLocal[key].nVal
                     jacobian = numpy.zeros((ncon, ndv))
                     for i in range(ncon):
                         jacobian[i, cons[i][0]] = self.factorA[i]

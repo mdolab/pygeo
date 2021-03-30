@@ -4,8 +4,9 @@ import unittest
 import numpy
 from baseclasses import BaseRegTest
 import commonUtils
-from pygeo import geo_utils, DVGeometry
+from pygeo import geo_utils, DVGeometry, DVConstraints
 from parameterized import parameterized
+from stl import mesh
 
 
 class RegTestPyGeo(unittest.TestCase):
@@ -805,6 +806,59 @@ class RegTestPyGeo(unittest.TestCase):
             handler.par_add_norm('norm', norm_diff, rtol=1e-7, atol=1e-7)
             os.remove(copyName)
 
+
+    def test_spanwise_dvs(self, train=False, refDeriv=False):
+        """
+        Test spanwise_dvs
+        """
+        # refFile = os.path.join(self.base_path,'ref/test_DVGeometry_spanwise_dvs.ref')
+        # with BaseRegTest(refFile, train=train) as handler:
+        #     handler.root_print("Test spanwise local variables writing function")
+
+        meshfile = os.path.join(self.base_path, '../inputFiles/c172.stl')
+        ffdfile = os.path.join(self.base_path, '../inputFiles/c172.xyz')
+        testmesh = mesh.Mesh.from_file(meshfile)
+        # test mesh dim 0 is triangle index
+        # dim 1 is each vertex of the triangle
+        # dim 2 is x, y, z dimension
+
+        # create a DVGeo object with a few local thickness variables
+        DVGeo = DVGeometry(ffdfile)
+        DVGeo.addGeoDVSpanwiseLocal("shape", 'i', lower=-0.5, upper=0.5, axis="y", scale=1.0)
+
+
+        # create a DVConstraints object for the wing
+        DVCon =DVConstraints()
+        DVCon.setDVGeo(DVGeo)
+        p0 = testmesh.vectors[:,0,:] / 1000
+        v1 = testmesh.vectors[:,1,:] / 1000 - p0
+        v2 = testmesh.vectors[:,2,:] / 1000 - p0
+        DVCon.setSurface([p0, v1, v2])
+
+
+        leList = [[0.7, 0.0, 0.1],[0.7, 0.0, 2.4]]
+        teList = [[0.9, 0.0, 0.1],[0.9, 0.0, 2.4]]
+    
+        nSpan = 10
+        nChord = 10
+        name = "thickness_con"
+        DVCon.addThicknessConstraints2D(leList, teList, nSpan, nChord, name=name)
+
+        size = DVGeo._getNDVSpanwiseLocal()
+
+        numpy.random.seed(0)
+        DVGeo.setDesignVars({'shape':(numpy.random.rand(size) - 0.5)})
+        
+        funcs = {}
+        DVCon.evalFunctions(funcs)
+        # print(funcs)
+        
+        for i in range(nChord):
+            for j in range(nSpan-1):
+                numpy.testing.assert_allclose(funcs[name][i*nChord + j+1], funcs[name][i*nChord + j], rtol=2e-15)
+                
+
+            
     def train_23_xyzFraction(self, train=True):
         self.test_23_xyzFraction(train=train)
 
