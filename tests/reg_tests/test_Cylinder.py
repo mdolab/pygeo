@@ -22,7 +22,7 @@ class RegTestPyGeo(unittest.TestCase):
         Nextrude = 100
         Npts = Nazimuth * Nextrude
 
-        theta = numpy.linspace(0, 2*numpy.pi, Nazimuth)
+        theta = numpy.linspace(0, 2 * numpy.pi, Nazimuth)
         z = numpy.linspace(0, height, Nextrude)
 
         pts = numpy.zeros((Npts, 3))
@@ -33,7 +33,7 @@ class RegTestPyGeo(unittest.TestCase):
                 x = radius * numpy.cos(theta[j])
                 y = radius * numpy.sin(theta[j])
 
-                k = i*Nazimuth + j
+                k = i * Nazimuth + j
                 pts[k] = [x, y, z[i]]
 
         p0 = []
@@ -41,8 +41,8 @@ class RegTestPyGeo(unittest.TestCase):
         v2 = []
 
         # Now create the triangulation
-        for i in range(Nextrude-1):
-            for j in range(Nazimuth-1):
+        for i in range(Nextrude - 1):
+            for j in range(Nazimuth - 1):
                 cur_level = i * Nazimuth
                 next_level = (i + 1) * Nazimuth
 
@@ -69,18 +69,18 @@ class RegTestPyGeo(unittest.TestCase):
 
     def make_ffd(self, file_name, radius=1.0, height=2.0):
         # Write duplicate of outerbox FFD
-        axes = ['i', 'k', 'j']
+        axes = ["i", "k", "j"]
         r = radius
         h = height
         dh = 0.01
-        slices = numpy.array([
-            # Slice 1
-            [[[-r, -r, -dh], [r, -r, -dh]],
-            [[-r, r, -dh], [r, r, -dh]]],
-            # Slice 2
-            [[[-r, -r, h+dh], [r, -r, h+dh]],
-            [[-r, r, h+dh], [r, r, h+dh]]],
-        ])
+        slices = numpy.array(
+            [
+                # Slice 1
+                [[[-r, -r, -dh], [r, -r, -dh]], [[-r, r, -dh], [r, r, -dh]]],
+                # Slice 2
+                [[[-r, -r, h + dh], [r, -r, h + dh]], [[-r, r, h + dh], [r, r, h + dh]]],
+            ]
+        )
 
         N0 = [5]
         N1 = [2]
@@ -92,7 +92,7 @@ class RegTestPyGeo(unittest.TestCase):
         self.test_1(train=train, refDeriv=refDeriv)
 
     def test_1(self, train=False, refDeriv=False):
-        refFile = os.path.join(self.base_path,'ref/test_Cylinder_01.ref')
+        refFile = os.path.join(self.base_path, "ref/test_Cylinder_01.ref")
 
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 1: Basic FFD, global DVs")
@@ -104,50 +104,47 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setSurface(surf)
             # DVCon.writeSurfaceTecplot('cylinder_surface.dat')
 
-            ffd_name = os.path.join(self.base_path,'../inputFiles/cylinder_ffd.xyz')
+            ffd_name = os.path.join(self.base_path, "../inputFiles/cylinder_ffd.xyz")
             self.make_ffd(ffd_name, radius, height)
             DVGeo = DVGeometry(ffd_name)
-            nAxPts = DVGeo.addRefAxis('thru', xFraction=0.5, alignIndex='i', raySize=1.0)
+            nAxPts = DVGeo.addRefAxis("thru", xFraction=0.5, alignIndex="i", raySize=1.0)
 
             def scale_circle(val, geo):
                 for i in range(nAxPts):
-                    geo.scale['thru'].coef[i] = val[0]
+                    geo.scale["thru"].coef[i] = val[0]
 
-            DVGeo.addGeoDVGlobal('scale_circle', func=scale_circle, value=[1])
+            DVGeo.addGeoDVGlobal("scale_circle", func=scale_circle, value=[1])
             DVCon.setDVGeo(DVGeo)
 
-            leList = [[0, 0, 0 ], [-radius/2, 0, height]]
+            leList = [[0, 0, 0], [-radius / 2, 0, height]]
             xAxis = [-1, 0, 0]
             yAxis = [0, 1, 0]
-            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis,
-                                         chordDir=xAxis, scaled=False)
+            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis, chordDir=xAxis, scaled=False)
             # DVCon.writeTecplot('cylinder_constraints.dat')
 
             funcs = {}
             DVCon.evalFunctions(funcs)
             print(funcs)
-            handler.root_add_dict('funcs1', funcs, rtol=1e-6, atol=1e-6)
+            handler.root_add_dict("funcs1", funcs, rtol=1e-6, atol=1e-6)
 
-            DVGeo.setDesignVars({'scale_circle':0.5})
+            DVGeo.setDesignVars({"scale_circle": 0.5})
 
             funcs = {}
             DVCon.evalFunctions(funcs)
-            handler.root_add_dict('funcs2', funcs, rtol=1e-6, atol=1e-6)
+            handler.root_add_dict("funcs2", funcs, rtol=1e-6, atol=1e-6)
             print(funcs)
 
             funcsSens = {}
             DVCon.evalFunctionsSens(funcsSens)
             print(funcsSens)
-            handler.root_add_dict('funcsSens', funcsSens, rtol=1e-6, atol=1e-6)
+            handler.root_add_dict("funcsSens", funcsSens, rtol=1e-6, atol=1e-6)
             print(funcsSens)
-
 
     def train_spanwise_dvs(self, train=True, refDeriv=True):
         self.test_spanwise_dvs(train=train, refDeriv=refDeriv)
 
-
     def test_spanwise_dvs(self, train=False, refDeriv=False):
-        refFile = os.path.join(self.base_path,'ref/test_Cylinder_spanwise_dvs.ref')
+        refFile = os.path.join(self.base_path, "ref/test_Cylinder_spanwise_dvs.ref")
 
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 1: Basic FFD, global DVs")
@@ -159,43 +156,40 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setSurface(surf)
             # DVCon.writeSurfaceTecplot('cylinder_surface.dat')
 
-            ffd_name = os.path.join(self.base_path,'../inputFiles/cylinder_ffd.xyz')
+            ffd_name = os.path.join(self.base_path, "../inputFiles/cylinder_ffd.xyz")
             self.make_ffd(ffd_name, radius, height)
             DVGeo = DVGeometry(ffd_name)
 
-            DVGeo.addGeoDVSpanwiseLocal("shape", 'i', lower=-0.5, upper=0.5, axis="y", scale=1.0)
+            DVGeo.addGeoDVSpanwiseLocal("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
             size = DVGeo._getNDVSpanwiseLocal()
             DVCon.setDVGeo(DVGeo)
 
-
-            leList = [[0, 0, 0 ], [-radius/2, 0, height]]
+            leList = [[0, 0, 0], [-radius / 2, 0, height]]
             xAxis = [-1, 0, 0]
             yAxis = [0, 1, 0]
-            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis,
-                                         chordDir=xAxis, scaled=False)
+            DVCon.addLERadiusConstraints(leList, nSpan=5, axis=yAxis, chordDir=xAxis, scaled=False)
             # DVCon.writeTecplot('cylinder_constraints.dat')
 
             funcs = {}
             DVCon.evalFunctions(funcs)
             print(funcs)
-            handler.root_add_dict('funcs1', funcs, rtol=1e-6, atol=1e-6)
+            handler.root_add_dict("funcs1", funcs, rtol=1e-6, atol=1e-6)
 
             numpy.random.seed(0)
-            DVGeo.setDesignVars({'shape':(numpy.random.rand(size) - 0.5)})
+            DVGeo.setDesignVars({"shape": (numpy.random.rand(size) - 0.5)})
 
             funcs = {}
             DVCon.evalFunctions(funcs)
-            handler.root_add_dict('funcs2', funcs, rtol=1e-6, atol=1e-6)
+            handler.root_add_dict("funcs2", funcs, rtol=1e-6, atol=1e-6)
             print(funcs)
 
             funcsSens = {}
             DVCon.evalFunctionsSens(funcsSens)
             print(funcsSens)
-            handler.root_add_dict('funcsSens', funcsSens, rtol=1e-6, atol=1e-6)
+            handler.root_add_dict("funcsSens", funcsSens, rtol=1e-6, atol=1e-6)
             print(funcsSens)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

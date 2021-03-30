@@ -10,6 +10,7 @@ from mpi4py import MPI
 
 try:
     import openvsp
+
     missing_openvsp = False
 except ImportError:
     missing_openvsp = True
@@ -19,18 +20,17 @@ if not missing_openvsp:
 
 test_params = [
     # # Tutorial scalar JST
-    { "N_PROCS": 1, "name":'serial'},
-    { "N_PROCS": 4, "name":'parallel_4procs'},
+    {"N_PROCS": 1, "name": "serial"},
+    {"N_PROCS": 4, "name": "parallel_4procs"},
 ]
 
-@unittest.skipIf(missing_openvsp, 'requires openvsp Python API')
+
+@unittest.skipIf(missing_openvsp, "requires openvsp Python API")
 @parameterized_class(test_params)
 class RegTestPyGeoVSP(unittest.TestCase):
 
     # this will be tested in serial and parallel automatically
     N_PROCS = 1
-
-
 
     def setUp(self):
         # Store the path where this current script lives
@@ -47,6 +47,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
         A sphere centered at 1, 0, 0 but strech scales from the origin 0, 0, 0
         """
+
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
             u = numpy.linspace(0, 1, nu)
@@ -55,11 +56,10 @@ class RegTestPyGeoVSP(unittest.TestCase):
             uv = numpy.array((uu.flatten(), vv.flatten()))
             return uv
 
-
-        refFile = os.path.join(self.base_path,'ref/test_DVGeometryVSP_01.ref')
+        refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_01.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 1: Basic OpenVSP sphere")
-            vspFile = os.path.join(self.base_path, '../inputFiles/simpleEll_med.vsp3')
+            vspFile = os.path.join(self.base_path, "../inputFiles/simpleEll_med.vsp3")
             DVGeo = DVGeometryVSP(vspFile)
             dh = 0.1
             # we have a sphere centered at x,y,z = 1, 0, 0 with radius 1
@@ -75,16 +75,21 @@ class RegTestPyGeoVSP(unittest.TestCase):
             dvList = list(x.keys())
 
             # add some known points to the sphere
-            points = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, -1.0, 0.0], [1.0, 0.0, 1.0], [1.0, 0.0, -1.0]]
+            points = [
+                [0.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [1.0, -1.0, 0.0],
+                [1.0, 0.0, 1.0],
+                [1.0, 0.0, -1.0],
+            ]
             pointSet1 = numpy.array(points)
             nPts = len(points)
-            dMax_global = DVGeo.addPointSet(pointSet1, 'known_points')
-            handler.assert_allclose(dMax_global, 0.0,
-                                    name='pointset1_projection_tol', rtol=1e0, atol=1e-10)
+            dMax_global = DVGeo.addPointSet(pointSet1, "known_points")
+            handler.assert_allclose(dMax_global, 0.0, name="pointset1_projection_tol", rtol=1e0, atol=1e-10)
 
-
-           # add some random points
-           # randomly generate points
+            # add some random points
+            # randomly generate points
             nPts = 100
             # just get nPts ^2 points
             uv = sample_uv(10, 10)
@@ -102,15 +107,13 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 radius = ((pt.x() - 1.0) ** 2 + pt.y() ** 2 + pt.z() ** 2) ** 0.5
                 radii.append(radius)
             pointSet2 = numpy.array(points)
-            handler.assert_allclose(numpy.array(radii), 1.0,
-                                    name='pointset2_diff_from_sphere', rtol=1e-3, atol=1e-3)
+            handler.assert_allclose(numpy.array(radii), 1.0, name="pointset2_diff_from_sphere", rtol=1e-3, atol=1e-3)
 
             dim = 3
             # add this point set since our points EXACTLY lie on the sphere, we should get 0 distance in the
             # projections to machine precision
-            dMax_global = DVGeo.addPointSet(pointSet2, 'generated_points')
-            handler.assert_allclose(dMax_global, 0.0,
-                                    name='pointset1_projection_tol', rtol=1e0, atol=1e-15)
+            dMax_global = DVGeo.addPointSet(pointSet2, "generated_points")
+            handler.assert_allclose(dMax_global, 0.0, name="pointset1_projection_tol", rtol=1e0, atol=1e-15)
 
             # lets get the gradients wrt design variables. For this we can define our dummy jacobian for dIdpt
             # that is an (N, nPts, 3) array. We will just monitor how each component in each point changes so
@@ -124,7 +127,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
                     dIdpt[dim * i + j, i, j] = 1.0
 
             # get the total sensitivities
-            funcSens = DVGeo.totalSensitivity(dIdpt, 'generated_points')
+            funcSens = DVGeo.totalSensitivity(dIdpt, "generated_points")
             # lets read variables from the total sensitivities and check
             maxError = 1e-20
 
@@ -147,9 +150,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
                         # print('Error for dv %s on the %d th coordinate of point at (%1.1f, %1.1f, %1.1f) is = %1.16f'%(dv, k+1, point[0],point[1],point[2], error ))
                         maxError = max(error, maxError)
-            handler.assert_allclose(maxError, 0.0, 'sphere_derivs', rtol=1e0, atol=1e-14)
-
-
+            handler.assert_allclose(maxError, 0.0, "sphere_derivs", rtol=1e0, atol=1e-14)
 
     def train_2(self, train=True, refDeriv=True):
         self.test_2(train=train, refDeriv=refDeriv)
@@ -158,6 +159,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
         """
         Test 2: OpenVSP wing test
         """
+
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
             u = numpy.linspace(0, 1, nu + 1)
@@ -167,13 +169,12 @@ class RegTestPyGeoVSP(unittest.TestCase):
             uv = numpy.array((uu.flatten(), vv.flatten()))
             return uv
 
-        refFile = os.path.join(self.base_path,'ref/test_DVGeometryVSP_02.ref')
+        refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_02.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 2: OpenVSP NACA 0012 wing")
-            vspFile = os.path.join(self.base_path, '../inputFiles/naca0012.vsp3')
+            vspFile = os.path.join(self.base_path, "../inputFiles/naca0012.vsp3")
             DVGeo = DVGeometryVSP(vspFile)
             dh = 1e-6
-
 
             openvsp.ClearVSPModel()
             openvsp.ReadVSPFile(vspFile)
@@ -188,7 +189,9 @@ class RegTestPyGeoVSP(unittest.TestCase):
             # to have it run faster, we just pick 2 sections
             for i in [0, 5]:
                 # Twist
-                DVGeo.addVariable(comp, "XSec_%d" % i, "Twist", lower=-10.0, upper=10.0, scale=1e-2, scaledStep=False, dh=dh)
+                DVGeo.addVariable(
+                    comp, "XSec_%d" % i, "Twist", lower=-10.0, upper=10.0, scale=1e-2, scaledStep=False, dh=dh
+                )
 
                 # loop over coefs
                 # normally, there are 7 coeffs so we should loop over range(7) for the full test
@@ -291,18 +294,12 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 normalized_error = err / normalizer
                 if maxderiv > biggest_deriv:
                     biggest_deriv = maxderiv
-                handler.assert_allclose(normalized_error, 0.0,
-                                    name='{}_grad_normalized_error'.format(x), rtol=1e0, atol=5e-5)
+                handler.assert_allclose(
+                    normalized_error, 0.0, name="{}_grad_normalized_error".format(x), rtol=1e0, atol=5e-5
+                )
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
 
 
-
-
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-
-

@@ -7,7 +7,7 @@ from pyspline import pySpline
 from .geo_utils import CurveTopology
 
 
-class pyNetwork():
+class pyNetwork:
     """
     A class for manipulating a collection of curve objects.
 
@@ -20,7 +20,7 @@ class pyNetwork():
     ----------
     curves : list of pySpline.Curve objects
         Individual curves to form the network.
-        """
+    """
 
     def __init__(self, curves):
         self.curves = curves
@@ -51,12 +51,11 @@ class pyNetwork():
             ii = self.topo.gIndex[i][0][1]
             self.coef[i] = self.curves[icurve].coef[ii]
 
-# ----------------------------------------------------------------------
-#               Curve Writing Output Functions
-# ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    #               Curve Writing Output Functions
+    # ----------------------------------------------------------------------
 
-    def writeTecplot(self, fileName, orig=False, curves=True, coef=True,
-                     curveLabels=False, nodeLabels=False):
+    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, curveLabels=False, nodeLabels=False):
         """Write the pyNetwork Object to Tecplot .dat file
 
         Parameters
@@ -71,22 +70,19 @@ class pyNetwork():
             Flag to write a separate label file with the curve indices
         nodeLabels : bool
             Flag to write a separate node label file with the node indices
-            """
+        """
 
         f = pySpline.openTecplot(fileName, 3)
         if curves:
             for icurve in range(self.nCurve):
                 self.curves[icurve].computeData()
-                pySpline.writeTecplot1D(f, 'interpolated',
-                                        self.curves[icurve].data)
+                pySpline.writeTecplot1D(f, "interpolated", self.curves[icurve].data)
         if coef:
             for icurve in range(self.nCurve):
-                pySpline.writeTecplot1D(f, 'coef',
-                                        self.curves[icurve].coef)
+                pySpline.writeTecplot1D(f, "coef", self.curves[icurve].coef)
         if orig:
             for icurve in range(self.nCurve):
-                pySpline.writeTecplot1D(f, 'coef',
-                                        self.curves[icurve].X)
+                pySpline.writeTecplot1D(f, "coef", self.curves[icurve].X)
 
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)
@@ -94,15 +90,18 @@ class pyNetwork():
 
         if curveLabels:
             # Split the filename off
-            labelFilename = dirName+'./'+fileBaseName+'.curve_labels.dat'
-            f2 = open(labelFilename, 'w')
+            labelFilename = dirName + "./" + fileBaseName + ".curve_labels.dat"
+            f2 = open(labelFilename, "w")
             for icurve in range(self.nCurve):
-                mid = numpy.floor(self.curves[icurve].nCtl/2)
-                textString = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d,T=\"S%d\"\n' % (
+                mid = numpy.floor(self.curves[icurve].nCtl / 2)
+                textString = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d,T="S%d"\n' % (
                     self.curves[icurve].coef[mid, 0],
                     self.curves[icurve].coef[mid, 1],
-                    self.curves[icurve].coef[mid, 2], icurve+1, icurve)
-                f2.write('%s' % (textString))
+                    self.curves[icurve].coef[mid, 2],
+                    icurve + 1,
+                    icurve,
+                )
+                f2.write("%s" % (textString))
             f2.close()
 
         if nodeLabels:
@@ -127,13 +126,17 @@ class pyNetwork():
                 nodeCoord[i] = coordinate
 
             # Split the filename off
-            labelFilename = dirName+'./'+fileBaseName+'.node_labels.dat'
-            f2 = open(labelFilename, 'w')
+            labelFilename = dirName + "./" + fileBaseName + ".node_labels.dat"
+            f2 = open(labelFilename, "w")
 
             for i in range(nNodes):
-                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, T=\"n%d\"\n' % (
-                    nodeCoord[i][0], nodeCoord[i][1], nodeCoord[i][2], i)
-                f2.write('%s' % (textString))
+                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, T="n%d"\n' % (
+                    nodeCoord[i][0],
+                    nodeCoord[i][1],
+                    nodeCoord[i][2],
+                    i,
+                )
+                f2.write("%s" % (textString))
             f2.close()
 
         pySpline.closeTecplot(f)
@@ -161,7 +164,7 @@ class pyNetwork():
             Lower corner of the bounding box
         xMax : array of length 3
             Upper corner of the bounding box
-            """
+        """
         if curves is None:
             curves = numpy.arange(self.nCurve)
 
@@ -186,7 +189,7 @@ class pyNetwork():
         return Xmin0, Xmax0
 
     def projectRays(self, points, axis, curves=None, raySize=1.5, **kwargs):
-        """ Given a set of points and a vector defining a direction,
+        """Given a set of points and a vector defining a direction,
         i.e. a ray, determine the minimum distance between these rays
         and any of the curves this object has.
 
@@ -228,9 +231,9 @@ class pyNetwork():
         # that we know how large to make the line representing the ray.
         curveID0, s0 = self.projectPoints(points, curves=curves, **kwargs)
 
-        D0 = numpy.zeros((len(s0), 3), 'd')
+        D0 = numpy.zeros((len(s0), 3), "d")
         for i in range(len(s0)):
-            D0[i, :] = self.curves[curveID0[i]](s0[i])-points[i]
+            D0[i, :] = self.curves[curveID0[i]](s0[i]) - points[i]
 
         if curves == None:
             curves = numpy.arange(self.nCurve)
@@ -244,19 +247,21 @@ class pyNetwork():
             icurve = curves[i]
             for j in range(N):
                 ray = pySpline.line(
-                    points[j]-axis*raySize*numpy.linalg.norm(D0[j]),
-                    points[j]+axis*raySize*numpy.linalg.norm(D0[j]))
+                    points[j] - axis * raySize * numpy.linalg.norm(D0[j]),
+                    points[j] + axis * raySize * numpy.linalg.norm(D0[j]),
+                )
 
-                S[j, i], t, D[j, i, :] = self.curves[icurve].projectCurve(
-                    ray, nIter=2000)
+                S[j, i], t, D[j, i, :] = self.curves[icurve].projectCurve(ray, nIter=2000)
                 if t == 0.0 or t == 1.0:
-                    print('Warning: The link for attached point {:d} was drawn'
-                          'from the curve to the end of the ray,'
-                          'indicating that the ray might not have been long'
-                          'enough to intersect the nearest curve.'.format(j))
+                    print(
+                        "Warning: The link for attached point {:d} was drawn"
+                        "from the curve to the end of the ray,"
+                        "indicating that the ray might not have been long"
+                        "enough to intersect the nearest curve.".format(j)
+                    )
 
         s = numpy.zeros(N)
-        curveID = numpy.zeros(N, 'intc')
+        curveID = numpy.zeros(N, "intc")
 
         # Now post-process to get the lowest one
         for i in range(N):
@@ -272,7 +277,7 @@ class pyNetwork():
         return curveID, s
 
     def projectPoints(self, points, curves=None, *args, **kwargs):
-        """ Project one or more points onto the nearest curve. This
+        """Project one or more points onto the nearest curve. This
         algorihm isn't exactly efficient: We simply project the nodes
         on each of the curves and take the lowest one.
 
@@ -293,7 +298,7 @@ class pyNetwork():
         s : float or array
             The curve parameter on self.curves[curveID] that is cloested
             to the point(s).
-            """
+        """
 
         if curves is None:
             curves = numpy.arange(self.nCurve)
@@ -303,11 +308,10 @@ class pyNetwork():
         D = numpy.zeros((N, len(curves), 3))
         for i in range(len(curves)):
             icurve = curves[i]
-            S[:, i], D[:, i, :] = self.curves[icurve].projectPoint(
-                points, *args, **kwargs)
+            S[:, i], D[:, i, :] = self.curves[icurve].projectPoint(points, *args, **kwargs)
 
         s = numpy.zeros(N)
-        curveID = numpy.zeros(N, 'intc')
+        curveID = numpy.zeros(N, "intc")
 
         # Now post-process to get the lowest one
         for i in range(N):

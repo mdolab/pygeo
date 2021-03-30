@@ -19,7 +19,8 @@ from pyspline import pySpline
 try:
     import openvsp
 except ImportError:
-    raise ImportError('The OpenVSP Python API is required in order to use DVGeometryVSP')
+    raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
+
 
 class Error(Exception):
     """
