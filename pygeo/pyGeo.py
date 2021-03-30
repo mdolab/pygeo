@@ -1,7 +1,8 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import os, copy
+import os
+import copy
 import numpy
 from scipy import sparse
 from scipy.sparse.linalg.dsolve import factorized
@@ -1046,16 +1047,13 @@ class pyGeo:
             for isurf in range(self.nSurf):
                 midu = numpy.floor(self.surfs[isurf].nCtlu / 2)
                 midv = numpy.floor(self.surfs[isurf].nCtlv / 2)
-                textString = (
-                    'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
- T="S%d"\n'
-                    % (
-                        self.surfs[isurf].coef[midu, midv, 0],
-                        self.surfs[isurf].coef[midu, midv, 1],
-                        self.surfs[isurf].coef[midu, midv, 2],
-                        isurf + 1,
-                        isurf,
-                    )
+                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
+ T="S%d"\n' % (
+                    self.surfs[isurf].coef[midu, midv, 0],
+                    self.surfs[isurf].coef[midu, midv, 1],
+                    self.surfs[isurf].coef[midu, midv, 2],
+                    isurf + 1,
+                    isurf,
                 )
                 f2.write("%s" % (textString))
             f2.close()

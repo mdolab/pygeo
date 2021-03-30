@@ -1,23 +1,13 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-from __future__ import print_function
-import copy
-import tempfile
-import shutil
 import os
 import sys
 import time
 import numpy
 from collections import OrderedDict
-from scipy import sparse
-from scipy.spatial import cKDTree
 from mpi4py import MPI
 from pyOCSM import pyOCSM
-import pickle
-
-import os
-import sys
 from contextlib import contextmanager
 
 
@@ -601,7 +591,7 @@ class DVGeometryESP(object):
                 edgeIDg = edgeIDArray
                 uvlimitsg = uvlimArray
                 tlimitsg = tlimArray
-                sizes = np.array([len(ug)])
+                sizes = numpy.array([len(ug)])
             if self.comm.rank == 0:
                 numpy.savez_compressed(
                     cache_projections,

@@ -1,11 +1,9 @@
-from __future__ import print_function
 import os
 import unittest
 import numpy
 from baseclasses import BaseRegTest
 import commonUtils
 from pygeo import geo_utils, DVGeometry, DVConstraints
-from parameterized import parameterized
 from stl import mesh
 
 

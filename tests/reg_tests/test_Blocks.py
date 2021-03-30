@@ -1,8 +1,6 @@
-from __future__ import print_function
 import os
 import unittest
 import numpy
-import copy
 from baseclasses import BaseRegTest
 import commonUtils
 from pygeo import DVGeometry, geo_utils

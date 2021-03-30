@@ -1,20 +1,13 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import numpy, copy
+import numpy
 from . import geo_utils, pyGeo
 from pyspline import pySpline
 from mpi4py import MPI
 from scipy.sparse import csr_matrix
 import numpy as np
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, " "use:\n pip install ordereddict")
+from collections import OrderedDict
 
 
 class Error(Exception):
@@ -1512,7 +1505,7 @@ class DVConstraints(object):
             meaningless
         """
         try:
-            import geograd
+            import geograd  # noqa
         except ImportError:
             raise ImportError("Geograd package must be installed to use triangulated surface constraint")
         if DVGeo_1_name is not None:

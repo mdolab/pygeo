@@ -1,10 +1,7 @@
-from __future__ import print_function
 import os
 import unittest
 import numpy
 from baseclasses import BaseRegTest
-import commonUtils
-from pygeo import geo_utils
 from parameterized import parameterized_class
 from mpi4py import MPI
 

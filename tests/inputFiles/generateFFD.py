@@ -1,5 +1,4 @@
 import numpy as np
-import sys
 
 
 def writeFFDFile(fileName, nBlocks, nx, ny, nz, points):

@@ -1,15 +1,8 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import copy, time
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, " "use:\n pip install ordereddict")
+import copy
+from collections import OrderedDict
 import numpy
 from scipy import sparse
 from mpi4py import MPI

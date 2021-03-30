@@ -1,12 +1,7 @@
-from __future__ import print_function
-import os
 import unittest
 import numpy
-import copy
-from baseclasses import BaseRegTest
 from pygeo import DVGeometry, geo_utils
-
-from test_Blocks import add_vars, f_translate, f_rotate_x, f_rotate_y, f_rotate_z, f_rotate_theta
+from test_Blocks import add_vars
 
 
 class RegTestPyGeo(unittest.TestCase):

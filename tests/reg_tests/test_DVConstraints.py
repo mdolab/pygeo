@@ -1,14 +1,12 @@
-from __future__ import print_function
 import os
 import unittest
 import numpy as np
 from baseclasses import BaseRegTest
-import commonUtils
-from pygeo import geo_utils, DVGeometry, DVConstraints
+from pygeo import DVGeometry, DVConstraints
 from stl import mesh
 
 try:
-    import geograd
+    import geograd  # noqa
 
     missing_geograd = False
 except ImportError:

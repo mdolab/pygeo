@@ -1,7 +1,8 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import os, copy
+import os
+import copy
 import numpy
 from scipy import sparse
 from scipy.sparse import linalg

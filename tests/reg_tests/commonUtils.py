@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 import numpy
 from pygeo import DVGeometry, DVGeometryAxi
