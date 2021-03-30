@@ -254,7 +254,6 @@ class DVConstraints(object):
             elif isinstance(surf, pyGeo): # Assume it's a pyGeo surface
                 p0, v1, v2 = self._generateDiscreteSurface(surf)
             else:
-                import ipdb; ipdb.set_trace()
                 raise TypeError('surf given is not a supported type [List, plot3D file name, or pyGeo surface]')
 
             p1 = p0 + v1
