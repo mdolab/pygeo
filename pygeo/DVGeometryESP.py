@@ -213,7 +213,7 @@ class DVGeometryESP(object):
         pmtrIndex = 0
         pmtrsleft = True
         ocsmExternal = 500
-        ocsmIllegalPmtrIndex = -262
+        # ocsmIllegalPmtrIndex = -262
         while pmtrsleft:
             try:
                 pmtrIndex += 1
@@ -375,7 +375,7 @@ class DVGeometryESP(object):
                 if distributed:
                     # displacements for scatter
                     disp = numpy.array([numpy.sum(sizes[:i]) for i in range(self.comm.size)], dtype="intc")
-                    nptsg = numpy.sum(sizes)
+                    # nptsg = numpy.sum(sizes)
                     if self.comm.rank == 0:
                         sendbuf1 = [bodyIDg, sizes, disp, MPI.INT]
                         sendbuf2 = [faceIDg, sizes, disp, MPI.INT]
@@ -401,7 +401,7 @@ class DVGeometryESP(object):
                     # nondistributed pointset
                     # read on proc 0 and bcast to all
                     # then check that the points are correct
-                    nptsg = points.shape[0]
+                    # nptsg = points.shape[0]
                     if self.comm.rank == 0:
                         faceIDl[:] = faceIDg[:]
                         bodyIDl[:] = bodyIDg[:]
@@ -654,7 +654,6 @@ class DVGeometryESP(object):
 
     def writeCADFile(self, filename):
         valid_filetypes = ["brep", "bstl", "egads", "egg", "iges", "igs", "sens", "step", "stl", "stp", "tess", "grid"]
-        splitfile = filename.split(".")
         file_extension = filename.split(".")[-1]
         if file_extension.lower() not in valid_filetypes:
             raise IOError(
@@ -803,8 +802,7 @@ class DVGeometryESP(object):
         if len(dIdpt.shape) == 2:
             dIdpt = numpy.array([dIdpt])
         N = dIdpt.shape[0]
-
-        nDV = self.getNDV()
+        nPt = dIdpt.shape[1]
 
         # The following code computes the final sensitivity product:
         #
@@ -820,7 +818,7 @@ class DVGeometryESP(object):
         # a copy because we may need to modify it.
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
-        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
+        dIdpt = dIdpt.reshape((N, nPt * 3))
 
         # # transpose dIdpt and vstack;
         # # Now vstack the result with seamBar as that is far as the

@@ -96,7 +96,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
             # convert the ptvec into list of coordinates
             points = []
-            radError = 1e-20
             radii = []
             for pt in ptvec:
                 # print (pt)
@@ -177,8 +176,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
             openvsp.ReadVSPFile(vspFile)
             geoms = openvsp.FindGeoms()
 
-            comps = []
-
             DVGeo = DVGeometryVSP(vspFile)
             comp = "WingGeom"
             # loop over sections
@@ -232,7 +229,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
             # get the coordinates
             nNodes = len(uv[0, :])
-            ptVecA = openvsp.CompVecPnt01(geoms[0], 0, uv[0, :], uv[1, :])
 
             # extract node coordinates and save them in a numpy array
             coor = numpy.zeros((nNodes, 3))

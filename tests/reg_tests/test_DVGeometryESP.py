@@ -120,7 +120,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
     def test_load_a_model(self):
         # load the box model and build the box model
         csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
-        DVGeo = DVGeometryESP(csmFile)
+        DVGeometryESP(csmFile)
 
     def test_save_cadfile(self):
         write_fullpath = os.path.join(self.input_path, "reg_tests/fullpath_" + str(self.N_PROCS) + ".step")
@@ -193,7 +193,6 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
         DVGeo.addVariable("cubey0")
         DVGeo.setDesignVars({"cubey0": np.array([4.2 + 1e-12])}, updateJacobian=False)
-        npts = initpts.shape[0]
         self.assertAlmostEqual(DVGeo.pointSets["mypts"].proj_pts[0, 1] - 4.2, 1e-12, 15)
         DVGeo.addVariable("cubedz")
         DVGeo.setDesignVars({"cubedz": np.array([9.5 - 1e-12])}, updateJacobian=False)
@@ -362,7 +361,7 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
     def test_load_a_model(self):
         # load the box model and build the box model
         csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
-        DVGeo = DVGeometryESP(csmFile)
+        DVGeometryESP(csmFile)
 
     def test_add_desvars(self):
         # load the box model and build the box model
@@ -692,8 +691,6 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
         # dim 1 is each vertex of the triangle
         # dim 2 is x, y, z dimension
         p0 = testobj.vectors[:, 0, :]
-        p1 = testobj.vectors[:, 1, :]
-        p2 = testobj.vectors[:, 2, :]
         with self.assertRaises(ValueError):
             distglobal1 = DVGeo.addPointSet(p0, "airfoil_p0")
             self.assertGreater(distglobal1, 0.01)

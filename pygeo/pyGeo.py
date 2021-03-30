@@ -174,7 +174,7 @@ class pyGeo:
         start_lines = int((Ifile[-1][1:8]))
         general_lines = int((Ifile[-1][9:16]))
         directory_lines = int((Ifile[-1][17:24]))
-        parameter_lines = int((Ifile[-1][25:32]))
+        # parameter_lines = int((Ifile[-1][25:32]))
 
         # Now we know how many lines we have to deal with
         dir_offset = start_lines + general_lines

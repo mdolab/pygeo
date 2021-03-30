@@ -756,8 +756,6 @@ class pyBlock:
             only the points corresponding to the indices in mask will be
             non-zero in the array.
         """
-
-        volID = self.embededVolumes[ptSetName].volID
         u = self.embededVolumes[ptSetName].u
         v = self.embededVolumes[ptSetName].v
         w = self.embededVolumes[ptSetName].w

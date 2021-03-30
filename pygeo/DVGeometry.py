@@ -909,8 +909,8 @@ class DVGeometry(object):
             volList = numpy.arange(self.FFD.nVol)
             ind = numpy.arange(len(self.FFD.coef))
 
-        secLink = numpy.zeros(self.FFD.coef.shape[0], dtype=int)
-        secTransform = [numpy.eye(3)]
+        # secLink = numpy.zeros(self.FFD.coef.shape[0], dtype=int)
+        # secTransform = [numpy.eye(3)]
 
         if type(spanIndex) is str:
             spanIndex = [spanIndex] * len(volList)
@@ -2723,7 +2723,7 @@ class DVGeometry(object):
                         x[j] = val
                         dvDict.update({key: x})
                         self.setDesignVars(dvDict)
-                        X = self.update(pointSet)
+                        self.update(pointSet)
 
                         # Write FFD
                         self.writeTecplot("{}/ffd/iter_{:03d}.dat".format(directory, count))
@@ -4134,7 +4134,7 @@ class DVGeometry(object):
             List of transformation matrices for the sections of a given volume.
             Transformations are set up from local section frame to global frame.
         """
-        xyz_2_idx = {"x": 0, "y": 1, "z": 2}
+        # xyz_2_idx = {"x": 0, "y": 1, "z": 2}
         ijk_2_idx = {"i": 0, "j": 1, "k": 2}
         lIndex = self.FFD.topo.lIndex[ivol]
 

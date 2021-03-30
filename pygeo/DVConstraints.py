@@ -2933,7 +2933,6 @@ class DVConstraints(object):
         an unstructured mesh format"""
 
         pts = None
-        conn = None
 
         f = open(fileName, "r")
         nSurf = numpy.fromfile(f, "int", count=1, sep=" ")[0]
@@ -4058,7 +4057,6 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
 
         # assume evalFunctions was called just prior and grad was stashed on rank=0
         grad_vol = self.compute_volume_sens(self.surf_p0, self.surf_p1, self.surf_p2)
-        nDV = self.DVGeo.getNDV()
         if self.scaled:
             tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name + "_p0", config=config)
             tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name + "_p1", config=config)
@@ -5964,12 +5962,12 @@ class CurvatureConstraint(GeometricConstraint):
 
         if self.curvatureType == "Gaussian":
             # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
-            kS = numpy.dot(one, K * K * dS)
+            # kS = numpy.dot(one, K * K * dS)
             DkSDX = (self.diags(2 * K * dS).dot(DKDX) + self.diags(K * K).dot(DdSDX)).T.dot(one)
             return DkSDX
         elif self.curvatureType == "mean":
             # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
-            hS = numpy.dot(one, H * H * dS)
+            # hS = numpy.dot(one, H * H * dS)
             DhSDX = (self.diags(2 * H * dS).dot(DHDX) + self.diags(H * H).dot(DdSDX)).T.dot(one)
             return DhSDX
         elif self.curvatureType == "combined":

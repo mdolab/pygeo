@@ -174,8 +174,6 @@ def calculateAverageNormal(p0, v1, v2):
     take in a triangulated surface and calculate the centroid
     """
     p0 = np.array(p0)
-    p1 = np.array(v1) + p0
-    p2 = np.array(v2) + p0
 
     # compute the normal of each triangle
     normal = np.cross(v1, v2)
@@ -270,7 +268,6 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness
     npt = len(x)
 
     xMin = min(x)
-    xMax = max(x)
 
     # There are 4 possibilites we have to deal with:
     # a. Given a sharp TE -- User wants a sharp TE
@@ -2181,7 +2178,7 @@ the list of surfaces must be the same length"
         lIndex = []
         # Now actually fill everything up
         for ii in range(len(surfaceList)):
-            isurf = surfaceList[ii]
+            iSurf = surfaceList[ii]
             N = sizes[iSurf][0]
             M = sizes[iSurf][1]
             lIndex.append(-1 * np.ones((N, M), "intc"))
