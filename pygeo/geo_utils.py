@@ -3,7 +3,8 @@
 # and pyLayout
 # =============================================================================
 import numpy as np
-import sys, os
+import sys
+import os
 import functools
 from pyspline import pySpline
 
@@ -252,7 +253,7 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness
     r = []
     try:
         r.append([float(s) for s in line.split()])
-    except:
+    except Exception:
         r = []
 
     while 1:
@@ -3493,7 +3494,7 @@ def tfi_2d(e0, e1, e2, e3):
 
     try:
         X = pySpline.libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
-    except:
+    except Exception:
 
         Nu = len(e0)
         Nv = len(e2)

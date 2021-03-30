@@ -145,8 +145,8 @@ class DVGeometry(object):
         self.nDVL_T = None
         self.nDVSL_T = None
         self.nDVSW_T = None
-        self.nDVG_count = 0  #  number of global   (G)  variables
-        self.nDVL_count = 0  #  number of local    (L)  variables
+        self.nDVG_count = 0  # number of global   (G)  variables
+        self.nDVL_count = 0  # number of local    (L)  variables
         self.nDVSL_count = 0  # number of section  (SL) local variables
         self.nDVSW_count = 0  # number of spanwise (SW) local variables
 
@@ -1258,7 +1258,7 @@ class DVGeometry(object):
             # now use the baseCoords to create a KD tree
             try:
                 from scipy.spatial import cKDTree
-            except:
+            except ImportError:
                 raise Error("scipy.spatial " "must be available to use detect symmetry")
 
             # Now make a KD-tree so we can use it to find the unique nodes
@@ -1438,7 +1438,7 @@ class DVGeometry(object):
         """Get the sequential axis number from the name tag axisID"""
         try:
             return list(self.axis.keys()).index(axisID)
-        except:
+        except IndexError:
             raise Error("'The 'axisID' was invalid!")
 
     def updateCalculations(self, new_pts, isComplex, config):

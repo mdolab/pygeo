@@ -1,7 +1,6 @@
 import unittest
 import os
 import numpy as np
-import os
 from stl import mesh
 from baseclasses import BaseRegTest
 from parameterized import parameterized_class
@@ -9,7 +8,7 @@ import time
 
 try:
     from mpi4py import MPI
-except:
+except ImportError:
     MPI = None
 
 if MPI:
@@ -129,7 +128,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         if DVGeo.comm.rank == 0:
             try:
                 os.remove(write_fullpath)
-            except:
+            except OSError:
                 pass
         DVGeo.writeCADFile(write_fullpath)
         DVGeo.comm.barrier()
@@ -146,7 +145,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         if DVGeo.comm.rank == 0:
             try:
                 os.remove(write_fullpath)
-            except:
+            except OSError:
                 pass
         DVGeo.writeCSMFile(write_fullpath)
         DVGeo.comm.barrier()

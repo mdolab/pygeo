@@ -519,7 +519,7 @@ class DVConstraints(object):
 
         try:
             from stl import mesh
-        except:
+        except ImportError:
             raise ImportError("numpy-stl package must be installed")
         if fromDVGeo is None:
             p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
@@ -1519,7 +1519,7 @@ class DVConstraints(object):
         else:
             DVGeo2 = None
         if DVGeo1 is None and DVGeo2 is None:
-            raise UserError("At least one DVGeo object must be specified")
+            raise ValueError("At least one DVGeo object must be specified")
 
         typeName = "triSurfCon"
         if not typeName in self.constraints:
@@ -3721,7 +3721,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.surface_1_name = surface_1_name
         self.surface_2_name = surface_2_name
         if DVGeo1 is None and DVGeo2 is None:
-            raise UserError("Must include at least one geometric parametrization in constraint " + str(name))
+            raise ValueError("Must include at least one geometric parametrization in constraint " + str(name))
         self.DVGeo1 = DVGeo1
         self.DVGeo2 = DVGeo2
 
