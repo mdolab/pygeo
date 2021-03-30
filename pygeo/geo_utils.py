@@ -441,13 +441,13 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     # Make sure the sizes are the right type in each dimension. If an integer is
     # given, use that same size for every volume.
     size = [N0, N1, N2]
-    for i, item in enumerate(size):
+    for iVol, item in enumerate(size):
         if type(item) is int:
-            size[i] = [item] * Nvol
+            size[iVol] = [item] * Nvol
         elif type(item) is not list:
             print("Incorrect type for N0, N1, or N2.")
 
-        assert len(size[i]) == Nvol
+        assert len(size[iVol]) == Nvol
     N0, N1, N2 = size
 
     f = open(fileName, "w")
@@ -474,24 +474,24 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
         Nk = size[axes.index("k")]
         f.write("%d\t%d\t%d\n" % (Ni, Nj, Nk))
 
-    for i in range(Nvol):
-        size = [N0[i], N1[i], N2[i]]
+    for iVol in range(Nvol):
+        size = [N0[iVol], N1[iVol], N2[iVol]]
         Ni = size[axes.index("i")]
         Nj = size[axes.index("j")]
         Nk = size[axes.index("k")]
         # Get distributions for each axis
-        d0 = getDistribution(dist[i][0], size[0])
-        d1 = getDistribution(dist[i][1], size[1])
-        d2 = getDistribution(dist[i][2], size[2])
+        d0 = getDistribution(dist[iVol][0], size[0])
+        d1 = getDistribution(dist[iVol][1], size[1])
+        d2 = getDistribution(dist[iVol][2], size[2])
 
         # Initialize coordinate arrays
         X = np.zeros(size + [3])
 
         for j in range(size[0]):
-            P = slices[i, 0, 0] + np.outer(d0, (slices[i + 1, 0, 0] - slices[i, 0, 0]))[j]
-            Q = slices[i, 0, 1] + np.outer(d0, (slices[i + 1, 0, 1] - slices[i, 0, 1]))[j]
-            R = slices[i, 1, 0] + np.outer(d0, (slices[i + 1, 1, 0] - slices[i, 1, 0]))[j]
-            S = slices[i, 1, 1] + np.outer(d0, (slices[i + 1, 1, 1] - slices[i, 1, 1]))[j]
+            P = slices[iVol, 0, 0] + np.outer(d0, (slices[iVol + 1, 0, 0] - slices[iVol, 0, 0]))[j]
+            Q = slices[iVol, 0, 1] + np.outer(d0, (slices[iVol + 1, 0, 1] - slices[iVol, 0, 1]))[j]
+            R = slices[iVol, 1, 0] + np.outer(d0, (slices[iVol + 1, 1, 0] - slices[iVol, 1, 0]))[j]
+            S = slices[iVol, 1, 1] + np.outer(d0, (slices[iVol + 1, 1, 1] - slices[iVol, 1, 1]))[j]
             for k in range(size[1]):
                 U = P + np.outer(d1, (R - P))[k]
                 V = Q + np.outer(d1, (S - Q))[k]
@@ -499,13 +499,13 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
 
         for dim in range(3):
             line = ""
-            for j in range(Nk):
-                for k in range(Nj):
-                    for l in range(Ni):
+            for k in range(Nk):
+                for j in range(Nj):
+                    for i in range(Ni):
                         idc = [-1, -1, -1]
-                        idc[axes.index("i")] = l
-                        idc[axes.index("j")] = k
-                        idc[axes.index("k")] = j
+                        idc[axes.index("i")] = i
+                        idc[axes.index("j")] = j
+                        idc[axes.index("k")] = k
                         line += "{: .4e}\t".format(X[idc[0], idc[1], idc[2], dim])
                         if len(line) + 11 > 80:
                             f.write(line + "\n")
@@ -3581,11 +3581,11 @@ def splitQuad(e0, e1, e2, e3, alpha, beta, NO):
     pts[3] = e1[-1]
 
     # First generate edge lengths
-    l = np.zeros(4)
-    l[0] = eDist(pts[0], pts[1])
-    l[1] = eDist(pts[2], pts[3])
-    l[2] = eDist(pts[0], pts[2])
-    l[3] = eDist(pts[1], pts[3])
+    length = np.zeros(4)
+    length[0] = eDist(pts[0], pts[1])
+    length[1] = eDist(pts[2], pts[3])
+    length[2] = eDist(pts[0], pts[2])
+    length[3] = eDist(pts[1], pts[3])
 
     # Vector along edges 0->3
     vec = np.zeros((4, 3))
@@ -3601,8 +3601,8 @@ def splitQuad(e0, e1, e2, e3, alpha, beta, NO):
 
     mid = np.average(pts, axis=0)
 
-    uBar = 0.5 * (l[0] + l[1]) * alpha
-    vBar = 0.5 * (l[2] + l[3]) * beta
+    uBar = 0.5 * (length[0] + length[1]) * alpha
+    vBar = 0.5 * (length[2] + length[3]) * beta
 
     aspect = uBar / vBar
 
@@ -4212,14 +4212,14 @@ class DCEL(object):
         # Step 3: Identification of next and prev hedges
         for v in self.vertices:
             v.sortincident()
-            l = len(v.hedgelist)
+            length = len(v.hedgelist)
 
-            for i in range(l - 1):
+            for i in range(length - 1):
                 v.hedgelist[i].nexthedge = v.hedgelist[i + 1].twin
                 v.hedgelist[i + 1].prevhedge = v.hedgelist[i]
 
-            v.hedgelist[l - 1].nexthedge = v.hedgelist[0].twin
-            v.hedgelist[0].prevhedge = v.hedgelist[l - 1]
+            v.hedgelist[length - 1].nexthedge = v.hedgelist[0].twin
+            v.hedgelist[0].prevhedge = v.hedgelist[length - 1]
 
         # Step 4: Face assignment
         provlist = self.hedges[:]
@@ -4428,13 +4428,12 @@ def hangle(dx, dy):
     """Determines the angle with respect to the x axis of a segment
     of coordinates dx and dy
     """
-
-    l = np.sqrt(dx * dx + dy * dy)
+    length = np.sqrt(dx * dx + dy * dy)
 
     if dy > 0:
-        return np.arccos(dx / l)
+        return np.arccos(dx / length)
     else:
-        return 2 * np.pi - np.arccos(dx / l)
+        return 2 * np.pi - np.arccos(dx / length)
 
 
 # --------------------- Polygon geometric functions -----------------
