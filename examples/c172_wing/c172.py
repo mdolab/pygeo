@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from pygeo import pyGeo
 
 # ==============================================================================
@@ -13,7 +13,7 @@ z = [0, 2.5, 10.58 / 2]
 rot_x = [0, 0, 0]
 rot_y = [0, 0, 0]
 rot_z = [0, 0, 2]
-offset = numpy.zeros((naf, 2))
+offset = np.zeros((naf, 2))
 
 # There are several examples that follow showing many of the different
 # combinations of tip/trailing edge options that are available.

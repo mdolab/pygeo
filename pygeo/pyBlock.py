@@ -3,7 +3,7 @@
 # ======================================================================
 import os
 import copy
-import numpy
+import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
 from pyspline import pySpline
@@ -99,7 +99,7 @@ class pyBlock:
         blocks = []
         for i in range(nVol):
             cur_size = sizes[i, 0] * sizes[i, 1] * sizes[i, 2]
-            blocks.append(numpy.zeros([sizes[i, 0], sizes[i, 1], sizes[i, 2], 3]))
+            blocks.append(np.zeros([sizes[i, 0], sizes[i, 1], sizes[i, 2], 3]))
             for idim in range(3):
                 blocks[-1][:, :, :, idim] = readNValues(f, cur_size, "float", binary).reshape(
                     (sizes[i, 0], sizes[i, 1], sizes[i, 2]), order=order
@@ -155,7 +155,7 @@ class pyBlock:
             # now create the appended list with double the blocks
             blocks += newBlocks
             # Extend sizes
-            newSizes = numpy.zeros([nVol * 2, 3], "int")
+            newSizes = np.zeros([nVol * 2, 3], "int")
             newSizes[:nVol, :] = sizes
             newSizes[nVol:, :] = sizes
             sizes = newSizes
@@ -172,10 +172,10 @@ class pyBlock:
                 """Simple function to generate N uniform knots of
                 order k"""
 
-                knots = numpy.zeros(N + k)
+                knots = np.zeros(N + k)
                 knots[0 : k - 1] = 0.0
                 knots[-k:] = 1.0
-                knots[k - 1 : -k + 1] = numpy.linspace(0, 1, N - k + 2)
+                knots[k - 1 : -k + 1] = np.linspace(0, 1, N - k + 2)
 
                 return knots
 
@@ -201,9 +201,9 @@ class pyBlock:
                 )
 
                 # Generate dummy original data:
-                U = numpy.zeros((3, 3, 3))
-                V = numpy.zeros((3, 3, 3))
-                W = numpy.zeros((3, 3, 3))
+                U = np.zeros((3, 3, 3))
+                V = np.zeros((3, 3, 3))
+                W = np.zeros((3, 3, 3))
 
                 for i in range(3):
                     for j in range(3):
@@ -224,7 +224,7 @@ class pyBlock:
             self.nVol = len(self.vols)
             self._calcConnectivity(1e-4, 1e-4)
             nCtl = self.topo.nGlobal
-            self.coef = numpy.zeros((nCtl, 3))
+            self.coef = np.zeros((nCtl, 3))
             self._setVolumeCoef()
 
             for ivol in range(self.nVol):
@@ -266,7 +266,7 @@ class pyBlock:
         origTopo.calcGlobalNumbering(sizes, greedyReorder=greedyReorder)
         N = origTopo.nGlobal
         print(" -> Creating global point list")
-        pts = numpy.zeros((N, 3))
+        pts = np.zeros((N, 3))
         for ii in range(N):
             pts[ii] = self.vols[origTopo.gIndex[ii][0][0]].X[
                 origTopo.gIndex[ii][0][1], origTopo.gIndex[ii][0][2], origTopo.gIndex[ii][0][3]
@@ -278,9 +278,9 @@ class pyBlock:
             kmax = max(kmax, self.vols[ivol].ku, self.vols[ivol].kv, self.vols[ivol].kw)
 
         nnz = N * kmax * kmax * kmax
-        vals = numpy.zeros(nnz)
+        vals = np.zeros(nnz)
         rowPtr = [0]
-        colInd = numpy.zeros(nnz, "intc")
+        colInd = np.zeros(nnz, "intc")
         for ii in range(N):
             ivol = origTopo.gIndex[ii][0][0]
             i = origTopo.gIndex[ii][0][1]
@@ -305,7 +305,7 @@ class pyBlock:
         NNT = NN.T
         NTN = NNT * NN
         solve = linalg.dsolve.factorized(NTN)
-        self.coef = numpy.zeros((nCtl, 3))
+        self.coef = np.zeros((nCtl, 3))
         for idim in range(3):
             self.coef[:, idim] = solve(NNT * pts[:, idim])
 
@@ -365,7 +365,7 @@ class pyBlock:
         edgeTol :float
             Tolerance for midpoint of edges to determine if they are the same
         """
-        coords = numpy.zeros((self.nVol, 26, 3))
+        coords = np.zeros((self.nVol, 26, 3))
 
         for ivol in range(self.nVol):
             for icorner in range(8):
@@ -576,8 +576,8 @@ class pyBlock:
 
         if nodeLabels:
             # First we need to figure out where the corners actually *are*
-            nNodes = len(numpy.unique(self.topo.nodeLink.flatten()))
-            nodeCoord = numpy.zeros((nNodes, 3))
+            nNodes = len(np.unique(self.topo.nodeLink.flatten()))
+            nodeCoord = np.zeros((nNodes, 3))
 
             for i in range(nNodes):
                 # Try to find node i
@@ -623,7 +623,7 @@ class pyBlock:
 
         f = open(fileName, "w")
         f.write("%d\n" % (self.nVol))
-        numpy.array(sizes).tofile(f, sep=" ")
+        np.array(sizes).tofile(f, sep=" ")
         f.write("\n")
         for ivol in range(self.nVol):
             vals = self.vols[ivol](self.vols[ivol].U, self.vols[ivol].V, self.vols[ivol].W)
@@ -653,7 +653,7 @@ class pyBlock:
 
         f = open(fileName, "w")
         f.write("%d\n" % (self.nVol))
-        numpy.array(sizes).tofile(f, sep=" ")
+        np.array(sizes).tofile(f, sep=" ")
         f.write("\n")
         for ivol in range(self.nVol):
             vals = self.vols[ivol].coef
@@ -683,7 +683,7 @@ class pyBlock:
         coefficients on the volumes. This typically needs only to be
         called once when the object is created"""
 
-        self.coef = numpy.zeros((self.topo.nGlobal, 3))
+        self.coef = np.zeros((self.topo.nGlobal, 3))
         for ivol in range(self.nVol):
             vol = self.vols[ivol]
             for i in range(vol.nCtlu):
@@ -716,9 +716,9 @@ class pyBlock:
 
         # Maximum number of non-zeros in jacobian
         nnz = N * kmax * kmax * kmax
-        vals = numpy.zeros(nnz)
+        vals = np.zeros(nnz)
         rowPtr = [0]
-        colInd = numpy.zeros(nnz, "intc")
+        colInd = np.zeros(nnz, "intc")
         for i in range(N):
             kinc = self.vols[volID[i]].ku * self.vols[volID[i]].kv * self.vols[volID[i]].kw
             vals, colInd = self.vols[volID[i]].getBasisPt(
@@ -761,7 +761,7 @@ class pyBlock:
         w = self.embededVolumes[ptSetName].w
         N = self.embededVolumes[ptSetName].N
         mask = self.embededVolumes[ptSetName].mask
-        coordinates = numpy.zeros((N, 3))
+        coordinates = np.zeros((N, 3))
 
         # This evaluation is fast enough we don't really care about
         # only looping explictly over the mask values
@@ -822,7 +822,7 @@ class pyBlock:
 
                 mask = []
                 for i in range(len(D)):
-                    Dnrm = numpy.linalg.norm(D[i])
+                    Dnrm = np.linalg.norm(D[i])
                     if Dnrm < 50 * eps:  # Sufficiently inside
                         mask.append(i)
 
@@ -866,16 +866,16 @@ class pyBlock:
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
-        x0 = numpy.atleast_2d(x0)
+        x0 = np.atleast_2d(x0)
         N = len(x0)
-        volID = numpy.zeros(N, "intc")
-        u = numpy.zeros(N)
-        v = numpy.zeros(N)
-        w = numpy.zeros(N)
-        D = 1e10 * numpy.ones((N, 3))
+        volID = np.zeros(N, "intc")
+        u = np.zeros(N)
+        v = np.zeros(N)
+        w = np.zeros(N)
+        D = 1e10 * np.ones((N, 3))
 
         # Starting list is just [0, 1, 2, ..., nVol-1]
-        volList = numpy.arange(self.nVol)
+        volList = np.arange(self.nVol)
         u0 = 0.0
         v0 = 0.0
         w0 = 0.0
@@ -885,11 +885,11 @@ class pyBlock:
                 iVol = volList[j]
                 u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter)
 
-                D0Norm = numpy.linalg.norm(D0)
+                D0Norm = np.linalg.norm(D0)
                 # If the new distance is less than the previous best
                 # distance, set the volID, u, v, w, since this may be
                 # best we can do:
-                if D0Norm < numpy.linalg.norm(D[i]):
+                if D0Norm < np.linalg.norm(D[i]):
                     volID[i] = iVol
 
                     u[i] = u0
@@ -906,7 +906,7 @@ class pyBlock:
             # Shuffle the order of the volList such that the last
             # volume used (iVol or volList[j]) is at the start of the
             # list and the remainder are shuffled towards the back
-            volList = numpy.hstack([iVol, volList[:j], volList[j + 1 :]])
+            volList = np.hstack([iVol, volList[:j], volList[j + 1 :]])
         # end for (length of x0)
 
         # If desired check the errors and print warnings:
@@ -918,7 +918,7 @@ class pyBlock:
             DRms = 0.0
             badPts = []
             for i in range(len(x0)):
-                nrm = numpy.linalg.norm(D[i])
+                nrm = np.linalg.norm(D[i])
                 if nrm > DMax:
                     DMax = nrm
 
@@ -928,7 +928,7 @@ class pyBlock:
                     badPts.append([x0[i], D[i]])
 
             if len(x0) > 0:
-                DRms = numpy.sqrt(DRms / len(x0))
+                DRms = np.sqrt(DRms / len(x0))
             else:
                 DRms = None
 
@@ -993,10 +993,10 @@ class EmbeddedVolume(object):
     """
 
     def __init__(self, volID, u, v, w, mask=None):
-        self.volID = numpy.array(volID)
-        self.u = numpy.array(u)
-        self.v = numpy.array(v)
-        self.w = numpy.array(w)
+        self.volID = np.array(volID)
+        self.u = np.array(u)
+        self.v = np.array(v)
+        self.w = np.array(w)
         self.N = len(self.u)
         self.indices = {}
         self.dPtdCoef = None
@@ -1004,7 +1004,7 @@ class EmbeddedVolume(object):
         self.mask = mask
 
         # Get the number of unique volumes this point set requires:
-        uniqueVolIDs = numpy.unique(self.volID)
+        uniqueVolIDs = np.unique(self.volID)
 
         for iVol in uniqueVolIDs:
-            self.indices[iVol] = numpy.where(self.volID == iVol)[0]
+            self.indices[iVol] = np.where(self.volID == iVol)[0]

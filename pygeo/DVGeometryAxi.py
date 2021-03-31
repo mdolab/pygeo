@@ -1,14 +1,6 @@
 import numpy as np
 from scipy import sparse
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, " "use:\n pip install ordereddict")
-
+from collections import OrderedDict
 from . import DVGeometry
 
 AXES_2_IDX = {"x": 0, "y": 1, "z": 2}

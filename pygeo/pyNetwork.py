@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import os
-import numpy
+import numpy as np
 from pyspline import pySpline
 from .geo_utils import CurveTopology
 
@@ -33,7 +33,7 @@ class pyNetwork:
         """
         Compute the connectivity of the set of curve objects.
         """
-        coords = numpy.zeros((self.nCurve, 2, 3))
+        coords = np.zeros((self.nCurve, 2, 3))
         for icurve in range(self.nCurve):
             coords[icurve][0] = self.curves[icurve](0)
             coords[icurve][1] = self.curves[icurve](1)
@@ -45,7 +45,7 @@ class pyNetwork:
             sizes.append(self.curves[icurve].nCtl)
         self.topo.calcGlobalNumbering(sizes)
 
-        self.coef = numpy.zeros((self.topo.nGlobal, 3))
+        self.coef = np.zeros((self.topo.nGlobal, 3))
         for i in range(len(self.coef)):
             icurve = self.topo.gIndex[i][0][0]
             ii = self.topo.gIndex[i][0][1]
@@ -93,7 +93,7 @@ class pyNetwork:
             labelFilename = dirName + "./" + fileBaseName + ".curve_labels.dat"
             f2 = open(labelFilename, "w")
             for icurve in range(self.nCurve):
-                mid = numpy.floor(self.curves[icurve].nCtl / 2)
+                mid = np.floor(self.curves[icurve].nCtl / 2)
                 textString = 'TEXT CS=GRID3D, X=%f,Y=%f,Z=%f,ZN=%d,T="S%d"\n' % (
                     self.curves[icurve].coef[mid, 0],
                     self.curves[icurve].coef[mid, 1],
@@ -106,8 +106,8 @@ class pyNetwork:
 
         if nodeLabels:
             # First we need to figure out where the corners actually *are*
-            nNodes = len(numpy.unique(self.topo.nodeLink.flatten()))
-            nodeCoord = numpy.zeros((nNodes, 3))
+            nNodes = len(np.unique(self.topo.nodeLink.flatten()))
+            nodeCoord = np.zeros((nNodes, 3))
             for i in range(nNodes):
                 # Try to find node i
                 for icurve in range(self.nCurve):
@@ -166,7 +166,7 @@ class pyNetwork:
             Upper corner of the bounding box
         """
         if curves is None:
-            curves = numpy.arange(self.nCurve)
+            curves = np.arange(self.nCurve)
 
         Xmin0, Xmax0 = self.curves[curves[0]].getBounds()
         for i in range(1, len(curves)):
@@ -231,24 +231,24 @@ class pyNetwork:
         # that we know how large to make the line representing the ray.
         curveID0, s0 = self.projectPoints(points, curves=curves, **kwargs)
 
-        D0 = numpy.zeros((len(s0), 3), "d")
+        D0 = np.zeros((len(s0), 3), "d")
         for i in range(len(s0)):
             D0[i, :] = self.curves[curveID0[i]](s0[i]) - points[i]
 
         if curves is None:
-            curves = numpy.arange(self.nCurve)
+            curves = np.arange(self.nCurve)
 
         # Now do the same calc as before
         N = len(points)
-        S = numpy.zeros((N, len(curves)))
-        D = numpy.zeros((N, len(curves), 3))
+        S = np.zeros((N, len(curves)))
+        D = np.zeros((N, len(curves), 3))
 
         for i in range(len(curves)):
             icurve = curves[i]
             for j in range(N):
                 ray = pySpline.line(
-                    points[j] - axis * raySize * numpy.linalg.norm(D0[j]),
-                    points[j] + axis * raySize * numpy.linalg.norm(D0[j]),
+                    points[j] - axis * raySize * np.linalg.norm(D0[j]),
+                    points[j] + axis * raySize * np.linalg.norm(D0[j]),
                 )
 
                 S[j, i], t, D[j, i, :] = self.curves[icurve].projectCurve(ray, nIter=2000)
@@ -260,17 +260,17 @@ class pyNetwork:
                         "enough to intersect the nearest curve.".format(j)
                     )
 
-        s = numpy.zeros(N)
-        curveID = numpy.zeros(N, "intc")
+        s = np.zeros(N)
+        curveID = np.zeros(N, "intc")
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = numpy.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm((D[i, 0]))
             s[i] = S[i, 0]
             curveID[i] = curves[0]
             for j in range(len(curves)):
-                if numpy.linalg.norm(D[i, j]) < d0:
-                    d0 = numpy.linalg.norm(D[i, j])
+                if np.linalg.norm(D[i, j]) < d0:
+                    d0 = np.linalg.norm(D[i, j])
                     s[i] = S[i, j]
                     curveID[i] = curves[j]
 
@@ -301,26 +301,26 @@ class pyNetwork:
         """
 
         if curves is None:
-            curves = numpy.arange(self.nCurve)
+            curves = np.arange(self.nCurve)
 
         N = len(points)
-        S = numpy.zeros((N, len(curves)))
-        D = numpy.zeros((N, len(curves), 3))
+        S = np.zeros((N, len(curves)))
+        D = np.zeros((N, len(curves), 3))
         for i in range(len(curves)):
             icurve = curves[i]
             S[:, i], D[:, i, :] = self.curves[icurve].projectPoint(points, *args, **kwargs)
 
-        s = numpy.zeros(N)
-        curveID = numpy.zeros(N, "intc")
+        s = np.zeros(N)
+        curveID = np.zeros(N, "intc")
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = numpy.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm((D[i, 0]))
             s[i] = S[i, 0]
             curveID[i] = curves[0]
             for j in range(len(curves)):
-                if numpy.linalg.norm(D[i, j]) < d0:
-                    d0 = numpy.linalg.norm(D[i, j])
+                if np.linalg.norm(D[i, j]) < d0:
+                    d0 = np.linalg.norm(D[i, j])
                     s[i] = S[i, j]
                     curveID[i] = curves[j]
 

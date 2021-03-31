@@ -3,7 +3,7 @@
 # ======================================================================
 import os
 import copy
-import numpy
+import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg.dsolve import factorized
 from pyspline import pySpline
@@ -140,7 +140,7 @@ class pyGeo:
         surfs = []
         for i in range(nSurf):
             curSize = sizes[i, 0] * sizes[i, 1]
-            surfs.append(numpy.zeros([sizes[i, 0], sizes[i, 1], 3]))
+            surfs.append(np.zeros([sizes[i, 0], sizes[i, 1], 3]))
             for idim in range(3):
                 surfs[-1][:, :, idim] = geo_utils.readNValues(f, curSize, "float", binary).reshape(
                     (sizes[i, 0], sizes[i, 1]), order=order
@@ -220,7 +220,7 @@ class pyGeo:
             counter += Nctlv + kv
 
             weights = data[counter : counter + Nctlu * Nctlv]
-            weights = numpy.array(weights)
+            weights = np.array(weights)
             if weights.all() != 1:
                 print(
                     "WARNING: Not all weight in B-spline surface are\
@@ -228,14 +228,14 @@ class pyGeo:
                 )
             counter += Nctlu * Nctlv
 
-            coef = numpy.zeros([Nctlu, Nctlv, 3])
+            coef = np.zeros([Nctlu, Nctlv, 3])
             for j in range(Nctlv):
                 for i in range(Nctlu):
                     coef[i, j, :] = data[counter : counter + 3]
                     counter += 3
 
             # Last we need the ranges
-            prange = numpy.zeros(4)
+            prange = np.zeros(4)
 
             prange[0] = data[counter]
             prange[1] = data[counter + 1]
@@ -243,8 +243,8 @@ class pyGeo:
             prange[3] = data[counter + 3]
 
             # Re-scale the knot vectors in case the upper bound is not 1
-            tu = numpy.array(tu)
-            tv = numpy.array(tv)
+            tu = np.array(tu)
+            tv = np.array(tv)
             if not tu[-1] == 1.0:
                 tu /= tu[-1]
 
@@ -254,9 +254,9 @@ class pyGeo:
             self.surfs.append(pySpline.Surface(ku=ku, kv=kv, tu=tu, tv=tv, coef=coef))
 
             # Generate dummy data for connectivity to work
-            u = numpy.linspace(0, 1, 3)
-            v = numpy.linspace(0, 1, 3)
-            [V, U] = numpy.meshgrid(v, u)
+            u = np.linspace(0, 1, 3)
+            v = np.linspace(0, 1, 3)
+            [V, U] = np.meshgrid(v, u)
             self.surfs[-1].X = self.surfs[-1](U, V)
             self.surfs[-1].Nu = 3
             self.surfs[-1].Nv = 3
@@ -299,29 +299,29 @@ class pyGeo:
         the most commonly used options."""
 
         if X is not None:
-            Xsec = numpy.array(X)
+            Xsec = np.array(X)
         else:
             # We have to use x, y, z
-            Xsec = numpy.vstack([x, y, z]).T
+            Xsec = np.vstack([x, y, z]).T
 
         N = len(Xsec)
 
         if rot is not None:
-            rot = numpy.array(rot)
+            rot = np.array(rot)
         else:
             if rotX is None:
-                rotX = numpy.zeros(N)
+                rotX = np.zeros(N)
             if rotY is None:
-                rotY = numpy.zeros(N)
+                rotY = np.zeros(N)
             if rotZ is None:
-                rotZ = numpy.zeros(N)
-            rot = numpy.vstack([rotX, rotY, rotZ]).T
+                rotZ = np.zeros(N)
+            rot = np.vstack([rotX, rotY, rotZ]).T
 
         if offset is None:
-            offset = numpy.zeros((N, 2))
+            offset = np.zeros((N, 2))
 
         if scale is None:
-            scale = numpy.ones(N)
+            scale = np.ones(N)
 
         # Limit kSpan to 2 if we only have two cross section
         if len(Xsec) == 2:
@@ -335,15 +335,15 @@ class pyGeo:
                 )
 
             if teHeight:
-                teHeight = numpy.atleast_1d(teHeight)
+                teHeight = np.atleast_1d(teHeight)
                 if len(teHeight) == 1:
-                    teHeight = numpy.ones(N) * teHeight
+                    teHeight = np.ones(N) * teHeight
                 teHeight /= scale
 
             if teHeightScaled:
-                teHeight = numpy.atleast_1d(teHeightScaled)
+                teHeight = np.atleast_1d(teHeightScaled)
                 if len(teHeight) == 1:
-                    teHeight = numpy.ones(N) * teHeight
+                    teHeight = np.ones(N) * teHeight
         else:
             teHeight = [None for i in range(N)]
 
@@ -355,7 +355,7 @@ class pyGeo:
                 x, y = geo_utils.readAirfoilFile(
                     xsections[i], bluntTe, bluntThickness=teHeight[i], bluntTaperRange=bluntTaperRange
                 )
-                weights = numpy.ones(len(x))
+                weights = np.ones(len(x))
                 weights[0] = -1
                 weights[-1] = -1
                 if nCtl is not None:
@@ -399,7 +399,7 @@ class pyGeo:
                 if curves[i] is not None:
                     knots = origKnots[i]
                     # Search for all indices
-                    indices = numpy.searchsorted(baseKnots, knots, side="left")
+                    indices = np.searchsorted(baseKnots, knots, side="left")
 
                     toInsert = []
                     # Now go over the indices and see if we need to add
@@ -487,9 +487,9 @@ class pyGeo:
         # airfoil coordinates.
 
         if thickness is not None:
-            thickness = numpy.atleast_1d(thickness)
+            thickness = np.atleast_1d(thickness)
             if len(thickness) == 1:
-                thickness = numpy.ones(len(thickness)) * thickness
+                thickness = np.ones(len(thickness)) * thickness
             for i in range(N):
                 # Only scale the interior control points; not the first and last
                 curves[i].coef[1:-1, 1] *= thickness[i]
@@ -546,8 +546,8 @@ class pyGeo:
 
         # Now we can set the surfaces
         ncoef = topCurves[0].nCtl
-        coefTop = numpy.zeros((ncoef, len(xsections), 3))
-        coefBot = numpy.zeros((ncoef, len(xsections), 3))
+        coefTop = np.zeros((ncoef, len(xsections), 3))
+        coefBot = np.zeros((ncoef, len(xsections), 3))
 
         for i in range(len(xsections)):
             # Scale, rotate and translate the coefficients
@@ -560,13 +560,13 @@ class pyGeo:
             coefBot[:, i, 2] = 0
 
             for j in range(ncoef):
-                coefTop[j, i, :] = geo_utils.rotzV(coefTop[j, i, :], rot[i, 2] * numpy.pi / 180)
-                coefTop[j, i, :] = geo_utils.rotxV(coefTop[j, i, :], rot[i, 0] * numpy.pi / 180)
-                coefTop[j, i, :] = geo_utils.rotyV(coefTop[j, i, :], rot[i, 1] * numpy.pi / 180)
+                coefTop[j, i, :] = geo_utils.rotzV(coefTop[j, i, :], rot[i, 2] * np.pi / 180)
+                coefTop[j, i, :] = geo_utils.rotxV(coefTop[j, i, :], rot[i, 0] * np.pi / 180)
+                coefTop[j, i, :] = geo_utils.rotyV(coefTop[j, i, :], rot[i, 1] * np.pi / 180)
 
-                coefBot[j, i, :] = geo_utils.rotzV(coefBot[j, i, :], rot[i, 2] * numpy.pi / 180)
-                coefBot[j, i, :] = geo_utils.rotxV(coefBot[j, i, :], rot[i, 0] * numpy.pi / 180)
-                coefBot[j, i, :] = geo_utils.rotyV(coefBot[j, i, :], rot[i, 1] * numpy.pi / 180)
+                coefBot[j, i, :] = geo_utils.rotzV(coefBot[j, i, :], rot[i, 2] * np.pi / 180)
+                coefBot[j, i, :] = geo_utils.rotxV(coefBot[j, i, :], rot[i, 0] * np.pi / 180)
+                coefBot[j, i, :] = geo_utils.rotyV(coefBot[j, i, :], rot[i, 1] * np.pi / 180)
 
             # Finally translate according to  positions specified
             coefTop[:, i, :] += Xsec[i, :]
@@ -580,12 +580,12 @@ class pyGeo:
 
         if bluntTe:
             if not roundedTe:
-                coef = numpy.zeros((len(xsections), 2, 3), "d")
+                coef = np.zeros((len(xsections), 2, 3), "d")
                 coef[:, 0, :] = coefTop[0, :, :]
                 coef[:, 1, :] = coefBot[0, :, :]
                 self.surfs.append(pySpline.Surface(coef=coef, ku=kSpan, kv=2, tu=Xcurve.t, tv=[0, 0, 1, 1]))
             else:
-                coef = numpy.zeros((len(xsections), 4, 3), "d")
+                coef = np.zeros((len(xsections), 4, 3), "d")
                 coef[:, 0, :] = coefTop[0, :, :]
                 coef[:, 3, :] = coefBot[0, :, :]
 
@@ -596,9 +596,9 @@ class pyGeo:
                 for j in range((len(xsections))):
                     projTop = coefTop[0, j] - coefTop[1, j]
                     projBot = coefBot[0, j] - coefBot[1, j]
-                    projTop /= numpy.linalg.norm(projTop)
-                    projBot /= numpy.linalg.norm(projBot)
-                    curTeThick = numpy.linalg.norm(coefTop[0, j] - coefBot[0, j])
+                    projTop /= np.linalg.norm(projTop)
+                    projBot /= np.linalg.norm(projBot)
+                    curTeThick = np.linalg.norm(coefTop[0, j] - coefBot[0, j])
                     coef[j, 1] = coef[j, 0] + projTop * 0.5 * curTeThick * teScale
                     coef[j, 2] = coef[j, 3] + projBot * 0.5 * curTeThick * teScale
 
@@ -611,29 +611,29 @@ class pyGeo:
         if tip == "rounded":
 
             # Generate the midpoint of the coefficients
-            midPts = numpy.zeros([ncoef, 3])
-            upVec = numpy.zeros([ncoef, 3])
-            dsNorm = numpy.zeros([ncoef, 3])
+            midPts = np.zeros([ncoef, 3])
+            upVec = np.zeros([ncoef, 3])
+            dsNorm = np.zeros([ncoef, 3])
             for j in range(ncoef):
                 midPts[j] = 0.5 * (coefTop[j, -1] + coefBot[j, -1])
                 upVec[j] = coefTop[j, -1] - coefBot[j, -1]
                 ds = 0.5 * ((coefTop[j, -1] - coefTop[j, -2]) + (coefBot[j, -1] - coefBot[j, -2]))
-                dsNorm[j] = ds / numpy.linalg.norm(ds)
+                dsNorm[j] = ds / np.linalg.norm(ds)
 
             # Generate "average" projection Vector
-            projVec = numpy.zeros((ncoef, 3), "d")
+            projVec = np.zeros((ncoef, 3), "d")
             for j in range(ncoef):
                 offset = teOffset + (float(j) / (ncoef - 1)) * (leOffset - teOffset)
-                projVec[j] = dsNorm[j] * (numpy.linalg.norm(upVec[j] * tipScale + offset))
+                projVec[j] = dsNorm[j] * (np.linalg.norm(upVec[j] * tipScale + offset))
 
             # Generate the tip "line"
-            tipLine = numpy.zeros([ncoef, 3])
+            tipLine = np.zeros([ncoef, 3])
             for j in range(ncoef):
                 tipLine[j] = midPts[j] + projVec[j]
 
             # Generate a k=4 (cubic) surface
-            coefTopTip = numpy.zeros([ncoef, 4, 3])
-            coefBotTip = numpy.zeros([ncoef, 4, 3])
+            coefTopTip = np.zeros([ncoef, 4, 3])
+            coefBotTip = np.zeros([ncoef, 4, 3])
 
             for j in range(ncoef):
                 coefTopTip[j, 0] = coefTop[j, -1]
@@ -697,7 +697,7 @@ class pyGeo:
                 # surface results.
 
                 if not roundedTe and not squareTeTip:
-                    coef = numpy.zeros((4, 2, 3), "d")
+                    coef = np.zeros((4, 2, 3), "d")
                     coef[:, 0] = coefTopTip[0, :]
                     coef[:, 1] = coefBotTip[0, :]
 
@@ -706,7 +706,7 @@ class pyGeo:
                     )
                     self.nSurf += 1
                 elif roundedTe:
-                    coef = numpy.zeros((4, 4, 3), "d")
+                    coef = np.zeros((4, 4, 3), "d")
                     coef[:, 0] = coefTopTip[0, :]
                     coef[:, 3] = coefBotTip[0, :]
 
@@ -716,9 +716,9 @@ class pyGeo:
                     for i in range(4):
                         projTop = coefTopTip[0, i] - coefTopTip[1, i]
                         projBot = coefBotTip[0, i] - coefBotTip[1, i]
-                        projTop /= numpy.linalg.norm(projTop)
-                        projBot /= numpy.linalg.norm(projBot)
-                        curTeThick = numpy.linalg.norm(coefTopTip[0, i] - coefBotTip[0, i])
+                        projTop /= np.linalg.norm(projTop)
+                        projBot /= np.linalg.norm(projBot)
+                        curTeThick = np.linalg.norm(coefTopTip[0, i] - coefBotTip[0, i])
                         coef[i, 1] = coef[i, 0] + projTop * 0.5 * curTeThick * teScale
                         coef[i, 2] = coef[i, 3] + projBot * 0.5 * curTeThick * teScale
 
@@ -736,9 +736,9 @@ class pyGeo:
             print("No tip specified")
 
         # Cheat and make "original data" so that the edge connectivity works
-        u = numpy.linspace(0, 1, 3)
-        v = numpy.linspace(0, 1, 3)
-        [V, U] = numpy.meshgrid(u, v)
+        u = np.linspace(0, 1, 3)
+        v = np.linspace(0, 1, 3)
+        [V, U] = np.meshgrid(u, v)
         for i in range(self.nSurf):
             self.surfs[i].origData = True
             self.surfs[i].X = self.surfs[i](U, V)
@@ -776,7 +776,7 @@ class pyGeo:
         origTopo.calcGlobalNumbering(sizes)
         N = origTopo.nGlobal
         print(" -> Creating global point list")
-        pts = numpy.zeros((N, 3))
+        pts = np.zeros((N, 3))
         for ii in range(N):
             pts[ii] = self.surfs[origTopo.gIndex[ii][0][0]].X[origTopo.gIndex[ii][0][1], origTopo.gIndex[ii][0][2]]
 
@@ -789,9 +789,9 @@ class pyGeo:
                 kmax = self.surfs[isurf].kv
 
         nnz = N * kmax * kmax
-        vals = numpy.zeros(nnz)
+        vals = np.zeros(nnz)
         rowPtr = [0]
-        colInd = numpy.zeros(nnz, "intc")
+        colInd = np.zeros(nnz, "intc")
 
         for ii in range(N):
             isurf = origTopo.gIndex[ii][0][0]
@@ -818,7 +818,7 @@ class pyGeo:
         print(" -> Factorizing...")
         solve = factorized(NTN)
         print(" -> Back Solving...")
-        self.coef = numpy.zeros((nCtl, 3))
+        self.coef = np.zeros((nCtl, 3))
         for idim in range(3):
             self.coef[:, idim] = solve(NNT * pts[:, idim])
 
@@ -876,7 +876,7 @@ class pyGeo:
 
         # Calculate the 4 corners and 4 midpoints for each surface
 
-        coords = numpy.zeros((self.nSurf, 8, 3))
+        coords = np.zeros((self.nSurf, 8, 3))
 
         for isurf in range(self.nSurf):
             beg, mid, end = self.surfs[isurf].getOrigValuesEdge(0)
@@ -1045,8 +1045,8 @@ class pyGeo:
             labelFilename = dirName + "./" + fileBaseName + ".surf_labels.dat"
             f2 = open(labelFilename, "w")
             for isurf in range(self.nSurf):
-                midu = numpy.floor(self.surfs[isurf].nCtlu / 2)
-                midv = numpy.floor(self.surfs[isurf].nCtlv / 2)
+                midu = np.floor(self.surfs[isurf].nCtlu / 2)
+                midv = np.floor(self.surfs[isurf].nCtlv / 2)
                 textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
  T="S%d"\n' % (
                     self.surfs[isurf].coef[midu, midv, 0],
@@ -1072,7 +1072,7 @@ class pyGeo:
         if nodeLabels:
             # First we need to figure out where the corners actually *are*
             nNodes = len(geo_utils.unique(self.topo.nodeLink.flatten()))
-            nodeCoord = numpy.zeros((nNodes, 3))
+            nodeCoord = np.zeros((nNodes, 3))
             for i in range(nNodes):
                 # Try to find node i
                 for isurf in range(self.nSurf):
@@ -1193,7 +1193,7 @@ class pyGeo:
 
     def setSurfaceCoef(self):
         """Set the surface coef list from the pyspline surfaces"""
-        self.coef = numpy.zeros((self.topo.nGlobal, 3))
+        self.coef = np.zeros((self.topo.nGlobal, 3))
         for isurf in range(self.nSurf):
             surf = self.surfs[isurf]
             for i in range(surf.nCtlu):
@@ -1217,7 +1217,7 @@ class pyGeo:
             Upper corner of the bounding box
         """
         if surfs is None:
-            surfs = numpy.arange(self.nSurf)
+            surfs = np.arange(self.nSurf)
 
         Xmin0, Xmax0 = self.surfs[surfs[0]].getBounds()
         for i in range(1, len(surfs)):
@@ -1265,19 +1265,19 @@ class pyGeo:
         """
 
         if surfs is None:
-            surfs = numpy.arange(self.nSurf)
+            surfs = np.arange(self.nSurf)
 
-        temp = numpy.zeros((len(surfs), 4))
-        result = numpy.zeros((len(surfs), 4))
-        patchID = numpy.zeros(len(surfs), "intc")
+        temp = np.zeros((len(surfs), 4))
+        result = np.zeros((len(surfs), 4))
+        patchID = np.zeros(len(surfs), "intc")
 
         for i in range(len(surfs)):
             isurf = surfs[i]
             u, v, s, d = self.surfs[isurf].projectCurve(curve, *args, **kwargs)
-            temp[i, :] = [u, v, s, numpy.linalg.norm(d)]
+            temp[i, :] = [u, v, s, np.linalg.norm(d)]
 
         # Sort the results by distance
-        index = numpy.argsort(temp[:, 3])
+        index = np.argsort(temp[:, 3])
 
         for i in range(len(surfs)):
             result[i] = temp[index[i]]
@@ -1309,29 +1309,29 @@ class pyGeo:
         """
 
         if surfs is None:
-            surfs = numpy.arange(self.nSurf)
+            surfs = np.arange(self.nSurf)
 
         N = len(points)
-        U = numpy.zeros((N, len(surfs)))
-        V = numpy.zeros((N, len(surfs)))
-        D = numpy.zeros((N, len(surfs), 3))
+        U = np.zeros((N, len(surfs)))
+        V = np.zeros((N, len(surfs)))
+        D = np.zeros((N, len(surfs), 3))
         for i in range(len(surfs)):
             isurf = surfs[i]
             U[:, i], V[:, i], D[:, i, :] = self.surfs[isurf].projectPoint(points, *args, **kwargs)
 
-        u = numpy.zeros(N)
-        v = numpy.zeros(N)
-        patchID = numpy.zeros(N, "intc")
+        u = np.zeros(N)
+        v = np.zeros(N)
+        patchID = np.zeros(N, "intc")
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = numpy.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm((D[i, 0]))
             u[i] = U[i, 0]
             v[i] = V[i, 0]
             patchID[i] = surfs[0]
             for j in range(len(surfs)):
-                if numpy.linalg.norm(D[i, j]) < d0:
-                    d0 = numpy.linalg.norm(D[i, j])
+                if np.linalg.norm(D[i, j]) < d0:
+                    d0 = np.linalg.norm(D[i, j])
                     u[i] = U[i, j]
                     v[i] = V[i, j]
                     patchID[i] = surfs[j]

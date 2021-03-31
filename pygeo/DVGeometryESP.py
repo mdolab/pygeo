@@ -4,7 +4,7 @@
 import os
 import sys
 import time
-import numpy
+import numpy as np
 from collections import OrderedDict
 from mpi4py import MPI
 from pyOCSM import pyOCSM
@@ -154,11 +154,11 @@ class DVGeometryESP(object):
         if ulimits is not None:
             self.ulimits = ulimits
         else:
-            self.ulimits = numpy.array([-99999.0, 99999.0])
+            self.ulimits = np.array([-99999.0, 99999.0])
         if vlimits is not None:
             self.vlimits = vlimits
         else:
-            self.vlimits = numpy.array([-99999.0, 99999.0])
+            self.vlimits = np.array([-99999.0, 99999.0])
         self.comm = comm
         self.espFile = espFile
         self.debug = debug
@@ -218,7 +218,7 @@ class DVGeometryESP(object):
             try:
                 pmtrIndex += 1
                 pmtrType, numRow, numCol, pmtrName = self.espModel.GetPmtr(pmtrIndex)
-                baseValue = numpy.zeros(numRow * numCol)
+                baseValue = np.zeros(numRow * numCol)
                 for rowIdx in range(numRow):
                     for colIdx in range(numCol):
                         try:
@@ -278,12 +278,12 @@ class DVGeometryESP(object):
         # save this name so that we can zero out the jacobians properly
         self.points[ptName] = True  # ADFlow checks self.points to see
         # if something is added or not.
-        points = numpy.array(points).real.astype("d")
+        points = np.array(points).real.astype("d")
 
         # check that duplicated pointsets are actually the same length
-        sizes = numpy.array(self.comm.allgather(points.shape[0]), dtype="intc")
+        sizes = np.array(self.comm.allgather(points.shape[0]), dtype="intc")
         if not distributed:
-            all_same_length = numpy.all(sizes == sizes[0])
+            all_same_length = np.all(sizes == sizes[0])
             if not all_same_length:
                 raise ValueError(
                     "Nondistributed pointsets must be identical on each proc, but these pointsets vary in length per proc. Lengths: ",
@@ -300,7 +300,7 @@ class DVGeometryESP(object):
             if os.path.isfile(cache_projections):
                 cache_loaded = True
                 if self.comm.rank == 0:
-                    cached_pt_arrays = numpy.load(cache_projections)
+                    cached_pt_arrays = np.load(cache_projections)
                     cached_sizes = cached_pt_arrays["sizes"]
                     cached_nprocs = cached_pt_arrays["nprocs"]
                     cached_distrib = cached_pt_arrays["distributed"]
@@ -337,7 +337,7 @@ class DVGeometryESP(object):
                             cache_projections,
                             " is invalid because the cache was saved with different num procs",
                         )
-                    if not numpy.all(cached_sizes == sizes):
+                    if not np.all(cached_sizes == sizes):
                         raise ValueError(
                             "Cached pointset file ",
                             cache_projections,
@@ -355,14 +355,14 @@ class DVGeometryESP(object):
 
                 nptsl = points.shape[0]
                 # set up recieve buffers for all procs
-                faceIDl = numpy.zeros(nptsl, dtype="intc")
-                bodyIDl = numpy.zeros(nptsl, dtype="intc")
-                edgeIDl = numpy.zeros(nptsl, dtype="intc")
-                ul = numpy.zeros(nptsl)
-                vl = numpy.zeros(nptsl)
-                tl = numpy.zeros(nptsl)
-                uvliml = numpy.zeros((nptsl, 4))
-                tliml = numpy.zeros((nptsl, 2))
+                faceIDl = np.zeros(nptsl, dtype="intc")
+                bodyIDl = np.zeros(nptsl, dtype="intc")
+                edgeIDl = np.zeros(nptsl, dtype="intc")
+                ul = np.zeros(nptsl)
+                vl = np.zeros(nptsl)
+                tl = np.zeros(nptsl)
+                uvliml = np.zeros((nptsl, 4))
+                tliml = np.zeros((nptsl, 2))
 
                 recvbuf1 = [bodyIDl, MPI.INT]
                 recvbuf2 = [faceIDl, MPI.INT]
@@ -374,8 +374,8 @@ class DVGeometryESP(object):
                 recvbuf8 = [tliml, MPI.DOUBLE]
                 if distributed:
                     # displacements for scatter
-                    disp = numpy.array([numpy.sum(sizes[:i]) for i in range(self.comm.size)], dtype="intc")
-                    # nptsg = numpy.sum(sizes)
+                    disp = np.array([np.sum(sizes[:i]) for i in range(self.comm.size)], dtype="intc")
+                    # nptsg = np.sum(sizes)
                     if self.comm.rank == 0:
                         sendbuf1 = [bodyIDg, sizes, disp, MPI.INT]
                         sendbuf2 = [faceIDg, sizes, disp, MPI.INT]
@@ -431,12 +431,12 @@ class DVGeometryESP(object):
                     # empty pointset can occur for some distributed pointsets
                     dMax_local = 0.0
                 else:
-                    dMax_local = numpy.max(numpy.sqrt(numpy.sum((points - proj_pts) ** 2, axis=1)))
+                    dMax_local = np.max(np.sqrt(np.sum((points - proj_pts) ** 2, axis=1)))
                 dMax_global = self.comm.allreduce(dMax_local, op=MPI.MAX)
 
                 if (dMax_global - cached_dmax) / cached_dmax >= 1e-3:
                     raise ValueError("The cached point projections appear to no longer be valid for this geometry")
-                uvl = numpy.column_stack([ul, vl])
+                uvl = np.column_stack([ul, vl])
                 self.pointSets[ptName] = PointSet(
                     points, proj_pts, bodyIDl, faceIDl, edgeIDl, uvl, tl, uvliml, tliml, distributed
                 )
@@ -451,17 +451,17 @@ class DVGeometryESP(object):
         # then calculate the self.offset variable using the projected points.
 
         # coordinates to store the physical coords (xyz) of the projected points
-        proj_pts_esp = numpy.zeros_like(points)
+        proj_pts_esp = np.zeros_like(points)
 
         npoints = len(points)
-        bodyIDArray = numpy.zeros(npoints, dtype="intc")
-        faceIDArray = numpy.zeros(npoints, dtype="intc")
-        edgeIDArray = numpy.zeros(npoints, dtype="intc")
-        uv = numpy.zeros((npoints, 2))
-        t = numpy.zeros(npoints)
-        uvlimArray = numpy.zeros((npoints, 4))
-        tlimArray = numpy.zeros((npoints, 2))
-        dists = numpy.ones((npoints), dtype="float_") * 999999.0
+        bodyIDArray = np.zeros(npoints, dtype="intc")
+        faceIDArray = np.zeros(npoints, dtype="intc")
+        edgeIDArray = np.zeros(npoints, dtype="intc")
+        uv = np.zeros((npoints, 2))
+        t = np.zeros(npoints)
+        uvlimArray = np.zeros((npoints, 4))
+        tlimArray = np.zeros((npoints, 2))
+        dists = np.ones((npoints), dtype="float_") * 999999.0
 
         t1 = time.time()
         # TODO parallelize projections for nondistributed pointsets?
@@ -490,8 +490,8 @@ class DVGeometryESP(object):
                             # get the parametric coordinate along the edge
                             ttemp = self.espModel.GetUV(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, truexyz.tolist())
                             # get the xyz location of the newly projected point
-                            xyztemp = numpy.array(self.espModel.GetXYZ(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, ttemp))
-                        dist_temp = numpy.sum((truexyz - xyztemp) ** 2)
+                            xyztemp = np.array(self.espModel.GetXYZ(bodyIndex, pyOCSM.EDGE, edgeIndex, 1, ttemp))
+                        dist_temp = np.sum((truexyz - xyztemp) ** 2)
                         ttemp = ttemp[0]
                         tlimits = self._getUVLimits(bodyIndex, pyOCSM.EDGE, edgeIndex)
                         if not (ttemp < tlimits[0] - rejectuvtol or ttemp > tlimits[1] + rejectuvtol):
@@ -508,8 +508,8 @@ class DVGeometryESP(object):
                         # get the projected points on the ESP surface in UV coordinates
                         uvtemp = self.espModel.GetUV(bodyIndex, pyOCSM.FACE, faceIndex, 1, truexyz.tolist())
                         # get the XYZ location of the newly projected points
-                        xyztemp = numpy.array(self.espModel.GetXYZ(bodyIndex, pyOCSM.FACE, faceIndex, 1, uvtemp))
-                    dist_temp = numpy.sum((truexyz - xyztemp) ** 2)
+                        xyztemp = np.array(self.espModel.GetXYZ(bodyIndex, pyOCSM.FACE, faceIndex, 1, uvtemp))
+                    dist_temp = np.sum((truexyz - xyztemp) ** 2)
                     # validate u and v
                     utemp = uvtemp[0]
                     vtemp = uvtemp[1]
@@ -543,8 +543,8 @@ class DVGeometryESP(object):
             faceIDArray[ptidx] = fi_best
             edgeIDArray[ptidx] = ei_best
             bodyIDArray[ptidx] = bi_best
-            uvlimArray[ptidx, :] = numpy.array(uvlimits_best)
-            tlimArray[ptidx, :] = numpy.array(tlimits_best)
+            uvlimArray[ptidx, :] = np.array(uvlimits_best)
+            tlimArray[ptidx, :] = np.array(tlimits_best)
             uv[ptidx, 0] = uv_best[0]
             uv[ptidx, 1] = uv_best[1]
             t[ptidx] = t_best
@@ -553,7 +553,7 @@ class DVGeometryESP(object):
 
         proj_pts = proj_pts_esp * self.espScale
         if points.shape[0] != 0:
-            dMax = numpy.max(numpy.sqrt(numpy.sum((points - proj_pts) ** 2, axis=1)))
+            dMax = np.max(np.sqrt(np.sum((points - proj_pts) ** 2, axis=1)))
         else:
             dMax = 0.0
 
@@ -591,9 +591,9 @@ class DVGeometryESP(object):
                 edgeIDg = edgeIDArray
                 uvlimitsg = uvlimArray
                 tlimitsg = tlimArray
-                sizes = numpy.array([len(ug)])
+                sizes = np.array([len(ug)])
             if self.comm.rank == 0:
-                numpy.savez_compressed(
+                np.savez_compressed(
                     cache_projections,
                     distributed=distributed,
                     sizes=sizes,
@@ -800,7 +800,7 @@ class DVGeometryESP(object):
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
-            dIdpt = numpy.array([dIdpt])
+            dIdpt = np.array([dIdpt])
         N = dIdpt.shape[0]
         nPt = dIdpt.shape[1]
 
@@ -823,7 +823,7 @@ class DVGeometryESP(object):
         # # transpose dIdpt and vstack;
         # # Now vstack the result with seamBar as that is far as the
         # # forward FD jacobian went.
-        # tmp = numpy.vstack([dIdpt.T, dIdSeam.T])
+        # tmp = np.vstack([dIdpt.T, dIdSeam.T])
         tmp = dIdpt.T
 
         # we also stack the pointset jacobian
@@ -843,7 +843,7 @@ class DVGeometryESP(object):
             dv = self.DVs[dvName]
             jac_start = dv.globalStartInd
             jac_end = jac_start + dv.nVal
-            # dIdxDict[dvName] = numpy.array([dIdx[:, i]]).T
+            # dIdxDict[dvName] = np.array([dIdx[:, i]]).T
             dIdxDict[dvName] = dIdx[:, jac_start:jac_end]
 
         return dIdxDict
@@ -879,7 +879,7 @@ class DVGeometryESP(object):
             self._computeSurfJacobian()
 
         # vector that has all the derivative seeds of the design vars
-        newvec = numpy.zeros(self.getNDV())
+        newvec = np.zeros(self.getNDV())
 
         for dvName in self.DVs:
             dv = self.DVs[dvName]
@@ -985,7 +985,7 @@ class DVGeometryESP(object):
 
         if upper is not None:
             if isinstance(upper, (float, int)):
-                upper = numpy.ones((len(rows) * len(cols),)) * upper
+                upper = np.ones((len(rows) * len(cols),)) * upper
             if len(upper) != len(rows) * len(cols):
                 raise Error(
                     "User-specified DV upper bound does not match the dimensionality"
@@ -997,7 +997,7 @@ class DVGeometryESP(object):
 
         if lower is not None:
             if isinstance(lower, (float, int)):
-                lower = numpy.ones((len(rows) * len(cols),)) * lower
+                lower = np.ones((len(rows) * len(cols),)) * lower
             if len(lower) != len(rows) * len(cols):
                 raise Error(
                     "User-specified DV lower bound does not match the dimensionality"
@@ -1066,7 +1066,7 @@ class DVGeometryESP(object):
             # early exit for non-sliced arrays
             valOut = value
         else:
-            valOut = numpy.zeros(len(rows) * len(cols))
+            valOut = np.zeros(len(rows) * len(cols))
             irow = 0
             for rowInd in rows:
                 icol = 0
@@ -1080,8 +1080,8 @@ class DVGeometryESP(object):
         # check that all rows, cols specified are within desmptr bounds
         # check for duplicate rows, cols
         if rows is not None:
-            rowArr = numpy.array(rows)
-            if numpy.max(rowArr) > numRow:
+            rowArr = np.array(rows)
+            if np.max(rowArr) > numRow:
                 raise Error(
                     "Design variable "
                     + dvName
@@ -1089,11 +1089,11 @@ class DVGeometryESP(object):
                     + "Design var has "
                     + str(numRow)
                     + " rows and index up to "
-                    + str(numpy.max(rowArr))
+                    + str(np.max(rowArr))
                     + " was specified: "
                     + str(rows)
                 )
-            if numpy.min(rowArr) < 1:
+            if np.min(rowArr) < 1:
                 raise Error(
                     "Design variable "
                     + dvName
@@ -1106,8 +1106,8 @@ class DVGeometryESP(object):
                 raise Error("Duplicate indices specified in the rows of design variable " + dvName + ": " + str(rows))
 
         if cols is not None:
-            colArr = numpy.array(cols)
-            if numpy.max(colArr) > numCol:
+            colArr = np.array(cols)
+            if np.max(colArr) > numCol:
                 raise Error(
                     "Design variable "
                     + dvName
@@ -1115,11 +1115,11 @@ class DVGeometryESP(object):
                     + "Design var has "
                     + str(numCol)
                     + " cols and index up to "
-                    + str(numpy.max(colArr))
+                    + str(np.max(colArr))
                     + " was specified: "
                     + str(cols)
                 )
-            if numpy.min(colArr) < 1:
+            if np.min(colArr) < 1:
                 raise Error(
                     "Design variable "
                     + dvName
@@ -1160,7 +1160,7 @@ class DVGeometryESP(object):
             return True
 
     def _evaluatePoints(self, u, v, t, uvlimits0, tlimits0, bodyID, faceID, edgeID, nPts):
-        points = numpy.zeros((nPts, 3))
+        points = np.zeros((nPts, 3))
         for ptidx in range(nPts):
             # check if on an edge or surface
             bid = bodyID[ptidx]
@@ -1216,23 +1216,23 @@ class DVGeometryESP(object):
     def _allgatherCoordinates(self, ul, vl, tl, faceIDl, bodyIDl, edgeIDl, uvlimitsl, tlimitsl):
         # create the arrays to receive the global info
         # now figure out which proc has how many points.
-        sizes = numpy.array(self.comm.allgather(len(ul)), dtype="intc")
+        sizes = np.array(self.comm.allgather(len(ul)), dtype="intc")
         # displacements for allgather
-        disp = numpy.array([numpy.sum(sizes[:i]) for i in range(self.comm.size)], dtype="intc")
+        disp = np.array([np.sum(sizes[:i]) for i in range(self.comm.size)], dtype="intc")
         # global number of points
-        nptsg = numpy.sum(sizes)
-        ug = numpy.zeros(nptsg)
-        vg = numpy.zeros(nptsg)
-        tg = numpy.zeros(nptsg)
-        faceIDg = numpy.zeros(nptsg, dtype="intc")
-        bodyIDg = numpy.zeros(nptsg, dtype="intc")
-        edgeIDg = numpy.zeros(nptsg, dtype="intc")
-        ulower0g = numpy.zeros(nptsg)
-        uupper0g = numpy.zeros(nptsg)
-        vlower0g = numpy.zeros(nptsg)
-        vupper0g = numpy.zeros(nptsg)
-        tlower0g = numpy.zeros(nptsg)
-        tupper0g = numpy.zeros(nptsg)
+        nptsg = np.sum(sizes)
+        ug = np.zeros(nptsg)
+        vg = np.zeros(nptsg)
+        tg = np.zeros(nptsg)
+        faceIDg = np.zeros(nptsg, dtype="intc")
+        bodyIDg = np.zeros(nptsg, dtype="intc")
+        edgeIDg = np.zeros(nptsg, dtype="intc")
+        ulower0g = np.zeros(nptsg)
+        uupper0g = np.zeros(nptsg)
+        vlower0g = np.zeros(nptsg)
+        vupper0g = np.zeros(nptsg)
+        tlower0g = np.zeros(nptsg)
+        tupper0g = np.zeros(nptsg)
         ulowerl = uvlimitsl[:, 0].copy()
         uupperl = uvlimitsl[:, 1].copy()
         vlowerl = uvlimitsl[:, 2].copy()
@@ -1255,8 +1255,8 @@ class DVGeometryESP(object):
         self.comm.Allgatherv([tlowerl, len(tlowerl)], [tlower0g, sizes, disp, MPI.DOUBLE])
         self.comm.Allgatherv([tupperl, len(tupperl)], [tupper0g, sizes, disp, MPI.DOUBLE])
 
-        uvlimitsg = numpy.column_stack((ulower0g, uupper0g, vlower0g, vupper0g))
-        tlimitsg = numpy.column_stack((tlower0g, tupper0g))
+        uvlimitsg = np.column_stack((ulower0g, uupper0g, vlower0g, vupper0g))
+        tlimitsg = np.column_stack((tlower0g, tupper0g))
 
         return ug, vg, tg, faceIDg, bodyIDg, edgeIDg, uvlimitsg, tlimitsg, sizes
 
@@ -1285,19 +1285,19 @@ class DVGeometryESP(object):
         rank = self.comm.rank
 
         # arrays to collect local pointset info
-        ul = numpy.zeros(0)  # local u coordinates
-        vl = numpy.zeros(0)  # local v coordinates
-        tl = numpy.zeros(0)  # local t coordinates
-        faceIDl = numpy.zeros(0, dtype="intc")  # surface index
-        bodyIDl = numpy.zeros(0, dtype="intc")  # body index
-        edgeIDl = numpy.zeros(0, dtype="intc")  # edge index
-        uvlimitsl = numpy.zeros((0, 4))
-        tlimitsl = numpy.zeros((0, 2))
+        ul = np.zeros(0)  # local u coordinates
+        vl = np.zeros(0)  # local v coordinates
+        tl = np.zeros(0)  # local t coordinates
+        faceIDl = np.zeros(0, dtype="intc")  # surface index
+        bodyIDl = np.zeros(0, dtype="intc")  # body index
+        edgeIDl = np.zeros(0, dtype="intc")  # edge index
+        uvlimitsl = np.zeros((0, 4))
+        tlimitsl = np.zeros((0, 2))
         any_ptset_nondistributed = False
         any_ptset_distributed = False
         for ptSetName in self.pointSets:
             # initialize the Jacobians
-            self.pointSets[ptSetName].jac = numpy.zeros((3 * self.pointSets[ptSetName].nPts, nDV))
+            self.pointSets[ptSetName].jac = np.zeros((3 * self.pointSets[ptSetName].nPts, nDV))
             if self.pointSets[ptSetName].distributed:
                 any_ptset_distributed = True
             else:
@@ -1305,14 +1305,14 @@ class DVGeometryESP(object):
 
             # first, we need to vstack all the point set info we have
             # counts of these are also important, saved in ptSet.nPts
-            ul = numpy.concatenate((ul, self.pointSets[ptSetName].u))
-            vl = numpy.concatenate((vl, self.pointSets[ptSetName].v))
-            tl = numpy.concatenate((tl, self.pointSets[ptSetName].t))
-            faceIDl = numpy.concatenate((faceIDl, self.pointSets[ptSetName].faceID))
-            bodyIDl = numpy.concatenate((bodyIDl, self.pointSets[ptSetName].bodyID))
-            edgeIDl = numpy.concatenate((edgeIDl, self.pointSets[ptSetName].edgeID))
-            uvlimitsl = numpy.concatenate((uvlimitsl, self.pointSets[ptSetName].uvlimits0))
-            tlimitsl = numpy.concatenate((tlimitsl, self.pointSets[ptSetName].tlimits0))
+            ul = np.concatenate((ul, self.pointSets[ptSetName].u))
+            vl = np.concatenate((vl, self.pointSets[ptSetName].v))
+            tl = np.concatenate((tl, self.pointSets[ptSetName].t))
+            faceIDl = np.concatenate((faceIDl, self.pointSets[ptSetName].faceID))
+            bodyIDl = np.concatenate((bodyIDl, self.pointSets[ptSetName].bodyID))
+            edgeIDl = np.concatenate((edgeIDl, self.pointSets[ptSetName].edgeID))
+            uvlimitsl = np.concatenate((uvlimitsl, self.pointSets[ptSetName].uvlimits0))
+            tlimitsl = np.concatenate((tlimitsl, self.pointSets[ptSetName].tlimits0))
         if any_ptset_distributed and any_ptset_nondistributed:
             raise ValueError(
                 "Both nondistributed and distributed pointsets were added to this DVGeoESP which is not yet supported"
@@ -1323,11 +1323,11 @@ class DVGeometryESP(object):
             if self.maxproc is not None:
                 raise ValueError("Max processor limit is not usable with distributed pointsets")
             # now figure out which proc has how many points.
-            sizes = numpy.array(self.comm.allgather(len(ul)), dtype="intc")
+            sizes = np.array(self.comm.allgather(len(ul)), dtype="intc")
             # displacements for allgather
-            disp = numpy.array([numpy.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
+            disp = np.array([np.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
             # global number of points
-            nptsg = numpy.sum(sizes)
+            nptsg = np.sum(sizes)
             ug, vg, tg, faceIDg, bodyIDg, edgeIDg, uvlimitsg, tlimitsg, sizes = self._allgatherCoordinates(
                 ul, vl, tl, faceIDl, bodyIDl, edgeIDl, uvlimitsl, tlimitsl
             )
@@ -1344,7 +1344,7 @@ class DVGeometryESP(object):
         # create a local new point array. We will use this to get the new
         # coordinates as we perturb DVs. We just need one (instead of nDV times the size)
         # because we get the new points, calculate the jacobian and save it right after
-        ptsNewL = numpy.zeros(len(ul) * 3)
+        ptsNewL = np.zeros(len(ul) * 3)
 
         # we now have all the point info on all procs.
         tcomm += time.time() - t1
@@ -1361,7 +1361,7 @@ class DVGeometryESP(object):
             # evaluate all the points
             pts0 = self._evaluatePoints(ug, vg, tg, uvlimitsg, tlimitsg, bodyIDg, faceIDg, edgeIDg, nptsg)
             # allocate the approriate sized numpy array for the perturbed points
-            ptsNew = numpy.zeros((n, nptsg, 3))
+            ptsNew = np.zeros((n, nptsg, 3))
 
             # perturb the DVs on different procs and compute the new point coordinates.
             i = 0  # Counter on local Jac
@@ -1431,7 +1431,7 @@ class DVGeometryESP(object):
                 if root_proc == rank:
                     sendbuf = [ptsNew[ii, :, :].flatten(), sizes * 3, disp * 3, MPI.DOUBLE]
                 else:
-                    sendbuf = [numpy.zeros((0, 3)), sizes * 3, disp * 3, MPI.DOUBLE]
+                    sendbuf = [np.zeros((0, 3)), sizes * 3, disp * 3, MPI.DOUBLE]
                 recvbuf = [ptsNewL, MPI.DOUBLE]
                 # scatter the info from the proc that perturbed this DV to all procs
                 self.comm.Scatterv(sendbuf, recvbuf, root=root_proc)
@@ -1497,7 +1497,7 @@ class espDV(object):
         """Internal class for storing ESP design variable information"""
         self.csmDesPmtr = csmDesPmtr
         self.name = name
-        self.value = numpy.array(value)
+        self.value = np.array(value)
         self.lower = lower
         self.upper = upper
         self.scale = scale

@@ -1,5 +1,5 @@
 import os
-import numpy
+import numpy as np
 from pygeo import DVGeometry, DVGeometryAxi
 from pyspline import Curve
 
@@ -134,7 +134,7 @@ def totalSensitivityFD(DVGeo, nPt, ptName, step=1e-1):
     for key in xDV:
         baseVar = xDV[key].copy()
         nDV = len(baseVar)
-        dIdxFD[key] = numpy.zeros([nPt, nDV])
+        dIdxFD[key] = np.zeros([nPt, nDV])
         for i in range(nDV):
             # print('perturbing',key)
             xDV[key][i] = baseVar[i] + step
@@ -159,14 +159,14 @@ def totalSensitivityCS(DVGeo, nPt, ptName):
     step = 1e-40j
     for key in xDV:
         baseVar = xDV[key].copy()
-        dIdxCS[key] = numpy.zeros([nPt, len(baseVar)])
+        dIdxCS[key] = np.zeros([nPt, len(baseVar)])
         for i in range(len(baseVar)):
             xDV[key][i] = baseVar[i] + step
 
             DVGeo.setDesignVars(xDV)
             newPoints = DVGeo.update(ptName)
 
-            deriv = numpy.imag(newPoints) / numpy.imag(step)
+            deriv = np.imag(newPoints) / np.imag(step)
             dIdxCS[key][:, i] = deriv.flatten()
             # print 'Deriv',key, i,deriv
             xDV[key][i] = baseVar[i]
@@ -179,7 +179,7 @@ def totalSensitivityCS(DVGeo, nPt, ptName):
 
 def testSensitivities(DVGeo, refDeriv, handler, pointset=1):
     # create test points
-    points = numpy.zeros([2, 3])
+    points = np.zeros([2, 3])
     if pointset == 1:
         points[0, :] = [0.25, 0, 0]
         points[1, :] = [-0.25, 0, 0]
@@ -195,7 +195,7 @@ def testSensitivities(DVGeo, refDeriv, handler, pointset=1):
 
     # generate dIdPt
     nPt = 6
-    dIdPt = numpy.zeros([nPt, 2, 3])
+    dIdPt = np.zeros([nPt, 2, 3])
     dIdPt[0, 0, 0] = 1.0
     dIdPt[1, 0, 1] = 1.0
     dIdPt[2, 0, 2] = 1.0
@@ -214,7 +214,7 @@ def testSensitivities(DVGeo, refDeriv, handler, pointset=1):
 def testSensitivitiesD8(DVGeo, refDeriv, handler):
     # create test points
     nPoints = 50
-    points = numpy.zeros([nPoints, 3])
+    points = np.zeros([nPoints, 3])
     for i in range(nPoints):
         nose = 0.01
         tail = 34.0
@@ -229,7 +229,7 @@ def testSensitivitiesD8(DVGeo, refDeriv, handler):
 
     # generate dIdPt
     nPt = nPoints * 3
-    dIdPt = numpy.zeros([nPt, nPoints, 3])
+    dIdPt = np.zeros([nPt, nPoints, 3])
     counter = 0
     for i in range(nPoints):
         for j in range(3):

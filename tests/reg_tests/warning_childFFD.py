@@ -1,5 +1,5 @@
 import unittest
-import numpy
+import numpy as np
 from pygeo import DVGeometry, geo_utils
 from test_Blocks import add_vars
 
@@ -11,7 +11,7 @@ class RegTestPyGeo(unittest.TestCase):
     def make_cube_ffd(self, file_name, x0, y0, z0, dx, dy, dz):
         # Write cube ffd with i along x-axis, j along y-axis, and k along z-axis
         axes = ["k", "j", "i"]
-        slices = numpy.array(
+        slices = np.array(
             # Slice 1
             [
                 [[[x0, y0, z0], [x0 + dx, y0, z0]], [[x0, y0 + dy, z0], [x0 + dx, y0 + dy, z0]]],
@@ -41,7 +41,7 @@ class RegTestPyGeo(unittest.TestCase):
         dz = 1.0
 
         axes = ["k", "j", "i"]
-        slices = numpy.array(
+        slices = np.array(
             # Slice 1
             [
                 [
@@ -68,7 +68,7 @@ class RegTestPyGeo(unittest.TestCase):
         big.addChild(small)
 
         # Add point set
-        points = numpy.array([[0.5, 0.5, 0.5]])
+        points = np.array([[0.5, 0.5, 0.5]])
         big.addPointSet(points, "X")
 
         # Add only translation variables
@@ -76,13 +76,13 @@ class RegTestPyGeo(unittest.TestCase):
         add_vars(small, "small", rotate="y")
 
         ang = 45
-        ang_r = numpy.deg2rad(ang)
+        ang_r = np.deg2rad(ang)
 
         # Modify design variables
         x = big.getValues()
 
         # add a local shape change
-        x["local_z_big"] = numpy.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5])
+        x["local_z_big"] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5])
         big.setDesignVars(x)
         Xs = big.update("X")
 
@@ -93,12 +93,12 @@ class RegTestPyGeo(unittest.TestCase):
 
         # the modification caused by the child FFD should be the same as rotating the deformed point of the parent
         # (you would think)
-        rot_mat = numpy.array(
-            [[numpy.cos(ang_r), 0, numpy.sin(ang_r)], [0, 1, 0], [-numpy.sin(ang_r), 0, numpy.cos(ang_r)]]
+        rot_mat = np.array(
+            [[np.cos(ang_r), 0, np.sin(ang_r)], [0, 1, 0], [-np.sin(ang_r), 0, np.cos(ang_r)]]
         )
-        Xrot = numpy.dot(rot_mat, (Xs - points).T) + points.T
+        Xrot = np.dot(rot_mat, (Xs - points).T) + points.T
 
-        numpy.testing.assert_array_almost_equal(Xrot_ffd.T, Xrot)
+        np.testing.assert_array_almost_equal(Xrot_ffd.T, Xrot)
 
 
 if __name__ == "__main__":

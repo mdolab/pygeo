@@ -1,6 +1,6 @@
 import os
 import unittest
-import numpy
+import numpy as np
 from baseclasses import BaseRegTest
 from parameterized import parameterized_class
 from mpi4py import MPI
@@ -47,10 +47,10 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
-            u = numpy.linspace(0, 1, nu)
-            v = numpy.linspace(0, 1, nv)
-            uu, vv = numpy.meshgrid(u, v)
-            uv = numpy.array((uu.flatten(), vv.flatten()))
+            u = np.linspace(0, 1, nu)
+            v = np.linspace(0, 1, nv)
+            uu, vv = np.meshgrid(u, v)
+            uv = np.array((uu.flatten(), vv.flatten()))
             return uv
 
         refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_01.ref")
@@ -80,7 +80,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 [1.0, 0.0, 1.0],
                 [1.0, 0.0, -1.0],
             ]
-            pointSet1 = numpy.array(points)
+            pointSet1 = np.array(points)
             nPts = len(points)
             dMax_global = DVGeo.addPointSet(pointSet1, "known_points")
             handler.assert_allclose(dMax_global, 0.0, name="pointset1_projection_tol", rtol=1e0, atol=1e-10)
@@ -102,8 +102,8 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 points.append([pt.x(), pt.y(), pt.z()])
                 radius = ((pt.x() - 1.0) ** 2 + pt.y() ** 2 + pt.z() ** 2) ** 0.5
                 radii.append(radius)
-            pointSet2 = numpy.array(points)
-            handler.assert_allclose(numpy.array(radii), 1.0, name="pointset2_diff_from_sphere", rtol=1e-3, atol=1e-3)
+            pointSet2 = np.array(points)
+            handler.assert_allclose(np.array(radii), 1.0, name="pointset2_diff_from_sphere", rtol=1e-3, atol=1e-3)
 
             dim = 3
             # add this point set since our points EXACTLY lie on the sphere, we should get 0 distance in the
@@ -114,7 +114,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
             # lets get the gradients wrt design variables. For this we can define our dummy jacobian for dIdpt
             # that is an (N, nPts, 3) array. We will just monitor how each component in each point changes so
             # we will need nDV*dim*nPts functions of interest.
-            dIdpt = numpy.zeros((nPts * dim, nPts, dim))
+            dIdpt = np.zeros((nPts * dim, nPts, dim))
 
             # first 3*nDV entries will correspond to the first point's x,y,z direction
             for i in range(nPts):
@@ -158,11 +158,11 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
-            u = numpy.linspace(0, 1, nu + 1)
-            v = numpy.linspace(0, 1, nv + 1)
-            uu, vv = numpy.meshgrid(u, v)
+            u = np.linspace(0, 1, nu + 1)
+            v = np.linspace(0, 1, nv + 1)
+            uu, vv = np.meshgrid(u, v)
             # print (uu.flatten(), vv.flatten())
-            uv = numpy.array((uu.flatten(), vv.flatten()))
+            uv = np.array((uu.flatten(), vv.flatten()))
             return uv
 
         refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_02.ref")
@@ -215,7 +215,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 nuv += 1
 
             # allocate the uv array on this proc
-            uv = numpy.zeros((2, nuv))
+            uv = np.zeros((2, nuv))
 
             # print how mant points we have
             MPI.COMM_WORLD.Barrier()
@@ -231,7 +231,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
             nNodes = len(uv[0, :])
 
             # extract node coordinates and save them in a numpy array
-            coor = numpy.zeros((nNodes, 3))
+            coor = np.zeros((nNodes, 3))
             for i in range(nNodes):
                 pnt = openvsp.CompPnt01(geoms[0], 0, uv[0, i], uv[1, i])
                 coor[i, :] = (pnt.x(), pnt.y(), pnt.z())
@@ -240,7 +240,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
             DVGeo.addPointSet(coor, "test_points")
 
             # We will have nNodes*3 many functions of interest...
-            dIdpt = numpy.zeros((nNodes * 3, nNodes, 3))
+            dIdpt = np.zeros((nNodes * 3, nNodes, 3))
 
             # set the seeds to one in the following fashion:
             # first function of interest gets the first coordinate of the first point
@@ -279,11 +279,11 @@ class RegTestPyGeoVSP(unittest.TestCase):
             # this issue does not come up if this tests is ran with a single proc
             biggest_deriv = 1e-16
             for x in DVs:
-                err = numpy.array(funcSens[x].squeeze()) - numpy.array(funcSensFD[x])
-                maxderiv = numpy.max(numpy.abs(funcSens[x].squeeze()))
-                normalizer = numpy.median(numpy.abs(funcSensFD[x].squeeze()))
-                if numpy.abs(normalizer) < 1:
-                    normalizer = numpy.ones(1)
+                err = np.array(funcSens[x].squeeze()) - np.array(funcSensFD[x])
+                maxderiv = np.max(np.abs(funcSens[x].squeeze()))
+                normalizer = np.median(np.abs(funcSensFD[x].squeeze()))
+                if np.abs(normalizer) < 1:
+                    normalizer = np.ones(1)
                 normalized_error = err / normalizer
                 if maxderiv > biggest_deriv:
                     biggest_deriv = maxderiv

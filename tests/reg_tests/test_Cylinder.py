@@ -1,6 +1,6 @@
 import os
 import unittest
-import numpy
+import numpy as np
 from baseclasses import BaseRegTest
 from pygeo import DVGeometry, DVConstraints, geo_utils
 
@@ -20,16 +20,16 @@ class RegTestPyGeo(unittest.TestCase):
         Nextrude = 100
         Npts = Nazimuth * Nextrude
 
-        theta = numpy.linspace(0, 2 * numpy.pi, Nazimuth)
-        z = numpy.linspace(0, height, Nextrude)
+        theta = np.linspace(0, 2 * np.pi, Nazimuth)
+        z = np.linspace(0, height, Nextrude)
 
-        pts = numpy.zeros((Npts, 3))
+        pts = np.zeros((Npts, 3))
 
         # First populate the points
         for i in range(Nextrude):
             for j in range(Nazimuth):
-                x = radius * numpy.cos(theta[j])
-                y = radius * numpy.sin(theta[j])
+                x = radius * np.cos(theta[j])
+                y = radius * np.sin(theta[j])
 
                 k = i * Nazimuth + j
                 pts[k] = [x, y, z[i]]
@@ -59,9 +59,9 @@ class RegTestPyGeo(unittest.TestCase):
                 v1.append(pC - pA)
                 v2.append(pD - pA)
 
-        p0 = numpy.vstack(p0)
-        v1 = numpy.vstack(v1)
-        v2 = numpy.vstack(v2)
+        p0 = np.vstack(p0)
+        v1 = np.vstack(v1)
+        v2 = np.vstack(v2)
 
         return [p0, v1, v2]
 
@@ -71,7 +71,7 @@ class RegTestPyGeo(unittest.TestCase):
         r = radius
         h = height
         dh = 0.01
-        slices = numpy.array(
+        slices = np.array(
             [
                 # Slice 1
                 [[[-r, -r, -dh], [r, -r, -dh]], [[-r, r, -dh], [r, r, -dh]]],
@@ -174,8 +174,8 @@ class RegTestPyGeo(unittest.TestCase):
             print(funcs)
             handler.root_add_dict("funcs1", funcs, rtol=1e-6, atol=1e-6)
 
-            numpy.random.seed(0)
-            DVGeo.setDesignVars({"shape": (numpy.random.rand(size) - 0.5)})
+            np.random.seed(0)
+            DVGeo.setDesignVars({"shape": (np.random.rand(size) - 0.5)})
 
             funcs = {}
             DVCon.evalFunctions(funcs)

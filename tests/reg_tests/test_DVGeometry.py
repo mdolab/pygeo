@@ -1,6 +1,6 @@
 import os
 import unittest
-import numpy
+import numpy as np
 from baseclasses import BaseRegTest
 import commonUtils
 from pygeo import geo_utils, DVGeometry, DVConstraints
@@ -394,8 +394,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 12b: D8 FFD, random DV perturbation on test 10")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -426,8 +426,8 @@ class RegTestPyGeo(unittest.TestCase):
             xDV = DVGeo.getValues()
 
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -459,8 +459,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 14b: D8 + Nozzle FFD, random DV perturbation on test 12")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -497,8 +497,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 15b: D8 + Nozzle FFD, random DV perturbation on test 13")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -538,8 +538,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 14b: D8 + Nozzle FFD, random DV perturbation on test 14")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -572,8 +572,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 17b: D8 + Nozzle FFD, random DV perturbationon test 15")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -607,8 +607,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 18b: D8 + Nozzle FFD, random DV perturbationon test 16")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -645,8 +645,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 19b: D8 + Nozzle FFD,  random DV perturbationon test 17")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -683,8 +683,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 20b: D8 + Nozzle FFD,  random DV perturbationon test 18")
             xDV = DVGeo.getValues()
             for key in xDV:
-                numpy.random.seed(42)
-                xDV[key] += numpy.random.rand(len(xDV[key]))
+                np.random.seed(42)
+                xDV[key] += np.random.rand(len(xDV[key]))
 
             DVGeo.setDesignVars(xDV)
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -703,14 +703,14 @@ class RegTestPyGeo(unittest.TestCase):
             # Test with a single point along the 45 ` degree theta direction
             DVGeo = commonUtils.setupDVGeoAxi(self.base_path)
 
-            DVGeo.addGeoDVGlobal("mainAxis", numpy.zeros(1), commonUtils.mainAxisPointAxi)
+            DVGeo.addGeoDVGlobal("mainAxis", np.zeros(1), commonUtils.mainAxisPointAxi)
 
             DVGeo.addGeoDVLocal("x_axis", lower=-2, upper=2, axis="x")
             DVGeo.addGeoDVLocal("z_axis", lower=-2, upper=2, axis="z")
             DVGeo.addGeoDVLocal("y_axis", lower=-2, upper=2, axis="y")
 
             ptName = "point"
-            s_pts = numpy.array(
+            s_pts = np.array(
                 [
                     [0, 0.5, 0.5],
                 ],
@@ -720,7 +720,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             # generate dIdPt
             nPt = 3
-            dIdPt = numpy.zeros([nPt, 1, 3])
+            dIdPt = np.zeros([nPt, 1, 3])
             dIdPt[0, 0, 0] = 1.0
             dIdPt[1, 0, 1] = 1.0
             dIdPt[2, 0, 2] = 1.0
@@ -751,7 +751,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             # Write duplicate of outerbox FFD
             axes = ["i", "k", "j"]
-            slices = numpy.array(
+            slices = np.array(
                 [
                     # Slice 1
                     [[[-1, -1, -1], [-1, 1, -1]], [[-1, -1, 1], [-1, 1, 1]]],
@@ -772,7 +772,7 @@ class RegTestPyGeo(unittest.TestCase):
             # Load original and duplicate
             origFFD = DVGeometry(os.path.join(self.base_path, "../inputFiles/outerBoxFFD.xyz"))
             copyFFD = DVGeometry(copyName)
-            norm_diff = numpy.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
+            norm_diff = np.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
             handler.par_add_norm("norm", norm_diff, rtol=1e-7, atol=1e-7)
             os.remove(copyName)
 
@@ -813,8 +813,8 @@ class RegTestPyGeo(unittest.TestCase):
 
         size = DVGeo._getNDVSpanwiseLocal()
 
-        numpy.random.seed(0)
-        DVGeo.setDesignVars({"shape": (numpy.random.rand(size) - 0.5)})
+        np.random.seed(0)
+        DVGeo.setDesignVars({"shape": (np.random.rand(size) - 0.5)})
 
         funcs = {}
         DVCon.evalFunctions(funcs)
@@ -822,7 +822,7 @@ class RegTestPyGeo(unittest.TestCase):
 
         for i in range(nChord):
             for j in range(nSpan - 1):
-                numpy.testing.assert_allclose(funcs[name][i * nChord + j + 1], funcs[name][i * nChord + j], rtol=2e-15)
+                np.testing.assert_allclose(funcs[name][i * nChord + j + 1], funcs[name][i * nChord + j], rtol=2e-15)
 
     def train_23_xyzFraction(self, train=True):
         self.test_23_xyzFraction(train=train)

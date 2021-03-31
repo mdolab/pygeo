@@ -1,6 +1,6 @@
 import os
 import unittest
-import numpy
+import numpy as np
 from baseclasses import BaseRegTest
 import commonUtils
 from pygeo import DVGeometry, geo_utils
@@ -19,7 +19,7 @@ class RegTestPyGeo(unittest.TestCase):
     def make_cube_ffd(self, file_name, x0, y0, z0, dx, dy, dz):
         # Write cube ffd with i along x-axis, j along y-axis, and k along z-axis
         axes = ["k", "j", "i"]
-        slices = numpy.array(
+        slices = np.array(
             # Slice 1
             [
                 [[[x0, y0, z0], [x0 + dx, y0, z0]], [[x0, y0 + dy, z0], [x0 + dx, y0 + dy, z0]]],
@@ -63,7 +63,7 @@ class RegTestPyGeo(unittest.TestCase):
         small.addChild(tiny)
 
         # Add point set
-        points = numpy.array(
+        points = np.array(
             [
                 [0.5, 0.5, 0.5],
                 [1.25, 1.25, 1.25],
@@ -105,8 +105,8 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_add_val("jacobian", Jac, rtol=1e-12, atol=1e-12, msg="Check jacobian")
 
         # Test that they are equal to eachother
-        numpy.testing.assert_allclose(Jac, JacCS, rtol=1e-12, atol=1e-12, err_msg="Analytic vs complex-step")
-        numpy.testing.assert_allclose(Jac, JacFD, rtol=1e-6, atol=1e-6, err_msg="Analytic vs finite difference")
+        np.testing.assert_allclose(Jac, JacCS, rtol=1e-12, atol=1e-12, err_msg="Analytic vs complex-step")
+        np.testing.assert_allclose(Jac, JacFD, rtol=1e-6, atol=1e-6, err_msg="Analytic vs finite difference")
 
         # Make sure we reset everything
         DVGeo.setDesignVars(x)
@@ -114,9 +114,9 @@ class RegTestPyGeo(unittest.TestCase):
 
         # Create dIdPt with one function for each point coordinate
         Npt = 4
-        dIdPt = numpy.zeros([Npt * 3, Npt, 3])
+        dIdPt = np.zeros([Npt * 3, Npt, 3])
         for i in range(Npt):
-            dIdPt[i * 3 : (i + 1) * 3, i] = numpy.eye(3)
+            dIdPt[i * 3 : (i + 1) * 3, i] = np.eye(3)
 
         # Test sensitivity dictionaries
         if refDeriv:
@@ -191,8 +191,8 @@ class RegTestPyGeo(unittest.TestCase):
             x = big.getValues()
             x["rotate_y_small"] = 10
             x["rotate_y_tiny"] = -20
-            numpy.random.seed(11)
-            x["sectionlocal_tiny"] = numpy.random.random(*x["sectionlocal_tiny"].shape)
+            np.random.seed(11)
+            x["sectionlocal_tiny"] = np.random.random(*x["sectionlocal_tiny"].shape)
             big.setDesignVars(x)
 
             # Compute tests
@@ -216,10 +216,10 @@ class RegTestPyGeo(unittest.TestCase):
 
             # Modify design variables
             x = big.getValues()
-            numpy.random.seed(11)
-            x["translate_big"] = numpy.random.random(3)
-            x["translate_small"] = numpy.random.random(3)
-            x["translate_tiny"] = numpy.random.random(3)
+            np.random.seed(11)
+            x["translate_big"] = np.random.random(3)
+            x["translate_small"] = np.random.random(3)
+            x["translate_tiny"] = np.random.random(3)
             big.setDesignVars(x)
 
             # Compute tests
@@ -247,8 +247,8 @@ class RegTestPyGeo(unittest.TestCase):
 
             # Modify design variables
             x = big.getValues()
-            numpy.random.seed(11)
-            x["translate_big"] = numpy.random.random(3)
+            np.random.seed(11)
+            x["translate_big"] = np.random.random(3)
             x["rotate_y_small"] = 45
             x["rotate_y_tiny"] = -45
             big.setDesignVars(x)
@@ -259,9 +259,9 @@ class RegTestPyGeo(unittest.TestCase):
 
             # Create dIdPt with one function for each point coordinate
             Npt = 4
-            dIdPt = numpy.zeros([Npt * 3, Npt, 3])
+            dIdPt = np.zeros([Npt * 3, Npt, 3])
             for i in range(Npt):
-                dIdPt[i * 3 : (i + 1) * 3, i] = numpy.eye(3)
+                dIdPt[i * 3 : (i + 1) * 3, i] = np.eye(3)
 
             # Test sensitivity dictionaries
             if refDeriv:

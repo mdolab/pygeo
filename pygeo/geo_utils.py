@@ -406,7 +406,7 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     Example of two volumes
     -------
     axes = ['k', 'j', 'i']
-    slices = numpy.array([
+    slices = np.array([
         # Slice 1
         [[[0, 0, 0], [1, 0, 0]],
         [[0, 0.2, 0], [1, 0.2, 0]]],
