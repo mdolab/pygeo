@@ -1862,8 +1862,8 @@ class DVGeometry(object):
             i += dv.nVal
 
         i = DVCountSpanLoc
-        for key in self.DV_listSpanLocal:
-            dv = self.DV_listSpanLocal[key]
+        for key in self.DV_listSpanwiseLocal:
+            dv = self.DV_listSpanwiseLocal[key]
             dIdx[i : i + dv.nVal] = dIdxDict[dv.name]
             i += dv.nVal
 
