@@ -2832,8 +2832,7 @@ class DVGeometry(object):
                     for j in range(self.FFD.vols[iVol].nCtlv):
                         for k in range(self.FFD.vols[iVol].nCtlw):
                             ind = self.FFD.topo.lIndex[iVol][i, j, k]
-                            # we have to cast to bool to compare using "is"
-                            if bool(coefMask[ind]) is False and ind not in self.axis[key]["ignoreInd"]:
+                            if (not coefMask[ind]) and (ind not in self.axis[key]["ignoreInd"]):
                                 temp.append(ind)
 
             # Unique the values and append to the master list
@@ -4279,8 +4278,7 @@ class geoDVLocal(object):
         coefList = []
         # create a new coefficent list that excludes any values that are masked
         for i in range(len(coefListIn)):
-            # we have to cast to bool to compare using "is"
-            if bool(mask[coefListIn[i]]) is False:
+            if not mask[coefListIn[i]]:
                 coefList.append(coefListIn[i])
 
         N = len(axis)
@@ -4391,8 +4389,7 @@ class geoDVSpanwiseLocal(geoDVLocal):
 
                 # loop through each of coefs to see if it is masked
                 for coef in coefs:
-                    # we have to cast to bool to compare using "is"
-                    if bool(mask[coef]) is False:
+                    if not mask[coef]:
                         loc_dv_to_coefs.append(coef)
 
                 self.dv_to_coefs.append(loc_dv_to_coefs)
@@ -4476,8 +4473,7 @@ class geoDVSectionLocal(object):
         self.coefList = []
         # create a new coefficent list that excludes any values that are masked
         for i in range(len(coefListIn)):
-            # we have to cast to bool to compare using "is"
-            if bool(mask[coefListIn[i]]) is False:
+            if not mask[coefListIn[i]]:
                 self.coefList.append(coefListIn[i])
 
         self.nVal = len(self.coefList)

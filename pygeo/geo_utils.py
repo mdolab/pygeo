@@ -252,7 +252,7 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness
     try:
         r.append([float(s) for s in line.split()])
     except Exception:
-        r = []
+        pass
 
     while 1:
         line = f.readline()
