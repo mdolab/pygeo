@@ -157,9 +157,7 @@ class DVGeometry(object):
         coefMask = []
         for iVol in range(self.FFD.nVol):
             coefMask.append(
-                np.zeros(
-                    (self.FFD.vols[iVol].nCtlu, self.FFD.vols[iVol].nCtlv, self.FFD.vols[iVol].nCtlw), dtype=bool
-                )
+                np.zeros((self.FFD.vols[iVol].nCtlu, self.FFD.vols[iVol].nCtlv, self.FFD.vols[iVol].nCtlw), dtype=bool)
             )
         # Now do the faceFreeze
         if faceFreeze is not None:
@@ -1552,9 +1550,7 @@ class DVGeometry(object):
                     slVar = self.DV_listSectionLocal[varname]
                     attachedPoint = self.ptAttachInd[ipt]
                     W = slVar.sectionTransform[slVar.sectionLink[attachedPoint]][:, 2]
-                    D = geo_utils.rotVbyW(
-                        D, W, np.pi / 180 * self.rot_theta[self.curveIDNames[ipt]](self.links_s[ipt])
-                    )
+                    D = geo_utils.rotVbyW(D, W, np.pi / 180 * self.rot_theta[self.curveIDNames[ipt]](self.links_s[ipt]))
 
                 D[0] *= scale_x
                 D[1] *= scale_y

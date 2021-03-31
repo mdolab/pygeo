@@ -93,9 +93,7 @@ class RegTestPyGeo(unittest.TestCase):
 
         # the modification caused by the child FFD should be the same as rotating the deformed point of the parent
         # (you would think)
-        rot_mat = np.array(
-            [[np.cos(ang_r), 0, np.sin(ang_r)], [0, 1, 0], [-np.sin(ang_r), 0, np.cos(ang_r)]]
-        )
+        rot_mat = np.array([[np.cos(ang_r), 0, np.sin(ang_r)], [0, 1, 0], [-np.sin(ang_r), 0, np.cos(ang_r)]])
         Xrot = np.dot(rot_mat, (Xs - points).T) + points.T
 
         np.testing.assert_array_almost_equal(Xrot_ffd.T, Xrot)
