@@ -229,6 +229,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
             # get the coordinates
             nNodes = len(uv[0, :])
+            openvsp.CompVecPnt01(geoms[0], 0, uv[0, :], uv[1, :])
 
             # extract node coordinates and save them in a numpy array
             coor = np.zeros((nNodes, 3))
