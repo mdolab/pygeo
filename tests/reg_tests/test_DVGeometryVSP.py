@@ -155,6 +155,9 @@ class RegTestPyGeoVSP(unittest.TestCase):
         """
         Test 2: OpenVSP wing test
         """
+        # we skip parallel tests for now
+        if not train and self.N_PROCS > 1:
+            return
 
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
