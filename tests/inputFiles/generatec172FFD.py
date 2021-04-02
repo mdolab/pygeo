@@ -9,7 +9,7 @@ z_root = -0.01
 # Bounding box for tip airfoil
 x_tip_range = [-0.05, 1.7]
 y_tip_range = [-0.25, 0.25]
-z_tip = 11/2
+z_tip = 11 / 2
 
 # Number of FFD control points per dimension
 nX = 4  # streamwise

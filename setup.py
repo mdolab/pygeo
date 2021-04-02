@@ -3,15 +3,14 @@ import re
 
 __version__ = re.findall(
     r"""__version__ = ["']+([0-9\.]*)["']+""",
-    open('pygeo/__init__.py').read(),
+    open("pygeo/__init__.py").read(),
 )[0]
 
-setup(name='pygeo',
-      version=__version__,
-
-
-      description="pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization",
-      long_description="""It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
+setup(
+    name="pygeo",
+    version=__version__,
+    description="pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization",
+    long_description="""It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
 
 
       ![](images/DPW4_FFD-27745.gif)
@@ -45,28 +44,17 @@ setup(name='pygeo',
       }
       
       """,
-      long_description_content_type="text/markdown",
-      keywords='geometry FFD optimization',
-      author='',
-      author_email='',
-      url='https://github.com/mdolab/pygeo',
-      license='Apache License Version 2.0',
-      packages=[
-          'pygeo',
-      ],
-      package_data={
-          'pygeo': ['*.so']
-      },
-      install_requires=[
-            'numpy>=1.16',
-            'pyspline>=1.1',
-            'scipy>=1.2',
-            'mpi4py>=3.0'
-      ],
-      extras_require = {
-        'testing':  ["numpy-stl"]
-      },
-      classifiers=[
-        "Operating System :: OS Independent",
-        "Programming Language :: Python"]
-      )
+    long_description_content_type="text/markdown",
+    keywords="geometry FFD optimization",
+    author="",
+    author_email="",
+    url="https://github.com/mdolab/pygeo",
+    license="Apache License Version 2.0",
+    packages=[
+        "pygeo",
+    ],
+    package_data={"pygeo": ["*.so"]},
+    install_requires=["numpy>=1.16", "pyspline>=1.1", "scipy>=1.2", "mpi4py>=3.0"],
+    extras_require={"testing": ["numpy-stl"]},
+    classifiers=["Operating System :: OS Independent", "Programming Language :: Python"],
+)
