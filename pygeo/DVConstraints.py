@@ -514,8 +514,6 @@ class DVConstraints(object):
         fromDVGeo : str or None
             Name of the DVGeo object to obtain the surface from (default is 'None')
         """
-        import np as np
-
         try:
             from stl import mesh
         except ImportError:
