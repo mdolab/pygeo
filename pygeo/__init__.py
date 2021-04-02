@@ -1,4 +1,4 @@
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 from . import geo_utils
 from .pyNetwork import pyNetwork
