@@ -28,7 +28,7 @@ class TestExamples(unittest.TestCase):
             args = []
         full_test_dir = os.path.abspath(os.path.join(baseDir, "../../examples", test_dir))
         os.chdir(full_test_dir)
-        cmd = ['python', run_file] + args
+        cmd = ["python", run_file] + args
         subprocess.check_call(cmd)
         for f in self.output_file_list:
             self.assertTrue(os.path.isfile(f))
@@ -38,12 +38,23 @@ class TestExamples(unittest.TestCase):
         self.common_test("bwb", "bwb.py")
 
     def test_c172(self):
-        self.output_file_list = ["c172_rounded_te_rounded_tip.dat", "c172_rounded_te_rounded_tip.igs"]
+        self.output_file_list = [
+            "c172_sharp_te_rounded_tip.dat",
+            "c172_sharp_te_rounded_tip.igs",
+            "c172_sharp_te_pinched_tip.dat",
+            "c172_sharp_te_pinched_tip.igs",
+            "c172_sharp_te_rounded_tip_fitted.dat",
+            "c172_sharp_te_rounded_tip_fitted.igs",
+            "c172_blunt_te_rounded_tip.dat",
+            "c172_blunt_te_rounded_tip.igs",
+            "c172_rounded_te_rounded_tip.dat",
+            "c172_rounded_te_rounded_tip.igs",
+        ]
         self.common_test("c172_wing", "c172.py")
 
-    @parameterized.expand(['iges', 'plot3d', 'liftingsurface'])
+    @parameterized.expand(["iges", "plot3d", "liftingsurface"])
     def test_deform(self, input_type):
-        self.output_file_list = ['wingNew.plt']
+        self.output_file_list = ["wingNew.plt"]
         self.common_test("deform_geometry", "runScript.py", args=["--input_type", input_type])
 
     def tearDown(self):
