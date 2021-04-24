@@ -1,6 +1,6 @@
 import numpy as np
 from pygeo import pyGeo
-from pyspline import pySpline
+from pyspline import Curve
 
 # ==============================================================================
 # Start of Script
@@ -24,10 +24,10 @@ front_up[0, 0] = 0
 front_low[0, 0] = 0
 
 # Now make a ONE-DIMENSIONAL spline for each of the le and trailing edes
-le_spline = pySpline.curve(X=le[:, 1], s=le[:, 0], nCtl=11, k=4)
-te_spline = pySpline.curve(X=te[:, 1], s=te[:, 0], nCtl=11, k=4)
-up_spline = pySpline.curve(X=front_up[:, 1], s=front_up[:, 0], nCtl=11, k=4)
-low_spline = pySpline.curve(X=front_low[:, 1], s=front_low[:, 0], nCtl=11, k=4)
+le_spline = Curve(X=le[:, 1], s=le[:, 0], nCtl=11, k=4)
+te_spline = Curve(X=te[:, 1], s=te[:, 0], nCtl=11, k=4)
+up_spline = Curve(X=front_up[:, 1], s=front_up[:, 0], nCtl=11, k=4)
+low_spline = Curve(X=front_low[:, 1], s=front_low[:, 0], nCtl=11, k=4)
 
 # Generate consistent equally spaced spline data
 span = np.linspace(0, 1, naf)
