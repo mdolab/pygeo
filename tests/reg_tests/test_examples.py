@@ -9,6 +9,7 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 class TestExamples(unittest.TestCase):
     def setUp(self):
         self.cwd = os.getcwd()
+        self.output_file_list = []
 
     def common_test(self, test_dir, run_file, args=None):
         """
