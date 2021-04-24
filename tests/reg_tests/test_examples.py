@@ -7,6 +7,9 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestExamples(unittest.TestCase):
+    def setUp(self):
+        self.cwd = os.getcwd()
+
     def common_test(self, test_dir, run_file, args=None):
         """
         This function runs a given Python script, makes sure it does not exit with an error code,
@@ -46,3 +49,4 @@ class TestExamples(unittest.TestCase):
     def tearDown(self):
         for f in self.output_file_list:
             os.remove(f)
+        os.chdir(self.cwd)
