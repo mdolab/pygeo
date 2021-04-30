@@ -2722,7 +2722,7 @@ class DVGeometry(object):
                         self.update(pointSet)
 
                         # Write FFD
-                        self.writeTecplot("{}/ffd/iter_{:03d}.dat".format(directory, count))
+                        self.writeTecplot("{}/ffd/dv_{}_{:03d}_iter_{:03d}.dat".format(directory, key, j, count))
 
                         # Write pointset
                         if writePointSet:
