@@ -116,6 +116,14 @@ class pyGeo:
             File name to load. Should end in .xyz
         order : str
             'f' for fortran ordering (usual), 'c' for c ordering
+        u : int
+            Spline order in u
+        kv : int
+            Spline order in v
+        nCtlu : int
+            Number of control points in u
+        nCtlv : int
+            Number of control points in v
         """
         f = open(fileName, "r")
         binary = False
