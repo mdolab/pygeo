@@ -107,7 +107,7 @@ class pyGeo:
     #               Initialization Type Functions
     # ----------------------------------------------------------------------------
 
-    def _readPlot3D(self, fileName, order="f"):
+    def _readPlot3D(self, fileName, order="f", ku=4, kv=4, nCtlu=4, nCtlv=4):
         """Load a plot3D file and create the splines to go with each patch
 
         Parameters
@@ -154,7 +154,7 @@ class pyGeo:
         # the parametrization and knot vectors
         self.nSurf = nSurf
         for isurf in range(self.nSurf):
-            self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=4, kv=4, nCtlu=4, nCtlv=4))
+            self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=ku, kv=kv, nCtlu=nCtlu, nCtlv=nCtlv))
 
     def _readIges(self, fileName):
         """Load a Iges file and create the splines to go with each patch
