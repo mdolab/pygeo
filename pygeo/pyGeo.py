@@ -75,6 +75,14 @@ class pyGeo:
     kSpan : int
         The spline order in span-wise direction. 2 for linear, 3 for quadratic
         and 4 for cubic
+    ku : int
+        Spline order in u (for plot3d input files only)
+    kv : int
+        Spline order in v (for plot3d input files only)
+    nCtlu : int
+        Number of control points in u (for plot3d input files only)
+    nCtlv : int
+        Number of control points in v (for plot3d input files only)
     """
 
     def __init__(self, initType, *args, **kwargs):
@@ -116,7 +124,7 @@ class pyGeo:
             File name to load. Should end in .xyz
         order : str
             'f' for fortran ordering (usual), 'c' for c ordering
-        u : int
+        ku : int
             Spline order in u
         kv : int
             Spline order in v
