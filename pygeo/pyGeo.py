@@ -75,6 +75,14 @@ class pyGeo:
     kSpan : int
         The spline order in span-wise direction. 2 for linear, 3 for quadratic
         and 4 for cubic
+    ku : int
+        Spline order in u (for plot3d input files only)
+    kv : int
+        Spline order in v (for plot3d input files only)
+    nCtlu : int
+        Number of control points in u (for plot3d input files only)
+    nCtlv : int
+        Number of control points in v (for plot3d input files only)
     """
 
     def __init__(self, initType, *args, **kwargs):
@@ -107,7 +115,7 @@ class pyGeo:
     #               Initialization Type Functions
     # ----------------------------------------------------------------------------
 
-    def _readPlot3D(self, fileName, order="f"):
+    def _readPlot3D(self, fileName, order="f", ku=4, kv=4, nCtlu=4, nCtlv=4):
         """Load a plot3D file and create the splines to go with each patch
 
         Parameters
@@ -116,6 +124,14 @@ class pyGeo:
             File name to load. Should end in .xyz
         order : str
             'f' for fortran ordering (usual), 'c' for c ordering
+        ku : int
+            Spline order in u
+        kv : int
+            Spline order in v
+        nCtlu : int
+            Number of control points in u
+        nCtlv : int
+            Number of control points in v
         """
         f = open(fileName, "r")
         binary = False
@@ -154,7 +170,7 @@ class pyGeo:
         # the parametrization and knot vectors
         self.nSurf = nSurf
         for isurf in range(self.nSurf):
-            self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=4, kv=4, nCtlu=4, nCtlv=4))
+            self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=ku, kv=kv, nCtlu=nCtlu, nCtlv=nCtlv))
 
     def _readIges(self, fileName):
         """Load a Iges file and create the splines to go with each patch
