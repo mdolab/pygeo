@@ -823,7 +823,6 @@ class DVGeometryVSP(object):
             if "angle" in DV.parm.lower():
                 # set this new value separately to leave the DV.value itself untouched
                 new_value = ((DV.value + 180.0) % 360.0) - 180.0
-                print("setting %s from %.3f to %.3f" % (dvName, DV.value, new_value))
                 openvsp.SetParmVal(DV.parmID, float(new_value))
             else:
                 # We use float here since sometimes pyoptsparse will give
