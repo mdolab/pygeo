@@ -13,6 +13,8 @@ from pyspline import pySpline
 try:
     import openvsp
 except ImportError:
+    import vsp as openvsp
+except ImportError:
     raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
 
 
@@ -812,9 +814,20 @@ class DVGeometryVSP(object):
 
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            # We use float here since sometimes pyoptsparse will give
-            # numpy zero-dimensional arrays, which swig does not like
-            openvsp.SetParmVal(DV.parmID, float(DV.value))
+
+            # for angle parameters, vsp only takes in degrees between -180 and +180,
+            # which creates an unnecessary discontinuity at +-180.
+            # to fix this, we take the mod of the value and set it to the correct range
+            # that is allowed by VSP. Because all of the FD jacobian routine also goes
+            # through here to update the model, we effectively maintain consistency
+            if "angle" in DV.parm.lower():
+                # set this new value separately to leave the DV.value itself untouched
+                new_value = ((DV.value + 180.0) % 360.0) - 180.0
+                openvsp.SetParmVal(DV.parmID, float(new_value))
+            else:
+                # We use float here since sometimes pyoptsparse will give
+                # numpy zero-dimensional arrays, which swig does not like
+                openvsp.SetParmVal(DV.parmID, float(DV.value))
 
         # update the model
         openvsp.Update()
