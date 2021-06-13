@@ -5,3 +5,5 @@ reg_tests/pygeo_reg
 reg_tests/pygeo_reg.orig
 doc/_build
 *testflo_report.out
+tests/reg_tests/fullpath_*
+tests/inputFiles/cylinder_ffd.xyz
