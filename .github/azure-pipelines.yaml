@@ -15,5 +15,4 @@ extends:
   template: azure/azure_template.yaml@azure_template
   parameters:
     REPO_NAME: pygeo
-    IGNORE_STYLE: true
     IMAGE: auto

@@ -1,63 +1,61 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import numpy,copy
+import numpy as np
 from . import geo_utils, pyGeo
 from pyspline import pySpline
 from mpi4py import MPI
 from scipy.sparse import csr_matrix
-import numpy as np
-try:
-    from collections import OrderedDict
-except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, "
-              "use:\n pip install ordereddict")
+from collections import OrderedDict
+
 
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
     was a expliclty raised exception.
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| DVCon Error: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVCon Error: "
         i = 14
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
         Exception.__init__(self)
+
 
 class Warning(object):
     """
     Format a warning message
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| DVConstraints Warning: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVConstraints Warning: "
         i = 24
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
+
 
 class GeometricConstraint(object):
     """
     This is a generic base class for all of the geometric constraints.
 
     """
-    def __init__(self,name, nCon, lower, upper, scale, DVGeo, addToPyOpt):
+
+    def __init__(self, name, nCon, lower, upper, scale, DVGeo, addToPyOpt):
         """
         General init function. Every constraint has these functions
         """
@@ -71,7 +69,7 @@ class GeometricConstraint(object):
 
         return
 
-    def setDesignVars(self,x):
+    def setDesignVars(self, x):
         """
         take in the design var vector from pyopt and set the variables for this constraint
         This function is constraint specific, so the baseclass doesn't implement anything.
@@ -115,9 +113,9 @@ class GeometricConstraint(object):
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
-            optProb.addConGroup(self.name, self.nCon, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.getVarNames())
+            optProb.addConGroup(
+                self.name, self.nCon, lower=self.lower, upper=self.upper, scale=self.scale, wrt=self.getVarNames()
+            )
 
     def addVariablesPyOpt(self, optProb):
         """
@@ -181,7 +179,7 @@ class DVConstraints(object):
 
     """
 
-    def __init__(self,name='DVCon1'):
+    def __init__(self, name="DVCon1"):
         """
         Create a (empty) DVconstrains object. Specific types of
         constraints will added individually
@@ -197,7 +195,7 @@ class DVConstraints(object):
         self.surfaces = {}
         self.DVGeometries = {}
 
-    def setSurface(self, surf, name='default', addToDVGeo=False, DVGeoName='default', format='point-vector'):
+    def setSurface(self, surf, name="default", addToDVGeo=False, DVGeoName="default", format="point-vector"):
         """
         Set the surface DVConstraints will use to perform projections.
 
@@ -238,55 +236,54 @@ class DVConstraints(object):
 
         """
         if name in self.surfaces.keys():
-            raise KeyError('Surface names must be unique. Repeated surface name: ' + str(name))
+            raise KeyError("Surface names must be unique. Repeated surface name: " + str(name))
 
         self.surfaces[name] = list()
-        if format == 'point-vector':
+        if format == "point-vector":
             if type(surf) == list:
                 # Data from ADflow
-                p0 = numpy.array(surf[0])
-                v1 = numpy.array(surf[1])
-                v2 = numpy.array(surf[2])
+                p0 = np.array(surf[0])
+                v1 = np.array(surf[1])
+                v2 = np.array(surf[2])
             elif isinstance(surf, str):
                 # Load the surf as a plot3d file
                 p0, v1, v2 = self._readPlot3DSurfFile(surf)
 
-            elif isinstance(surf, pyGeo): # Assume it's a pyGeo surface
+            elif isinstance(surf, pyGeo):  # Assume it's a pyGeo surface
                 p0, v1, v2 = self._generateDiscreteSurface(surf)
             else:
-                raise TypeError('surf given is not a supported type [List, plot3D file name, or pyGeo surface]')
+                raise TypeError("surf given is not a supported type [List, plot3D file name, or pyGeo surface]")
 
             p1 = p0 + v1
             p2 = p0 + v2
-        elif format == 'point-point':
+        elif format == "point-point":
             if type(surf) == str:
                 # load from file
                 raise NotImplementedError
             elif type(surf) == list:
                 # for now, do NOT add the object geometry to dvgeo
-                p0 = numpy.array(surf[0])
-                p1 = numpy.array(surf[1])
-                p2 = numpy.array(surf[2])
-            elif type(surf) == numpy.ndarray:
-                surf_length = surf[:,0,:].shape[0]
-                p0 = surf[:,0,:].reshape(surf_length, 3)
-                p1 = surf[:,1,:].reshape(surf_length, 3)
-                p2 = surf[:,2,:].reshape(surf_length, 3)
+                p0 = np.array(surf[0])
+                p1 = np.array(surf[1])
+                p2 = np.array(surf[2])
+            elif type(surf) == np.ndarray:
+                surf_length = surf[:, 0, :].shape[0]
+                p0 = surf[:, 0, :].reshape(surf_length, 3)
+                p1 = surf[:, 1, :].reshape(surf_length, 3)
+                p2 = surf[:, 2, :].reshape(surf_length, 3)
             else:
-                raise TypeError('surf given is not supported [list, numpy.ndarray]')
+                raise TypeError("surf given is not supported [list, np.ndarray]")
 
         self.surfaces[name].append(p0)
         self.surfaces[name].append(p1)
         self.surfaces[name].append(p2)
 
-
         if addToDVGeo:
             self._checkDVGeo(name=DVGeoName)
-            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][0], name + '_p0')
-            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][1], name + '_p1')
-            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][2], name + '_p2')
+            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][0], name + "_p0")
+            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][1], name + "_p1")
+            self.DVGeometries[DVGeoName].addPointSet(self.surfaces[name][2], name + "_p2")
 
-    def setDVGeo(self, DVGeo, name='default'):
+    def setDVGeo(self, DVGeo, name="default"):
         """
         Set the DVGeometry object that will manipulate this object.
         Note that DVConstraints doesn't **strictly** need a DVGeometry
@@ -310,11 +307,12 @@ class DVConstraints(object):
             for dvname in DVGeo.getVarNames():
                 for existing_dvname in existing_DVGeo.getVarNames():
                     if dvname == existing_dvname:
-                        msg = f"Design variable {dvname} in the newly-added DVGeo already exists in DVGeo" \
-                              f"object named {existing_DVGeo_name} on this DVCon"
+                        msg = (
+                            f"Design variable {dvname} in the newly-added DVGeo already exists in DVGeo"
+                            f"object named {existing_DVGeo_name} on this DVCon"
+                        )
                         raise ValueError(msg)
         self.DVGeometries[name] = DVGeo
-
 
     def addConstraintsPyOpt(self, optProb):
         """
@@ -377,7 +375,7 @@ class DVConstraints(object):
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
             additional keys in the dfvdictionary are simply ignored.
-            """
+        """
 
         # loop over the generated constraint objects and add the necessary
         # variables to pyopt
@@ -456,9 +454,9 @@ class DVConstraints(object):
             .dat extension will be added automatically.
         """
 
-        f = open(fileName, 'w')
-        f.write("TITLE = \"DVConstraints Data\"\n")
-        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
+        f = open(fileName, "w")
+        f.write('TITLE = "DVConstraints Data"\n')
+        f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ"\n')
 
         # loop over the constraints and add their data to the tecplot file
         for conTypeKey in self.constraints:
@@ -470,7 +468,7 @@ class DVConstraints(object):
             self.linearCon[key].writeTecplot(f)
         f.close()
 
-    def writeSurfaceTecplot(self,fileName,surfaceName='default'):
+    def writeSurfaceTecplot(self, fileName, surfaceName="default"):
         """
         Write the triangulated surface mesh used in the constraint object
         to a tecplot file for visualization.
@@ -484,27 +482,26 @@ class DVConstraints(object):
         """
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        f = open(fileName, 'w')
-        f.write("TITLE = \"DVConstraints Surface Mesh\"\n")
-        f.write("VARIABLES = \"CoordinateX\" \"CoordinateY\" \"CoordinateZ\"\n")
-        f.write('Zone T=%s\n'%('surf'))
-        f.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
-            len(p0)*3, len(p0)))
-        f.write('DATAPACKING=POINT\n')
+        f = open(fileName, "w")
+        f.write('TITLE = "DVConstraints Surface Mesh"\n')
+        f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ"\n')
+        f.write("Zone T=%s\n" % ("surf"))
+        f.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (len(p0) * 3, len(p0)))
+        f.write("DATAPACKING=POINT\n")
         for i in range(len(p0)):
             points = []
             points.append(p0[i])
             points.append(p1[i])
             points.append(p2[i])
             for i in range(len(points)):
-                f.write('%f %f %f\n'% (points[i][0], points[i][1],points[i][2]))
+                f.write("%f %f %f\n" % (points[i][0], points[i][1], points[i][2]))
 
         for i in range(len(p0)):
-            f.write('%d %d %d\n'% (3*i+1, 3*i+2,3*i+3))
+            f.write("%d %d %d\n" % (3 * i + 1, 3 * i + 2, 3 * i + 3))
 
         f.close()
 
-    def writeSurfaceSTL(self,fileName,surfaceName='default',fromDVGeo=None):
+    def writeSurfaceSTL(self, fileName, surfaceName="default", fromDVGeo=None):
         """
         Write the triangulated surface mesh to a .STL file for manipulation and visualization.
 
@@ -517,29 +514,40 @@ class DVConstraints(object):
         fromDVGeo : str or None
             Name of the DVGeo object to obtain the surface from (default is 'None')
         """
-        import numpy as np
         try:
             from stl import mesh
-        except:
-            raise ImportError('numpy-stl package must be installed')
+        except ImportError:
+            raise ImportError("numpy-stl package must be installed")
         if fromDVGeo is None:
             p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         else:
-            p0 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p0')
-            p1 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p1')
-            p2 = self.DVGeometries[fromDVGeo].update(surfaceName+'_p2')
+            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
+            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
+            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
 
         stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
-        stlmesh.vectors[:,0,:] = p0
-        stlmesh.vectors[:,1,:] = p1
-        stlmesh.vectors[:,2,:] = p2
+        stlmesh.vectors[:, 0, :] = p0
+        stlmesh.vectors[:, 1, :] = p1
+        stlmesh.vectors[:, 2, :] = p2
 
         # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
 
-    def addThicknessConstraints2D(self, leList, teList, nSpan, nChord,
-                                  lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                                  name=None, addToPyOpt=True, surfaceName='default', DVGeoName='default'):
+    def addThicknessConstraints2D(
+        self,
+        leList,
+        teList,
+        nSpan,
+        nChord,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Add a set of thickness constraints that span a logically a
         two-dimensional region. A little ASCII art can help here
@@ -689,26 +697,35 @@ class DVConstraints(object):
         coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
 
         # Create the thickness constraint object:
-        coords = coords.reshape((nSpan*nChord*2, 3))
+        coords = coords.reshape((nSpan * nChord * 2, 3))
 
-        typeName = 'thickCon'
-        if not typeName in self.constraints:
+        typeName = "thickCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
         if name is None:
-            conName = '%s_thickness_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-
-    def addThicknessConstraints1D(self, ptList, nCon, axis,
-                                  lower=1.0, upper=3.0, scaled=True,
-                                  scale=1.0, name=None, addToPyOpt=True,
-                                  surfaceName='default', DVGeoName='default'):
+    def addThicknessConstraints1D(
+        self,
+        ptList,
+        nCon,
+        axis,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Add a set of thickness constraints oriented along a poly-line.
 
@@ -807,40 +824,51 @@ class DVConstraints(object):
 
         # Create mesh of itersections
         constr_line = pySpline.Curve(X=ptList, k=2)
-        s = numpy.linspace(0, 1, nCon)
+        s = np.linspace(0, 1, nCon)
         X = constr_line(s)
-        coords = numpy.zeros((nCon, 2, 3))
+        coords = np.zeros((nCon, 2, 3))
         # Project all the points
         for i in range(nCon):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(
-                X[i], axis, p0, p1-p0, p2-p0)
+            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
             if fail > 0:
-                raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
-                                X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                )
             coords[i, 0] = up
             coords[i, 1] = down
 
         # Create the thickness constraint object:
-        coords = coords.reshape((nCon*2, 3))
+        coords = coords.reshape((nCon * 2, 3))
 
-        typeName = 'thickCon'
-        if not typeName in self.constraints:
+        typeName = "thickCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_thickness_constraints_%d'%(self.name,len(self.constraints[typeName]))
+            conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addLERadiusConstraints(self, leList, nSpan, axis, chordDir,
-                               lower=1.0, upper=3.0, scaled=True,
-                               scale=1.0, name=None, addToPyOpt=True,
-                               surfaceName='default', DVGeoName='default'):
+    def addLERadiusConstraints(
+        self,
+        leList,
+        nSpan,
+        axis,
+        chordDir,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Add a set of leading edge radius constraints. The constraint is set up
         similar to the 1D thickness or thickness-to-chord constraints. The user
@@ -951,71 +979,80 @@ class DVConstraints(object):
 
         # Create mesh of itersections
         constr_line = pySpline.Curve(X=leList, k=2)
-        s = numpy.linspace(0, 1, nSpan)
+        s = np.linspace(0, 1, nSpan)
         X = constr_line(s)
-        coords = numpy.zeros((nSpan, 3, 3))
+        coords = np.zeros((nSpan, 3, 3))
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
         for i in range(nSpan):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(
-                X[i], axis, p0, p1-p0, p2-p0)
+            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
             if fail > 0:
-                raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
-                                X[i, 0], X[i, 1], X[i, 2],
-                                axis[0], axis[1], axis[2]))
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                )
             coords[i, 0] = up
             coords[i, 1] = down
 
         # Calculate mid-points
-        midPts = (coords[:,0,:] + coords[:,1,:]) / 2.0
+        midPts = (coords[:, 0, :] + coords[:, 1, :]) / 2.0
 
         # Project to get leading edge point
-        lePts = numpy.zeros((nSpan, 3))
-        chordDir = numpy.array(chordDir, dtype='d').flatten()
-        chordDir /= numpy.linalg.norm(chordDir)
+        lePts = np.zeros((nSpan, 3))
+        chordDir = np.array(chordDir, dtype="d").flatten()
+        chordDir /= np.linalg.norm(chordDir)
         for i in range(nSpan):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(
-                X[i], chordDir, p0, p1-p0, p2-p0)
+            up, down, fail = geo_utils.projectNode(X[i], chordDir, p0, p1 - p0, p2 - p0)
             if fail > 0:
-                raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
-                                X[i, 0], X[i, 1], X[i, 2],
-                                chordDir[0], chordDir[1], chordDir[2]))
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)."
+                    % (X[i, 0], X[i, 1], X[i, 2], chordDir[0], chordDir[1], chordDir[2])
+                )
             lePts[i] = up
 
         # Check that points can form radius
-        d = numpy.linalg.norm(coords[:,0,:] - coords[:,1,:], axis=1)
-        r = numpy.linalg.norm(midPts - lePts, axis=1)
+        d = np.linalg.norm(coords[:, 0, :] - coords[:, 1, :], axis=1)
+        r = np.linalg.norm(midPts - lePts, axis=1)
         for i in range(nSpan):
-            if d[i] < 2*r[i]:
-                raise Error("Leading edge radius points are too far from the "
-                            "leading edge point to form a circle between the "
-                            "three points.")
+            if d[i] < 2 * r[i]:
+                raise Error(
+                    "Leading edge radius points are too far from the "
+                    "leading edge point to form a circle between the "
+                    "three points."
+                )
 
         # Add leading edge points and stack points into shape accepted by DVGeo
-        coords[:,2,:] = lePts
-        coords = numpy.vstack((coords[:,0,:], coords[:,1,:], coords[:,2,:]))
+        coords[:, 2, :] = lePts
+        coords = np.vstack((coords[:, 0, :], coords[:, 1, :], coords[:, 2, :]))
 
         # Create the thickness constraint object
-        typeName = 'radiusCon'
-        if not typeName in self.constraints:
+        typeName = "radiusCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_leradius_constraints_%d'%(self.name,len(self.constraints[typeName]))
+            conName = "%s_leradius_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = RadiusConstraint(
-            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-
-    def addLocationConstraints1D(self, ptList, nCon,lower=None, upper=None,
-                                 scaled=False, scale=1.0, name=None,
-                                 addToPyOpt=True, DVGeoName='default'):
+    def addLocationConstraints1D(
+        self,
+        ptList,
+        nCon,
+        lower=None,
+        upper=None,
+        scaled=False,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        DVGeoName="default",
+    ):
         """
         Add a polyline in space that cannot move.
 
@@ -1086,7 +1123,7 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
         # Create the points to constrain
         constr_line = pySpline.Curve(X=ptList, k=2)
-        s = numpy.linspace(0, 1, nCon)
+        s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         # X shouls now be in the shape we need
 
@@ -1096,23 +1133,33 @@ class DVConstraints(object):
             upper = X.flatten()
 
         # Create the location constraint object
-        typeName = 'locCon'
-        if not typeName in self.constraints:
+        typeName = "locCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_location_constraints_%d'%(self.name,len(self.constraints[typeName]))
+            conName = "%s_location_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = LocationConstraint(
-            conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-
-    def addProjectedLocationConstraints1D(self, ptList, nCon, axis, bias=0.5,
-                                          lower=None, upper=None,
-                                          scaled=False, scale=1.0, name=None, addToPyOpt=True,
-                                          surfaceName='default', DVGeoName='default'):
+    def addProjectedLocationConstraints1D(
+        self,
+        ptList,
+        nCon,
+        axis,
+        bias=0.5,
+        lower=None,
+        upper=None,
+        scaled=False,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
 
         """This is similar to addLocationConstraints1D except that the actual
         poly line is determined by first projecting points on to the
@@ -1198,23 +1245,23 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         constr_line = pySpline.Curve(X=ptList, k=2)
-        s = numpy.linspace(0, 1, nCon)
+        s = np.linspace(0, 1, nCon)
         X = constr_line(s)
 
-        coords = numpy.zeros((nCon, 2, 3))
+        coords = np.zeros((nCon, 2, 3))
         # Project all the points
         for i in range(nCon):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(
-                X[i], axis, p0, p1-p0, p2-p0)
+            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
             if fail > 0:
-                raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)."% (
-                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                )
             coords[i, 0] = up
             coords[i, 1] = down
 
-        X = (1-bias)*coords[:, 1] + bias*coords[:, 0]
+        X = (1 - bias) * coords[:, 1] + bias * coords[:, 0]
 
         # X is now what we want to constrain
         if lower is None:
@@ -1223,23 +1270,32 @@ class DVConstraints(object):
             upper = X.flatten()
 
         # Create the location constraint object
-        typeName = 'locCon'
-        if not typeName in self.constraints:
+        typeName = "locCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_location_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_location_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = LocationConstraint(
-            conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, X, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addThicknessToChordConstraints1D(self, ptList, nCon, axis, chordDir,
-                                         lower=1.0, upper=3.0, scale=1.0,
-                                         name=None, addToPyOpt=True,
-                                         surfaceName='default',
-                                         DVGeoName='default'):
+    def addThicknessToChordConstraints1D(
+        self,
+        ptList,
+        nCon,
+        axis,
+        chordDir,
+        lower=1.0,
+        upper=3.0,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
 
@@ -1328,47 +1384,57 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         constr_line = pySpline.Curve(X=ptList, k=2)
-        s = numpy.linspace(0, 1, nCon)
+        s = np.linspace(0, 1, nCon)
         X = constr_line(s)
-        coords = numpy.zeros((nCon, 4, 3))
-        chordDir /= numpy.linalg.norm(numpy.array(chordDir, 'd'))
+        coords = np.zeros((nCon, 4, 3))
+        chordDir /= np.linalg.norm(np.array(chordDir, "d"))
         # Project all the points
         for i in range(nCon):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(
-                X[i], axis, p0, p1-p0, p2-p0)
+            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
             if fail:
-                raise Error("There was an error projecting a node "
-                            "at (%f, %f, %f) with normal (%f, %f, %f)." % (
-                        X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2]))
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                )
 
             coords[i, 0] = up
             coords[i, 1] = down
-            height = numpy.linalg.norm(coords[i, 0] - coords[i, 1])
+            height = np.linalg.norm(coords[i, 0] - coords[i, 1])
             # Third point is the mid-point of thsoe
-            coords[i, 2] = 0.5*(up + down)
+            coords[i, 2] = 0.5 * (up + down)
 
             # Fourth point is along the chordDir
-            coords[i, 3] = coords[i, 2] + 0.1*height*chordDir
+            coords[i, 3] = coords[i, 2] + 0.1 * height * chordDir
 
         # Create the thickness constraint object:
-        coords = coords.reshape((nCon*4, 3))
+        coords = coords.reshape((nCon * 4, 3))
 
-        typeName = 'thickCon'
-        if not typeName in self.constraints:
+        typeName = "thickCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
         if name is None:
-            conName = '%s_thickness_to_chord_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_thickness_to_chord_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
-            conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt)
+            conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-
-    def addTriangulatedSurfaceConstraint(self, surface_1_name=None, DVGeo_1_name='default',
-                                         surface_2_name='default', DVGeo_2_name='default',
-                                         rho=50., heuristic_dist=None, perim_scale=0.1,
-                                         max_perim=3.0, name=None, scale=1., addToPyOpt=True):
+    def addTriangulatedSurfaceConstraint(
+        self,
+        surface_1_name=None,
+        DVGeo_1_name="default",
+        surface_2_name="default",
+        DVGeo_2_name="default",
+        rho=50.0,
+        heuristic_dist=None,
+        perim_scale=0.1,
+        max_perim=3.0,
+        name=None,
+        scale=1.0,
+        addToPyOpt=True,
+    ):
         """
         Add a single triangulated surface constraint to an aerosurface.
         This constraint is designed to keep a general 'blob' of watertight
@@ -1436,9 +1502,9 @@ class DVConstraints(object):
             meaningless
         """
         try:
-            import geograd
+            import geograd  # noqa
         except ImportError:
-            raise ImportError('Geograd package must be installed to use triangulated surface constraint')
+            raise ImportError("Geograd package must be installed to use triangulated surface constraint")
         if DVGeo_1_name is not None:
             self._checkDVGeo(DVGeo_1_name)
             DVGeo1 = self.DVGeometries[DVGeo_1_name]
@@ -1450,14 +1516,14 @@ class DVConstraints(object):
         else:
             DVGeo2 = None
         if DVGeo1 is None and DVGeo2 is None:
-            raise UserError('At least one DVGeo object must be specified')
+            raise ValueError("At least one DVGeo object must be specified")
 
-        typeName = 'triSurfCon'
-        if not typeName in self.constraints:
+        typeName = "triSurfCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_trisurf_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_trisurf_constraint_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
@@ -1465,14 +1531,33 @@ class DVConstraints(object):
         surface_2 = self._getSurfaceVertices(surface_2_name)
 
         # Finally add constraint object
-        self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(conName,
-                                                surface_1, surface_1_name, DVGeo1,
-                                                surface_2, surface_2_name, DVGeo2, scale,
-                                                addToPyOpt, rho, perim_scale, max_perim, heuristic_dist)
+        self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(
+            conName,
+            surface_1,
+            surface_1_name,
+            DVGeo1,
+            surface_2,
+            surface_2_name,
+            DVGeo2,
+            scale,
+            addToPyOpt,
+            rho,
+            perim_scale,
+            max_perim,
+            heuristic_dist,
+        )
 
-    def addTriangulatedVolumeConstraint(self, lower=1.0, upper=99999.0, scaled=True, scale=1.0,
-                                        name=None, surfaceName='default', DVGeoName='default',
-                                        addToPyOpt=True):
+    def addTriangulatedVolumeConstraint(
+        self,
+        lower=1.0,
+        upper=99999.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        surfaceName="default",
+        DVGeoName="default",
+        addToPyOpt=True,
+    ):
         """
         Add a single triangulated volume constraint to a surface.
         Computes and constrains the volume of a closed, triangulated surface.
@@ -1542,26 +1627,37 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
         DVGeo = self.DVGeometries[DVGeoName]
 
-        typeName = 'triVolCon'
-        if not typeName in self.constraints:
+        typeName = "triVolCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_trivolume_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_trivolume_constraint_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
         surface = self._getSurfaceVertices(surfaceName)
 
         # Finally add constraint object
-        self.constraints[typeName][conName] = TriangulatedVolumeConstraint(conName,
-                                                surface, surfaceName, lower, upper,
-                                                scaled, scale, DVGeo, addToPyOpt)
+        self.constraints[typeName][conName] = TriangulatedVolumeConstraint(
+            conName, surface, surfaceName, lower, upper, scaled, scale, DVGeo, addToPyOpt
+        )
 
-    def addVolumeConstraint(self, leList, teList, nSpan, nChord,
-                            lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                            name=None, addToPyOpt=True,
-                            surfaceName='default', DVGeoName='default'):
+    def addVolumeConstraint(
+        self,
+        leList,
+        teList,
+        nSpan,
+        nChord,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Add a single volume constraint to the wing. The volume
         constraint is defined over a logically two-dimensional region
@@ -1670,27 +1766,26 @@ class DVConstraints(object):
             """
         self._checkDVGeo(DVGeoName)
 
-        typeName = 'volCon'
-        if not typeName in self.constraints:
+        typeName = "volCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_volume_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_volume_constraint_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
         coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
-        coords = coords.reshape((nSpan*nChord*2, 3))
+        coords = coords.reshape((nSpan * nChord * 2, 3))
 
         # Finally add the volume constraint object
         self.constraints[typeName][conName] = VolumeConstraint(
-            conName, nSpan, nChord, coords, lower, upper, scaled, scale,
-            self.DVGeometries[DVGeoName], addToPyOpt)
+            conName, nSpan, nChord, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-
-    def addCompositeVolumeConstraint(self, vols, lower=1.0, upper=3.0,
-                                     scaled=True, scale=1.0, name=None,
-                                     addToPyOpt=True, DVGeoName='default'):
+    def addCompositeVolumeConstraint(
+        self, vols, lower=1.0, upper=3.0, scaled=True, scale=1.0, name=None, addToPyOpt=True, DVGeoName="default"
+    ):
         """
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
@@ -1756,15 +1851,15 @@ class DVConstraints(object):
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
-            """
+        """
         self._checkDVGeo(DVGeoName)
 
-        typeName = 'volCon'
-        if not typeName in self.constraints:
+        typeName = "volCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_composite_volume_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_composite_volume_constraint_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
@@ -1774,16 +1869,27 @@ class DVConstraints(object):
             try:
                 volCons.append(self.constraints[typeName][vol])
             except KeyError:
-                raise Error("The supplied volume name '%s' has not"
-                            " already been added with a call to "
-                            "addVolumeConstraint()"% vol)
+                raise Error(
+                    "The supplied volume name '%s' has not"
+                    " already been added with a call to "
+                    "addVolumeConstraint()" % vol
+                )
         self.constraints[typeName][conName] = CompositeVolumeConstraint(
-            conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addLeTeConstraints(self, volID=None, faceID=None,topID=None,
-                           indSetA=None, indSetB=None, name=None,
-                           config=None, childIdx=None, DVGeoName='default'):
+    def addLeTeConstraints(
+        self,
+        volID=None,
+        faceID=None,
+        topID=None,
+        indSetA=None,
+        indSetB=None,
+        name=None,
+        config=None,
+        childIdx=None,
+        DVGeoName="default",
+    ):
         """
         Add a set of 'leading edge' or 'trailing edge' constraints to
         DVConstraints. These are just a particular form of linear
@@ -1879,27 +1985,26 @@ class DVConstraints(object):
             iFace = False
             jFace = False
             kFace = False
-            if faceID.lower() == 'ilow':
+            if faceID.lower() == "ilow":
                 indices = lIndex[0, :, :]
                 iFace = True
-            elif faceID.lower() == 'ihigh':
+            elif faceID.lower() == "ihigh":
                 indices = lIndex[-1, :, :]
                 iFace = True
-            elif faceID.lower() == 'jlow':
+            elif faceID.lower() == "jlow":
                 indices = lIndex[:, 0, :]
                 jFace = True
-            elif faceID.lower() == 'jhigh':
+            elif faceID.lower() == "jhigh":
                 indices = lIndex[:, -1, :]
                 jFace = True
-            elif faceID.lower() == 'klow':
+            elif faceID.lower() == "klow":
                 indices = lIndex[:, :, 0]
                 kFace = True
-            elif faceID.lower() == 'khigh':
+            elif faceID.lower() == "khigh":
                 indices = lIndex[:, :, -1]
                 kFace = True
             else:
-                raise Error("faceID must be one of iLow, iHigh, jLow, jHigh, "
-                            "kLow or kHigh.")
+                raise Error("faceID must be one of iLow, iHigh, jLow, jHigh, " "kLow or kHigh.")
 
             # Now we see if one and exactly one length in 2:
             shp = indices.shape
@@ -1911,53 +2016,56 @@ class DVConstraints(object):
                 indSetB = indices[:, 1]
             else:
                 if topID is not None:
-                    if topID.lower()=='i' and not iFace:
+                    if topID.lower() == "i" and not iFace:
                         indSetA = indices[0, :]
                         indSetB = indices[1, :]
-                    elif topID.lower()=='j' and not jFace:
+                    elif topID.lower() == "j" and not jFace:
                         if iFace:
                             indSetA = indices[0, :]
                             indSetB = indices[1, :]
                         else:
                             indSetA = indices[:, 0]
                             indSetB = indices[:, 1]
-                    elif topID.lower()=='k' and not kFace:
+                    elif topID.lower() == "k" and not kFace:
                         indSetA = indices[:, 0]
                         indSetB = indices[:, 1]
                     else:
-                        raise Error("Invalid value for topID. value must be"
-                                    " i, j or k")
+                        raise Error("Invalid value for topID. value must be" " i, j or k")
 
                 else:
-                    raise Error("Cannot add leading edge constraints. One (and "
-                                "exactly one) of FFD block dimensions on the"
-                                " specified face must be 2. The dimensions of "
-                                "the selected face are: "
-                                "(%d, %d). For this case you must specify "
-                                "topID" % (shp[0], shp[1]))
+                    raise Error(
+                        "Cannot add leading edge constraints. One (and "
+                        "exactly one) of FFD block dimensions on the"
+                        " specified face must be 2. The dimensions of "
+                        "the selected face are: "
+                        "(%d, %d). For this case you must specify "
+                        "topID" % (shp[0], shp[1])
+                    )
 
         elif indSetA is not None and indSetB is not None:
             if len(indSetA) != len(indSetB):
-                raise Error("The length of the supplied indices are not "
-                            "the same length")
+                raise Error("The length of the supplied indices are not " "the same length")
         else:
-            raise Error("Incorrect data supplied to addLeTeConstraint. The "
-                        "keyword arguments 'volID' and 'faceID' must be "
-                        "specified **or** 'indSetA' and 'indSetB'")
+            raise Error(
+                "Incorrect data supplied to addLeTeConstraint. The "
+                "keyword arguments 'volID' and 'faceID' must be "
+                "specified **or** 'indSetA' and 'indSetB'"
+            )
 
         if name is None:
-            conName = '%s_lete_constraint_%d'%(self.name, len(self.linearCon))
+            conName = "%s_lete_constraint_%d" % (self.name, len(self.linearCon))
         else:
             conName = name
 
         # Finally add the volume constraint object
         n = len(indSetA)
         self.linearCon[conName] = LinearConstraint(
-            conName, indSetA, indSetB, numpy.ones(n), numpy.ones(n),
-            lower=0, upper=0, DVGeo=DVGeo, config=config)
+            conName, indSetA, indSetB, np.ones(n), np.ones(n), lower=0, upper=0, DVGeo=DVGeo, config=config
+        )
 
-    def addLinearConstraintsShape(self, indSetA, indSetB, factorA, factorB,
-                                  lower=0, upper=0, name=None, config=None, DVGeoName='default'):
+    def addLinearConstraintsShape(
+        self, indSetA, indSetB, factorA, factorB, lower=0, upper=0, name=None, config=None, DVGeoName="default"
+    ):
         """
         Add a complete generic set of linear constraints for the shape
         variables that have been added to DVGeo. The constraints are
@@ -2020,52 +2128,60 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
 
         if len(indSetA) != len(indSetB):
-            raise Error("The length of the supplied indices are not "
-                        "the same length")
+            raise Error("The length of the supplied indices are not " "the same length")
 
         if name is None:
-            conName = '%s_linear_constraint_%d'%(self.name, len(self.linearCon))
+            conName = "%s_linear_constraint_%d" % (self.name, len(self.linearCon))
         else:
             conName = name
 
         # Process the inputs to be arrays of length n if necessary.
-        factorA = numpy.atleast_1d(factorA)
-        factorB = numpy.atleast_1d(factorB)
-        lower = numpy.atleast_1d(lower)
-        upper = numpy.atleast_1d(upper)
+        factorA = np.atleast_1d(factorA)
+        factorB = np.atleast_1d(factorB)
+        lower = np.atleast_1d(lower)
+        upper = np.atleast_1d(upper)
         n = len(indSetA)
 
         if len(factorA) == 1:
-            factorA = factorA[0]*numpy.ones(n)
+            factorA = factorA[0] * np.ones(n)
         elif len(factorA) != n:
-            raise Error('Length of factorA invalid!')
+            raise Error("Length of factorA invalid!")
 
         if len(factorB) == 1:
-            factorB = factorB[0]*numpy.ones(n)
+            factorB = factorB[0] * np.ones(n)
         elif len(factorB) != n:
-            raise Error('Length of factorB invalid!')
+            raise Error("Length of factorB invalid!")
 
         if len(lower) == 1:
-            lower = lower[0]*numpy.ones(n)
+            lower = lower[0] * np.ones(n)
         elif len(lower) != n:
-            raise Error('Length of lower invalid!')
+            raise Error("Length of lower invalid!")
 
         if len(upper) == 1:
-            upper = upper[0]*numpy.ones(n)
+            upper = upper[0] * np.ones(n)
         elif len(upper) != n:
-            raise Error('Length of upper invalid!')
+            raise Error("Length of upper invalid!")
 
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
-            conName, indSetA, indSetB, factorA, factorB, lower, upper,
-            self.DVGeometries[DVGeoName], config=config)
+            conName, indSetA, indSetB, factorA, factorB, lower, upper, self.DVGeometries[DVGeoName], config=config
+        )
 
-    def addGearPostConstraint(self, wimpressCalc, position, axis,
-                              thickLower=1.0, thickUpper=3.0,
-                              thickScaled=True,
-                              MACFracLower=0.50, MACFracUpper=0.60,
-                              name=None, addToPyOpt=True,
-                              surfaceName='default', DVGeoName='default'):
+    def addGearPostConstraint(
+        self,
+        wimpressCalc,
+        position,
+        axis,
+        thickLower=1.0,
+        thickUpper=3.0,
+        thickScaled=True,
+        MACFracLower=0.50,
+        MACFracUpper=0.60,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
 
         """Code for doing landing gear post constraints on the fly in an
         optimization. As it turns out, this is a critical constraint
@@ -2135,34 +2251,52 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        typeName = 'gearCon'
-        if not typeName in self.constraints:
+        typeName = "gearCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_gear_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_gear_constraint_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
 
         # Project the actual location we were give:
-        up, down, fail = geo_utils.projectNode(
-            position, axis, p0, p1-p0, p2-p0)
+        up, down, fail = geo_utils.projectNode(position, axis, p0, p1 - p0, p2 - p0)
         if fail > 0:
-            raise Error("There was an error projecting a node "
-                        "at (%f, %f, %f) with normal (%f, %f, %f)."% (
-                            position))
+            raise Error(
+                "There was an error projecting a node " "at (%f, %f, %f) with normal (%f, %f, %f)." % (position)
+            )
 
         self.constraints[typeName][conName] = GearPostConstraint(
-            conName, wimpressCalc, up, down, thickLower, thickUpper,
-            thickScaled, MACFracLower, MACFracUpper, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName,
+            wimpressCalc,
+            up,
+            down,
+            thickLower,
+            thickUpper,
+            thickScaled,
+            MACFracLower,
+            MACFracUpper,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+        )
 
-
-    def addCircularityConstraint(self,origin,rotAxis,radius,
-                                 zeroAxis,angleCW,angleCCW,
-                                 nPts=4,
-                                 upper=1.0,lower=1.0, scale=1.0,
-                                 name=None, addToPyOpt=True, DVGeoName='default'):
+    def addCircularityConstraint(
+        self,
+        origin,
+        rotAxis,
+        radius,
+        zeroAxis,
+        angleCW,
+        angleCCW,
+        nPts=4,
+        upper=1.0,
+        lower=1.0,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        DVGeoName="default",
+    ):
         """
         Add a contraint to keep a certain portion of your geometry circular.
         Define the origin, central axis and radius to define the circle.
@@ -2234,30 +2368,36 @@ class DVConstraints(object):
         """
 
         self._checkDVGeo(DVGeoName)
-        coords = self._generateCircle(origin,rotAxis,radius,zeroAxis,angleCW,angleCCW,
-                                      nPts)
+        coords = self._generateCircle(origin, rotAxis, radius, zeroAxis, angleCW, angleCCW, nPts)
 
         # Create the circularity constraint object:
         coords = coords.reshape((nPts, 3))
-        origin = numpy.array(origin).reshape((1, 3))
+        origin = np.array(origin).reshape((1, 3))
 
-        typeName = 'circCon'
-        if not typeName in self.constraints:
+        typeName = "circCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
-
 
         # Create a name
         if name is None:
-            conName = '%s_circularity_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_circularity_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = CircularityConstraint(
-            conName, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addSurfaceAreaConstraint(self,lower=1.0, upper=3.0, scaled=True, scale=1.0,
-                                 name=None, addToPyOpt=True,
-                                 surfaceName='default', DVGeoName='default'):
+    def addSurfaceAreaConstraint(
+        self,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Sum up the total surface area of the triangles included in the DVCon surface
 
@@ -2311,27 +2451,34 @@ class DVConstraints(object):
             meaningless
         """
 
-
-
         self._checkDVGeo(DVGeoName)
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        typeName = 'surfAreaCon'
-        if not typeName in self.constraints:
+        typeName = "surfAreaCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
         if name is None:
-            conName = '%s_surfaceArea_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_surfaceArea_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = SurfaceAreaConstraint(
-            conName, p0, p1-p0, p2-p0, lower, upper, scale, scaled, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName, p0, p1 - p0, p2 - p0, lower, upper, scale, scaled, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addProjectedAreaConstraint(self, axis='y', lower=1.0, upper=3.0, scaled=True,
-                                 scale=1.0, name=None,addToPyOpt=True,
-                                 surfaceName='default', DVGeoName='default'):
+    def addProjectedAreaConstraint(
+        self,
+        axis="y",
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Sum up the total surface area of the triangles included in the
         DVCon surface projected to a plane defined by "axis".
@@ -2391,30 +2538,38 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        if axis=='x':
-            axis = numpy.array([1,0,0])
-        elif axis=='y':
-            axis = numpy.array([0,1,0])
-        elif axis=='z':
-            axis = numpy.array([0,0,1])
+        if axis == "x":
+            axis = np.array([1, 0, 0])
+        elif axis == "y":
+            axis = np.array([0, 1, 0])
+        elif axis == "z":
+            axis = np.array([0, 0, 1])
 
-        typeName = 'projAreaCon'
-        if not typeName in self.constraints:
+        typeName = "projAreaCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         # Create a name
         if name is None:
-            conName = '%s_projectedArea_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_projectedArea_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ProjectedAreaConstraint(
-            conName, p0, p1-p0, p2-p0, axis, lower, upper, scale, scaled,
-            self.DVGeometries[DVGeoName], addToPyOpt)
+            conName, p0, p1 - p0, p2 - p0, axis, lower, upper, scale, scaled, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addPlanarityConstraint(self,origin,planeAxis,
-                               upper=0.0,lower=0.0, scale=1.0,
-                               name=None, addToPyOpt=True,
-                               surfaceName='default', DVGeoName='default'):
+    def addPlanarityConstraint(
+        self,
+        origin,
+        planeAxis,
+        upper=0.0,
+        lower=0.0,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
         """
         Add a contraint to keep the surface in set in DVCon planar
         Define the origin, and the plane axis.
@@ -2469,26 +2624,44 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         # Create the circularity constraint object:
-        origin = numpy.array(origin).reshape((1, 3))
-        planeAxis = numpy.array(planeAxis).reshape((1, 3))
+        origin = np.array(origin).reshape((1, 3))
+        planeAxis = np.array(planeAxis).reshape((1, 3))
 
         # Create a name
-        typeName = 'planeCon'
-        if not typeName in self.constraints:
+        typeName = "planeCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_planarity_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_planarity_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = PlanarityConstraint(
-            conName, planeAxis, origin, p0, p1-p0, p2-p0, lower, upper, scale, self.DVGeometries[DVGeoName],
-            addToPyOpt)
+            conName,
+            planeAxis,
+            origin,
+            p0,
+            p1 - p0,
+            p2 - p0,
+            lower,
+            upper,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+        )
 
-    def addColinearityConstraint(self, origin, lineAxis, distances,
-                                 upper=0.0,lower=0.0, scale=1.0,
-                                 name=None, addToPyOpt=True,
-                                 DVGeoName='default'):
+    def addColinearityConstraint(
+        self,
+        origin,
+        lineAxis,
+        distances,
+        upper=0.0,
+        lower=0.0,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        DVGeoName="default",
+    ):
         """
         Add a contraint to keep a set of points aligned.
         Define the origin, and axis of the line and then a set of distances
@@ -2546,29 +2719,39 @@ class DVConstraints(object):
         nPts = len(distances)
         coords = []
         for dist in distances:
-            coords.append(dist*lineAxis+origin)
+            coords.append(dist * lineAxis + origin)
 
         # Create the circularity constraint object:
-        coords = numpy.array(coords).reshape((nPts, 3))
-        origin = numpy.array(origin).reshape((1, 3))
-        lineAxis = numpy.array(lineAxis).reshape((1, 3))
+        coords = np.array(coords).reshape((nPts, 3))
+        origin = np.array(origin).reshape((1, 3))
+        lineAxis = np.array(lineAxis).reshape((1, 3))
 
         # Create a name
-        typeName = 'coLinCon'
-        if not typeName in self.constraints:
+        typeName = "coLinCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
         if name is None:
-            conName = '%s_colinearity_constraints_%d'%(self.name, len(self.constraints[typeName]))
+            conName = "%s_colinearity_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
         self.constraints[typeName][conName] = ColinearityConstraint(
-            conName, lineAxis, origin, coords, lower, upper, scale,
-            self.DVGeometries[DVGeoName], addToPyOpt)
+            conName, lineAxis, origin, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt
+        )
 
-    def addCurvatureConstraint(self, surfFile, curvatureType='Gaussian', lower=-1e20, upper=1e20,
-                               scaled=True, scale=1.0, KSCoeff=None,
-                               name=None,addToPyOpt=False,DVGeoName='default'):
+    def addCurvatureConstraint(
+        self,
+        surfFile,
+        curvatureType="Gaussian",
+        lower=-1e20,
+        upper=1e20,
+        scaled=True,
+        scale=1.0,
+        KSCoeff=None,
+        name=None,
+        addToPyOpt=False,
+        DVGeoName="default",
+    ):
         """
         Add a curvature contraint for the prescribed surface. The only required input for this
         constraint is a structured plot 3D file of the surface (there can be multiple
@@ -2643,42 +2826,52 @@ class DVConstraints(object):
 
         """
 
-
         self._checkDVGeo(DVGeoName)
 
         # Use pyGeo to load the plot3d file
-        geo = pyGeo('plot3d', surfFile)
+        geo = pyGeo("plot3d", surfFile)
         # node and edge tolerance for pyGeo (these are never used so
         # we just fix them)
-        node_tol =  1e-8
-        edge_tol =  1e-8
+        node_tol = 1e-8
+        edge_tol = 1e-8
         # Explicity do the connectivity here since we don't want to
         # write a con file:
         geo._calcConnectivity(node_tol, edge_tol)
         surfs = geo.surfs
-        typeName = 'curveCon'
-        if not typeName in self.constraints:
+        typeName = "curveCon"
+        if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
         # Create a name
         if name is None:
-            if curvatureType == 'Gaussian':
-                conName = '%s_gaussian_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
-            elif curvatureType == 'mean':
-                conName = '%s_mean_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
-            elif curvatureType == 'combined':
-                conName = '%s_combined_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
-            elif curvatureType == 'KSmean':
-                conName = '%s_ksmean_curvature_constraint_%d'%(self.name, len(self.constraints[typeName]))
+            if curvatureType == "Gaussian":
+                conName = "%s_gaussian_curvature_constraint_%d" % (self.name, len(self.constraints[typeName]))
+            elif curvatureType == "mean":
+                conName = "%s_mean_curvature_constraint_%d" % (self.name, len(self.constraints[typeName]))
+            elif curvatureType == "combined":
+                conName = "%s_combined_curvature_constraint_%d" % (self.name, len(self.constraints[typeName]))
+            elif curvatureType == "KSmean":
+                conName = "%s_ksmean_curvature_constraint_%d" % (self.name, len(self.constraints[typeName]))
             else:
-                raise Error("The curvatureType parameter should be Gaussian, mean, combined, or KSmean "
-                            "%s is not supported!"%curvatureType)
+                raise Error(
+                    "The curvatureType parameter should be Gaussian, mean, combined, or KSmean "
+                    "%s is not supported!" % curvatureType
+                )
         else:
             conName = name
         self.constraints[typeName][conName] = CurvatureConstraint(
-            conName, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, self.DVGeometries[DVGeoName], addToPyOpt)
+            conName,
+            surfs,
+            curvatureType,
+            lower,
+            upper,
+            scaled,
+            scale,
+            KSCoeff,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+        )
 
-    def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0,
-                                stop=-1, config=None, DVGeoName='default'):
+    def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0, stop=-1, config=None, DVGeoName="default"):
         """
         Parameters
         ----------
@@ -2711,77 +2904,84 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
 
         if name is None:
-            conName = '%s_monotonic_constraint_%d'%(self.name, len(self.linearCon))
+            conName = "%s_monotonic_constraint_%d" % (self.name, len(self.linearCon))
         else:
             conName = name
 
         options = {
-            'slope':slope,
-            'start':start,
-            'stop':stop,
+            "slope": slope,
+            "start": start,
+            "stop": stop,
         }
         # Finally add the global linear constraint object
         self.linearCon[conName] = GlobalLinearConstraint(
-            conName, key, type='monotonic', options=options,
-            lower=0, upper=None, DVGeo=self.DVGeometries[DVGeoName], config=config)
+            conName,
+            key,
+            type="monotonic",
+            options=options,
+            lower=0,
+            upper=None,
+            DVGeo=self.DVGeometries[DVGeoName],
+            config=config,
+        )
 
     def _readPlot3DSurfFile(self, fileName):
         """Read a plot3d file and return the points and connectivity in
         an unstructured mesh format"""
 
         pts = None
-        conn = None
 
-        f = open(fileName, 'r')
-        nSurf = numpy.fromfile(f, 'int', count=1, sep=' ')[0]
-        sizes = numpy.fromfile(f, 'int', count=3*nSurf, sep=' ').reshape((nSurf, 3))
+        f = open(fileName, "r")
+        nSurf = np.fromfile(f, "int", count=1, sep=" ")[0]
+        sizes = np.fromfile(f, "int", count=3 * nSurf, sep=" ").reshape((nSurf, 3))
         nElem = 0
         for i in range(nSurf):
-            nElem += (sizes[i, 0]-1)*(sizes[i, 1]-1)
+            nElem += (sizes[i, 0] - 1) * (sizes[i, 1] - 1)
 
         # Generate the uncompacted point and connectivity list:
-        p0 = numpy.zeros((nElem*2, 3))
-        v1 = numpy.zeros((nElem*2, 3))
-        v2 = numpy.zeros((nElem*2, 3))
+        p0 = np.zeros((nElem * 2, 3))
+        v1 = np.zeros((nElem * 2, 3))
+        v2 = np.zeros((nElem * 2, 3))
 
         elemCount = 0
 
         for iSurf in range(nSurf):
-            curSize = sizes[iSurf, 0]*sizes[iSurf, 1]
-            pts = numpy.zeros((curSize, 3))
+            curSize = sizes[iSurf, 0] * sizes[iSurf, 1]
+            pts = np.zeros((curSize, 3))
             for idim in range(3):
-                pts[:, idim] = numpy.fromfile(f, 'float', curSize, sep=' ')
+                pts[:, idim] = np.fromfile(f, "float", curSize, sep=" ")
 
-            pts = pts.reshape((sizes[iSurf,0], sizes[iSurf,1], 3), order='f')
-            for j in range(sizes[iSurf, 1]-1):
-                for i in range(sizes[iSurf, 0]-1):
+            pts = pts.reshape((sizes[iSurf, 0], sizes[iSurf, 1], 3), order="f")
+            for j in range(sizes[iSurf, 1] - 1):
+                for i in range(sizes[iSurf, 0] - 1):
                     # Each quad is split into two triangles
                     p0[elemCount] = pts[i, j]
-                    v1[elemCount] = pts[i+1, j] - pts[i, j]
-                    v2[elemCount] = pts[i, j+1] - pts[i, j]
+                    v1[elemCount] = pts[i + 1, j] - pts[i, j]
+                    v2[elemCount] = pts[i, j + 1] - pts[i, j]
 
                     elemCount += 1
 
-                    p0[elemCount] = pts[i+1, j]
-                    v1[elemCount] = pts[i+1, j+1] - pts[i+1, j]
-                    v2[elemCount] = pts[i, j+1] - pts[i+1, j]
+                    p0[elemCount] = pts[i + 1, j]
+                    v1[elemCount] = pts[i + 1, j + 1] - pts[i + 1, j]
+                    v2[elemCount] = pts[i, j + 1] - pts[i + 1, j]
 
                     elemCount += 1
 
         return p0, v1, v2
 
-
-    def _checkDVGeo(self, name='default'):
+    def _checkDVGeo(self, name="default"):
 
         """check if DVGeo exists"""
         if name not in self.DVGeometries.keys():
-            raise Error("A DVGeometry object must be added to DVCon before "
-                        "using a call to DVCon.setDVGeo(DVGeo) before "
-                        "constraints can be added.")
+            raise Error(
+                "A DVGeometry object must be added to DVCon before "
+                "using a call to DVCon.setDVGeo(DVGeo) before "
+                "constraints can be added."
+            )
 
     def _getSurfaceVertices(self, surfaceName):
         if surfaceName not in self.surfaces.keys():
-            raise KeyError('Need to add surface "'+surfaceName+'" to the DVConstraints object')
+            raise KeyError('Need to add surface "' + surfaceName + '" to the DVConstraints object')
         p0 = self.surfaces[surfaceName][0]
         p1 = self.surfaces[surfaceName][1]
         p2 = self.surfaces[surfaceName][2]
@@ -2794,14 +2994,14 @@ class DVConstraints(object):
         scalar will be 'upcast' to that size
         """
 
-        if numpy.isscalar:
-            return value*numpy.ones((dim1, dim2))
+        if np.isscalar:
+            return value * np.ones((dim1, dim2))
         else:
-            temp = numpy.atleast_2d(value)
+            temp = np.atleast_2d(value)
             if temp.shape[0] == dim1 and temp.shape[1] == dim2:
                 return value
             else:
-                raise Error('The size of the 2D array was the incorret shape')
+                raise Error("The size of the 2D array was the incorret shape")
 
     def _convertTo1D(self, value, dim1):
         """
@@ -2810,14 +3010,14 @@ class DVConstraints(object):
         otherwise, a scalar will be 'upcast' to that size
         """
 
-        if numpy.isscalar:
-            return value*numpy.ones(dim1)
+        if np.isscalar:
+            return value * np.ones(dim1)
         else:
-            temp = numpy.atleast_1d(value)
+            temp = np.atleast_1d(value)
             if temp.shape[0] == dim1:
                 return value
             else:
-                raise Error('The size of the 1D array was the incorret shape')
+                raise Error("The size of the 1D array was the incorret shape")
 
     def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
         """
@@ -2833,38 +3033,36 @@ class DVConstraints(object):
         le_s = pySpline.Curve(X=leList, k=2)
         te_s = pySpline.Curve(X=teList, k=2)
         root_s = pySpline.Curve(X=[leList[0], teList[0]], k=2)
-        tip_s  = pySpline.Curve(X=[leList[-1], teList[-1]], k=2)
+        tip_s = pySpline.Curve(X=[leList[-1], teList[-1]], k=2)
 
         # Generate parametric distances
-        span_s = numpy.linspace(0.0, 1.0, nSpan)
-        chord_s = numpy.linspace(0.0, 1.0, nChord)
+        span_s = np.linspace(0.0, 1.0, nSpan)
+        chord_s = np.linspace(0.0, 1.0, nChord)
 
         # Generate a 2D region of intersections
-        X = geo_utils.tfi_2d(le_s(span_s), te_s(span_s),
-                             root_s(chord_s), tip_s(chord_s))
-        coords = numpy.zeros((nSpan, nChord, 2, 3))
+        X = geo_utils.tfi_2d(le_s(span_s), te_s(span_s), root_s(chord_s), tip_s(chord_s))
+        coords = np.zeros((nSpan, nChord, 2, 3))
         for i in range(nSpan):
             for j in range(nChord):
                 # Generate the 'up_vec' from taking the cross product
                 # across a quad
                 if i == 0:
-                    uVec = X[i+1, j]-X[i, j]
+                    uVec = X[i + 1, j] - X[i, j]
                 elif i == nSpan - 1:
-                    uVec = X[i, j] - X[i-1, j]
+                    uVec = X[i, j] - X[i - 1, j]
                 else:
-                    uVec = X[i+1, j] - X[i-1, j]
+                    uVec = X[i + 1, j] - X[i - 1, j]
 
                 if j == 0:
-                    vVec = X[i, j+1]-X[i, j]
+                    vVec = X[i, j + 1] - X[i, j]
                 elif j == nChord - 1:
-                    vVec = X[i, j] - X[i, j-1]
+                    vVec = X[i, j] - X[i, j - 1]
                 else:
-                    vVec = X[i, j+1] - X[i, j-1]
+                    vVec = X[i, j + 1] - X[i, j - 1]
 
-                upVec = numpy.cross(uVec, vVec)
+                upVec = np.cross(uVec, vVec)
                 # Project actual node:
-                up, down, fail = geo_utils.projectNode(
-                    X[i ,j], upVec, p0, p1-p0, p2-p0)
+                up, down, fail = geo_utils.projectNode(X[i, j], upVec, p0, p1 - p0, p2 - p0)
 
                 if fail == 0:
                     coords[i, j, 0] = up
@@ -2874,10 +3072,11 @@ class DVConstraints(object):
                     coords[i, j, 0] = down
                     coords[i, j, 1] = up
                 else:
-                    raise Error('There was an error projecting a node \
-                     at (%f, %f, %f) with normal (%f, %f, %f).'% (
-                            X[i, j, 0], X[i, j, 1], X[i, j, 2],
-                            upVec[0], upVec[1], upVec[2]))
+                    raise Error(
+                        "There was an error projecting a node \
+                     at (%f, %f, %f) with normal (%f, %f, %f)."
+                        % (X[i, j, 0], X[i, j, 1], X[i, j, 2], upVec[0], upVec[1], upVec[2])
+                    )
 
         return coords
 
@@ -2903,24 +3102,24 @@ class DVConstraints(object):
             u = geo_utils.fillKnots(tu, ku, level)
             v = geo_utils.fillKnots(tv, kv, level)
 
-            for i in range(len(u)-1):
-                for j in range(len(v)-1):
-                    P0 = surf(u[i  ], v[j  ])
-                    P1 = surf(u[i+1], v[j  ])
-                    P2 = surf(u[i  ], v[j+1])
-                    P3 = surf(u[i+1], v[j+1])
+            for i in range(len(u) - 1):
+                for j in range(len(v) - 1):
+                    P0 = surf(u[i], v[j])
+                    P1 = surf(u[i + 1], v[j])
+                    P2 = surf(u[i], v[j + 1])
+                    P3 = surf(u[i + 1], v[j + 1])
 
                     p0.append(P0)
-                    v1.append(P1-P0)
-                    v2.append(P2-P0)
+                    v1.append(P1 - P0)
+                    v2.append(P2 - P0)
 
                     p0.append(P3)
-                    v1.append(P2-P3)
-                    v2.append(P1-P3)
+                    v1.append(P2 - P3)
+                    v2.append(P1 - P3)
 
-        return numpy.array(p0), numpy.array(v1), numpy.array(v2)
+        return np.array(p0), np.array(v1), np.array(v2)
 
-    def _generateCircle(self,origin,rotAxis,radius,zeroAxis,angleCW,angleCCW,nPts):
+    def _generateCircle(self, origin, rotAxis, radius, zeroAxis, angleCW, angleCCW, nPts):
         """
         generate the coordinates for a circle. The user should not have to call this
         directly.
@@ -2952,37 +3151,37 @@ class DVConstraints(object):
 
         """
         # enforce the shape of the origin
-        origin = numpy.array(origin).reshape((3,))
+        origin = np.array(origin).reshape((3,))
 
         # Create the coordinate array
-        coords = numpy.zeros((nPts,3))
+        coords = np.zeros((nPts, 3))
 
         # get the angles about the zero axis for the points
-        if angleCW<0:
+        if angleCW < 0:
             raise Error("Negative angle specified. angleCW should be positive.")
-        if angleCCW<0:
+        if angleCCW < 0:
             raise Error("Negative angle specified. angleCCW should be positive.")
 
-        angles = numpy.linspace(numpy.deg2rad(-angleCW),numpy.deg2rad(angleCCW),nPts)
+        angles = np.linspace(np.deg2rad(-angleCW), np.deg2rad(angleCCW), nPts)
 
         # ---------
         # Generate a unit vector in the zero axis direction
         # ----
         # get the third axis by taking the cross product of rotAxis and zeroAxis
-        axis = numpy.cross(zeroAxis,rotAxis)
+        axis = np.cross(zeroAxis, rotAxis)
 
-        #now use these axis to regenerate the orthogonal zero axis
-        zeroAxisOrtho = numpy.cross(rotAxis,axis)
+        # now use these axis to regenerate the orthogonal zero axis
+        zeroAxisOrtho = np.cross(rotAxis, axis)
 
         # now normalize the length of the zeroAxisOrtho
-        length = numpy.linalg.norm(zeroAxisOrtho)
-        zeroAxisOrtho /=length
+        length = np.linalg.norm(zeroAxisOrtho)
+        zeroAxisOrtho /= length
 
         # -------
         # Normalize the rotation axis
         # -------
-        length = numpy.linalg.norm(rotAxis)
-        rotAxis /=length
+        length = np.linalg.norm(rotAxis)
+        rotAxis /= length
 
         # ---------
         # now rotate, multiply by radius ,and add to the origin to get the coords
@@ -2990,10 +3189,11 @@ class DVConstraints(object):
 
         for i in range(nPts):
             newUnitVec = geo_utils.rotVbyW(zeroAxisOrtho, rotAxis, angles[i])
-            newUnitVec*=radius
-            coords[i,:] = newUnitVec+origin
+            newUnitVec *= radius
+            coords[i, :] = newUnitVec + origin
 
         return coords
+
 
 class ThicknessConstraint(GeometricConstraint):
     """
@@ -3003,11 +3203,10 @@ class ThicknessConstraint(GeometricConstraint):
     made. The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
-                 addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
         self.name = name
         self.coords = coords
-        self.nCon = len(self.coords)//2
+        self.nCon = len(self.coords) // 2
         self.lower = lower
         self.upper = upper
         self.scaled = scaled
@@ -3015,19 +3214,18 @@ class ThicknessConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
 
         # Now get the reference lengths
-        self.D0 = numpy.zeros(self.nCon)
+        self.D0 = np.zeros(self.nCon)
         for i in range(self.nCon):
-            self.D0[i] = numpy.linalg.norm(
-                self.coords[2*i] - self.coords[2*i+1])
+            self.D0[i] = np.linalg.norm(self.coords[2 * i] - self.coords[2 * i + 1])
 
     def evalFunctions(self, funcs, config):
         """
@@ -3040,9 +3238,9 @@ class ThicknessConstraint(GeometricConstraint):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        D = numpy.zeros(self.nCon)
+        D = np.zeros(self.nCon)
         for i in range(self.nCon):
-            D[i] = numpy.linalg.norm(self.coords[2*i] - self.coords[2*i+1])
+            D[i] = np.linalg.norm(self.coords[2 * i] - self.coords[2 * i + 1])
             if self.scaled:
                 D[i] /= self.D0[i]
         funcs[self.name] = D
@@ -3060,21 +3258,17 @@ class ThicknessConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dTdPt = numpy.zeros((self.nCon,
-                                 self.coords.shape[0],
-                                 self.coords.shape[1]))
+            dTdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
 
             for i in range(self.nCon):
-                p1b, p2b = geo_utils.eDist_b(
-                    self.coords[2*i, :], self.coords[2*i+1, :])
+                p1b, p2b = geo_utils.eDist_b(self.coords[2 * i, :], self.coords[2 * i + 1, :])
                 if self.scaled:
                     p1b /= self.D0[i]
                     p2b /= self.D0[i]
-                dTdPt[i, 2*i  , :] = p1b
-                dTdPt[i, 2*i+1, :] = p2b
+                dTdPt[i, 2 * i, :] = p1b
+                dTdPt[i, 2 * i + 1, :] = p2b
 
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dTdPt, self.name, config=config)
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dTdPt, self.name, config=config)
 
     def writeTecplot(self, handle):
         """
@@ -3082,16 +3276,15 @@ class ThicknessConstraint(GeometricConstraint):
         to the open file handle
         """
 
-        handle.write('Zone T=%s\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)//2))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) // 2))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-                                        self.coords[i, 2]))
+            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
 
-        for i in range(len(self.coords)//2):
-            handle.write('%d %d\n'% (2*i+1, 2*i+2))
+        for i in range(len(self.coords) // 2):
+            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
 
 class RadiusConstraint(GeometricConstraint):
     """
@@ -3101,11 +3294,10 @@ class RadiusConstraint(GeometricConstraint):
     to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
-                 addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
         self.name = name
         self.coords = coords
-        self.nCon = len(self.coords)//3
+        self.nCon = len(self.coords) // 3
         self.lower = lower
         self.upper = upper
         self.scaled = scaled
@@ -3113,9 +3305,9 @@ class RadiusConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -3125,9 +3317,9 @@ class RadiusConstraint(GeometricConstraint):
         self.r0, self.c0 = self.computeCircle(self.coords)
 
     def splitPointSets(self, coords):
-        p1 = coords[:self.nCon]
-        p2 = coords[self.nCon:self.nCon*2]
-        p3 = coords[self.nCon*2:]
+        p1 = coords[: self.nCon]
+        p2 = coords[self.nCon : self.nCon * 2]
+        p3 = coords[self.nCon * 2 :]
         return p1, p2, p3
 
     def computeReferenceFrames(self, coords):
@@ -3142,8 +3334,8 @@ class RadiusConstraint(GeometricConstraint):
             neta[i] /= geo_utils.euclideanNorm(neta[i])
 
         # Compute component of eta in the xi direction
-        eta_on_xi = numpy.einsum('ij,ij->i', nxi, neta)
-        xi_of_eta = numpy.einsum('ij,i->ij', nxi, eta_on_xi)
+        eta_on_xi = np.einsum("ij,ij->i", nxi, neta)
+        xi_of_eta = np.einsum("ij,i->ij", nxi, eta_on_xi)
 
         # Remove component of eta in the xi direction
         neta = neta - xi_of_eta
@@ -3153,7 +3345,7 @@ class RadiusConstraint(GeometricConstraint):
         return origin, nxi, neta
 
     def computeCircle(self, coords):
-        '''
+        """
         A circle in a 2D coordinate system is defined by the equation:
 
             A*xi**2 + A*eta**2 + B*xi + C*eta + D = 0
@@ -3169,38 +3361,46 @@ class RadiusConstraint(GeometricConstraint):
 
         Finally, we convert the reference coordinates of the center back into
         3D space.
-        '''
+        """
         p1, p2, p3 = self.splitPointSets(coords)
 
         # Compute origin and unit vectors (xi, eta) of 2d space
         origin, nxi, neta = self.computeReferenceFrames(coords)
 
         # Compute xi component of p1, p2, and p3
-        xi1 = numpy.einsum('ij,ij->i', p1 - origin, nxi)
-        xi2 = numpy.einsum('ij,ij->i', p2 - origin, nxi)
-        xi3 = numpy.einsum('ij,ij->i', p3 - origin, nxi)
+        xi1 = np.einsum("ij,ij->i", p1 - origin, nxi)
+        xi2 = np.einsum("ij,ij->i", p2 - origin, nxi)
+        xi3 = np.einsum("ij,ij->i", p3 - origin, nxi)
 
         # Compute eta component of p1, p2, and p3
-        eta1 = numpy.einsum('ij,ij->i', p1 - origin, neta)
-        eta2 = numpy.einsum('ij,ij->i', p2 - origin, neta)
-        eta3 = numpy.einsum('ij,ij->i', p3 - origin, neta)
+        eta1 = np.einsum("ij,ij->i", p1 - origin, neta)
+        eta2 = np.einsum("ij,ij->i", p2 - origin, neta)
+        eta3 = np.einsum("ij,ij->i", p3 - origin, neta)
 
         # Compute the radius of curvature
-        A = xi1*(eta2 - eta3) - eta1*(xi2 - xi3) + xi2*eta3 - xi3*eta2
-        B = (xi1**2 + eta1**2)*(eta3 - eta2) + (xi2**2 + eta2**2)*(eta1 - eta3) \
-            + (xi3**2 + eta3**2)*(eta2 - eta1)
-        C = (xi1**2 + eta1**2)*(xi2 - xi3) + (xi2**2 + eta2**2)*(xi3 - xi1) \
-            +  (xi3**2 + eta3**2)*(xi1 - xi2)
-        D = (xi1**2 + eta1**2)*(xi3*eta2 - xi2*eta3) \
-            + (xi2**2 + eta2**2)*(xi1*eta3 - xi3*eta1) \
-            + (xi3**2 + eta3**2)*(xi2*eta1 - xi1*eta2)
+        A = xi1 * (eta2 - eta3) - eta1 * (xi2 - xi3) + xi2 * eta3 - xi3 * eta2
+        B = (
+            (xi1 ** 2 + eta1 ** 2) * (eta3 - eta2)
+            + (xi2 ** 2 + eta2 ** 2) * (eta1 - eta3)
+            + (xi3 ** 2 + eta3 ** 2) * (eta2 - eta1)
+        )
+        C = (
+            (xi1 ** 2 + eta1 ** 2) * (xi2 - xi3)
+            + (xi2 ** 2 + eta2 ** 2) * (xi3 - xi1)
+            + (xi3 ** 2 + eta3 ** 2) * (xi1 - xi2)
+        )
+        D = (
+            (xi1 ** 2 + eta1 ** 2) * (xi3 * eta2 - xi2 * eta3)
+            + (xi2 ** 2 + eta2 ** 2) * (xi1 * eta3 - xi3 * eta1)
+            + (xi3 ** 2 + eta3 ** 2) * (xi2 * eta1 - xi1 * eta2)
+        )
 
         xiC = -B / 2 / A
         etaC = -C / 2 / A
-        r = numpy.sqrt((B**2 + C**2 - 4*A*D) / 4 / A**2)
+        r = np.sqrt((B ** 2 + C ** 2 - 4 * A * D) / 4 / A ** 2)
 
         # Convert center coordinates back
-        center = origin + nxi*xiC[:,None] + neta*etaC[:,None]
+        center = origin + nxi * xiC[:, None] + neta * etaC[:, None]
 
         return r, center
 
@@ -3238,16 +3438,16 @@ class RadiusConstraint(GeometricConstraint):
             # row 0: dr0dp0x dr0dp0y dr0dp0z dr0dp1x dr0dp1y dr0dp1z dr0dp2x ...
             # row 1: dr1dp0x dr1dp0y dr1dp0z dr1dp1x dr1dp1y dr1dp1z dr1dp2x ...
             # :
-            drdPt = numpy.zeros((self.nCon, 9))
+            drdPt = np.zeros((self.nCon, 9))
 
-            coords = self.coords.astype('D')
-            for i in range(3): # loop over pts at given slice
-                for j in range(3): # loop over coordinates in pt
-                    coords[i*self.nCon:(i+1)*self.nCon,j] += 1e-40j
+            coords = self.coords.astype("D")
+            for i in range(3):  # loop over pts at given slice
+                for j in range(3):  # loop over coordinates in pt
+                    coords[i * self.nCon : (i + 1) * self.nCon, j] += 1e-40j
                     r, c = self.computeCircle(coords)
 
-                    drdPt[:,i*3+j] = r.imag / 1e-40
-                    coords[i*self.nCon:(i+1)*self.nCon,j] -= 1e-40j
+                    drdPt[:, i * 3 + j] = r.imag / 1e-40
+                    coords[i * self.nCon : (i + 1) * self.nCon, j] -= 1e-40j
 
             # We now need to convert to the 3d sparse matrix form of the jacobian.
             # We need the derivative of each radius w.r.t. all of the points
@@ -3256,19 +3456,20 @@ class RadiusConstraint(GeometricConstraint):
 
             # We also have to scale the sensitivities if scale is True.
             if self.scaled:
-                eye = numpy.diag(1/self.r0)
+                eye = np.diag(1 / self.r0)
             else:
-                eye = numpy.eye(self.nCon)
-            drdPt_sparse = numpy.einsum('ij,jk->ijk', eye, drdPt)
-            drdPt_sparse = drdPt_sparse.reshape(self.nCon, self.nCon*3, 3)
-            drdPt_sparse = numpy.hstack([
-                drdPt_sparse[:,::3,:],
-                drdPt_sparse[:,1::3,:],
-                drdPt_sparse[:,2::3,:],
-            ])
+                eye = np.eye(self.nCon)
+            drdPt_sparse = np.einsum("ij,jk->ijk", eye, drdPt)
+            drdPt_sparse = drdPt_sparse.reshape(self.nCon, self.nCon * 3, 3)
+            drdPt_sparse = np.hstack(
+                [
+                    drdPt_sparse[:, ::3, :],
+                    drdPt_sparse[:, 1::3, :],
+                    drdPt_sparse[:, 2::3, :],
+                ]
+            )
 
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                drdPt_sparse, self.name, config=config)
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(drdPt_sparse, self.name, config=config)
 
     def writeTecplot(self, handle):
         """
@@ -3281,24 +3482,24 @@ class RadiusConstraint(GeometricConstraint):
         origin, nxi, neta = self.computeReferenceFrames(self.coords)
 
         nres = 50
-        theta = numpy.linspace(0, 2*numpy.pi, nres+1)[:-1]
-        handle.write('Zone T=%s\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            self.nCon*nres, self.nCon*nres))
-        handle.write('DATAPACKING=POINT\n')
+        theta = np.linspace(0, 2 * np.pi, nres + 1)[:-1]
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (self.nCon * nres, self.nCon * nres))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(self.nCon):
-            cos_part = numpy.outer(numpy.cos(theta), nxi*r[i])
-            sin_part = numpy.outer(numpy.sin(theta), neta*r[i])
-            x = c[i,0] + cos_part[:,0] + sin_part[:,0]
-            y = c[i,1] + cos_part[:,1] + sin_part[:,1]
-            z = c[i,2] + cos_part[:,2] + sin_part[:,2]
+            cos_part = np.outer(np.cos(theta), nxi * r[i])
+            sin_part = np.outer(np.sin(theta), neta * r[i])
+            x = c[i, 0] + cos_part[:, 0] + sin_part[:, 0]
+            y = c[i, 1] + cos_part[:, 1] + sin_part[:, 1]
+            z = c[i, 2] + cos_part[:, 2] + sin_part[:, 2]
 
             for j in range(nres):
-                handle.write('%f %f %f\n'% (x[j], y[j], z[j]))
+                handle.write("%f %f %f\n" % (x[j], y[j], z[j]))
 
         for i in range(self.nCon):
             for j in range(nres):
-                handle.write('%d %d\n'% (i*nres + j + 1, i*nres + (j+1)%nres + 1))
+                handle.write("%d %d\n" % (i * nres + j + 1, i * nres + (j + 1) % nres + 1))
+
 
 class LocationConstraint(GeometricConstraint):
     """
@@ -3308,8 +3509,7 @@ class LocationConstraint(GeometricConstraint):
     made. The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo,
-                 addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
         self.name = name
         self.coords = coords
         self.nCon = len(self.coords.flatten())
@@ -3320,16 +3520,16 @@ class LocationConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
 
         # Now get the reference lengths
-        self.X0 = numpy.zeros(self.nCon)
+        self.X0 = np.zeros(self.nCon)
         X = self.coords.flatten()
         for i in range(self.nCon):
             self.X0[i] = X[i]
@@ -3365,19 +3565,16 @@ class LocationConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dTdPt = numpy.zeros((self.nCon,
-                                 self.coords.shape[0],
-                                 self.coords.shape[1]))
+            dTdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
             counter = 0
-            for i in range( self.coords.shape[0]):
-                for j in range( self.coords.shape[1]):
+            for i in range(self.coords.shape[0]):
+                for j in range(self.coords.shape[1]):
                     dTdPt[counter][i][j] = 1.0
                     if self.scaled:
                         dTdPt[counter][i][j] /= self.X0[i]
-                    counter+=1
+                    counter += 1
 
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dTdPt, self.name, config=config)
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dTdPt, self.name, config=config)
 
     def writeTecplot(self, handle):
         """
@@ -3385,16 +3582,14 @@ class LocationConstraint(GeometricConstraint):
         to the open file handle
         """
 
-        handle.write('Zone T=%s\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)-1))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) - 1))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-                                        self.coords[i, 2]))
+            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
 
-        for i in range(len(self.coords)-1):
-            handle.write('%d %d\n'% (i+1, i+2))
+        for i in range(len(self.coords) - 1):
+            handle.write("%d %d\n" % (i + 1, i + 2))
 
 
 class ThicknessToChordConstraint(GeometricConstraint):
@@ -3409,27 +3604,27 @@ class ThicknessToChordConstraint(GeometricConstraint):
     def __init__(self, name, coords, lower, upper, scale, DVGeo, addToPyOpt):
         self.name = name
         self.coords = coords
-        self.nCon = len(self.coords)//4
+        self.nCon = len(self.coords) // 4
         self.lower = lower
         self.upper = upper
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
 
         # Now get the reference lengths
-        self.ToC0 = numpy.zeros(self.nCon)
+        self.ToC0 = np.zeros(self.nCon)
         for i in range(self.nCon):
-            t = numpy.linalg.norm(self.coords[4*i] - self.coords[4*i+1])
-            c = numpy.linalg.norm(self.coords[4*i+2] - self.coords[4*i+3])
-            self.ToC0[i] = t/c
+            t = np.linalg.norm(self.coords[4 * i] - self.coords[4 * i + 1])
+            c = np.linalg.norm(self.coords[4 * i + 2] - self.coords[4 * i + 3])
+            self.ToC0[i] = t / c
 
     def evalFunctions(self, funcs, config):
         """
@@ -3442,11 +3637,11 @@ class ThicknessToChordConstraint(GeometricConstraint):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        ToC = numpy.zeros(self.nCon)
+        ToC = np.zeros(self.nCon)
         for i in range(self.nCon):
-            t = geo_utils.eDist(self.coords[4*i], self.coords[4*i+1])
-            c = geo_utils.eDist(self.coords[4*i+2], self.coords[4*i+3])
-            ToC[i] = (t/c)/self.ToC0[i]
+            t = geo_utils.eDist(self.coords[4 * i], self.coords[4 * i + 1])
+            c = geo_utils.eDist(self.coords[4 * i + 2], self.coords[4 * i + 3])
+            ToC[i] = (t / c) / self.ToC0[i]
 
         funcs[self.name] = ToC
 
@@ -3463,26 +3658,21 @@ class ThicknessToChordConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dToCdPt = numpy.zeros((self.nCon,
-                                   self.coords.shape[0],
-                                   self.coords.shape[1]))
+            dToCdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
 
             for i in range(self.nCon):
-                t = geo_utils.eDist(self.coords[4*i], self.coords[4*i+1])
-                c = geo_utils.eDist(self.coords[4*i+2], self.coords[4*i+3])
+                t = geo_utils.eDist(self.coords[4 * i], self.coords[4 * i + 1])
+                c = geo_utils.eDist(self.coords[4 * i + 2], self.coords[4 * i + 3])
 
-                p1b, p2b = geo_utils.eDist_b(
-                    self.coords[4*i, :], self.coords[4*i+1, :])
-                p3b, p4b = geo_utils.eDist_b(
-                    self.coords[4*i+2, :], self.coords[4*i+3, :])
+                p1b, p2b = geo_utils.eDist_b(self.coords[4 * i, :], self.coords[4 * i + 1, :])
+                p3b, p4b = geo_utils.eDist_b(self.coords[4 * i + 2, :], self.coords[4 * i + 3, :])
 
-                dToCdPt[i, 4*i  , :] = p1b/c / self.ToC0[i]
-                dToCdPt[i, 4*i+1, :] = p2b/c / self.ToC0[i]
-                dToCdPt[i, 4*i+2, :] = (-p3b*t/c**2) / self.ToC0[i]
-                dToCdPt[i, 4*i+3, :] = (-p4b*t/c**2) / self.ToC0[i]
+                dToCdPt[i, 4 * i, :] = p1b / c / self.ToC0[i]
+                dToCdPt[i, 4 * i + 1, :] = p2b / c / self.ToC0[i]
+                dToCdPt[i, 4 * i + 2, :] = (-p3b * t / c ** 2) / self.ToC0[i]
+                dToCdPt[i, 4 * i + 3, :] = (-p4b * t / c ** 2) / self.ToC0[i]
 
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dToCdPt, self.name, config=config)
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dToCdPt, self.name, config=config)
 
     def writeTecplot(self, handle):
         """
@@ -3490,16 +3680,15 @@ class ThicknessToChordConstraint(GeometricConstraint):
         to the open file handle
         """
 
-        handle.write('Zone T=%s\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)//2))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) // 2))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-                                        self.coords[i, 2]))
+            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
 
-        for i in range(len(self.coords)//2):
-            handle.write('%d %d\n'% (2*i+1, 2*i+2))
+        for i in range(len(self.coords) // 2):
+            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
 
 class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
@@ -3507,14 +3696,28 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
     aerodynamic surface.
     """
 
-    def __init__(self, name, surface_1, surface_1_name, DVGeo1, surface_2, surface_2_name, DVGeo2, scale, addToPyOpt,
-                 rho, perim_scale, max_perim, heuristic_dist):
+    def __init__(
+        self,
+        name,
+        surface_1,
+        surface_1_name,
+        DVGeo1,
+        surface_2,
+        surface_2_name,
+        DVGeo2,
+        scale,
+        addToPyOpt,
+        rho,
+        perim_scale,
+        max_perim,
+        heuristic_dist,
+    ):
         self.name = name
         # get the point sets
         self.surface_1_name = surface_1_name
         self.surface_2_name = surface_2_name
         if DVGeo1 is None and DVGeo2 is None:
-            raise UserError('Must include at least one geometric parametrization in constraint '+str(name))
+            raise ValueError("Must include at least one geometric parametrization in constraint " + str(name))
         self.DVGeo1 = DVGeo1
         self.DVGeo2 = DVGeo2
 
@@ -3528,21 +3731,20 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.surf2_p1 = surface_2[1].transpose()
         self.surf2_p2 = surface_2[2].transpose()
 
-        xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)),
-                                       self.surf2_p2.max(axis=1))
-        xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)),
-                                                   self.surf2_p2.min(axis=1))
+        xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), self.surf2_p2.max(axis=1))
+        xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), self.surf2_p2.min(axis=1))
 
-
-        computed_maxdim = np.sqrt(np.sum((xyzmax-xyzmin)**2))
+        computed_maxdim = np.sqrt(np.sum((xyzmax - xyzmin) ** 2))
 
         if heuristic_dist is not None:
             if heuristic_dist < computed_maxdim:
-                raise ValueError('The heuristic distance must be less than the max diagonal' \
-                                 'dimension of the bounding box, '+str(computed_maxdim))
+                raise ValueError(
+                    "The heuristic distance must be less than the max diagonal"
+                    "dimension of the bounding box, " + str(computed_maxdim)
+                )
             self.maxdim = heuristic_dist
         else:
-            self.maxdim = computed_maxdim*1.05
+            self.maxdim = computed_maxdim * 1.05
         self.scale = scale
 
         self.addToPyOpt = addToPyOpt
@@ -3589,22 +3791,21 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         # check if the first mesh has a DVGeo, and if it does, update the points
 
         if self.DVGeo1 is not None:
-            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name+'_p0', config=config).transpose()
-            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name+'_p1', config=config).transpose()
-            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name+'_p2', config=config).transpose()
+            self.surf1_p0 = self.DVGeo1.update(self.surface_1_name + "_p0", config=config).transpose()
+            self.surf1_p1 = self.DVGeo1.update(self.surface_1_name + "_p1", config=config).transpose()
+            self.surf1_p2 = self.DVGeo1.update(self.surface_1_name + "_p2", config=config).transpose()
 
         # check if the second mesh has a DVGeo, and if it does, update the points
         if self.DVGeo2 is not None:
-            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name+'_p0', config=config).transpose()
-            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name+'_p1', config=config).transpose()
-            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name+'_p2', config=config).transpose()
+            self.surf2_p0 = self.DVGeo2.update(self.surface_2_name + "_p0", config=config).transpose()
+            self.surf2_p1 = self.DVGeo2.update(self.surface_2_name + "_p1", config=config).transpose()
+            self.surf2_p2 = self.DVGeo2.update(self.surface_2_name + "_p2", config=config).transpose()
 
         KS, perim, failflag = self.evalTriangulatedSurfConstraint()
-        funcs[self.name+'_KS'] = KS
-        funcs[self.name+'_perim'] = perim
+        funcs[self.name + "_KS"] = KS
+        funcs[self.name + "_perim"] = perim
         if failflag:
-            funcs['fail'] = failflag
-
+            funcs["fail"] = failflag
 
     def evalFunctionsSens(self, funcsSens, config):
         """
@@ -3623,8 +3824,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         tmpTotalKS = {}
         tmpTotalPerim = {}
 
-
-
         deriv_outputs = self.evalTriangulatedSurfConstraintSens()
         # deriv outputs contains:
         # KS, intersect_length, mindist, timings, unbalance (index 0 through 4)
@@ -3639,16 +3838,27 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if nDV1 > 0:
             # compute sensitivity with respect to the first mesh
             # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
-            tmp_KS_p0 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[5]), self.surface_1_name+'_p0', config=config)
-            tmp_KS_p1 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[6]), self.surface_1_name+'_p1', config=config)
-            tmp_KS_p2 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[7]), self.surface_1_name+'_p2', config=config)
-            tmp_perim_p0 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[11]), self.surface_1_name+'_p0', config=config)
-            tmp_perim_p1 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[12]), self.surface_1_name+'_p1', config=config)
-            tmp_perim_p2 = self.DVGeo1.totalSensitivity(np.transpose(deriv_outputs[13]), self.surface_1_name+'_p2', config=config)
+            tmp_KS_p0 = self.DVGeo1.totalSensitivity(
+                np.transpose(deriv_outputs[5]), self.surface_1_name + "_p0", config=config
+            )
+            tmp_KS_p1 = self.DVGeo1.totalSensitivity(
+                np.transpose(deriv_outputs[6]), self.surface_1_name + "_p1", config=config
+            )
+            tmp_KS_p2 = self.DVGeo1.totalSensitivity(
+                np.transpose(deriv_outputs[7]), self.surface_1_name + "_p2", config=config
+            )
+            tmp_perim_p0 = self.DVGeo1.totalSensitivity(
+                np.transpose(deriv_outputs[11]), self.surface_1_name + "_p0", config=config
+            )
+            tmp_perim_p1 = self.DVGeo1.totalSensitivity(
+                np.transpose(deriv_outputs[12]), self.surface_1_name + "_p1", config=config
+            )
+            tmp_perim_p2 = self.DVGeo1.totalSensitivity(
+                np.transpose(deriv_outputs[13]), self.surface_1_name + "_p2", config=config
+            )
             for key in tmp_KS_p0:
-                tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
-                tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
-
+                tmpTotalKS[key] = tmp_KS_p0[key] + tmp_KS_p1[key] + tmp_KS_p2[key]
+                tmpTotalPerim[key] = tmp_perim_p0[key] + tmp_perim_p1[key] + tmp_perim_p2[key]
 
         if self.DVGeo2 is not None:
             nDV2 = self.DVGeo2.getNDV()
@@ -3658,17 +3868,29 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if nDV2 > 0:
             # compute sensitivity with respect to the first mesh
             # grad indices 0-2 are for mesh 1 p0, 1, 2 / 3-5 are for mesh 2 p0, 1, 2
-            tmp_KS_p0 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[8]), self.surface_2_name+'_p0', config=config)
-            tmp_KS_p1 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[9]), self.surface_2_name+'_p1', config=config)
-            tmp_KS_p2 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[10]), self.surface_2_name+'_p2', config=config)
-            tmp_perim_p0 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[14]), self.surface_2_name+'_p0', config=config)
-            tmp_perim_p1 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[15]), self.surface_2_name+'_p1', config=config)
-            tmp_perim_p2 = self.DVGeo2.totalSensitivity(np.transpose(deriv_outputs[16]), self.surface_2_name+'_p2', config=config)
+            tmp_KS_p0 = self.DVGeo2.totalSensitivity(
+                np.transpose(deriv_outputs[8]), self.surface_2_name + "_p0", config=config
+            )
+            tmp_KS_p1 = self.DVGeo2.totalSensitivity(
+                np.transpose(deriv_outputs[9]), self.surface_2_name + "_p1", config=config
+            )
+            tmp_KS_p2 = self.DVGeo2.totalSensitivity(
+                np.transpose(deriv_outputs[10]), self.surface_2_name + "_p2", config=config
+            )
+            tmp_perim_p0 = self.DVGeo2.totalSensitivity(
+                np.transpose(deriv_outputs[14]), self.surface_2_name + "_p0", config=config
+            )
+            tmp_perim_p1 = self.DVGeo2.totalSensitivity(
+                np.transpose(deriv_outputs[15]), self.surface_2_name + "_p1", config=config
+            )
+            tmp_perim_p2 = self.DVGeo2.totalSensitivity(
+                np.transpose(deriv_outputs[16]), self.surface_2_name + "_p2", config=config
+            )
             for key in tmp_KS_p0:
-                tmpTotalKS[key] = tmp_KS_p0[key]+tmp_KS_p1[key]+tmp_KS_p2[key]
-                tmpTotalPerim[key] = tmp_perim_p0[key]+tmp_perim_p1[key]+tmp_perim_p2[key]
-        funcsSens[self.name+'_KS'] = tmpTotalKS
-        funcsSens[self.name+'_perim'] = tmpTotalPerim
+                tmpTotalKS[key] = tmp_KS_p0[key] + tmp_KS_p1[key] + tmp_KS_p2[key]
+                tmpTotalPerim[key] = tmp_perim_p0[key] + tmp_perim_p1[key] + tmp_perim_p2[key]
+        funcsSens[self.name + "_KS"] = tmpTotalKS
+        funcsSens[self.name + "_perim"] = tmpTotalPerim
 
     def evalTriangulatedSurfConstraint(self):
         """
@@ -3676,22 +3898,43 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         # first compute the length of the intersection surface between the object and surf mesh
         from geograd import geograd_parallel
+
         mindist_tmp = 0.0
 
         # first run to get the minimum distance
-        _, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist_tmp, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
+        _, perim_length, mindist, _, _ = geograd_parallel.compute(
+            self.surf1_p0,
+            self.surf1_p1,
+            self.surf1_p2,
+            self.surf2_p0,
+            self.surf2_p1,
+            self.surf2_p2,
+            mindist_tmp,
+            self.rho,
+            self.maxdim,
+            MPI.COMM_WORLD.py2f(),
+        )
         # second run gets the well-conditioned KS
-        KS, perim_length, mindist, _, _ = geograd_parallel.compute(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                self.surf2_p0, self.surf2_p1, self.surf2_p2, mindist, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
+        KS, perim_length, mindist, _, _ = geograd_parallel.compute(
+            self.surf1_p0,
+            self.surf1_p1,
+            self.surf1_p2,
+            self.surf2_p0,
+            self.surf2_p1,
+            self.surf2_p2,
+            mindist,
+            self.rho,
+            self.maxdim,
+            MPI.COMM_WORLD.py2f(),
+        )
 
         self.perim_length = perim_length
         self.minimum_distance = mindist
 
         if self.perim_length > self.max_perim:
             failflag = True
-            if mpi4py.COMM_WORLD.rank == 0:
-                print('Intersection length ', str(perim_length), ' exceeds tol, returning fail flag')
+            if MPI.COMM_WORLD.rank == 0:
+                print("Intersection length ", str(perim_length), " exceeds tol, returning fail flag")
         else:
             failflag = False
         return KS, perim_length, failflag
@@ -3703,10 +3946,18 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         # first compute the length of the intersection surface between the object and surf mesh
         from geograd import geograd_parallel
 
-
-        deriv_output = geograd_parallel.compute_derivs(self.surf1_p0, self.surf1_p1, self.surf1_p2,
-                                                       self.surf2_p0, self.surf2_p1, self.surf2_p2,
-                                                       self.minimum_distance, self.rho, self.maxdim, MPI.COMM_WORLD.py2f())
+        deriv_output = geograd_parallel.compute_derivs(
+            self.surf1_p0,
+            self.surf1_p1,
+            self.surf1_p2,
+            self.surf2_p0,
+            self.surf2_p1,
+            self.surf2_p2,
+            self.minimum_distance,
+            self.rho,
+            self.maxdim,
+            MPI.COMM_WORLD.py2f(),
+        )
         return deriv_output
 
     def addConstraintsPyOpt(self, optProb):
@@ -3714,13 +3965,17 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
-            optProb.addConGroup(self.name+'_KS', 1, lower=self.lower,
-                                upper=self.upper, scale=self.scale,
-                                wrt=self.getVarNames())
-            optProb.addConGroup(self.name+'_perim', 1, lower=self.lower,
-                                upper=self.upper, scale=self.perim_scale,
-                                wrt=self.getVarNames())
-
+            optProb.addConGroup(
+                self.name + "_KS", 1, lower=self.lower, upper=self.upper, scale=self.scale, wrt=self.getVarNames()
+            )
+            optProb.addConGroup(
+                self.name + "_perim",
+                1,
+                lower=self.lower,
+                upper=self.upper,
+                scale=self.perim_scale,
+                wrt=self.getVarNames(),
+            )
 
 
 class TriangulatedVolumeConstraint(GeometricConstraint):
@@ -3765,9 +4020,9 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         # running setSurface()
 
         # check if the first mesh has a DVGeo, and if it does, update the points
-        self.surf_p0 = self.DVGeo.update(self.surface_name+'_p0', config=config).reshape(self.surf_size, 3)
-        self.surf_p1 = self.DVGeo.update(self.surface_name+'_p1', config=config).reshape(self.surf_size, 3)
-        self.surf_p2 = self.DVGeo.update(self.surface_name+'_p2', config=config).reshape(self.surf_size, 3)
+        self.surf_p0 = self.DVGeo.update(self.surface_name + "_p0", config=config).reshape(self.surf_size, 3)
+        self.surf_p1 = self.DVGeo.update(self.surface_name + "_p1", config=config).reshape(self.surf_size, 3)
+        self.surf_p2 = self.DVGeo.update(self.surface_name + "_p2", config=config).reshape(self.surf_size, 3)
 
         volume = self.compute_volume(self.surf_p0, self.surf_p1, self.surf_p2)
         if self.vol_0 is None:
@@ -3799,18 +4054,17 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
 
         # assume evalFunctions was called just prior and grad was stashed on rank=0
         grad_vol = self.compute_volume_sens(self.surf_p0, self.surf_p1, self.surf_p2)
-        nDV = self.DVGeo.getNDV()
         if self.scaled:
-            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name+'_p0', config=config)
-            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name+'_p1', config=config)
-            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2] / self.vol_0, self.surface_name+'_p2', config=config)
+            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name + "_p0", config=config)
+            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name + "_p1", config=config)
+            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2] / self.vol_0, self.surface_name + "_p2", config=config)
         else:
-            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0], self.surface_name+'_p0', config=config)
-            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1], self.surface_name+'_p1', config=config)
-            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2], self.surface_name+'_p2', config=config)
+            tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0], self.surface_name + "_p0", config=config)
+            tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1], self.surface_name + "_p1", config=config)
+            tmp_p2 = self.DVGeo.totalSensitivity(grad_vol[2], self.surface_name + "_p2", config=config)
 
         for key in tmp_p0:
-            tmpTotal[key] = tmp_p0[key]+tmp_p1[key]+tmp_p2[key]
+            tmpTotal[key] = tmp_p0[key] + tmp_p1[key] + tmp_p2[key]
 
         funcsSens[self.name] = tmpTotal
 
@@ -3835,12 +4089,17 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
             The volume of the triangulated surface
         """
 
-        volume = np.sum(p1[:, 0] * p2[:, 1] * p0[:, 2] +
-                        p2[:, 0] * p0[:, 1] * p1[:, 2] +
-                        p0[:, 0] * p1[:, 1] * p2[:, 2] -
-                        p1[:, 0] * p0[:, 1] * p2[:, 2] -
-                        p2[:, 0] * p1[:, 1] * p0[:, 2] -
-                        p0[:, 0] * p2[:, 1] * p1[:, 2]) / 6.0
+        volume = (
+            np.sum(
+                p1[:, 0] * p2[:, 1] * p0[:, 2]
+                + p2[:, 0] * p0[:, 1] * p1[:, 2]
+                + p0[:, 0] * p1[:, 1] * p2[:, 2]
+                - p1[:, 0] * p0[:, 1] * p2[:, 2]
+                - p2[:, 0] * p1[:, 1] * p0[:, 2]
+                - p0[:, 0] * p2[:, 1] * p1[:, 2]
+            )
+            / 6.0
+        )
 
         return volume
 
@@ -3865,17 +4124,17 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         grad_1 = np.zeros((num_pts, 3))
         grad_2 = np.zeros((num_pts, 3))
 
-        grad_0[:, 0] = (p1[:, 1] * p2[:, 2] - p1[:, 2] * p2[:, 1])
-        grad_0[:, 1] = (p1[:, 2] * p2[:, 0] - p1[:, 0] * p2[:, 2])
-        grad_0[:, 2] = (p1[:, 0] * p2[:, 1] - p1[:, 1] * p2[:, 0])
+        grad_0[:, 0] = p1[:, 1] * p2[:, 2] - p1[:, 2] * p2[:, 1]
+        grad_0[:, 1] = p1[:, 2] * p2[:, 0] - p1[:, 0] * p2[:, 2]
+        grad_0[:, 2] = p1[:, 0] * p2[:, 1] - p1[:, 1] * p2[:, 0]
 
-        grad_1[:, 0] = (p0[:, 2] * p2[:, 1] - p0[:, 1] * p2[:, 2])
-        grad_1[:, 1] = (p0[:, 0] * p2[:, 2] - p0[:, 2] * p2[:, 0])
-        grad_1[:, 2] = (p0[:, 1] * p2[:, 0] - p0[:, 0] * p2[:, 1])
+        grad_1[:, 0] = p0[:, 2] * p2[:, 1] - p0[:, 1] * p2[:, 2]
+        grad_1[:, 1] = p0[:, 0] * p2[:, 2] - p0[:, 2] * p2[:, 0]
+        grad_1[:, 2] = p0[:, 1] * p2[:, 0] - p0[:, 0] * p2[:, 1]
 
-        grad_2[:, 0] = (p0[:, 1] * p1[:, 2] - p0[:, 2] * p1[:, 1])
-        grad_2[:, 1] = (p0[:, 2] * p1[:, 0] - p0[:, 0] * p1[:, 2])
-        grad_2[:, 2] = (p0[:, 0] * p1[:, 1] - p0[:, 1] * p1[:, 0])
+        grad_2[:, 0] = p0[:, 1] * p1[:, 2] - p0[:, 2] * p1[:, 1]
+        grad_2[:, 1] = p0[:, 2] * p1[:, 0] - p0[:, 0] * p1[:, 2]
+        grad_2[:, 2] = p0[:, 0] * p1[:, 1] - p0[:, 1] * p1[:, 0]
 
         return grad_0 / 6.0, grad_1 / 6.0, grad_2 / 6.0
 
@@ -3887,8 +4146,7 @@ class VolumeConstraint(GeometricConstraint):
     the DVConstraints class
     """
 
-    def __init__(self, name, nSpan, nChord, coords, lower, upper, scaled,
-                 scale, DVGeo, addToPyOpt):
+    def __init__(self, name, nSpan, nChord, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
 
         self.name = name
         self.nCon = 1
@@ -3903,9 +4161,9 @@ class VolumeConstraint(GeometricConstraint):
         self.addToPyOpt = addToPyOpt
         self.flipVolume = False
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -3913,7 +4171,6 @@ class VolumeConstraint(GeometricConstraint):
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
-
 
     def evalFunctions(self, funcs, config):
         """
@@ -3948,9 +4205,7 @@ class VolumeConstraint(GeometricConstraint):
                 dVdPt /= self.V0
 
             # Now compute the DVGeo total sensitivity:
-            funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                dVdPt, self.name, config=config)
-
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dVdPt, self.name, config=config)
 
     def writeTecplot(self, handle):
         """
@@ -3959,15 +4214,12 @@ class VolumeConstraint(GeometricConstraint):
         # Reshape coordinates back to 3D format
         x = self.coords.reshape([self.nSpan, self.nChord, 2, 3])
 
-        handle.write("ZONE T=\"%s\" I=%d J=%d K=%d\n"%(
-            self.name, self.nSpan, self.nChord, 2))
+        handle.write('ZONE T="%s" I=%d J=%d K=%d\n' % (self.name, self.nSpan, self.nChord, 2))
         handle.write("DATAPACKING=POINT\n")
         for k in range(2):
             for j in range(self.nChord):
                 for i in range(self.nSpan):
-                    handle.write('%f %f %f\n'%(x[i, j, k, 0],
-                                               x[i, j, k, 1],
-                                               x[i, j, k, 2]))
+                    handle.write("%f %f %f\n" % (x[i, j, k, 0], x[i, j, k, 1], x[i, j, k, 2]))
 
     def evalVolume(self):
         """
@@ -3975,11 +4227,18 @@ class VolumeConstraint(GeometricConstraint):
         """
         Volume = 0.0
         x = self.coords.reshape((self.nSpan, self.nChord, 2, 3))
-        for j in range(self.nChord-1):
-            for i in range(self.nSpan-1):
+        for j in range(self.nChord - 1):
+            for i in range(self.nSpan - 1):
                 Volume += self.evalVolumeHex(
-                    x[i, j, 0], x[i+1, j, 0], x[i, j+1, 0], x[i+1, j+1, 0],
-                    x[i, j, 1], x[i+1, j, 1], x[i, j+1, 1], x[i+1, j+1, 1])
+                    x[i, j, 0],
+                    x[i + 1, j, 0],
+                    x[i, j + 1, 0],
+                    x[i + 1, j + 1, 0],
+                    x[i, j, 1],
+                    x[i + 1, j, 1],
+                    x[i, j + 1, 1],
+                    x[i + 1, j + 1, 1],
+                )
 
         if Volume < 0:
             Volume = -Volume
@@ -3993,14 +4252,27 @@ class VolumeConstraint(GeometricConstraint):
         coordinates
         """
         x = self.coords.reshape((self.nSpan, self.nChord, 2, 3))
-        xb = numpy.zeros_like(x)
-        for j in range(self.nChord-1):
-            for i in range(self.nSpan-1):
+        xb = np.zeros_like(x)
+        for j in range(self.nChord - 1):
+            for i in range(self.nSpan - 1):
                 self.evalVolumeHex_b(
-                    x[i, j, 0], x[i+1, j, 0], x[i, j+1, 0], x[i+1, j+1, 0],
-                    x[i, j, 1], x[i+1, j, 1], x[i, j+1, 1], x[i+1, j+1, 1],
-                    xb[i, j, 0], xb[i+1, j, 0], xb[i, j+1, 0], xb[i+1, j+1, 0],
-                    xb[i, j, 1], xb[i+1, j, 1], xb[i, j+1, 1], xb[i+1, j+1, 1])
+                    x[i, j, 0],
+                    x[i + 1, j, 0],
+                    x[i, j + 1, 0],
+                    x[i + 1, j + 1, 0],
+                    x[i, j, 1],
+                    x[i + 1, j, 1],
+                    x[i, j + 1, 1],
+                    x[i + 1, j + 1, 1],
+                    xb[i, j, 0],
+                    xb[i + 1, j, 0],
+                    xb[i, j + 1, 0],
+                    xb[i + 1, j + 1, 0],
+                    xb[i, j, 1],
+                    xb[i + 1, j, 1],
+                    xb[i, j + 1, 1],
+                    xb[i + 1, j + 1, 1],
+                )
         # We haven't divided by 6.0 yet...lets do it here....
         xb /= 6.0
 
@@ -4008,7 +4280,7 @@ class VolumeConstraint(GeometricConstraint):
             xb = -xb
 
         # Reshape back to flattened array for DVGeo
-        xb = xb.reshape((self.nSpan*self.nChord*2, 3))
+        xb = xb.reshape((self.nSpan * self.nChord * 2, 3))
 
         return xb
 
@@ -4023,7 +4295,7 @@ class VolumeConstraint(GeometricConstraint):
             Array of defining the coordinates of the volume
         """
 
-        p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
+        p = np.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
         V = 0.0
         V += self.volpym(x0, x1, x3, x2, p)
         V += self.volpym(x0, x2, x6, x4, p)
@@ -4039,19 +4311,20 @@ class VolumeConstraint(GeometricConstraint):
         """
         Compute volume of a square-based pyramid
         """
-        fourth = 1.0/4.0
+        fourth = 1.0 / 4.0
 
-        volpym = (p[0] - fourth*(a[0] + b[0]  + c[0] + d[0]))  \
-            * ((a[1] - c[1])*(b[2] - d[2]) - (a[2] - c[2])*(b[1] - d[1]))   + \
-            (p[1] - fourth*(a[1] + b[1]  + c[1] + d[1]))                \
-            * ((a[2] - c[2])*(b[0] - d[0]) - (a[0] - c[0])*(b[2] - d[2]))   + \
-            (p[2] - fourth*(a[2] + b[2]  + c[2] + d[2]))                \
-            * ((a[0] - c[0])*(b[1] - d[1]) - (a[1] - c[1])*(b[0] - d[0]))
+        volpym = (
+            (p[0] - fourth * (a[0] + b[0] + c[0] + d[0]))
+            * ((a[1] - c[1]) * (b[2] - d[2]) - (a[2] - c[2]) * (b[1] - d[1]))
+            + (p[1] - fourth * (a[1] + b[1] + c[1] + d[1]))
+            * ((a[2] - c[2]) * (b[0] - d[0]) - (a[0] - c[0]) * (b[2] - d[2]))
+            + (p[2] - fourth * (a[2] + b[2] + c[2] + d[2]))
+            * ((a[0] - c[0]) * (b[1] - d[1]) - (a[1] - c[1]) * (b[0] - d[0]))
+        )
 
         return volpym
 
-    def evalVolumeHex_b(self, x0, x1, x2, x3, x4, x5, x6, x7,
-                        x0b, x1b, x2b, x3b, x4b, x5b, x6b, x7b):
+    def evalVolumeHex_b(self, x0, x1, x2, x3, x4, x5, x6, x7, x0b, x1b, x2b, x3b, x4b, x5b, x6b, x7b):
         """
         Evaluate the derivative of the volume defined by the 8
         coordinates in the array x.
@@ -4067,8 +4340,8 @@ class VolumeConstraint(GeometricConstraint):
             Derivatives of the volume wrt the points.
         """
 
-        p = numpy.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
-        pb = numpy.zeros(3)
+        p = np.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
+        pb = np.zeros(3)
         self.volpym_b(x0, x1, x3, x2, p, x0b, x1b, x3b, x2b, pb)
         self.volpym_b(x0, x2, x6, x4, p, x0b, x2b, x6b, x4b, pb)
         self.volpym_b(x0, x4, x5, x1, p, x0b, x4b, x5b, x1b, pb)
@@ -4093,29 +4366,29 @@ class VolumeConstraint(GeometricConstraint):
         fortran code and converted to python to use vectors for the
         points.
         """
-        fourth = 1.0/4.0
+        fourth = 1.0 / 4.0
         volpymb = 1.0
-        tempb = ((a[1]-c[1])*(b[2]-d[2])-(a[2]-c[2])*(b[1]-d[1]))*volpymb
-        tempb0 = -(fourth*tempb)
-        tempb1 = (p[0]-fourth*(a[0]+b[0]+c[0]+d[0]))*volpymb
-        tempb2 = (b[2]-d[2])*tempb1
-        tempb3 = (a[1]-c[1])*tempb1
-        tempb4 = -((b[1]-d[1])*tempb1)
-        tempb5 = -((a[2]-c[2])*tempb1)
-        tempb6 = ((a[2]-c[2])*(b[0]-d[0])-(a[0]-c[0])*(b[2]-d[2]))*volpymb
-        tempb7 = -(fourth*tempb6)
-        tempb8 = (p[1]-fourth*(a[1]+b[1]+c[1]+d[1]))*volpymb
-        tempb9 = (b[0]-d[0])*tempb8
-        tempb10 = (a[2]-c[2])*tempb8
-        tempb11 = -((b[2]-d[2])*tempb8)
-        tempb12 = -((a[0]-c[0])*tempb8)
-        tempb13 = ((a[0]-c[0])*(b[1]-d[1])-(a[1]-c[1])*(b[0]-d[0]))*volpymb
-        tempb14 = -(fourth*tempb13)
-        tempb15 = (p[2]-fourth*(a[2]+b[2]+c[2]+d[2]))*volpymb
-        tempb16 = (b[1]-d[1])*tempb15
-        tempb17 = (a[0]-c[0])*tempb15
-        tempb18 = -((b[0]-d[0])*tempb15)
-        tempb19 = -((a[1]-c[1])*tempb15)
+        tempb = ((a[1] - c[1]) * (b[2] - d[2]) - (a[2] - c[2]) * (b[1] - d[1])) * volpymb
+        tempb0 = -(fourth * tempb)
+        tempb1 = (p[0] - fourth * (a[0] + b[0] + c[0] + d[0])) * volpymb
+        tempb2 = (b[2] - d[2]) * tempb1
+        tempb3 = (a[1] - c[1]) * tempb1
+        tempb4 = -((b[1] - d[1]) * tempb1)
+        tempb5 = -((a[2] - c[2]) * tempb1)
+        tempb6 = ((a[2] - c[2]) * (b[0] - d[0]) - (a[0] - c[0]) * (b[2] - d[2])) * volpymb
+        tempb7 = -(fourth * tempb6)
+        tempb8 = (p[1] - fourth * (a[1] + b[1] + c[1] + d[1])) * volpymb
+        tempb9 = (b[0] - d[0]) * tempb8
+        tempb10 = (a[2] - c[2]) * tempb8
+        tempb11 = -((b[2] - d[2]) * tempb8)
+        tempb12 = -((a[0] - c[0]) * tempb8)
+        tempb13 = ((a[0] - c[0]) * (b[1] - d[1]) - (a[1] - c[1]) * (b[0] - d[0])) * volpymb
+        tempb14 = -(fourth * tempb13)
+        tempb15 = (p[2] - fourth * (a[2] + b[2] + c[2] + d[2])) * volpymb
+        tempb16 = (b[1] - d[1]) * tempb15
+        tempb17 = (a[0] - c[0]) * tempb15
+        tempb18 = -((b[0] - d[0]) * tempb15)
+        tempb19 = -((a[1] - c[1]) * tempb15)
         pb[0] = pb[0] + tempb
         ab[0] = ab[0] + tempb16 + tempb11 + tempb0
         bb[0] = bb[0] + tempb19 + tempb10 + tempb0
@@ -4138,8 +4411,7 @@ class CompositeVolumeConstraint(GeometricConstraint):
     group of other VolumeConstraints.
     """
 
-    def __init__(self, name, vols, lower, upper, scaled, scale,
-                 DVGeo, addToPyOpt):
+    def __init__(self, name, vols, lower, upper, scaled, scale, DVGeo, addToPyOpt):
         self.name = name
         self.nCon = 1
         self.vols = vols
@@ -4151,9 +4423,9 @@ class CompositeVolumeConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # Now get the reference volume
         self.V0 = 0.0
@@ -4188,7 +4460,7 @@ class CompositeVolumeConstraint(GeometricConstraint):
         """
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            tmp = [] # List of dict derivatives
+            tmp = []  # List of dict derivatives
             for vol in self.vols:
                 dVdPt = vol.evalVolumeSens()
                 if self.scaled:
@@ -4201,20 +4473,19 @@ class CompositeVolumeConstraint(GeometricConstraint):
                 for key in tmp[i]:
                     funcsSens[self.name][key] += tmp[i][key]
 
-
-
     def writeTecplot(self, handle):
         """No need to write the composite volume since each of the
         individual ones are already written"""
         pass
+
 
 class LinearConstraint(object):
     """
     This class is used to represet a set of generic set of linear
     constriants coupling local shape variables together.
     """
-    def __init__(self, name, indSetA, indSetB, factorA, factorB,
-                 lower, upper, DVGeo, config):
+
+    def __init__(self, name, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config):
         # No error checking here since the calling routine should have
         # already done it.
         self.name = name
@@ -4250,8 +4521,11 @@ class LinearConstraint(object):
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listLocal[key].value))
             elif key in self.DVGeo.DV_listSectionLocal:
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listSectionLocal[key].value))
-
-        funcs[self.name] = numpy.array(cons).real.astype('d')
+            elif key in self.DVGeo.DV_listSpanwiseLocal:
+                cons.extend(self.jac[key].dot(self.DVGeo.DV_listSpanwiseLocal[key].value))
+            else:
+                raise Error(f"con {self.name} diffined wrt {key}, but {key} not found in DVGeo")
+        funcs[self.name] = np.array(cons).real.astype("d")
 
     def evalFunctionsSens(self, funcsSens):
         """
@@ -4272,9 +4546,17 @@ class LinearConstraint(object):
         """
         if self.ncon > 0:
             for key in self.jac:
-                optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
-                                    lower=self.lower, upper=self.upper, scale=1.0,
-                                    linear=True, wrt=key, jac={key:self.jac[key]})
+                optProb.addConGroup(
+                    self.name + "_" + key,
+                    self.jac[key].shape[0],
+                    lower=self.lower,
+                    upper=self.upper,
+                    scale=1.0,
+                    linear=True,
+                    wrt=key,
+                    jac={key: self.jac[key]},
+                )
+
     def _finalize(self):
         """
         We have postponed actually determining the constraint jacobian
@@ -4286,15 +4568,15 @@ class LinearConstraint(object):
         self.vizConIndices = {}
         # Local Shape Variables
         for key in self.DVGeo.DV_listLocal:
-             if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
+            if self.config is None or self.config in self.DVGeo.DV_listLocal[key].config:
 
                 # end for (indSet loop)
-                cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA,self.indSetB)
+                cons = self.DVGeo.DV_listLocal[key].mapIndexSets(self.indSetA, self.indSetB)
                 ncon = len(cons)
                 if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listLocal[key].nVal
-                    jacobian = numpy.zeros((ncon, ndv))
+                    jacobian = np.zeros((ncon, ndv))
                     for i in range(ncon):
                         jacobian[i, cons[i][0]] = self.factorA[i]
                         jacobian[i, cons[i][1]] = self.factorB[i]
@@ -4307,15 +4589,36 @@ class LinearConstraint(object):
 
         # Section local shape variables
         for key in self.DVGeo.DV_listSectionLocal:
-             if self.config is None or self.config in self.DVGeo.DV_listSectionLocal[key].config:
+            if self.config is None or self.config in self.DVGeo.DV_listSectionLocal[key].config:
 
                 # end for (indSet loop)
-                cons = self.DVGeo.DV_listSectionLocal[key].mapIndexSets(self.indSetA,self.indSetB)
+                cons = self.DVGeo.DV_listSectionLocal[key].mapIndexSets(self.indSetA, self.indSetB)
                 ncon = len(cons)
                 if ncon > 0:
                     # Now form the jacobian:
                     ndv = self.DVGeo.DV_listSectionLocal[key].nVal
-                    jacobian = numpy.zeros((ncon, ndv))
+                    jacobian = np.zeros((ncon, ndv))
+                    for i in range(ncon):
+                        jacobian[i, cons[i][0]] = self.factorA[i]
+                        jacobian[i, cons[i][1]] = self.factorB[i]
+                    self.jac[key] = jacobian
+
+                # Add to the number of constraints and store indices which
+                # we need for tecplot visualization
+                self.ncon += len(cons)
+                self.vizConIndices[key] = cons
+
+        # Section local shape variables
+        for key in self.DVGeo.DV_listSpanwiseLocal:
+            if self.config is None or self.config in self.DVGeo.DV_listSpanwiseLocal[key].config:
+
+                # end for (indSet loop)
+                cons = self.DVGeo.DV_listSpanwiseLocal[key].mapIndexSets(self.indSetA, self.indSetB)
+                ncon = len(cons)
+                if ncon > 0:
+                    # Now form the jacobian:
+                    ndv = self.DVGeo.DV_listSpanwiseLocal[key].nVal
+                    jacobian = np.zeros((ncon, ndv))
                     for i in range(ncon):
                         jacobian[i, cons[i][0]] = self.factorA[i]
                         jacobian[i, cons[i][1]] = self.factorB[i]
@@ -4337,20 +4640,20 @@ class LinearConstraint(object):
 
         for key in self.vizConIndices:
             ncon = len(self.vizConIndices[key])
-            nodes = numpy.zeros((ncon*2, 3))
+            nodes = np.zeros((ncon * 2, 3))
             for i in range(ncon):
-                nodes[2*i] = self.DVGeo.FFD.coef[self.indSetA[i]]
-                nodes[2*i+1] = self.DVGeo.FFD.coef[self.indSetB[i]]
+                nodes[2 * i] = self.DVGeo.FFD.coef[self.indSetA[i]]
+                nodes[2 * i + 1] = self.DVGeo.FFD.coef[self.indSetB[i]]
 
-            handle.write('Zone T=%s\n'% (self.name+'_'+key))
-            handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-                ncon*2, ncon))
-            handle.write('DATAPACKING=POINT\n')
-            for i in range(ncon*2):
-                handle.write('%f %f %f\n'% (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
+            handle.write("Zone T=%s\n" % (self.name + "_" + key))
+            handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (ncon * 2, ncon))
+            handle.write("DATAPACKING=POINT\n")
+            for i in range(ncon * 2):
+                handle.write("%f %f %f\n" % (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
 
             for i in range(ncon):
-                handle.write('%d %d\n'% (2*i+1, 2*i+2))
+                handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
 
 class GearPostConstraint(GeometricConstraint):
     """
@@ -4358,9 +4661,21 @@ class GearPostConstraint(GeometricConstraint):
     parameter list is explained in the addVolumeConstaint() of
     the DVConstraints class
     """
-    def __init__(self, name, wimpressCalc, up, down, thickLower,
-                 thickUpper, thickScaled, MACFracLower, MACFracUpper,
-                 DVGeo, addToPyOpt):
+
+    def __init__(
+        self,
+        name,
+        wimpressCalc,
+        up,
+        down,
+        thickLower,
+        thickUpper,
+        thickScaled,
+        MACFracLower,
+        MACFracUpper,
+        DVGeo,
+        addToPyOpt,
+    ):
 
         self.name = name
         self.wimpress = wimpressCalc
@@ -4369,19 +4684,17 @@ class GearPostConstraint(GeometricConstraint):
         self.thickScaled = thickScaled
         self.MACFracLower = MACFracLower
         self.MACFracUpper = MACFracUpper
-        self.coords = numpy.array([up, down])
+        self.coords = np.array([up, down])
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, None, None,
-                                     None,None, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(self, self.name, None, None, None, None, self.DVGeo, self.addToPyOpt)
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
 
         # Compute the reference length
-        self.D0 = numpy.linalg.norm(self.coords[0] - self.coords[1])
+        self.D0 = np.linalg.norm(self.coords[0] - self.coords[1])
 
     def evalFunctions(self, funcs, config):
 
@@ -4389,21 +4702,21 @@ class GearPostConstraint(GeometricConstraint):
         self.coords = self.DVGeo.update(self.name, config=config)
 
         # Compute the thickness constraint
-        D = numpy.linalg.norm(self.coords[0] - self.coords[1])
+        D = np.linalg.norm(self.coords[0] - self.coords[1])
         if self.thickScaled:
-            D = D/self.D0
+            D = D / self.D0
 
         # Compute the values we need from the wimpress calc
         wfuncs = {}
         self.wimpress.evalFunctions(wfuncs)
 
         # Now the constraint value is
-        postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])
-        locCon = (postLoc - wfuncs['xLEMAC'])/wfuncs['MAC']
+        postLoc = 0.5 * (self.coords[0, 0] + self.coords[1, 0])
+        locCon = (postLoc - wfuncs["xLEMAC"]) / wfuncs["MAC"]
 
         # Final set of two constrains
-        funcs[self.name + '_thick'] = D
-        funcs[self.name + '_MAC'] = locCon
+        funcs[self.name + "_thick"] = D
+        funcs[self.name + "_MAC"] = locCon
 
     def evalFunctionsSens(self, funcsSens, config):
         """
@@ -4425,42 +4738,43 @@ class GearPostConstraint(GeometricConstraint):
             self.wimpress.evalFunctionsSens(wSens)
 
             # Accumulate the derivative into p1b and p2b
-            p1b, p2b = geo_utils.eDist_b(
-                self.coords[0, :], self.coords[1, :])
+            p1b, p2b = geo_utils.eDist_b(self.coords[0, :], self.coords[1, :])
             if self.thickScaled:
                 p1b /= self.D0
                 p2b /= self.D0
 
-            funcsSens[self.name + '_thick'] = self.DVGeo.totalSensitivity(
-                numpy.array([[p1b, p2b]]), self.name, config=config)
+            funcsSens[self.name + "_thick"] = self.DVGeo.totalSensitivity(
+                np.array([[p1b, p2b]]), self.name, config=config
+            )
 
             # And now we need the sensitivty of the conLoc calc
             p1b[:] = 0
             p2b[:] = 0
-            p1b[0] += 0.5/wfuncs['MAC']
-            p2b[0] += 0.5/wfuncs['MAC']
+            p1b[0] += 0.5 / wfuncs["MAC"]
+            p2b[0] += 0.5 / wfuncs["MAC"]
 
-            tmpSens = self.DVGeo.totalSensitivity(
-                numpy.array([[p1b, p2b]]), self.name, config=config)
+            tmpSens = self.DVGeo.totalSensitivity(np.array([[p1b, p2b]]), self.name, config=config)
 
             # And we need the sensitity of conLoc wrt 'xLEMAC' and 'MAC'
-            postLoc = 0.5*(self.coords[0, 0] + self.coords[1, 0])
-            for key in wSens['xLEMAC']:
-                tmpSens[key] -= wSens['xLEMAC'][key]/wfuncs['MAC']
-                tmpSens[key] += wfuncs['xLEMAC']/wfuncs['MAC']**2 * wSens['MAC'][key]
-                tmpSens[key] -= postLoc/wfuncs['MAC']**2 * wSens['MAC'][key]
-            funcsSens[self.name + '_MAC'] = tmpSens
+            postLoc = 0.5 * (self.coords[0, 0] + self.coords[1, 0])
+            for key in wSens["xLEMAC"]:
+                tmpSens[key] -= wSens["xLEMAC"][key] / wfuncs["MAC"]
+                tmpSens[key] += wfuncs["xLEMAC"] / wfuncs["MAC"] ** 2 * wSens["MAC"][key]
+                tmpSens[key] -= postLoc / wfuncs["MAC"] ** 2 * wSens["MAC"][key]
+            funcsSens[self.name + "_MAC"] = tmpSens
 
     def addConstraintsPyOpt(self, optProb):
         """
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
-            optProb.addCon(self.name + '_thick', lower=self.thickLower,
-                           upper=self.thickUpper, wrt=self.DVGeo.getVarNames())
+            optProb.addCon(
+                self.name + "_thick", lower=self.thickLower, upper=self.thickUpper, wrt=self.DVGeo.getVarNames()
+            )
 
-            optProb.addCon(self.name + '_MAC', lower=self.MACFracLower,
-                           upper=self.MACFracUpper, wrt=self.DVGeo.getVarNames())
+            optProb.addCon(
+                self.name + "_MAC", lower=self.MACFracLower, upper=self.MACFracUpper, wrt=self.DVGeo.getVarNames()
+            )
 
 
 class CircularityConstraint(GeometricConstraint):
@@ -4471,29 +4785,27 @@ class CircularityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, center, coords, lower, upper, scale, DVGeo,
-                 addToPyOpt):
+    def __init__(self, name, center, coords, lower, upper, scale, DVGeo, addToPyOpt):
         self.name = name
-        self.center = numpy.array(center).reshape((1,3))
+        self.center = np.array(center).reshape((1, 3))
         self.coords = coords
-        self.nCon = self.coords.shape[0]-1
+        self.nCon = self.coords.shape[0] - 1
         self.lower = lower
         self.upper = upper
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
-
-        self.X = numpy.zeros(self.nCon)
+        self.X = np.zeros(self.nCon)
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name+'coords')
-        self.DVGeo.addPointSet(self.center, self.name+'center')
+        self.DVGeo.addPointSet(self.coords, self.name + "coords")
+        self.DVGeo.addPointSet(self.center, self.name + "center")
 
     def evalFunctions(self, funcs, config):
         """
@@ -4505,10 +4817,10 @@ class CircularityConstraint(GeometricConstraint):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name+'coords', config=config)
-        self.center = self.DVGeo.update(self.name+'center', config=config)
+        self.coords = self.DVGeo.update(self.name + "coords", config=config)
+        self.center = self.DVGeo.update(self.name + "center", config=config)
 
-        self._computeLengths(self.center,self.coords,self.X)
+        self._computeLengths(self.center, self.coords, self.X)
 
         funcs[self.name] = self.X
 
@@ -4525,62 +4837,58 @@ class CircularityConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dLndPt = numpy.zeros((self.nCon,
-                                 self.coords.shape[0],
-                                 self.coords.shape[1]))
-            dLndCn = numpy.zeros((self.nCon,
-                                  self.center.shape[0],
-                                  self.center.shape[1]))
+            dLndPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
+            dLndCn = np.zeros((self.nCon, self.center.shape[0], self.center.shape[1]))
 
-            xb = numpy.zeros(self.nCon)
+            xb = np.zeros(self.nCon)
             for con in range(self.nCon):
-                centerb = dLndCn[con,0,:]
-                coordsb = dLndPt[con,:,:]
-                xb[:] = 0.
-                xb[con] = 1.
+                centerb = dLndCn[con, 0, :]
+                coordsb = dLndPt[con, :, :]
+                xb[:] = 0.0
+                xb[con] = 1.0
                 # reflength2 = 0
                 # for i in range(3):
                 #     reflength2 = reflength2 + (center[i]-coords[0,i])**2
-                reflength2 = numpy.sum((self.center-self.coords[0,:])**2)
+                reflength2 = np.sum((self.center - self.coords[0, :]) ** 2)
                 reflength2b = 0.0
                 for i in range(self.nCon):
                     # length2 = 0
                     # for j in range(3):
                     #     length2 = length2 + (center[j]-coords[i+1, j])**2
-                    length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
+                    length2 = np.sum((self.center - self.coords[i + 1, :]) ** 2)
 
-                    if (length2/reflength2 == 0.0):
+                    if length2 / reflength2 == 0.0:
                         tempb1 = 0.0
                     else:
-                        tempb1 = xb[i]/(2.0*numpy.sqrt(length2/reflength2)*reflength2)
+                        tempb1 = xb[i] / (2.0 * np.sqrt(length2 / reflength2) * reflength2)
                     length2b = tempb1
-                    reflength2b = reflength2b - length2*tempb1/reflength2
+                    reflength2b = reflength2b - length2 * tempb1 / reflength2
                     xb[i] = 0.0
                     for j in reversed(range(3)):
-                        tempb0 = 2*(self.center[0,j]-self.coords[i+1, j])*length2b
+                        tempb0 = 2 * (self.center[0, j] - self.coords[i + 1, j]) * length2b
                         centerb[j] = centerb[j] + tempb0
-                        coordsb[i+1, j] = coordsb[i+1, j] - tempb0
-                for j in reversed(range(3)):#DO i=3,1,-1
-                    tempb = 2*(self.center[0,j]-self.coords[0, j])*reflength2b
+                        coordsb[i + 1, j] = coordsb[i + 1, j] - tempb0
+                for j in reversed(range(3)):  # DO i=3,1,-1
+                    tempb = 2 * (self.center[0, j] - self.coords[0, j]) * reflength2b
                     centerb[j] = centerb[j] + tempb
                     coordsb[0, j] = coordsb[0, j] - tempb
 
-            tmpPt = self.DVGeo.totalSensitivity(dLndPt, self.name+'coords', config=config)
-            tmpCn = self.DVGeo.totalSensitivity(dLndCn, self.name+'center', config=config)
+            tmpPt = self.DVGeo.totalSensitivity(dLndPt, self.name + "coords", config=config)
+            tmpCn = self.DVGeo.totalSensitivity(dLndCn, self.name + "center", config=config)
             tmpTotal = {}
             for key in tmpPt:
-                tmpTotal[key] = tmpPt[key]+tmpCn[key]
+                tmpTotal[key] = tmpPt[key] + tmpCn[key]
 
             funcsSens[self.name] = tmpTotal
 
-    def _computeLengths(self,center,coords,X):
-        '''
+    def _computeLengths(self, center, coords, X):
+        """
         compute the lengths from the center and coordinates
-        '''
-        reflength2 = numpy.sum((center-coords[0,:])**2)
+        """
+        reflength2 = np.sum((center - coords[0, :]) ** 2)
         for i in range(self.nCon):
-            length2 = numpy.sum((self.center-self.coords[i+1,:])**2)
-            X[i] = numpy.sqrt(length2/reflength2)
+            length2 = np.sum((self.center - self.coords[i + 1, :]) ** 2)
+            X[i] = np.sqrt(length2 / reflength2)
 
     def writeTecplot(self, handle):
         """
@@ -4588,25 +4896,22 @@ class CircularityConstraint(GeometricConstraint):
         to the open file handle
         """
 
-        handle.write('Zone T=%s_coords\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords), len(self.coords)-1))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s_coords\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) - 1))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-                                        self.coords[i, 2]))
+            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
 
-        for i in range(len(self.coords)-1):
-            handle.write('%d %d\n'% (i+1, i+2))
+        for i in range(len(self.coords) - 1):
+            handle.write("%d %d\n" % (i + 1, i + 2))
 
-        handle.write('Zone T=%s_center\n'% self.name)
-        handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
-        handle.write('DATAPACKING=POINT\n')
-        handle.write('%f %f %f\n'% (self.center[0,0], self.center[0,1],
-                                    self.center[0,2]))
-        handle.write('%f %f %f\n'% (self.center[0,0], self.center[0,1],
-                                    self.center[0,2]))
-        handle.write('%d %d\n'% (1, 2))
+        handle.write("Zone T=%s_center\n" % self.name)
+        handle.write("Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n")
+        handle.write("DATAPACKING=POINT\n")
+        handle.write("%f %f %f\n" % (self.center[0, 0], self.center[0, 1], self.center[0, 2]))
+        handle.write("%f %f %f\n" % (self.center[0, 0], self.center[0, 1], self.center[0, 2]))
+        handle.write("%d %d\n" % (1, 2))
+
 
 class PlanarityConstraint(GeometricConstraint):
     """
@@ -4617,40 +4922,38 @@ class PlanarityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, axis, origin, p0, v1, v2, lower, upper, scale,
-                 DVGeo, addToPyOpt):
+    def __init__(self, name, axis, origin, p0, v1, v2, lower, upper, scale, DVGeo, addToPyOpt):
         self.name = name
-        self.nCon = 1#len(p0)*3
+        self.nCon = 1  # len(p0)*3
         self.lower = lower
         self.upper = upper
         self.scale = scale
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # create the output array
-        self.X = numpy.zeros(self.nCon)
+        self.X = np.zeros(self.nCon)
         self.n = len(p0)
 
         # The first thing we do is convert v1 and v2 to coords
         self.axis = axis
         self.p0 = p0
-        self.p1 = v1+p0
-        self.p2 = v2+p0
+        self.p1 = v1 + p0
+        self.p2 = v2 + p0
         self.origin = origin
 
         # Now embed the coordinates and origin into DVGeo
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
         # issue 53
-        self.DVGeo.addPointSet(self.p0, self.name+'p0')
-        self.DVGeo.addPointSet(self.p1, self.name+'p1')
-        self.DVGeo.addPointSet(self.p2, self.name+'p2')
-        self.DVGeo.addPointSet(self.origin, self.name+'origin')
-
+        self.DVGeo.addPointSet(self.p0, self.name + "p0")
+        self.DVGeo.addPointSet(self.p1, self.name + "p1")
+        self.DVGeo.addPointSet(self.p2, self.name + "p2")
+        self.DVGeo.addPointSet(self.origin, self.name + "origin")
 
     def evalFunctions(self, funcs, config):
         """
@@ -4662,21 +4965,21 @@ class PlanarityConstraint(GeometricConstraint):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.p0 = self.DVGeo.update(self.name+'p0', config=config)
-        self.p1 = self.DVGeo.update(self.name+'p1', config=config)
-        self.p2 = self.DVGeo.update(self.name+'p2', config=config)
-        self.origin = self.DVGeo.update(self.name+'origin', config=config)
+        self.p0 = self.DVGeo.update(self.name + "p0", config=config)
+        self.p1 = self.DVGeo.update(self.name + "p1", config=config)
+        self.p2 = self.DVGeo.update(self.name + "p2", config=config)
+        self.origin = self.DVGeo.update(self.name + "origin", config=config)
 
-        allPoints = numpy.vstack([self.p0,self.p1,self.p2])
+        allPoints = np.vstack([self.p0, self.p1, self.p2])
 
         # Compute the distance from the origin to each point
-        dist = allPoints-self.origin
+        dist = allPoints - self.origin
 
-        #project it onto the axis
+        # project it onto the axis
         self.X[0] = 0
-        for i in range(self.n*3):
-            self.X[0] += numpy.dot(self.axis,dist[i,:])**2
-        self.X[0]= numpy.sqrt(self.X[0])
+        for i in range(self.n * 3):
+            self.X[0] += np.dot(self.axis, dist[i, :]) ** 2
+        self.X[0] = np.sqrt(self.X[0])
         funcs[self.name] = self.X
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -4692,100 +4995,85 @@ class PlanarityConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dPdp0 = numpy.zeros((self.nCon,
-                                 self.p0.shape[0],
-                                 self.p0.shape[1]))
-            dPdp1 = numpy.zeros((self.nCon,
-                                 self.p1.shape[0],
-                                 self.p1.shape[1]))
+            dPdp0 = np.zeros((self.nCon, self.p0.shape[0], self.p0.shape[1]))
+            dPdp1 = np.zeros((self.nCon, self.p1.shape[0], self.p1.shape[1]))
 
-            dPdp2 = numpy.zeros((self.nCon,
-                                 self.p2.shape[0],
-                                 self.p2.shape[1]))
+            dPdp2 = np.zeros((self.nCon, self.p2.shape[0], self.p2.shape[1]))
 
-            dPdO = numpy.zeros((self.nCon,
-                                self.origin.shape[0],
-                                self.origin.shape[1]))
+            dPdO = np.zeros((self.nCon, self.origin.shape[0], self.origin.shape[1]))
 
         # copy data into all points array
         # allpoints(1:n) = p0
         # allpoints(n:2*n) = p1
         # allpoints(2*n:3*n) = p2
-        allPoints = numpy.vstack([self.p0,self.p1,self.p2])
+        allPoints = np.vstack([self.p0, self.p1, self.p2])
 
         # Compute the distance from the origin to each point
         # for i in range(n*3):#DO i=1,n*3
         #     for j in range(3):#DO j=1,3
         #         dist(i, j) = allpoints(i, j) - origin(j)
-        dist = allPoints-self.origin
+        dist = allPoints - self.origin
 
-        scalardist = numpy.zeros(self.n*3)
+        scalardist = np.zeros(self.n * 3)
         tmpX = 0
-        for i in range(self.n*3):
-            scalardist[i] = numpy.dot(self.axis,dist[i,:])
-            tmpX+=scalardist[i]**2
+        for i in range(self.n * 3):
+            scalardist[i] = np.dot(self.axis, dist[i, :])
+            tmpX += scalardist[i] ** 2
 
-        xb = numpy.zeros(self.nCon)
-        axisb = numpy.zeros(3)
+        xb = np.zeros(self.nCon)
+        axisb = np.zeros(3)
 
-        scalardistb = numpy.zeros((self.n*3))
-        allpointsb = numpy.zeros((self.n*3,3))
-        distb = numpy.zeros((self.n*3,3))
+        scalardistb = np.zeros((self.n * 3))
+        allpointsb = np.zeros((self.n * 3, 3))
+        distb = np.zeros((self.n * 3, 3))
         for con in range(self.nCon):
-            p0b = dPdp0[con,:,:]
-            p1b = dPdp1[con,:,:]
-            p2b = dPdp2[con,:,:]
-            originb = dPdO[con,0,:]
+            p0b = dPdp0[con, :, :]
+            p1b = dPdp1[con, :, :]
+            p2b = dPdp2[con, :, :]
+            originb = dPdO[con, 0, :]
             axisb[:] = 0.0
             originb[:] = 0.0
             scalardistb[:] = 0.0
-            allpointsb[:,:] = 0.0
-            distb[:,:] = 0.0
+            allpointsb[:, :] = 0.0
+            distb[:, :] = 0.0
             xb[:] = 0
             xb[con] = 1.0
-            if(self.X[0] == 0.0):
+            if self.X[0] == 0.0:
                 xb[con] = 0.0
             else:
-                xb[con] = xb[con]/(2.0*numpy.sqrt(tmpX))
+                xb[con] = xb[con] / (2.0 * np.sqrt(tmpX))
 
-            for i in reversed(range(self.n*3)):#DO i=3*n,1,-1
-                scalardistb[i] = scalardistb[i] + 2.0*scalardist[i]*xb[con]#/(self.n*3)
+            for i in reversed(range(self.n * 3)):  # DO i=3*n,1,-1
+                scalardistb[i] = scalardistb[i] + 2.0 * scalardist[i] * xb[con]  # /(self.n*3)
                 # CALL DOT_B(axis, axisb, dist(i, :), distb(i, :), scalardist(i), &
                 #            &        scalardistb(i))
-                axisb, distb[i,:] = geo_utils.dot_b(self.axis, dist[i, :], scalardistb[i])
+                axisb, distb[i, :] = geo_utils.dot_b(self.axis, dist[i, :], scalardistb[i])
                 scalardistb[i] = 0.0
-                for j in reversed(range(3)):#DO j=3,1,-1
+                for j in reversed(range(3)):  # DO j=3,1,-1
                     allpointsb[i, j] = allpointsb[i, j] + distb[i, j]
                     originb[j] = originb[j] - distb[i, j]
                     distb[i, j] = 0.0
 
-            p2b[:,:] = 0.0
-            p2b[:,:] = allpointsb[2*self.n:3*self.n]
-            allpointsb[2*self.n:3*self.n] = 0.0
-            p1b[:,:] = 0.0
-            p1b[:,:] = allpointsb[self.n:2*self.n]
-            allpointsb[self.n:2*self.n] = 0.0
-            p0b[:,:] = 0.0
-            p0b[:,:] = allpointsb[0:self.n]
-
+            p2b[:, :] = 0.0
+            p2b[:, :] = allpointsb[2 * self.n : 3 * self.n]
+            allpointsb[2 * self.n : 3 * self.n] = 0.0
+            p1b[:, :] = 0.0
+            p1b[:, :] = allpointsb[self.n : 2 * self.n]
+            allpointsb[self.n : 2 * self.n] = 0.0
+            p0b[:, :] = 0.0
+            p0b[:, :] = allpointsb[0 : self.n]
 
             # map back to DVGeo
-            tmpp0 = self.DVGeo.totalSensitivity(dPdp0, self.name+'p0',
-                                                config=config)
-            tmpp1 = self.DVGeo.totalSensitivity(dPdp1, self.name+'p1',
-                                                config=config)
-            tmpp2 = self.DVGeo.totalSensitivity(dPdp2, self.name+'p2',
-                                                config=config)
-            tmpO = self.DVGeo.totalSensitivity(dPdO, self.name+'origin',
-                                               config=config)
+            tmpp0 = self.DVGeo.totalSensitivity(dPdp0, self.name + "p0", config=config)
+            tmpp1 = self.DVGeo.totalSensitivity(dPdp1, self.name + "p1", config=config)
+            tmpp2 = self.DVGeo.totalSensitivity(dPdp2, self.name + "p2", config=config)
+            tmpO = self.DVGeo.totalSensitivity(dPdO, self.name + "origin", config=config)
 
             tmpTotal = {}
             for key in tmpp0:
-                tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]+tmpO[key]
-
+                tmpTotal[key] = tmpp0[key] + tmpp1[key] + tmpp2[key] + tmpO[key]
 
             funcsSens[self.name] = tmpTotal
-
 
     def writeTecplot(self, handle):
         """
@@ -4793,32 +5081,27 @@ class PlanarityConstraint(GeometricConstraint):
         to the open file handle
         """
 
-        handle.write('Zone T=%s_surface\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
-            3*self.n, self.n))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s_surface\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (3 * self.n, self.n))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(self.n):
-            handle.write('%f %f %f\n'% (self.p0[i, 0], self.p0[i, 1],
-                                        self.p0[i, 2]))
+            handle.write("%f %f %f\n" % (self.p0[i, 0], self.p0[i, 1], self.p0[i, 2]))
         for i in range(self.n):
-            handle.write('%f %f %f\n'% (self.p1[i, 0], self.p1[i, 1],
-                                        self.p1[i, 2]))
+            handle.write("%f %f %f\n" % (self.p1[i, 0], self.p1[i, 1], self.p1[i, 2]))
 
         for i in range(self.n):
-            handle.write('%f %f %f\n'% (self.p2[i, 0], self.p2[i, 1],
-                                        self.p2[i, 2]))
+            handle.write("%f %f %f\n" % (self.p2[i, 0], self.p2[i, 1], self.p2[i, 2]))
 
         for i in range(self.n):
-            handle.write('%d %d %d\n'% (i+1, i+self.n+1, i+self.n*2+1))
+            handle.write("%d %d %d\n" % (i + 1, i + self.n + 1, i + self.n * 2 + 1))
 
-        handle.write('Zone T=%s_center\n'% self.name)
-        handle.write('Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n')
-        handle.write('DATAPACKING=POINT\n')
-        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
-                                    self.origin[0,2]))
-        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
-                                    self.origin[0,2]))
-        handle.write('%d %d\n'% (1, 2))
+        handle.write("Zone T=%s_center\n" % self.name)
+        handle.write("Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n")
+        handle.write("DATAPACKING=POINT\n")
+        handle.write("%f %f %f\n" % (self.origin[0, 0], self.origin[0, 1], self.origin[0, 2]))
+        handle.write("%f %f %f\n" % (self.origin[0, 0], self.origin[0, 1], self.origin[0, 2]))
+        handle.write("%d %d\n" % (1, 2))
+
 
 class ColinearityConstraint(GeometricConstraint):
     """
@@ -4830,8 +5113,7 @@ class ColinearityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, axis, origin, coords, lower, upper, scale,
-                 DVGeo, addToPyOpt):
+    def __init__(self, name, axis, origin, coords, lower, upper, scale, DVGeo, addToPyOpt):
         self.name = name
         self.nCon = len(coords)
         self.lower = lower
@@ -4840,12 +5122,12 @@ class ColinearityConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # create the output array
-        self.X = numpy.zeros(self.nCon)
+        self.X = np.zeros(self.nCon)
 
         # The first thing we do is convert v1 and v2 to coords
         self.axis = axis
@@ -4854,9 +5136,8 @@ class ColinearityConstraint(GeometricConstraint):
 
         # Now embed the coordinates and origin into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.origin, self.name+'origin')
-        self.DVGeo.addPointSet(self.coords, self.name+'coords')
-
+        self.DVGeo.addPointSet(self.origin, self.name + "origin")
+        self.DVGeo.addPointSet(self.coords, self.name + "coords")
 
     def evalFunctions(self, funcs, config):
         """
@@ -4868,19 +5149,19 @@ class ColinearityConstraint(GeometricConstraint):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.coords = self.DVGeo.update(self.name+'coords', config=config)
-        self.origin = self.DVGeo.update(self.name+'origin', config=config)
+        self.coords = self.DVGeo.update(self.name + "coords", config=config)
+        self.origin = self.DVGeo.update(self.name + "origin", config=config)
 
         # # Compute the direction from each point to the origin
         # dirVec = self.origin-self.coords
 
         # # compute the cross product with the desired axis. Cross product
         # # will be zero if the direction vector is the same as the axis
-        # resultDir = numpy.cross(self.axis,dirVec)
+        # resultDir = np.cross(self.axis,dirVec)
 
         # for i in range(len(resultDir)):
         #     self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
-        self.X = self._computeDist(self.origin,self.coords,self.axis)
+        self.X = self._computeDist(self.origin, self.coords, self.axis)
 
         funcs[self.name] = self.X
 
@@ -4897,125 +5178,115 @@ class ColinearityConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dCdPt = numpy.zeros((self.nCon,
-                                     self.coords.shape[0],
-                                     self.coords.shape[1]))
-            dCdOrigin = numpy.zeros((self.nCon,
-                                     self.origin.shape[0],
-                                     self.origin.shape[1]))
-            dCdAxis = numpy.zeros((self.nCon,
-                                     self.axis.shape[0],
-                                     self.axis.shape[1]))
+            dCdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
+            dCdOrigin = np.zeros((self.nCon, self.origin.shape[0], self.origin.shape[1]))
+            dCdAxis = np.zeros((self.nCon, self.axis.shape[0], self.axis.shape[1]))
 
-            #Compute the direction from each point to the origin
+            # Compute the direction from each point to the origin
             # for i in range(n):
             #     for j in range(3):
             #         dirvec[i, j] = origin[j] - coords[i, j]
-            dirVec = self.origin-self.coords
+            dirVec = self.origin - self.coords
 
             # axisb = 0.0
             # dirvecb = 0.0
             # for i in range(self.nCon):
-            #     resultdir = numpy.cross(axis, dirvec[i, :])
+            #     resultdir = np.cross(axis, dirvec[i, :])
             #     self.X[i] = 0
             #     for j in range(3):
             #         self.X[i] = self.X[i] + resultdir[j]**2
-            resultDir = numpy.cross(self.axis,dirVec)
-            tmpX = numpy.zeros(self.nCon)
+            resultDir = np.cross(self.axis, dirVec)
+            tmpX = np.zeros(self.nCon)
             for i in range(len(resultDir)):
-                #self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
+                # self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
                 for j in range(3):
-                    tmpX[i] += resultDir[i,j]**2
+                    tmpX[i] += resultDir[i, j] ** 2
 
-            resultdirb = numpy.zeros(3)
-            dirvecb = numpy.zeros_like(dirVec)
-            xb = numpy.zeros(self.nCon)
+            resultdirb = np.zeros(3)
+            dirvecb = np.zeros_like(dirVec)
+            xb = np.zeros(self.nCon)
             for con in range(self.nCon):
-                originb = dCdOrigin[con,0,:]
-                coordsb = dCdPt[con,:,:]
-                axisb = dCdAxis[con,0,:]
-                xb[:] = 0.
-                xb[con] = 1.
+                originb = dCdOrigin[con, 0, :]
+                coordsb = dCdPt[con, :, :]
+                axisb = dCdAxis[con, 0, :]
+                xb[:] = 0.0
+                xb[con] = 1.0
 
                 for i in range(self.nCon):
-                    if (tmpX[i] == 0.0):
+                    if tmpX[i] == 0.0:
                         xb[i] = 0.0
                     else:
-                        xb[i] = xb[i]/(2.0*numpy.sqrt(tmpX[i]))
+                        xb[i] = xb[i] / (2.0 * np.sqrt(tmpX[i]))
 
                     resultdirb[:] = 0.0
-                    for j in reversed(range(3)):#DO j=3,1,-1
-                        resultdirb[j] = resultdirb[j] + 2*resultDir[i,j]*xb[i]
+                    for j in reversed(range(3)):  # DO j=3,1,-1
+                        resultdirb[j] = resultdirb[j] + 2 * resultDir[i, j] * xb[i]
 
                     xb[i] = 0.0
-                    #CALL CROSS_B(axis, axisb, dirvec(i, :), dirvecb(i, :), resultdirb)
-                    axisb, dirvecb[i,:] = geo_utils.cross_b(self.axis[0,:],dirVec[i, :], resultdirb)
+                    # CALL CROSS_B(axis, axisb, dirvec(i, :), dirvecb(i, :), resultdirb)
+                    axisb, dirvecb[i, :] = geo_utils.cross_b(self.axis[0, :], dirVec[i, :], resultdirb)
 
                 # coordsb = 0.0
                 # originb = 0.0
-                for i in reversed(range(len(coordsb))):#DO i=n,1,-1
-                    for j in reversed(range(3)):#DO j=3,1,-1
+                for i in reversed(range(len(coordsb))):  # DO i=n,1,-1
+                    for j in reversed(range(3)):  # DO j=3,1,-1
                         originb[j] = originb[j] + dirvecb[i, j]
                         coordsb[i, j] = coordsb[i, j] - dirvecb[i, j]
                         dirvecb[i, j] = 0.0
 
-            tmpPt = self.DVGeo.totalSensitivity(dCdPt, self.name+'coords',
-                                                config=config)
-            tmpOrigin = self.DVGeo.totalSensitivity(dCdOrigin, self.name+'origin',
-                                                    config=config)
+            tmpPt = self.DVGeo.totalSensitivity(dCdPt, self.name + "coords", config=config)
+            tmpOrigin = self.DVGeo.totalSensitivity(dCdOrigin, self.name + "origin", config=config)
 
             tmpTotal = {}
             for key in tmpPt:
-                tmpTotal[key] = tmpPt[key]+tmpOrigin[key]
+                tmpTotal[key] = tmpPt[key] + tmpOrigin[key]
 
-            tmpTotal[self.name+'axis'] =  dCdAxis
+            tmpTotal[self.name + "axis"] = dCdAxis
 
             funcsSens[self.name] = tmpTotal
 
-    def addVariablesPyOpt(self,optProb):
+    def addVariablesPyOpt(self, optProb):
         """
         Add the axis variable for the colinearity constraint to pyOpt
         """
 
         if self.addVarToPyOpt:
-            optProb.addVarGroup(dv.name, dv.nVal, 'c', value=dv.value,
-                                lower=dv.lower, upper=dv.upper,
-                                scale=dv.scale)
+            optProb.addVarGroup(
+                self.name, self.nVal, "c", value=self.value, lower=self.lower, upper=self.upper, scale=self.scale
+            )
 
     def writeTecplot(self, handle):
         """
         Write the visualization of this set of thickness constraints
         to the open file handle
         """
-        handle.write('Zone T=%s_coords\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n'% (
-            len(self.coords)+1, len(self.coords)))
-        handle.write('DATAPACKING=POINT\n')
-        handle.write('%f %f %f\n'% (self.origin[0,0], self.origin[0,1],
-                                    self.origin[0,2]))
+        handle.write("Zone T=%s_coords\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords) + 1, len(self.coords)))
+        handle.write("DATAPACKING=POINT\n")
+        handle.write("%f %f %f\n" % (self.origin[0, 0], self.origin[0, 1], self.origin[0, 2]))
         for i in range(len(self.coords)):
-            handle.write('%f %f %f\n'% (self.coords[i, 0], self.coords[i, 1],
-                                        self.coords[i, 2]))
+            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
 
         for i in range(len(self.coords)):
-            handle.write('%d %d\n'% (i+1, i+2))
+            handle.write("%d %d\n" % (i + 1, i + 2))
 
-    def _computeDist(self,origin,coords,axis, dtype='d'):
+    def _computeDist(self, origin, coords, axis, dtype="d"):
         """
         compute the distance of coords from the defined axis.
         """
         # Compute the direction from each point to the origin
-        dirVec = origin-coords
+        dirVec = origin - coords
 
         # compute the cross product with the desired axis. Cross product
         # will be zero if the direction vector is the same as the axis
-        resultDir = numpy.cross(axis,dirVec)
+        resultDir = np.cross(axis, dirVec)
 
-        X = numpy.zeros(len(coords),dtype)
+        X = np.zeros(len(coords), dtype)
         for i in range(len(resultDir)):
-            X[i] = geo_utils.euclideanNorm(resultDir[i,:])
+            X[i] = geo_utils.euclideanNorm(resultDir[i, :])
 
         return X
+
 
 class SurfaceAreaConstraint(GeometricConstraint):
     """
@@ -5025,8 +5296,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo,
-                 addToPyOpt):
+    def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo, addToPyOpt):
         self.name = name
         self.nCon = 1
         self.lower = lower
@@ -5036,28 +5306,28 @@ class SurfaceAreaConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # create output array
-        self.X = numpy.zeros(self.nCon)
+        self.X = np.zeros(self.nCon)
         self.n = len(p0)
 
         # The first thing we do is convert v1 and v2 to coords
         self.p0 = p0
-        self.p1 = v1+p0
-        self.p2 = v2+p0
+        self.p1 = v1 + p0
+        self.p2 = v2 + p0
 
         # Now embed the coordinates into DVGeo
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
-        self.DVGeo.addPointSet(self.p0, self.name+'p0')
-        self.DVGeo.addPointSet(self.p1, self.name+'p1')
-        self.DVGeo.addPointSet(self.p2, self.name+'p2')
+        self.DVGeo.addPointSet(self.p0, self.name + "p0")
+        self.DVGeo.addPointSet(self.p1, self.name + "p1")
+        self.DVGeo.addPointSet(self.p2, self.name + "p2")
 
         # compute the reference area
-        self.X0 = self._computeArea(self.p0,self.p1,self.p2)
+        self.X0 = self._computeArea(self.p0, self.p1, self.p2)
 
     def evalFunctions(self, funcs, config):
         """
@@ -5069,13 +5339,13 @@ class SurfaceAreaConstraint(GeometricConstraint):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.p0 = self.DVGeo.update(self.name+'p0', config=config)
-        self.p1 = self.DVGeo.update(self.name+'p1', config=config)
-        self.p2 = self.DVGeo.update(self.name+'p2', config=config)
+        self.p0 = self.DVGeo.update(self.name + "p0", config=config)
+        self.p1 = self.DVGeo.update(self.name + "p1", config=config)
+        self.p2 = self.DVGeo.update(self.name + "p2", config=config)
 
-        self.X = self._computeArea(self.p0,self.p1,self.p2)
+        self.X = self._computeArea(self.p0, self.p1, self.p2)
         if self.scaled:
-            self.X/= self.X0
+            self.X /= self.X0
         funcs[self.name] = self.X
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -5091,52 +5361,46 @@ class SurfaceAreaConstraint(GeometricConstraint):
 
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dAdp0 = numpy.zeros((self.nCon,
-                                 self.p0.shape[0],
-                                 self.p0.shape[1]))
-            dAdp1 = numpy.zeros((self.nCon,
-                                 self.p1.shape[0],
-                                 self.p1.shape[1]))
+            dAdp0 = np.zeros((self.nCon, self.p0.shape[0], self.p0.shape[1]))
+            dAdp1 = np.zeros((self.nCon, self.p1.shape[0], self.p1.shape[1]))
 
-            dAdp2 = numpy.zeros((self.nCon,
-                                 self.p2.shape[0],
-                                 self.p2.shape[1]))
+            dAdp2 = np.zeros((self.nCon, self.p2.shape[0], self.p2.shape[1]))
 
             p0 = self.p0
             p1 = self.p1
             p2 = self.p2
             for con in range(self.nCon):
-                p0b = dAdp0[con,:,:]
-                p1b = dAdp1[con,:,:]
-                p2b = dAdp2[con,:,:]
+                p0b = dAdp0[con, :, :]
+                p1b = dAdp1[con, :, :]
+                p2b = dAdp2[con, :, :]
                 areab = 1
-                areasb = numpy.empty(self.n)
-                crossesb = numpy.empty((self.n,3))
-                v1b = numpy.empty((self.n,3))
-                v2b = numpy.empty((self.n,3))
+                areasb = np.empty(self.n)
+                crossesb = np.empty((self.n, 3))
+                v1b = np.empty((self.n, 3))
+                v2b = np.empty((self.n, 3))
                 if self.scaled:
-                    areab = areab/self.X0
-                areasb[:] = areab/2.
+                    areab = areab / self.X0
+                areasb[:] = areab / 2.0
 
                 v1 = p1 - p0
                 v2 = p2 - p0
 
-                crosses = numpy.cross(v1, v2)
-                    # for j in range(3):
-                    #     areas(i) = areas(i) + crosses(i, j)**2
-                    #areas[i] = numpy.sum(crosses[i, :]**2)
-                areas = numpy.sum(crosses**2,axis=1)
-                for i in range(self.n):#DO i=1,n
-                    if (areas[i] == 0.0):
+                crosses = np.cross(v1, v2)
+                # for j in range(3):
+                #     areas(i) = areas(i) + crosses(i, j)**2
+                # areas[i] = np.sum(crosses[i, :]**2)
+                areas = np.sum(crosses ** 2, axis=1)
+                for i in range(self.n):  # DO i=1,n
+                    if areas[i] == 0.0:
                         areasb[i] = 0.0
                     else:
-                        areasb[i] = areasb[i]/(2.0*numpy.sqrt(areas[i]))
+                        areasb[i] = areasb[i] / (2.0 * np.sqrt(areas[i]))
 
                     # for j in reversed(range(3)):#DO j=3,1,-1
                     #     crossesb(i, j) = crossesb(i, j) + 2*crosses(i, j)*areasb(i)
-                    crossesb[i, :] = 2*crosses[i, :]*areasb[i]
+                    crossesb[i, :] = 2 * crosses[i, :] * areasb[i]
 
-                    v1b[i,:],v2b[i,:] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
+                    v1b[i, :], v2b[i, :] = geo_utils.cross_b(v1[i, :], v2[i, :], crossesb[i, :])
 
                     # for j in reversed(range(3)):#DO j=3,1,-1
                     #      p2b(i, j) = p2b(i, j) + v2b(i, j)
@@ -5145,21 +5409,15 @@ class SurfaceAreaConstraint(GeometricConstraint):
                     #      p1b(i, j) = p1b(i, j) + v1b(i, j)
                     #      v1b(i, j) = 0.0
                     p2b[i, :] = v2b[i, :]
-                    p0b[i, :] = - v1b[i, :] - v2b[i, :]
+                    p0b[i, :] = -v1b[i, :] - v2b[i, :]
                     p1b[i, :] = p1b[i, :] + v1b[i, :]
 
-
-
-            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0',
-                                                config=config)
-            tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
-                                                config=config)
-            tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
-                                                config=config)
+            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name + "p0", config=config)
+            tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name + "p1", config=config)
+            tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name + "p2", config=config)
             tmpTotal = {}
             for key in tmpp0:
-                tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
-
+                tmpTotal[key] = tmpp0[key] + tmpp1[key] + tmpp2[key]
 
             funcsSens[self.name] = tmpTotal
 
@@ -5168,19 +5426,19 @@ class SurfaceAreaConstraint(GeometricConstraint):
         compute area based on three point arrays
         """
         # convert p1 and p2 to v1 and v2
-        v1 = p1- p0
-        v2 = p2- p0
+        v1 = p1 - p0
+        v2 = p2 - p0
 
-        #compute the areas
-        areaVec = numpy.cross(v1, v2)
+        # compute the areas
+        areaVec = np.cross(v1, v2)
 
-        #area = numpy.linalg.norm(areaVec,axis=1)
+        # area = np.linalg.norm(areaVec,axis=1)
         area = 0
         for i in range(len(areaVec)):
-            area += geo_utils.euclideanNorm(areaVec[i,:])
+            area += geo_utils.euclideanNorm(areaVec[i, :])
 
-        #return numpy.sum(area)/2.0
-        return area/2.0
+        # return np.sum(area)/2.0
+        return area / 2.0
 
     def writeTecplot(self, handle):
         """
@@ -5188,23 +5446,19 @@ class SurfaceAreaConstraint(GeometricConstraint):
         to the open file handle
         """
 
-        handle.write('Zone T=%s_surface\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
-            3*self.n, self.n))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s_surface\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (3 * self.n, self.n))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(self.n):
-            handle.write('%f %f %f\n'% (self.p0[i, 0], self.p0[i, 1],
-                                        self.p0[i, 2]))
+            handle.write("%f %f %f\n" % (self.p0[i, 0], self.p0[i, 1], self.p0[i, 2]))
         for i in range(self.n):
-            handle.write('%f %f %f\n'% (self.p1[i, 0], self.p1[i, 1],
-                                        self.p1[i, 2]))
+            handle.write("%f %f %f\n" % (self.p1[i, 0], self.p1[i, 1], self.p1[i, 2]))
 
         for i in range(self.n):
-            handle.write('%f %f %f\n'% (self.p2[i, 0], self.p2[i, 1],
-                                        self.p2[i, 2]))
+            handle.write("%f %f %f\n" % (self.p2[i, 0], self.p2[i, 1], self.p2[i, 2]))
 
         for i in range(self.n):
-            handle.write('%d %d %d\n'% (i+1, i+self.n+1, i+self.n*2+1))
+            handle.write("%d %d %d\n" % (i + 1, i + self.n + 1, i + self.n * 2 + 1))
 
 
 class ProjectedAreaConstraint(GeometricConstraint):
@@ -5215,8 +5469,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled,
-                DVGeo, addToPyOpt):
+    def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt):
         self.name = name
         self.nCon = 1
         self.lower = lower
@@ -5226,27 +5479,27 @@ class ProjectedAreaConstraint(GeometricConstraint):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # create output array
-        self.X = numpy.zeros(self.nCon)
+        self.X = np.zeros(self.nCon)
         self.n = len(p0)
         self.axis = axis
-        self.activeTris = numpy.zeros(self.n)
+        self.activeTris = np.zeros(self.n)
 
         # The first thing we do is convert v1 and v2 to coords
         self.p0 = p0
-        self.p1 = v1+p0
-        self.p2 = v2+p0
+        self.p1 = v1 + p0
+        self.p2 = v2 + p0
 
         # Now embed the coordinates into DVGeo
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
-        self.DVGeo.addPointSet(self.p0, self.name+'p0')
-        self.DVGeo.addPointSet(self.p1, self.name+'p1')
-        self.DVGeo.addPointSet(self.p2, self.name+'p2')
+        self.DVGeo.addPointSet(self.p0, self.name + "p0")
+        self.DVGeo.addPointSet(self.p1, self.name + "p1")
+        self.DVGeo.addPointSet(self.p2, self.name + "p2")
 
         # compute the reference area
         self.X0 = self._computeArea(self.p0, self.p1, self.p2, self.axis)
@@ -5261,9 +5514,9 @@ class ProjectedAreaConstraint(GeometricConstraint):
             Dictionary to place function values
         """
         # Pull out the most recent set of coordinates:
-        self.p0 = self.DVGeo.update(self.name+'p0', config=config)
-        self.p1 = self.DVGeo.update(self.name+'p1', config=config)
-        self.p2 = self.DVGeo.update(self.name+'p2', config=config)
+        self.p0 = self.DVGeo.update(self.name + "p0", config=config)
+        self.p1 = self.DVGeo.update(self.name + "p1", config=config)
+        self.p2 = self.DVGeo.update(self.name + "p2", config=config)
 
         self.X = self._computeArea(self.p0, self.p1, self.p2, self.axis)
         if self.scaled:
@@ -5282,53 +5535,44 @@ class ProjectedAreaConstraint(GeometricConstraint):
         """
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-            dAdp0 = numpy.zeros((self.nCon,
-                                 self.p0.shape[0],
-                                 self.p0.shape[1]))
-            dAdp1 = numpy.zeros((self.nCon,
-                                 self.p1.shape[0],
-                                 self.p1.shape[1]))
+            dAdp0 = np.zeros((self.nCon, self.p0.shape[0], self.p0.shape[1]))
+            dAdp1 = np.zeros((self.nCon, self.p1.shape[0], self.p1.shape[1]))
 
-            dAdp2 = numpy.zeros((self.nCon,
-                                 self.p2.shape[0],
-                                 self.p2.shape[1]))
+            dAdp2 = np.zeros((self.nCon, self.p2.shape[0], self.p2.shape[1]))
         p0 = self.p0
         p1 = self.p1
         p2 = self.p2
         for con in range(self.nCon):
-            p0b = dAdp0[con,:,:]
-            p1b = dAdp1[con,:,:]
-            p2b = dAdp2[con,:,:]
+            p0b = dAdp0[con, :, :]
+            p1b = dAdp1[con, :, :]
+            p2b = dAdp2[con, :, :]
             areab = 1
-            areasb = numpy.empty(self.n)
+            areasb = np.empty(self.n)
             if self.scaled:
-                areab = areab/self.X0
-            areasb[:] = areab/2.
+                areab = areab / self.X0
+            areasb[:] = areab / 2.0
 
             for i in range(self.n):
-                v1 = p1[i,:] - p0[i,:]
-                v2 = p2[i,:] - p0[i,:]
-                SAvec = numpy.cross(v1, v2)
-                PA = numpy.dot(SAvec, self.axis)
+                v1 = p1[i, :] - p0[i, :]
+                v2 = p2[i, :] - p0[i, :]
+                SAvec = np.cross(v1, v2)
+                PA = np.dot(SAvec, self.axis)
                 if PA > 0:
                     PAb = areasb[i]
                 else:
                     PAb = 0.0
                 SAvecb, axisb = geo_utils.dot_b(SAvec, self.axis, PAb)
                 v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
-                p2b[i,:] = p2b[i,:] + v2b
-                p1b[i,:] = p1b[i,:] + v1b
-                p0b[i,:] = p0b[i,:] - v1b - v2b
+                p2b[i, :] = p2b[i, :] + v2b
+                p1b[i, :] = p1b[i, :] + v1b
+                p0b[i, :] = p0b[i, :] - v1b - v2b
 
-        tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name+'p0',
-                                            config=config)
-        tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name+'p1',
-                                            config=config)
-        tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name+'p2',
-                                            config=config)
+        tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name + "p0", config=config)
+        tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name + "p1", config=config)
+        tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name + "p2", config=config)
         tmpTotal = {}
         for key in tmpp0:
-            tmpTotal[key] = tmpp0[key]+tmpp1[key]+tmpp2[key]
+            tmpTotal[key] = tmpp0[key] + tmpp1[key] + tmpp2[key]
 
         funcsSens[self.name] = tmpTotal
 
@@ -5338,14 +5582,14 @@ class ProjectedAreaConstraint(GeometricConstraint):
         """
 
         # Convert p1 and p2 to v1 and v2
-        v1 = p1- p0
-        v2 = p2- p0
+        v1 = p1 - p0
+        v2 = p2 - p0
 
         # Compute the surface area vectors for each triangle patch
-        surfaceAreas = numpy.cross(v1, v2)
+        surfaceAreas = np.cross(v1, v2)
 
         # Compute the projected area of each triangle patch
-        projectedAreas = numpy.dot(surfaceAreas, axis)
+        projectedAreas = np.dot(surfaceAreas, axis)
 
         # Cut out negative projected areas to get one side of surface
         if plot:
@@ -5355,13 +5599,12 @@ class ProjectedAreaConstraint(GeometricConstraint):
                 else:
                     projectedAreas[i] = 0.0
         else:
-            projectedAreas[projectedAreas<0] = 0.0
+            projectedAreas[projectedAreas < 0] = 0.0
 
         # Sum projected areas and divide by two for triangle area
-        totalProjectedArea = numpy.sum(projectedAreas)/2.0
+        totalProjectedArea = np.sum(projectedAreas) / 2.0
 
         return totalProjectedArea
-
 
     def writeTecplot(self, handle):
         """
@@ -5369,42 +5612,41 @@ class ProjectedAreaConstraint(GeometricConstraint):
         to the open file handle
         """
         self._computeArea(self.p0, self.p1, self.p2, self.axis, plot=True)
-        nActiveTris = int(numpy.sum(self.activeTris))
+        nActiveTris = int(np.sum(self.activeTris))
         p0 = self.p0.copy()
         p1 = self.p1.copy()
         p2 = self.p2.copy()
         if self.axis[0] == 1.0:
-            p0[:,0] = numpy.zeros(self.n)
-            p1[:,0] = numpy.zeros(self.n)
-            p2[:,0] = numpy.zeros(self.n)
+            p0[:, 0] = np.zeros(self.n)
+            p1[:, 0] = np.zeros(self.n)
+            p2[:, 0] = np.zeros(self.n)
         if self.axis[1] == 1.0:
-            p0[:,1] = numpy.zeros(self.n)
-            p1[:,1] = numpy.zeros(self.n)
-            p2[:,1] = numpy.zeros(self.n)
+            p0[:, 1] = np.zeros(self.n)
+            p1[:, 1] = np.zeros(self.n)
+            p2[:, 1] = np.zeros(self.n)
         if self.axis[2] == 1.0:
-            p0[:,2] = numpy.zeros(self.n)
-            p1[:,2] = numpy.zeros(self.n)
-            p2[:,2] = numpy.zeros(self.n)
+            p0[:, 2] = np.zeros(self.n)
+            p1[:, 2] = np.zeros(self.n)
+            p2[:, 2] = np.zeros(self.n)
 
-        handle.write('Zone T=%s_surface\n'% self.name)
-        handle.write('Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n'% (
-            3*nActiveTris, nActiveTris))
-        handle.write('DATAPACKING=POINT\n')
+        handle.write("Zone T=%s_surface\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (3 * nActiveTris, nActiveTris))
+        handle.write("DATAPACKING=POINT\n")
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write('%f %f %f\n'% (p0[i, 0], p0[i, 1], p0[i, 2]))
+                handle.write("%f %f %f\n" % (p0[i, 0], p0[i, 1], p0[i, 2]))
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write('%f %f %f\n'% (p1[i, 0], p1[i, 1], p1[i, 2]))
+                handle.write("%f %f %f\n" % (p1[i, 0], p1[i, 1], p1[i, 2]))
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write('%f %f %f\n'% (p2[i, 0], p2[i, 1], p2[i, 2]))
+                handle.write("%f %f %f\n" % (p2[i, 0], p2[i, 1], p2[i, 2]))
         iActive = 0
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write('%d %d %d\n'% (iActive+1, iActive+nActiveTris+1,
-                        iActive+nActiveTris*2+1))
+                handle.write("%d %d %d\n" % (iActive + 1, iActive + nActiveTris + 1, iActive + nActiveTris * 2 + 1))
                 iActive += 1
+
 
 class CurvatureConstraint(GeometricConstraint):
     """
@@ -5413,10 +5655,9 @@ class CurvatureConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo,
-                 addToPyOpt):
+    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt):
         self.name = name
-        self.nSurfs = len(surfs) # we support multiple surfaces (plot3D files)
+        self.nSurfs = len(surfs)  # we support multiple surfaces (plot3D files)
         self.X = []
         self.X_map = []
         self.node_map = []
@@ -5424,51 +5665,54 @@ class CurvatureConstraint(GeometricConstraint):
         for iSurf in range(self.nSurfs):
             # A list of the coordinates arrays for each surface, flattened in order
             # to vectorize operations
-            self.X += [numpy.reshape(surfs[iSurf].X,-1)]
+            self.X += [np.reshape(surfs[iSurf].X, -1)]
             # A list of maping arrays used to translate from the structured index
             # to the flatten index number of X
             # For example: X[iSurf][X_map[iSurf][i,j,2]] gives the z coordinate
             # of the node in the i-th row and j-th column on surface iSurf
-            self.X_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size)),surfs[iSurf].X.shape)]
+            self.X_map += [np.reshape(np.array(range(surfs[iSurf].X.size)), surfs[iSurf].X.shape)]
             # A list of maping arrays used to provide a unique node number for
             # every node on each surface
             # For example: node_map[iSurf][i,j] gives the node number
             # of the node in the i-th row and j-th column on surface iSurf
-            self.node_map += [numpy.reshape(numpy.array(range(surfs[iSurf].X.size//3)),(surfs[iSurf].X.shape[0],surfs[iSurf].X.shape[1]))]
+            self.node_map += [
+                np.reshape(
+                    np.array(range(surfs[iSurf].X.size // 3)), (surfs[iSurf].X.shape[0], surfs[iSurf].X.shape[1])
+                )
+            ]
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
-            self.coords += [numpy.reshape(self.X[iSurf],(surfs[iSurf].X.shape[0]*surfs[iSurf].X.shape[1],3))]
+            self.coords += [np.reshape(self.X[iSurf], (surfs[iSurf].X.shape[0] * surfs[iSurf].X.shape[1], 3))]
         self.nCon = 1
         self.curvatureType = curvatureType
         self.lower = lower
         self.upper = upper
         self.scaled = scaled
         self.scale = scale
-        self.KSCoeff=KSCoeff
-        if self.KSCoeff==None:
+        self.KSCoeff = KSCoeff
+        if self.KSCoeff is None:
             # set KSCoeff to be the number of points in the plot 3D files
-            self.KSCoeff=0.0
+            self.KSCoeff = 0.0
             for i in range(len(self.coords)):
-                self.KSCoeff+=len(self.coords[i])
+                self.KSCoeff += len(self.coords[i])
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, self.nCon, self.lower,
-                                     self.upper, self.scale, self.DVGeo,
-                                     self.addToPyOpt)
+        GeometricConstraint.__init__(
+            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
+        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided. We need to add a point set for each surface:
         for iSurf in range(self.nSurfs):
-            self.DVGeo.addPointSet(self.coords[iSurf], self.name+'%d'%(iSurf))
+            self.DVGeo.addPointSet(self.coords[iSurf], self.name + "%d" % (iSurf))
 
         # compute the reference curvature for normalization
-        self.curvatureRef=0.0
+        self.curvatureRef = 0.0
         for iSurf in range(self.nSurfs):
             self.curvatureRef += self.evalCurvArea(iSurf)[0]
 
-        if(MPI.COMM_WORLD.rank==0):
-            print("Reference curvature: ",self.curvatureRef)
-
+        if MPI.COMM_WORLD.rank == 0:
+            print("Reference curvature: ", self.curvatureRef)
 
     def evalFunctions(self, funcs, config):
         """
@@ -5482,10 +5726,10 @@ class CurvatureConstraint(GeometricConstraint):
         # Pull out the most recent set of coordinates for each surface:
         funcs[self.name] = 0
         for iSurf in range(self.nSurfs):
-            self.coords[iSurf] = self.DVGeo.update(self.name+'%d'%(iSurf), config=config)
-            self.X[iSurf] = numpy.reshape(self.coords[iSurf],-1)
+            self.coords[iSurf] = self.DVGeo.update(self.name + "%d" % (iSurf), config=config)
+            self.X[iSurf] = np.reshape(self.coords[iSurf], -1)
             if self.scaled:
-                funcs[self.name] += self.evalCurvArea(iSurf)[0]/self.curvatureRef
+                funcs[self.name] += self.evalCurvArea(iSurf)[0] / self.curvatureRef
             else:
                 funcs[self.name] += self.evalCurvArea(iSurf)[0]
 
@@ -5508,561 +5752,623 @@ class CurvatureConstraint(GeometricConstraint):
                 if self.scaled:
                     DkSDX /= self.curvatureRef
                 # Reshape the Xpt sensitivity to the shape DVGeo is expecting
-                DkSDpt = numpy.reshape(DkSDX, self.coords[iSurf].shape)
+                DkSDpt = np.reshape(DkSDX, self.coords[iSurf].shape)
                 if iSurf == 0:
                     funcsSens[self.name] = self.DVGeo.totalSensitivity(
-                        DkSDpt, self.name+'%d'%(iSurf), config=config)
+                        DkSDpt, self.name + "%d" % (iSurf), config=config
+                    )
                 else:
-                    tmp = self.DVGeo.totalSensitivity(
-                        DkSDpt, self.name+'%d'%(iSurf), config=config)
+                    tmp = self.DVGeo.totalSensitivity(DkSDpt, self.name + "%d" % (iSurf), config=config)
                     for key in funcsSens[self.name]:
                         funcsSens[self.name][key] += tmp[key]
 
     def evalCurvArea(self, iSurf):
-        '''
+        """
         Evaluate the integral K**2 over the surface area of the wing.
         Where K is the Gaussian curvature.
-        '''
+        """
         # Evaluate the derivitive of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
-        t_u = self.evalDiff(iSurf, self.X[iSurf], 'u')
-        t_v = self.evalDiff(iSurf, self.X[iSurf], 'v')
+        t_u = self.evalDiff(iSurf, self.X[iSurf], "u")
+        t_v = self.evalDiff(iSurf, self.X[iSurf], "v")
         # Compute the normal vector by taking the cross product of t_u and t_v
-        n = self.evalCross(iSurf, t_u,t_v)
+        n = self.evalCross(iSurf, t_u, t_v)
         # Compute the norm of tu_ x tv
         n_norm = self.evalNorm(iSurf, n)
         # Normalize the normal vector
-        n_hat = numpy.zeros_like(n)
-        n_hat[self.X_map[iSurf][:,:,0]]=n[self.X_map[iSurf][:,:,0]]/n_norm[self.node_map[iSurf][:,:]]
-        n_hat[self.X_map[iSurf][:,:,1]]=n[self.X_map[iSurf][:,:,1]]/n_norm[self.node_map[iSurf][:,:]]
-        n_hat[self.X_map[iSurf][:,:,2]]=n[self.X_map[iSurf][:,:,2]]/n_norm[self.node_map[iSurf][:,:]]
+        n_hat = np.zeros_like(n)
+        n_hat[self.X_map[iSurf][:, :, 0]] = n[self.X_map[iSurf][:, :, 0]] / n_norm[self.node_map[iSurf][:, :]]
+        n_hat[self.X_map[iSurf][:, :, 1]] = n[self.X_map[iSurf][:, :, 1]] / n_norm[self.node_map[iSurf][:, :]]
+        n_hat[self.X_map[iSurf][:, :, 2]] = n[self.X_map[iSurf][:, :, 2]] / n_norm[self.node_map[iSurf][:, :]]
         # Evaluate the second derivitives of the position vector wrt u and v
-        t_uu = self.evalDiff(iSurf, t_u, 'u')
-        t_vv = self.evalDiff(iSurf, t_v, 'v')
-        t_uv = self.evalDiff(iSurf, t_v, 'u')
+        t_uu = self.evalDiff(iSurf, t_u, "u")
+        t_vv = self.evalDiff(iSurf, t_v, "v")
+        t_uv = self.evalDiff(iSurf, t_v, "u")
         # Compute the components of the first fundamental form of a parameteric
         # surface
-        E = self.evalInProd(iSurf, t_u,t_u)
-        F = self.evalInProd(iSurf, t_v,t_u)
-        G = self.evalInProd(iSurf, t_v,t_v)
+        E = self.evalInProd(iSurf, t_u, t_u)
+        F = self.evalInProd(iSurf, t_v, t_u)
+        G = self.evalInProd(iSurf, t_v, t_v)
         # Compute the components of the second fundamental form of a parameteric
         # surface
-        L = self.evalInProd(iSurf, t_uu,n_hat)
-        M = self.evalInProd(iSurf, t_uv,n_hat)
-        N = self.evalInProd(iSurf, t_vv,n_hat)
+        L = self.evalInProd(iSurf, t_uu, n_hat)
+        M = self.evalInProd(iSurf, t_uv, n_hat)
+        N = self.evalInProd(iSurf, t_vv, n_hat)
         # Compute Gaussian and mean curvature (K and H)
-        K = (L*N-M*M)/(E*G-F*F)
-        H = (E*N - 2*F*M + G*L)/(2*(E*G-F*F))
+        K = (L * N - M * M) / (E * G - F * F)
+        H = (E * N - 2 * F * M + G * L) / (2 * (E * G - F * F))
         # Compute the combined curvature (C)
-        C = 4.0*H*H-2.0*K
+        C = 4.0 * H * H - 2.0 * K
         # Assign integration weights for each point
         # 1   for center nodes
         # 1/2 for edge nodes
         # 1/4 for corner nodes
-        wt = numpy.zeros_like(n_norm)+1
-        wt[self.node_map[iSurf][0,:]] *= 0.5
-        wt[self.node_map[iSurf][-1,:]] *= 0.5
-        wt[self.node_map[iSurf][:,0]] *= 0.5
-        wt[self.node_map[iSurf][:,-1]] *= 0.5
+        wt = np.zeros_like(n_norm) + 1
+        wt[self.node_map[iSurf][0, :]] *= 0.5
+        wt[self.node_map[iSurf][-1, :]] *= 0.5
+        wt[self.node_map[iSurf][:, 0]] *= 0.5
+        wt[self.node_map[iSurf][:, -1]] *= 0.5
         # Compute discrete area associated with each node
-        dS = wt*n_norm
-        one = numpy.ones(self.node_map[iSurf].size)
+        dS = wt * n_norm
+        one = np.ones(self.node_map[iSurf].size)
 
-        if self.curvatureType == 'Gaussian':
+        if self.curvatureType == "Gaussian":
             # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
-            kS = numpy.dot(one,K*K*dS)
+            kS = np.dot(one, K * K * dS)
             return [kS, K, H, C]
-        elif self.curvatureType == 'mean':
+        elif self.curvatureType == "mean":
             # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
-            hS = numpy.dot(one,H*H*dS)
+            hS = np.dot(one, H * H * dS)
             return [hS, K, H, C]
-        elif self.curvatureType == 'combined':
+        elif self.curvatureType == "combined":
             # Now compute integral C over S, equivelent to sum(C*dS)
-            cS = numpy.dot(one,C*dS)
+            cS = np.dot(one, C * dS)
             return [cS, K, H, C]
-        elif self.curvatureType == 'KSmean':
+        elif self.curvatureType == "KSmean":
             # Now compute the KS function for mean curvature, equivelent to KS(H*H*dS)
-            sigmaH=numpy.dot(one,numpy.exp(self.KSCoeff*H*H*dS))
-            KSmean=numpy.log(sigmaH)/self.KSCoeff
-            if(MPI.COMM_WORLD.rank==0):
-                print("Max curvature: ",max(H*H*dS))
+            sigmaH = np.dot(one, np.exp(self.KSCoeff * H * H * dS))
+            KSmean = np.log(sigmaH) / self.KSCoeff
+            if MPI.COMM_WORLD.rank == 0:
+                print("Max curvature: ", max(H * H * dS))
             return [KSmean, K, H, C]
         else:
-            raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
-                        "%s is not supported!"%curvatureType)
-
+            raise Error(
+                "The curvatureType parameter should be Gaussian, mean, or combined, "
+                "%s is not supported!" % self.curvatureType
+            )
 
     def evalCurvAreaSens(self, iSurf):
-        '''
+        """
         Compute sensitivity of the integral K**2 wrt the coordinate
         locations X
-        '''
+        """
         # Evaluate the derivitive of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
-        t_u = self.evalDiff(iSurf, self.X[iSurf], 'u')
-        Dt_uDX = self.evalDiffSens(iSurf, 'u')
-        t_v = self.evalDiff(iSurf, self.X[iSurf], 'v')
-        Dt_vDX = self.evalDiffSens(iSurf,'v')
+        t_u = self.evalDiff(iSurf, self.X[iSurf], "u")
+        Dt_uDX = self.evalDiffSens(iSurf, "u")
+        t_v = self.evalDiff(iSurf, self.X[iSurf], "v")
+        Dt_vDX = self.evalDiffSens(iSurf, "v")
         # Compute the normal vector by taking the cross product of t_u and t_v
-        n = self.evalCross(iSurf,t_u,t_v)
-        [DnDt_u, DnDt_v] = self.evalCrossSens(iSurf,t_u,t_v)
+        n = self.evalCross(iSurf, t_u, t_v)
+        [DnDt_u, DnDt_v] = self.evalCrossSens(iSurf, t_u, t_v)
         DnDX = DnDt_u.dot(Dt_uDX) + DnDt_v.dot(Dt_vDX)
         # Compute the norm of tu_ x tv
-        n_norm = self.evalNorm(iSurf,n)
-        Dn_normDn = self.evalNormSens(iSurf,n)
+        n_norm = self.evalNorm(iSurf, n)
+        Dn_normDn = self.evalNormSens(iSurf, n)
         Dn_normDX = Dn_normDn.dot(DnDX)
         # Normalize the normal vector
-        n_hat = numpy.zeros_like(n)
-        n_hat[self.X_map[iSurf][:,:,0]]=n[self.X_map[iSurf][:,:,0]]/n_norm[self.node_map[iSurf][:,:]]
-        n_hat[self.X_map[iSurf][:,:,1]]=n[self.X_map[iSurf][:,:,1]]/n_norm[self.node_map[iSurf][:,:]]
-        n_hat[self.X_map[iSurf][:,:,2]]=n[self.X_map[iSurf][:,:,2]]/n_norm[self.node_map[iSurf][:,:]]
+        n_hat = np.zeros_like(n)
+        n_hat[self.X_map[iSurf][:, :, 0]] = n[self.X_map[iSurf][:, :, 0]] / n_norm[self.node_map[iSurf][:, :]]
+        n_hat[self.X_map[iSurf][:, :, 1]] = n[self.X_map[iSurf][:, :, 1]] / n_norm[self.node_map[iSurf][:, :]]
+        n_hat[self.X_map[iSurf][:, :, 2]] = n[self.X_map[iSurf][:, :, 2]] / n_norm[self.node_map[iSurf][:, :]]
 
         ii = []
         data = []
         for i in range(3):
             # Dn_hat[self.X_map[iSurf][:,:,i]]/Dn[self.X_map[iSurf][:,:,i]]
-            ii += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
-            data +=list(numpy.reshape(n_norm[self.node_map[iSurf][:,:]]**-1,-1))
-        Dn_hatDn = csr_matrix((data,[ii,ii]),shape=(self.X[iSurf].size,self.X[iSurf].size))
+            ii += list(np.reshape(self.X_map[iSurf][:, :, i], -1))
+            data += list(np.reshape(n_norm[self.node_map[iSurf][:, :]] ** -1, -1))
+        Dn_hatDn = csr_matrix((data, [ii, ii]), shape=(self.X[iSurf].size, self.X[iSurf].size))
 
         ii = []
         jj = []
         data = []
         for i in range(3):
             # Dn_hat[self.X_map[iSurf][:,:,i]]/Dn_norm[self.node_map[iSurf][:,:]]
-            ii += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
-            jj += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
-            data +=list(numpy.reshape(-n[self.X_map[iSurf][:,:,i]]/(n_norm[self.node_map[iSurf][:,:]]**2),-1))
-        Dn_hatDn_norm = csr_matrix((data,[ii,jj]),shape=(n_hat.size,n_norm.size))
+            ii += list(np.reshape(self.X_map[iSurf][:, :, i], -1))
+            jj += list(np.reshape(self.node_map[iSurf][:, :], -1))
+            data += list(np.reshape(-n[self.X_map[iSurf][:, :, i]] / (n_norm[self.node_map[iSurf][:, :]] ** 2), -1))
+        Dn_hatDn_norm = csr_matrix((data, [ii, jj]), shape=(n_hat.size, n_norm.size))
 
-        Dn_hatDX=Dn_hatDn.dot(DnDX)+Dn_hatDn_norm.dot(Dn_normDX)
+        Dn_hatDX = Dn_hatDn.dot(DnDX) + Dn_hatDn_norm.dot(Dn_normDX)
         # Evaluate the second derivitives of the position vector wrt u and v
-        t_uu = self.evalDiff(iSurf,t_u, 'u')
-        Dt_uuDt_u = self.evalDiffSens(iSurf,'u')
+        t_uu = self.evalDiff(iSurf, t_u, "u")
+        Dt_uuDt_u = self.evalDiffSens(iSurf, "u")
         Dt_uuDX = Dt_uuDt_u.dot(Dt_uDX)
 
-        t_vv = self.evalDiff(iSurf,t_v, 'v')
-        Dt_vvDt_v = self.evalDiffSens(iSurf,'v')
+        t_vv = self.evalDiff(iSurf, t_v, "v")
+        Dt_vvDt_v = self.evalDiffSens(iSurf, "v")
         Dt_vvDX = Dt_vvDt_v.dot(Dt_vDX)
 
-        t_uv = self.evalDiff(iSurf,t_v, 'u')
-        Dt_uvDt_v = self.evalDiffSens(iSurf,'u')
+        t_uv = self.evalDiff(iSurf, t_v, "u")
+        Dt_uvDt_v = self.evalDiffSens(iSurf, "u")
         Dt_uvDX = Dt_uvDt_v.dot(Dt_vDX)
         # Compute the components of the first fundamental form of a parameteric
         # surface
-        E = self.evalInProd(iSurf,t_u,t_u)
-        [DEDt_u, _] = self.evalInProdSens(iSurf,t_u,t_u)
-        DEDt_u*=2
+        E = self.evalInProd(iSurf, t_u, t_u)
+        [DEDt_u, _] = self.evalInProdSens(iSurf, t_u, t_u)
+        DEDt_u *= 2
         DEDX = DEDt_u.dot(Dt_uDX)
 
-        F = self.evalInProd(iSurf,t_v,t_u)
-        [DFDt_v, DFDt_u] = self.evalInProdSens(iSurf,t_v,t_u)
+        F = self.evalInProd(iSurf, t_v, t_u)
+        [DFDt_v, DFDt_u] = self.evalInProdSens(iSurf, t_v, t_u)
         DFDX = DFDt_v.dot(Dt_vDX) + DFDt_u.dot(Dt_uDX)
 
-        G = self.evalInProd(iSurf,t_v,t_v)
-        [DGDt_v, _] = self.evalInProdSens(iSurf,t_v,t_v)
-        DGDt_v*=2
+        G = self.evalInProd(iSurf, t_v, t_v)
+        [DGDt_v, _] = self.evalInProdSens(iSurf, t_v, t_v)
+        DGDt_v *= 2
         DGDX = DGDt_v.dot(Dt_vDX)
 
         # Compute the components of the second fundamental form of a parameteric
         # surface
-        L = self.evalInProd(iSurf,t_uu,n_hat)
-        [DLDt_uu, DLDn_hat] = self.evalInProdSens(iSurf,t_uu,n_hat)
-        DLDX = DLDt_uu.dot(Dt_uuDX)+DLDn_hat.dot(Dn_hatDX)
+        L = self.evalInProd(iSurf, t_uu, n_hat)
+        [DLDt_uu, DLDn_hat] = self.evalInProdSens(iSurf, t_uu, n_hat)
+        DLDX = DLDt_uu.dot(Dt_uuDX) + DLDn_hat.dot(Dn_hatDX)
 
-        M = self.evalInProd(iSurf,t_uv,n_hat)
-        [DMDt_uv, DMDn_hat] = self.evalInProdSens(iSurf,t_uv,n_hat)
-        DMDX = DMDt_uv.dot(Dt_uvDX)+DMDn_hat.dot(Dn_hatDX)
+        M = self.evalInProd(iSurf, t_uv, n_hat)
+        [DMDt_uv, DMDn_hat] = self.evalInProdSens(iSurf, t_uv, n_hat)
+        DMDX = DMDt_uv.dot(Dt_uvDX) + DMDn_hat.dot(Dn_hatDX)
 
-        N = self.evalInProd(iSurf,t_vv,n_hat)
-        [DNDt_vv, DNDn_hat] = self.evalInProdSens(iSurf,t_vv,n_hat)
-        DNDX = DNDt_vv.dot(Dt_vvDX)+DNDn_hat.dot(Dn_hatDX)
+        N = self.evalInProd(iSurf, t_vv, n_hat)
+        [DNDt_vv, DNDn_hat] = self.evalInProdSens(iSurf, t_vv, n_hat)
+        DNDX = DNDt_vv.dot(Dt_vvDX) + DNDn_hat.dot(Dn_hatDX)
 
         # Compute Gaussian and mean curvature (K and H)
-        K = (L*N-M*M)/(E*G-F*F)
-        DKDE = self.diags(-(L*N-M*M)/(E*G-F*F)**2*G)
-        DKDF = self.diags((L*N-M*M)/(E*G-F*F)**2*2*F)
-        DKDG = self.diags(-(L*N-M*M)/(E*G-F*F)**2*E)
-        DKDL = self.diags(N/(E*G-F*F))
-        DKDM = self.diags(2*M/(E*G-F*F))
-        DKDN = self.diags(L/(E*G-F*F))
-        DKDX = DKDE.dot(DEDX) + DKDF.dot(DFDX) + DKDG.dot(DGDX) +\
-               DKDL.dot(DLDX) + DKDM.dot(DMDX) + DKDN.dot(DNDX)
+        K = (L * N - M * M) / (E * G - F * F)
+        DKDE = self.diags(-(L * N - M * M) / (E * G - F * F) ** 2 * G)
+        DKDF = self.diags((L * N - M * M) / (E * G - F * F) ** 2 * 2 * F)
+        DKDG = self.diags(-(L * N - M * M) / (E * G - F * F) ** 2 * E)
+        DKDL = self.diags(N / (E * G - F * F))
+        DKDM = self.diags(2 * M / (E * G - F * F))
+        DKDN = self.diags(L / (E * G - F * F))
+        DKDX = DKDE.dot(DEDX) + DKDF.dot(DFDX) + DKDG.dot(DGDX) + DKDL.dot(DLDX) + DKDM.dot(DMDX) + DKDN.dot(DNDX)
 
-        H = (E*N - 2*F*M + G*L)/(2*(E*G-F*F))
-        DHDE = self.diags(N/(2*(E*G-F*F)) - (E*N - 2*F*M + G*L)/(2*(E*G-F*F))**2*2*G)
-        DHDF = self.diags(-2*M/(2*(E*G-F*F)) + (E*N - 2*F*M + G*L)/(2*(E*G-F*F))**2*4*F)
-        DHDG = self.diags(L/(2*(E*G-F*F)) - (E*N - 2*F*M + G*L)/(2*(E*G-F*F))**2*2*E)
-        DHDL = self.diags(G/(2*(E*G-F*F)))
-        DHDM = self.diags(-2*F/(2*(E*G-F*F)))
-        DHDN = self.diags(E/(2*(E*G-F*F)))
-        DHDX = DHDE.dot(DEDX) + DHDF.dot(DFDX) + DHDG.dot(DGDX)+\
-               DHDL.dot(DLDX) + DHDM.dot(DMDX) + DHDN.dot(DNDX)
+        H = (E * N - 2 * F * M + G * L) / (2 * (E * G - F * F))
+        DHDE = self.diags(N / (2 * (E * G - F * F)) - (E * N - 2 * F * M + G * L) / (2 * (E * G - F * F)) ** 2 * 2 * G)
+        DHDF = self.diags(
+            -2 * M / (2 * (E * G - F * F)) + (E * N - 2 * F * M + G * L) / (2 * (E * G - F * F)) ** 2 * 4 * F
+        )
+        DHDG = self.diags(L / (2 * (E * G - F * F)) - (E * N - 2 * F * M + G * L) / (2 * (E * G - F * F)) ** 2 * 2 * E)
+        DHDL = self.diags(G / (2 * (E * G - F * F)))
+        DHDM = self.diags(-2 * F / (2 * (E * G - F * F)))
+        DHDN = self.diags(E / (2 * (E * G - F * F)))
+        DHDX = DHDE.dot(DEDX) + DHDF.dot(DFDX) + DHDG.dot(DGDX) + DHDL.dot(DLDX) + DHDM.dot(DMDX) + DHDN.dot(DNDX)
 
         # Assign integration weights for each point
         # 1   for center nodes
         # 1/2 for edge nodes
         # 1/4 for corner nodes
-        wt = numpy.zeros_like(n_norm)+1
-        wt[self.node_map[iSurf][0,:]] *= 0.5
-        wt[self.node_map[iSurf][-1,:]] *= 0.5
-        wt[self.node_map[iSurf][:,0]] *= 0.5
-        wt[self.node_map[iSurf][:,-1]] *= 0.5
-        #Compute discrete area associated with each node
-        dS = wt*n_norm
+        wt = np.zeros_like(n_norm) + 1
+        wt[self.node_map[iSurf][0, :]] *= 0.5
+        wt[self.node_map[iSurf][-1, :]] *= 0.5
+        wt[self.node_map[iSurf][:, 0]] *= 0.5
+        wt[self.node_map[iSurf][:, -1]] *= 0.5
+        # Compute discrete area associated with each node
+        dS = wt * n_norm
         DdSDX = self.diags(wt).dot(Dn_normDX)
 
-        one = numpy.ones(self.node_map[iSurf].size)
+        one = np.ones(self.node_map[iSurf].size)
 
-        if self.curvatureType == 'Gaussian':
+        if self.curvatureType == "Gaussian":
             # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
-            kS = numpy.dot(one,K*K*dS)
-            DkSDX = (self.diags(2*K*dS).dot(DKDX)+self.diags(K*K).dot(DdSDX)).T.dot(one)
+            # kS = np.dot(one, K * K * dS)
+            DkSDX = (self.diags(2 * K * dS).dot(DKDX) + self.diags(K * K).dot(DdSDX)).T.dot(one)
             return DkSDX
-        elif self.curvatureType == 'mean':
+        elif self.curvatureType == "mean":
             # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
-            hS = numpy.dot(one,H*H*dS)
-            DhSDX = (self.diags(2*H*dS).dot(DHDX)+self.diags(H*H).dot(DdSDX)).T.dot(one)
+            # hS = np.dot(one, H * H * dS)
+            DhSDX = (self.diags(2 * H * dS).dot(DHDX) + self.diags(H * H).dot(DdSDX)).T.dot(one)
             return DhSDX
-        elif self.curvatureType == 'combined':
+        elif self.curvatureType == "combined":
             # Now compute dcSDX. Note: cS= sum( (4*H*H-2*K)*dS ), DcSDX = term1 - term2
             # where term1 = sum( 8*H*DHDX*dS + 4*H*H*DdSdX ), term2 = sum( 2*DKDX*dS + 2*K*DdSdX )
-            term1 = (self.diags(8*H*dS).dot(DHDX)+self.diags(4*H*H).dot(DdSDX)).T.dot(one)
-            term2 = (self.diags(2*dS).dot(DKDX)+self.diags(2*K).dot(DdSDX)).T.dot(one)
+            term1 = (self.diags(8 * H * dS).dot(DHDX) + self.diags(4 * H * H).dot(DdSDX)).T.dot(one)
+            term2 = (self.diags(2 * dS).dot(DKDX) + self.diags(2 * K).dot(DdSDX)).T.dot(one)
             DcSDX = term1 - term2
             return DcSDX
-        elif self.curvatureType == 'KSmean':
-            sigmaH=numpy.dot(one,numpy.exp(self.KSCoeff*H*H*dS))
-            DhSDX = (self.diags(2*H*dS/sigmaH*numpy.exp(self.KSCoeff*H*H*dS)).dot(DHDX)+self.diags(H*H/sigmaH*numpy.exp(self.KSCoeff*H*H*dS)).dot(DdSDX)).T.dot(one)
+        elif self.curvatureType == "KSmean":
+            sigmaH = np.dot(one, np.exp(self.KSCoeff * H * H * dS))
+            DhSDX = (
+                self.diags(2 * H * dS / sigmaH * np.exp(self.KSCoeff * H * H * dS)).dot(DHDX)
+                + self.diags(H * H / sigmaH * np.exp(self.KSCoeff * H * H * dS)).dot(DdSDX)
+            ).T.dot(one)
             return DhSDX
         else:
-            raise Error("The curvatureType parameter should be Gaussian, mean, or combined, "
-                        "%s is not supported!"%curvatureType)
+            raise Error(
+                "The curvatureType parameter should be Gaussian, mean, or combined, "
+                "%s is not supported!" % self.curvatureType
+            )
 
     def evalCross(self, iSurf, u, v):
-        '''
+        """
         Evaluate the cross product of two vector fields on the surface
         (n = u x v)
-        '''
-        n = numpy.zeros_like(self.X[iSurf])
-        n[self.X_map[iSurf][:,:,0]] = u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,2]] - u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,1]]
-        n[self.X_map[iSurf][:,:,1]] = -u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,2]] + u[self.X_map[iSurf][:,:,2]]*v[self.X_map[iSurf][:,:,0]]
-        n[self.X_map[iSurf][:,:,2]] = u[self.X_map[iSurf][:,:,0]]*v[self.X_map[iSurf][:,:,1]] - u[self.X_map[iSurf][:,:,1]]*v[self.X_map[iSurf][:,:,0]]
+        """
+        n = np.zeros_like(self.X[iSurf])
+        n[self.X_map[iSurf][:, :, 0]] = (
+            u[self.X_map[iSurf][:, :, 1]] * v[self.X_map[iSurf][:, :, 2]]
+            - u[self.X_map[iSurf][:, :, 2]] * v[self.X_map[iSurf][:, :, 1]]
+        )
+        n[self.X_map[iSurf][:, :, 1]] = (
+            -u[self.X_map[iSurf][:, :, 0]] * v[self.X_map[iSurf][:, :, 2]]
+            + u[self.X_map[iSurf][:, :, 2]] * v[self.X_map[iSurf][:, :, 0]]
+        )
+        n[self.X_map[iSurf][:, :, 2]] = (
+            u[self.X_map[iSurf][:, :, 0]] * v[self.X_map[iSurf][:, :, 1]]
+            - u[self.X_map[iSurf][:, :, 1]] * v[self.X_map[iSurf][:, :, 0]]
+        )
         return n
 
     def evalCrossSens(self, iSurf, u, v):
-        '''
+        """
         Evaluate sensitivity of cross product wrt to the input vectors u and v
         (DnDu, DnDv)
-        '''
+        """
         # Compute sensitivity wrt v
         ii = []
         jj = []
         data = []
         # Dn[self.X_map[iSurf][:,:,0]]/Dv[self.X_map[iSurf][:,:,2]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        data += list(numpy.reshape(u[self.X_map[iSurf][:,:,1]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        data += list(np.reshape(u[self.X_map[iSurf][:, :, 1]], -1))
         # Dn[self.X_map[iSurf][:,:,0]]/Dv[self.X_map[iSurf][:,:,1]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        data += list(numpy.reshape(-u[self.X_map[iSurf][:,:,2]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        data += list(np.reshape(-u[self.X_map[iSurf][:, :, 2]], -1))
         # Dn[self.X_map[iSurf][:,:,1]]/Dv[self.X_map[iSurf][:,:,2]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        data += list(numpy.reshape(-u[self.X_map[iSurf][:,:,0]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        data += list(np.reshape(-u[self.X_map[iSurf][:, :, 0]], -1))
         # Dn[self.X_map[iSurf][:,:,1]]/Dv[self.X_map[iSurf][:,:,0]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        data += list(numpy.reshape(u[self.X_map[iSurf][:,:,2]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        data += list(np.reshape(u[self.X_map[iSurf][:, :, 2]], -1))
         # Dn[self.X_map[iSurf][:,:,2]]/Dv[self.X_map[iSurf][:,:,1]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        data += list(numpy.reshape(u[self.X_map[iSurf][:,:,0]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        data += list(np.reshape(u[self.X_map[iSurf][:, :, 0]], -1))
         # Dn[self.X_map[iSurf][:,:,2]]/Dv[self.X_map[iSurf][:,:,0]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        data += list(numpy.reshape(-u[self.X_map[iSurf][:,:,1]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        data += list(np.reshape(-u[self.X_map[iSurf][:, :, 1]], -1))
 
-
-        DnDv = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
+        DnDv = csr_matrix((data, [ii, jj]), shape=(self.X[iSurf].size, self.X[iSurf].size))
         # Now wrt v
         ii = []
         jj = []
         data = []
         # Dn[self.X_map[iSurf][:,:,0]]/Du[self.X_map[iSurf][:,:,1]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        data += list(numpy.reshape(v[self.X_map[iSurf][:,:,2]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        data += list(np.reshape(v[self.X_map[iSurf][:, :, 2]], -1))
         # Dn[self.X_map[iSurf][:,:,0]]/Du[self.X_map[iSurf][:,:,2]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,1]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        data += list(np.reshape(-v[self.X_map[iSurf][:, :, 1]], -1))
         # Dn[self.X_map[iSurf][:,:,1]]/Du[self.X_map[iSurf][:,:,0]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,2]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        data += list(np.reshape(-v[self.X_map[iSurf][:, :, 2]], -1))
         # Dn[self.X_map[iSurf][:,:,1]]/Du[self.X_map[iSurf][:,:,2]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        data += list(numpy.reshape(v[self.X_map[iSurf][:,:,0]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        data += list(np.reshape(v[self.X_map[iSurf][:, :, 0]], -1))
         # Dn[self.X_map[iSurf][:,:,2]]/Du[self.X_map[iSurf][:,:,0]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        data += list(numpy.reshape(v[self.X_map[iSurf][:,:,1]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        data += list(np.reshape(v[self.X_map[iSurf][:, :, 1]], -1))
         # Dn[self.X_map[iSurf][:,:,2]]/Du[self.X_map[iSurf][:,:,1]]
-        ii += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        data += list(numpy.reshape(-v[self.X_map[iSurf][:,:,0]],-1))
+        ii += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        data += list(np.reshape(-v[self.X_map[iSurf][:, :, 0]], -1))
 
-
-        DnDu = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
+        DnDu = csr_matrix((data, [ii, jj]), shape=(self.X[iSurf].size, self.X[iSurf].size))
         return [DnDu, DnDv]
 
     def evalNorm(self, iSurf, u):
-        '''
+        """
         Evaluate the norm of vector field on the surface
          (u o u)**1/2
-        '''
-        u_norm = numpy.zeros(self.X[iSurf].size//3)
-        u_norm[self.node_map[iSurf][:,:]] = numpy.sqrt(u[self.X_map[iSurf][:,:,0]]**2 + \
-            u[self.X_map[iSurf][:,:,1]]**2 + u[self.X_map[iSurf][:,:,2]]**2)
+        """
+        u_norm = np.zeros(self.X[iSurf].size // 3)
+        u_norm[self.node_map[iSurf][:, :]] = np.sqrt(
+            u[self.X_map[iSurf][:, :, 0]] ** 2 + u[self.X_map[iSurf][:, :, 1]] ** 2 + u[self.X_map[iSurf][:, :, 2]] ** 2
+        )
         return u_norm
 
     def evalNormSens(self, iSurf, u):
-        '''
+        """
         Evaluate the sensitivity of the norm wrt input vector u
-        '''
-        u_norm = numpy.zeros(self.X[iSurf].size//3)
-        u_norm[self.node_map[iSurf][:,:]] = numpy.sqrt(u[self.X_map[iSurf][:,:,0]]**2 + \
-            u[self.X_map[iSurf][:,:,1]]**2 + u[self.X_map[iSurf][:,:,2]]**2)
+        """
+        u_norm = np.zeros(self.X[iSurf].size // 3)
+        u_norm[self.node_map[iSurf][:, :]] = np.sqrt(
+            u[self.X_map[iSurf][:, :, 0]] ** 2 + u[self.X_map[iSurf][:, :, 1]] ** 2 + u[self.X_map[iSurf][:, :, 2]] ** 2
+        )
         ii = []
         jj = []
         data = []
         # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,0]]
-        ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,0],-1))
-        data += list(numpy.reshape(u[self.X_map[iSurf][:,:,0]]/u_norm[self.node_map[iSurf][:,:]],-1))
+        ii += list(np.reshape(self.node_map[iSurf][:, :], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 0], -1))
+        data += list(np.reshape(u[self.X_map[iSurf][:, :, 0]] / u_norm[self.node_map[iSurf][:, :]], -1))
 
         # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,1]]
-        ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,1],-1))
-        data += list(numpy.reshape(u[self.X_map[iSurf][:,:,1]]/u_norm[self.node_map[iSurf][:,:]],-1))
+        ii += list(np.reshape(self.node_map[iSurf][:, :], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 1], -1))
+        data += list(np.reshape(u[self.X_map[iSurf][:, :, 1]] / u_norm[self.node_map[iSurf][:, :]], -1))
 
         # Du_norm[self.node_map[iSurf][:,:]]Du[self.X_map[iSurf][:,:,2]]
-        ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
-        jj += list(numpy.reshape(self.X_map[iSurf][:,:,2],-1))
-        data += list(numpy.reshape(u[self.X_map[iSurf][:,:,2]]/u_norm[self.node_map[iSurf][:,:]],-1))
+        ii += list(np.reshape(self.node_map[iSurf][:, :], -1))
+        jj += list(np.reshape(self.X_map[iSurf][:, :, 2], -1))
+        data += list(np.reshape(u[self.X_map[iSurf][:, :, 2]] / u_norm[self.node_map[iSurf][:, :]], -1))
 
-        Du_normDu = csr_matrix((data,[ii,jj]),shape=(u_norm.size,self.X[iSurf].size))
+        Du_normDu = csr_matrix((data, [ii, jj]), shape=(u_norm.size, self.X[iSurf].size))
         return Du_normDu
 
     def evalInProd(self, iSurf, u, v):
-        '''
+        """
         Evaluate the inner product of two vector fields on the surface
         (ip = u o v)
-        '''
-        ip = numpy.zeros(self.node_map[iSurf].size)
+        """
+        ip = np.zeros(self.node_map[iSurf].size)
         for i in range(3):
-            ip[self.node_map[iSurf][:,:]] += u[self.X_map[iSurf][:,:,i]]*v[self.X_map[iSurf][:,:,i]]
+            ip[self.node_map[iSurf][:, :]] += u[self.X_map[iSurf][:, :, i]] * v[self.X_map[iSurf][:, :, i]]
         return ip
 
     def evalInProdSens(self, iSurf, u, v):
-        '''
+        """
         Evaluate sensitivity of inner product wrt to the input vectors u and v
         (DipDu, DipDv)
-        '''
+        """
         ii = []
         jj = []
         data = []
         for i in range(3):
             # Dip[node_map[:,:]]/Du[self.X_map[iSurf][:,:,i]]
-            ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
-            data += list(numpy.reshape(v[self.X_map[iSurf][:,:,i]],-1))
-        DipDu = csr_matrix((data,[ii,jj]),shape=(self.node_map[iSurf].size,self.X_map[iSurf].size))
+            ii += list(np.reshape(self.node_map[iSurf][:, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, :, i], -1))
+            data += list(np.reshape(v[self.X_map[iSurf][:, :, i]], -1))
+        DipDu = csr_matrix((data, [ii, jj]), shape=(self.node_map[iSurf].size, self.X_map[iSurf].size))
         ii = []
         jj = []
         data = []
         for i in range(3):
             # Dip[node_map[:,:]]/Dv[self.X_map[iSurf][:,:,i]]
-            ii += list(numpy.reshape(self.node_map[iSurf][:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,:,i],-1))
-            data += list(numpy.reshape(u[self.X_map[iSurf][:,:,i]],-1))
-        DipDv = csr_matrix((data,[ii,jj]),shape=(self.node_map[iSurf].size,self.X_map[iSurf].size))
+            ii += list(np.reshape(self.node_map[iSurf][:, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, :, i], -1))
+            data += list(np.reshape(u[self.X_map[iSurf][:, :, i]], -1))
+        DipDv = csr_matrix((data, [ii, jj]), shape=(self.node_map[iSurf].size, self.X_map[iSurf].size))
         return [DipDu, DipDv]
 
     def evalDiff(self, iSurf, v, wrt):
-        '''
+        """
         Diferentiate vector field v wrt the parameteric coordinate u or v.
         Second order accurate. Central difference for nodes in the center
         forward/backward difference for nodes on the edge
-        '''
-        v_wrt = numpy.zeros_like(v)
-        if wrt == 'u':
-            v_wrt[self.X_map[iSurf][1:-1,:,:]]=(v[self.X_map[iSurf][2:,:,:]]-v[self.X_map[iSurf][0:-2,:,:]])/2.0
-            v_wrt[self.X_map[iSurf][0,:,:]]=(-1*v[self.X_map[iSurf][2,:,:]]+4*v[self.X_map[iSurf][1,:,:]]-3*v[self.X_map[iSurf][0,:,:]])/2.0
-            v_wrt[self.X_map[iSurf][-1,:,:]]=-(-1*v[self.X_map[iSurf][-3,:,:]]+4*v[self.X_map[iSurf][-2,:,:]]-3*v[self.X_map[iSurf][-1,:,:]])/2.0
-        elif wrt == 'v':
-            v_wrt[self.X_map[iSurf][:,1:-1,:]]=(v[self.X_map[iSurf][:,2:,:]]-v[self.X_map[iSurf][:,0:-2,:]])/2.0
-            v_wrt[self.X_map[iSurf][:,0,:]]=(-1*v[self.X_map[iSurf][:,2,:]]+4*v[self.X_map[iSurf][:,1,:]]-3*v[self.X_map[iSurf][:,0,:]])/2.0
-            v_wrt[self.X_map[iSurf][:,-1,:]]=-(-1*v[self.X_map[iSurf][:,-3,:]]+4*v[self.X_map[iSurf][:,-2,:]]-3*v[self.X_map[iSurf][:,-1,:]])/2.0
+        """
+        v_wrt = np.zeros_like(v)
+        if wrt == "u":
+            v_wrt[self.X_map[iSurf][1:-1, :, :]] = (
+                v[self.X_map[iSurf][2:, :, :]] - v[self.X_map[iSurf][0:-2, :, :]]
+            ) / 2.0
+            v_wrt[self.X_map[iSurf][0, :, :]] = (
+                -1 * v[self.X_map[iSurf][2, :, :]]
+                + 4 * v[self.X_map[iSurf][1, :, :]]
+                - 3 * v[self.X_map[iSurf][0, :, :]]
+            ) / 2.0
+            v_wrt[self.X_map[iSurf][-1, :, :]] = (
+                -(
+                    -1 * v[self.X_map[iSurf][-3, :, :]]
+                    + 4 * v[self.X_map[iSurf][-2, :, :]]
+                    - 3 * v[self.X_map[iSurf][-1, :, :]]
+                )
+                / 2.0
+            )
+        elif wrt == "v":
+            v_wrt[self.X_map[iSurf][:, 1:-1, :]] = (
+                v[self.X_map[iSurf][:, 2:, :]] - v[self.X_map[iSurf][:, 0:-2, :]]
+            ) / 2.0
+            v_wrt[self.X_map[iSurf][:, 0, :]] = (
+                -1 * v[self.X_map[iSurf][:, 2, :]]
+                + 4 * v[self.X_map[iSurf][:, 1, :]]
+                - 3 * v[self.X_map[iSurf][:, 0, :]]
+            ) / 2.0
+            v_wrt[self.X_map[iSurf][:, -1, :]] = (
+                -(
+                    -1 * v[self.X_map[iSurf][:, -3, :]]
+                    + 4 * v[self.X_map[iSurf][:, -2, :]]
+                    - 3 * v[self.X_map[iSurf][:, -1, :]]
+                )
+                / 2.0
+            )
         return v_wrt
 
     def evalDiffSens(self, iSurf, wrt):
-        '''
+        """
         Compute sensitivity of v_wrt with respect to input vector fiel v
         (Dv_wrt/Dv)
-        '''
+        """
         ii = []
         jj = []
         data = []
-        if wrt == 'u':
+        if wrt == "u":
             # Central Difference
 
             # Dt_u[X_map[1:-1,:,:]]/DX[X_map[2:,:,:]] = 1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][2:,:,:],-1))
-            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][1:-1, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][2:, :, :], -1))
+            data += [0.5] * len(np.reshape(self.X_map[iSurf][1:-1, :, :], -1))
 
             # Dt_u[X_map[1:-1,:,:]]/DX[X_map[0:-2,:,:]] = -1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][0:-2,:,:],-1))
-            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][1:-1,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][1:-1, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][0:-2, :, :], -1))
+            data += [-0.5] * len(np.reshape(self.X_map[iSurf][1:-1, :, :], -1))
 
             # Forward Difference
 
             # Dt_u[X_map[0,:,:]]/DX[X_map[2,:,:]] = -1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][2,:,:],-1))
-            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][0, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][2, :, :], -1))
+            data += [-0.5] * len(np.reshape(self.X_map[iSurf][0, :, :], -1))
 
             # Dt_u[X_map[0,:,:]]/DX[X_map[1,:,:]] = 4/2
-            ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][1,:,:],-1))
-            data+=[2]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][0, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][1, :, :], -1))
+            data += [2] * len(np.reshape(self.X_map[iSurf][0, :, :], -1))
 
             # Dt_u[X_map[0,:,:]]/DX[X_map[0,:,:]] = -3/2
-            ii += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
-            data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][0,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][0, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][0, :, :], -1))
+            data += [-1.5] * len(np.reshape(self.X_map[iSurf][0, :, :], -1))
 
             # Backward Difference
 
             # Dt_u[X_map[-1,:,:]]/DX[X_map[-3,:,:]] = 1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][-3,:,:],-1))
-            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][-1, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][-3, :, :], -1))
+            data += [0.5] * len(np.reshape(self.X_map[iSurf][-1, :, :], -1))
 
             # Dt_u[X_map[-1,:,:]]/DX[X_map[-2,:,:]] = -4/2
-            ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
-            data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][-2,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][-1, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][-2, :, :], -1))
+            data += [-2.0] * len(np.reshape(self.X_map[iSurf][-2, :, :], -1))
 
             # Dt_u[X_map[-1,:,:]]/DX[X_map[-1,:,:]] = 3/2
-            ii += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
-            data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][-1,:,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][-1, :, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][-1, :, :], -1))
+            data += [1.5] * len(np.reshape(self.X_map[iSurf][-1, :, :], -1))
 
-        elif wrt == 'v':
+        elif wrt == "v":
             # Central Difference
 
             # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,2:,:]] = 1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,2:,:],-1))
-            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, 1:-1, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, 2:, :], -1))
+            data += [0.5] * len(np.reshape(self.X_map[iSurf][:, 1:-1, :], -1))
 
             # Dt_u[X_map[:,1:-1,:]]/DX[X_map[:,0:-2,:]] = -1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,0:-2,:],-1))
-            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,1:-1,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, 1:-1, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, 0:-2, :], -1))
+            data += [-0.5] * len(np.reshape(self.X_map[iSurf][:, 1:-1, :], -1))
 
             # Forward Difference
 
             # Dt_u[X_map[:,0,:]]/DX[X_map[:,2,:]] = -1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,2,:],-1))
-            data+=[-0.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, 0, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, 2, :], -1))
+            data += [-0.5] * len(np.reshape(self.X_map[iSurf][:, 0, :], -1))
 
             # Dt_u[X_map[:,0,:]]/DX[X_map[:,1,:]] = 4/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,1,:],-1))
-            data+=[2]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, 0, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, 1, :], -1))
+            data += [2] * len(np.reshape(self.X_map[iSurf][:, 0, :], -1))
 
             # Dt_u[X_map[:,0,:]]/DX[X_map[:,0,:]] = -3/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
-            data+=[-1.5]*len(numpy.reshape(self.X_map[iSurf][:,0,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, 0, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, 0, :], -1))
+            data += [-1.5] * len(np.reshape(self.X_map[iSurf][:, 0, :], -1))
 
             # Backward Difference
 
             # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-3,:]] = 1/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,-3,:],-1))
-            data+=[0.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, -1, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, -3, :], -1))
+            data += [0.5] * len(np.reshape(self.X_map[iSurf][:, -1, :], -1))
 
             # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-2,:]] = -4/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
-            data+=[-2.0]*len(numpy.reshape(self.X_map[iSurf][:,-2,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, -1, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, -2, :], -1))
+            data += [-2.0] * len(np.reshape(self.X_map[iSurf][:, -2, :], -1))
 
             # Dt_u[X_map[:,-1,:]]/DX[X_map[:,-1,:]] = 3/2
-            ii += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-            jj += list(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
-            data+=[1.5]*len(numpy.reshape(self.X_map[iSurf][:,-1,:],-1))
+            ii += list(np.reshape(self.X_map[iSurf][:, -1, :], -1))
+            jj += list(np.reshape(self.X_map[iSurf][:, -1, :], -1))
+            data += [1.5] * len(np.reshape(self.X_map[iSurf][:, -1, :], -1))
 
-        Dv_uDX = csr_matrix((data,[ii,jj]),shape=(self.X[iSurf].size,self.X[iSurf].size))
+        Dv_uDX = csr_matrix((data, [ii, jj]), shape=(self.X[iSurf].size, self.X[iSurf].size))
 
         return Dv_uDX
 
     def diags(self, a):
-        '''
+        """
         A standard vectorized sparse diagnal matrix function. Similar to the above \
         function
         some versions of scipy don't have this function, so this is here to prevent\
 
         potential import problems.
-        '''
-        ii=range(len(a))
-        return csr_matrix((a,[ii,ii]),(len(a),len(a)))
+        """
+        ii = range(len(a))
+        return csr_matrix((a, [ii, ii]), (len(a), len(a)))
 
     def writeTecplot(self, handle1):
-        '''
+        """
         Write Curvature data on the surface to a tecplot file. Data includes
         mean curvature, H, and Gaussian curvature, K.
 
         Input:
 
             tec_file: name of TecPlot file.
-        '''
+        """
         # we ignore the input handle and use this separated name for curvature constraint tecplot file
         # NOTE: we use this tecplot file to only visualize the local distribution of curctures.
         # The plotted local curvatures are not exactly as that computed in the evalCurvArea function
-        handle = open('%s.dat'%self.name,'w')
+        handle = open("%s.dat" % self.name, "w")
         handle.write('title = "DVConstraint curvature constraint"\n')
-        varbs='variables = "x", "y", "z", "K", "H" "C"'
-        handle.write(varbs+'\n')
+        varbs = 'variables = "x", "y", "z", "K", "H" "C"'
+        handle.write(varbs + "\n")
         for iSurf in range(self.nSurfs):
-            [_,K,H,C] = self.evalCurvArea(iSurf)
-            handle.write('Zone T=%s_%d\n'% (self.name,iSurf))
+            [_, K, H, C] = self.evalCurvArea(iSurf)
+            handle.write("Zone T=%s_%d\n" % (self.name, iSurf))
 
-            handle.write('Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n'% (
-                len(self.coords[iSurf]), (self.X_map[iSurf].shape[0]-1)*(self.X_map[iSurf].shape[1]-1)))
+            handle.write(
+                "Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n"
+                % (len(self.coords[iSurf]), (self.X_map[iSurf].shape[0] - 1) * (self.X_map[iSurf].shape[1] - 1))
+            )
             for i in range(self.X_map[iSurf].shape[0]):
                 for j in range(self.X_map[iSurf].shape[1]):
-                    handle.write('%E %E %E %E %E %E\n'% (self.X[iSurf][self.X_map[iSurf][i, j, 0]], self.X[iSurf][self.X_map[iSurf][i, j, 1]],
-                                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],K[self.node_map[iSurf][i,j]],H[self.node_map[iSurf][i,j]],C[self.node_map[iSurf][i,j]]))
-            handle.write('\n')
-            for i in range(self.X_map[iSurf].shape[0]-1):
-                for j in range(self.X_map[iSurf].shape[1]-1):
-                    handle.write('%d %d %d %d\n'% (self.node_map[iSurf][i,j]+1, self.node_map[iSurf][i+1,j]+1,self.node_map[iSurf][i+1,j+1]+1,self.node_map[iSurf][i,j+1]+1))
+                    handle.write(
+                        "%E %E %E %E %E %E\n"
+                        % (
+                            self.X[iSurf][self.X_map[iSurf][i, j, 0]],
+                            self.X[iSurf][self.X_map[iSurf][i, j, 1]],
+                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],
+                            K[self.node_map[iSurf][i, j]],
+                            H[self.node_map[iSurf][i, j]],
+                            C[self.node_map[iSurf][i, j]],
+                        )
+                    )
+            handle.write("\n")
+            for i in range(self.X_map[iSurf].shape[0] - 1):
+                for j in range(self.X_map[iSurf].shape[1] - 1):
+                    handle.write(
+                        "%d %d %d %d\n"
+                        % (
+                            self.node_map[iSurf][i, j] + 1,
+                            self.node_map[iSurf][i + 1, j] + 1,
+                            self.node_map[iSurf][i + 1, j + 1] + 1,
+                            self.node_map[iSurf][i, j + 1] + 1,
+                        )
+                    )
         handle.close()
+
 
 class GlobalLinearConstraint(object):
     """
     This class is used to represent a set of generic set of linear
     constriants coupling global design variables together.
     """
+
     def __init__(self, name, key, type, options, lower, upper, DVGeo, config):
         # No error checking here since the calling routine should have
         # already done it.
@@ -6075,7 +6381,7 @@ class GlobalLinearConstraint(object):
         self.ncon = 0
         self.jac = {}
         self.config = config
-        if self.type == 'monotonic':
+        if self.type == "monotonic":
             self.setMonotonic(options)
 
     def evalFunctions(self, funcs):
@@ -6095,7 +6401,7 @@ class GlobalLinearConstraint(object):
         for key in self.jac:
             cons.extend(self.jac[key].dot(self.DVGeo.DV_listGlobal[key].value))
 
-        funcs[self.name] = numpy.array(cons).real.astype('d')
+        funcs[self.name] = np.array(cons).real.astype("d")
 
     def evalFunctionsSens(self, funcsSens):
         """
@@ -6116,9 +6422,17 @@ class GlobalLinearConstraint(object):
         """
         if self.ncon > 0:
             for key in self.jac:
-                optProb.addConGroup(self.name+'_'+key, self.jac[key].shape[0],
-                                    lower=self.lower, upper=self.upper, scale=1.0,
-                                    linear=True, wrt=key, jac={key:self.jac[key]})
+                optProb.addConGroup(
+                    self.name + "_" + key,
+                    self.jac[key].shape[0],
+                    lower=self.lower,
+                    upper=self.upper,
+                    scale=1.0,
+                    linear=True,
+                    wrt=key,
+                    jac={key: self.jac[key]},
+                )
+
     def setMonotonic(self, options):
         """
         Set up monotonicity jacobian for the given global design variable
@@ -6127,21 +6441,21 @@ class GlobalLinearConstraint(object):
 
         if self.config is None or self.config in self.DVGeo.DV_listGlobal[self.key].config:
             ndv = self.DVGeo.DV_listGlobal[self.key].nVal
-            start = options['start']
-            stop = options['stop']
+            start = options["start"]
+            stop = options["stop"]
             if stop == -1:
                 stop = ndv
 
             # Since start and stop are inclusive, we need to add one to stop to
             # account for python indexing
             stop += 1
-            ncon = len(numpy.zeros(ndv)[start:stop]) - 1
+            ncon = len(np.zeros(ndv)[start:stop]) - 1
 
-            jacobian = numpy.zeros((ncon, ndv))
-            slope = options['slope']
+            jacobian = np.zeros((ncon, ndv))
+            slope = options["slope"]
             for i in range(ncon):
-                jacobian[i, start+i] = 1.0*slope
-                jacobian[i, start+i+1] = -1.0*slope
+                jacobian[i, start + i] = 1.0 * slope
+                jacobian[i, start + i + 1] = -1.0 * slope
             self.jac[self.key] = jacobian
             self.ncon += ncon
 

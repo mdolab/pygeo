@@ -1,21 +1,20 @@
 import numpy as np
 
-# rst Dimensions
 # Bounding box for root airfoil
-x_root_range = [-0.05, 1.7]
-y_root_range = [-0.25, 0.25]
+x_root_range = [-0.1, 5.1]
+y_root_range = [-0.5, 0.5]
 z_root = -0.01
 
 # Bounding box for tip airfoil
-x_tip_range = [-0.05, 1.7]
+x_tip_range = [7.4, 9.2]
 y_tip_range = [-0.25, 0.25]
-z_tip = 11 / 2
+z_tip = 14.25
 
 # Number of FFD control points per dimension
-nX = 4  # streamwise
+nX = 6  # streamwise
 nY = 2  # perpendicular to wing planform
-nZ = 4  # spanwise
-# rst Compute
+nZ = 8  # spanwise
+
 # Compute grid points
 span_dist = np.linspace(0, 1, nZ) ** 0.8
 z_sections = span_dist * (z_tip - z_root) + z_root
@@ -39,14 +38,14 @@ for k in range(nZ):
         Y[row, :] = np.ones(nX) * y_coords[j, k]
         Z[row, :] = np.ones(nX) * z_sections[k]
         row += 1
-# rst Write
+
 # Write FFD to file
-filename = "c172.xyz"
+filename = "ffd.xyz"
 f = open(filename, "w")
 f.write("\t\t1\n")
 f.write("\t\t%d\t\t%d\t\t%d\n" % (nX, nY, nZ))
 for set in [X, Y, Z]:
     for row in set:
         vals = tuple(row)
-        f.write("\t%3.8f\t%3.8f\t%3.8f\t%3.8f\n" % vals)
+        f.write("\t%3.8f\t%3.8f\t%3.8f\t%3.8f\t%3.8f\t%3.8f\n" % vals)
 f.close()
