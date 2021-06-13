@@ -93,9 +93,9 @@ def sweep(val, geo):
     # we will sweep the wing about the first point in the ref axis
     sweep_ref_pt = C_orig[0, :]
 
-    theta = -val[0]*np.pi/180
+    theta = -val[0] * np.pi / 180
     rot_mtx = np.array([[np.cos(theta), 0., -np.sin(theta)],
-                        [0.,            1., 0.],
+                        [0., 1., 0.],
                         [np.sin(theta), 0., np.cos(theta)]])
 
     # modify the control points of the ref axis

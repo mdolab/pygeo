@@ -12,7 +12,7 @@ yu = 0.5
 yl = -0.5
 
 # construct the i-j (x-y) plane grid of control points 10 x 2
-# we'll copy this along the k (z) axis later to make a cube 
+# we'll copy this along the k (z) axis later to make a cube
 for i in range(nffd):
     xtemp = i * 1.0 / (nffd - 1.0)
     xslice[i] = -1.0 * xmargin + (1 + 2.0 * xmargin) * xtemp

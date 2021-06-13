@@ -6,9 +6,9 @@ FFDbox = np.zeros((nstreamwise, 2, nspanwise, 3))
 
 zspan1 = np.linspace(-0.001, 2.5, 4)
 zspan2 = np.linspace(2.5, 5.4, 5)[1:]
-chord1 = 1.70*np.ones(4)
+chord1 = 1.70 * np.ones(4)
 chord2 = np.linspace(1.70, 1.20, 5)[1:]
-xoff1 = -0.01*np.ones(4)
+xoff1 = -0.01 * np.ones(4)
 xoff2 = np.linspace(-0.01, 0.1375, 5)[1:]
 toverc = np.ones(8) * 0.16
 
