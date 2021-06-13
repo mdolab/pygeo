@@ -8,7 +8,7 @@ import traceback
 import inspect
 import os
 from io import StringIO
-import tokenize 
+import tokenize
 
 from docutils.parsers.rst.directives import unchanged, images
 
@@ -18,6 +18,7 @@ from openmdao.docs._utils.docutil import get_source_code, remove_docstrings, \
     get_skip_output_node, get_interleaved_io_nodes, get_output_block_node, \
     split_source_into_input_blocks, extract_output_blocks, consolidate_input_blocks, node_setup, \
     strip_decorators, remove_leading_trailing_whitespace_lines
+
 
 def remove_excerpt_tags(source):
     """
@@ -33,7 +34,6 @@ def remove_excerpt_tags(source):
     """
     io_obj = StringIO(source)
     out = ""
-    prev_toktype = tokenize.INDENT
     last_lineno = -1
     last_col = 0
     pattern = re.compile(r"# EXCERPT [0-9]+ #")
@@ -62,12 +62,13 @@ def remove_excerpt_tags(source):
         else:
             out += token_string
             prev_token_was_excerpt = False
-        prev_toktype = token_type
         last_col = end_col
         last_lineno = end_line
     return out
 
 # This get_source_code directive is customized
+
+
 def get_script_excerpt(path):
     """
     Return source code as a text string.
@@ -114,8 +115,9 @@ def get_script_excerpt(path):
         raise SphinxError("Too few or too many excerpt comment tags " + split_comment)
     else:
         source = split_source[1]
-    
+
     return remove_leading_trailing_whitespace_lines(source), indent, module, class_obj, method_obj
+
 
 _plot_count = 0
 
@@ -183,7 +185,6 @@ class EmbedCodeDirective(Directive):
         #
         path = self.arguments[0]
 
-                
         try:
             if len(path.split(':EXCERPT:')) > 1:
                 source, indent, module, class_, method = get_script_excerpt(path)
@@ -199,8 +200,6 @@ class EmbedCodeDirective(Directive):
         #
         # script, test and/or plot?
         #
-        is_script = path.endswith('.py')
-
         is_test = class_ is not None and inspect.isclass(class_) and issubclass(class_, unittest.TestCase)
 
         shows_plot = re.compile('|'.join(plotting_functions)).search(source)
