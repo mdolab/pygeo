@@ -13,7 +13,7 @@ except ImportError:
     missing_openvsp = True
 
 if not missing_openvsp:
-    from pygeo import DVGeometryVSP
+    from pygeo.DVGeometryVSP import DVGeometryVSP
 
 test_params = [
     # # Tutorial scalar JST
