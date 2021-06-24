@@ -5,7 +5,6 @@ import copy
 from collections import OrderedDict
 import numpy as np
 from scipy import sparse
-from mpi4py import MPI
 from pyspline import pySpline
 from . import pyNetwork, pyBlock, geo_utils
 import os
@@ -1953,6 +1952,7 @@ class DVGeometry(object):
                 dIdx_local[i, :] = self.JT[ptSetName].dot(dIdpt[i, :, :].flatten())
 
         if comm:  # If we have a comm, globaly reduce with sum
+            from mpi4py import MPI
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
         else:
             dIdx = dIdx_local

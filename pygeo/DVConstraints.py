@@ -4,7 +4,6 @@
 import numpy as np
 from . import geo_utils, pyGeo
 from pyspline import pySpline
-from mpi4py import MPI
 from scipy.sparse import csr_matrix
 from collections import OrderedDict
 
@@ -3898,6 +3897,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         # first compute the length of the intersection surface between the object and surf mesh
         from geograd import geograd_parallel
+        from mpi4py import MPI
 
         mindist_tmp = 0.0
 
@@ -3945,6 +3945,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         """
         # first compute the length of the intersection surface between the object and surf mesh
         from geograd import geograd_parallel
+        from mpi4py import MPI
 
         deriv_output = geograd_parallel.compute_derivs(
             self.surf1_p0,
@@ -5711,8 +5712,9 @@ class CurvatureConstraint(GeometricConstraint):
         for iSurf in range(self.nSurfs):
             self.curvatureRef += self.evalCurvArea(iSurf)[0]
 
-        if MPI.COMM_WORLD.rank == 0:
-            print("Reference curvature: ", self.curvatureRef)
+        # from mpi4py import MPI
+        # if MPI.COMM_WORLD.rank == 0:
+        #     print("Reference curvature: ", self.curvatureRef)
 
     def evalFunctions(self, funcs, config):
         """
@@ -5828,8 +5830,9 @@ class CurvatureConstraint(GeometricConstraint):
             # Now compute the KS function for mean curvature, equivelent to KS(H*H*dS)
             sigmaH = np.dot(one, np.exp(self.KSCoeff * H * H * dS))
             KSmean = np.log(sigmaH) / self.KSCoeff
-            if MPI.COMM_WORLD.rank == 0:
-                print("Max curvature: ", max(H * H * dS))
+            # from mpi4py import MPI
+            # if MPI.COMM_WORLD.rank == 0:
+            #     print("Max curvature: ", max(H * H * dS))
             return [KSmean, K, H, C]
         else:
             raise Error(
