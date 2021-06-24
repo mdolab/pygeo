@@ -1953,7 +1953,7 @@ class DVGeometry(object):
 
         if comm:  # If we have a comm, globaly reduce with sum
             from mpi4py import MPI
-            
+
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
         else:
             dIdx = dIdx_local
