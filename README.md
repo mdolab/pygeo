@@ -18,7 +18,7 @@ You can then view the built documentation in the `_build` folder.
 ## Citation
 
 Please cite pyGeo in any publication for which you find it useful.
-For more background, theory, and figures, see the [this paper](http://mdolab.engin.umich.edu/sites/default/files/mao2010_final.pdf).
+For more background, theory, and figures, see the [this paper](http://www.umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf).
 
 G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
 
