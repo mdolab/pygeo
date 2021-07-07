@@ -9,6 +9,7 @@ from mpi4py import MPI
 from pyspline import pySpline
 from . import pyNetwork, pyBlock, geo_utils
 import os
+import warnings
 
 
 class Error(Exception):
@@ -87,7 +88,7 @@ class DVGeometry(object):
       >>> def twist(val, geo):
       >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
       >>> # Now add this as a global variable:
-      >>> DVGeo.addGeoDVGlobal('wing_twist', 0.0, twist, lower=-10, upper=10)
+      >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
       >>> # Now add local (shape) variables
       >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
       >>>
@@ -645,7 +646,7 @@ class DVGeometry(object):
         # Add the child to the parent and return
         self.children.append(childDVGeo)
 
-    def addGeoDVGlobal(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None):
+    def addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None):
         """
         Add a global design variable to the DVGeometry object. This
         type of design variable acts on one or more reference axis.
@@ -694,6 +695,10 @@ class DVGeometry(object):
         if type(config) == str:
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
+
+    def addGeoDVGlobal(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None):
+        warnings.warn('addGeoDVGlobal has been replaced, use addGlobalDV instead', DeprecationWarning)
+        return self.addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None)
 
     def addGeoDVLocal(
         self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
@@ -4231,7 +4236,7 @@ class DVGeometry(object):
 class geoDVGlobal(object):
     def __init__(self, dv_name, value, lower, upper, scale, function, config):
         """Create a geometric design variable (or design variable group)
-        See addGeoDVGlobal in DVGeometry class for more information
+        See addGlobalDV in DVGeometry class for more information
         """
         self.name = dv_name
         self.value = np.atleast_1d(np.array(value)).astype("D")

@@ -89,7 +89,7 @@ class RegTestPyGeo(unittest.TestCase):
             for i in range(1, nRefAxPts):
                 geo.rot_z["wing"].coef[i] = val[i - 1]
 
-        DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+        DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
         # create a DVConstraints object for the wing
@@ -119,7 +119,7 @@ class RegTestPyGeo(unittest.TestCase):
             for i in range(1, nRefAxPts):
                 geo.rot_z["wing"].coef[i] = val[i - 1]
 
-        DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+        DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
         # create a DVConstraints object for the wing
@@ -810,7 +810,7 @@ class RegTestPyGeo(unittest.TestCase):
                 for i in range(1, nRefAxPts):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
-            DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+            DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
             DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
@@ -863,7 +863,7 @@ class RegTestPyGeo(unittest.TestCase):
                 for i in range(1, nRefAxPts):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
-            DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+            DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
             DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
@@ -911,7 +911,7 @@ class RegTestPyGeo(unittest.TestCase):
                 for i in range(1, nRefAxPts):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
-            DVGeo1.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+            DVGeo1.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
             DVGeo1.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVGeo object with a few local thickness variables
@@ -1018,7 +1018,7 @@ class RegTestPyGeo(unittest.TestCase):
                 for i in range(1, nRefAxPts):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
-            DVGeo1.addGeoDVGlobal(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+            DVGeo1.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
             DVGeo1.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing

@@ -284,7 +284,7 @@ def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, sl
 
     if translate:
         dvName = "translate_{}".format(name)
-        geo.addGeoDVGlobal(dvName=dvName, value=[0] * 3, func=f_translate)
+        geo.addGlobalDV(dvName=dvName, value=[0] * 3, func=f_translate)
 
     if rotate is not None:
         rot_funcs = {"x": f_rotate_x, "y": f_rotate_y, "z": f_rotate_z, "theta": f_rotate_theta}
@@ -292,7 +292,7 @@ def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, sl
 
         dvName = "rotate_{}_{}".format(rotate, name)
         dvFunc = rot_funcs[rotate]
-        geo.addGeoDVGlobal(dvName=dvName, value=0, func=dvFunc)
+        geo.addGlobalDV(dvName=dvName, value=0, func=dvFunc)
 
     if local is not None:
         assert local in ["x", "y", "z"]

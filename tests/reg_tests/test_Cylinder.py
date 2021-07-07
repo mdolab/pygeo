@@ -111,7 +111,7 @@ class RegTestPyGeo(unittest.TestCase):
                 for i in range(nAxPts):
                     geo.scale["thru"].coef[i] = val[0]
 
-            DVGeo.addGeoDVGlobal("scale_circle", func=scale_circle, value=[1])
+            DVGeo.addGlobalDV("scale_circle", func=scale_circle, value=[1])
             DVCon.setDVGeo(DVGeo)
 
             leList = [[0, 0, 0], [-radius / 2, 0, height]]
