@@ -1,4 +1,4 @@
-__version__ = '1.2.1'
+__version__ = "1.5.0"
 
 from . import geo_utils
 from .pyNetwork import pyNetwork
@@ -7,6 +7,7 @@ from .pyBlock import pyBlock
 from .DVConstraints import DVConstraints
 from .DVGeometry import DVGeometry
 from .DVGeometryAxi import DVGeometryAxi
+
 try:
     from .om_dvgeo import OM_DVGEO
 except ImportError:

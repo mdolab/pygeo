@@ -1,5 +1,5 @@
 # pyGeo
-[![Build Status](https://travis-ci.com/mdolab/pygeo.svg?branch=pyGeo)](https://travis-ci.com/mdolab/pygeo)
+[![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.pygeo?branchName=master)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=17&branchName=master)
 [![Documentation Status](https://readthedocs.com/projects/mdolab-pygeo/badge/?version=latest)](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/?badge=latest)
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
@@ -18,7 +18,7 @@ You can then view the built documentation in the `_build` folder.
 ## Citation
 
 Please cite pyGeo in any publication for which you find it useful.
-For more background, theory, and figures, see the [this paper](http://mdolab.engin.umich.edu/sites/default/files/mao2010_final.pdf).
+For more background, theory, and figures, see the [this paper](http://umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf).
 
 G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
 

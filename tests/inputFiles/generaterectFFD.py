@@ -2,7 +2,7 @@ import numpy as np
 
 # rst Dimensions
 # Bounding box for root airfoil
-x_root_range = [-1.0,1.0]
+x_root_range = [-1.0, 1.0]
 y_root_range = [-0.5, 0.5]
 z_root = 0.0
 
