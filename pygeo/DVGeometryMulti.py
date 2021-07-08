@@ -2,15 +2,15 @@
 #         Imports
 # ======================================================================
 from __future__ import print_function
-import copy,time
+import copy, time
+
 try:
     from collections import OrderedDict
 except ImportError:
     try:
         from ordereddict import OrderedDict
     except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, "
-              "use:\n pip install ordereddict")
+        print("Could not find any OrderedDict class. For 2.6 and earlier, " "use:\n pip install ordereddict")
 import numpy
 from scipy import sparse
 from mpi4py import MPI
@@ -22,25 +22,28 @@ import os
 
 # directly import the interface to the fortran APIs
 from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools, adtAPI
+
 # generic import for all pysurf codes
 import pysurf
+
 
 class Error(Exception):
     """
     Format the error message in a box to make it clear this
     was a explicitly raised exception.
     """
+
     def __init__(self, message):
-        msg = '\n+'+'-'*78+'+'+'\n' + '| DVGeometryMulti Error: '
+        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVGeometryMulti Error: "
         i = 19
         for word in message.split():
-            if len(word) + i + 1 > 78: # Finish line and start new one
-                msg += ' '*(78-i)+'|\n| ' + word + ' '
-                i = 1 + len(word)+1
+            if len(word) + i + 1 > 78:  # Finish line and start new one
+                msg += " " * (78 - i) + "|\n| " + word + " "
+                i = 1 + len(word) + 1
             else:
-                msg += word + ' '
-                i += len(word)+1
-        msg += ' '*(78-i) + '|\n' + '+'+'-'*78+'+'+'\n'
+                msg += word + " "
+                i += len(word) + 1
+        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
         print(msg)
         Exception.__init__(self)
 
@@ -82,7 +85,7 @@ class DVGeometryMulti(object):
             nodes *= scale
 
             # add these points to the corresponding dvgeo
-            DVGeo.addPointSet(nodes, 'triMesh')
+            DVGeo.addPointSet(nodes, "triMesh")
         else:
             # the user has not provided a triangulated surface mesh for this file
             nodes = None
@@ -93,18 +96,18 @@ class DVGeometryMulti(object):
         xMin, xMax = DVGeo.FFD.getBounds()
 
         # also we might want to modify the bounding box if the user specified any coordinates
-        if 'xmin' in bbox:
-            xMin[0] = bbox['xmin']
-        if 'ymin' in bbox:
-            xMin[1] = bbox['ymin']
-        if 'zmin' in bbox:
-            xMin[2] = bbox['zmin']
-        if 'xmax' in bbox:
-            xMax[0] = bbox['xmax']
-        if 'ymax' in bbox:
-            xMax[1] = bbox['ymax']
-        if 'zmax' in bbox:
-            xMax[2] = bbox['zmax']
+        if "xmin" in bbox:
+            xMin[0] = bbox["xmin"]
+        if "ymin" in bbox:
+            xMin[1] = bbox["ymin"]
+        if "zmin" in bbox:
+            xMin[2] = bbox["zmin"]
+        if "xmax" in bbox:
+            xMax[0] = bbox["xmax"]
+        if "ymax" in bbox:
+            xMax[1] = bbox["ymax"]
+        if "zmax" in bbox:
+            xMax[2] = bbox["zmax"]
 
         # initialize the component object
         self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn, xMin, xMax)
@@ -117,13 +120,43 @@ class DVGeometryMulti(object):
 
         return DVGeo
 
-    def addIntersection(self, compA, compB, dStarA=0.2, dStarB=0.2, featureCurves=[], distTol=1e-14, project=False, marchDir=1, includeCurves=False, intDir = None, curveEpsDict={}, remeshBwd=True):
+    def addIntersection(
+        self,
+        compA,
+        compB,
+        dStarA=0.2,
+        dStarB=0.2,
+        featureCurves=[],
+        distTol=1e-14,
+        project=False,
+        marchDir=1,
+        includeCurves=False,
+        intDir=None,
+        curveEpsDict={},
+        remeshBwd=True,
+    ):
         """
         Method that defines intersections between components
         """
 
         # just initialize the intersection object
-        self.intersectComps.append(CompIntersection(compA, compB, dStarA, dStarB, featureCurves, distTol, self, project, marchDir, includeCurves, intDir, curveEpsDict, remeshBwd))
+        self.intersectComps.append(
+            CompIntersection(
+                compA,
+                compB,
+                dStarA,
+                dStarB,
+                featureCurves,
+                distTol,
+                self,
+                project,
+                marchDir,
+                includeCurves,
+                intDir,
+                curveEpsDict,
+                remeshBwd,
+            )
+        )
 
     def getDVGeoDict(self):
         # return DVGeo objects so that users can add design variables
@@ -134,9 +167,9 @@ class DVGeometryMulti(object):
         This function should be called after adding all DVGeoDVs
         """
 
-        self.DV_listGlobal  = OrderedDict() # Global Design Variable List
-        self.DV_listLocal = OrderedDict() # Local Design Variable List
-        self.DV_listSectionLocal = OrderedDict() # Local Normal Design Variable List
+        self.DV_listGlobal = OrderedDict()  # Global Design Variable List
+        self.DV_listLocal = OrderedDict()  # Local Design Variable List
+        self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
 
         # we loop over all components and add the dv objects
         for comp in self.compNames:
@@ -146,19 +179,19 @@ class DVGeometryMulti(object):
 
             # loop over the DVGeo's DV lists
 
-            for k,v in DVGeoComp.DV_listGlobal.items():
+            for k, v in DVGeoComp.DV_listGlobal.items():
                 # change the key and add it to our dictionary...
-                knew = comp + ':' + k
+                knew = comp + ":" + k
                 self.DV_listGlobal[knew] = v
 
-            for k,v in DVGeoComp.DV_listLocal.items():
+            for k, v in DVGeoComp.DV_listLocal.items():
                 # change the key and add it to our dictionary...
-                knew = comp + ':' + k
+                knew = comp + ":" + k
                 self.DV_listLocal[knew] = v
 
-            for k,v in DVGeoComp.DV_listSectionLocal.items():
+            for k, v in DVGeoComp.DV_listSectionLocal.items():
                 # change the key and add it to our dictionary...
-                knew = comp + ':' + k
+                knew = comp + ":" + k
                 self.DV_listSectionLocal[knew] = v
 
     def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=True, **kwargs):
@@ -183,28 +216,33 @@ class DVGeometryMulti(object):
 
                 # now we build the ADT
                 # from ney's code:
-                 # Set bounding box for new tree
+                # Set bounding box for new tree
                 BBox = numpy.zeros((2, 3))
                 useBBox = False
 
                 # dummy connectivity data for quad elements since we have all tris
-                quadConn = numpy.zeros((0,4))
+                quadConn = numpy.zeros((0, 4))
 
                 t0 = time.time()
 
                 # Compute set of nodal normals by taking the average normal of all
                 # elements surrounding the node. This allows the meshing algorithms,
                 # for instance, to march in an average direction near kinks.
-                nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(self.comps[comp].nodes.T,
-                                                                     self.comps[comp].triConn.T,
-                                                                     quadConn.T)
+                nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(
+                    self.comps[comp].nodes.T, self.comps[comp].triConn.T, quadConn.T
+                )
                 self.comps[comp].nodal_normals = nodal_normals.T
 
                 # Create new tree (the tree itself is stored in Fortran level)
-                adtAPI.adtapi.adtbuildsurfaceadt(self.comps[comp].nodes.T,
-                                                 self.comps[comp].triConn.T,
-                                                 quadConn.T, BBox.T, useBBox,
-                                                 MPI.COMM_SELF.py2f(), comp)
+                adtAPI.adtapi.adtbuildsurfaceadt(
+                    self.comps[comp].nodes.T,
+                    self.comps[comp].triConn.T,
+                    quadConn.T,
+                    BBox.T,
+                    useBBox,
+                    MPI.COMM_SELF.py2f(),
+                    comp,
+                )
                 t1 = time.time()
                 # if self.comm.rank == 0:
                 #     print("Building surface ADT for component",comp,"took",t1-t0,'seconds')
@@ -231,9 +269,11 @@ class DVGeometryMulti(object):
                 # check if inside
                 xMin = self.comps[comp].xMin
                 xMax = self.comps[comp].xMax
-                if (xMin[0] < points[i,0] < xMax[0] and
-                   xMin[1] < points[i,1] < xMax[1] and
-                   xMin[2] < points[i,2] < xMax[2]):
+                if (
+                    xMin[0] < points[i, 0] < xMax[0]
+                    and xMin[1] < points[i, 1] < xMax[1]
+                    and xMin[2] < points[i, 2] < xMax[2]
+                ):
 
                     # print('point',i,'is in comp',comp)
                     # add this component to the projection list
@@ -241,7 +281,7 @@ class DVGeometryMulti(object):
 
                     # this point was not inside any other FFD before
                     if not inFFD:
-                        inFFD  = True
+                        inFFD = True
                         inComp = comp
                     # this point was inside another FFD, so we need to project it...
                     else:
@@ -263,15 +303,14 @@ class DVGeometryMulti(object):
                         if self.comps[comp].triMesh:
                             # Initialize reference values (see explanation above)
                             numPts = 1
-                            dist2 = numpy.ones(numPts)*1e10
+                            dist2 = numpy.ones(numPts) * 1e10
                             xyzProj = numpy.zeros((numPts, 3))
                             normProjNotNorm = numpy.zeros((numPts, 3))
 
                             # Call projection function
-                            _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(points[i].T, comp,
-                                                                            dist2, xyzProj.T,
-                                                                            self.comps[comp].nodal_normals.T,
-                                                                            normProjNotNorm.T)
+                            _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(
+                                points[i].T, comp, dist2, xyzProj.T, self.comps[comp].nodal_normals.T, normProjNotNorm.T
+                            )
                             # print('Distance of point',points[i],'to comp',comp,'is',numpy.sqrt(dist2))
                             # if this is closer than the previous min, take this comp
                             if dist2 < dMin2:
@@ -279,8 +318,10 @@ class DVGeometryMulti(object):
                                 inComp = comp
 
                         else:
-                            raise Error('The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is inside multiple FFDs but a triangulated mesh for component %s is not provided to determine which component owns this point.'%(points[i,0], points[i,1], points[i,1], ptName, comp))
-
+                            raise Error(
+                                "The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is inside multiple FFDs but a triangulated mesh for component %s is not provided to determine which component owns this point."
+                                % (points[i, 0], points[i, 1], points[i, 1], ptName, comp)
+                            )
 
             # this point was inside at least one FFD. If it was inside multiple,
             # we projected it before to figure out which component it should belong to
@@ -290,11 +331,14 @@ class DVGeometryMulti(object):
 
                 # also create a flattened version of the compMap
                 for j in range(3):
-                    self.points[ptName].compMapFlat[inComp].append(3*i + j)
+                    self.points[ptName].compMapFlat[inComp].append(3 * i + j)
 
             # this point is outside any FFD...
             else:
-                raise Error('The point at (x, y, z) = (%.3f, %.3f, %.3f) in pointset %s is not inside any FFDs'%(points[i,0], points[i,1], points[i,1], ptName))
+                raise Error(
+                    "The point at (x, y, z) = (%.3f, %.3f, %.3f) in pointset %s is not inside any FFDs"
+                    % (points[i, 0], points[i, 1], points[i, 1], ptName)
+                )
 
         # using the mapping array, add the pointsets to respective DVGeo objects
         for comp in self.compNames:
@@ -335,11 +379,11 @@ class DVGeometryMulti(object):
             self.comps[comp].dvDict = self.comps[comp].DVGeo.getValues()
 
         # loop over all dvs we get as the input
-        for k,v in dvDict.items():
+        for k, v in dvDict.items():
             # we only set dvgeomulti DVs. Then k should always have a : in it
-            if ':' in k:
+            if ":" in k:
                 # get the component name
-                comp, dvName = k.split(':',1)
+                comp, dvName = k.split(":", 1)
 
                 # now check if this comp has this dv
                 if dvName in self.comps[comp].dvDict:
@@ -380,9 +424,9 @@ class DVGeometryMulti(object):
         for comp in self.compNames:
             dvDictComp = self.comps[comp].DVGeo.getValues()
             # we need to loop over these DVs.
-            for k,v in dvDictComp.items():
+            for k, v in dvDictComp.items():
                 # We will add the name of the comp and a : to the full DV name
-                dvName = '%s:%s'%(comp, k)
+                dvName = "%s:%s" % (comp, k)
                 dvDict[dvName] = v
 
         return dvDict
@@ -415,7 +459,7 @@ class DVGeometryMulti(object):
         delta = newPts - self.points[ptSetName].points
 
         t1 = time.time()
-        print("[%d] timing one %.6f"%(self.comm.rank, t1-t0))
+        print("[%d] timing one %.6f" % (self.comm.rank, t1 - t0))
 
         # then apply the intersection treatment
         for IC in self.intersectComps:
@@ -482,7 +526,7 @@ class DVGeometryMulti(object):
 
             for var in varNames:
                 # then add the component's name to the DV name
-                dvName = '%s:%s'%(comp, var)
+                dvName = "%s:%s" % (comp, var)
 
                 # finally append to the list
                 dvNames.append(dvName)
@@ -597,7 +641,7 @@ class DVGeometryMulti(object):
         # print('[%d] finished IC.sens'%self.comm.rank)
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
-        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1]*3))
+        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         # jacobian for the pointset
         jac = self.points[ptSetName].jac
@@ -612,7 +656,7 @@ class DVGeometryMulti(object):
         # for IC in self.intersectComps:
         #     dIdx_local = dIdx_local + IC.dIdx
 
-        if comm: # If we have a comm, globaly reduce with sum
+        if comm:  # If we have a comm, globaly reduce with sum
             # print('[%d] before allreduce dIdx ='%self.comm.rank, dIdx_local)
             # comm.Barrier()
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
@@ -637,11 +681,11 @@ class DVGeometryMulti(object):
             if nDVComp > 0:
                 # print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
                 # this part of the sensitivity matrix is owned by this dvgeo
-                dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:,dvOffset:dvOffset+nDVComp])
+                dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
 
                 # add the component names in front of the dictionary keys
-                for k,v in dIdxComp.items():
-                    dvName = '%s:%s'%(comp,k)
+                for k, v in dIdxComp.items():
+                    dvName = "%s:%s" % (comp, k)
                     dIdxDict[dvName] = v
 
                 # also increment the offset
@@ -650,7 +694,7 @@ class DVGeometryMulti(object):
         # finally, we can add the contributions from triangulated component meshes
         for compSens in compSensList:
             # loop over the items of compSens, which are guaranteed to be in dIdxDict
-            for k,v in compSens.items():
+            for k, v in compSens.items():
                 # these will bring in effects from projections and intersection computations
                 dIdxDict[k] += v
 
@@ -658,8 +702,16 @@ class DVGeometryMulti(object):
 
         return dIdxDict
 
-    def addVariablesPyOpt(self, optProb, globalVars=True, localVars=True,
-                          sectionlocalVars=True, ignoreVars=None, freezeVars=None, comps=None):
+    def addVariablesPyOpt(
+        self,
+        optProb,
+        globalVars=True,
+        localVars=True,
+        sectionlocalVars=True,
+        ignoreVars=None,
+        freezeVars=None,
+        comps=None,
+    ):
         """
         Add the current set of variables to the optProb object.
 
@@ -695,24 +747,26 @@ class DVGeometryMulti(object):
         # we can simply loop over all DV objects and call their respective
         # addVariablesPyOpt function with the correct prefix.
         for comp in comps:
-            self.comps[comp].DVGeo.addVariablesPyOpt(optProb,
-                                                     globalVars=globalVars,
-                                                     localVars=localVars,
-                                                     sectionlocalVars=sectionlocalVars,
-                                                     ignoreVars=ignoreVars,
-                                                     freezeVars=freezeVars,
-                                                     prefix=comp+':')
+            self.comps[comp].DVGeo.addVariablesPyOpt(
+                optProb,
+                globalVars=globalVars,
+                localVars=localVars,
+                sectionlocalVars=sectionlocalVars,
+                ignoreVars=ignoreVars,
+                freezeVars=freezeVars,
+                prefix=comp + ":",
+            )
 
     def getLocalIndex(self, iVol, comp):
-        """ Return the local index mapping that points to the global
+        """Return the local index mapping that points to the global
         coefficient list for a given volume"""
         # call this on the respective DVGeo
         DVGeo = self.comps[comp].DVGeo
         return DVGeo.FFD.topo.lIndex[iVol].copy()
 
-# ----------------------------------------------------------------------
-#        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
-# ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
+    # ----------------------------------------------------------------------
 
     def _readCGNSFile(self, filename):
         # this function reads the unstructured CGNS grid in filename and returns
@@ -724,28 +778,28 @@ class DVGeometryMulti(object):
 
         # only root proc reads the file
         if self.comm.rank == 0:
-            print('Reading file %s'%filename)
+            print("Reading file %s" % filename)
             # use the default routine in tsurftools
             t1 = time.time()
-            nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm = MPI.COMM_SELF)
+            nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
             t2 = time.time()
-            print('Finished reading the cgns file')
-            print('Reading the cgns file took', (t2-t1))
+            print("Finished reading the cgns file")
+            print("Reading the cgns file took", (t2 - t1))
 
-            triConn = numpy.zeros((0,3), dtype = numpy.int8)
+            triConn = numpy.zeros((0, 3), dtype=numpy.int8)
             barsConn = {}
             # print('Part names in triangulated cgns file for %s'%filename)
             for part in sectionDict:
                 # print(part)
-                if 'triaConnF' in sectionDict[part].keys():
-                    #this is a surface, read the tri connectivities
-                    triConn = numpy.vstack((triConn, sectionDict[part]['triaConnF']))
+                if "triaConnF" in sectionDict[part].keys():
+                    # this is a surface, read the tri connectivities
+                    triConn = numpy.vstack((triConn, sectionDict[part]["triaConnF"]))
 
-                if 'barsConn' in sectionDict[part].keys():
+                if "barsConn" in sectionDict[part].keys():
                     # this is a curve, save the curve connectivity
-                    barsConn[part.lower()] = sectionDict[part]['barsConn']
+                    barsConn[part.lower()] = sectionDict[part]["barsConn"]
 
-            print('The %s mesh has %d nodes and %d elements.'%(filename, len(nodes), len(triConn)))
+            print("The %s mesh has %d nodes and %d elements." % (filename, len(nodes), len(triConn)))
         else:
             # create these to recieve the data
             nodes = None
@@ -772,7 +826,7 @@ class DVGeometryMulti(object):
         nDV = self.getNDV()
 
         # allocate space for the jacobian.
-        jac = numpy.zeros((self.points[ptSetName].nPts*3, nDV))
+        jac = numpy.zeros((self.points[ptSetName].nPts * 3, nDV))
 
         # ptset
         ptSet = self.points[ptSetName]
@@ -798,7 +852,7 @@ class DVGeometryMulti(object):
                 #     jac[ptSet.compMapFlat[comp][i], dvOffset:dvOffset+nDVComp] = compJ[i,:]
 
                 # or, do it (kinda) vectorized!
-                jac[ptSet.compMapFlat[comp], dvOffset:dvOffset+nDVComp] = compJ[:,:]
+                jac[ptSet.compMapFlat[comp], dvOffset : dvOffset + nDVComp] = compJ[:, :]
 
             # increment the offset
             dvOffset += nDVComp
@@ -813,7 +867,7 @@ class DVGeometryMulti(object):
         # counts
         nDV = self.getNDV()
         nproc = self.comm.size
-        rank  = self.comm.rank
+        rank = self.comm.rank
 
         # save the reference seams
         for IC in self.intersectComps:
@@ -836,11 +890,11 @@ class DVGeometryMulti(object):
             if iDV % nproc == rank:
 
                 # TODO Use separate step sizes for different DVs?
-                dh =  self.dh
+                dh = self.dh
 
                 # second order FD
                 dvSave = self._getIthDV(iDV)
-                self._setIthDV(iDV, dvSave+dh)
+                self._setIthDV(iDV, dvSave + dh)
 
                 # fwd step
                 for IC in self.intersectComps:
@@ -848,12 +902,12 @@ class DVGeometryMulti(object):
                     IC.seamPlus = IC.seam.copy()
 
                 # bwd step and the actual FD comp
-                self._setIthDV(iDV, dvSave-dh)
+                self._setIthDV(iDV, dvSave - dh)
                 for IC in self.intersectComps:
                     IC.setSurface(MPI.COMM_SELF)
                     IC.seamMinus = IC.seam.copy()
 
-                    IC.jac[:,iDV] = (IC.seamPlus.flatten() - IC.seamMinus.flatten()) / (2*dh)
+                    IC.jac[:, iDV] = (IC.seamPlus.flatten() - IC.seamMinus.flatten()) / (2 * dh)
 
                 # first order FD
                 # # Perturb the DV
@@ -890,19 +944,19 @@ class DVGeometryMulti(object):
             for IC in self.intersectComps:
 
                 # create send/recv buffers
-                if iDV%nproc == rank:
+                if iDV % nproc == rank:
                     # we have to copy this because we need a contiguous array for bcast
-                    buf = IC.jac[:,iDV].copy()
+                    buf = IC.jac[:, iDV].copy()
                 else:
                     # receive buffer for procs that will get the result
                     buf = numpy.zeros(len(IC.seamRef))
 
                 # bcast the intersection jacobian directly from the proc that perturbed this DV
-                self.comm.Bcast([buf, len(IC.seamRef), MPI.DOUBLE], root=iDV%nproc)
+                self.comm.Bcast([buf, len(IC.seamRef), MPI.DOUBLE], root=iDV % nproc)
 
                 # set the value in the procs that dont have it
-                if iDV%nproc != rank:
-                    IC.jac[:,iDV] = buf.copy()
+                if iDV % nproc != rank:
+                    IC.jac[:, iDV] = buf.copy()
 
                 # the slower version of the same bcast code
                 # IC.jac[:,i] = self.comm.bcast(IC.jac[:,i], root=i%nproc)
@@ -932,7 +986,7 @@ class DVGeometryMulti(object):
                 nDVCum -= nDVComp
 
                 # loop over the DVs owned by this geo
-                for k,v in xDV.items():
+                for k, v in xDV.items():
                     nDVKey = len(v)
 
                     # add the number of DVs for this DV key
@@ -981,7 +1035,7 @@ class DVGeometryMulti(object):
                 nDVCum -= nDVComp
 
                 # loop over the DVs owned by this geo
-                for k,v in xDV.items():
+                for k, v in xDV.items():
                     nDVKey = len(v)
 
                     # add the number of DVs for this DV key
@@ -1004,6 +1058,7 @@ class DVGeometryMulti(object):
                         else:
                             # assume single DVs come in arrays...
                             return xDV[k].copy()
+
 
 class component(object):
     def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
@@ -1028,7 +1083,8 @@ class component(object):
 
     def updateTriMesh(self):
         # update the triangulated surface mesh
-        self.nodes = self.DVGeo.update('triMesh')
+        self.nodes = self.DVGeo.update("triMesh")
+
 
 class PointSet(object):
     def __init__(self, points, comm):
@@ -1038,9 +1094,25 @@ class PointSet(object):
         self.compMapFlat = OrderedDict()
         self.comm = comm
 
+
 class CompIntersection(object):
-    def __init__(self, compA, compB, dStarA, dStarB, featureCurves, distTol, DVGeo, project, marchDir, includeCurves, intDir, curveEpsDict, remeshBwd):
-        '''Class to store information required for an intersection.
+    def __init__(
+        self,
+        compA,
+        compB,
+        dStarA,
+        dStarB,
+        featureCurves,
+        distTol,
+        DVGeo,
+        project,
+        marchDir,
+        includeCurves,
+        intDir,
+        curveEpsDict,
+        remeshBwd,
+    ):
+        """Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
 
         Input
@@ -1063,7 +1135,7 @@ class CompIntersection(object):
         Internally we will store the indices and the weights of the
         points that this intersection will have to modify. In general,
         all this code is not super efficient since it's all python
-        '''
+        """
 
         # same communicator with DVGeo
         self.comm = DVGeo.comm
@@ -1076,7 +1148,7 @@ class CompIntersection(object):
 
         # tolerance used for each curve when mapping nodes to curves
         self.curveEpsDict = {}
-        for k,v in curveEpsDict.items():
+        for k, v in curveEpsDict.items():
             self.curveEpsDict[k.lower()] = v
 
         # beginning and end element indices for each curve
@@ -1139,7 +1211,7 @@ class CompIntersection(object):
             # we save this info in lists
             self.featureCurveNames = []
             # save the curve name and march direction information
-            for k,v in featureCurves.items():
+            for k, v in featureCurves.items():
                 self.featureCurveNames.append(k.lower())
                 marchDirs.append(v)
 
@@ -1153,14 +1225,14 @@ class CompIntersection(object):
                 curveComp = self.compA
                 self.curvesOnA.append(curveName)
             else:
-                raise Error('Curve %s does not belong in %s or %s'%(curveName, self.compA.name, self.compB.name))
+                raise Error("Curve %s does not belong in %s or %s" % (curveName, self.compA.name, self.compB.name))
 
             # sort the feature curve
             newConn, newMap = tsurf_tools.FEsort(curveComp.barsConn[curveName].tolist())
 
             # we only want to have a single curve
             if len(newConn) > 1:
-                raise Error('the curve %s generated more than one curve with FESort'%curveName)
+                raise Error("the curve %s generated more than one curve with FESort" % curveName)
 
             # get the connectivity
             newConn = newConn[0]
@@ -1174,11 +1246,11 @@ class CompIntersection(object):
                 curveComp.barsConn[curveName] = newConn
             else:
                 # get the direction we want to march
-                mdir = abs(marchDirs[ii])-1
-                msign= numpy.sign(marchDirs[ii])
+                mdir = abs(marchDirs[ii]) - 1
+                msign = numpy.sign(marchDirs[ii])
 
                 # check if we need to flip
-                if msign*curveNodes[newConn[0][0]][mdir] > msign*curveNodes[newConn[0][1]][mdir]:
+                if msign * curveNodes[newConn[0][0]][mdir] > msign * curveNodes[newConn[0][1]][mdir]:
                     # flip on both axes bec. pleiades complains when we flip both at the same time
                     newConn = numpy.flip(newConn, axis=0)
                     newConn = numpy.flip(newConn, axis=1)
@@ -1206,8 +1278,8 @@ class CompIntersection(object):
 
         # only the node coordinates will be modified for the intersection calculations because we have calculated and saved all the connectivity information
         if self.comm.rank == 0:
-            print('Computing initial intersection between %s and %s'%(compA, compB))
-        self.seam0 = self._getIntersectionSeam(self.comm , firstCall = True)
+            print("Computing initial intersection between %s and %s" % (compA, compB))
+        self.seam0 = self._getIntersectionSeam(self.comm, firstCall=True)
         self.seam = self.seam0.copy()
 
     def setSurface(self, comm):
@@ -1217,7 +1289,7 @@ class CompIntersection(object):
         t0 = time.time()
         self._getUpdatedCoords()
         t1 = time.time()
-        print("[%d] timing trimesh %.6f"%(self.comm.rank, t1-t0))
+        print("[%d] timing trimesh %.6f" % (self.comm.rank, t1 - t0))
 
         self.seam = self._getIntersectionSeam(comm)
 
@@ -1230,10 +1302,10 @@ class CompIntersection(object):
         nPoints = len(pts)
 
         # Initialize references if user provided none
-        dist2 = numpy.ones(nPoints)*1e10
-        xyzProj = numpy.zeros((nPoints,3))
-        tanProj = numpy.zeros((nPoints,3))
-        elemIDs = numpy.zeros((nPoints),dtype='int32')
+        dist2 = numpy.ones(nPoints) * 1e10
+        xyzProj = numpy.zeros((nPoints, 3))
+        tanProj = numpy.zeros((nPoints, 3))
+        elemIDs = numpy.zeros((nPoints), dtype="int32")
 
         # only call the fortran code if we have at least one point
         if nPoints > 0:
@@ -1241,14 +1313,12 @@ class CompIntersection(object):
             # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
             # Remember that we should adjust some indices before calling the Fortran code
             # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
-            elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
-            curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(pts.T,
-                                                                       self.nodes0.T,
-                                                                       self.conn0.T + 1,
-                                                                       xyzProj.T,
-                                                                       tanProj.T,
-                                                                       dist2,
-                                                                       elemIDs)
+            elemIDs[:] = (
+                elemIDs + 1
+            )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
+            curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                pts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
+            )
 
             # Adjust indices back to Python standards
             elemIDs[:] = elemIDs - 1
@@ -1274,9 +1344,9 @@ class CompIntersection(object):
 
                 # Compute the factor
                 if d[i] < halfdStar:
-                    factor = .5*(d[i]/halfdStar)**3
+                    factor = 0.5 * (d[i] / halfdStar) ** 3
                 else:
-                    factor = .5*(2-((dStar - d[i])/halfdStar)**3)
+                    factor = 0.5 * (2 - ((dStar - d[i]) / halfdStar) ** 3)
 
                 # Save the index and factor
                 indices.append(i)
@@ -1320,14 +1390,8 @@ class CompIntersection(object):
             self.projData[ptSetName] = {
                 # we need two dictionaries.
                 # we will save more data here, but for now, just save the flag and indices
-                'compA': {
-                    'flag': flagA,
-                    'ind' : indA
-                },
-                'compB': {
-                    'flag': flagB,
-                    'ind' : indB
-                },
+                "compA": {"flag": flagA, "ind": indA},
+                "compB": {"flag": flagB, "ind": indB},
             }
 
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
@@ -1335,7 +1399,7 @@ class CompIntersection(object):
 
                 # convert the list to an array
                 # we specify the dtype because numpy cannot know the type when 'indices' is empty
-                indices = numpy.array(indices, dtype='intc')
+                indices = numpy.array(indices, dtype="intc")
 
                 # get the coordinates of all points affected by this intersection
                 ptsToCurves = pts[indices]
@@ -1346,10 +1410,10 @@ class CompIntersection(object):
                 nPoints = len(ptsToCurves)
 
                 # Initialize references if user provided none
-                dist2 = numpy.ones(nPoints)*1e10
-                xyzProj = numpy.zeros((nPoints,3))
-                tanProj = numpy.zeros((nPoints,3))
-                elemIDs = numpy.zeros((nPoints),dtype='int32')
+                dist2 = numpy.ones(nPoints) * 1e10
+                xyzProj = numpy.zeros((nPoints, 3))
+                tanProj = numpy.zeros((nPoints, 3))
+                elemIDs = numpy.zeros((nPoints), dtype="int32")
 
                 # only call the fortran code if we have at least one point
                 if nPoints > 0:
@@ -1357,14 +1421,12 @@ class CompIntersection(object):
                     # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                     # Remember that we should adjust some indices before calling the Fortran code
                     # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
-                    elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(ptsToCurves.T,
-                                                                            self.seam0.T,
-                                                                            self.seamConn.T + 1,
-                                                                            xyzProj.T,
-                                                                            tanProj.T,
-                                                                            dist2,
-                                                                            elemIDs)
+                    elemIDs[:] = (
+                        elemIDs + 1
+                    )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                        ptsToCurves.T, self.seam0.T, self.seamConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
+                    )
 
                     # Adjust indices back to Python standards
                     elemIDs[:] = elemIDs - 1
@@ -1373,7 +1435,7 @@ class CompIntersection(object):
                 d = numpy.sqrt(dist2)
 
                 # get the names of all curves including the intersection
-                allCurves = ['intersection']
+                allCurves = ["intersection"]
                 for curveName in self.featureCurveNames:
                     allCurves.append(curveName)
 
@@ -1400,10 +1462,10 @@ class CompIntersection(object):
 
                     # this returns a bool array of indices that satisfy the conditions
                     # we check for elemIDs because we projected to all curves at once
-                    curveBool = numpy.all( [ d<eps , elemIDs >= seamBeg  , elemIDs < seamEnd ], axis=0)
+                    curveBool = numpy.all([d < eps, elemIDs >= seamBeg, elemIDs < seamEnd], axis=0)
 
                     # get the indices of the points mapped to this element
-                    idxs= numpy.nonzero(curveBool)
+                    idxs = numpy.nonzero(curveBool)
 
                     # save the indices. idx has the indices of the "indices" array
                     # that had the indices of points that get any intersection treatment
@@ -1422,7 +1484,7 @@ class CompIntersection(object):
                     self.curveProjData[ptSetName][curveName] = {}
 
                 # negate the surface mask and get indices
-                surfPtIdx = numpy.nonzero( numpy.logical_not(allNodesBool) )
+                surfPtIdx = numpy.nonzero(numpy.logical_not(allNodesBool))
 
                 # figure out which of these surfNodes live only on components A and B
                 allSurfIdx = numpy.array(indices[surfPtIdx[0]])
@@ -1455,9 +1517,9 @@ class CompIntersection(object):
                     nPtsTotal, nPtsProcs, curvePtCoords = self._commCurveProj(pts, idxs, comm)
 
                     # for i in range(comm.size):
-                        # if i == comm.rank:
-                            # print('[%d] data for %s:'%(self.comm.rank, curveName), '\nnptsTotal:',nPtsTotal, '\nnPtsProcs:', nPtsProcs,'\n',flush=True)
-                        # comm.Barrier()
+                    # if i == comm.rank:
+                    # print('[%d] data for %s:'%(self.comm.rank, curveName), '\nnptsTotal:',nPtsTotal, '\nnPtsProcs:', nPtsProcs,'\n',flush=True)
+                    # comm.Barrier()
 
                     # check if we have at least one point globally that mapped to this curve
                     # if nPtsTotal > 0:
@@ -1478,7 +1540,7 @@ class CompIntersection(object):
         """
 
         # original coordinates of the added pointset
-        pts     = self.points[ptSetName][0]
+        pts = self.points[ptSetName][0]
         # indices of the points that get affected by this intersection
         indices = self.points[ptSetName][1]
         # factors for each node in pointSet
@@ -1500,7 +1562,7 @@ class CompIntersection(object):
         dr = self.seam - self.seam0
 
         # define an epsilon to avoid dividing by zero later on
-        eps = 1e-50# 1e-32
+        eps = 1e-50  # 1e-32
 
         # time it!
         t0 = time.time()
@@ -1556,41 +1618,45 @@ class CompIntersection(object):
             # Do it vectorized!
 
             # get the two end points for the line elements
-            r0 = coor[conn[:,0]]
-            r1 = coor[conn[:,1]]
+            r0 = coor[conn[:, 0]]
+            r1 = coor[conn[:, 1]]
 
             # get the deltas for two end points
-            dr0 = dr[conn[:,0]]
-            dr1 = dr[conn[:,1]]
+            dr0 = dr[conn[:, 0]]
+            dr1 = dr[conn[:, 1]]
 
             # compute a, b, and c coefficients
-            a = (r1[:,0]-r0[:,0])**2 + (r1[:,1]-r0[:,1])**2 + (r1[:,2]-r0[:,2])**2
-            b = 2 * ((r1[:,0]-r0[:,0])*(r0[:,0]-rp[0]) + (r1[:,1]-r0[:,1])*(r0[:,1]-rp[1]) + (r1[:,2]-r0[:,2])*(r0[:,2]-rp[2]))
-            c = (r0[:,0]-rp[0])**2 + (r0[:,1]-rp[1])**2 + (r0[:,2]-rp[2])**2
+            a = (r1[:, 0] - r0[:, 0]) ** 2 + (r1[:, 1] - r0[:, 1]) ** 2 + (r1[:, 2] - r0[:, 2]) ** 2
+            b = 2 * (
+                (r1[:, 0] - r0[:, 0]) * (r0[:, 0] - rp[0])
+                + (r1[:, 1] - r0[:, 1]) * (r0[:, 1] - rp[1])
+                + (r1[:, 2] - r0[:, 2]) * (r0[:, 2] - rp[2])
+            )
+            c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
 
             # distances for each element
-            dists = numpy.sqrt(numpy.maximum(a,0.0))
+            dists = numpy.sqrt(numpy.maximum(a, 0.0))
 
             # compute some re-occurring terms
             # the determinant can be zero or negative, but it CANNOT be positive
             # this is because the quadratic that defines the distance from the line cannot have two roots.
             # if the point is on the line, the quadratic will have a single root...
-            det = b*b - 4*a*c
+            det = b * b - 4 * a * c
             # these might be negative 1e-20sth so clip them...
             # these will be strictly zero or greater than zero.
             # Numerically, they cannot be negative bec. we are working with real numbers
-            sabc = numpy.sqrt(numpy.maximum(a+b+c, 0.0))
-            sc   = numpy.sqrt(numpy.maximum(c, 0.0))
+            sabc = numpy.sqrt(numpy.maximum(a + b + c, 0.0))
+            sc = numpy.sqrt(numpy.maximum(c, 0.0))
 
             # denominators on the integral evaluations
             # add an epsilon so that these terms never become zero
             # det <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0
-            den1 = det*sabc - eps
-            den2 = det*sc - eps
+            den1 = det * sabc - eps
+            den2 = det * sc - eps
 
             # integral evaluations
-            eval1 = (-2*(2*a +b)/den1 + 2*b/den2)*dists
-            eval2 = ((2*b + 4*c)/den1 - 4*c/den2)*dists
+            eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * dists
+            eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
 
             # denominator only gets one integral
             den = numpy.sum(eval1)
@@ -1599,18 +1665,21 @@ class CompIntersection(object):
             interp = numpy.zeros(3)
             for iDim in range(3):
                 # numerator gets two integrals with the delta components
-                num = numpy.sum((dr1[:,iDim]-dr0[:,iDim]) * eval2 + dr0[:,iDim] * eval1)
+                num = numpy.sum((dr1[:, iDim] - dr0[:, iDim]) * eval2 + dr0[:, iDim] * eval1)
                 # final result
-                interp[iDim] = num/den
+                interp[iDim] = num / den
 
             # Now the delta is replaced by 1-factor times the weighted
             # interp of the seam * factor of the original:
-            delta[j] = factors[i]*delta[j] + (1-factors[i])*interp
+            delta[j] = factors[i] * delta[j] + (1 - factors[i]) * interp
             # delta[j] = interp
 
         t1 = time.time()
-        print('[%d] Time required to warp %d points using %d line elements is %.4f seconds'%(rank, len(factors), len(conn), t1-t0))
-        print("[%d] timing four %.6f"%(self.comm.rank, t1-t0))
+        print(
+            "[%d] Time required to warp %d points using %d line elements is %.4f seconds"
+            % (rank, len(factors), len(conn), t1 - t0)
+        )
+        print("[%d] timing four %.6f" % (self.comm.rank, t1 - t0))
         # if comm:
         #     comm.Barrier()
 
@@ -1621,7 +1690,7 @@ class CompIntersection(object):
         """forward mode differentiated version of the update routine.
         Note that dPt and dSeam are both one dimensional arrays
         """
-        pts     = self.points[ptSetName][0]
+        pts = self.points[ptSetName][0]
         indices = self.points[ptSetName][1]
         factors = self.points[ptSetName][2]
 
@@ -1635,17 +1704,17 @@ class CompIntersection(object):
 
             # Do it vectorized
             rr = pts[j] - self.seam0
-            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-            LdefoDist3 = LdefoDist**3
+            LdefoDist = 1.0 / numpy.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist3 = LdefoDist ** 3
             Wi = LdefoDist3
             den = numpy.sum(Wi)
             interp_d = numpy.zeros(3)
             for iDim in range(3):
-                interp_d[iDim] = numpy.sum(Wi*dSeam[:, iDim])/den
+                interp_d[iDim] = numpy.sum(Wi * dSeam[:, iDim]) / den
 
                 # Now the delta is replaced by 1-factor times the weighted
                 # interp of the seam * factor of the original:
-                dPt[j*3 + iDim] = factors[i]*dPt[j*3 + iDim] + (1-factors[i])*interp_d[iDim]
+                dPt[j * 3 + iDim] = factors[i] * dPt[j * 3 + iDim] + (1 - factors[i]) * interp_d[iDim]
 
         return
 
@@ -1654,7 +1723,7 @@ class CompIntersection(object):
         # nodes. Also modifies the dIdp array accordingly.
 
         # original coordinates of the added pointset
-        pts     = self.points[ptSetName][0]
+        pts = self.points[ptSetName][0]
         # indices of the points that get affected by this intersection
         indices = self.points[ptSetName][1]
         # factors for each node in pointSet
@@ -1688,44 +1757,48 @@ class CompIntersection(object):
                 rp = pts[j]
 
                 # This is the local seed (well the 3 seeds for the point)
-                localVal = dIdPt[k,j,:]*(1 - factors[i])
+                localVal = dIdPt[k, j, :] * (1 - factors[i])
 
                 # Scale the dIdpt by the factor..dIdpt is input/output
-                dIdPt[k,j,:] *= factors[i]
+                dIdPt[k, j, :] *= factors[i]
 
                 # get the two end points for the line elements
-                r0 = coor[conn[:,0]]
-                r1 = coor[conn[:,1]]
+                r0 = coor[conn[:, 0]]
+                r1 = coor[conn[:, 1]]
                 # compute a, b, and c coefficients
-                a = (r1[:,0]-r0[:,0])**2 + (r1[:,1]-r0[:,1])**2 + (r1[:,2]-r0[:,2])**2
-                b = 2 * ((r1[:,0]-r0[:,0])*(r0[:,0]-rp[0]) + (r1[:,1]-r0[:,1])*(r0[:,1]-rp[1]) + (r1[:,2]-r0[:,2])*(r0[:,2]-rp[2]))
-                c = (r0[:,0]-rp[0])**2 + (r0[:,1]-rp[1])**2 + (r0[:,2]-rp[2])**2
+                a = (r1[:, 0] - r0[:, 0]) ** 2 + (r1[:, 1] - r0[:, 1]) ** 2 + (r1[:, 2] - r0[:, 2]) ** 2
+                b = 2 * (
+                    (r1[:, 0] - r0[:, 0]) * (r0[:, 0] - rp[0])
+                    + (r1[:, 1] - r0[:, 1]) * (r0[:, 1] - rp[1])
+                    + (r1[:, 2] - r0[:, 2]) * (r0[:, 2] - rp[2])
+                )
+                c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
                 # distances for each element
-                dists = numpy.sqrt(numpy.maximum(a,0.0))
+                dists = numpy.sqrt(numpy.maximum(a, 0.0))
 
                 # compute some re-occurring terms
-                det = b*b - 4*a*c
-                sabc = numpy.sqrt(numpy.maximum(a+b+c, 0.0))
-                sc   = numpy.sqrt(numpy.maximum(c, 0.0))
+                det = b * b - 4 * a * c
+                sabc = numpy.sqrt(numpy.maximum(a + b + c, 0.0))
+                sc = numpy.sqrt(numpy.maximum(c, 0.0))
                 # denominators on the integral evaluations
-                den1 = det*sabc - eps
-                den2 = det*sc - eps
+                den1 = det * sabc - eps
+                den2 = det * sc - eps
                 # integral evaluations
-                eval1 = (-2*(2*a +b)/den1 + 2*b/den2)*dists
-                eval2 = ((2*b + 4*c)/den1 - 4*c/den2)*dists
+                eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * dists
+                eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
 
                 # denominator only gets one integral
                 den = numpy.sum(eval1)
 
-                evalDiff = eval1-eval2
+                evalDiff = eval1 - eval2
 
                 # do each direction separately
                 for iDim in range(3):
                     # seeds for the r0 point
-                    seamBar[k, conn[:,0], iDim] += localVal[iDim] * evalDiff / den
+                    seamBar[k, conn[:, 0], iDim] += localVal[iDim] * evalDiff / den
 
                     # seeds for the r1 point
-                    seamBar[k, conn[:,1], iDim] += localVal[iDim] * eval2 / den
+                    seamBar[k, conn[:, 1], iDim] += localVal[iDim] * eval2 / den
 
         # seamBar is the bwd seeds for the intersection curve...
         # it is N,nseampt,3 in size
@@ -1773,31 +1846,31 @@ class CompIntersection(object):
         flagA = False
         flagB = False
         if len(self.curvesOnA) > 0:
-        # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
+            # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
             flagA = True
         if len(self.curvesOnB) > 0:
-        # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
+            # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
             flagB = True
 
         # do the pts on the intersection outside the loop
-        nptsg = self.nCurvePts[ptSetName]['intersection']
+        nptsg = self.nCurvePts[ptSetName]["intersection"]
 
         # the deltas for these points are zero. they should already be on the intersection
         # also get the initial coordinates of these points. We use this during warping
         # intersection curve will be on both components
         if flagA:
             deltaA = numpy.zeros((nptsg, 3))
-            curvePtCoordsA = self.curvePtCoords[ptSetName]['intersection'].copy()
+            curvePtCoordsA = self.curvePtCoords[ptSetName]["intersection"].copy()
         else:
-            deltaA = numpy.zeros((0,3))
-            curvePtCoordsA = numpy.zeros((0,3))
+            deltaA = numpy.zeros((0, 3))
+            curvePtCoordsA = numpy.zeros((0, 3))
 
         if flagB:
             deltaB = numpy.zeros((nptsg, 3))
-            curvePtCoordsB = self.curvePtCoords[ptSetName]['intersection'].copy()
+            curvePtCoordsB = self.curvePtCoords[ptSetName]["intersection"].copy()
         else:
-            deltaB = numpy.zeros((0,3))
-            curvePtCoordsB = numpy.zeros((0,3))
+            deltaB = numpy.zeros((0, 3))
+            curvePtCoordsB = numpy.zeros((0, 3))
 
         # pysurf.tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
 
@@ -1809,7 +1882,7 @@ class CompIntersection(object):
             # print('[%d] curvename: %s idx'%(rank, curveName), idx.shape, idx)
 
             # these are the updated coordinates that will be projected to the curve
-            ptsOnCurve = newPts[idx,:].copy()
+            ptsOnCurve = newPts[idx, :].copy()
 
             # pysurf.tecplot_interface.write_tecplot_scatter('%s_warped_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptsOnCurve)
 
@@ -1825,10 +1898,10 @@ class CompIntersection(object):
             # print('[%d] curveName: %s, nPoints on the fwd pass: %d'%(self.comm.rank, curveName, nPoints))
 
             # Initialize references if user provided none
-            dist2 = numpy.ones(nPoints)*1e10
-            xyzProj = numpy.zeros((nPoints,3))
-            tanProj = numpy.zeros((nPoints,3))
-            elemIDs = numpy.zeros((nPoints),dtype='int32')
+            dist2 = numpy.ones(nPoints) * 1e10
+            xyzProj = numpy.zeros((nPoints, 3))
+            tanProj = numpy.zeros((nPoints, 3))
+            elemIDs = numpy.zeros((nPoints), dtype="int32")
 
             # only call the fortran code if we have at least one point
             if nPoints > 0:
@@ -1836,31 +1909,29 @@ class CompIntersection(object):
                 # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                 # Remember that we should adjust some indices before calling the Fortran code
                 # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
-                elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(ptsOnCurve.T,
-                                                                        self.seam.T,
-                                                                        curveConn.T + 1,
-                                                                        xyzProj.T,
-                                                                        tanProj.T,
-                                                                        dist2,
-                                                                        elemIDs)
+                elemIDs[:] = (
+                    elemIDs + 1
+                )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                    ptsOnCurve.T, self.seam.T, curveConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
+                )
 
                 # Adjust indices back to Python standards
                 elemIDs[:] = elemIDs - 1
 
                 # we only have the curvemask if we do the projection on this proc
-                self.curveProjData[ptSetName][curveName]['curveMask'] = curveMask
+                self.curveProjData[ptSetName][curveName]["curveMask"] = curveMask
 
             # dist2 has the array of squared distances
             d = numpy.sqrt(dist2)
 
             # save some information for gradient comp
-            self.curveProjData[ptSetName][curveName]['xyz'] = ptsOnCurve.copy()
-            self.curveProjData[ptSetName][curveName]['coor'] = self.seam.copy()
-            self.curveProjData[ptSetName][curveName]['barsConn'] = curveConn.copy()
-            self.curveProjData[ptSetName][curveName]['xyzProj'] = xyzProj.copy()
-            self.curveProjData[ptSetName][curveName]['tanProj'] = tanProj.copy()
-            self.curveProjData[ptSetName][curveName]['elemIDs'] = elemIDs.copy()
+            self.curveProjData[ptSetName][curveName]["xyz"] = ptsOnCurve.copy()
+            self.curveProjData[ptSetName][curveName]["coor"] = self.seam.copy()
+            self.curveProjData[ptSetName][curveName]["barsConn"] = curveConn.copy()
+            self.curveProjData[ptSetName][curveName]["xyzProj"] = xyzProj.copy()
+            self.curveProjData[ptSetName][curveName]["tanProj"] = tanProj.copy()
+            self.curveProjData[ptSetName][curveName]["elemIDs"] = elemIDs.copy()
 
             # get the delta for the points on this proc
             deltaLocal = xyzProj - ptsOnCurve
@@ -1875,34 +1946,34 @@ class CompIntersection(object):
             # communicate the deltas
             if comm:
                 sizes = self.curvePtCounts[ptSetName][curveName]
-                disp = numpy.array([numpy.sum(sizes[:i]) for i in range(comm.size)], dtype='intc')
+                disp = numpy.array([numpy.sum(sizes[:i]) for i in range(comm.size)], dtype="intc")
 
                 # save these for grad comp
-                self.curveProjData[ptSetName][curveName]['sizes'] = sizes
-                self.curveProjData[ptSetName][curveName]['disp'] = disp
+                self.curveProjData[ptSetName][curveName]["sizes"] = sizes
+                self.curveProjData[ptSetName][curveName]["disp"] = disp
 
                 # sendbuf
                 deltaLocal = deltaLocal.flatten()
-                sendbuf = [deltaLocal, sizes[comm.rank]*3]
+                sendbuf = [deltaLocal, sizes[comm.rank] * 3]
 
                 # recvbuf
                 nptsg = self.nCurvePts[ptSetName][curveName]
-                deltaGlobal = numpy.zeros( nptsg*3 )
-                recvbuf = [deltaGlobal, sizes*3, disp*3, MPI.DOUBLE]
+                deltaGlobal = numpy.zeros(nptsg * 3)
+                recvbuf = [deltaGlobal, sizes * 3, disp * 3, MPI.DOUBLE]
 
                 # do an allgatherv
                 comm.Allgatherv(sendbuf, recvbuf)
 
                 # reshape into a nptsg,3 array
-                deltaGlobal = deltaGlobal.reshape((nptsg,3))
+                deltaGlobal = deltaGlobal.reshape((nptsg, 3))
 
             else:
                 # we dont have a comm, so this is a "serial" pointset
                 deltaGlobal = deltaLocal
 
                 # also save the sizes and disp stuff as if we have one proc
-                self.curveProjData[ptSetName][curveName]['sizes'] = self.curvePtCounts[ptSetName][curveName]
-                self.curveProjData[ptSetName][curveName]['disp'] = [0]
+                self.curveProjData[ptSetName][curveName]["sizes"] = self.curvePtCounts[ptSetName][curveName]
+                self.curveProjData[ptSetName][curveName]["disp"] = [0]
 
             # we only add the deltaLocal to deltaA if this curve is on compA,
             # and we have points on compA surface
@@ -1912,7 +1983,7 @@ class CompIntersection(object):
 
                 # also stack the original coordinates for warping
                 curvePtCoordsNew = self.curvePtCoords[ptSetName][curveName]
-                curvePtCoordsA = numpy.vstack((curvePtCoordsA, curvePtCoordsNew ))
+                curvePtCoordsA = numpy.vstack((curvePtCoordsA, curvePtCoordsNew))
 
             # do the same for compB
             # we can use elif bec. one curve cannot be on both comps
@@ -1922,11 +1993,11 @@ class CompIntersection(object):
 
                 # also stack the original coordinates for warping
                 curvePtCoordsNew = self.curvePtCoords[ptSetName][curveName]
-                curvePtCoordsB = numpy.vstack((curvePtCoordsB, curvePtCoordsNew ))
+                curvePtCoordsB = numpy.vstack((curvePtCoordsB, curvePtCoordsNew))
 
         self.comm.Barrier()
         t01 = time.time()
-        print("[%d] timing six %.6f"%(self.comm.rank, t01-t00))
+        print("[%d] timing six %.6f" % (self.comm.rank, t01 - t00))
 
         # then, we warp all of the nodes that were affected by the intersection treatment, using the deltas from the previous project to curve step
         t0 = time.time()
@@ -1938,38 +2009,41 @@ class CompIntersection(object):
             self._warpSurfPts(self.points[ptSetName][0], newPts, self.surfIdxB[ptSetName], curvePtCoordsB, deltaB)
 
         # save some info for the sens. computations
-        self.curveProjData[ptSetName]['curvePtCoordsA'] = curvePtCoordsA
-        self.curveProjData[ptSetName]['curvePtCoordsB'] = curvePtCoordsB
+        self.curveProjData[ptSetName]["curvePtCoordsA"] = curvePtCoordsA
+        self.curveProjData[ptSetName]["curvePtCoordsB"] = curvePtCoordsB
 
         # print timing result
         t1 = time.time()
-        print('[%d] time required to warp %d points using %d points is %.4f'%(rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1-t0))
-        print("[%d] timing seven %.6f"%(self.comm.rank, t1-t0))
+        print(
+            "[%d] time required to warp %d points using %d points is %.4f"
+            % (rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1 - t0)
+        )
+        print("[%d] timing seven %.6f" % (self.comm.rank, t1 - t0))
         # if comm:
-            # comm.Barrier()
+        # comm.Barrier()
 
         # get the flags for components
-        flagA = self.projData[ptSetName]['compA']['flag']
-        flagB = self.projData[ptSetName]['compB']['flag']
+        flagA = self.projData[ptSetName]["compA"]["flag"]
+        flagB = self.projData[ptSetName]["compB"]["flag"]
 
         # call the actual driver with the info to prevent code multiplication
         if flagA:
             # get the indices of points that get projected to compA
-            indA = self.projData[ptSetName]['compA']['ind']
+            indA = self.projData[ptSetName]["compA"]["ind"]
             # get the points using the mapping
             ptsA = newPts[indA]
             # call the projection routine with the info
             # this returns the projected points and we use the same mapping to put them back in place
-            newPts[indA] = self._projectToComponent(ptsA, self.compA, self.projData[ptSetName]['compA'])
+            newPts[indA] = self._projectToComponent(ptsA, self.compA, self.projData[ptSetName]["compA"])
 
         # do the same for B
         if flagB:
-            indB = self.projData[ptSetName]['compB']['ind']
+            indB = self.projData[ptSetName]["compB"]["ind"]
             ptsB = newPts[indB]
-            newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]['compB'])
+            newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
 
         t2 = time.time()
-        print("[%d] timing eight %.6f"%(self.comm.rank, t2-t1))
+        print("[%d] timing eight %.6f" % (self.comm.rank, t2 - t1))
 
     def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
@@ -1980,8 +2054,8 @@ class CompIntersection(object):
         N = dIdpt.shape[0]
 
         # get the flags for components
-        flagA = self.projData[ptSetName]['compA']['flag']
-        flagB = self.projData[ptSetName]['compB']['flag']
+        flagA = self.projData[ptSetName]["compA"]["flag"]
+        flagB = self.projData[ptSetName]["compB"]["flag"]
 
         # dictionary to accumulate triangulated mesh sensitivities
         compSens_local = {}
@@ -1989,15 +2063,17 @@ class CompIntersection(object):
         # call the actual driver with the info to prevent code multiplication
         if flagA:
             # get the indices of points that get projected to compA
-            indA = self.projData[ptSetName]['compA']['ind']
+            indA = self.projData[ptSetName]["compA"]["ind"]
             # get the points using the mapping
-            dIdptA = dIdpt[:,indA]
+            dIdptA = dIdpt[:, indA]
             # call the projection routine with the info
             # this returns the projected points and we use the same mapping to put them back in place
-            dIdpt[:,indA], compSensA = self._projectToComponent_b(dIdptA, self.compA, self.projData[ptSetName]['compA'])
+            dIdpt[:, indA], compSensA = self._projectToComponent_b(
+                dIdptA, self.compA, self.projData[ptSetName]["compA"]
+            )
 
-            for k,v in compSensA.items():
-                kNew = '%s:%s'%(self.compA.name, k)
+            for k, v in compSensA.items():
+                kNew = "%s:%s" % (self.compA.name, k)
                 compSens_local[kNew] = v
 
         # set the compSens entries to all zeros on these procs
@@ -2006,20 +2082,22 @@ class CompIntersection(object):
             xA = self.compA.DVGeo.getValues()
 
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
-            for k,v in xA.items():
-                kNew = '%s:%s'%(self.compA.name, k)
+            for k, v in xA.items():
+                kNew = "%s:%s" % (self.compA.name, k)
                 # create the zero array:
                 zeroSens = numpy.zeros((N, v.shape[0]))
                 compSens_local[kNew] = zeroSens
 
         # do the same for B
         if flagB:
-            indB = self.projData[ptSetName]['compB']['ind']
-            dIdptB = dIdpt[:,indB]
-            dIdpt[:,indB], compSensB = self._projectToComponent_b(dIdptB, self.compB, self.projData[ptSetName]['compB'])
+            indB = self.projData[ptSetName]["compB"]["ind"]
+            dIdptB = dIdpt[:, indB]
+            dIdpt[:, indB], compSensB = self._projectToComponent_b(
+                dIdptB, self.compB, self.projData[ptSetName]["compB"]
+            )
 
-            for k,v in compSensB.items():
-                kNew = '%s:%s'%(self.compB.name, k)
+            for k, v in compSensB.items():
+                kNew = "%s:%s" % (self.compB.name, k)
                 compSens_local[kNew] = v
         # set the compSens entries to all zeros on these procs
         else:
@@ -2027,8 +2105,8 @@ class CompIntersection(object):
             xB = self.compB.DVGeo.getValues()
 
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
-            for k,v in xB.items():
-                kNew = '%s:%s'%(self.compB.name, k)
+            for k, v in xB.items():
+                kNew = "%s:%s" % (self.compB.name, k)
                 # create the zero array:
                 zeroSens = numpy.zeros((N, v.shape[0]))
                 compSens_local[kNew] = zeroSens
@@ -2037,7 +2115,7 @@ class CompIntersection(object):
         if comm:
             compSens = {}
             # because the results are in a dictionary, we need to loop over the items and sum
-            for k,v in compSens_local.items():
+            for k, v in compSens_local.items():
                 compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
         else:
             # we can just pass the dictionary
@@ -2049,14 +2127,14 @@ class CompIntersection(object):
         ptSetComm = self.points[ptSetName][3]
 
         # check if any processor did any warping on compA
-        curvePtCoordsA = self.curveProjData[ptSetName]['curvePtCoordsA']
-        curvePtCoordsB = self.curveProjData[ptSetName]['curvePtCoordsB']
+        curvePtCoordsA = self.curveProjData[ptSetName]["curvePtCoordsA"]
+        curvePtCoordsB = self.curveProjData[ptSetName]["curvePtCoordsB"]
         if ptSetComm:
-            nCurvePtCoordsAG = ptSetComm.allreduce(len( curvePtCoordsA), op=MPI.MAX)
-            nCurvePtCoordsBG = ptSetComm.allreduce(len( curvePtCoordsB), op=MPI.MAX)
+            nCurvePtCoordsAG = ptSetComm.allreduce(len(curvePtCoordsA), op=MPI.MAX)
+            nCurvePtCoordsBG = ptSetComm.allreduce(len(curvePtCoordsB), op=MPI.MAX)
         else:
-            nCurvePtCoordsAG = len( curvePtCoordsA)
-            nCurvePtCoordsBG = len( curvePtCoordsB)
+            nCurvePtCoordsAG = len(curvePtCoordsA)
+            nCurvePtCoordsBG = len(curvePtCoordsB)
 
         # check if we need to worry about either surface
         # we will use these flags to figure out if we need to do warping.
@@ -2064,10 +2142,10 @@ class CompIntersection(object):
         flagA = False
         flagB = False
         if len(self.curvesOnA) > 0:
-        # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
+            # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
             flagA = True
         if len(self.curvesOnB) > 0:
-        # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
+            # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
             flagB = True
 
         if ptSetComm:
@@ -2078,13 +2156,17 @@ class CompIntersection(object):
         # call the bwd warping routine
         # deltaA_b is the seed for the points projected to curves
         if flagA:
-            deltaA_b_local = self._warpSurfPts_b(dIdpt, self.points[ptSetName][0], self.surfIdxA[ptSetName], curvePtCoordsA)
+            deltaA_b_local = self._warpSurfPts_b(
+                dIdpt, self.points[ptSetName][0], self.surfIdxA[ptSetName], curvePtCoordsA
+            )
         else:
             deltaA_b_local = numpy.zeros((N, nCurvePtCoordsAG, 3))
 
         # do the same for comp B
         if flagB:
-            deltaB_b_local = self._warpSurfPts_b(dIdpt, self.points[ptSetName][0], self.surfIdxB[ptSetName], curvePtCoordsB)
+            deltaB_b_local = self._warpSurfPts_b(
+                dIdpt, self.points[ptSetName][0], self.surfIdxB[ptSetName], curvePtCoordsB
+            )
         else:
             deltaB_b_local = numpy.zeros((N, nCurvePtCoordsBG, 3))
 
@@ -2100,17 +2182,17 @@ class CompIntersection(object):
         # remove the seeds for the intersection, the disps are zero (constant) so no need to diff. those
         if flagA:
             # this just returns the seeds w/o the intersection seeds
-            deltaA_b = deltaA_b[:, self.nCurvePts[ptSetName]['intersection']: ]
+            deltaA_b = deltaA_b[:, self.nCurvePts[ptSetName]["intersection"] :]
         if flagB:
             # this just returns the seeds w/o the intersection seeds
-            deltaB_b = deltaB_b[:, self.nCurvePts[ptSetName]['intersection']: ]
+            deltaB_b = deltaB_b[:, self.nCurvePts[ptSetName]["intersection"] :]
 
         # loop over the curves
         for curveName in self.featureCurveNames:
 
             # sizes and displacements for this curve
-            sizes = self.curveProjData[ptSetName][curveName]['sizes']
-            disp  = self.curveProjData[ptSetName][curveName]['disp']
+            sizes = self.curveProjData[ptSetName][curveName]["sizes"]
+            disp = self.curveProjData[ptSetName][curveName]["disp"]
 
             # we get the seeds from compA seeds
             if curveName in self.curvesOnA:
@@ -2121,10 +2203,10 @@ class CompIntersection(object):
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
-                    deltaBar = numpy.zeros((N,0,3))
+                    deltaBar = numpy.zeros((N, 0, 3))
 
                 # remove the seeds for this curve from deltaA_b seeds
-                deltaA_b = deltaA_b[:, disp[-1]+sizes[-1]:  ]
+                deltaA_b = deltaA_b[:, disp[-1] + sizes[-1] :]
 
             # seeds from compB
             elif curveName in self.curvesOnB:
@@ -2137,13 +2219,13 @@ class CompIntersection(object):
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
-                    deltaBar = numpy.zeros((N,0,3))
+                    deltaBar = numpy.zeros((N, 0, 3))
 
                 # remove the seeds for this curve from deltaA_b seeds
-                deltaB_b = deltaB_b[:, disp[-1]+sizes[-1]:  ]
+                deltaB_b = deltaB_b[:, disp[-1] + sizes[-1] :]
 
             else:
-                print('This should not happen')
+                print("This should not happen")
             # now we have the local seeds of projection points for all functions in xyzProjb
 
             # get the indices of points we need to project
@@ -2151,19 +2233,19 @@ class CompIntersection(object):
             nPoints = len(idx)
 
             # get some data from the fwd run
-            xyz = self.curveProjData[ptSetName][curveName]['xyz']
-            coor = self.curveProjData[ptSetName][curveName]['coor']
-            barsConn = self.curveProjData[ptSetName][curveName]['barsConn']
-            xyzProj = self.curveProjData[ptSetName][curveName]['xyzProj']
-            tanProj = self.curveProjData[ptSetName][curveName]['tanProj']
-            elemIDs = self.curveProjData[ptSetName][curveName]['elemIDs']
+            xyz = self.curveProjData[ptSetName][curveName]["xyz"]
+            coor = self.curveProjData[ptSetName][curveName]["coor"]
+            barsConn = self.curveProjData[ptSetName][curveName]["barsConn"]
+            xyzProj = self.curveProjData[ptSetName][curveName]["xyzProj"]
+            tanProj = self.curveProjData[ptSetName][curveName]["tanProj"]
+            elemIDs = self.curveProjData[ptSetName][curveName]["elemIDs"]
 
             # we dont use tangents so seeds are zero
             tanProjb = numpy.zeros_like(tanProj)
 
             if nPoints > 0:
                 # also get the curveMask
-                curveMask = self.curveProjData[ptSetName][curveName]['curveMask']
+                curveMask = self.curveProjData[ptSetName][curveName]["curveMask"]
 
                 # run the bwd projection for everyfunction
                 for k in range(N):
@@ -2172,20 +2254,22 @@ class CompIntersection(object):
                     xyzProjb = deltaBar[k].copy()
 
                     # add the contribution from dIdpt for the idx points themselves
-                    xyzProjb += dIdpt[k,idx]
+                    xyzProjb += dIdpt[k, idx]
 
                     # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
                     # print("[%d] right before crashing, xyzProjb.shape"%rank, xyzProjb.shape)
                     # print("[%d] right before crashing, nPoints: %d len(idx): %d, idx:"%(rank, nPoints, len(idx)), idx)
-                    xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(xyz.T,
-                                                                                           coor.T,
-                                                                                           barsConn.T + 1,
-                                                                                           xyzProj.T,
-                                                                                           xyzProjb.T,
-                                                                                           tanProj.T,
-                                                                                           tanProjb.T,
-                                                                                           elemIDs + 1,
-                                                                                           curveMask)
+                    xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
+                        xyz.T,
+                        coor.T,
+                        barsConn.T + 1,
+                        xyzProj.T,
+                        xyzProjb.T,
+                        tanProj.T,
+                        tanProjb.T,
+                        elemIDs + 1,
+                        curveMask,
+                    )
 
                     # Accumulate derivatives with the correct k
 
@@ -2196,7 +2280,7 @@ class CompIntersection(object):
                     dIdpt[k, idx, :] = xyzb_new.T - deltaBar[k]
 
                     # add the seed to the seam seed
-                    self.seamBarProj[ptSetName][k,:,:] += coorb_new.T
+                    self.seamBarProj[ptSetName][k, :, :] += coorb_new.T
 
         return compSens
 
@@ -2214,27 +2298,27 @@ class CompIntersection(object):
             nproc = comm.size
 
             # communicate the counts
-            sizes = numpy.array( comm.allgather(len(indices)), dtype='intc' )
+            sizes = numpy.array(comm.allgather(len(indices)), dtype="intc")
 
             # total number of points
             nptsg = numpy.sum(sizes)
 
             # get the displacements
-            disp = numpy.array([numpy.sum(sizes[:i]) for i in range(nproc)], dtype='intc')
+            disp = numpy.array([numpy.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
 
             # sendbuf
             ptsLocal = pts[indices].flatten()
-            sendbuf = [ptsLocal, len(indices)*3]
+            sendbuf = [ptsLocal, len(indices) * 3]
 
             # recvbuf
-            ptsGlobal = numpy.zeros(3*nptsg)
-            recvbuf = [ptsGlobal, sizes*3, disp*3, MPI.DOUBLE]
+            ptsGlobal = numpy.zeros(3 * nptsg)
+            recvbuf = [ptsGlobal, sizes * 3, disp * 3, MPI.DOUBLE]
 
             # do an allgatherv
             comm.Allgatherv(sendbuf, recvbuf)
 
             # reshape into a nptsg,3 array
-            curvePtCoords = ptsGlobal.reshape((nptsg,3))
+            curvePtCoords = ptsGlobal.reshape((nptsg, 3))
 
         # this is a "serial" pointset, so the results are just local
         else:
@@ -2260,13 +2344,13 @@ class CompIntersection(object):
 
             # the vectorized point-based warping we had from older versions.
             rr = ptCoords - curvePtCoords
-            LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-            LdefoDist3 = LdefoDist**3
+            LdefoDist = 1.0 / numpy.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist3 = LdefoDist ** 3
             Wi = LdefoDist3
             den = numpy.sum(Wi)
             interp = numpy.zeros(3)
             for iDim in range(3):
-                interp[iDim] = numpy.sum(Wi* delta[:, iDim])/den
+                interp[iDim] = numpy.sum(Wi * delta[:, iDim]) / den
 
             # finally, update the coord in place
             ptsNew[j] = ptsNew[j] + interp
@@ -2285,18 +2369,18 @@ class CompIntersection(object):
                 ptCoords = pts0[j]
 
                 # local seed for 3 coords
-                localVal = dIdPt[k,j]
+                localVal = dIdPt[k, j]
 
                 # the vectorized point-based warping we had from older versions.
                 rr = ptCoords - curvePtCoords
-                LdefoDist = (1.0/numpy.sqrt(rr[:,0]**2 + rr[:,1]**2 + rr[:,2]**2+1e-16))
-                LdefoDist3 = LdefoDist**3
+                LdefoDist = 1.0 / numpy.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+                LdefoDist3 = LdefoDist ** 3
                 Wi = LdefoDist3
                 den = numpy.sum(Wi)
                 interp = numpy.zeros(3)
 
                 for iDim in range(3):
-                    deltaBar[k,:,iDim] += Wi*localVal[iDim]/den
+                    deltaBar[k, :, iDim] += Wi * localVal[iDim] / den
 
         # return the seeds for the delta vector
         return deltaBar
@@ -2309,35 +2393,31 @@ class CompIntersection(object):
         useBBox = False
 
         # dummy connectivity data for quad elements since we have all tris
-        quadConn = numpy.zeros((0,4))
+        quadConn = numpy.zeros((0, 4))
 
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
         # for instance, to march in an average direction near kinks.
-        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T,
-                                                             comp.triConn.T,
-                                                             quadConn.T)
+        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, comp.triConn.T, quadConn.T)
         comp.nodal_normals = nodal_normals.T
 
         # Create new tree (the tree itself is stored in Fortran level)
-        adtAPI.adtapi.adtbuildsurfaceadt(comp.nodes.T,
-                                         comp.triConn.T,
-                                         quadConn.T, BBox.T, useBBox,
-                                         MPI.COMM_SELF.py2f(), comp.name)
+        adtAPI.adtapi.adtbuildsurfaceadt(
+            comp.nodes.T, comp.triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), comp.name
+        )
 
         # project
         numPts = pts.shape[0]
-        dist2 = numpy.ones(numPts)*1e10
+        dist2 = numpy.ones(numPts) * 1e10
         xyzProj = numpy.zeros((numPts, 3))
         normProjNotNorm = numpy.zeros((numPts, 3))
 
         # print("[%d] projecting to comp %s, pts.shape = "%(self.comm.rank, comp.name), pts.shape)
 
         # Call projection function
-        procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(pts.T, comp.name,
-                                                                                 dist2, xyzProj.T,
-                                                                                 comp.nodal_normals.T,
-                                                                                 normProjNotNorm.T)
+        procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(
+            pts.T, comp.name, dist2, xyzProj.T, comp.nodal_normals.T, normProjNotNorm.T
+        )
 
         # Adjust indices and ordering
         elementID = elementID - 1
@@ -2350,17 +2430,17 @@ class CompIntersection(object):
         adtAPI.adtapi.adtdeallocateadts(comp.name)
 
         # save the data
-        projDict['procID'] = procID.copy()
-        projDict['elementType'] = elementType.copy()
-        projDict['elementID'] = elementID.copy()
-        projDict['uvw'] = uvw.copy()
-        projDict['dist2'] = dist2.copy()
-        projDict['normProjNotNorm'] = normProjNotNorm.copy()
-        projDict['normProj'] = normProj.copy()
+        projDict["procID"] = procID.copy()
+        projDict["elementType"] = elementType.copy()
+        projDict["elementID"] = elementID.copy()
+        projDict["uvw"] = uvw.copy()
+        projDict["dist2"] = dist2.copy()
+        projDict["normProjNotNorm"] = normProjNotNorm.copy()
+        projDict["normProj"] = normProj.copy()
 
         # also save the original and projected points
-        projDict['xyz'] = pts.copy()
-        projDict['xyzProj'] = xyzProj.copy()
+        projDict["xyz"] = pts.copy()
+        projDict["xyzProj"] = xyzProj.copy()
 
         # return projected points
         return xyzProj
@@ -2374,34 +2454,31 @@ class CompIntersection(object):
         useBBox = False
 
         # dummy connectivity data for quad elements since we have all tris
-        quadConn = numpy.zeros((0,4))
+        quadConn = numpy.zeros((0, 4))
 
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
         # for instance, to march in an average direction near kinks.
-        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T,
-                                                             comp.triConn.T,
-                                                             quadConn.T)
+        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, comp.triConn.T, quadConn.T)
         comp.nodal_normals = nodal_normals.T
 
         # Create new tree (the tree itself is stored in Fortran level)
-        adtAPI.adtapi.adtbuildsurfaceadt(comp.nodes.T,
-                                         comp.triConn.T,
-                                         quadConn.T, BBox.T, useBBox,
-                                         MPI.COMM_SELF.py2f(), comp.name)
+        adtAPI.adtapi.adtbuildsurfaceadt(
+            comp.nodes.T, comp.triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), comp.name
+        )
 
         # also extract the projection data we have from the fwd pass
-        procID = projDict['procID']
-        elementType = projDict['elementType']
-        elementID = projDict['elementID']
-        uvw = projDict['uvw']
-        dist2 = projDict['dist2']
-        normProjNotNorm = projDict['normProjNotNorm']
-        normProj = projDict['normProj']
+        procID = projDict["procID"]
+        elementType = projDict["elementType"]
+        elementID = projDict["elementID"]
+        uvw = projDict["uvw"]
+        dist2 = projDict["dist2"]
+        normProjNotNorm = projDict["normProjNotNorm"]
+        normProj = projDict["normProj"]
 
         # get the original and projected points too
-        xyz = projDict['xyz']
-        xyzProj = projDict['xyzProj']
+        xyz = projDict["xyz"]
+        xyzProj = projDict["xyzProj"]
 
         # also, we dont care about the normals, so the AD seeds for them should (?) be zero
         normProjb = numpy.zeros_like(normProjNotNorm)
@@ -2423,12 +2500,20 @@ class CompIntersection(object):
             # I could not change this because the original ADT code already used "coor" to denote nodes that should be
             # projected.
             # print('\n\nbefore fortran')
-            xyzb, coorb, nodal_normalsb = adtAPI.adtapi.adtmindistancesearch_b(xyz.T, comp.name,
-                                                                            procID, elementType,
-                                                                            elementID+1, uvw.T,
-                                                                            dist2, xyzProj.T,
-                                                                            xyzProjb.T, comp.nodal_normals.T,
-                                                                            normProjNotNorm.T, normProjNotNormb.T)
+            xyzb, coorb, nodal_normalsb = adtAPI.adtapi.adtmindistancesearch_b(
+                xyz.T,
+                comp.name,
+                procID,
+                elementType,
+                elementID + 1,
+                uvw.T,
+                dist2,
+                xyzProj.T,
+                xyzProjb.T,
+                comp.nodal_normals.T,
+                normProjNotNorm.T,
+                normProjNotNormb.T,
+            )
 
             # Transpose results to make them consistent
             xyzb = xyzb.T
@@ -2437,8 +2522,8 @@ class CompIntersection(object):
             # Compute derivative seed contributions of the normal vectors
             # we dont need this...
             # deltaCoorb = adtAPI.adtapi.adtcomputenodalnormals_b(comp.nodes.T,
-                                                                # comp.triConn.T, quadConn.T,
-                                                                # comp.nodal_normals.T, nodal_normalsb)
+            # comp.triConn.T, quadConn.T,
+            # comp.nodal_normals.T, nodal_normalsb)
 
             # Transpose Fortran results to make them consistent
             # deltaCoorb = deltaCoorb.T
@@ -2452,7 +2537,7 @@ class CompIntersection(object):
         adtAPI.adtapi.adtdeallocateadts(comp.name)
 
         # call the total sensitivity of the component's dvgeo
-        compSens = comp.DVGeo.totalSensitivity(dIdptComp, 'triMesh')
+        compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh")
 
         # the entries in dIdpt is replaced with AD seeds of initial points that were projected
         # we also return the total sensitivity contributions from components' triMeshes
@@ -2469,7 +2554,7 @@ class CompIntersection(object):
 
         return
 
-    def _getIntersectionSeam(self, comm, firstCall = False):
+    def _getIntersectionSeam(self, comm, firstCall=False):
         # we can parallelize here. each proc gets one intersection, but needs re-structuring of some of the code.
 
         # this function computes the intersection curve, cleans up the data and splits the curve based on features or curves specified by the user.
@@ -2480,16 +2565,18 @@ class CompIntersection(object):
         self.seamDict = {}
 
         # Call Ney's code with the quad information.
-        dummyConn = numpy.zeros((0,4))
+        dummyConn = numpy.zeros((0, 4))
         # compute the intersection curve, in the first step we just get the array sizes to hide allocatable arrays from python
-        arraySizes = intersectionAPI.intersectionapi.computeintersection(self.compA.nodes.T,
-                                                                         self.compA.triConn.T,
-                                                                         dummyConn.T,
-                                                                         self.compB.nodes.T,
-                                                                         self.compB.triConn.T,
-                                                                         dummyConn.T,
-                                                                         self.distTol,
-                                                                         comm.py2f())
+        arraySizes = intersectionAPI.intersectionapi.computeintersection(
+            self.compA.nodes.T,
+            self.compA.triConn.T,
+            dummyConn.T,
+            self.compB.nodes.T,
+            self.compB.triConn.T,
+            dummyConn.T,
+            self.distTol,
+            comm.py2f(),
+        )
 
         # Retrieve results from Fortran if we have an intersection
         if numpy.max(arraySizes[1:]) > 0:
@@ -2501,17 +2588,21 @@ class CompIntersection(object):
             # We subtract one to make indices consistent with the Python 0-based indices.
             # We also need to transpose it since Python and Fortran use different orderings to store matrices in memory.
             # TODO Bug here?
-            intNodes = numpy.array(intersectionArrays[0]).T # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
+            intNodes = numpy.array(
+                intersectionArrays[0]
+            ).T  # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
             # intNodes = numpy.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
             barsConn = numpy.array(intersectionArrays[1]).T - 1
             parentTria = numpy.array(intersectionArrays[2]).T - 1
 
             # save these intermediate variables
-            self.seamDict['barsConn'] = barsConn
-            self.seamDict['parentTria'] = parentTria
+            self.seamDict["barsConn"] = barsConn
+            self.seamDict["parentTria"] = parentTria
 
         else:
-            raise Error('DVGeometryMulti Error: The components %s and %s do not intersect.'%(self.compA.name, self.compB.name))
+            raise Error(
+                "DVGeometryMulti Error: The components %s and %s do not intersect." % (self.compA.name, self.compB.name)
+            )
 
         # Release memory used by fortran
         intersectionAPI.intersectionapi.releasememory()
@@ -2528,9 +2619,12 @@ class CompIntersection(object):
             if self.intDir is None:
                 # we have multiple intersection curves but the user did not specify which direction to pick
                 for i in range(len(newConn)):
-                    curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, i)
-                    pysurf.tecplot_interface.writeTecplotFEdata(intNodes,newConn[i],curvename, curvename)
-                raise Error('more than one intersection curve between comps %s and %s\nThe curves are written as tecplot files in the current directory\n\nTry rerunning after specifying intDir option for the intersection.'%(self.compA.name, self.compB.name))
+                    curvename = "%s_%s_%d" % (self.compA.name, self.compB.name, i)
+                    pysurf.tecplot_interface.writeTecplotFEdata(intNodes, newConn[i], curvename, curvename)
+                raise Error(
+                    "more than one intersection curve between comps %s and %s\nThe curves are written as tecplot files in the current directory\n\nTry rerunning after specifying intDir option for the intersection."
+                    % (self.compA.name, self.compB.name)
+                )
 
             # the user did specify which direction to pick
             else:
@@ -2538,11 +2632,11 @@ class CompIntersection(object):
                 # we will figure out the locations of these points and pick the one closer to the user picked direction
                 for i in range(len(newConn)):
                     # get all the points
-                    int_pts = intNodes[newConn[i]][:,0]
+                    int_pts = intNodes[newConn[i]][:, 0]
 
                     # average the values
                     # the API uses a 1 based indexing, but here, we convert to a zero based indexing
-                    int_centers[i] = numpy.average(int_pts[abs(self.intDir)-1])
+                    int_centers[i] = numpy.average(int_pts[abs(self.intDir) - 1])
 
                 # multiply the values with the sign of intDir
                 int_centers *= numpy.sign(self.intDir)
@@ -2578,16 +2672,16 @@ class CompIntersection(object):
 
                 # use Ney's fortran code to project the point on curve
                 # first, we need to get a list of nodes that define the intersection
-                intNodesOrd = intNodes[seamConn[:,0]]
+                intNodesOrd = intNodes[seamConn[:, 0]]
 
                 # Get number of points
                 nPoints = len(intNodesOrd)
 
                 # Initialize references
-                dist2 = numpy.ones(nPoints)*1e10
-                xyzProj = numpy.zeros((nPoints,3))
-                tanProj = numpy.zeros((nPoints,3))
-                elemIDs = numpy.zeros((nPoints),dtype='int32')
+                dist2 = numpy.ones(nPoints) * 1e10
+                xyzProj = numpy.zeros((nPoints, 3))
+                tanProj = numpy.zeros((nPoints, 3))
+                elemIDs = numpy.zeros((nPoints), dtype="int32")
 
                 # then find the closest point to the curve
 
@@ -2597,26 +2691,23 @@ class CompIntersection(object):
                     # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                     # Remember that we should adjust some indices before calling the Fortran code
                     # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
-                    elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(intNodesOrd.T,
-                                                                            self.compB.nodes.T,
-                                                                            curveConn.T + 1,
-                                                                            xyzProj.T,
-                                                                            tanProj.T,
-                                                                            dist2,
-                                                                            elemIDs)
+                    elemIDs[:] = (
+                        elemIDs + 1
+                    )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                        intNodesOrd.T, self.compB.nodes.T, curveConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
+                    )
 
                     # Adjust indices back to Python standards
                     elemIDs[:] = elemIDs - 1
 
-                    self.seamDict[curveName]['curveMask'] = curveMask.copy()
-                    self.seamDict[curveName]['elemIDs'] = elemIDs.copy()
-                    self.seamDict[curveName]['intNodesOrd'] = intNodesOrd.copy()
-                    self.seamDict[curveName]['xyzProj'] = xyzProj.copy()
-                    self.seamDict[curveName]['tanProj'] = tanProj.copy()
-                    self.seamDict[curveName]['dist2'] = dist2.copy()
-                    self.seamDict[curveName]['projPtIndx'] = seamConn[:,0][numpy.argmin(dist2)].copy()
-
+                    self.seamDict[curveName]["curveMask"] = curveMask.copy()
+                    self.seamDict[curveName]["elemIDs"] = elemIDs.copy()
+                    self.seamDict[curveName]["intNodesOrd"] = intNodesOrd.copy()
+                    self.seamDict[curveName]["xyzProj"] = xyzProj.copy()
+                    self.seamDict[curveName]["tanProj"] = tanProj.copy()
+                    self.seamDict[curveName]["dist2"] = dist2.copy()
+                    self.seamDict[curveName]["projPtIndx"] = seamConn[:, 0][numpy.argmin(dist2)].copy()
 
                 # now, find the index of the smallest distance
                 breakList.append(numpy.argmin(dist2))
@@ -2638,16 +2729,16 @@ class CompIntersection(object):
         # if this is the first call,
         if firstCall:
             # we also save the initial curve with nodes and connectivities for distance calculations
-            self.conn0  = seamConn.copy()
+            self.conn0 = seamConn.copy()
             self.nodes0 = intNodes.copy()
             self.nFeature = nFeature
         else:
             if nFeature != self.nFeature:
-                raise Error('Number of features on the intersection curve has changed.')
+                raise Error("Number of features on the intersection curve has changed.")
 
         # first get an ordered list of the feature points
         # this is just our breakList "list"
-        featurePoints = intNodes[seamConn[breakList,0]]
+        featurePoints = intNodes[seamConn[breakList, 0]]
 
         # flip
         # we want breakList to be in increasing order...
@@ -2655,12 +2746,12 @@ class CompIntersection(object):
         for i in range(nFeature):
             # print(i,breakList[i], breakList[numpy.mod(i+1, nFeature)])
             # we loop over the breaklist elements and check if the element index is going up or down
-            if breakList[i] < breakList[numpy.mod(i+1, nFeature)]:
+            if breakList[i] < breakList[numpy.mod(i + 1, nFeature)]:
                 ii += 1
 
         # print('increase index',ii)
         # now check if we need to flip the curve
-        if ii == 1: # we need at least 2 features where the element number increases...
+        if ii == 1:  # we need at least 2 features where the element number increases...
             # we need to reverse the order of our feature curves
             # and we will flip the elements too so keep track of this change
             breakList = numpy.mod(seamConn.shape[0] - numpy.array(breakList), seamConn.shape[0])
@@ -2669,11 +2760,11 @@ class CompIntersection(object):
             # print(breakList)
 
             # and we need to invert the curves themselves
-            seamConn = numpy.flip(seamConn, axis = 0)
-            seamConn = numpy.flip(seamConn, axis = 1)
+            seamConn = numpy.flip(seamConn, axis=0)
+            seamConn = numpy.flip(seamConn, axis=1)
 
         # roll so that the first breakList entry is the first node
-        seamConn = numpy.roll(seamConn, -breakList[0], axis = 0)
+        seamConn = numpy.roll(seamConn, -breakList[0], axis=0)
 
         # also adjust the feature indices
         breakList = numpy.mod(breakList - breakList[0], nElem)
@@ -2685,8 +2776,8 @@ class CompIntersection(object):
 
         # get the number of elements between each feature
         curveSizes = []
-        for i in range(nFeature-1):
-            curveSizes.append(numpy.mod(breakList[i+1] - breakList[i], nElem))
+        for i in range(nFeature - 1):
+            curveSizes.append(numpy.mod(breakList[i + 1] - breakList[i], nElem))
         # check the last curve outside the loop
         curveSizes.append(numpy.mod(breakList[0] - breakList[-1], nElem))
         # print('breaklist', breakList, "Curvesizes", curveSizes)
@@ -2699,30 +2790,26 @@ class CompIntersection(object):
             self.nElems = curveSizes[:]
 
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
-        curInd = 0 #curveSizes[0] #+curveSizes[1]
-        seam = numpy.zeros((0,3))
-        finalConn = numpy.zeros((0,2), dtype='int32')
+        curInd = 0  # curveSizes[0] #+curveSizes[1]
+        seam = numpy.zeros((0, 3))
+        finalConn = numpy.zeros((0, 2), dtype="int32")
         for i in range(nFeature):
             # just use the same number of points *2 for now
-            nNewNodes = self.nElems[i]+1
+            nNewNodes = self.nElems[i] + 1
             coor = intNodes
-            barsConn = seamConn[curInd:curInd+curveSizes[i]]
+            barsConn = seamConn[curInd : curInd + curveSizes[i]]
             # print('i feature: %d nNewNodes: %d, curind: %d, curveSizes[i]: %d'%(i, nNewNodes, curInd, curveSizes[i]), barsConn)
             curInd += curveSizes[i]
-            method = 'linear'
-            spacing = 'linear'
+            method = "linear"
+            spacing = "linear"
             initialSpacing = 0.1
             finalSpacing = 0.1
 
             # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
             # Call Fortran code. Remember to adjust transposes and indices
-            newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodes,
-                                                                    coor.T,
-                                                                    barsConn.T + 1,
-                                                                    method,
-                                                                    spacing,
-                                                                    initialSpacing,
-                                                                    finalSpacing)
+            newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
+                nNewNodes, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
+            )
             newCoor = newCoor.T
             newBarsConn = newBarsConn.T - 1
 
@@ -2741,20 +2828,19 @@ class CompIntersection(object):
 
         if firstCall:
             # save the beginning and end indices of these elements
-            self.seamBeg['intersection'] = 0
-            self.seamEnd['intersection'] = len(finalConn)
+            self.seamBeg["intersection"] = 0
+            self.seamEnd["intersection"] = len(finalConn)
 
         # save stuff to the dictionary for sensitivity computations...
-        self.seamDict['intNodes'] = intNodes.copy()
-        self.seamDict['seamConn'] = seamConn.copy()
-        self.seamDict['curveSizes'] = curveSizes.copy()
+        self.seamDict["intNodes"] = intNodes.copy()
+        self.seamDict["seamConn"] = seamConn.copy()
+        self.seamDict["curveSizes"] = curveSizes.copy()
         # size of the intersection seam w/o any feature curves
-        self.seamDict['seamSize'] = len(seam)
-        self.seamDict['curveBegCoor'] = curveBegCoor.copy()
-
+        self.seamDict["seamSize"] = len(seam)
+        self.seamDict["curveBegCoor"] = curveBegCoor.copy()
 
         t1 = time.time()
-        print("[%d] timing two %.6f"%(self.comm.rank, t1-t0))
+        print("[%d] timing two %.6f" % (self.comm.rank, t1 - t0))
         # save the intersection curve for the paper
         # if self.comm.rank == 0:
         #     curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
@@ -2768,8 +2854,8 @@ class CompIntersection(object):
                 self.nNodeFeature = {}
                 self.distFeature = {}
 
-            remeshedCurves = numpy.zeros((0,3))
-            remeshedCurveConn = numpy.zeros((0,2), dtype='int32')
+            remeshedCurves = numpy.zeros((0, 3))
+            remeshedCurveConn = numpy.zeros((0, 2), dtype="int32")
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
@@ -2794,15 +2880,15 @@ class CompIntersection(object):
                 # this has to be on compB
                 if curveName in curveBegCoor:
                     # save the original coordinate of the first point
-                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]].copy()
+                    ptBegSave = self.compB.nodes[curveConn[elemBeg, 0]].copy()
                     # and replace this with the starting point we want
-                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName].copy()
+                    self.compB.nodes[curveConn[elemBeg, 0]] = curveBegCoor[curveName].copy()
 
                 # compute the element lengths starting from elemBeg
-                firstNodes  = curveComp.nodes[curveConn[elemBeg:, 0]]
+                firstNodes = curveComp.nodes[curveConn[elemBeg:, 0]]
                 secondNodes = curveComp.nodes[curveConn[elemBeg:, 1]]
                 diff = secondNodes - firstNodes
-                dist2 = diff[:,0]**2 + diff[:,1]**2 + diff[:,2]**2
+                dist2 = diff[:, 0] ** 2 + diff[:, 1] ** 2 + diff[:, 2] ** 2
                 elemDist = numpy.sqrt(dist2)
 
                 # get the cumulative distance
@@ -2814,22 +2900,22 @@ class CompIntersection(object):
                     elemBeg = 0
                     elemEnd = len(curveConn)
                     if firstCall:
-                        self.nNodeFeature[curveName] = elemEnd+1
+                        self.nNodeFeature[curveName] = elemEnd + 1
                 else:
                     # do the regular thing
                     if firstCall:
                         # compute the distances from curve nodes to intersection seam
-                        curvePts = curveComp.nodes[curveConn[elemBeg:,0]]
+                        curvePts = curveComp.nodes[curveConn[elemBeg:, 0]]
                         # print(curvePts)
 
                         # Get number of points
                         nPoints = len(curvePts)
 
                         # Initialize references if user provided none
-                        dist2 = numpy.ones(nPoints)*1e10
-                        xyzProj = numpy.zeros((nPoints,3))
-                        tanProj = numpy.zeros((nPoints,3))
-                        elemIDs = numpy.zeros((nPoints),dtype='int32')
+                        dist2 = numpy.ones(nPoints) * 1e10
+                        xyzProj = numpy.zeros((nPoints, 3))
+                        tanProj = numpy.zeros((nPoints, 3))
+                        elemIDs = numpy.zeros((nPoints), dtype="int32")
 
                         # then find the closest point to the curve
 
@@ -2839,22 +2925,20 @@ class CompIntersection(object):
                             # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                             # Remember that we should adjust some indices before calling the Fortran code
                             # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
-                            elemIDs[:] = elemIDs + 1 # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                            curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(curvePts.T,
-                                                                                    self.nodes0.T,
-                                                                                    self.conn0.T + 1,
-                                                                                    xyzProj.T,
-                                                                                    tanProj.T,
-                                                                                    dist2,
-                                                                                    elemIDs)
+                            elemIDs[:] = (
+                                elemIDs + 1
+                            )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                            curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                                curvePts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
+                            )
 
                         dNodes = numpy.sqrt(dist2)
 
                         # number of elements to use, subtract one to get the correct element count
-                        nElem = (numpy.abs(dNodes - dStarComp*1.3)).argmin() - 1
+                        nElem = (numpy.abs(dNodes - dStarComp * 1.3)).argmin() - 1
 
                         # we want to be one after the actual distance, so correct if needed
-                        if dNodes[nElem] < dStarComp*1.3:
+                        if dNodes[nElem] < dStarComp * 1.3:
                             nElem += 1
 
                         elemEnd = elemBeg + nElem
@@ -2866,34 +2950,30 @@ class CompIntersection(object):
                         self.distFeature[curveName] = distCurve
 
                         # also save how many nodes we have, we want 2 times this when re-meshing
-                        self.nNodeFeature[curveName] = nElem+1
+                        self.nNodeFeature[curveName] = nElem + 1
 
                     else:
                         # figure out how many elements we need to go in this direction
-                        elemEnd = (numpy.abs(cumDist - self.distFeature[curveName])).argmin()+elemBeg
+                        elemEnd = (numpy.abs(cumDist - self.distFeature[curveName])).argmin() + elemBeg
 
                 # get the new connectivity data between the initial and final elements
-                curveConnTrim = curveConn[elemBeg:elemEnd+1]
+                curveConnTrim = curveConn[elemBeg : elemEnd + 1]
 
                 # remesh the new connectivity curve, using nNode*2 times nodes
                 nNewNodes = self.nNodeFeature[curveName]
                 coor = curveComp.nodes
                 barsConn = curveConnTrim
-                method = 'linear'
-                spacing = 'linear'
+                method = "linear"
+                spacing = "linear"
                 initialSpacing = 0.1
                 finalSpacing = 0.1
 
                 # print("remeshing curve %s with barsconn:"%curveName, barsConn)
                 # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodes,
-                                                                        coor.T,
-                                                                        barsConn.T + 1,
-                                                                        method,
-                                                                        spacing,
-                                                                        initialSpacing,
-                                                                        finalSpacing)
+                newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
+                    nNewNodes, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
+                )
                 newCoor = newCoor.T
                 newBarsConn = newBarsConn.T - 1
 
@@ -2914,21 +2994,16 @@ class CompIntersection(object):
                     nNewNodesReverse = self.nNodeFeature[curveName]
                     coor = self.compB.nodes
                     barsConn = curveConnTrim
-                    method = 'linear'
-                    spacing = 'linear'
+                    method = "linear"
+                    spacing = "linear"
                     initialSpacing = 0.1
                     finalSpacing = 0.1
 
-
                     # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                     # Call Fortran code. Remember to adjust transposes and indices
-                    newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(nNewNodesReverse,
-                                                                            coor.T,
-                                                                            barsConn.T + 1,
-                                                                            method,
-                                                                             spacing,
-                                                                            initialSpacing,
-                                                                            finalSpacing)
+                    newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
+                        nNewNodesReverse, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
+                    )
                     newCoor = newCoor.T
                     newBarsConn = newBarsConn.T - 1
 
@@ -2940,20 +3015,22 @@ class CompIntersection(object):
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
                     # print('putting it back in fwd pass')
-                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave.copy()
+                    self.compB.nodes[curveConn[elemBeg, 0]] = ptBegSave.copy()
 
                 # save some info for gradient computations later on
-                self.seamDict[curveName]['nNewNodes'] = nNewNodes
-                self.seamDict[curveName]['nNewNodesReverse'] = nNewNodesReverse
-                self.seamDict[curveName]['elemBeg'] = elemBeg
-                self.seamDict[curveName]['elemEnd'] = elemEnd
+                self.seamDict[curveName]["nNewNodes"] = nNewNodes
+                self.seamDict[curveName]["nNewNodesReverse"] = nNewNodesReverse
+                self.seamDict[curveName]["elemBeg"] = elemBeg
+                self.seamDict[curveName]["elemEnd"] = elemEnd
                 # this includes the initial coordinates of the points for each curve
                 # that has a modified initial curve
-                self.seamDict['curveBegCoor'] = curveBegCoor
+                self.seamDict["curveBegCoor"] = curveBegCoor
 
                 if firstCall:
                     # save the beginning and end indices of these elements
-                    self.seamBeg[curveName] = len(finalConn) + len(remeshedCurveConn) - (nNewNodes+nNewNodesReverse) + 2
+                    self.seamBeg[curveName] = (
+                        len(finalConn) + len(remeshedCurveConn) - (nNewNodes + nNewNodesReverse) + 2
+                    )
                     self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
 
             # now save the feature curves
@@ -2976,7 +3053,7 @@ class CompIntersection(object):
         self.seamConn = finalConn
 
         t2 = time.time()
-        print("[%d] timing three %.6f"%(self.comm.rank, t2-t1))
+        print("[%d] timing three %.6f" % (self.comm.rank, t2 - t1))
 
         # write to file to check
         # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
@@ -3000,13 +3077,13 @@ class CompIntersection(object):
 
         # first, extract the actual intersection coordinates from feature curves.
         # we might not have any feature curves but the intersection curve will be there
-        seamSize = self.seamDict['seamSize']
+        seamSize = self.seamDict["seamSize"]
 
         # coordinates of the beginning points for feature curves on compB
-        curveBegCoor = self.seamDict['curveBegCoor']
+        curveBegCoor = self.seamDict["curveBegCoor"]
 
-        intBar = seamBar[:,:seamSize, :]
-        curveBar = seamBar[:,seamSize:, :]
+        intBar = seamBar[:, :seamSize, :]
+        curveBar = seamBar[:, seamSize:, :]
 
         # dictionary to save the accumulation of curve projection seeds
         curveProjb = {}
@@ -3021,12 +3098,12 @@ class CompIntersection(object):
             for curveName in self.featureCurveNames:
                 # get the fwd data
                 curveDict = self.seamDict[curveName]
-                nNewNodes = curveDict['nNewNodes']
-                elemBeg = curveDict['elemBeg']
-                elemEnd = curveDict['elemEnd']
+                nNewNodes = curveDict["nNewNodes"]
+                elemBeg = curveDict["elemBeg"]
+                elemEnd = curveDict["elemEnd"]
 
                 # get the derivative seeds
-                newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:].copy()
+                newCoorb = curveBar[:, iBeg : iBeg + nNewNodes, :].copy()
                 # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
                 iBeg += nNewNodes
 
@@ -3047,9 +3124,9 @@ class CompIntersection(object):
                 # adjust the first coordinate of the curve
                 if curveName in curveBegCoor:
                     # save the original coordinate of the first point
-                    ptBegSave = self.compB.nodes[curveConn[elemBeg,0]].copy()
+                    ptBegSave = self.compB.nodes[curveConn[elemBeg, 0]].copy()
                     # and replace this with the starting point we want
-                    self.compB.nodes[curveConn[elemBeg,0]] = curveBegCoor[curveName].copy()
+                    self.compB.nodes[curveConn[elemBeg, 0]] = curveBegCoor[curveName].copy()
 
                 # get the coordinates of points
                 coor = curveComp.nodes
@@ -3058,11 +3135,11 @@ class CompIntersection(object):
                 curveConn = curveComp.barsConn[curveName]
 
                 # trim the connectivity data
-                barsConn = curveComp.barsConn[curveName][elemBeg:elemEnd+1]
+                barsConn = curveComp.barsConn[curveName][elemBeg : elemEnd + 1]
 
                 # constant inputs
-                method = 'linear'
-                spacing = 'linear'
+                method = "linear"
+                spacing = "linear"
                 initialSpacing = 0.1
                 finalSpacing = 0.1
 
@@ -3071,14 +3148,16 @@ class CompIntersection(object):
                 # loop over functions
                 for ii in range(N):
                     # Call Fortran code. Remember to adjust transposes and indices
-                    _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
-                                                                  coor.T,
-                                                                  newCoorb[ii].T,
-                                                                  barsConn.T + 1,
-                                                                  method,
-                                                                  spacing,
-                                                                  initialSpacing,
-                                                                  finalSpacing)
+                    _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(
+                        nNewNodes - 1,
+                        coor.T,
+                        newCoorb[ii].T,
+                        barsConn.T + 1,
+                        method,
+                        spacing,
+                        initialSpacing,
+                        finalSpacing,
+                    )
                     # derivative seeds for the coordinates.
                     cb[ii] = cbi.T.copy()
 
@@ -3090,10 +3169,10 @@ class CompIntersection(object):
                         # first, we need to do the re-meshing of the other direction
 
                         # get the fwd data
-                        nNewNodes = curveDict['nNewNodesReverse']
+                        nNewNodes = curveDict["nNewNodesReverse"]
 
                         # get the derivative seeds
-                        newCoorb = curveBar[:,iBeg:iBeg+nNewNodes,:].copy()
+                        newCoorb = curveBar[:, iBeg : iBeg + nNewNodes, :].copy()
                         # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
                         iBeg += nNewNodes
 
@@ -3103,35 +3182,37 @@ class CompIntersection(object):
                         # loop over functions
                         for ii in range(N):
                             # Call Fortran code. Remember to adjust transposes and indices
-                            _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(nNewNodes-1,
-                                                                        coor.T,
-                                                                        newCoorb[ii].T,
-                                                                        barsConn.T + 1,
-                                                                        method,
-                                                                        spacing,
-                                                                        initialSpacing,
-                                                                        finalSpacing)
+                            _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(
+                                nNewNodes - 1,
+                                coor.T,
+                                newCoorb[ii].T,
+                                barsConn.T + 1,
+                                method,
+                                spacing,
+                                initialSpacing,
+                                finalSpacing,
+                            )
                             # derivative seeds for the coordinates.
                             cb[ii] += cbi.T.copy()
 
                     # the first seed is for the projected point...
-                    projb = cb[:,curveConn[elemBeg,0],:].copy()
+                    projb = cb[:, curveConn[elemBeg, 0], :].copy()
                     # projb = cb[:,0:1,:].copy()
                     # print(curveName, projb)
 
                     # zero out the seed of the replaced node
-                    cb[:,curveConn[elemBeg,0],:] = numpy.zeros((N,3))
+                    cb[:, curveConn[elemBeg, 0], :] = numpy.zeros((N, 3))
 
                     # put the modified initial and final points back in place.
-                    self.compB.nodes[curveConn[elemBeg,0]] = ptBegSave.copy()
+                    self.compB.nodes[curveConn[elemBeg, 0]] = ptBegSave.copy()
 
                     # we need to call the curve projection routine to propagate the seed...
-                    intNodesOrd = self.seamDict[curveName]['intNodesOrd']
-                    curveMask = self.seamDict[curveName]['curveMask']
-                    elemIDs = self.seamDict[curveName]['elemIDs']
-                    xyzProj = self.seamDict[curveName]['xyzProj']
-                    tanProj = self.seamDict[curveName]['tanProj']
-                    dist2 = self.seamDict[curveName]['dist2']
+                    intNodesOrd = self.seamDict[curveName]["intNodesOrd"]
+                    curveMask = self.seamDict[curveName]["curveMask"]
+                    elemIDs = self.seamDict[curveName]["elemIDs"]
+                    xyzProj = self.seamDict[curveName]["xyzProj"]
+                    tanProj = self.seamDict[curveName]["tanProj"]
+                    dist2 = self.seamDict[curveName]["dist2"]
 
                     # we need the full bars conn for this
                     barsConn = curveComp.barsConn[curveName]
@@ -3147,16 +3228,17 @@ class CompIntersection(object):
                         # the only nonzero seed is indexed by argmin dist2
                         xyzProjb[numpy.argmin(dist2)] = projb[ii].copy()
 
-
-                        xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(intNodesOrd.T,
-                                                                               self.compB.nodes.T,
-                                                                               barsConn.T + 1,
-                                                                               xyzProj.T,
-                                                                               xyzProjb.T,
-                                                                               tanProj.T,
-                                                                               tanProjb.T,
-                                                                               elemIDs + 1,
-                                                                               curveMask)
+                        xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
+                            intNodesOrd.T,
+                            self.compB.nodes.T,
+                            barsConn.T + 1,
+                            xyzProj.T,
+                            xyzProjb.T,
+                            tanProj.T,
+                            tanProjb.T,
+                            elemIDs + 1,
+                            curveMask,
+                        )
 
                         # add the coorb_new to coorBb[ii] since coorb_new has the seeds from mindistancecurve_b
                         coorBb[ii] += coorb_new.T
@@ -3168,49 +3250,42 @@ class CompIntersection(object):
                 # all the remaining seeds in coorb live on the component tri-mesh...
                 coorb += cb
 
-
         # now we only have the intersection seam...
         nFeature = len(self.nElems)
-        intNodes = self.seamDict['intNodes']
-        seamConn = self.seamDict['seamConn']
-        curveSizes = self.seamDict['curveSizes']
+        intNodes = self.seamDict["intNodes"]
+        seamConn = self.seamDict["seamConn"]
+        curveSizes = self.seamDict["curveSizes"]
 
         # seeds for the original intersection
         intNodesb = numpy.zeros((N, intNodes.shape[0], intNodes.shape[1]))
 
         # loop over each feature and propagate the sensitivities
-        curInd = 0 # curveSizes[0] +curveSizes[1]
+        curInd = 0  # curveSizes[0] +curveSizes[1]
         curSeed = 0
         for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewElems = self.nElems[i]
-            nNewNodes = nNewElems+1
+            nNewNodes = nNewElems + 1
             coor = intNodes
-            barsConn = seamConn[curInd:curInd+curveSizes[i]]
+            barsConn = seamConn[curInd : curInd + curveSizes[i]]
             # print('SENS i feature: %d nNewNodes: %d, curind: %d, curveSizes[i]: %d'%(i, nNewNodes, curInd, curveSizes[i]))
 
             curInd += curveSizes[i]
-            method = 'linear'
-            spacing = 'linear'
+            method = "linear"
+            spacing = "linear"
             initialSpacing = 0.1
             finalSpacing = 0.1
 
             for ii in range(N):
-                newCoorb = intBar[ii, curSeed:curSeed+nNewNodes, :]
+                newCoorb = intBar[ii, curSeed : curSeed + nNewNodes, :]
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                newCoor, newBarsConn, cb = utilitiesAPI.utilitiesapi.remesh_b(nNewElems,
-                                                            coor.T,
-                                                            newCoorb.T,
-                                                            barsConn.T + 1,
-                                                            method,
-                                                            spacing,
-                                                            initialSpacing,
-                                                            finalSpacing)
+                newCoor, newBarsConn, cb = utilitiesAPI.utilitiesapi.remesh_b(
+                    nNewElems, coor.T, newCoorb.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
+                )
                 intNodesb[ii] += cb.T
                 # print('i=%d ii=%d, len(cb)'%(i,ii),len(cb.T))
                 # print(cb.T)
-
 
             # test if newCoor is what we actually have in the intersection
             # print("sizes of the seed and pts")
@@ -3223,57 +3298,56 @@ class CompIntersection(object):
             curSeed += nNewNodes
 
         # add the contributions from the curve projection if we have any
-        for curveName,v in curveProjb.items():
+        for curveName, v in curveProjb.items():
             # get the index
-            idx = self.seamDict[curveName]['projPtIndx']
+            idx = self.seamDict[curveName]["projPtIndx"]
             # print('adding contributions from', curveName, v)
             for ii in range(N):
                 # add the contribution
-                intNodesb[ii,idx] += v[ii]
+                intNodesb[ii, idx] += v[ii]
 
-        dummyConn = numpy.zeros((0,4))
-        barsConn = self.seamDict['barsConn']
-        parentTria = self.seamDict['parentTria']
+        dummyConn = numpy.zeros((0, 4))
+        barsConn = self.seamDict["barsConn"]
+        parentTria = self.seamDict["parentTria"]
         # do the reverse intersection computation to get the seeds of coordinates
         for ii in range(N):
-            cAb, cBb = intersectionAPI.intersectionapi.computeintersection_b(self.compA.nodes.T,
-                                                                                self.compA.triConn.T,
-                                                                                dummyConn.T,
-                                                                                self.compB.nodes.T,
-                                                                                self.compB.triConn.T,
-                                                                                dummyConn.T,
-                                                                                intNodes.T,
-                                                                                intNodesb[ii].T,
-                                                                                barsConn.T + 1,
-                                                                                parentTria.T + 1,
-                                                                                self.distTol)
+            cAb, cBb = intersectionAPI.intersectionapi.computeintersection_b(
+                self.compA.nodes.T,
+                self.compA.triConn.T,
+                dummyConn.T,
+                self.compB.nodes.T,
+                self.compB.triConn.T,
+                dummyConn.T,
+                intNodes.T,
+                intNodesb[ii].T,
+                barsConn.T + 1,
+                parentTria.T + 1,
+                self.distTol,
+            )
 
             coorAb[ii] += cAb.T
             coorBb[ii] += cBb.T
 
         # get the total sensitivities from both components
         compSens_local = {}
-        compSensA = self.compA.DVGeo.totalSensitivity(coorAb, 'triMesh')
-        for k,v in compSensA.items():
-            kNew = '%s:%s'%(self.compA.name, k)
+        compSensA = self.compA.DVGeo.totalSensitivity(coorAb, "triMesh")
+        for k, v in compSensA.items():
+            kNew = "%s:%s" % (self.compA.name, k)
             compSens_local[kNew] = v
 
-        compSensB = self.compB.DVGeo.totalSensitivity(coorBb, 'triMesh')
-        for k,v in compSensB.items():
-            kNew = '%s:%s'%(self.compB.name, k)
+        compSensB = self.compB.DVGeo.totalSensitivity(coorBb, "triMesh")
+        for k, v in compSensB.items():
+            kNew = "%s:%s" % (self.compB.name, k)
             compSens_local[kNew] = v
 
         # finally sum the results across procs if we are provided with a comm
         if comm:
             compSens = {}
             # because the results are in a dictionary, we need to loop over the items and sum
-            for k,v in compSens_local.items():
+            for k, v in compSens_local.items():
                 compSens[k] = comm.allreduce(v, op=MPI.SUM)
         else:
             # we can just pass the dictionary
             compSens = compSens_local
 
         return compSens
-
-
-
