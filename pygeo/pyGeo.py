@@ -6,7 +6,7 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg.dsolve import factorized
-from pyspline import Cuver, Surface
+from pyspline import Curve, Surface
 from pyspline.utils import openTecplot, writeTecplot2D, closeTecplot
 from . import geo_utils
 

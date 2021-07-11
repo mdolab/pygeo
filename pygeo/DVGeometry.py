@@ -7,8 +7,7 @@ import numpy as np
 from scipy import sparse
 from mpi4py import MPI
 from pyspline import Curve
-from pyspline.utils import openTecplot, closeTecplot 
-from pyspline.utils import writeTecplot1D, writeTecplot3D
+from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
 from . import pyNetwork, pyBlock, geo_utils
 import os
 
