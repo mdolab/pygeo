@@ -6,7 +6,8 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
-from pyspline import pySpline
+from pyspline import Volume
+from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
 from .geo_utils import readNValues, BlockTopology, blendKnotVectors
 
 
@@ -189,7 +190,7 @@ class pyBlock:
                 # construction symmetric
 
                 self.vols.append(
-                    pySpline.Volume(
+                    Volume(
                         ku=ku,
                         kv=kv,
                         kw=kw,
@@ -236,7 +237,7 @@ class pyBlock:
             # the parametrization and knot vectors
             for ivol in range(nVol):
                 self.vols.append(
-                    pySpline.Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False)
+                    Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False)
                 )
             self.nVol = len(self.vols)
         # end if (FFD Check)
@@ -524,19 +525,19 @@ class pyBlock:
         """
 
         # Open File and output header
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
 
         if vols:
             for ivol in range(self.nVol):
                 self.vols[ivol].computeData()
-                pySpline.writeTecplot3D(f, "interpolated", self.vols[ivol].data)
+                writeTecplot3D(f, "interpolated", self.vols[ivol].data)
         if orig:
             for ivol in range(self.nVol):
-                pySpline.writeTecplot3D(f, "orig_data", self.vols[ivol].X)
+                writeTecplot3D(f, "orig_data", self.vols[ivol].X)
 
         if coef:
             for ivol in range(self.nVol):
-                pySpline.writeTecplot3D(f, "control_pts", self.vols[ivol].coef)
+                writeTecplot3D(f, "control_pts", self.vols[ivol].coef)
 
         # ---------------------------------------------
         #    Write out labels:
@@ -603,7 +604,7 @@ class pyBlock:
                 f2.write("%s" % (textString))
             f2.close()
 
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
 
     def writePlot3d(self, fileName):
         """Write the grid to a plot3d file. This isn't efficient as it

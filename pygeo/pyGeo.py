@@ -6,7 +6,8 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg.dsolve import factorized
-from pyspline import pySpline
+from pyspline import Cuver, Surface
+from pyspline.utils import openTecplot, writeTecplot2D, closeTecplot
 from . import geo_utils
 
 
@@ -170,7 +171,7 @@ class pyGeo:
         # the parametrization and knot vectors
         self.nSurf = nSurf
         for isurf in range(self.nSurf):
-            self.surfs.append(pySpline.Surface(X=surfs[isurf], ku=ku, kv=kv, nCtlu=nCtlu, nCtlv=nCtlv))
+            self.surfs.append(Surface(X=surfs[isurf], ku=ku, kv=kv, nCtlu=nCtlu, nCtlv=nCtlv))
 
     def _readIges(self, fileName):
         """Load a Iges file and create the splines to go with each patch
@@ -267,7 +268,7 @@ class pyGeo:
             if not tv[-1] == 1.0:
                 tv /= tv[-1]
 
-            self.surfs.append(pySpline.Surface(ku=ku, kv=kv, tu=tu, tv=tv, coef=coef))
+            self.surfs.append(Surface(ku=ku, kv=kv, tu=tu, tv=tv, coef=coef))
 
             # Generate dummy data for connectivity to work
             u = np.linspace(0, 1, 3)
@@ -375,9 +376,9 @@ class pyGeo:
                 weights[0] = -1
                 weights[-1] = -1
                 if nCtl is not None:
-                    c = pySpline.Curve(x=x, y=y, nCtl=nCtl, k=4, weights=weights)
+                    c = Curve(x=x, y=y, nCtl=nCtl, k=4, weights=weights)
                 else:
-                    c = pySpline.Curve(x=x, y=y, localInterp=True)
+                    c = Curve(x=x, y=y, localInterp=True)
 
                 curves.append(c)
                 knots.append(c.t)
@@ -467,7 +468,7 @@ class pyGeo:
         # end if (nCtl is not none)
 
         # Generate a curve from X just for the parametrization
-        Xcurve = pySpline.Curve(X=Xsec, k=kSpan)
+        Xcurve = Curve(X=Xsec, k=kSpan)
 
         # Now blend the missing sections
         print("Interpolating missing sections ...")
@@ -494,7 +495,7 @@ class pyGeo:
 
                 coef = curves[istart].coef * (1 - alpha) + curves[iend].coef * (alpha)
 
-                curves[i] = pySpline.Curve(coef=coef, k=4, t=newKnots.copy())
+                curves[i] = Curve(coef=coef, k=4, t=newKnots.copy())
         # end for (xsections)
 
         # Before we continue the user may want to artificially scale
@@ -589,8 +590,8 @@ class pyGeo:
             coefBot[:, i, :] += Xsec[i, :]
 
         # Set the two main surfaces
-        self.surfs.append(pySpline.Surface(coef=coefTop, ku=4, kv=kSpan, tu=topCurves[0].t, tv=Xcurve.t))
-        self.surfs.append(pySpline.Surface(coef=coefBot, ku=4, kv=kSpan, tu=botCurves[0].t, tv=Xcurve.t))
+        self.surfs.append(Surface(coef=coefTop, ku=4, kv=kSpan, tu=topCurves[0].t, tv=Xcurve.t))
+        self.surfs.append(Surface(coef=coefBot, ku=4, kv=kSpan, tu=botCurves[0].t, tv=Xcurve.t))
 
         print("Computing TE surfaces ...")
 
@@ -599,7 +600,7 @@ class pyGeo:
                 coef = np.zeros((len(xsections), 2, 3), "d")
                 coef[:, 0, :] = coefTop[0, :, :]
                 coef[:, 1, :] = coefBot[0, :, :]
-                self.surfs.append(pySpline.Surface(coef=coef, ku=kSpan, kv=2, tu=Xcurve.t, tv=[0, 0, 1, 1]))
+                self.surfs.append(Surface(coef=coef, ku=kSpan, kv=2, tu=Xcurve.t, tv=[0, 0, 1, 1]))
             else:
                 coef = np.zeros((len(xsections), 4, 3), "d")
                 coef[:, 0, :] = coefTop[0, :, :]
@@ -618,7 +619,7 @@ class pyGeo:
                     coef[j, 1] = coef[j, 0] + projTop * 0.5 * curTeThick * teScale
                     coef[j, 2] = coef[j, 3] + projBot * 0.5 * curTeThick * teScale
 
-                self.surfs.append(pySpline.Surface(coef=coef, ku=kSpan, kv=4, tu=Xcurve.t, tv=[0, 0, 0, 0, 1, 1, 1, 1]))
+                self.surfs.append(Surface(coef=coef, ku=kSpan, kv=4, tu=Xcurve.t, tv=[0, 0, 0, 0, 1, 1, 1, 1]))
 
         self.nSurf = len(self.surfs)
 
@@ -697,8 +698,8 @@ class pyGeo:
                             + omfact * coefBotTip[j, 3]
                         )
 
-            surfTopTip = pySpline.Surface(coef=coefTopTip, ku=4, kv=4, tu=topCurves[0].t, tv=[0, 0, 0, 0, 1, 1, 1, 1])
-            surfBotTip = pySpline.Surface(coef=coefBotTip, ku=4, kv=4, tu=botCurves[0].t, tv=[0, 0, 0, 0, 1, 1, 1, 1])
+            surfTopTip = Surface(coef=coefTopTip, ku=4, kv=4, tu=topCurves[0].t, tv=[0, 0, 0, 0, 1, 1, 1, 1])
+            surfBotTip = Surface(coef=coefBotTip, ku=4, kv=4, tu=botCurves[0].t, tv=[0, 0, 0, 0, 1, 1, 1, 1])
             self.surfs.append(surfTopTip)
             self.surfs.append(surfBotTip)
             self.nSurf += 2
@@ -718,7 +719,7 @@ class pyGeo:
                     coef[:, 1] = coefBotTip[0, :]
 
                     self.surfs.append(
-                        pySpline.Surface(coef=coef, ku=4, kv=2, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1])
+                        Surface(coef=coef, ku=4, kv=2, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1])
                     )
                     self.nSurf += 1
                 elif roundedTe:
@@ -739,7 +740,7 @@ class pyGeo:
                         coef[i, 2] = coef[i, 3] + projBot * 0.5 * curTeThick * teScale
 
                     self.surfs.append(
-                        pySpline.Surface(
+                        Surface(
                             coef=coef, ku=4, kv=4, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 0, 0, 1, 1, 1, 1]
                         )
                     )
@@ -1029,23 +1030,23 @@ class pyGeo:
             Falg to write file with node labels
         """
 
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
 
         # Write out the Interpolated Surfaces
         if surfs:
             for isurf in range(self.nSurf):
                 self.surfs[isurf].computeData()
-                pySpline.writeTecplot2D(f, "interpolated", self.surfs[isurf].data)
+                writeTecplot2D(f, "interpolated", self.surfs[isurf].data)
 
         # Write out the Control Points
         if coef:
             for isurf in range(self.nSurf):
-                pySpline.writeTecplot2D(f, "control_pts", self.surfs[isurf].coef)
+                writeTecplot2D(f, "control_pts", self.surfs[isurf].coef)
 
         # Write out the Original Data
         if orig:
             for isurf in range(self.nSurf):
-                pySpline.writeTecplot2D(f, "control_pts", self.surfs[isurf].X)
+                writeTecplot2D(f, "control_pts", self.surfs[isurf].X)
 
         # Write out The Surface Directions
         if directions:
@@ -1121,7 +1122,7 @@ class pyGeo:
             f2.close()
 
         # Close out the file
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
 
     def writeIGES(self, fileName):
         """

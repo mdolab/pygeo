@@ -6,7 +6,9 @@ from collections import OrderedDict
 import numpy as np
 from scipy import sparse
 from mpi4py import MPI
-from pyspline import pySpline
+from pyspline import Curve
+from pyspline.utils import openTecplot, closeTecplot 
+from pyspline.utils import writeTecplot1D, writeTecplot3D
 from . import pyNetwork, pyBlock, geo_utils
 import os
 
@@ -528,7 +530,7 @@ class DVGeometry(object):
                     volumes.append(iVol)
 
             # Generate reference axis pySpline curve
-            curve = pySpline.Curve(X=refaxisNodes, k=2)
+            curve = Curve(X=refaxisNodes, k=2)
             nAxis = len(curve.coef)
             self.axis[name] = {
                 "curve": curve,
@@ -2432,13 +2434,13 @@ class DVGeometry(object):
             keyToUpdate = list(self.points.keys())[0]
             self.update(keyToUpdate, childDelta=False)
 
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
         vol_counter = 0
 
         # Write master volumes:
         vol_counter += self._writeVols(f, vol_counter)
 
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
         if len(self.points) > 0:
             self.update(keyToUpdate, childDelta=True)
 
@@ -2472,7 +2474,7 @@ class DVGeometry(object):
             Filename for tecplot file. Should have .dat extension
         """
         self._finalize()
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
         f.write("ZONE NODES=%d ELEMENTS=%d ZONETYPE=FELINESEG\n" % (self.nPtAttach * 2, self.nPtAttach))
         f.write("DATAPACKING=POINT\n")
         for ipt in range(self.nPtAttach):
@@ -2484,7 +2486,7 @@ class DVGeometry(object):
         for i in range(self.nPtAttach):
             f.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
 
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
 
     def writePointSet(self, name, fileName):
         """
@@ -2504,9 +2506,9 @@ class DVGeometry(object):
         else:
             coords = self.update(name, childDelta=True)
             fileName = fileName + "_%s.dat" % name
-            f = pySpline.openTecplot(fileName, 3)
-            pySpline.writeTecplot1D(f, name, coords)
-            pySpline.closeTecplot(f)
+            f = openTecplot(fileName, 3)
+            writeTecplot1D(f, name, coords)
+            closeTecplot(f)
 
     def writePlot3d(self, fileName):
         """Write the (deformed) current state of the FFD object into a
@@ -2779,14 +2781,14 @@ class DVGeometry(object):
             N = len(self.refAxis.curves[i].coef)
             z = np.zeros((N, 1), self.dtype)
             o = np.ones((N, 1), self.dtype)
-            self.rot_x[key] = pySpline.Curve(t=t, k=k, coef=z.copy())
-            self.rot_y[key] = pySpline.Curve(t=t, k=k, coef=z.copy())
-            self.rot_z[key] = pySpline.Curve(t=t, k=k, coef=z.copy())
-            self.rot_theta[key] = pySpline.Curve(t=t, k=k, coef=z.copy())
-            self.scale[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
-            self.scale_x[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
-            self.scale_y[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
-            self.scale_z[key] = pySpline.Curve(t=t, k=k, coef=o.copy())
+            self.rot_x[key] = Curve(t=t, k=k, coef=z.copy())
+            self.rot_y[key] = Curve(t=t, k=k, coef=z.copy())
+            self.rot_z[key] = Curve(t=t, k=k, coef=z.copy())
+            self.rot_theta[key] = Curve(t=t, k=k, coef=z.copy())
+            self.scale[key] = Curve(t=t, k=k, coef=o.copy())
+            self.scale_x[key] = Curve(t=t, k=k, coef=o.copy())
+            self.scale_y[key] = Curve(t=t, k=k, coef=o.copy())
+            self.scale_z[key] = Curve(t=t, k=k, coef=o.copy())
             i += 1
 
         # Need to keep track of initail scale values
@@ -3879,7 +3881,7 @@ class DVGeometry(object):
 
     def _writeVols(self, handle, vol_counter):
         for i in range(len(self.FFD.vols)):
-            pySpline.writeTecplot3D(handle, "vol%d" % i, self.FFD.vols[i].coef)
+            writeTecplot3D(handle, "vol%d" % i, self.FFD.vols[i].coef)
             vol_counter += 1
 
         # Write children volumes:

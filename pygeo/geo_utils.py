@@ -6,7 +6,8 @@ import numpy as np
 import sys
 import os
 import functools
-from pyspline import pySpline
+from pyspline import libspline
+from pyspline.utils import bilinearSurface
 
 # Set a (MUCH) larger recursion limit. For meshes with extremely large
 # numbers of blocs (> 5000) the recursive edge propagation may hit a
@@ -1420,7 +1421,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]"
 
             X = corners
 
-            self.box = pySpline.bilinearSurface(X)
+            self.box = bilinearSurface(X)
             self.type = "box"
 
         elif psType == "list":
@@ -3248,7 +3249,7 @@ def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         fail = 2
         return None, None, fail
 
-    tmpSol, tmpPid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    tmpSol, tmpPid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     tmpSol = tmpSol.T
     tmpPid -= 1
 
@@ -3346,7 +3347,7 @@ def projectNodePIDPosOnly(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
     pid -= 1
 
@@ -3395,7 +3396,7 @@ def projectNode(pt, upVec, p0, v1, v2):
         fail = 2
         return None, None, fail
 
-    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     # Check to see if any of the solutions happen be identical.
@@ -3459,7 +3460,7 @@ def projectNodePosOnly(pt, upVec, p0, v1, v2):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     if nSol == 0:
@@ -3490,7 +3491,7 @@ def tfi_2d(e0, e1, e2, e3):
     # e1: Nodes along edge 3. Size Nv x 3
 
     try:
-        X = pySpline.libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
+        X = libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
     except Exception:
 
         Nu = len(e0)
