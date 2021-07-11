@@ -25,21 +25,21 @@ def rotxM(theta):
 
 
 def rotyM(theta):
-    """ Return y rotation matrix"""
+    """Return y rotation matrix"""
     theta = theta * np.pi / 180
     M = [[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]]
     return M
 
 
 def rotzM(theta):
-    """ Return z rotation matrix"""
+    """Return z rotation matrix"""
     theta = theta * np.pi / 180
     M = [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
     return M
 
 
 def rotxV(x, theta):
-    """ Rotate a coordinate in the local x frame"""
+    """Rotate a coordinate in the local x frame"""
     M = [[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta), np.cos(theta)]]
     return np.dot(M, x)
 
@@ -57,7 +57,7 @@ def rotzV(x, theta):
 
 
 def rotVbyW(V, W, theta):
-    """ Rotate a vector V, about an axis W by angle theta"""
+    """Rotate a vector V, about an axis W by angle theta"""
     ux = W[0]
     uy = W[1]
     uz = W[2]
@@ -246,7 +246,7 @@ def writeValues(handle, values, dtype, binary=False):
 
 
 def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness=0.002):
-    """ Load the airfoil file"""
+    """Load the airfoil file"""
     f = open(fileName, "r")
     line = f.readline()  # Read (and ignore) the first line
     r = []
@@ -332,7 +332,7 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness
 
 
 def writeAirfoilFile(fileName, name, x, y):
-    """ write an airfoil file """
+    """write an airfoil file"""
     f = open(fileName, "w")
     f.write("%s\n" % name)
 
@@ -1065,7 +1065,7 @@ def edgeFromNodes(n1, n2):
 
 
 def edgesFromNode(n):
-    """ Return the two edges coorsponding to node n"""
+    """Return the two edges coorsponding to node n"""
     if n == 0:
         return 0, 2
     if n == 1:

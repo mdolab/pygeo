@@ -914,7 +914,7 @@ class pyGeo:
         self.topo.printConnectivity()
 
     def _propagateKnotVectors(self):
-        """ Propagate the knot vectors to make consistent"""
+        """Propagate the knot vectors to make consistent"""
         # First get the number of design groups
         nDG = -1
         ncoef = []
@@ -1060,16 +1060,13 @@ class pyGeo:
             for isurf in range(self.nSurf):
                 midu = np.floor(self.surfs[isurf].nCtlu / 2)
                 midv = np.floor(self.surfs[isurf].nCtlv / 2)
-                textString = (
-                    'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
- T="S%d"\n'
-                    % (
-                        self.surfs[isurf].coef[midu, midv, 0],
-                        self.surfs[isurf].coef[midu, midv, 1],
-                        self.surfs[isurf].coef[midu, midv, 2],
-                        isurf + 1,
-                        isurf,
-                    )
+                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
+ T="S%d"\n' % (
+                    self.surfs[isurf].coef[midu, midv, 0],
+                    self.surfs[isurf].coef[midu, midv, 1],
+                    self.surfs[isurf].coef[midu, midv, 2],
+                    isurf + 1,
+                    isurf,
                 )
                 f2.write("%s" % (textString))
             f2.close()

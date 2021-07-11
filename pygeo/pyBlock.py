@@ -128,7 +128,7 @@ class pyBlock:
             #             self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
         def symmZero(axis, coords, tol):
-            """ set all coords within a certain tolerance of the symm plan to be exactly 0"""
+            """set all coords within a certain tolerance of the symm plan to be exactly 0"""
 
             if axis.lower() == "x":
                 index = 0
@@ -389,7 +389,7 @@ class pyBlock:
         self.topo.printConnectivity()
 
     def _propagateKnotVectors(self):
-        """ Propagate the knot vectors to make consistent"""
+        """Propagate the knot vectors to make consistent"""
 
         nDG = -1
         ncoef = []
