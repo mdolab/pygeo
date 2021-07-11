@@ -236,9 +236,7 @@ class pyBlock:
             # Note This doesn't actually fit the volumes...just produces
             # the parametrization and knot vectors
             for ivol in range(nVol):
-                self.vols.append(
-                    Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False)
-                )
+                self.vols.append(Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False))
             self.nVol = len(self.vols)
         # end if (FFD Check)
 

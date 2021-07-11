@@ -718,9 +718,7 @@ class pyGeo:
                     coef[:, 0] = coefTopTip[0, :]
                     coef[:, 1] = coefBotTip[0, :]
 
-                    self.surfs.append(
-                        Surface(coef=coef, ku=4, kv=2, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1])
-                    )
+                    self.surfs.append(Surface(coef=coef, ku=4, kv=2, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 1, 1]))
                     self.nSurf += 1
                 elif roundedTe:
                     coef = np.zeros((4, 4, 3), "d")
@@ -740,9 +738,7 @@ class pyGeo:
                         coef[i, 2] = coef[i, 3] + projBot * 0.5 * curTeThick * teScale
 
                     self.surfs.append(
-                        Surface(
-                            coef=coef, ku=4, kv=4, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 0, 0, 1, 1, 1, 1]
-                        )
+                        Surface(coef=coef, ku=4, kv=4, tu=[0, 0, 0, 0, 1, 1, 1, 1], tv=[0, 0, 0, 0, 1, 1, 1, 1])
                     )
                     self.nSurf += 1
 
@@ -1064,13 +1060,16 @@ class pyGeo:
             for isurf in range(self.nSurf):
                 midu = np.floor(self.surfs[isurf].nCtlu / 2)
                 midv = np.floor(self.surfs[isurf].nCtlv / 2)
-                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
- T="S%d"\n' % (
-                    self.surfs[isurf].coef[midu, midv, 0],
-                    self.surfs[isurf].coef[midu, midv, 1],
-                    self.surfs[isurf].coef[midu, midv, 2],
-                    isurf + 1,
-                    isurf,
+                textString = (
+                    'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
+ T="S%d"\n'
+                    % (
+                        self.surfs[isurf].coef[midu, midv, 0],
+                        self.surfs[isurf].coef[midu, midv, 1],
+                        self.surfs[isurf].coef[midu, midv, 2],
+                        isurf + 1,
+                        isurf,
+                    )
                 )
                 f2.write("%s" % (textString))
             f2.close()

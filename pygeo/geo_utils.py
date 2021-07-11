@@ -1667,32 +1667,20 @@ class Topology(object):
         for i in range(len(self.edges)):
             self.edges[i].writeInfo(i, sys.stdout)
 
-        print(
-            "%9s Num |" % (self.topoType),
-        )
+        print("%9s Num |" % (self.topoType))
         for i in range(self.mNodeEnt):
-            print(
-                " n%2d|" % (i),
-            )
+            print(" n%2d|" % (i))
         for i in range(self.mEdgeEnt):
-            print(
-                " e%2d|" % (i),
-            )
+            print(" e%2d|" % (i))
         print(" ")  # Get New line
 
         for i in range(self.nEnt):
-            print(
-                " %5d        |" % (i),
-            )
+            print(" %5d        |" % (i))
             for j in range(self.mNodeEnt):
-                print(
-                    "%4d|" % self.nodeLink[i][j],
-                )
+                print("%4d|" % self.nodeLink[i][j])
 
             for j in range(self.mEdgeEnt):
-                print(
-                    "%4d|" % (self.edgeLink[i][j] * self.edgeDir[i][j]),
-                )
+                print("%4d|" % (self.edgeLink[i][j] * self.edgeDir[i][j]))
             print(" ")
 
         print(

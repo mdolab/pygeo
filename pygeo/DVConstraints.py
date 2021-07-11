@@ -2908,11 +2908,7 @@ class DVConstraints(object):
         else:
             conName = name
 
-        options = {
-            "slope": slope,
-            "start": start,
-            "stop": stop,
-        }
+        options = {"slope": slope, "start": start, "stop": stop}
         # Finally add the global linear constraint object
         self.linearCon[conName] = GlobalLinearConstraint(
             conName,
@@ -3461,13 +3457,7 @@ class RadiusConstraint(GeometricConstraint):
                 eye = np.eye(self.nCon)
             drdPt_sparse = np.einsum("ij,jk->ijk", eye, drdPt)
             drdPt_sparse = drdPt_sparse.reshape(self.nCon, self.nCon * 3, 3)
-            drdPt_sparse = np.hstack(
-                [
-                    drdPt_sparse[:, ::3, :],
-                    drdPt_sparse[:, 1::3, :],
-                    drdPt_sparse[:, 2::3, :],
-                ]
-            )
+            drdPt_sparse = np.hstack([drdPt_sparse[:, ::3, :], drdPt_sparse[:, 1::3, :], drdPt_sparse[:, 2::3, :]])
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(drdPt_sparse, self.name, config=config)
 
