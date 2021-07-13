@@ -1,3 +1,3 @@
 #!/bin/bash
 set -e
-pip install .[testing]
+pip install -e .[testing]
