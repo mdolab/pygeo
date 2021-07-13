@@ -6,7 +6,8 @@ import numpy as np
 import sys
 import os
 import functools
-from pyspline import pySpline
+from pyspline import libspline
+from pyspline.utils import bilinearSurface
 
 # Set a (MUCH) larger recursion limit. For meshes with extremely large
 # numbers of blocs (> 5000) the recursive edge propagation may hit a
@@ -24,21 +25,21 @@ def rotxM(theta):
 
 
 def rotyM(theta):
-    """ Return y rotation matrix"""
+    """Return y rotation matrix"""
     theta = theta * np.pi / 180
     M = [[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]]
     return M
 
 
 def rotzM(theta):
-    """ Return z rotation matrix"""
+    """Return z rotation matrix"""
     theta = theta * np.pi / 180
     M = [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
     return M
 
 
 def rotxV(x, theta):
-    """ Rotate a coordinate in the local x frame"""
+    """Rotate a coordinate in the local x frame"""
     M = [[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta), np.cos(theta)]]
     return np.dot(M, x)
 
@@ -56,7 +57,7 @@ def rotzV(x, theta):
 
 
 def rotVbyW(V, W, theta):
-    """ Rotate a vector V, about an axis W by angle theta"""
+    """Rotate a vector V, about an axis W by angle theta"""
     ux = W[0]
     uy = W[1]
     uz = W[2]
@@ -245,7 +246,7 @@ def writeValues(handle, values, dtype, binary=False):
 
 
 def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness=0.002):
-    """ Load the airfoil file"""
+    """Load the airfoil file"""
     f = open(fileName, "r")
     line = f.readline()  # Read (and ignore) the first line
     r = []
@@ -331,7 +332,7 @@ def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness
 
 
 def writeAirfoilFile(fileName, name, x, y):
-    """ write an airfoil file """
+    """write an airfoil file"""
     f = open(fileName, "w")
     f.write("%s\n" % name)
 
@@ -1064,7 +1065,7 @@ def edgeFromNodes(n1, n2):
 
 
 def edgesFromNode(n):
-    """ Return the two edges coorsponding to node n"""
+    """Return the two edges coorsponding to node n"""
     if n == 0:
         return 0, 2
     if n == 1:
@@ -1420,7 +1421,7 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]"
 
             X = corners
 
-            self.box = pySpline.bilinearSurface(X)
+            self.box = bilinearSurface(X)
             self.type = "box"
 
         elif psType == "list":
@@ -1666,32 +1667,20 @@ class Topology(object):
         for i in range(len(self.edges)):
             self.edges[i].writeInfo(i, sys.stdout)
 
-        print(
-            "%9s Num |" % (self.topoType),
-        )
+        print("%9s Num |" % (self.topoType))
         for i in range(self.mNodeEnt):
-            print(
-                " n%2d|" % (i),
-            )
+            print(" n%2d|" % (i))
         for i in range(self.mEdgeEnt):
-            print(
-                " e%2d|" % (i),
-            )
+            print(" e%2d|" % (i))
         print(" ")  # Get New line
 
         for i in range(self.nEnt):
-            print(
-                " %5d        |" % (i),
-            )
+            print(" %5d        |" % (i))
             for j in range(self.mNodeEnt):
-                print(
-                    "%4d|" % self.nodeLink[i][j],
-                )
+                print("%4d|" % self.nodeLink[i][j])
 
             for j in range(self.mEdgeEnt):
-                print(
-                    "%4d|" % (self.edgeLink[i][j] * self.edgeDir[i][j]),
-                )
+                print("%4d|" % (self.edgeLink[i][j] * self.edgeDir[i][j]))
             print(" ")
 
         print(
@@ -3248,7 +3237,7 @@ def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         fail = 2
         return None, None, fail
 
-    tmpSol, tmpPid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    tmpSol, tmpPid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     tmpSol = tmpSol.T
     tmpPid -= 1
 
@@ -3346,7 +3335,7 @@ def projectNodePIDPosOnly(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
     pid -= 1
 
@@ -3395,7 +3384,7 @@ def projectNode(pt, upVec, p0, v1, v2):
         fail = 2
         return None, None, fail
 
-    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     # Check to see if any of the solutions happen be identical.
@@ -3459,7 +3448,7 @@ def projectNodePosOnly(pt, upVec, p0, v1, v2):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = pySpline.libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     if nSol == 0:
@@ -3490,7 +3479,7 @@ def tfi_2d(e0, e1, e2, e3):
     # e1: Nodes along edge 3. Size Nv x 3
 
     try:
-        X = pySpline.libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
+        X = libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
     except Exception:
 
         Nu = len(e0)
