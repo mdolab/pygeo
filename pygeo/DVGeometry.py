@@ -696,9 +696,9 @@ class DVGeometry(object):
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
 
-    def addGeoDVGlobal(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None):
-        warnings.warn('addGeoDVGlobal has been replaced, use addGlobalDV instead', DeprecationWarning)
-        return self.addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None)
+    def addGeoDVGlobal(self, *args, **kwargs):
+        warnings.warn("addGeoDVGlobal will be deprecated, use addGlobalDV instead")
+        self.addGlobalDV(self, *args, **kwargs)
 
     def addGeoDVLocal(
         self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
