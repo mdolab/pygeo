@@ -973,7 +973,7 @@ class DVGeometry(object):
 
         return self.DV_listSpanwiseLocal[dvName].nVal
 
-    def addGeoDVSectionLocal(
+    def addLocalSectionDV(
         self,
         dvName,
         secIndex,
@@ -1037,7 +1037,7 @@ class DVGeometry(object):
                 2: transverse direction (out of section plane)
 
             If more than one direction is required, use multiple calls to
-            `addGeoDVSectionLocal` with different axis values.
+            `addLocalSectionDV` with different axis values.
             ::
 
                                     1
@@ -1116,7 +1116,7 @@ class DVGeometry(object):
         --------
         >>> # Add all control points in FFD as local shape variables
         >>> # moving in the 1 direction, within +/- 1.0 units
-        >>> DVGeo.addGeoDVSectionLocal('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
+        >>> DVGeo.addLocalSectionDV('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
         if self.name is not None:
             dvName = self.name + "_" + dvName
@@ -1191,6 +1191,10 @@ class DVGeometry(object):
         )
 
         return self.DV_listSectionLocal[dvName].nVal
+
+    def addGeoDVSectionLocal(self, *args, **kwargs):
+        warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
+        self.addLocalSectionDV(self, *args, **kwargs)
 
     def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8):
         """
@@ -4119,7 +4123,7 @@ class DVGeometry(object):
         orient0 : None, `i`, `j`, `k`, or numpy vector. Default is None.
             Although secIndex defines the '2' axis, the '0' and '1' axes are still
             free to rotate within the section plane. We will choose the orientation
-            of the '0' axis and let '1' be orthogonal. See `addGeoDVSectionLocal`
+            of the '0' axis and let '1' be orthogonal. See `addLocalSectionDV`
             for a more detailed description.
 
         ivol : integer
@@ -4473,7 +4477,7 @@ class geoDVSectionLocal(object):
         """
         Create a set of geometric design variables which change the shape
         of a surface.
-        See `addGeoDVSectionLocal` for more information
+        See `addLocalSectionDV` for more information
         """
 
         self.coefList = []

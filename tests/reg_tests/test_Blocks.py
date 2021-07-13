@@ -301,7 +301,7 @@ def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, sl
 
     if slocal:
         dvName = "sectionlocal_{}".format(name)
-        geo.addGeoDVSectionLocal(dvName, secIndex="j", axis=1, orient0="i", orient2="ffd")
+        geo.addLocalSectionDV(dvName, secIndex="j", axis=1, orient0="i", orient2="ffd")
 
 
 def f_translate(val, geo):
