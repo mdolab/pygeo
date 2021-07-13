@@ -158,7 +158,7 @@ class RegTestPyGeo(unittest.TestCase):
             self.make_ffd(ffd_name, radius, height)
             DVGeo = DVGeometry(ffd_name)
 
-            DVGeo.addGeoDVSpanwiseLocal("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
+            DVGeo.addSpanwiseLocalDV("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
             size = DVGeo._getNDVSpanwiseLocal()
             DVCon.setDVGeo(DVGeo)

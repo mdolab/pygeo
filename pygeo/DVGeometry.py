@@ -802,7 +802,7 @@ class DVGeometry(object):
         warnings.warn("addGeoDVLocal will be deprecated, use addLocalDV instead")
         self.addLocalDV(self, *args, **kwargs)
 
-    def addGeoDVSpanwiseLocal(
+    def addSpanwiseLocalDV(
         self,
         dvName,
         spanIndex,
@@ -888,7 +888,7 @@ class DVGeometry(object):
         --------
         >>> # Add all spanwise local variables
         >>> # moving in the y direction, within +/- 0.5 units
-        >>> DVGeo.addGeoDVSpanwiseLocal("shape", 'k', lower=-0.5, upper=0.5, axis="z", scale=1.0)
+        >>> DVGeo.addSpanwiseLocalDV("shape", 'k', lower=-0.5, upper=0.5, axis="z", scale=1.0)
         """
         if type(config) == str:
             config = [config]
@@ -972,6 +972,10 @@ class DVGeometry(object):
         )
 
         return self.DV_listSpanwiseLocal[dvName].nVal
+
+    def addGeoDVSpanwiseLocal(self, *args, **kwargs):
+        warnings.warn("addGeoDVSpanwiseLocal will be deprecated, use addSpanwiseLocalDV instead")
+        self.addSpanwiseLocalDV(self, *args, **kwargs)
 
     def addLocalSectionDV(
         self,

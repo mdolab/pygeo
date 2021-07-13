@@ -785,7 +785,7 @@ class RegTestPyGeo(unittest.TestCase):
 
         # create a DVGeo object with a few local thickness variables
         DVGeo = DVGeometry(ffdfile)
-        DVGeo.addGeoDVSpanwiseLocal("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
+        DVGeo.addSpanwiseLocalDV("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
         # create a DVConstraints object for the wing
         DVCon = DVConstraints()
