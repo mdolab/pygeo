@@ -3,7 +3,7 @@
 # ======================================================================
 import numpy as np
 from . import geo_utils, pyGeo
-from pyspline import pySpline
+from pyspline import Curve
 from mpi4py import MPI
 from scipy.sparse import csr_matrix
 from collections import OrderedDict
@@ -823,7 +823,7 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         # Create mesh of itersections
-        constr_line = pySpline.Curve(X=ptList, k=2)
+        constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = np.zeros((nCon, 2, 3))
@@ -978,7 +978,7 @@ class DVConstraints(object):
         self._checkDVGeo(DVGeoName)
 
         # Create mesh of itersections
-        constr_line = pySpline.Curve(X=leList, k=2)
+        constr_line = Curve(X=leList, k=2)
         s = np.linspace(0, 1, nSpan)
         X = constr_line(s)
         coords = np.zeros((nSpan, 3, 3))
@@ -1122,7 +1122,7 @@ class DVConstraints(object):
         """
         self._checkDVGeo(DVGeoName)
         # Create the points to constrain
-        constr_line = pySpline.Curve(X=ptList, k=2)
+        constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         # X shouls now be in the shape we need
@@ -1244,7 +1244,7 @@ class DVConstraints(object):
 
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        constr_line = pySpline.Curve(X=ptList, k=2)
+        constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
 
@@ -1383,7 +1383,7 @@ class DVConstraints(object):
 
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        constr_line = pySpline.Curve(X=ptList, k=2)
+        constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
         coords = np.zeros((nCon, 4, 3))
@@ -2908,11 +2908,7 @@ class DVConstraints(object):
         else:
             conName = name
 
-        options = {
-            "slope": slope,
-            "start": start,
-            "stop": stop,
-        }
+        options = {"slope": slope, "start": start, "stop": stop}
         # Finally add the global linear constraint object
         self.linearCon[conName] = GlobalLinearConstraint(
             conName,
@@ -3030,10 +3026,10 @@ class DVConstraints(object):
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
         # Create mesh of itersections
-        le_s = pySpline.Curve(X=leList, k=2)
-        te_s = pySpline.Curve(X=teList, k=2)
-        root_s = pySpline.Curve(X=[leList[0], teList[0]], k=2)
-        tip_s = pySpline.Curve(X=[leList[-1], teList[-1]], k=2)
+        le_s = Curve(X=leList, k=2)
+        te_s = Curve(X=teList, k=2)
+        root_s = Curve(X=[leList[0], teList[0]], k=2)
+        tip_s = Curve(X=[leList[-1], teList[-1]], k=2)
 
         # Generate parametric distances
         span_s = np.linspace(0.0, 1.0, nSpan)
@@ -3461,13 +3457,7 @@ class RadiusConstraint(GeometricConstraint):
                 eye = np.eye(self.nCon)
             drdPt_sparse = np.einsum("ij,jk->ijk", eye, drdPt)
             drdPt_sparse = drdPt_sparse.reshape(self.nCon, self.nCon * 3, 3)
-            drdPt_sparse = np.hstack(
-                [
-                    drdPt_sparse[:, ::3, :],
-                    drdPt_sparse[:, 1::3, :],
-                    drdPt_sparse[:, 2::3, :],
-                ]
-            )
+            drdPt_sparse = np.hstack([drdPt_sparse[:, ::3, :], drdPt_sparse[:, 1::3, :], drdPt_sparse[:, 2::3, :]])
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(drdPt_sparse, self.name, config=config)
 
