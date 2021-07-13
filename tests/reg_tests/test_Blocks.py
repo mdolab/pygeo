@@ -297,7 +297,7 @@ def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, sl
     if local is not None:
         assert local in ["x", "y", "z"]
         dvName = "local_{}_{}".format(local, name)
-        geo.addGeoDVLocal(dvName, axis=local)
+        geo.addLocalDV(dvName, axis=local)
 
     if slocal:
         dvName = "sectionlocal_{}".format(name)

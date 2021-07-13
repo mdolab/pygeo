@@ -91,7 +91,7 @@ class DVGeometry(object):
       >>> # Now add this as a global variable:
       >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
       >>> # Now add local (shape) variables
-      >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
+      >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
       >>>
     """
 
@@ -701,7 +701,7 @@ class DVGeometry(object):
         warnings.warn("addGeoDVGlobal will be deprecated, use addGlobalDV instead")
         self.addGlobalDV(self, *args, **kwargs)
 
-    def addGeoDVLocal(
+    def addLocalDV(
         self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
     ):
         """
@@ -729,7 +729,7 @@ class DVGeometry(object):
         axis : str. Default is `y`
             The coordinate directions to move. Permissible values are `x`,
             `y` and `z`. If more than one direction is required, use multiple
-            calls to addGeoDVLocal with different axis values.
+            calls to addLocalDV with different axis values.
 
         volList : list
             Use the control points on the volume indicies given in volList.
@@ -756,14 +756,14 @@ class DVGeometry(object):
         --------
         >>> # Add all variables in FFD as local shape variables
         >>> # moving in the y direction, within +/- 1.0 units
-        >>> DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper= 1.0, axis='y')
+        >>> DVGeo.addLocalDV('shape_vars', lower=-1.0, upper= 1.0, axis='y')
         >>> # As above, but moving in the x and y directions.
-        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
-        >>> nVar = DVGeo.addGeoDVLocal('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
+        >>> nVar = DVGeo.addLocalDV('shape_vars_x', lower=-1.0, upper= 1.0, axis='x')
+        >>> nVar = DVGeo.addLocalDV('shape_vars_y', lower=-1.0, upper= 1.0, axis='y')
         >>> # Create a point select to use: (box from (0,0,0) to (10,0,10) with
         >>> # any point projecting into the point along 'y' axis will be selected.
         >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
-        >>> nVar = DVGeo.addGeoDVLocal('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
+        >>> nVar = DVGeo.addLocalDV('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
         if self.name is not None:
             dvName = self.name + "_" + dvName
@@ -797,6 +797,10 @@ class DVGeometry(object):
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper, scale, axis, ind, self.masks, config)
 
         return self.DV_listLocal[dvName].nVal
+
+    def addGeoDVLocal(self, *args, **kwargs):
+        warnings.warn("addGeoDVLocal will be deprecated, use addLocalDV instead")
+        self.addLocalDV(self, *args, **kwargs)
 
     def addGeoDVSpanwiseLocal(
         self,
@@ -844,7 +848,7 @@ class DVGeometry(object):
         axis : str. Default is `y`
             The coordinate directions to move. Permissible values are `x`,
             `y` and `z`. If more than one direction is required, use multiple
-            calls to addGeoDVLocal with different axis values.
+            calls to addLocalDV with different axis values.
 
         lower : float
             The lower bound for the variable(s). This will be applied to
@@ -4274,7 +4278,7 @@ class geoDVLocal(object):
         """Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
-        See addGeoDVLocal for more information
+        See addLocalDV for more information
         """
 
         coefList = []
@@ -4377,7 +4381,7 @@ class geoDVSpanwiseLocal(geoDVLocal):
         """Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
-        See addGeoDVLocal for more information
+        See addLocalDV for more information
         """
 
         self.dv_to_coefs = []

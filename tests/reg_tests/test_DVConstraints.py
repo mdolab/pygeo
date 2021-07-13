@@ -90,7 +90,7 @@ class RegTestPyGeo(unittest.TestCase):
                 geo.rot_z["wing"].coef[i] = val[i - 1]
 
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-        DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+        DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
         # create a DVConstraints object for the wing
         DVCon = DVConstraints()
@@ -120,7 +120,7 @@ class RegTestPyGeo(unittest.TestCase):
                 geo.rot_z["wing"].coef[i] = val[i - 1]
 
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-        DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+        DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
         # create a DVConstraints object for the wing
         DVCon = DVConstraints()
@@ -694,7 +694,7 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 13: PlanarityConstraint, rectangular box")
             ffdfile = os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz")
             DVGeo = DVGeometry(ffdfile)
-            DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object with a simple plane consisting of 2 triangles
             DVCon = DVConstraints()
@@ -811,7 +811,7 @@ class RegTestPyGeo(unittest.TestCase):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
             DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
             DVCon = DVConstraints()
@@ -864,7 +864,7 @@ class RegTestPyGeo(unittest.TestCase):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
             DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
             DVCon = DVConstraints()
@@ -912,15 +912,15 @@ class RegTestPyGeo(unittest.TestCase):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
             DVGeo1.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo1.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo1.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVGeo object with a few local thickness variables
             DVGeo2 = DVGeometry(ffdfile, name="blobdvgeo")
-            DVGeo2.addGeoDVLocal("local_2", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo2.addLocalDV("local_2", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # check that DVGeos with duplicate var names are not allowed
             DVGeo3 = DVGeometry(ffdfile)
-            DVGeo3.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo3.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
             DVCon = DVConstraints()
@@ -1019,7 +1019,7 @@ class RegTestPyGeo(unittest.TestCase):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
             DVGeo1.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo1.addGeoDVLocal("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            DVGeo1.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
             DVCon = DVConstraints()
