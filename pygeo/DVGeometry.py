@@ -699,7 +699,7 @@ class DVGeometry(object):
 
     def addGeoDVGlobal(self, *args, **kwargs):
         warnings.warn("addGeoDVGlobal will be deprecated, use addGlobalDV instead")
-        self.addGlobalDV(self, *args, **kwargs)
+        self.addGlobalDV(*args, **kwargs)
 
     def addLocalDV(
         self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
@@ -800,7 +800,7 @@ class DVGeometry(object):
 
     def addGeoDVLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVLocal will be deprecated, use addLocalDV instead")
-        self.addLocalDV(self, *args, **kwargs)
+        self.addLocalDV(*args, **kwargs)
 
     def addSpanwiseLocalDV(
         self,
@@ -975,7 +975,7 @@ class DVGeometry(object):
 
     def addGeoDVSpanwiseLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVSpanwiseLocal will be deprecated, use addSpanwiseLocalDV instead")
-        self.addSpanwiseLocalDV(self, *args, **kwargs)
+        self.addSpanwiseLocalDV(*args, **kwargs)
 
     def addLocalSectionDV(
         self,
@@ -1198,7 +1198,7 @@ class DVGeometry(object):
 
     def addGeoDVSectionLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
-        self.addLocalSectionDV(self, *args, **kwargs)
+        self.addLocalSectionDV(*args, **kwargs)
 
     def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8):
         """
