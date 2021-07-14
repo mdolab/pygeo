@@ -187,9 +187,9 @@ class DVGeometryAxi(DVGeometry):
       >>> def twist(val, geo):
       >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
       >>> # Now add this as a global variable:
-      >>> DVGeo.addGeoDVGlobal('wing_twist', 0.0, twist, lower=-10, upper=10)
+      >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
       >>> # Now add local (shape) variables
-      >>> DVGeo.addGeoDVLocal('shape', lower=-0.5, upper=0.5, axis='y')
+      >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
       >>>
     """
 

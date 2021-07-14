@@ -111,7 +111,7 @@ class RegTestPyGeo(unittest.TestCase):
                 for i in range(nAxPts):
                     geo.scale["thru"].coef[i] = val[0]
 
-            DVGeo.addGeoDVGlobal("scale_circle", func=scale_circle, value=[1])
+            DVGeo.addGlobalDV("scale_circle", func=scale_circle, value=[1])
             DVCon.setDVGeo(DVGeo)
 
             leList = [[0, 0, 0], [-radius / 2, 0, height]]
@@ -158,7 +158,7 @@ class RegTestPyGeo(unittest.TestCase):
             self.make_ffd(ffd_name, radius, height)
             DVGeo = DVGeometry(ffd_name)
 
-            DVGeo.addGeoDVSpanwiseLocal("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
+            DVGeo.addSpanwiseLocalDV("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
             size = DVGeo._getNDVSpanwiseLocal()
             DVCon.setDVGeo(DVGeo)
