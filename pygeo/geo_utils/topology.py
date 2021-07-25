@@ -1,7 +1,16 @@
 import numpy as np
 import sys
 from .norm import eDist
-from .node_edge_face import Edge, setNodeValue, setEdgeValue, setFaceValue, EdgeCmpObject, nodesFromEdge, nodesFromFace, FaceCmpObject
+from .node_edge_face import (
+    Edge,
+    setNodeValue,
+    setEdgeValue,
+    setFaceValue,
+    EdgeCmpObject,
+    nodesFromEdge,
+    nodesFromFace,
+    FaceCmpObject,
+)
 from .orientation import edgeOrientation, faceOrientation
 from .remove_duplicates import unique, uniqueIndex, pointReduce
 from .index_position import indexPosition1D, indexPosition2D, indexPosition3D
@@ -325,7 +334,9 @@ f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n"
 
         for i in range(self.nEdge):
             aux = f.readline().split("|")
-            self.edges.append(Edge(int(aux[1]), int(aux[2]), int(aux[3]), int(aux[4]), int(aux[5]), int(aux[6]), int(aux[7])))
+            self.edges.append(
+                Edge(int(aux[1]), int(aux[2]), int(aux[3]), int(aux[4]), int(aux[5]), int(aux[6]), int(aux[7]))
+            )
 
         f.readline()  # This is the third header line so ignore
 
@@ -1389,7 +1400,9 @@ the list of volumes must be the same length"
             # Interior
             toAdd = (N - 2) * (M - 2) * (L - 2)
 
-            lIndex[ii][1 : N - 1, 1 : M - 1, 1 : L - 1] = np.arange(counter, counter + toAdd).reshape((N - 2, M - 2, L - 2))
+            lIndex[ii][1 : N - 1, 1 : M - 1, 1 : L - 1] = np.arange(counter, counter + toAdd).reshape(
+                (N - 2, M - 2, L - 2)
+            )
             counter = counter + toAdd
         # end for
 
