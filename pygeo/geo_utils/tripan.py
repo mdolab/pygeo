@@ -128,7 +128,10 @@ Using a linear type"
     for iface in range(nFace):
         UV.append(
             getBiLinearMap(
-                edgePara[topo.edgeLink[iface][0]], edgePara[topo.edgeLink[iface][1]], edgePara[topo.edgeLink[iface][2]], edgePara[topo.edgeLink[iface][3]],
+                edgePara[topo.edgeLink[iface][0]],
+                edgePara[topo.edgeLink[iface][1]],
+                edgePara[topo.edgeLink[iface][2]],
+                edgePara[topo.edgeLink[iface][3]],
             )
         )
 
@@ -146,14 +149,24 @@ Using a linear type"
                 for j in range(sizes[iface][1] - 1):
                     fp.write(
                         "%d %d %d %d \n"
-                        % (topo.lIndex[iface][i, j], topo.lIndex[iface][i + 1, j], topo.lIndex[iface][i + 1, j + 1], topo.lIndex[iface][i, j + 1],)
+                        % (
+                            topo.lIndex[iface][i, j],
+                            topo.lIndex[iface][i + 1, j],
+                            topo.lIndex[iface][i + 1, j + 1],
+                            topo.lIndex[iface][i, j + 1],
+                        )
                     )
         else:
             for i in range(sizes[iface][0] - 1):
                 for j in range(sizes[iface][1] - 1):
                     fp.write(
                         "%d %d %d %d \n"
-                        % (topo.lIndex[iface][i, j], topo.lIndex[iface][i, j + 1], topo.lIndex[iface][i + 1, j + 1], topo.lIndex[iface][i + 1, j],)
+                        % (
+                            topo.lIndex[iface][i, j],
+                            topo.lIndex[iface][i, j + 1],
+                            topo.lIndex[iface][i + 1, j + 1],
+                            topo.lIndex[iface][i + 1, j],
+                        )
                     )
 
     fp.write("\n")
@@ -218,7 +231,11 @@ Using a linear type"
         )
         for iedge in range(nEdge):
             if iedge in wakeEdges:
-                f.write("  %4d    %5d %10s %10.4f %10.4f  %1d \n" % (iedge, edgeNumber[iedge], edgeType[iedge], 0.1, 0.1, 1))
+                f.write(
+                    "  %4d    %5d %10s %10.4f %10.4f  %1d \n" % (iedge, edgeNumber[iedge], edgeType[iedge], 0.1, 0.1, 1)
+                )
             else:
-                f.write("  %4d    %5d %10s %10.4f %10.4f  %1d \n" % (iedge, edgeNumber[iedge], edgeType[iedge], 0.1, 0.1, 0))
+                f.write(
+                    "  %4d    %5d %10s %10.4f %10.4f  %1d \n" % (iedge, edgeNumber[iedge], edgeType[iedge], 0.1, 0.1, 0)
+                )
         f.close()

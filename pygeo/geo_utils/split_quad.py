@@ -129,8 +129,12 @@ def splitQuad(e0, e1, e2, e3, alpha, beta, NO):
         distAlongArc = (i + 1) * spacing
         if distAlongArc < eighthArc:
             theta = distAlongArc / rad  # Angle in radians
-            botEdge[i + 1] = mid - u * (rectLen / 2) - np.sin(theta + np.pi / 4) * rad * v - np.cos(theta + np.pi / 4) * rad * u
-            topEdge[i + 1] = mid - u * (rectLen / 2) + np.sin(theta + np.pi / 4) * rad * v - np.cos(theta + np.pi / 4) * rad * u
+            botEdge[i + 1] = (
+                mid - u * (rectLen / 2) - np.sin(theta + np.pi / 4) * rad * v - np.cos(theta + np.pi / 4) * rad * u
+            )
+            topEdge[i + 1] = (
+                mid - u * (rectLen / 2) + np.sin(theta + np.pi / 4) * rad * v - np.cos(theta + np.pi / 4) * rad * u
+            )
         elif distAlongArc > rectLen + eighthArc:
             theta = (distAlongArc - rectLen - eighthArc) / rad
             botEdge[i + 1] = mid + u * (rectLen / 2) + np.sin(theta) * rad * u - np.cos(theta) * rad * v
@@ -201,7 +205,12 @@ def tfi_2d(e0, e1, e2, e3):
                     + V[j] * e1[i]
                     + (1 - U[i]) * e2[j]
                     + U[i] * e3[j]
-                    - (U[i] * V[j] * e1[-1] + U[i] * (1 - V[j]) * e0[-1] + V[j] * (1 - U[i]) * e1[0] + (1 - U[i]) * (1 - V[j]) * e0[0])
+                    - (
+                        U[i] * V[j] * e1[-1]
+                        + U[i] * (1 - V[j]) * e0[-1]
+                        + V[j] * (1 - U[i]) * e1[0]
+                        + (1 - U[i]) * (1 - V[j]) * e0[0]
+                    )
                 )
     return X
 

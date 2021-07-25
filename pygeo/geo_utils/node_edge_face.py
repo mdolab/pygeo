@@ -305,7 +305,15 @@ class FaceCmpObject(object):
         self.tol = tol
 
     def __repr__(self):
-        return "n1: %d n2: %d n3: %d n4: %d MidPt: %f %f %f" % (self.n1, self.n2, self.n3, self.n4, self.midPt[0], self.midPt[1], self.midPt[2],)
+        return "n1: %d n2: %d n3: %d n4: %d MidPt: %f %f %f" % (
+            self.n1,
+            self.n2,
+            self.n3,
+            self.n4,
+            self.midPt[0],
+            self.midPt[1],
+            self.midPt[2],
+        )
 
     def __lt__(self, other):
 
@@ -333,7 +341,13 @@ class FaceCmpObject(object):
             return False
 
     def __eq__(self, other):
-        if self.n1 == other.n1 and self.n2 == other.n2 and self.n3 == other.n3 and self.n4 == other.n4 and eDist(self.midPt, other.midPt) < self.tol:
+        if (
+            self.n1 == other.n1
+            and self.n2 == other.n2
+            and self.n3 == other.n3
+            and self.n4 == other.n4
+            and eDist(self.midPt, other.midPt) < self.tol
+        ):
             return True
         else:
             return False

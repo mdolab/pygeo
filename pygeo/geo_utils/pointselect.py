@@ -150,7 +150,9 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]"
             indList = self.indices.copy()
 
         elif self.type == "ijkBounds":
-            raise NameError("Use PointSelect.getPoints_ijk() to return indices of an object initialized with ijkBounds.")
+            raise NameError(
+                "Use PointSelect.getPoints_ijk() to return indices of an object initialized with ijkBounds."
+            )
 
         return ptList, indList
 

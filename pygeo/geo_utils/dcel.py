@@ -239,7 +239,10 @@ class DCEL(object):
                 # Now prune the edges:
                 nEdgeDeleted = 0
                 for i in range(len(self.el)):
-                    if self.el[i - nEdgeDeleted].con[0] in deletedVertices or self.el[i - nEdgeDeleted].con[1] in deletedVertices:
+                    if (
+                        self.el[i - nEdgeDeleted].con[0] in deletedVertices
+                        or self.el[i - nEdgeDeleted].con[1] in deletedVertices
+                    ):
                         # Edge must be deleted
                         self.el.pop(i - nEdgeDeleted)
                         nEdgeDeleted += 1
@@ -389,7 +392,16 @@ class DCEL(object):
         f = open(fileName, "w")
         f.write("%d %d %d\n" % (self.nvertices(), self.nedges(), self.nfaces()))
         for i in range(self.nvertices()):
-            f.write("%g %g %g %g %g \n" % (self.vertices[i].x, self.vertices[i].y, self.vertices[i].X[0], self.vertices[i].X[1], self.vertices[i].X[2],))
+            f.write(
+                "%g %g %g %g %g \n"
+                % (
+                    self.vertices[i].x,
+                    self.vertices[i].y,
+                    self.vertices[i].X[0],
+                    self.vertices[i].X[1],
+                    self.vertices[i].X[2],
+                )
+            )
 
         for i in range(self.nedges()):
             if self.el[i].seg is not None:
