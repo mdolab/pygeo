@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from .norm import eDist
 from .node_edge_face import Edge, setNodeValue, setEdgeValue, setFaceValue, EdgeCmpObject, nodesFromEdge, nodesFromFace, FaceCmpObject
-from orientation import edgeOrientation, faceOrientation
+from .orientation import edgeOrientation, faceOrientation
 from .remove_duplicates import unique, uniqueIndex, pointReduce
 from .index_position import indexPosition1D, indexPosition2D, indexPosition3D
 
