@@ -4,10 +4,18 @@
 import numpy as np
 from . import geo_utils, pyGeo
 from pyspline import Curve
-from mpi4py import MPI
-from scipy.sparse import csr_matrix
 from collections import OrderedDict
 from baseclasses import Error
+from thicknessConstraints import ThicknessConstraint, ThicknessToChordConstraint
+from RadiusConstraint import RadiusConstraint
+from LocationConstraint import LocationConstraint
+from areaConstraints import TriangulatedSurfaceConstraint, SurfaceAreaConstraint, ProjectedAreaConstraint
+from volumeConstraints import VolumeConstraint, TriangulatedVolumeConstraint, CompositeVolumeConstraint
+from linearConstraints import LinearConstraint, GlobalLinearConstraint, ColinearityConstraint
+from GearPostConstraint import GearPostConstraint
+from CircularityConstraint import CircularityConstraint
+from PlanarityConstraint import PlanarityConstraint
+from CurvatureConstraint import CurvatureConstraint
 
 
 class DVConstraints(object):
