@@ -4,7 +4,7 @@
 import numpy as np
 from baseclasses import Error
 from . import geo_utils
-from GeometricConstraint import GeometricConstraint
+from .GeometricConstraint import GeometricConstraint
 
 
 class LinearConstraint(object):

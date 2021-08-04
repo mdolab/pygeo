@@ -12,8 +12,8 @@ from . import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
 from baseclasses import Error
-from globalDVs import geoDVGlobal
-from localDVs import geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
+from .globalDVs import geoDVGlobal
+from .localDVs import geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
 
 
 class DVGeometry(object):

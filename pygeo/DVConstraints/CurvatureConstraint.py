@@ -4,7 +4,7 @@
 import numpy as np
 from mpi4py import MPI
 from scipy.sparse import csr_matrix
-from GeometricConstraint import GeometricConstraint
+from .GeometricConstraint import GeometricConstraint
 from baseclasses import Error
 
 

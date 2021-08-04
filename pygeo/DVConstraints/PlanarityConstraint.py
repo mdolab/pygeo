@@ -3,7 +3,7 @@
 # ======================================================================
 import numpy as np
 from . import geo_utils
-from GeometricConstraint import GeometricConstraint
+from .GeometricConstraint import GeometricConstraint
 
 
 class PlanarityConstraint(GeometricConstraint):

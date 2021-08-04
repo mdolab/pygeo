@@ -4,7 +4,7 @@
 import numpy as np
 from . import geo_utils
 from mpi4py import MPI
-from GeometricConstraint import GeometricConstraint
+from .GeometricConstraint import GeometricConstraint
 
 
 class SurfaceAreaConstraint(GeometricConstraint):
