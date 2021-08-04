@@ -1,4 +1,3 @@
-
 class GeometricConstraint(object):
     """
     This is a generic base class for all of the geometric constraints.

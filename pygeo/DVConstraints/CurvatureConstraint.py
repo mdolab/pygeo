@@ -7,6 +7,7 @@ from scipy.sparse import csr_matrix
 from GeometricConstraint import GeometricConstraint
 from baseclasses import Error
 
+
 class CurvatureConstraint(GeometricConstraint):
     """
     DVConstraints representation of a set of the curvature constraint.

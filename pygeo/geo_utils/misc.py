@@ -51,6 +51,7 @@ def fillKnots(t, k, level):
 
     return newT
 
+
 def _convertTo1D(value, dim1):
     """
     Generic function to process 'value'. In the end, it must be
