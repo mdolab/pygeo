@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from geo_utils import misc
+from pygeo.geo_utils import convertTo1D
 
 
 class geoDVLocal(object):
@@ -28,11 +28,11 @@ class geoDVLocal(object):
         self.upper = None
         self.config = config
         if lower is not None:
-            self.lower = misc.convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = misc.convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = misc.convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
         self.coefList = np.zeros((self.nVal, 2), "intc")
         j = 0
@@ -134,11 +134,11 @@ class geoDVSpanwiseLocal(geoDVLocal):
         self.config = config
 
         if lower is not None:
-            self.lower = misc.convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = misc.convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = misc.convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
     def __call__(self, coef, config):
         """When the object is called, apply the design variable values to
@@ -205,11 +205,11 @@ class geoDVSectionLocal(object):
         self.upper = None
         self.config = config
         if lower is not None:
-            self.lower = misc.convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = misc.convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = misc.convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
         self.sectionTransform = sectionTransform
         self.sectionLink = sectionLink

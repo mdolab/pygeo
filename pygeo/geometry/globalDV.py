@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from geo_utils import misc
+from pygeo.geo_utils import convertTo1D
 
 
 class geoDVGlobal(object):
@@ -18,11 +18,11 @@ class geoDVGlobal(object):
         self.config = config
         self.function = function
         if lower is not None:
-            self.lower = misc.convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = misc.convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = misc.convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
     def __call__(self, geo, config):
         """When the object is called, actually apply the function"""

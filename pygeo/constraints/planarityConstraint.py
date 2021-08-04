@@ -2,8 +2,8 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from . import geo_utils
-from .GeometricConstraint import GeometricConstraint
+from .. import geo_utils
+from .geometricConstraint import GeometricConstraint
 
 
 class PlanarityConstraint(GeometricConstraint):

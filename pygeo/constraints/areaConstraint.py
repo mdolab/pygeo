@@ -2,9 +2,9 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from . import geo_utils
+from .. import geo_utils
 from mpi4py import MPI
-from .GeometricConstraint import GeometricConstraint
+from .geometricConstraint import GeometricConstraint
 
 
 class SurfaceAreaConstraint(GeometricConstraint):

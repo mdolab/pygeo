@@ -3,8 +3,8 @@
 # ======================================================================
 import numpy as np
 from baseclasses.utils import Error
-from . import geo_utils
-from .GeometricConstraint import GeometricConstraint
+from .. import geo_utils
+from .geometricConstraint import GeometricConstraint
 
 
 class LinearConstraint(object):

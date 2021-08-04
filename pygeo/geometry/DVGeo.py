@@ -8,12 +8,12 @@ from scipy import sparse
 from mpi4py import MPI
 from pyspline import Curve
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
-from . import pyNetwork, pyBlock, geo_utils
+from pygeo import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
 from baseclasses.utils import Error
-from .globalDVs import geoDVGlobal
-from .localDVs import geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
+from .globalDV import geoDVGlobal
+from .localDV import geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
 
 
 class DVGeometry(object):
