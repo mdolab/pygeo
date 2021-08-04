@@ -1,4 +1,5 @@
 import numpy as np
+from baseclasses import Error
 
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions
@@ -49,3 +50,19 @@ def fillKnots(t, k, level):
         start += level + 1
 
     return newT
+
+def _convertTo1D(value, dim1):
+    """
+    Generic function to process 'value'. In the end, it must be
+    array of size dim1. value is already that shape, excellent,
+    otherwise, a scalar will be 'upcast' to that size
+    """
+
+    if np.isscalar:
+        return value * np.ones(dim1)
+    else:
+        temp = np.atleast_1d(value)
+        if temp.shape[0] == dim1:
+            return value
+        else:
+            raise Error("The size of the 1D array was the incorret shape")
