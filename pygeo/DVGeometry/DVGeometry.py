@@ -11,7 +11,7 @@ from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecpl
 from . import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
-from baseclasses import Error
+from baseclasses.utils import Error
 from .globalDVs import geoDVGlobal
 from .localDVs import geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
 

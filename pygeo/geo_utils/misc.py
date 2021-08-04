@@ -1,5 +1,5 @@
 import numpy as np
-from baseclasses import Error
+from baseclasses.utils import Error
 
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions

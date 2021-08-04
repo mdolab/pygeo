@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from baseclasses import Error
+from baseclasses.utils import Error
 from . import geo_utils
 from .GeometricConstraint import GeometricConstraint
 

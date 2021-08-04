@@ -5,7 +5,7 @@ import numpy as np
 from . import geo_utils, pyGeo
 from pyspline import Curve
 from collections import OrderedDict
-from baseclasses import Error
+from baseclasses.utils import Error
 from .thicknessConstraints import ThicknessConstraint, ThicknessToChordConstraint
 from .RadiusConstraint import RadiusConstraint
 from .LocationConstraint import LocationConstraint
