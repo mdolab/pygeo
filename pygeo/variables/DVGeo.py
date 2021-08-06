@@ -8,7 +8,7 @@ from scipy import sparse
 from mpi4py import MPI
 from pyspline import Curve
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
-from pygeo import pyNetwork, pyBlock, geo_utils
+from .. import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
 from baseclasses.utils import Error
