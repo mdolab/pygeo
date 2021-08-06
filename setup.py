@@ -25,7 +25,7 @@ setup(
     packages=[
         "pygeo",
     ],
-    install_requires=["numpy>=1.16", "pyspline>=1.1", "scipy>=1.2", "mpi4py>=3.0"],
+    install_requires=["numpy>=1.16", "pyspline>=1.1", "scipy>=1.2", "mpi4py>=3.0", "mdolab-baseclasses"],
     extras_require={"testing": ["numpy-stl", "parameterized"]},
     classifiers=["Operating System :: OS Independent", "Programming Language :: Python"],
 )
