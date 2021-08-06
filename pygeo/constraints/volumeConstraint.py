@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from .geometricConstraint import GeometricConstraint
+from .baseConstraints import GeometricConstraint
 
 
 class VolumeConstraint(GeometricConstraint):

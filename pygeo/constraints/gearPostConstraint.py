@@ -3,7 +3,7 @@
 # ======================================================================
 import numpy as np
 from .. import geo_utils
-from .geometricConstraint import GeometricConstraint
+from .baseConstraints import GeometricConstraint
 
 
 class GearPostConstraint(GeometricConstraint):
