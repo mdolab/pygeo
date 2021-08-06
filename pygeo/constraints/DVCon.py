@@ -6,12 +6,13 @@ from .. import geo_utils, pyGeo
 from pyspline import Curve
 from collections import OrderedDict
 from baseclasses.utils import Error
+from .baseConstraints import LinearConstraint, GlobalLinearConstraint
 from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
 from .radiusConstraint import RadiusConstraint
 from .locationConstraint import LocationConstraint
 from .areaConstraint import TriangulatedSurfaceConstraint, SurfaceAreaConstraint, ProjectedAreaConstraint
 from .volumeConstraint import VolumeConstraint, TriangulatedVolumeConstraint, CompositeVolumeConstraint
-from .linearConstraint import LinearConstraint, GlobalLinearConstraint, ColinearityConstraint
+from .colinearityConstraint import ColinearityConstraint
 from .gearPostConstraint import GearPostConstraint
 from .circularityConstraint import CircularityConstraint
 from .planarityConstraint import PlanarityConstraint
