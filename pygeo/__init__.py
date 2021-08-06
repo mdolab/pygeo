@@ -4,10 +4,10 @@ from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
 from .pyBlock import pyBlock
 from .constraints.DVCon import DVConstraints
-from .geometry.DVGeo import DVGeometry
-from .geometry.DVGeometryAxi import DVGeometryAxi
+from .variables.DVGeo import DVGeometry
+from .variables.DVGeometryAxi import DVGeometryAxi
 
 try:
-    from .geometry.DVGeometryVSP import DVGeometryVSP
+    from .variables.DVGeometryVSP import DVGeometryVSP
 except ImportError:
     pass
