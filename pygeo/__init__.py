@@ -3,11 +3,11 @@ __version__ = "1.6.1"
 from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
 from .pyBlock import pyBlock
-from .DVConstraints import DVConstraints
-from .DVGeometry import DVGeometry
-from .DVGeometryAxi import DVGeometryAxi
+from .constraints.DVCon import DVConstraints
+from .variables.DVGeo import DVGeometry
+from .variables.DVGeometryAxi import DVGeometryAxi
 
 try:
-    from .DVGeometryVSP import DVGeometryVSP
+    from .variables.DVGeometryVSP import DVGeometryVSP
 except ImportError:
     pass
