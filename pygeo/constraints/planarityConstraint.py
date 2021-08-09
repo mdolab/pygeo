@@ -2,11 +2,8 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from . import geo_utils, pyGeo
-from pyspline import Curve
-from mpi4py import MPI
-from scipy.sparse import csr_matrix
-from collections import OrderedDict
+from .. import geo_utils
+from .baseConstraint import GeometricConstraint
 
 
 class PlanarityConstraint(GeometricConstraint):
