@@ -1,37 +1,8 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import copy
-from collections import OrderedDict
 import numpy as np
-from scipy import sparse
-from mpi4py import MPI
-from pyspline import Curve
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
-from . import pyNetwork, pyBlock, geo_utils
-import os
-import warnings
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a explicitly raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVGeometry Error: "
-        i = 19
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+from pygeo.geo_utils import convertTo1D
 
 
 class geoDVGlobal(object):
@@ -47,11 +18,11 @@ class geoDVGlobal(object):
         self.config = config
         self.function = function
         if lower is not None:
-            self.lower = _convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = _convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = _convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
     def __call__(self, geo, config):
         """When the object is called, actually apply the function"""
@@ -91,11 +62,11 @@ class geoDVLocal(object):
         self.upper = None
         self.config = config
         if lower is not None:
-            self.lower = _convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = _convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = _convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
         self.coefList = np.zeros((self.nVal, 2), "intc")
         j = 0
@@ -154,23 +125,6 @@ class geoDVLocal(object):
         return cons
 
 
-def _convertTo1D(value, dim1):
-    """
-    Generic function to process 'value'. In the end, it must be
-    array of size dim1. value is already that shape, excellent,
-    otherwise, a scalar will be 'upcast' to that size
-    """
-
-    if np.isscalar:
-        return value * np.ones(dim1)
-    else:
-        temp = np.atleast_1d(value)
-        if temp.shape[0] == dim1:
-            return value
-        else:
-            raise Error("The size of the 1D array was the incorret shape")
-
-
 class geoDVSpanwiseLocal(geoDVLocal):
     def __init__(self, dvName, lower, upper, scale, axis, vol_dv_to_coefs, mask, config):
 
@@ -214,11 +168,11 @@ class geoDVSpanwiseLocal(geoDVLocal):
         self.config = config
 
         if lower is not None:
-            self.lower = _convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = _convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = _convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
     def __call__(self, coef, config):
         """When the object is called, apply the design variable values to
@@ -285,11 +239,11 @@ class geoDVSectionLocal(object):
         self.upper = None
         self.config = config
         if lower is not None:
-            self.lower = _convertTo1D(lower, self.nVal)
+            self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
-            self.upper = _convertTo1D(upper, self.nVal)
+            self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
-            self.scale = _convertTo1D(scale, self.nVal)
+            self.scale = convertTo1D(scale, self.nVal)
 
         self.sectionTransform = sectionTransform
         self.sectionLink = sectionLink
