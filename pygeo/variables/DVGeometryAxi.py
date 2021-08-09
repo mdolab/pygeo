@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import sparse
 from collections import OrderedDict
-from . import DVGeometry
+from .DVGeo import DVGeometry
 
 AXES_2_IDX = {"x": 0, "y": 1, "z": 2}
 AXES = set(["x", "y", "z"])

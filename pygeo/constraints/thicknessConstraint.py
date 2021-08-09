@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from . import geo_utils
+from .. import geo_utils
 from .baseConstraint import GeometricConstraint
 
 
