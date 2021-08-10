@@ -9,27 +9,7 @@ from scipy.sparse.linalg.dsolve import factorized
 from pyspline import Curve, Surface
 from pyspline.utils import openTecplot, writeTecplot2D, closeTecplot
 from . import geo_utils
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a explicitly raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| pyGeo Error: "
-        i = 14
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+from baseclasses.utils import Error
 
 
 class pyGeo:
