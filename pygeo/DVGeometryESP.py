@@ -9,7 +9,7 @@ from collections import OrderedDict
 from mpi4py import MPI
 from pyOCSM import pyOCSM
 from contextlib import contextmanager
-from baseclasses import Error
+from baseclasses.utils import Error
 
 
 @contextmanager
