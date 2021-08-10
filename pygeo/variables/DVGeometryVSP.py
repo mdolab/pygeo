@@ -5,7 +5,7 @@ from collections import OrderedDict
 import time
 import numpy as np
 from mpi4py import MPI
-from baseclasses import Error
+from baseclasses.utils import Error
 
 # mdolab packages
 from pyspline import libspline
@@ -14,9 +14,10 @@ from pyspline import libspline
 try:
     import openvsp
 except ImportError:
-    import vsp as openvsp
-except ImportError:
-    raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
+    try:
+        import vsp as openvsp
+    except ImportError:
+        raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
 
 
 class DVGeometryVSP(object):
