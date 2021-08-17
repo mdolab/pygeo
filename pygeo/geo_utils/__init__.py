@@ -20,7 +20,6 @@ from .remove_duplicates import *  # noqa: F401, F403
 from .rotation import *  # noqa: F401, F403
 from .split_quad import *  # noqa: F401, F403
 from .topology import *  # noqa: F401, F403
-from .tripan import *  # noqa: F401, F403
 
 
 # Set a (MUCH) larger recursion limit. For meshes with extremely large
