@@ -9,6 +9,7 @@ from scipy.sparse.linalg.dsolve import factorized
 from pyspline import Curve, Surface
 from pyspline.utils import openTecplot, writeTecplot2D, closeTecplot
 from . import geo_utils
+from .topology import SurfaceTopology
 from baseclasses.utils import Error
 
 
@@ -87,10 +88,7 @@ class pyGeo:
         elif initType == "create":  # Don't do anything
             pass
         else:
-            raise Error(
-                "Unknown init type. Valid Init types are 'plot3d', \
-'iges' and 'liftingSurface'"
-            )
+            raise Error("Unknown init type. Valid Init types are 'plot3d', 'iges' and 'liftingSurface'")
 
     # ----------------------------------------------------------------------------
     #               Initialization Type Functions
@@ -219,10 +217,7 @@ class pyGeo:
             weights = data[counter : counter + Nctlu * Nctlv]
             weights = np.array(weights)
             if weights.all() != 1:
-                print(
-                    "WARNING: Not all weight in B-spline surface are\
- 1. A NURBS surface CANNOT be replicated exactly"
-                )
+                print("WARNING: Not all weight in B-spline surface are 1. A NURBS surface CANNOT be replicated exactly")
             counter += Nctlu * Nctlv
 
             coef = np.zeros([Nctlu, Nctlv, 3])
@@ -839,7 +834,7 @@ class pyGeo:
         """
         if fileName is not None and os.path.isfile(fileName):
             print("Reading Connectivity File: %s" % (fileName))
-            self.topo = geo_utils.SurfaceTopology(fileName=fileName)
+            self.topo = SurfaceTopology(fileName=fileName)
             if self.initType != "iges":
                 self._propagateKnotVectors()
 
@@ -885,7 +880,7 @@ class pyGeo:
             beg, mid, end = self.surfs[isurf].getOrigValuesEdge(3)
             coords[isurf][7] = mid
 
-        self.topo = geo_utils.SurfaceTopology(coords=coords, nodeTol=nodeTol, edgeTol=edgeTol)
+        self.topo = SurfaceTopology(coords=coords, nodeTol=nodeTol, edgeTol=edgeTol)
 
     def printConnectivity(self):
         """

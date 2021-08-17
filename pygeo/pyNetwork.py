@@ -4,7 +4,7 @@
 import os
 import numpy as np
 from pyspline.utils import openTecplot, writeTecplot1D, closeTecplot, line
-from .geo_utils import CurveTopology
+from .topology import CurveTopology
 
 
 class pyNetwork:

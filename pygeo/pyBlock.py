@@ -8,7 +8,8 @@ from scipy import sparse
 from scipy.sparse import linalg
 from pyspline import Volume
 from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
-from .geo_utils import readNValues, BlockTopology, blendKnotVectors
+from .geo_utils import readNValues, blendKnotVectors
+from .topology import BlockTopology
 from baseclasses.utils import Error
 
 

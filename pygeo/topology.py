@@ -1,7 +1,7 @@
 import numpy as np
 import sys
-from .norm import eDist
-from .node_edge_face import (
+from .geo_utils.norm import eDist
+from .geo_utils.node_edge_face import (
     Edge,
     setNodeValue,
     setEdgeValue,
@@ -11,9 +11,9 @@ from .node_edge_face import (
     nodesFromFace,
     FaceCmpObject,
 )
-from .orientation import edgeOrientation, faceOrientation
-from .remove_duplicates import unique, uniqueIndex, pointReduce
-from .index_position import indexPosition1D, indexPosition2D, indexPosition3D
+from .geo_utils.orientation import edgeOrientation, faceOrientation
+from .geo_utils.remove_duplicates import unique, uniqueIndex, pointReduce
+from .geo_utils.index_position import indexPosition1D, indexPosition2D, indexPosition3D
 
 # --------------------------------------------------------------
 #                Topology classes
@@ -173,10 +173,7 @@ class Topology(object):
     def printConnectivity(self):
         """Print the Edge Connectivity to the screen"""
 
-        print(
-            "-----------------------------------------------\
--------------------------"
-        )
+        print("------------------------------------------------------------------------")
         print("%4d  %4d  %4d  %4d  %4d " % (self.nNode, self.nEdge, self.nFace, self.nVol, self.nDG))
         nList = self._getDGList()
         print("Design Group | Number")
@@ -207,20 +204,13 @@ class Topology(object):
                 print("%4d|" % (self.edgeLink[i][j] * self.edgeDir[i][j]))
             print(" ")
 
-        print(
-            "----------------------------------------------------\
---------------------"
-        )
+        print("------------------------------------------------------------------------")
 
         if self.topoType == "volume":
-            print(
-                "Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|\
-f1dir|f2dir|f3dir|f4dir|f5dir|"
-            )
+            print("Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|")
             for i in range(self.nVol):
                 print(
-                    " %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|\
-%5d|%5d|%5d|%5d|"
+                    " %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|"
                     % (
                         i,
                         self.faceLink[i][0],
@@ -249,10 +239,7 @@ f1dir|f2dir|f3dir|f4dir|f5dir|"
         for i in range(self.nDG):
             f.write("%5d        | %5d       \n" % (i, nList[i]))
 
-        f.write(
-            "Edge Number    |   n0  |   n1  |  Cont | Degen |\
- Intsct|   DG   |  N     |\n"
-        )
+        f.write("Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |\n")
         for i in range(len(self.edges)):
             self.edges[i].writeInfo(i, f)
 
@@ -275,14 +262,10 @@ f1dir|f2dir|f3dir|f4dir|f5dir|"
 
         if self.topoType == "volume":
 
-            f.write(
-                "Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |\
-f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n"
-            )
+            f.write("Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n")
             for i in range(self.nVol):
                 f.write(
-                    " %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|\
-%5d|%5d|%5d|%5d|%5d|\n"
+                    " %5d     |%4d|%4d|%4d|%4d|%4d|%4d|%5d|%5d|%5d|%5d|%5d|%5d|\n"
                     % (
                         i,
                         self.faceLink[i][0],
@@ -448,10 +431,7 @@ class CurveTopology(Topology):
         counter = 0
         lIndex = []
 
-        assert len(sizes) == len(
-            curveList
-        ), "Error: The list of sizes and \
-the list of surfaces must be the same length"
+        assert len(sizes) == len(curveList), "Error: The list of sizes and the list of surfaces must be the same length"
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -645,8 +625,7 @@ class SurfaceTopology(Topology):
                 self.edges.append(Edge(edges[i][0], edges[i][1], 0, 0, 0, edges[i][2], edges[i][3]))
 
     def calcGlobalNumberingDummy(self, sizes, surfaceList=None):
-        """Internal function to calculate the global/local numbering
-        for each surface"""
+        """Internal function to calculate the global/local numbering for each surface"""
         for i in range(len(sizes)):
             self.edges[self.edgeLink[i][0]].N = sizes[i][0]
             self.edges[self.edgeLink[i][1]].N = sizes[i][0]
@@ -660,8 +639,7 @@ class SurfaceTopology(Topology):
         counter = 0
         assert len(sizes) == len(
             surfaceList
-        ), "Error: The list of sizes and \
-the list of surfaces must be the same length"
+        ), "Error: The list of sizes and the list of surfaces must be the same length"
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -699,8 +677,7 @@ the list of surfaces must be the same length"
         self.lIndex = lIndex
 
     def calcGlobalNumbering(self, sizes, surfaceList=None):
-        """Internal function to calculate the global/local numbering
-        for each surface"""
+        """Internal function to calculate the global/local numbering for each surface"""
         for i in range(len(sizes)):
             self.edges[self.edgeLink[i][0]].N = sizes[i][0]
             self.edges[self.edgeLink[i][1]].N = sizes[i][0]
@@ -717,8 +694,7 @@ the list of surfaces must be the same length"
 
         assert len(sizes) == len(
             surfaceList
-        ), "Error: The list of sizes and \
-the list of surfaces must be the same length"
+        ), "Error: The list of sizes and the list of surfaces must be the same length"
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -820,8 +796,7 @@ the list of surfaces must be the same length"
         return
 
     def getSurfaceFromEdge(self, edge):
-        """Determine the surfaces and their edgeLink index that
-        points to edge iedge"""
+        """Determine the surfaces and their edgeLink index that points to edge iedge"""
         # Its not efficient but it works - scales with Nface not constant
         surfaces = []
         for isurf in range(self.nFace):
@@ -1014,8 +989,7 @@ class BlockTopology(Topology):
         return
 
     def calcGlobalNumbering(self, sizes=None, volumeList=None, greedyReorder=False, gIndex=True):
-        """Internal function to calculate the global/local numbering
-        for each volume"""
+        """Internal function to calculate the global/local numbering for each volume"""
 
         if sizes is not None:
             for i in range(len(sizes)):
@@ -1048,10 +1022,7 @@ class BlockTopology(Topology):
         gIndex = []
         lIndex = []
 
-        assert len(sizes) == len(
-            volumeList
-        ), "Error: The list of sizes and \
-the list of volumes must be the same length"
+        assert len(sizes) == len(volumeList), "Error: The list of sizes and the list of volumes must be the same length"
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -1277,8 +1248,7 @@ the list of volumes must be the same length"
         return
 
     def calcGlobalNumbering2(self, sizes=None, gIndex=True, volumeList=None, greedyReorder=False):
-        """Internal function to calculate the global/local numbering
-        for each volume"""
+        """Internal function to calculate the global/local numbering for each volume"""
         if sizes is not None:
             for i in range(len(sizes)):
                 self.edges[self.edgeLink[i][0]].N = sizes[i][0]
@@ -1309,10 +1279,7 @@ the list of volumes must be the same length"
         counter = 0
         lIndex = []
 
-        assert len(sizes) == len(
-            volumeList
-        ), "Error: The list of sizes and \
-the list of volumes must be the same length"
+        assert len(sizes) == len(volumeList), "Error: The list of sizes and the list of volumes must be the same length"
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -1467,8 +1434,7 @@ the list of volumes must be the same length"
         return
 
     def reOrder(self, reOrderList):
-        """This function takes as input a permutation list which is
-        used to reorder the entities in the topology object"""
+        """This function takes as input a permutation list which is used to reorder the entities in the topology object"""
 
         # Class atributates that possible need to be modified
         for i in range(8):
