@@ -8,7 +8,7 @@ from mpi4py import MPI
 from baseclasses.utils import Error
 
 # mdolab packages
-from pyspline import libspline
+from pyspline.utils import searchQuads
 
 # openvsp python interface
 try:
@@ -188,7 +188,7 @@ class DVGeometryVSP(object):
             # faceID has the index of the corresponding quad element.
             # uv has the parametric u and v weights of the projected point.
 
-            faceID, uv = libspline.adtprojections(self.pts0.T, (self.conn + 1).T, points.T)
+            faceID, uv = searchQuads(self.pts0.T, (self.conn + 1).T, points.T)
             uv = uv.T
             faceID -= 1  # Convert back to zero-based indexing.
             # after this point we should have the projected points.
