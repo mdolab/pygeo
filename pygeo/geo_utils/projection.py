@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from pyspline import libspline
+from pyspline.utils import line_plane
 from .remove_duplicates import pointReduce
 
 # --------------------------------------------------------------
@@ -31,7 +31,7 @@ def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         fail = 2
         return None, None, fail
 
-    tmpSol, tmpPid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    tmpSol, tmpPid, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
     tmpSol = tmpSol.T
     tmpPid -= 1
 
@@ -129,7 +129,7 @@ def projectNodePIDPosOnly(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
     pid -= 1
 
@@ -178,7 +178,7 @@ def projectNode(pt, upVec, p0, v1, v2):
         fail = 2
         return None, None, fail
 
-    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     # Check to see if any of the solutions happen be identical.
@@ -242,7 +242,7 @@ def projectNodePosOnly(pt, upVec, p0, v1, v2):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = libspline.line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, pid, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     if nSol == 0:

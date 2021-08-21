@@ -1,6 +1,6 @@
 import numpy as np
 from .norm import eDist, euclideanNorm
-from pyspline import libspline
+from pyspline.utils import tfi2d
 
 
 def splitQuad(e0, e1, e2, e3, alpha, beta, NO):
@@ -177,7 +177,7 @@ def tfi_2d(e0, e1, e2, e3):
     # e1: Nodes along edge 3. Size Nv x 3
 
     try:
-        X = libspline.tfi2d(e0.T, e1.T, e2.T, e3.T).T
+        X = tfi2d(e0.T, e1.T, e2.T, e3.T).T
     except Exception:
 
         Nu = len(e0)
