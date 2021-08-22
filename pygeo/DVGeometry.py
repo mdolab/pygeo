@@ -800,7 +800,7 @@ class DVGeometry(object):
 
     def addGeoDVLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVLocal will be deprecated, use addLocalDV instead")
-        self.addLocalDV(*args, **kwargs)
+        return self.addLocalDV(*args, **kwargs)
 
     def addSpanwiseLocalDV(
         self,
