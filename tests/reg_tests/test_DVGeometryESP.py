@@ -3,6 +3,7 @@ import os
 import numpy as np
 from stl import mesh
 from baseclasses import BaseRegTest
+from baseclasses.utils import Error
 from parameterized import parameterized_class
 import time
 
@@ -15,7 +16,6 @@ if MPI:
     try:
         import pyOCSM
         from pygeo.DVGeometryESP import DVGeometryESP
-        from pygeo.DVGeometryESP import Error
     except ImportError:
         pyOCSM = None
 

@@ -5,38 +5,19 @@ from collections import OrderedDict
 import time
 import numpy as np
 from mpi4py import MPI
+from baseclasses.utils import Error
 
 # mdolab packages
-from pyspline import libspline
+from pyspline.utils import searchQuads
 
 # openvsp python interface
 try:
     import openvsp
 except ImportError:
-    import vsp as openvsp
-except ImportError:
-    raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a explicitly raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVGeometryVSP Error: "
-        i = 22
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+    try:
+        import vsp as openvsp
+    except ImportError:
+        raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
 
 
 class DVGeometryVSP(object):
@@ -207,7 +188,7 @@ class DVGeometryVSP(object):
             # faceID has the index of the corresponding quad element.
             # uv has the parametric u and v weights of the projected point.
 
-            faceID, uv = libspline.adtprojections(self.pts0.T, (self.conn + 1).T, points.T)
+            faceID, uv = searchQuads(self.pts0.T, (self.conn + 1).T, points.T)
             uv = uv.T
             faceID -= 1  # Convert back to zero-based indexing.
             # after this point we should have the projected points.
