@@ -11,3 +11,7 @@ try:
     from .parameterization.DVGeometryVSP import DVGeometryVSP
 except ImportError:
     pass
+try:
+    from .parameterization.DVGeometryESP import DVGeometryESP
+except ImportError:
+    pass
