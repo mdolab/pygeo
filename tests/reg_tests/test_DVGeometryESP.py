@@ -15,7 +15,7 @@ except ImportError:
 if MPI:
     try:
         import pyOCSM
-        from pygeo.DVGeometryESP import DVGeometryESP
+        from pygeo import DVGeometryESP
     except ImportError:
         pyOCSM = None
 
