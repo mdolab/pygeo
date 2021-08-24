@@ -129,10 +129,16 @@ def writeAirfoilFile(fileName, name, x, y):
 
 def getCoordinatesFromFile(fileName):
     """Get a list of coordinates from a file - useful for testing
-    Required:
-        fileName: filename for file
-    Returns:
-        coordinates: list of coordinates
+
+    Parameters
+    ----------
+    fileName : str'
+        filename for file
+
+    Returns
+    -------
+    coordinates : list
+        list of coordinates
     """
 
     f = open(fileName, "r")
@@ -155,7 +161,6 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
 
     Parameters
     ----------
-
     fileName : str
         Name of output file. File is written in plot3d format.
 
@@ -182,34 +187,39 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     dist : list
         For each volume, the user can specify the distribution of points along
         each dimension. Options include:
+
             - linear
             - cosine
             - left (tighter spacing on the left side)
             - right (tighter spacing on the other left side)
 
-    Example of two volumes
-    -------
-    axes = ['k', 'j', 'i']
-    slices = np.array([
-        # Slice 1
-        [[[0, 0, 0], [1, 0, 0]],
-        [[0, 0.2, 0], [1, 0.2, 0]]],
-        # Slice 2
-        [[[0, 0, 2], [1, 0, 2]],
-        [[0, 0.2, 2], [1, 0.2, 2]]],
-        # Slice 3
-        [[[0.5, 0, 6], [1, 0, 6]],
-        [[0.5, 0.2, 6], [1, 0.2, 6]]],
-    ])
+    Examples
+    --------
+    This is an example of two volumes:
 
-    N0 = 5
-    N1 = 2
-    N2 = 8
+    .. code-block:: python
 
-    dist = [
-        ['left', 'linear', 'linear'],
-        ['cosine', 'linear', 'right']
-    ]
+        axes = ['k', 'j', 'i']
+        slices = np.array([
+            # Slice 1
+            [[[0, 0, 0], [1, 0, 0]],
+            [[0, 0.2, 0], [1, 0.2, 0]]],
+            # Slice 2
+            [[[0, 0, 2], [1, 0, 2]],
+            [[0, 0.2, 2], [1, 0.2, 2]]],
+            # Slice 3
+            [[[0.5, 0, 6], [1, 0, 6]],
+            [[0.5, 0.2, 6], [1, 0.2, 6]]],
+        ])
+
+        N0 = 5
+        N1 = 2
+        N2 = 8
+
+        dist = [
+            ['left', 'linear', 'linear'],
+            ['cosine', 'linear', 'right']
+        ]
 
     """
 
