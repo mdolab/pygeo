@@ -79,11 +79,10 @@ def unique(s):
 
 def uniqueIndex(s, sHash=None):
     """
-    This function is based on unique
-
+    This function is based on :meth:`unique`.
     The idea is to take a list s, and reduce it as per unique.
 
-    However, it additionally calculates a linking index arrary that is
+    However, it additionally calculates a linking index array that is
     the same size as the original s, and points to where it ends up in
     the the reduced list
 

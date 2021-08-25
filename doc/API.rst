@@ -13,3 +13,4 @@ This package consists of the following modules:
    pyNetwork
    pyGeo
    pyBlock
+   geo_utils
