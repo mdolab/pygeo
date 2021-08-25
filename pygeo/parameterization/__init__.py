@@ -1,11 +1,11 @@
 from .DVGeo import DVGeometry
-from .DVGeometryAxi import DVGeometryAxi
+from .DVGeoAxi import DVGeometryAxi
 
 try:
-    from .DVGeometryVSP import DVGeometryVSP
+    from .DVGeoVSP import DVGeometryVSP
 except ImportError:
     pass
 try:
-    from .DVGeometryESP import DVGeometryESP
+    from .DVGeoESP import DVGeometryESP
 except ImportError:
     pass
