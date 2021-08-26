@@ -452,17 +452,17 @@ class DCEL(object):
         self.vl = []
         self.el = []
         self.faceInfo = []
-        for i in range(nvertices):
+        for _i in range(nvertices):
             a = f.readline().split()
             self.vl.append(DCELVertex([float(a[0]), float(a[1])], np.array([float(a[2]), float(a[3]), float(a[4])])))
 
-        for i in range(nedges):
+        for _i in range(nedges):
             a = f.readline().split()
             self.el.append(DCELEdge(int(a[0]), int(a[1]), None, None, None, a[8]))
             self.el[-1].x1 = np.array([float(a[2]), float(a[3]), float(a[4])])
             self.el[-1].x2 = np.array([float(a[5]), float(a[6]), float(a[7])])
 
-        for i in range(nfaces):
+        for _i in range(nfaces):
             a = f.readline().split()
             self.faceInfo.append(a[0])
 

@@ -362,7 +362,7 @@ class DVGeometry(object):
 
                 curveSymm = copy.deepcopy(curve)
                 curveSymm.reverse()
-                for coef in curveSymm.coef:
+                for _coef in curveSymm.coef:
                     curveSymm.coef[:, index] = -curveSymm.coef[:, index]
                 self.axis[name] = {
                     "curve": curve,
@@ -417,7 +417,7 @@ class DVGeometry(object):
             nVol = len(v)
             volOrd = [v.pop(0)]
             faceLink = self.FFD.topo.faceLink
-            for iter in range(nVol):
+            for _iter in range(nVol):
                 for vInd, i in enumerate(v):
                     for pInd, j in enumerate(volOrd):
                         if faceLink[i, faceCol] == faceLink[j, faceCol + 1]:
