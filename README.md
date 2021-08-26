@@ -6,7 +6,7 @@
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
 It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
 
-![](images/DPW4_FFD-27745.gif)
+![](doc/images/DPW4_FFD-27745.gif)
 
 ## Documentation
 
