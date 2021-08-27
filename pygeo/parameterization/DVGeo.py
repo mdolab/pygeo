@@ -76,12 +76,18 @@ class DVGeometry(object):
       >>>
     """
 
-    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
+    def __init__(self, fileName, isComplex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
         self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+
+        # FIXME: for backwards compatibility we still allow the argument complex=True/False
+        # which we now check in kwargs and overwrite
+        if "complex" in kwargs:
+            isComplex = kwargs['complex']
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
@@ -97,7 +103,7 @@ class DVGeometry(object):
         self.updated = {}
         self.masks = None
         self.finalized = False
-        self.complex = complex
+        self.complex = isComplex
         if self.complex:
             self.dtype = "D"
         else:

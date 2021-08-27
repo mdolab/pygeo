@@ -79,7 +79,7 @@ class DVConstraints(object):
         self.surfaces = {}
         self.DVGeometries = {}
 
-    def setSurface(self, surf, name="default", addToDVGeo=False, DVGeoName="default", format="point-vector"):
+    def setSurface(self, surf, name="default", addToDVGeo=False, DVGeoName="default", surfFormat="point-vector"):
         """
         Set the surface DVConstraints will use to perform projections.
 
@@ -119,7 +119,7 @@ class DVConstraints(object):
             raise KeyError("Surface names must be unique. Repeated surface name: " + str(name))
 
         self.surfaces[name] = list()
-        if format == "point-vector":
+        if surfFormat == "point-vector":
             if type(surf) == list:
                 # Data from ADflow
                 p0 = np.array(surf[0])
@@ -136,7 +136,7 @@ class DVConstraints(object):
 
             p1 = p0 + v1
             p2 = p0 + v2
-        elif format == "point-point":
+        elif surfFormat == "point-point":
             if type(surf) == str:
                 # load from file
                 raise NotImplementedError
