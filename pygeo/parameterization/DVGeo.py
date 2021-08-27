@@ -4220,8 +4220,8 @@ class DVGeometry(object):
 
             # Need to initialize coefRotM to identity matrix for case with no
             # global design variables
-            for slice in rolledlIndex[i, :, :]:
-                for coef in slice:
+            for j in rolledlIndex[i, :, :]:
+                for coef in j:
                     self.coefRotM[coef] = np.eye(3)
 
         return nSections

@@ -1149,8 +1149,8 @@ class pyGeo:
                 name = "surface_%d" % i
             else:
                 name = self.surfs[i].name
-            str = "define_surface name surf.%d family %s tetra_size %f\n" % (i, name, 1.0)
-            f.write(str)
+            s = "define_surface name surf.%d family %s tetra_size %f\n" % (i, name, 1.0)
+            f.write(s)
             self.surfs[i].writeTin(f)
 
         # Write the closing info:

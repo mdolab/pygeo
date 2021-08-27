@@ -86,7 +86,6 @@ class DVConstraints(object):
         Parameters
         ----------
         surf : pyGeo object or list
-
             This is the surface representation to use for
             projections. If available, a pyGeo surface object can be
             used OR a triagnulaed surface in the form [p0, v1, v2] can
@@ -94,17 +93,14 @@ class DVConstraints(object):
             form pyADflow or from pyTrian.
 
         addToDVGeo : bool or str
-
             To embed the surface pointset in a DVGeo object,
             give the DVGeo name as a string. Otherwise, leave False
 
         name : str
-
             Name associated with the surface. Must be unique. For backward compatibility,
             the name is 'default' by default
 
         DVGeoName : str
-
             Name of the DVGeo object to set the surface to. You only
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
@@ -2797,7 +2793,7 @@ class DVConstraints(object):
         self.linearCon[conName] = GlobalLinearConstraint(
             conName,
             key,
-            type="monotonic",
+            conType="monotonic",
             options=options,
             lower=0,
             upper=None,
