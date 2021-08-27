@@ -321,9 +321,7 @@ class pyGeo:
 
         if bluntTe:
             if teHeight is None and teHeightScaled is None:
-                raise Error(
-                    "teHeight OR teHeightScaled must be supplied for bluntTe option"
-                )
+                raise Error("teHeight OR teHeightScaled must be supplied for bluntTe option")
 
             if teHeight:
                 teHeight = np.atleast_1d(teHeight)
@@ -1034,8 +1032,7 @@ class pyGeo:
             for isurf in range(self.nSurf):
                 midu = np.floor(self.surfs[isurf].nCtlu / 2)
                 midv = np.floor(self.surfs[isurf].nCtlv / 2)
-                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, \
- T="S%d"\n' % (
+                textString = 'TEXT CS=GRID3D, X=%f, Y=%f, Z=%f, ZN=%d, T="S%d"\n' % (
                     self.surfs[isurf].coef[midu, midv, 0],
                     self.surfs[isurf].coef[midu, midv, 1],
                     self.surfs[isurf].coef[midu, midv, 2],

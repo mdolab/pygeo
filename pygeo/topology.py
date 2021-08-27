@@ -431,7 +431,8 @@ class CurveTopology(Topology):
         counter = 0
         lIndex = []
 
-        assert len(sizes) == len(curveList), "Error: The list of sizes and the list of surfaces must be the same length"
+        if len(sizes) != len(curveList):
+            raise ValueError("The list of sizes and the list of surfaces must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -637,9 +638,8 @@ class SurfaceTopology(Topology):
 
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        assert len(sizes) == len(
-            surfaceList
-        ), "Error: The list of sizes and the list of surfaces must be the same length"
+        if len(sizes) != len(surfaceList):
+            raise ValueError("The list of sizes and the list of surfaces must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -692,9 +692,8 @@ class SurfaceTopology(Topology):
         gIndex = []
         lIndex = []
 
-        assert len(sizes) == len(
-            surfaceList
-        ), "Error: The list of sizes and the list of surfaces must be the same length"
+        if len(sizes) != len(surfaceList):
+            raise ValueError("The list of sizes and the list of surfaces must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -1022,7 +1021,8 @@ class BlockTopology(Topology):
         gIndex = []
         lIndex = []
 
-        assert len(sizes) == len(volumeList), "Error: The list of sizes and the list of volumes must be the same length"
+        if len(sizes) != len(volumeList):
+            raise ValueError("The list of sizes and the list of volumes must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -1279,7 +1279,8 @@ class BlockTopology(Topology):
         counter = 0
         lIndex = []
 
-        assert len(sizes) == len(volumeList), "Error: The list of sizes and the list of volumes must be the same length"
+        if len(sizes) != len(volumeList):
+            raise ValueError("The list of sizes and the list of volumes must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially

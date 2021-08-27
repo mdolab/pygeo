@@ -50,12 +50,7 @@ class PointSelect(object):
                     + "Points are specified with kwargs pt1=[x1,y1,z1], pt2=[x2,y2,z2]"
                 )
         elif psType == "quad":
-            if not (
-                "pt1" in kwargs
-                and "pt2" in kwargs
-                and "pt3" in kwargs
-                and "pt4" in kwargs
-            ):
+            if not ("pt1" in kwargs and "pt2" in kwargs and "pt3" in kwargs and "pt4" in kwargs):
                 raise ValueError(
                     "Four points must be specified with initialization type quad. "
                     + "Points are specified with kwargs pt1=[x1,y1,z1], pt2=[x2,y2,z2], pt3=[x3,y3,z3], pt4=[x4,y4,z4]"
@@ -184,11 +179,7 @@ class PointSelect(object):
             khigh = self.ijkBounds[iVol][2][1]
 
             # Retrieve current points
-            indList.extend(
-                DVGeo.FFD.topo.lIndex[iVol][
-                    ilow:ihigh, jlow:jhigh, klow:khigh
-                ].flatten()
-            )
+            indList.extend(DVGeo.FFD.topo.lIndex[iVol][ilow:ihigh, jlow:jhigh, klow:khigh].flatten())
 
         # Now get the corresponding coordinates
         ptList = [DVGeo.FFD.coef[ii] for ii in indList]
