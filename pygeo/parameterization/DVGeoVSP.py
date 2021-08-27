@@ -440,11 +440,11 @@ class DVGeometryVSP(object):
         return list(self.DVs.keys())
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
-        """
+        r"""
         This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}
+        :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
 
         Parameters
         ----------
@@ -523,11 +523,11 @@ class DVGeometryVSP(object):
         return dIdxDict
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
-        """
+        r"""
         This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
+        :math:`\frac{dX_{pt}}{dX_{DV}} \ vec`
 
         This is useful for forward AD mode.
 
@@ -573,11 +573,11 @@ class DVGeometryVSP(object):
         return dPt
 
     def totalSensitivityTransProd(self, dIdpt, ptSetName, comm=None, config=None):
-        """
+        r"""
         This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}
+        :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
 
         Parameters
         ----------

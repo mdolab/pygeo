@@ -58,6 +58,7 @@ class DVGeometryESP(object):
     3. It does not support complex numbers for the complex-step
     method.
     4. It does not surpport separate configurations.
+
     Parameters
     ----------
     espFile : str
@@ -87,6 +88,7 @@ class DVGeometryESP(object):
         Disallow projections to edges in the ESP topology (only allow surfaces)
         This can sometimes fix weird mesh deformation issues near the mesh boundaries
         Default False
+
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows:
@@ -230,6 +232,7 @@ class DVGeometryESP(object):
         Add a set of coordinates to DVGeometry
         The is the main way that geometry, in the form of a coordinate
         list is given to DVGeoemtry to be manipulated.
+
         Parameters
         ----------
         points : array, size (N,3)
@@ -595,6 +598,7 @@ class DVGeometryESP(object):
         """
         Standard routine for setting design variables from a design
         variable dictionary.
+
         Parameters
         ----------
         dvDict : dict
@@ -655,6 +659,7 @@ class DVGeometryESP(object):
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
         that would be suitable for a subsequent call to setValues()
+
         Returns
         -------
         dvDict : dict
@@ -671,6 +676,7 @@ class DVGeometryESP(object):
         This is the main routine for returning coordinates that have been
         updated by design variables. Multiple configs are not
         supported.
+
         Parameters
         ----------
         ptSetName : str
@@ -717,6 +723,7 @@ class DVGeometryESP(object):
         that flag. When design variables are set, we then reset all
         the flags to False since, when DVs are set, nothing (in
         general) will up to date anymore.
+
         Parameters
         ----------
         ptSetName : str
@@ -736,6 +743,7 @@ class DVGeometryESP(object):
         """
         Return a list of the design variable names. This is typically
         used when specifying a wrt= argument for pyOptSparse.
+
         Examples
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
@@ -743,10 +751,11 @@ class DVGeometryESP(object):
         return list(self.DVs.keys())
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
-        """
+        r"""
         This function computes sensitivty information.
         Specificly, it computes the following:
-        :math:`\\frac{dI}{d_{pt}}\\frac{dX_{pt}}{dX_{DV}}
+        :math:`\frac{dI}{d_{pt}}\frac{dX_{pt}}{dX_{DV}}`
+
         Parameters
         ----------
         dIdpt : array of size (Npt, 3) or (N, Npt, 3)
@@ -760,6 +769,7 @@ class DVGeometryESP(object):
         comm : MPI.IntraComm
             The communicator to use to reduce the final derivative. If
             comm is None, no reduction takes place.
+
         Returns
         -------
         dIdxDict : dic
@@ -829,10 +839,11 @@ class DVGeometryESP(object):
         return dIdxDict
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
-        """
+        r"""
         This function computes sensitivty information.
         Specificly, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}} \\vec'`
+        :math:`\frac{dX_{pt}}{dX_{DV}} \vec'`
+
         Parameters
         ----------
         vec : dictionary whose keys are the design variable names, and whose
@@ -842,6 +853,7 @@ class DVGeometryESP(object):
         comm : MPI.IntraComm
             The communicator to use to reduce the final derivative. If
             comm is None, no reduction takes place.
+
         Returns
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
@@ -998,6 +1010,7 @@ class DVGeometryESP(object):
     def addVariablesPyOpt(self, optProb):
         """
         Add the current set of variables to the optProb object.
+
         Parameters
         ----------
         optProb : pyOpt_optimization class
