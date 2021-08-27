@@ -38,7 +38,7 @@ def setupDVGeo(base_path, rotType=None):
 def setupDVGeoD8(base_path, isComplex):
     # create the Parent FFD
     FFDFile = os.path.join(base_path, "../inputFiles/bodyFFD.xyz")
-    DVGeo = DVGeometry(FFDFile, complex=isComplex)
+    DVGeo = DVGeometry(FFDFile, isComplex=isComplex)
 
     # create a reference axis for the parent
     axisPoints = [[0.0, 0.0, 0.0], [26.0, 0.0, 0.0], [30.5, 0.0, 0.9], [32.5, 0.0, 1.01], [34.0, 0.0, 0.95]]
@@ -47,7 +47,7 @@ def setupDVGeoD8(base_path, isComplex):
 
     # create the child FFD
     FFDFile = os.path.join(base_path, "../inputFiles/nozzleFFD.xyz")
-    DVGeoChild = DVGeometry(FFDFile, child=True, complex=isComplex)
+    DVGeoChild = DVGeometry(FFDFile, child=True, isComplex=isComplex)
 
     # create a reference axis for the child
     axisPoints = [[32.4, 1.0, 1.0], [34, 1.0, 0.9]]
