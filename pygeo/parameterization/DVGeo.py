@@ -86,7 +86,7 @@ class DVGeometry(object):
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
-            isComplex = kwargs['complex']
+            isComplex = kwargs["complex"]
             warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
 
         # Coefficient rotation matrix dict for Section Local variables
