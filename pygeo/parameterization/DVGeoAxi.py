@@ -34,7 +34,7 @@ class _AxiTransform(object):
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
-            isComplex = kwargs["complex"]
+            isComplex = kwargs.pop("complex")
             warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
 
         self.complex = isComplex
@@ -207,7 +207,7 @@ class DVGeometryAxi(DVGeometry):
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
-            isComplex = kwargs["complex"]
+            isComplex = kwargs.pop("complex")
             warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
 
         super().__init__(fileName, isComplex=isComplex, child=child, *args, **kwargs)
