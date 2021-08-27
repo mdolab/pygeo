@@ -182,16 +182,10 @@ def tfi_2d(e0, e1, e2, e3):
 
         Nu = len(e0)
         Nv = len(e2)
-        assert Nu == len(e1), (
-            "Number of nodes on edge0 and edge1\
- are not the same, %d %d"
-            % (len(e0), len(e1))
-        )
-        assert Nv == len(e3), (
-            "Number of nodes on edge2 and edge3\
- are not the same, %d %d"
-            % (len(e2), len(e3))
-        )
+        if Nu != len(e1):
+            raise ValueError(f"Number of nodes on edge0 and edge1 are not the same: {len(e0)} {len(e1)}")
+        if Nv != len(e3):
+            raise ValueError(f"Number of nodes on edge2 and edge3 are not the same: {len(e2)} {len(e3)}")
 
         U = np.linspace(0, 1, Nu)
         V = np.linspace(0, 1, Nv)

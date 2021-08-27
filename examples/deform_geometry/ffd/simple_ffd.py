@@ -44,8 +44,8 @@ filename = "ffd.xyz"
 f = open(filename, "w")
 f.write("\t\t1\n")
 f.write("\t\t%d\t\t%d\t\t%d\n" % (nX, nY, nZ))
-for set in [X, Y, Z]:
-    for row in set:
+for i in [X, Y, Z]:
+    for row in i:
         vals = tuple(row)
         f.write("\t%3.8f\t%3.8f\t%3.8f\t%3.8f\t%3.8f\t%3.8f\n" % vals)
 f.close()

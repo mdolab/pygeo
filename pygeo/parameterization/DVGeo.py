@@ -76,12 +76,18 @@ class DVGeometry(object):
       >>>
     """
 
-    def __init__(self, fileName, complex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
+    def __init__(self, fileName, isComplex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
         self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+
+        # FIXME: for backwards compatibility we still allow the argument complex=True/False
+        # which we now check in kwargs and overwrite
+        if "complex" in kwargs:
+            isComplex = kwargs.pop("complex")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
@@ -97,7 +103,7 @@ class DVGeometry(object):
         self.updated = {}
         self.masks = None
         self.finalized = False
-        self.complex = complex
+        self.complex = isComplex
         if self.complex:
             self.dtype = "D"
         else:
@@ -362,7 +368,7 @@ class DVGeometry(object):
 
                 curveSymm = copy.deepcopy(curve)
                 curveSymm.reverse()
-                for coef in curveSymm.coef:
+                for _coef in curveSymm.coef:
                     curveSymm.coef[:, index] = -curveSymm.coef[:, index]
                 self.axis[name] = {
                     "curve": curve,
@@ -417,7 +423,7 @@ class DVGeometry(object):
             nVol = len(v)
             volOrd = [v.pop(0)]
             faceLink = self.FFD.topo.faceLink
-            for iter in range(nVol):
+            for _iter in range(nVol):
                 for vInd, i in enumerate(v):
                     for pInd, j in enumerate(volOrd):
                         if faceLink[i, faceCol] == faceLink[j, faceCol + 1]:
@@ -4220,8 +4226,8 @@ class DVGeometry(object):
 
             # Need to initialize coefRotM to identity matrix for case with no
             # global design variables
-            for slice in rolledlIndex[i, :, :]:
-                for coef in slice:
+            for j in rolledlIndex[i, :, :]:
+                for coef in j:
                     self.coefRotM[coef] = np.eye(3)
 
         return nSections

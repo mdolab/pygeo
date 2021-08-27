@@ -22,7 +22,6 @@ Please cite pyGeo in any publication for which you find it useful.
 For more background, theory, and figures, see the [this paper](http://umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf).
 
 G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
-
 ```
 @conference {Kenway:2010:C,
 	title = {A {CAD}-Free Approach to High-Fidelity Aerostructural Optimization},

@@ -273,12 +273,12 @@ class GlobalLinearConstraint(object):
     constriants coupling global design variables together.
     """
 
-    def __init__(self, name, key, type, options, lower, upper, DVGeo, config):
+    def __init__(self, name, key, conType, options, lower, upper, DVGeo, config):
         # No error checking here since the calling routine should have
         # already done it.
         self.name = name
         self.key = key
-        self.type = type
+        self.type = conType
         self.lower = lower
         self.upper = upper
         self.DVGeo = DVGeo

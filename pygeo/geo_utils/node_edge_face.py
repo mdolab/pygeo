@@ -125,9 +125,9 @@ def setNodeValue(arr, value, nodeIndex):
     return arr
 
 
-def setEdgeValue(arr, values, dir, edgeIndex):
+def setEdgeValue(arr, values, edgeDir, edgeIndex):
 
-    if dir == -1:  # Reverse values
+    if edgeDir == -1:  # Reverse values
         values = values[::-1]
 
     if edgeIndex == 0:

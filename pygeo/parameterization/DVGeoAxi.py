@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from scipy import sparse
 from collections import OrderedDict
@@ -29,8 +30,14 @@ class _AxiTransform(object):
         into the x,z plane and use z as the rotational axis
     """
 
-    def __init__(self, pts, center, collapse_into, complex=False):
-        self.complex = complex
+    def __init__(self, pts, center, collapse_into, isComplex=False, **kwargs):
+        # FIXME: for backwards compatibility we still allow the argument complex=True/False
+        # which we now check in kwargs and overwrite
+        if "complex" in kwargs:
+            isComplex = kwargs.pop("complex")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+
+        self.complex = isComplex
 
         self.c_plane = collapse_into
         self.n_points = pts.shape[0]
@@ -193,11 +200,17 @@ class DVGeometryAxi(DVGeometry):
       >>>
     """
 
-    def __init__(self, fileName, center, collapse_into, complex=False, child=False, *args, **kwargs):
+    def __init__(self, fileName, center, collapse_into, isComplex=False, child=False, *args, **kwargs):
 
         self.axiTransforms = OrderedDict()  # TODO: Why is this ordered?
 
-        super(DVGeometryAxi, self).__init__(fileName, complex, child, *args, **kwargs)
+        # FIXME: for backwards compatibility we still allow the argument complex=True/False
+        # which we now check in kwargs and overwrite
+        if "complex" in kwargs:
+            isComplex = kwargs.pop("complex")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+
+        super().__init__(fileName, isComplex=isComplex, child=child, *args, **kwargs)
 
         self.center = center
         self.collapse_into = collapse_into

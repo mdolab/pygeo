@@ -315,7 +315,7 @@ class Topology(object):
 
         f.readline()  # Second Header line
 
-        for i in range(self.nEdge):
+        for _i in range(self.nEdge):
             aux = f.readline().split("|")
             self.edges.append(
                 Edge(int(aux[1]), int(aux[2]), int(aux[3]), int(aux[4]), int(aux[5]), int(aux[6]), int(aux[7]))
@@ -431,7 +431,8 @@ class CurveTopology(Topology):
         counter = 0
         lIndex = []
 
-        assert len(sizes) == len(curveList), "Error: The list of sizes and the list of surfaces must be the same length"
+        if len(sizes) != len(curveList):
+            raise ValueError("The list of sizes and the list of surfaces must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -447,7 +448,7 @@ class CurveTopology(Topology):
                 edge = self.edgeLink[ii][iedge]
 
                 if edgeIndex[edge] == []:  # Not added yet
-                    for jj in range(curSize[iedge] - 2):
+                    for _jj in range(curSize[iedge] - 2):
                         edgeIndex[edge].append(counter)
                         counter += 1
 
@@ -637,9 +638,8 @@ class SurfaceTopology(Topology):
 
         # ----------------- Start of Edge Computation ---------------------
         counter = 0
-        assert len(sizes) == len(
-            surfaceList
-        ), "Error: The list of sizes and the list of surfaces must be the same length"
+        if len(sizes) != len(surfaceList):
+            raise ValueError("The list of sizes and the list of surfaces must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -659,10 +659,10 @@ class SurfaceTopology(Topology):
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
                         index = nodeIndex[self.edges[edge].n1]
-                        for jj in range(curSize[iedge] - 2):
+                        for _jj in range(curSize[iedge] - 2):
                             edgeIndex[edge].append(index)
                     else:
-                        for jj in range(curSize[iedge] - 2):
+                        for _jj in range(curSize[iedge] - 2):
                             edgeIndex[edge].append(counter)
                             counter += 1
 
@@ -692,9 +692,8 @@ class SurfaceTopology(Topology):
         gIndex = []
         lIndex = []
 
-        assert len(sizes) == len(
-            surfaceList
-        ), "Error: The list of sizes and the list of surfaces must be the same length"
+        if len(sizes) != len(surfaceList):
+            raise ValueError("The list of sizes and the list of surfaces must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -713,10 +712,10 @@ class SurfaceTopology(Topology):
                     if self.edges[edge].degen == 1:
                         # Get the counter value for this "node"
                         index = nodeIndex[self.edges[edge].n1]
-                        for jj in range(curSize[iedge] - 2):
+                        for _jj in range(curSize[iedge] - 2):
                             edgeIndex[edge].append(index)
                     else:
-                        for jj in range(curSize[iedge] - 2):
+                        for _jj in range(curSize[iedge] - 2):
                             edgeIndex[edge].append(counter)
                             counter += 1
 
@@ -1022,7 +1021,8 @@ class BlockTopology(Topology):
         gIndex = []
         lIndex = []
 
-        assert len(sizes) == len(volumeList), "Error: The list of sizes and the list of volumes must be the same length"
+        if len(sizes) != len(volumeList):
+            raise ValueError("The list of sizes and the list of volumes must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially
@@ -1279,7 +1279,8 @@ class BlockTopology(Topology):
         counter = 0
         lIndex = []
 
-        assert len(sizes) == len(volumeList), "Error: The list of sizes and the list of volumes must be the same length"
+        if len(sizes) != len(volumeList):
+            raise ValueError("The list of sizes and the list of volumes must be the same length")
 
         # Assign unique numbers to the corners -> Corners are indexed
         # sequentially

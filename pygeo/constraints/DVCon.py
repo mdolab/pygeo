@@ -79,14 +79,13 @@ class DVConstraints(object):
         self.surfaces = {}
         self.DVGeometries = {}
 
-    def setSurface(self, surf, name="default", addToDVGeo=False, DVGeoName="default", format="point-vector"):
+    def setSurface(self, surf, name="default", addToDVGeo=False, DVGeoName="default", surfFormat="point-vector"):
         """
         Set the surface DVConstraints will use to perform projections.
 
         Parameters
         ----------
         surf : pyGeo object or list
-
             This is the surface representation to use for
             projections. If available, a pyGeo surface object can be
             used OR a triagnulaed surface in the form [p0, v1, v2] can
@@ -94,17 +93,14 @@ class DVConstraints(object):
             form pyADflow or from pyTrian.
 
         addToDVGeo : bool or str
-
             To embed the surface pointset in a DVGeo object,
             give the DVGeo name as a string. Otherwise, leave False
 
         name : str
-
             Name associated with the surface. Must be unique. For backward compatibility,
             the name is 'default' by default
 
         DVGeoName : str
-
             Name of the DVGeo object to set the surface to. You only
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
@@ -123,7 +119,7 @@ class DVConstraints(object):
             raise KeyError("Surface names must be unique. Repeated surface name: " + str(name))
 
         self.surfaces[name] = list()
-        if format == "point-vector":
+        if surfFormat == "point-vector":
             if type(surf) == list:
                 # Data from ADflow
                 p0 = np.array(surf[0])
@@ -140,7 +136,7 @@ class DVConstraints(object):
 
             p1 = p0 + v1
             p2 = p0 + v2
-        elif format == "point-point":
+        elif surfFormat == "point-point":
             if type(surf) == str:
                 # load from file
                 raise NotImplementedError
@@ -2797,7 +2793,7 @@ class DVConstraints(object):
         self.linearCon[conName] = GlobalLinearConstraint(
             conName,
             key,
-            type="monotonic",
+            conType="monotonic",
             options=options,
             lower=0,
             upper=None,
