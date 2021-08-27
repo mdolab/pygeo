@@ -44,24 +44,28 @@ class PointSelect(object):
         """
 
         if psType == "x" or psType == "y" or psType == "z":
-            assert (
-                "pt1" in kwargs and "pt2" in kwargs
-            ), "Error:, two points \
-must be specified with initialization type x,y, or z. Points are specified \
-with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2]"
-
+            if not ("pt1" in kwargs and "pt2" in kwargs):
+                raise ValueError(
+                    "Two points must be specified with initialization type x, y, or z. "
+                    + "Points are specified with kwargs pt1=[x1,y1,z1], pt2=[x2,y2,z2]"
+                )
         elif psType == "quad":
-            assert (
-                "pt1" in kwargs and "pt2" in kwargs and "pt3" in kwargs and "pt4" in kwargs
-            ), "Error:, four points \
-must be specified with initialization type quad. Points are specified \
-with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]"
+            if not (
+                "pt1" in kwargs
+                and "pt2" in kwargs
+                and "pt3" in kwargs
+                and "pt4" in kwargs
+            ):
+                raise ValueError(
+                    "Four points must be specified with initialization type quad. "
+                    + "Points are specified with kwargs pt1=[x1,y1,z1], pt2=[x2,y2,z2], pt3=[x3,y3,z3], pt4=[x4,y4,z4]"
+                )
 
         elif psType == "ijkBounds":
-            assert (
-                "ijkBounds" in kwargs
-            ), "Error:, ijkBounds selection method requires a dictonary with \
-            the specific ijkBounds for each volume."
+            if not ("ijkBounds" in kwargs):
+                raise ValueError(
+                    "ijkBounds selection method requires a dictonary with the specific ijkBounds for each volume."
+                )
 
         corners = np.zeros([4, 3])
         if psType in ["x", "y", "z", "corners"]:
@@ -180,7 +184,11 @@ with kwargs pt1=[x1,y1,z1],pt2=[x2,y2,z2],pt3=[x3,y3,z3],pt4=[x4,y4,z4]"
             khigh = self.ijkBounds[iVol][2][1]
 
             # Retrieve current points
-            indList.extend(DVGeo.FFD.topo.lIndex[iVol][ilow:ihigh, jlow:jhigh, klow:khigh].flatten())
+            indList.extend(
+                DVGeo.FFD.topo.lIndex[iVol][
+                    ilow:ihigh, jlow:jhigh, klow:khigh
+                ].flatten()
+            )
 
         # Now get the corresponding coordinates
         ptList = [DVGeo.FFD.coef[ii] for ii in indList]

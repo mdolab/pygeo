@@ -6,12 +6,10 @@ def getBiLinearMap(edge0, edge1, edge2, edge3):
 
     assert len(edge0) == len(
         edge1
-    ), "Error, getBiLinearMap:\
- The len of edge0 and edge1 are not the same"
+    ), "Error, getBiLinearMap: The len of edge0 and edge1 are not the same"
     assert len(edge2) == len(
         edge3
-    ), "Error, getBiLinearMap:\
- The len of edge2 and edge3 are no the same"
+    ), "Error, getBiLinearMap: The len of edge2 and edge3 are no the same"
 
     N = len(edge0)
     M = len(edge2)

@@ -322,8 +322,7 @@ class pyGeo:
         if bluntTe:
             if teHeight is None and teHeightScaled is None:
                 raise Error(
-                    "teHeight OR teHeightScaled \
-                must be supplied for bluntTe option"
+                    "teHeight OR teHeightScaled must be supplied for bluntTe option"
                 )
 
             if teHeight:
