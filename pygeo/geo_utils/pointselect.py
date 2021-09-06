@@ -8,39 +8,34 @@ class PointSelect:
         """Initialize a control point selection class. There are several ways
         to initialize this class depending on the 'type' qualifier:
 
-        Inputs:
+        Parameters
+        ----------
+        psType : {'x', 'y', 'z', 'quad', 'ijkBounds', 'corners', 'list'}
+            indicates the initialization type:
 
-        psType: string which inidicates the initialization type:
+            - 'x': Define two corners (pt1=,pt2=) on a plane parallel to the x=0 plane
+            - 'y': Define two corners (pt1=,pt2=) on a plane parallel to the y=0 plane
+            - 'z': Define two corners (pt1=,pt2=) on a plane parallel to the z=0 plane
+            - 'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a COUNTER-CLOCKWISE orientation
+            - 'ijkBounds': Dictionary of int[3x2] defining upper and lower block indices to which we will apply the DVs.
+              It should follow this format:
 
-        'x': Define two corners (pt1=,pt2=) on a plane parallel to the
-        x=0 plane
+              .. code-blocks: python
+                ijkBounds = {volID:[[ilow, ihigh],
+                                    [jlow, jhigh],
+                                    [klow, khigh]]}
 
-        'y': Define two corners (pt1=,pt2=) on a plane parallel to the
-        y=0 plane
+              volID is the same block identifier used in volList.
+              If the user provides none, then we will apply the normal DVs to all FFD nodes.
+              This is how you call PointSelect for ijkBounds:
 
-        'z': Define two corners (pt1=,pt2=) on a plane parallel to the
-        z=0 plane
+              .. code-blocks: python
+                ps = PointSelect('ijkBounds',ijkBounds =  {volID:[[ilow, ihigh],
+                                                                 [jlow, jhigh],
+                                                                 [klow, khigh]]})
 
-        'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a
-        COUNTER-CLOCKWISE orientation
-
-        'ijkBounds': Dictionary of int[3x2] defining upper and lower block indices to which we will apply the DVs.
-        It should follow this format:
-        ijkBounds = {volID:[[ilow, ihigh],
-                            [jlow, jhigh],
-                            [klow, khigh]]}
-        volID is the same block identifier used in volList.
-        If the user provides none, then we will apply the normal DVs to all FFD nodes.
-        This is how you call PointSelect for ijkBounds:
-        ps = PointSelect('ijkBounds',ijkBounds =  {volID:[[ilow, ihigh],
-                                                          [jlow, jhigh],
-                                                          [klow, khigh]]})
-        Then to get the point indices you need to use:
-        ps.getPointsijk(FFD)
-
-
-        'list': Define the indices of a list that will be used to
-        extract the points
+              Then to get the point indices you need to use ``ps.getPointsijk(FFD)``
+            - 'list': Define the indices of a list that will be used to extract the points
         """
 
         if psType == "x" or psType == "y" or psType == "z":

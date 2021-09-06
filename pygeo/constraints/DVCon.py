@@ -118,7 +118,7 @@ class DVConstraints:
         if name in self.surfaces.keys():
             raise KeyError("Surface names must be unique. Repeated surface name: " + str(name))
 
-        self.surfaces[name] = list()
+        self.surfaces[name] = []
         if surfFormat == "point-vector":
             if type(surf) == list:
                 # Data from ADflow
