@@ -69,6 +69,7 @@ class RegTestPyGeo(unittest.TestCase):
                     funcsSens[outkey][inkey][:, array_ind] = deriv_temp
                 xDV[inkey][array_ind] = baseVar[array_ind]
         DVGeo.setDesignVars(xDV)
+        DVCon.evalFunctions({})
         return funcsSens
 
     def generate_dvgeo_dvcon_rect(self, addToDVGeo=False):
