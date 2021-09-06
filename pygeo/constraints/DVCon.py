@@ -120,7 +120,7 @@ class DVConstraints:
 
         self.surfaces[name] = []
         if surfFormat == "point-vector":
-            if type(surf) == list:
+            if isinstance(surf, list):
                 # Data from ADflow
                 p0 = np.array(surf[0])
                 v1 = np.array(surf[1])
@@ -137,15 +137,15 @@ class DVConstraints:
             p1 = p0 + v1
             p2 = p0 + v2
         elif surfFormat == "point-point":
-            if type(surf) == str:
+            if isinstance(surf, str):
                 # load from file
                 raise NotImplementedError
-            elif type(surf) == list:
+            elif isinstance(surf, list):
                 # for now, do NOT add the object geometry to dvgeo
                 p0 = np.array(surf[0])
                 p1 = np.array(surf[1])
                 p2 = np.array(surf[2])
-            elif type(surf) == np.ndarray:
+            elif isinstance(surf, np.ndarray):
                 surf_length = surf[:, 0, :].shape[0]
                 p0 = surf[:, 0, :].reshape(surf_length, 3)
                 p1 = surf[:, 1, :].reshape(surf_length, 3)

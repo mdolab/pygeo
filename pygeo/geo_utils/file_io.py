@@ -236,9 +236,9 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     # given, use that same size for every volume.
     size = [N0, N1, N2]
     for iVol, item in enumerate(size):
-        if type(item) is int:
+        if isinstance(item, int):
             size[iVol] = [item] * Nvol
-        elif type(item) is not list:
+        elif not isinstance(item, list):
             print("Incorrect type for N0, N1, or N2.")
 
         assert len(size[iVol]) == Nvol
@@ -248,7 +248,7 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     f.write(f"{Nvol}\n")
 
     def getDistribution(distIn, N):
-        if type(distIn) is not str:
+        if not isinstance(distIn, str):
             assert len(distIn) == N
             dist = distIn.copy()
         elif distIn == "linear":

@@ -680,7 +680,7 @@ class DVGeometry:
         if self.name is not None:
             dvName = self.name + "_" + dvName
 
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
 
@@ -755,7 +755,7 @@ class DVGeometry:
         if self.name is not None:
             dvName = self.name + "_" + dvName
 
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
 
         if pointSelect is not None:
@@ -877,7 +877,7 @@ class DVGeometry:
         >>> # moving in the y direction, within +/- 0.5 units
         >>> DVGeo.addSpanwiseLocalDV("shape", 'k', lower=-0.5, upper=0.5, axis="z", scale=1.0)
         """
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
 
         if pointSelect is not None:
@@ -907,9 +907,9 @@ class DVGeometry:
         # secLink = np.zeros(self.FFD.coef.shape[0], dtype=int)
         # secTransform = [np.eye(3)]
 
-        if type(spanIndex) is str:
+        if isinstance(spanIndex, str):
             spanIndex = [spanIndex] * len(volList)
-        elif type(spanIndex) is list:
+        elif isinstance(spanIndex, list):
             if len(spanIndex) != len(volList):
                 raise Error("If a list is given for spanIndex, the length must be" " equal to the length of volList.")
 
@@ -1112,7 +1112,7 @@ class DVGeometry:
         if self.name is not None:
             dvName = self.name + "_" + dvName
 
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
 
         # Pick out control points
@@ -1145,22 +1145,22 @@ class DVGeometry:
         secLink = np.zeros(self.FFD.coef.shape[0], dtype=int)
         secTransform = [np.eye(3)]
 
-        if type(secIndex) is str:
+        if isinstance(secIndex, str):
             secIndex = [secIndex] * len(volList)
-        elif type(secIndex) is list:
+        elif isinstance(secIndex, list):
             if len(secIndex) != len(volList):
                 raise Error("If a list is given for secIndex, the length must be" " equal to the length of volList.")
 
         if orient0 is not None:
             # 'i', 'j', or 'k'
-            if type(orient0) is str:
+            if isinstance(orient0, str):
                 orient0 = [orient0] * len(volList)
             # ['k', 'k', 'i', etc.]
-            elif type(orient0) is list:
+            elif isinstance(orient0, list):
                 if len(orient0) != len(volList):
                     raise Error("If a list is given for orient0, the length must" " be equal to the length of volList.")
             # np.array([1.0, 0.0, 0.0])
-            elif type(orient0) is np.ndarray:
+            elif isinstance(orient0, np.ndarray):
                 # vector
                 if len(orient0.shape) == 1:
                     orient0 = np.reshape(orient0, (1, 3))
@@ -4143,10 +4143,10 @@ class DVGeometry:
         orient0idx = False
         orient0vec = False
         if orient0 is not None:
-            if type(orient0) is str:
+            if isinstance(orient0, str):
                 orient0 = ijk_2_idx[orient0.lower()]
                 orient0idx = True
-            elif type(orient0) is np.ndarray:
+            elif isinstance(orient0, np.ndarray):
                 orient0vec = True
             else:
                 raise Error("orient0 must be an index (i, j, or k) or a " "vector.")
