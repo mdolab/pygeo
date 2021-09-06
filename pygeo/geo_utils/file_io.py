@@ -30,7 +30,7 @@ def writeValues(handle, values, dtype, binary=False):
 
 def readAirfoilFile(fileName, bluntTe=False, bluntTaperRange=0.1, bluntThickness=0.002):
     """Load the airfoil file"""
-    f = open(fileName, "r")
+    f = open(fileName)
     line = f.readline()  # Read (and ignore) the first line
     r = []
     try:
@@ -120,7 +120,7 @@ def writeAirfoilFile(fileName, name, x, y):
     f.write("%s\n" % name)
 
     for i in range(len(x)):
-        f.write("%12.10f %12.10f\n" % (x[i], y[i]))
+        f.write(f"{x[i]:12.10f} {y[i]:12.10f}\n")
 
     f.close()
 
@@ -141,7 +141,7 @@ def getCoordinatesFromFile(fileName):
         list of coordinates
     """
 
-    f = open(fileName, "r")
+    f = open(fileName)
     coordinates = []
     for line in f:
         aux = line.split()
@@ -245,7 +245,7 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
     N0, N1, N2 = size
 
     f = open(fileName, "w")
-    f.write("{}\n".format(Nvol))
+    f.write(f"{Nvol}\n")
 
     def getDistribution(distIn, N):
         if type(distIn) is not str:
@@ -300,7 +300,7 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
                         idc[axes.index("i")] = i
                         idc[axes.index("j")] = j
                         idc[axes.index("k")] = k
-                        line += "{: .4e}\t".format(X[idc[0], idc[1], idc[2], dim])
+                        line += f"{X[idc[0], idc[1], idc[2], dim]: .4e}\t"
                         if len(line) + 11 > 80:
                             f.write(line + "\n")
                             line = ""

@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath("../"))
 sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
-project = u"pyGeo"
+project = "pyGeo"
 
 # -- General configuration -----------------------------------------------------
 # Built-in Sphinx extensions are already contained in the imported variable

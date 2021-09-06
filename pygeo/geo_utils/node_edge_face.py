@@ -228,7 +228,7 @@ def getFaceValue(arr, faceIndex, offset):
 # --------------------------------------------------------------
 
 
-class Edge(object):
+class Edge:
     """A class for edge objects"""
 
     def __init__(self, n1, n2, cont, degen, intersect, dg, N):
@@ -250,7 +250,7 @@ class Edge(object):
         )
 
 
-class EdgeCmpObject(object):
+class EdgeCmpObject:
     """A temporary class for sorting edge objects"""
 
     def __init__(self, n1, n2, n1o, n2o, midPt, tol):
@@ -292,7 +292,7 @@ class EdgeCmpObject(object):
         return not self.__eq__(other)
 
 
-class FaceCmpObject(object):
+class FaceCmpObject:
     """A temporary class for sorting edge objects"""
 
     def __init__(self, n1, n2, n3, n4, n1o, n2o, n3o, n4o, midPt, tol):

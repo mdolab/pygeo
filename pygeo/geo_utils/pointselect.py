@@ -2,7 +2,7 @@ import numpy as np
 from pyspline.utils import bilinearSurface
 
 
-class PointSelect(object):
+class PointSelect:
     def __init__(self, psType, *args, **kwargs):
 
         """Initialize a control point selection class. There are several ways

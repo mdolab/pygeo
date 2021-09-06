@@ -75,7 +75,7 @@ class pyBlock:
         """
 
         binary = False  # Binary read no longer supported.
-        f = open(fileName, "r")
+        f = open(fileName)
         nVol = readNValues(f, 1, "int", False)[0]
         sizes = readNValues(f, nVol * 3, "int", False).reshape((nVol, 3))
         blocks = []
@@ -956,7 +956,7 @@ class pyBlock:
         return Xmin, Xmax
 
 
-class EmbeddedVolume(object):
+class EmbeddedVolume:
     """A Container class for a set of embedded volume points
 
     Parameters

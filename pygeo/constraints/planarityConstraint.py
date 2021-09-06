@@ -116,7 +116,7 @@ class PlanarityConstraint(GeometricConstraint):
         xb = np.zeros(self.nCon)
         axisb = np.zeros(3)
 
-        scalardistb = np.zeros((self.n * 3))
+        scalardistb = np.zeros(self.n * 3)
         allpointsb = np.zeros((self.n * 3, 3))
         distb = np.zeros((self.n * 3, 3))
         for con in range(self.nCon):
@@ -178,12 +178,12 @@ class PlanarityConstraint(GeometricConstraint):
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (3 * self.n, self.n))
         handle.write("DATAPACKING=POINT\n")
         for i in range(self.n):
-            handle.write("%f %f %f\n" % (self.p0[i, 0], self.p0[i, 1], self.p0[i, 2]))
+            handle.write(f"{self.p0[i, 0]:f} {self.p0[i, 1]:f} {self.p0[i, 2]:f}\n")
         for i in range(self.n):
-            handle.write("%f %f %f\n" % (self.p1[i, 0], self.p1[i, 1], self.p1[i, 2]))
+            handle.write(f"{self.p1[i, 0]:f} {self.p1[i, 1]:f} {self.p1[i, 2]:f}\n")
 
         for i in range(self.n):
-            handle.write("%f %f %f\n" % (self.p2[i, 0], self.p2[i, 1], self.p2[i, 2]))
+            handle.write(f"{self.p2[i, 0]:f} {self.p2[i, 1]:f} {self.p2[i, 2]:f}\n")
 
         for i in range(self.n):
             handle.write("%d %d %d\n" % (i + 1, i + self.n + 1, i + self.n * 2 + 1))
@@ -191,6 +191,6 @@ class PlanarityConstraint(GeometricConstraint):
         handle.write("Zone T=%s_center\n" % self.name)
         handle.write("Nodes = 2, Elements = 1 ZONETYPE=FELINESEG\n")
         handle.write("DATAPACKING=POINT\n")
-        handle.write("%f %f %f\n" % (self.origin[0, 0], self.origin[0, 1], self.origin[0, 2]))
-        handle.write("%f %f %f\n" % (self.origin[0, 0], self.origin[0, 1], self.origin[0, 2]))
+        handle.write(f"{self.origin[0, 0]:f} {self.origin[0, 1]:f} {self.origin[0, 2]:f}\n")
+        handle.write(f"{self.origin[0, 0]:f} {self.origin[0, 1]:f} {self.origin[0, 2]:f}\n")
         handle.write("%d %d\n" % (1, 2))

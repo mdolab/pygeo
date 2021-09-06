@@ -19,7 +19,7 @@ from .planarityConstraint import PlanarityConstraint
 from .curvatureConstraint import CurvatureConstraint
 
 
-class DVConstraints(object):
+class DVConstraints:
     """DVConstraints provides a convenient way of defining geometric
     constraints for WINGS. This can be very useful for a constrained
     aerodynamic or aerostructural optimization. Three types of
@@ -374,7 +374,7 @@ class DVConstraints(object):
             points.append(p1[i])
             points.append(p2[i])
             for i in range(len(points)):
-                f.write("%f %f %f\n" % (points[i][0], points[i][1], points[i][2]))
+                f.write(f"{points[i][0]:f} {points[i][1]:f} {points[i][2]:f}\n")
 
         for i in range(len(p0)):
             f.write("%d %d %d\n" % (3 * i + 1, 3 * i + 2, 3 * i + 3))
@@ -428,7 +428,7 @@ class DVConstraints(object):
         surfaceName="default",
         DVGeoName="default",
     ):
-        """
+        r"""
         Add a set of thickness constraints that span a logically a
         two-dimensional region. A little ASCII art can help here
 
@@ -606,7 +606,7 @@ class DVConstraints(object):
         surfaceName="default",
         DVGeoName="default",
     ):
-        """
+        r"""
         Add a set of thickness constraints oriented along a poly-line.
 
         See below for a schematic
@@ -749,7 +749,7 @@ class DVConstraints(object):
         surfaceName="default",
         DVGeoName="default",
     ):
-        """
+        r"""
         Add a set of leading edge radius constraints. The constraint is set up
         similar to the 1D thickness or thickness-to-chord constraints. The user
         provides a polyline near the leading edge and specifies how many
@@ -1176,7 +1176,7 @@ class DVConstraints(object):
         surfaceName="default",
         DVGeoName="default",
     ):
-        """
+        r"""
         Add a set of thickness-to-chord ratio constraints oriented along a poly-line.
 
         See below for a schematic
@@ -1538,7 +1538,7 @@ class DVConstraints(object):
         surfaceName="default",
         DVGeoName="default",
     ):
-        """
+        r"""
         Add a single volume constraint to the wing. The volume
         constraint is defined over a logically two-dimensional region
         as shown below
@@ -2807,7 +2807,7 @@ class DVConstraints(object):
 
         pts = None
 
-        f = open(fileName, "r")
+        f = open(fileName)
         nSurf = np.fromfile(f, "int", count=1, sep=" ")[0]
         sizes = np.fromfile(f, "int", count=3 * nSurf, sep=" ").reshape((nSurf, 3))
         nElem = 0

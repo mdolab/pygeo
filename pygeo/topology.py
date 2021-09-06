@@ -20,7 +20,7 @@ from .geo_utils.index_position import indexPosition1D, indexPosition2D, indexPos
 # --------------------------------------------------------------
 
 
-class Topology(object):
+class Topology:
     """
     The base topology class from which the BlockTopology,
     SurfaceTology and CuveTopology classes inherit from
@@ -290,7 +290,7 @@ class Topology(object):
         # nNode, nEdge, nFace,nVol,nodeLink,edgeLink,
         # faceLink,edgeDir,faceDir
 
-        f = open(fileName, "r")
+        f = open(fileName)
         aux = f.readline().split()
         self.nNode = int(aux[0])
         self.nEdge = int(aux[1])

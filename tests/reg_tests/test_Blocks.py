@@ -37,7 +37,7 @@ class RegTestPyGeo(unittest.TestCase):
 
     def setup_blocks(self, testID, isComplex=False):
         # Make tiny FFD
-        ffd_name = "../inputFiles/tiny_cube_{:02d}.xyz".format(testID)
+        ffd_name = f"../inputFiles/tiny_cube_{testID:02d}.xyz"
         file_name = os.path.join(self.base_path, ffd_name)
         self.make_cube_ffd(file_name, 1, 1, 1, 1, 1, 1)
         tiny = DVGeometry(file_name, child=True, isComplex=isComplex)
@@ -45,7 +45,7 @@ class RegTestPyGeo(unittest.TestCase):
         tiny.addRefAxis("ref", xFraction=0.5, alignIndex="j", rotType=7)
 
         # Make tiny FFD
-        ffd_name = "../inputFiles/small_cube_{:02d}.xyz".format(testID)
+        ffd_name = f"../inputFiles/small_cube_{testID:02d}.xyz"
         file_name = os.path.join(self.base_path, ffd_name)
         self.make_cube_ffd(file_name, 0, 0, 0, 2, 2, 2)
         small = DVGeometry(file_name, child=True, isComplex=isComplex)
@@ -53,7 +53,7 @@ class RegTestPyGeo(unittest.TestCase):
         small.addRefAxis("ref", xFraction=0.5, alignIndex="j")
 
         # Make big FFD
-        ffd_name = "../inputFiles/big_cube_{:02d}.xyz".format(testID)
+        ffd_name = f"../inputFiles/big_cube_{testID:02d}.xyz"
         file_name = os.path.join(self.base_path, ffd_name)
         self.make_cube_ffd(file_name, 0, 0, 0, 3, 3, 3)
         big = DVGeometry(file_name, isComplex=isComplex)
@@ -283,24 +283,24 @@ the different test cases.
 def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, slocal=False):
 
     if translate:
-        dvName = "translate_{}".format(name)
+        dvName = f"translate_{name}"
         geo.addGlobalDV(dvName=dvName, value=[0] * 3, func=f_translate)
 
     if rotate is not None:
         rot_funcs = {"x": f_rotate_x, "y": f_rotate_y, "z": f_rotate_z, "theta": f_rotate_theta}
         assert rotate in rot_funcs.keys()
 
-        dvName = "rotate_{}_{}".format(rotate, name)
+        dvName = f"rotate_{rotate}_{name}"
         dvFunc = rot_funcs[rotate]
         geo.addGlobalDV(dvName=dvName, value=0, func=dvFunc)
 
     if local is not None:
         assert local in ["x", "y", "z"]
-        dvName = "local_{}_{}".format(local, name)
+        dvName = f"local_{local}_{name}"
         geo.addLocalDV(dvName, axis=local)
 
     if slocal:
-        dvName = "sectionlocal_{}".format(name)
+        dvName = f"sectionlocal_{name}"
         geo.addLocalSectionDV(dvName, secIndex="j", axis=1, orient0="i", orient2="ffd")
 
 

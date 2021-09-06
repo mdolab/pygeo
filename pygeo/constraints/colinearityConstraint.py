@@ -166,9 +166,9 @@ class ColinearityConstraint(GeometricConstraint):
         handle.write("Zone T=%s_coords\n" % self.name)
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords) + 1, len(self.coords)))
         handle.write("DATAPACKING=POINT\n")
-        handle.write("%f %f %f\n" % (self.origin[0, 0], self.origin[0, 1], self.origin[0, 2]))
+        handle.write(f"{self.origin[0, 0]:f} {self.origin[0, 1]:f} {self.origin[0, 2]:f}\n")
         for i in range(len(self.coords)):
-            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
+            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
 
         for i in range(len(self.coords)):
             handle.write("%d %d\n" % (i + 1, i + 2))
