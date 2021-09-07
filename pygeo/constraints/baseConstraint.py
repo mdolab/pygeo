@@ -5,7 +5,7 @@ import numpy as np
 from baseclasses.utils import Error
 
 
-class GeometricConstraint(object):
+class GeometricConstraint:
     """
     This is a generic base class for all of the geometric constraints.
 
@@ -91,7 +91,7 @@ class GeometricConstraint(object):
         pass
 
 
-class LinearConstraint(object):
+class LinearConstraint:
     """
     This class is used to represet a set of generic set of linear
     constriants coupling local shape variables together.
@@ -261,13 +261,13 @@ class LinearConstraint(object):
             handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (ncon * 2, ncon))
             handle.write("DATAPACKING=POINT\n")
             for i in range(ncon * 2):
-                handle.write("%f %f %f\n" % (nodes[i, 0], nodes[i, 1], nodes[i, 2]))
+                handle.write(f"{nodes[i, 0]:f} {nodes[i, 1]:f} {nodes[i, 2]:f}\n")
 
             for i in range(ncon):
                 handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
 
 
-class GlobalLinearConstraint(object):
+class GlobalLinearConstraint:
     """
     This class is used to represent a set of generic set of linear
     constriants coupling global design variables together.

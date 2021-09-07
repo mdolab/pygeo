@@ -8,7 +8,7 @@ from .misc import hangle, isLeft
 # --------------------------------------------------------------
 
 
-class DCELEdge(object):
+class DCELEdge:
     def __init__(self, v1, v2, X, PID, uv, tag):
         # Create a representation of a surface edge that contains the
         # required information to be able to construct a trimming
@@ -34,7 +34,7 @@ class DCELEdge(object):
 
     def __repr__(self):
 
-        str1 = "v1: %f %f\nv2: %f %f" % (self.v1[0], self.v1[1], self.v2[0], self.v2[1])
+        str1 = f"v1: {self.v1[0]:f} {self.v1[1]:f}\nv2: {self.v2[0]:f} {self.v2[1]:f}"
         return str1
 
     def midPt(self):
@@ -175,7 +175,7 @@ class DCELFace:
             return True
 
 
-class DCEL(object):
+class DCEL:
     """
     Implements a doubly-connected edge list
     """
@@ -328,9 +328,9 @@ class DCEL(object):
             v1 = self.el[i].con[0]
             v2 = self.el[i].con[1]
 
-            f.write("%g %g\n" % (self.vl[v1].x, self.vl[v1].y))
+            f.write(f"{self.vl[v1].x:g} {self.vl[v1].y:g}\n")
 
-            f.write("%g %g\n" % (self.vl[v2].x, self.vl[v2].y))
+            f.write(f"{self.vl[v2].x:g} {self.vl[v2].y:g}\n")
 
         f.close()
 
@@ -442,7 +442,7 @@ class DCEL(object):
 
     def loadDCEL(self, fileName):
 
-        f = open(fileName, "r")
+        f = open(fileName)
         # Read sizes
         tmp = f.readline().split()
         nvertices = int(tmp[0])

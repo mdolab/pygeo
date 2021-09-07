@@ -20,60 +20,57 @@ from .geo_utils.index_position import indexPosition1D, indexPosition2D, indexPos
 # --------------------------------------------------------------
 
 
-class Topology(object):
+class Topology:
     """
-    The base topology class from which the BlockTopology,
-    SurfaceTology and CuveTopology classes inherit from
+    The base topology class from which the BlockTopology, SurfaceTology and CurveTopology classes inherit from.
+    The topology object contains all the info required for the block topology (most complex) however,
+    simpler topologies are handled accordingly.
 
-    The topology object contains all the info required for the block
-    topology (most complex) however, simpiler topologies are handled
-    accordingly.
+    Attributes
+    ----------
+        nVol : int
+            The number of volumes in the topology (may be 0)
+        nFace : int
+            The number of unique faces on the topology (may be 0)
+        nEdge : int
+            The number of unique edges on the topology
+        nNode : int
+            The number of unique nodes on the topology
 
-    Class Attributes:
-        nVol : The number of volumes in the topology (may be 0)
-        nFace: The number of unique faces on the topology (may be 0)
-        nEdge: The number of uniuqe edges on the topology
-        nNode: The number of unique nodes on the topology
+        nEnt : int
+            The number of "entities" in the topology class. This may be curves, faces or volumes.
+        mNodeEnt : int
+            The number of NODES per entity. For curves it's 2, for surfaces 4 and for volumes 8.
+        mEdgeEnt : int
+            The number of EDGES per entity. For curves it's 1, for surfaces, 4 and for volumes, 12.
+        mFaceEnt : int
+            The number of faces per entity. For curves its's 0, for surfaces, 1 and for volumes, 6.
+        mVolEnt : int
+            The number of volumes per entity. For curves it's 0, for surfaces, 0 and for volumes, 1.
 
-        nEnt: The number of "entities" in the topology class. This may
-        be curves, faces or volumes
+        nodeLink : ndarray[nEnt, mFaceEnt]
+            The array of size nEnt x mNodesEnt which points to the node for each entity
+        edgeLink : ndarray[nEnt, mFaceEnt]
+            The array of size nEnt x mEdgeEnt which points to the edge for each edge of entity
+        faceLink : ndarray[nEnt, mFaceEnt]
+            The array of size nEnt x mFaceEnt which points to the face of each face on an entity
 
-        mNodeEnt: The number of NODES per entity. For curves it's 2, for
-        surfaces 4 and for volumes 8.
+        edgeDir : ndarray[nEnt, mEdgeEnt]
+            The array of size nEnt x mEdgeEnt which determines if the intrinsic direction of this edge is
+            opposite of the direction as recorded in the edge list.
+            ``edgeDir[entity#][#] = 1`` means same direction; -1 is opposite direction.
+        faceDir : ndarray[nFace, 6]
+            The array of size nFace x 6 which determines the intrinsic direction of this face. It is one of 0->7.
 
-        mEdgeEnt: The number of EDGES per entity. For curves it's 1,
-        for surfaces, 4 and for volumes, 12
-
-        mFaceEnt: The number of faces per entity. For curves its's 0,
-        for surfaces, 1 and for volumes,6
-
-        mVolEnt: The number of volumes per entity. For curves it's 0,
-        for surfaces, 0 and for volumnes, 1
-
-        nodeLink: The array of size nEnt x mNodesEnt which points
-                   to the node for each entity
-        edgeLink: The array of size nEnt x mEdgeEnt which points
-                   to the edge for each edge of entity
-        faceLink: The array of size nEnt x mFaceEnt which points to
-                   the face of each face on an entity
-
-        edgeDir:  The array of size nEnt x mEdgeEnt which detrmines
-                   if the intrinsic direction of this edge is
-                   opposite of the direction as recorded in the
-                   edge list. edgeDir[entity#][#] = 1 means same direction;
-                   -1 is opposite direction.
-
-        faceDir:  The array of size nFace x 6 which determines the
-                   intrinsic direction of this face. It is one of 0->7
-
-        lIndex:   The local->global list of arrays for each volue
-        gIndex:   The global->local list points for the entire topology
-        edges:     The list of edge objects defining the topology
-        simple    : A flag to determine of this is a "simple" topology
-                   which means there are NO degernate Edges,
-                   NO multiple edges sharing the same nodes and NO
-                   edges which loop back and have the same nodes
-                   MUST BE SIMPLE
+        lIndex : ndarray
+            The local->global list of arrays for each volume
+        gIndex : ndarray
+            The global->local list points for the entire topology
+        edges : ndarray
+            The list of edge objects defining the topology
+        simple : bool
+            A flag to determine if this is a "simple" topology which means there are NO degenerate Edges,
+            NO multiple edges sharing the same nodes, and NO edges which loop back and have the same nodes.
     """
 
     def __init__(self):
@@ -290,7 +287,7 @@ class Topology(object):
         # nNode, nEdge, nFace,nVol,nodeLink,edgeLink,
         # faceLink,edgeDir,faceDir
 
-        f = open(fileName, "r")
+        f = open(fileName)
         aux = f.readline().split()
         self.nNode = int(aux[0])
         self.nEdge = int(aux[1])

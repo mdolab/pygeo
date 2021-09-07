@@ -112,7 +112,7 @@ class pyGeo:
         nCtlv : int
             Number of control points in v
         """
-        f = open(fileName, "r")
+        f = open(fileName)
         binary = False
         nSurf = geo_utils.readNValues(f, 1, "int", binary)[0]
         sizes = geo_utils.readNValues(f, nSurf * 3, "int", binary).reshape((nSurf, 3))
@@ -159,16 +159,16 @@ class pyGeo:
         fileName : str
             Name of file to load.
         """
-        f = open(fileName, "r")
+        f = open(fileName)
         Ifile = []
         for line in f:
             line = line.replace(";", ",")  # This is a bit of a hack...
             Ifile.append(line)
         f.close()
 
-        start_lines = int((Ifile[-1][1:8]))
-        general_lines = int((Ifile[-1][9:16]))
-        directory_lines = int((Ifile[-1][17:24]))
+        start_lines = int(Ifile[-1][1:8])
+        general_lines = int(Ifile[-1][9:16])
+        directory_lines = int(Ifile[-1][17:24])
         # parameter_lines = int((Ifile[-1][25:32]))
 
         # Now we know how many lines we have to deal with
@@ -582,7 +582,7 @@ class pyGeo:
                 # surface, multiply by a scaling factor and this gives
                 # us the two inner rows of control points
 
-                for j in range((len(xsections))):
+                for j in range(len(xsections)):
                     projTop = coefTop[0, j] - coefTop[1, j]
                     projBot = coefBot[0, j] - coefBot[1, j]
                     projTop /= np.linalg.norm(projTop)
@@ -1309,7 +1309,7 @@ class pyGeo:
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = np.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm(D[i, 0])
             u[i] = U[i, 0]
             v[i] = V[i, 0]
             patchID[i] = surfs[0]

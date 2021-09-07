@@ -53,17 +53,19 @@ def indexPosition3D(i, j, k, N, M, L):
     k going 0->L-1, it determines if i,j,k is on the interior, on a
     face, on an edge or on a corner
 
-    The funtion return theses values:
-    type: this is 0 for interior, 1 for on an face,
-           3 for an edge and 4 for on a corner
-    number: this is the face number if type==1,
-            this is the edge number if type==2
-            this is the node number if type==3
+    Returns
+    -------
+    type : int
+        this is 0 for interior, 1 for on an face, 3 for an edge and 4 for on a corner
+    number : int
+        this is the face number if type==1,
+        this is the edge number if type==2,
+        this is the node number if type==3
 
-    index1: this is the value index along 0th dir the face
-        of interest OR edge of interest
-    index2: this is the value index along 1st dir the face
-        of interest
+    index1 : int
+        this is the value index along 0th dir the face of interest OR edge of interest
+    index2 : int
+        this is the value index along 1st dir the face of interest
     """
 
     # Note to interior->Faces->Edges->Nodes to minimize number of if checks

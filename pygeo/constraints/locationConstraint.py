@@ -90,7 +90,7 @@ class LocationConstraint(GeometricConstraint):
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) - 1))
         handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
+            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
 
         for i in range(len(self.coords) - 1):
             handle.write("%d %d\n" % (i + 1, i + 2))

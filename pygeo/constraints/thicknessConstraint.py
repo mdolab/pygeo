@@ -91,7 +91,7 @@ class ThicknessConstraint(GeometricConstraint):
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) // 2))
         handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
+            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
 
         for i in range(len(self.coords) // 2):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
@@ -189,7 +189,7 @@ class ThicknessToChordConstraint(GeometricConstraint):
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) // 2))
         handle.write("DATAPACKING=POINT\n")
         for i in range(len(self.coords)):
-            handle.write("%f %f %f\n" % (self.coords[i, 0], self.coords[i, 1], self.coords[i, 2]))
+            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
 
         for i in range(len(self.coords) // 2):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))

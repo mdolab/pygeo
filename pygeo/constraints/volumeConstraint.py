@@ -85,7 +85,7 @@ class VolumeConstraint(GeometricConstraint):
         for k in range(2):
             for j in range(self.nChord):
                 for i in range(self.nSpan):
-                    handle.write("%f %f %f\n" % (x[i, j, k, 0], x[i, j, k, 1], x[i, j, k, 2]))
+                    handle.write(f"{x[i, j, k, 0]:f} {x[i, j, k, 1]:f} {x[i, j, k, 2]:f}\n")
 
     def evalVolume(self):
         """

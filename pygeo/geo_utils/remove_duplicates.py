@@ -42,7 +42,7 @@ def unique(s):
     except TypeError:
         pass
     else:
-        return sorted(list(u.keys()))
+        return sorted(u.keys())
 
     # We can't hash all the elements.  Second fastest is to sort,
     # which brings the equal elements together; then duplicates are

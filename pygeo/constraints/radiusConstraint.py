@@ -208,7 +208,7 @@ class RadiusConstraint(GeometricConstraint):
             z = c[i, 2] + cos_part[:, 2] + sin_part[:, 2]
 
             for j in range(nres):
-                handle.write("%f %f %f\n" % (x[j], y[j], z[j]))
+                handle.write(f"{x[j]:f} {y[j]:f} {z[j]:f}\n")
 
         for i in range(self.nCon):
             for j in range(nres):

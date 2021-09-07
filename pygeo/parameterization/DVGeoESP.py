@@ -42,7 +42,7 @@ def stdout_redirected(flag, to=os.devnull):
         yield
 
 
-class DVGeometryESP(object):
+class DVGeometryESP:
     """
     A class for manipulating Engineering Sketchpad (ESP) geometry
     The purpose of the DVGeometryESP class is to provide translation
@@ -640,7 +640,7 @@ class DVGeometryESP(object):
         valid_filetypes = ["brep", "bstl", "egads", "egg", "iges", "igs", "sens", "step", "stl", "stp", "tess", "grid"]
         file_extension = filename.split(".")[-1]
         if file_extension.lower() not in valid_filetypes:
-            raise IOError(
+            raise OSError(
                 "CAD filename "
                 + filename
                 + " must have a valid exension. "
@@ -710,7 +710,7 @@ class DVGeometryESP(object):
     def writeCSMFile(self, fileName):
         valid_filetypes = ["csm"]
         if fileName.split(".")[-1] not in valid_filetypes:
-            raise IOError('Must use ".csm" file extension')
+            raise OSError('Must use ".csm" file extension')
         if self.comm.rank == 0:
             self.espModel.Save(fileName)
 
@@ -1475,7 +1475,7 @@ class DVGeometryESP(object):
             self.updatedJac[ptSet] = True
 
 
-class ESPParameter(object):
+class ESPParameter:
     def __init__(self, pmtrName, pmtrIndex, numRow, numCol, baseValue):
         """Internal class for storing metadata about the ESP model"""
         self.pmtrName = pmtrName
@@ -1485,7 +1485,7 @@ class ESPParameter(object):
         self.baseValue = baseValue
 
 
-class espDV(object):
+class espDV:
     def __init__(self, csmDesPmtr, name, value, lower, upper, scale, rows, cols, dh, globalstartind):
         """Internal class for storing ESP design variable information"""
         self.csmDesPmtr = csmDesPmtr
@@ -1501,7 +1501,7 @@ class espDV(object):
         self.globalStartInd = globalstartind
 
 
-class PointSet(object):
+class PointSet:
     def __init__(self, points, proj_pts, bodyID, faceID, edgeID, uv, t, uvlimits, tlimits, distributed):
         self.points = points
         self.proj_pts = proj_pts

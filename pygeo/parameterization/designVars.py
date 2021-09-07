@@ -5,7 +5,7 @@ import numpy as np
 from pygeo.geo_utils import convertTo1D
 
 
-class geoDVGlobal(object):
+class geoDVGlobal:
     def __init__(self, dv_name, value, lower, upper, scale, function, config):
         """Create a geometric design variable (or design variable group)
         See addGlobalDV in DVGeometry class for more information
@@ -39,7 +39,7 @@ class geoDVGlobal(object):
                 return self.function(np.real(self.value), geo)
 
 
-class geoDVLocal(object):
+class geoDVLocal:
     def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask, config):
 
         """Create a set of geometric design variables which change the shape
@@ -218,7 +218,7 @@ class geoDVSpanwiseLocal(geoDVLocal):
         return cons
 
 
-class geoDVSectionLocal(object):
+class geoDVSectionLocal:
     def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask, config, sectionTransform, sectionLink):
         """
         Create a set of geometric design variables which change the shape

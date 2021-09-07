@@ -5,10 +5,10 @@ from collections import OrderedDict
 from .DVGeo import DVGeometry
 
 AXES_2_IDX = {"x": 0, "y": 1, "z": 2}
-AXES = set(["x", "y", "z"])
+AXES = {"x", "y", "z"}
 
 
-class _AxiTransform(object):
+class _AxiTransform:
     """Collapses a set of cartesian coordiantes into a single plane to allow
     for axi-symmetric FFD. Also expands them back to their original annular location
 
@@ -240,11 +240,11 @@ class DVGeometryAxi(DVGeometry):
 
         xform = self.axiTransforms[ptName] = _AxiTransform(points, self.center, self.collapse_into, self.complex)
 
-        super(DVGeometryAxi, self).addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
+        super().addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
 
     def update(self, ptSetName, childDelta=True, config=None):
 
-        new_c_pts = super(DVGeometryAxi, self).update(ptSetName, childDelta, config)
+        new_c_pts = super().update(ptSetName, childDelta, config)
 
         xform = self.axiTransforms[ptSetName]
         coords = xform.expand(new_c_pts)
@@ -256,7 +256,7 @@ class DVGeometryAxi(DVGeometry):
         """compute the total point jacobian in CSR format since we
         need this for TACS"""
 
-        super(DVGeometryAxi, self).computeTotalJacobian(ptSetName, config)
+        super().computeTotalJacobian(ptSetName, config)
         if self.JT[ptSetName] is not None:
             xform = self.axiTransforms[ptSetName]
 
