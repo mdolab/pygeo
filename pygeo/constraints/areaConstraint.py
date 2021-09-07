@@ -457,12 +457,12 @@ class SurfaceAreaConstraint(GeometricConstraint):
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (3 * self.n, self.n))
         handle.write("DATAPACKING=POINT\n")
         for i in range(self.n):
-            handle.write("%f %f %f\n" % (self.p0[i, 0], self.p0[i, 1], self.p0[i, 2]))
+            handle.write(f"{self.p0[i, 0]:f} {self.p0[i, 1]:f} {self.p0[i, 2]:f}\n")
         for i in range(self.n):
-            handle.write("%f %f %f\n" % (self.p1[i, 0], self.p1[i, 1], self.p1[i, 2]))
+            handle.write(f"{self.p1[i, 0]:f} {self.p1[i, 1]:f} {self.p1[i, 2]:f}\n")
 
         for i in range(self.n):
-            handle.write("%f %f %f\n" % (self.p2[i, 0], self.p2[i, 1], self.p2[i, 2]))
+            handle.write(f"{self.p2[i, 0]:f} {self.p2[i, 1]:f} {self.p2[i, 2]:f}\n")
 
         for i in range(self.n):
             handle.write("%d %d %d\n" % (i + 1, i + self.n + 1, i + self.n * 2 + 1))
@@ -641,13 +641,13 @@ class ProjectedAreaConstraint(GeometricConstraint):
         handle.write("DATAPACKING=POINT\n")
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write("%f %f %f\n" % (p0[i, 0], p0[i, 1], p0[i, 2]))
+                handle.write(f"{p0[i, 0]:f} {p0[i, 1]:f} {p0[i, 2]:f}\n")
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write("%f %f %f\n" % (p1[i, 0], p1[i, 1], p1[i, 2]))
+                handle.write(f"{p1[i, 0]:f} {p1[i, 1]:f} {p1[i, 2]:f}\n")
         for i in range(self.n):
             if self.activeTris[i]:
-                handle.write("%f %f %f\n" % (p2[i, 0], p2[i, 1], p2[i, 2]))
+                handle.write(f"{p2[i, 0]:f} {p2[i, 1]:f} {p2[i, 2]:f}\n")
         iActive = 0
         for i in range(self.n):
             if self.activeTris[i]:

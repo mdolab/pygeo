@@ -15,7 +15,7 @@ from baseclasses.utils import Error
 from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
 
 
-class DVGeometry(object):
+class DVGeometry:
     """
     A class for manipulating geometry.
 
@@ -680,7 +680,7 @@ class DVGeometry(object):
         if self.name is not None:
             dvName = self.name + "_" + dvName
 
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
 
@@ -755,7 +755,7 @@ class DVGeometry(object):
         if self.name is not None:
             dvName = self.name + "_" + dvName
 
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
 
         if pointSelect is not None:
@@ -877,7 +877,7 @@ class DVGeometry(object):
         >>> # moving in the y direction, within +/- 0.5 units
         >>> DVGeo.addSpanwiseLocalDV("shape", 'k', lower=-0.5, upper=0.5, axis="z", scale=1.0)
         """
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
 
         if pointSelect is not None:
@@ -907,9 +907,9 @@ class DVGeometry(object):
         # secLink = np.zeros(self.FFD.coef.shape[0], dtype=int)
         # secTransform = [np.eye(3)]
 
-        if type(spanIndex) is str:
+        if isinstance(spanIndex, str):
             spanIndex = [spanIndex] * len(volList)
-        elif type(spanIndex) is list:
+        elif isinstance(spanIndex, list):
             if len(spanIndex) != len(volList):
                 raise Error("If a list is given for spanIndex, the length must be" " equal to the length of volList.")
 
@@ -1112,7 +1112,7 @@ class DVGeometry(object):
         if self.name is not None:
             dvName = self.name + "_" + dvName
 
-        if type(config) == str:
+        if isinstance(config, str):
             config = [config]
 
         # Pick out control points
@@ -1145,22 +1145,22 @@ class DVGeometry(object):
         secLink = np.zeros(self.FFD.coef.shape[0], dtype=int)
         secTransform = [np.eye(3)]
 
-        if type(secIndex) is str:
+        if isinstance(secIndex, str):
             secIndex = [secIndex] * len(volList)
-        elif type(secIndex) is list:
+        elif isinstance(secIndex, list):
             if len(secIndex) != len(volList):
                 raise Error("If a list is given for secIndex, the length must be" " equal to the length of volList.")
 
         if orient0 is not None:
             # 'i', 'j', or 'k'
-            if type(orient0) is str:
+            if isinstance(orient0, str):
                 orient0 = [orient0] * len(volList)
             # ['k', 'k', 'i', etc.]
-            elif type(orient0) is list:
+            elif isinstance(orient0, list):
                 if len(orient0) != len(volList):
                     raise Error("If a list is given for orient0, the length must" " be equal to the length of volList.")
             # np.array([1.0, 0.0, 0.0])
-            elif type(orient0) is np.ndarray:
+            elif isinstance(orient0, np.ndarray):
                 # vector
                 if len(orient0.shape) == 1:
                     orient0 = np.reshape(orient0, (1, 3))
@@ -2465,7 +2465,7 @@ class DVGeometry(object):
             self.refAxis.writeTecplot(gFileName, orig=True, curves=True, coef=True)
         # Write children axes:
         for iChild in range(len(self.children)):
-            cFileName = fileName + "_child{:03d}.dat".format(iChild)
+            cFileName = fileName + f"_child{iChild:03d}.dat"
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
 
     def writeLinks(self, fileName):
@@ -2484,8 +2484,8 @@ class DVGeometry(object):
             pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
             pt2 = self.links_x[ipt] + pt1
 
-            f.write("%.12g %.12g %.12g\n" % (pt1[0], pt1[1], pt1[2]))
-            f.write("%.12g %.12g %.12g\n" % (pt2[0], pt2[1], pt2[2]))
+            f.write(f"{pt1[0]:.12g} {pt1[1]:.12g} {pt1[2]:.12g}\n")
+            f.write(f"{pt2[0]:.12g} {pt2[1]:.12g} {pt2[2]:.12g}\n")
         for i in range(self.nPtAttach):
             f.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
 
@@ -2613,7 +2613,7 @@ class DVGeometry(object):
         elif outputType == "tecplot":
             geo.writeTecplot(fileName + ".plt")
         else:
-            raise ValueError("Type {} not recognized. Must be either 'iges' or 'tecplot'".format(outputType))
+            raise ValueError(f"Type {outputType} not recognized. Must be either 'iges' or 'tecplot'")
 
     def getLocalIndex(self, iVol):
         """Return the local index mapping that points to the global
@@ -2658,8 +2658,8 @@ class DVGeometry(object):
             a given variable. If greater than 2, will do a sinusoidal sweep.
         """
         # Generate directories
-        os.system("mkdir -p {:s}/ffd".format(directory))
-        os.system("mkdir -p {:s}/pointset".format(directory))
+        os.system(f"mkdir -p {directory:s}/ffd")
+        os.system(f"mkdir -p {directory:s}/pointset")
 
         # Get design variables
         dvDict = self.getValues()
@@ -2727,11 +2727,11 @@ class DVGeometry(object):
                         self.update(pointSet)
 
                         # Write FFD
-                        self.writeTecplot("{}/ffd/dv_{}_{:03d}_iter_{:03d}.dat".format(directory, key, j, count))
+                        self.writeTecplot(f"{directory}/ffd/dv_{key}_{j:03d}_iter_{count:03d}.dat")
 
                         # Write pointset
                         if writePointSet:
-                            self.writePointSet(pointSet, "{}/pointset/iter_{:03d}".format(directory, count))
+                            self.writePointSet(pointSet, f"{directory}/pointset/iter_{count:03d}")
 
                         # Call user function
                         if callBack is not None:
@@ -4143,10 +4143,10 @@ class DVGeometry(object):
         orient0idx = False
         orient0vec = False
         if orient0 is not None:
-            if type(orient0) is str:
+            if isinstance(orient0, str):
                 orient0 = ijk_2_idx[orient0.lower()]
                 orient0idx = True
-            elif type(orient0) is np.ndarray:
+            elif isinstance(orient0, np.ndarray):
                 orient0vec = True
             else:
                 raise Error("orient0 must be an index (i, j, or k) or a " "vector.")

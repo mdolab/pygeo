@@ -24,10 +24,10 @@ class RegTestPyGeo(unittest.TestCase):
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
     def evalFunctionsSensFD(self, DVGeo, DVCon, fdstep=1e-2):
-        funcs = dict()
+        funcs = {}
         DVCon.evalFunctions(funcs, includeLinear=True)
         # make a deep copy of this
-        outdims = dict()
+        outdims = {}
         for key in funcs.keys():
             val = funcs[key]
             if isinstance(val, np.ndarray):
@@ -39,15 +39,15 @@ class RegTestPyGeo(unittest.TestCase):
                 outdims[key] = 1
 
         xDV = DVGeo.getValues()
-        indims = dict()
+        indims = {}
         for key in xDV.keys():
             val = xDV[key]
             indims[key] = val.shape[0]
 
         # setup the output data structure
-        funcsSens = dict()
+        funcsSens = {}
         for outkey in funcs.keys():
-            funcsSens[outkey] = dict()
+            funcsSens[outkey] = {}
             for inkey in xDV.keys():
                 nRows = outdims[outkey]
                 nCols = indims[inkey]
@@ -59,7 +59,7 @@ class RegTestPyGeo(unittest.TestCase):
             for array_ind in range(nDV):
                 xDV[inkey][array_ind] = baseVar[array_ind] + fdstep
                 DVGeo.setDesignVars(xDV)
-                funcs_fd = dict()
+                funcs_fd = {}
                 DVCon.evalFunctions(funcs_fd, includeLinear=True)
                 for outkey in funcs.keys():
                     temp_a = funcs_fd[outkey]
@@ -69,7 +69,7 @@ class RegTestPyGeo(unittest.TestCase):
                     funcsSens[outkey][inkey][:, array_ind] = deriv_temp
                 xDV[inkey][array_ind] = baseVar[array_ind]
         DVGeo.setDesignVars(xDV)
-        DVCon.evalFunctions(dict())
+        DVCon.evalFunctions({})
         return funcsSens
 
     def generate_dvgeo_dvcon_rect(self, addToDVGeo=False):
@@ -134,10 +134,10 @@ class RegTestPyGeo(unittest.TestCase):
 
     def generic_test_base(self, DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
         linear_constraint_keywords = ["lete", "monotonic", "linear_constraint"]
-        funcs = dict()
+        funcs = {}
         DVCon.evalFunctions(funcs, includeLinear=True)
         handler.root_add_dict("funcs_base", funcs, rtol=1e-6, atol=1e-6)
-        funcsSens = dict()
+        funcsSens = {}
         DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
         # regress the derivatives
         if checkDerivs:
@@ -158,8 +158,8 @@ class RegTestPyGeo(unittest.TestCase):
         return funcs, funcsSens
 
     def c172_test_twist(self, DVGeo, DVCon, handler):
-        funcs = dict()
-        funcsSens = dict()
+        funcs = {}
+        funcsSens = {}
         # change the DVs
         xDV = DVGeo.getValues()
         xDV["twist"] = np.linspace(0, 10, self.nTwist)
@@ -175,8 +175,8 @@ class RegTestPyGeo(unittest.TestCase):
         return funcs, funcsSens
 
     def c172_test_deformed(self, DVGeo, DVCon, handler):
-        funcs = dict()
-        funcsSens = dict()
+        funcs = {}
+        funcsSens = {}
         xDV = DVGeo.getValues()
         np.random.seed(37)
         xDV["local"] = np.random.normal(0.0, 0.05, 32)
@@ -753,8 +753,8 @@ class RegTestPyGeo(unittest.TestCase):
                 atol=1e-7,
             )
 
-            funcs = dict()
-            funcsSens = dict()
+            funcs = {}
+            funcsSens = {}
             # change the DVs arbitrarily
             xDV = DVGeo.getValues()
             xDV["twist"][0] = 1.0
@@ -941,10 +941,10 @@ class RegTestPyGeo(unittest.TestCase):
 
             DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", "second", rho=10.0, addToPyOpt=True)
 
-            funcs = dict()
+            funcs = {}
             DVCon.evalFunctions(funcs, includeLinear=True)
             handler.root_add_dict("funcs_base", funcs, rtol=1e-6, atol=1e-6)
-            funcsSens = dict()
+            funcsSens = {}
             DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
             # regress the derivatives
             handler.root_add_dict("derivs_base", funcsSens, rtol=1e-6, atol=1e-6)
@@ -1033,7 +1033,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addTriangulatedVolumeConstraint(scaled=False, name="unscaled_vol_con")
             DVCon.addTriangulatedVolumeConstraint(scaled=True)
 
-            funcs = dict()
+            funcs = {}
             DVCon.evalFunctions(funcs, includeLinear=True)
             handler.root_add_dict("funcs_base", funcs, rtol=1e-6, atol=1e-6)
 
@@ -1046,7 +1046,7 @@ class RegTestPyGeo(unittest.TestCase):
                 funcs["unscaled_vol_con"], 1103.57, name="unscaled_volume_base", rtol=1e-7, atol=1e-7
             )
 
-            funcsSens = dict()
+            funcsSens = {}
             DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
             # regress the derivatives
             handler.root_add_dict("derivs_base", funcsSens, rtol=1e-6, atol=1e-6)

@@ -20,7 +20,7 @@ except ImportError:
         raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
 
 
-class DVGeometryVSP(object):
+class DVGeometryVSP:
     """A class for manipulating VSP geometry
 
     The purpose of the DVGeometryVSP class is to provide translation
@@ -687,12 +687,12 @@ class DVGeometryVSP(object):
 
         parm_id = openvsp.FindParm(container_id, parm, group)
         if parm_id == "":
-            raise Error("Bad group or parm: %s %s %s" % (component, group, parm))
+            raise Error(f"Bad group or parm: {component} {group} {parm}")
 
         # Now we know the parmID is ok. So we just get the value
         val = openvsp.GetParmVal(parm_id)
 
-        dvName = "%s:%s:%s" % (component, group, parm)
+        dvName = f"{component}:{group}:{parm}"
 
         if value is None:
             value = val
@@ -727,11 +727,11 @@ class DVGeometryVSP(object):
         Print a formatted list of design variables to the screen
         """
         print("-" * 85)
-        print("%30s%20s%20s%15s" % ("Component", "Group", "Parm", "Value"))
+        print("{:>30}{:>20}{:>20}{:>15}".format("Component", "Group", "Parm", "Value"))
         print("-" * 85)
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            print("%30s%20s%20s%15g" % (DV.component, DV.group, DV.parm, DV.value))
+            print(f"{DV.component:>30}{DV.group:>20}{DV.parm:>20}{DV.value:15g}")
 
     def createDesignFile(self, fileName):
         """
@@ -746,7 +746,7 @@ class DVGeometryVSP(object):
         f.write("%d\n" % len(self.DVs))
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            f.write("%s:%s:%s:%s:%20.15g\n" % (DV.parmID, DV.component, DV.group, DV.parm, DV.value))
+            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}:{DV.value:20.15g}\n")
         f.close()
 
     def writePlot3D(self, fileName, exportSet=0):
@@ -1178,7 +1178,7 @@ class DVGeometryVSP(object):
         self.uv = uv
 
 
-class vspDV(object):
+class vspDV:
     def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
         """Inernal class for storing VSP design variable information"""
         self.parmID = parmID
@@ -1192,7 +1192,7 @@ class vspDV(object):
         self.scale = scale
 
 
-class PointSet(object):
+class PointSet:
     """Internal class for storing the projection details of each pointset"""
 
     def __init__(self, points, pts, geom, u, v):

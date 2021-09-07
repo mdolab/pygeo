@@ -265,7 +265,7 @@ class pyNetwork:
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = np.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm(D[i, 0])
             s[i] = S[i, 0]
             curveID[i] = curves[0]
             for j in range(len(curves)):
@@ -315,7 +315,7 @@ class pyNetwork:
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = np.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm(D[i, 0])
             s[i] = S[i, 0]
             curveID[i] = curves[0]
             for j in range(len(curves)):
