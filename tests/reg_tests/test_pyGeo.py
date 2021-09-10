@@ -67,20 +67,22 @@ class TestPyGeo(unittest.TestCase):
         wing.writeIGES(igsOut)
         wing.writeTin(tinOut)
 
+        # remove the header containing the date from the .tin file
         f = open(tinOut, "r")
         lines = f.readlines()
         f.close()
-
         del lines[1]
         new = open(tinOut, "w")
         for line in lines:
             new.write(line)
         new.close()
 
+        # check that there is no diff between the files
         self.assertTrue((fc.cmp(datOut, datRef, shallow=False)))
         self.assertTrue((fc.cmp(igsOut, igsRef, shallow=False)))
         self.assertTrue((fc.cmp(tinOut, tinRef, shallow=False)))
 
+        # clean up files
         os.remove(datOut)
         os.remove(igsOut)
         os.remove(tinOut)
