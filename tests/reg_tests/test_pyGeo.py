@@ -1,29 +1,28 @@
 # Imports
 import numpy as np
 from pygeo import pyGeo
-import filecmp as fc
 import unittest
 import os
+from baseclasses import BaseRegTest
+
+baseDir = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestPyGeo(unittest.TestCase):
     def setUp(self):
-        self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.refFile = os.path.join(baseDir, "ref/test_pyGeo.ref")
 
-    def testFiles(self):
-        dirName = os.path.join(self.base_path, "../../input_files")
-        # dirName = "../../input_files"
-        fileName = "wing"
+    def train(self):
+        with BaseRegTest(self.refFile, train=True) as handler:
+            self.regTest(handler)
+            handler.writeRef()
 
-        # names of output files
-        datOut = fileName + ".dat"
-        igsOut = fileName + ".igs"
-        tinOut = fileName + ".tin"
+    def test(self):
+        with BaseRegTest(self.refFile, train=False) as handler:
+            self.regTest(handler)
 
-        # names + locations of reference files
-        datRef = dirName + "/" + fileName + ".dat"
-        igsRef = dirName + "/" + fileName + ".igs"
-        tinRef = dirName + "/" + fileName + ".tin"
+    def regTest(self, handler):
+        dirName = os.path.join(baseDir, "../../input_files")
 
         # Airfoil file
         airfoil_list = [dirName + "/rae2822.dat"] * 2
@@ -62,27 +61,7 @@ class TestPyGeo(unittest.TestCase):
             teHeight=0.25 * 0.0254,
         )
 
-        # Write output files
-        wing.writeTecplot(datOut)
-        wing.writeIGES(igsOut)
-        wing.writeTin(tinOut)
-
-        # remove the header containing the date from the .tin file
-        f = open(tinOut, "r")
-        lines = f.readlines()
-        f.close()
-        del lines[1]
-        new = open(tinOut, "w")
-        for line in lines:
-            new.write(line)
-        new.close()
-
-        # check that there is no diff between the files
-        self.assertTrue((fc.cmp(datOut, datRef, shallow=False)))
-        self.assertTrue((fc.cmp(igsOut, igsRef, shallow=False)))
-        self.assertTrue((fc.cmp(tinOut, tinRef, shallow=False)))
-
-        # clean up files
-        os.remove(datOut)
-        os.remove(igsOut)
-        os.remove(tinOut)
+        for isurf in range(wing.nSurf):
+            wing.surfs[isurf].computeData()
+        surf = wing.surfs[isurf].data
+        handler.root_add_val("sum of surface data", sum(surf.flatten()), tol=1e-10)
