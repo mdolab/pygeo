@@ -73,8 +73,8 @@ class RegTestPyGeo(unittest.TestCase):
         return funcsSens
 
     def generate_dvgeo_dvcon_rect(self, addToDVGeo=False):
-        meshfile = os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.stl")
-        ffdfile = os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz")
+        meshfile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.stl")
+        ffdfile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz")
         testmesh = mesh.Mesh.from_file(meshfile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
@@ -103,8 +103,8 @@ class RegTestPyGeo(unittest.TestCase):
         return DVGeo, DVCon
 
     def generate_dvgeo_dvcon_c172(self):
-        meshfile = os.path.join(self.base_path, "../inputFiles/c172.stl")
-        ffdfile = os.path.join(self.base_path, "../inputFiles/c172.xyz")
+        meshfile = os.path.join(self.base_path, "../../input_files/c172.stl")
+        ffdfile = os.path.join(self.base_path, "../../input_files/c172.xyz")
         testmesh = mesh.Mesh.from_file(meshfile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
@@ -692,7 +692,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_13b.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 13: PlanarityConstraint, rectangular box")
-            ffdfile = os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz")
+            ffdfile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz")
             DVGeo = DVGeometry(ffdfile)
             DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
@@ -792,9 +792,9 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 15: Triangulated surface constraint, BWB")
 
-            meshfile = os.path.join(self.base_path, "../inputFiles/bwb.stl")
-            objfile = os.path.join(self.base_path, "../inputFiles/blob_bwb_wing.stl")
-            ffdfile = os.path.join(self.base_path, "../inputFiles/bwb.xyz")
+            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+            objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
+            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
             testmesh = mesh.Mesh.from_file(meshfile)
             testobj = mesh.Mesh.from_file(objfile)
             # test mesh dim 0 is triangle index
@@ -845,9 +845,9 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 16: Triangulated surface constraint, intersected")
 
-            meshfile = os.path.join(self.base_path, "../inputFiles/bwb.stl")
-            objfile = os.path.join(self.base_path, "../inputFiles/blob_bwb_wing.stl")
-            ffdfile = os.path.join(self.base_path, "../inputFiles/bwb.xyz")
+            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+            objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
+            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
             testmesh = mesh.Mesh.from_file(meshfile)
             testobj = mesh.Mesh.from_file(objfile)
             # test mesh dim 0 is triangle index
@@ -893,9 +893,9 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 17: Triangulated surface constraint, intersected, 2 DVGeos")
 
-            meshfile = os.path.join(self.base_path, "../inputFiles/bwb.stl")
-            objfile = os.path.join(self.base_path, "../inputFiles/blob_bwb_wing.stl")
-            ffdfile = os.path.join(self.base_path, "../inputFiles/bwb.xyz")
+            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+            objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
+            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
             testmesh = mesh.Mesh.from_file(meshfile)
             testobj = mesh.Mesh.from_file(objfile)
             # test mesh dim 0 is triangle index
@@ -1002,8 +1002,8 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 17: Triangulated surface constraint, bwb")
 
-            meshfile = os.path.join(self.base_path, "../inputFiles/bwb.stl")
-            ffdfile = os.path.join(self.base_path, "../inputFiles/bwb.xyz")
+            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
             testmesh = mesh.Mesh.from_file(meshfile)
             # test mesh dim 0 is triangle index
             # dim 1 is each vertex of the triangle

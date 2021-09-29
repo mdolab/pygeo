@@ -102,7 +102,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setSurface(surf)
             # DVCon.writeSurfaceTecplot('cylinder_surface.dat')
 
-            ffd_name = os.path.join(self.base_path, "../inputFiles/cylinder_ffd.xyz")
+            ffd_name = os.path.join(self.base_path, "../../input_files/cylinder_ffd.xyz")
             self.make_ffd(ffd_name, radius, height)
             DVGeo = DVGeometry(ffd_name)
             nAxPts = DVGeo.addRefAxis("thru", xFraction=0.5, alignIndex="i", raySize=1.0)
@@ -154,7 +154,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.setSurface(surf)
             # DVCon.writeSurfaceTecplot('cylinder_surface.dat')
 
-            ffd_name = os.path.join(self.base_path, "../inputFiles/cylinder_ffd.xyz")
+            ffd_name = os.path.join(self.base_path, "../../input_files/cylinder_ffd.xyz")
             self.make_ffd(ffd_name, radius, height)
             DVGeo = DVGeometry(ffd_name)
 

@@ -5,3 +5,4 @@ reg_tests/pygeo_reg
 reg_tests/pygeo_reg.orig
 doc/_build
 *testflo_report.out
+input_files

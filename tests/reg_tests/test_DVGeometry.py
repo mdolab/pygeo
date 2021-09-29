@@ -758,11 +758,11 @@ class RegTestPyGeo(unittest.TestCase):
             N1 = [2, 2]
             N2 = [2, 2]
 
-            copyName = os.path.join(self.base_path, "../inputFiles/test1.xyz")
+            copyName = os.path.join(self.base_path, "../../input_files/test1.xyz")
             geo_utils.write_wing_FFD_file(copyName, slices, N0, N1, N2, axes=axes)
 
             # Load original and duplicate
-            origFFD = DVGeometry(os.path.join(self.base_path, "../inputFiles/outerBoxFFD.xyz"))
+            origFFD = DVGeometry(os.path.join(self.base_path, "../../input_files/outerBoxFFD.xyz"))
             copyFFD = DVGeometry(copyName)
             norm_diff = np.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
             handler.par_add_norm("norm", norm_diff, rtol=1e-7, atol=1e-7)
@@ -776,8 +776,8 @@ class RegTestPyGeo(unittest.TestCase):
         # with BaseRegTest(refFile, train=train) as handler:
         #     handler.root_print("Test spanwise local variables writing function")
 
-        meshfile = os.path.join(self.base_path, "../inputFiles/c172.stl")
-        ffdfile = os.path.join(self.base_path, "../inputFiles/c172.xyz")
+        meshfile = os.path.join(self.base_path, "../../input_files/c172.stl")
+        ffdfile = os.path.join(self.base_path, "../../input_files/c172.xyz")
         testmesh = mesh.Mesh.from_file(meshfile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
@@ -831,7 +831,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVGeometry_23.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test generalized axis node location section in plane")
-            DVGeo = DVGeometry(os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz"))
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
             xfraction = 0.3
             yfraction = 0.6
             rotType = 0
@@ -858,7 +858,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVGeometry_24.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test twist and scaling for FFDs non-aligned to main system of reference")
-            DVGeo = DVGeometry(os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz"))
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
             rotType = 0
             xfraction = 0.5
             nRefAxPts = DVGeo.addRefAxis("RefAx", xFraction=xfraction, alignIndex="k", rotType=rotType, rot0ang=-90)
