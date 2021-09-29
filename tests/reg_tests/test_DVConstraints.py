@@ -4,6 +4,7 @@ import numpy as np
 from baseclasses import BaseRegTest
 from pygeo import DVGeometry, DVConstraints
 from stl import mesh
+from parameterized import parameterized_class
 
 try:
     import geograd  # noqa
@@ -13,6 +14,18 @@ except ImportError:
     missing_geograd = True
 
 
+@parameterized_class(
+    [
+        {
+            "name": "standard",
+            "child": False,
+        },
+        {
+            "name": "child",
+            "child": True,
+        },
+    ]
+)
 class RegTestPyGeo(unittest.TestCase):
 
     N_PROCS = 1
@@ -80,10 +93,18 @@ class RegTestPyGeo(unittest.TestCase):
         # dim 1 is each vertex of the triangle
         # dim 2 is x, y, z dimension
 
-        # create a DVGeo object with a few local thickness variables
-        DVGeo = DVGeometry(ffdfile)
+        DVGeo = DVGeometry(ffdfile, child=self.child)
+        DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.5, alignIndex="k")
         self.nTwist = nRefAxPts - 1
+
+        if self.child:
+            parentFFD = os.path.join(self.base_path, "../inputFiles/parent.xyz")
+            parentDVGeo = DVGeometry(parentFFD)
+            parentDVGeo.addChild(DVGeo)
+            DVCon.setDVGeo(parentDVGeo)
+        else:
+            DVCon.setDVGeo(DVGeo)
 
         def twist(val, geo):
             for i in range(1, nRefAxPts):
@@ -92,9 +113,6 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-        # create a DVConstraints object for the wing
-        DVCon = DVConstraints()
-        DVCon.setDVGeo(DVGeo)
         p0 = testmesh.vectors[:, 0, :]
         v1 = testmesh.vectors[:, 1, :] - p0
         v2 = testmesh.vectors[:, 2, :] - p0
@@ -110,10 +128,18 @@ class RegTestPyGeo(unittest.TestCase):
         # dim 1 is each vertex of the triangle
         # dim 2 is x, y, z dimension
 
-        # create a DVGeo object with a few local thickness variables
-        DVGeo = DVGeometry(ffdfile)
+        DVGeo = DVGeometry(ffdfile, child=self.child)
+        DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
         self.nTwist = nRefAxPts - 1
+
+        if self.child:
+            parentFFD = os.path.join(self.base_path, "../inputFiles/parent.xyz")
+            self.parentDVGeo = DVGeometry(parentFFD)
+            self.parentDVGeo.addChild(DVGeo)
+            DVCon.setDVGeo(self.parentDVGeo)
+        else:
+            DVCon.setDVGeo(DVGeo)
 
         def twist(val, geo):
             for i in range(1, nRefAxPts):
@@ -122,9 +148,6 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-        # create a DVConstraints object for the wing
-        DVCon = DVConstraints()
-        DVCon.setDVGeo(DVGeo)
         p0 = testmesh.vectors[:, 0, :] / 1000
         v1 = testmesh.vectors[:, 1, :] / 1000 - p0
         v2 = testmesh.vectors[:, 2, :] / 1000 - p0
@@ -163,7 +186,11 @@ class RegTestPyGeo(unittest.TestCase):
         # change the DVs
         xDV = DVGeo.getValues()
         xDV["twist"] = np.linspace(0, 10, self.nTwist)
-        DVGeo.setDesignVars(xDV)
+        if self.child:
+            # Twist needs to be set on the parent FFD to get accurate derivatives
+            self.parentDVGeo.setDesignVars(xDV)
+        else:
+            DVGeo.setDesignVars(xDV)
         # check the constraint values changed
         DVCon.evalFunctions(funcs, includeLinear=True)
 
@@ -1067,6 +1094,3 @@ class RegTestPyGeo(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-    # import xmlrunner
-    # unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'))
