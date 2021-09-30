@@ -28,7 +28,7 @@ class RegTestPyGeo(unittest.TestCase):
         geo_utils.write_wing_FFD_file(file_name, slices, N0, N1, N2, axes=axes)
 
     def test_parent_shape_child_rot(self, train=False, refDeriv=False):
-        ffd_name = "../../tests/inputFiles/small_cube.xyz"
+        ffd_name = "../../input_files/small_cube.xyz"
         self.make_cube_ffd(ffd_name, 0.1, 0.1, 0.1, 0.8, 0.8, 0.8)
         small = DVGeometry(ffd_name, child=True)
         small.addRefAxis("ref", xFraction=0.5, alignIndex="j")
@@ -60,7 +60,7 @@ class RegTestPyGeo(unittest.TestCase):
         N0 = [2]
         N1 = [2]
         N2 = [3]
-        ffd_name = "../../tests/inputFiles/big_cube.xyz"
+        ffd_name = "../../input_files/big_cube.xyz"
 
         geo_utils.write_wing_FFD_file(ffd_name, slices, N0, N1, N2, axes=axes)
         big = DVGeometry(ffd_name)
