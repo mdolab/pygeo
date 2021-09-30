@@ -56,7 +56,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_01.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 1: Basic OpenVSP sphere")
-            vspFile = os.path.join(self.base_path, "../inputFiles/simpleEll_med.vsp3")
+            vspFile = os.path.join(self.base_path, "../../input_files/simpleEll_med.vsp3")
             DVGeo = DVGeometryVSP(vspFile)
             dh = 0.1
             # we have a sphere centered at x,y,z = 1, 0, 0 with radius 1
@@ -171,7 +171,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_02.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test 2: OpenVSP NACA 0012 wing")
-            vspFile = os.path.join(self.base_path, "../inputFiles/naca0012.vsp3")
+            vspFile = os.path.join(self.base_path, "../../input_files/naca0012.vsp3")
             DVGeo = DVGeometryVSP(vspFile)
             dh = 1e-6
 

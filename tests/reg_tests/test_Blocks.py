@@ -37,7 +37,7 @@ class RegTestPyGeo(unittest.TestCase):
 
     def setup_blocks(self, testID, isComplex=False):
         # Make tiny FFD
-        ffd_name = f"../inputFiles/tiny_cube_{testID:02d}.xyz"
+        ffd_name = f"../../input_files/tiny_cube_{testID:02d}.xyz"
         file_name = os.path.join(self.base_path, ffd_name)
         self.make_cube_ffd(file_name, 1, 1, 1, 1, 1, 1)
         tiny = DVGeometry(file_name, child=True, isComplex=isComplex)
@@ -45,7 +45,7 @@ class RegTestPyGeo(unittest.TestCase):
         tiny.addRefAxis("ref", xFraction=0.5, alignIndex="j", rotType=7)
 
         # Make tiny FFD
-        ffd_name = f"../inputFiles/small_cube_{testID:02d}.xyz"
+        ffd_name = f"../../input_files/small_cube_{testID:02d}.xyz"
         file_name = os.path.join(self.base_path, ffd_name)
         self.make_cube_ffd(file_name, 0, 0, 0, 2, 2, 2)
         small = DVGeometry(file_name, child=True, isComplex=isComplex)
@@ -53,7 +53,7 @@ class RegTestPyGeo(unittest.TestCase):
         small.addRefAxis("ref", xFraction=0.5, alignIndex="j")
 
         # Make big FFD
-        ffd_name = f"../inputFiles/big_cube_{testID:02d}.xyz"
+        ffd_name = f"../../input_files/big_cube_{testID:02d}.xyz"
         file_name = os.path.join(self.base_path, ffd_name)
         self.make_cube_ffd(file_name, 0, 0, 0, 3, 3, 3)
         big = DVGeometry(file_name, isComplex=isComplex)
