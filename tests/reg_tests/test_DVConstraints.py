@@ -99,7 +99,7 @@ class RegTestPyGeo(unittest.TestCase):
         self.nTwist = nRefAxPts - 1
 
         if self.child:
-            parentFFD = os.path.join(self.base_path, "../inputFiles/parent.xyz")
+            parentFFD = os.path.join(self.base_path, "../../input_files/parent.xyz")
             parentDVGeo = DVGeometry(parentFFD)
             parentDVGeo.addChild(DVGeo)
             DVCon.setDVGeo(parentDVGeo)
@@ -134,7 +134,7 @@ class RegTestPyGeo(unittest.TestCase):
         self.nTwist = nRefAxPts - 1
 
         if self.child:
-            parentFFD = os.path.join(self.base_path, "../inputFiles/parent.xyz")
+            parentFFD = os.path.join(self.base_path, "../../input_files/parent.xyz")
             self.parentDVGeo = DVGeometry(parentFFD)
             self.parentDVGeo.addChild(DVGeo)
             DVCon.setDVGeo(self.parentDVGeo)
