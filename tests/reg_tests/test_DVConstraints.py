@@ -400,8 +400,12 @@ class RegTestPyGeo(unittest.TestCase):
 
             DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
 
-            DVCon.addLeTeConstraints(0, "iLow")
-            DVCon.addLeTeConstraints(0, "iHigh")
+            if self.child:
+                DVCon.addLeTeConstraints(0, "iLow", childIdx=0)
+                DVCon.addLeTeConstraints(0, "iHigh", childIdx=0)
+            else:
+                DVCon.addLeTeConstraints(0, "iLow")
+                DVCon.addLeTeConstraints(0, "iHigh")
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             # LeTe constraints should be all zero at the start
@@ -639,7 +643,12 @@ class RegTestPyGeo(unittest.TestCase):
             for i in range(lIndex.shape[0]):
                 indSetA.append(lIndex[i, 0, 0])
                 indSetB.append(lIndex[i, 0, 1])
-            DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0)
+            if self.child:
+                DVCon.addLinearConstraintsShape(
+                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childIdx=0
+                )
+            else:
+                DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0)
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
             funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
@@ -766,8 +775,12 @@ class RegTestPyGeo(unittest.TestCase):
 
             DVGeo, DVCon = self.generate_dvgeo_dvcon_c172()
 
-            DVCon.addMonotonicConstraints("twist")
-            DVCon.addMonotonicConstraints("twist", start=1, stop=2)
+            if self.child:
+                DVCon.addMonotonicConstraints("twist", childIdx=0)
+                DVCon.addMonotonicConstraints("twist", start=1, stop=2, childIdx=0)
+            else:
+                DVCon.addMonotonicConstraints("twist")
+                DVCon.addMonotonicConstraints("twist", start=1, stop=2)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             handler.assert_allclose(

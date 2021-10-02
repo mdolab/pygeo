@@ -1944,7 +1944,17 @@ class DVConstraints:
         )
 
     def addLinearConstraintsShape(
-        self, indSetA, indSetB, factorA, factorB, lower=0, upper=0, name=None, config=None, DVGeoName="default"
+        self,
+        indSetA,
+        indSetB,
+        factorA,
+        factorB,
+        lower=0,
+        upper=0,
+        name=None,
+        config=None,
+        DVGeoName="default",
+        childIdx=None,
     ):
         """
         Add a complete generic set of linear constraints for the shape
@@ -2007,6 +2017,11 @@ class DVConstraints:
 
         self._checkDVGeo(DVGeoName)
 
+        if childIdx is not None:
+            DVGeo = self.DVGeometries[DVGeoName].children[childIdx]
+        else:
+            DVGeo = self.DVGeometries[DVGeoName]
+
         if len(indSetA) != len(indSetB):
             raise Error("The length of the supplied indices are not " "the same length")
 
@@ -2044,7 +2059,7 @@ class DVConstraints:
 
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
-            conName, indSetA, indSetB, factorA, factorB, lower, upper, self.DVGeometries[DVGeoName], config=config
+            conName, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config=config
         )
 
     def addGearPostConstraint(
@@ -2751,7 +2766,9 @@ class DVConstraints:
             addToPyOpt,
         )
 
-    def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0, stop=-1, config=None, DVGeoName="default"):
+    def addMonotonicConstraints(
+        self, key, slope=1.0, name=None, start=0, stop=-1, config=None, DVGeoName="default", childIdx=None
+    ):
         """
         Parameters
         ----------
@@ -2783,6 +2800,11 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
+        if childIdx is not None:
+            DVGeo = self.DVGeometries[DVGeoName].children[childIdx]
+        else:
+            DVGeo = self.DVGeometries[DVGeoName]
+
         if name is None:
             conName = "%s_monotonic_constraint_%d" % (self.name, len(self.linearCon))
         else:
@@ -2797,7 +2819,7 @@ class DVConstraints:
             options=options,
             lower=0,
             upper=None,
-            DVGeo=self.DVGeometries[DVGeoName],
+            DVGeo=DVGeo,
             config=config,
         )
 
