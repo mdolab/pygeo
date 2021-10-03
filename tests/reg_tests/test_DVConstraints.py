@@ -117,14 +117,14 @@ class RegTestPyGeo(unittest.TestCase):
         The rectangular box is primarily used to test unscaled constraint function
         values against known values for thickness, volume, and surface area.
         """
-        meshfile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.stl")
-        ffdfile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz")
-        testmesh = mesh.Mesh.from_file(meshfile)
+        meshFile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.stl")
+        ffdFile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz")
+        testMesh = mesh.Mesh.from_file(meshFile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
         # dim 2 is x, y, z dimension
 
-        DVGeo = DVGeometry(ffdfile, child=self.child)
+        DVGeo = DVGeometry(ffdFile, child=self.child)
         DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.5, alignIndex="k")
         self.nTwist = nRefAxPts - 1
@@ -144,9 +144,9 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-        p0 = testmesh.vectors[:, 0, :]
-        v1 = testmesh.vectors[:, 1, :] - p0
-        v2 = testmesh.vectors[:, 2, :] - p0
+        p0 = testMesh.vectors[:, 0, :]
+        v1 = testMesh.vectors[:, 1, :] - p0
+        v2 = testMesh.vectors[:, 2, :] - p0
         DVCon.setSurface([p0, v1, v2], addToDVGeo=addToDVGeo)
 
         return DVGeo, DVCon
@@ -155,14 +155,14 @@ class RegTestPyGeo(unittest.TestCase):
         """
         The C172 wing represents a typical use case with twist and shape variables.
         """
-        meshfile = os.path.join(self.base_path, "../../input_files/c172.stl")
-        ffdfile = os.path.join(self.base_path, "../../input_files/c172.xyz")
-        testmesh = mesh.Mesh.from_file(meshfile)
+        meshFile = os.path.join(self.base_path, "../../input_files/c172.stl")
+        ffdFile = os.path.join(self.base_path, "../../input_files/c172.xyz")
+        testMesh = mesh.Mesh.from_file(meshFile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
         # dim 2 is x, y, z dimension
 
-        DVGeo = DVGeometry(ffdfile, child=self.child)
+        DVGeo = DVGeometry(ffdFile, child=self.child)
         DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
         self.nTwist = nRefAxPts - 1
@@ -182,9 +182,9 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-        p0 = testmesh.vectors[:, 0, :] / 1000
-        v1 = testmesh.vectors[:, 1, :] / 1000 - p0
-        v2 = testmesh.vectors[:, 2, :] / 1000 - p0
+        p0 = testMesh.vectors[:, 0, :] / 1000
+        v1 = testMesh.vectors[:, 1, :] / 1000 - p0
+        v2 = testMesh.vectors[:, 2, :] / 1000 - p0
         DVCon.setSurface([p0, v1, v2])
 
         return DVGeo, DVCon
@@ -193,16 +193,16 @@ class RegTestPyGeo(unittest.TestCase):
         """
         The BWB is used for the triangulated surface and volume constraint tests.
         """
-        meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
-        objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
-        ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
-        testmesh = mesh.Mesh.from_file(meshfile)
-        testobj = mesh.Mesh.from_file(objfile)
+        meshFile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+        objFile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
+        ffdFile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
+        testMesh = mesh.Mesh.from_file(meshFile)
+        testObj = mesh.Mesh.from_file(objFile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
         # dim 2 is x, y, z dimension
 
-        DVGeo = DVGeometry(ffdfile, child=self.child)
+        DVGeo = DVGeometry(ffdFile, child=self.child)
         DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
         self.nTwist = nRefAxPts - 1
@@ -222,13 +222,13 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
         DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-        p0 = testmesh.vectors[:, 0, :]
-        v1 = testmesh.vectors[:, 1, :] - p0
-        v2 = testmesh.vectors[:, 2, :] - p0
+        p0 = testMesh.vectors[:, 0, :]
+        v1 = testMesh.vectors[:, 1, :] - p0
+        v2 = testMesh.vectors[:, 2, :] - p0
         DVCon.setSurface([p0, v1, v2], addToDVGeo=True)
-        p0b = testobj.vectors[:, 0, :]
-        v1b = testobj.vectors[:, 1, :] - p0b
-        v2b = testobj.vectors[:, 2, :] - p0b
+        p0b = testObj.vectors[:, 0, :]
+        v1b = testObj.vectors[:, 1, :] - p0b
+        v2b = testObj.vectors[:, 2, :] - p0b
         if intersected:
             p0b = p0b + np.array([0.0, 0.3, 0.0])
         DVCon.setSurface([p0b, v1b, v2b], name="blob")
@@ -824,14 +824,14 @@ class RegTestPyGeo(unittest.TestCase):
     def test_triangulatedVolume_bwb(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedVolume_bwb.ref")
         with BaseRegTest(refFile, train=train) as handler:
-            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
-            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
-            testmesh = mesh.Mesh.from_file(meshfile)
+            meshFile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+            ffdFile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
+            testMesh = mesh.Mesh.from_file(meshFile)
             # test mesh dim 0 is triangle index
             # dim 1 is each vertex of the triangle
             # dim 2 is x, y, z dimension
 
-            DVGeo = DVGeometry(ffdfile, child=self.child)
+            DVGeo = DVGeometry(ffdFile, child=self.child)
             DVCon = DVConstraints()
             nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
             self.nTwist = nRefAxPts - 1
@@ -851,9 +851,9 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
             DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
-            p0 = testmesh.vectors[:, 0, :]
-            v1 = testmesh.vectors[:, 1, :] - p0
-            v2 = testmesh.vectors[:, 2, :] - p0
+            p0 = testMesh.vectors[:, 0, :]
+            v1 = testMesh.vectors[:, 1, :] - p0
+            v2 = testMesh.vectors[:, 2, :] - p0
             DVCon.setSurface([p0, v1, v2], addToDVGeo=True)
 
             DVCon.addTriangulatedVolumeConstraint(scaled=False, name="unscaled_vol_con")
@@ -885,17 +885,17 @@ class RegTestGeograd(unittest.TestCase):
     def test_triangulatedSurface_intersected_2DVGeos(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected_2DVGeos.ref")
         with BaseRegTest(refFile, train=train) as handler:
-            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
-            objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
-            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
-            testmesh = mesh.Mesh.from_file(meshfile)
-            testobj = mesh.Mesh.from_file(objfile)
+            meshFile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+            objFile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
+            ffdFile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
+            testMesh = mesh.Mesh.from_file(meshFile)
+            testObj = mesh.Mesh.from_file(objFile)
             # test mesh dim 0 is triangle index
             # dim 1 is each vertex of the triangle
             # dim 2 is x, y, z dimension
 
             # create a DVGeo object with a few local thickness variables
-            DVGeo1 = DVGeometry(ffdfile)
+            DVGeo1 = DVGeometry(ffdFile)
             nRefAxPts = DVGeo1.addRefAxis("wing", xFraction=0.25, alignIndex="k")
             self.nTwist = nRefAxPts - 1
 
@@ -907,11 +907,11 @@ class RegTestGeograd(unittest.TestCase):
             DVGeo1.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVGeo object with a few local thickness variables
-            DVGeo2 = DVGeometry(ffdfile, name="blobdvgeo")
+            DVGeo2 = DVGeometry(ffdFile, name="blobdvgeo")
             DVGeo2.addLocalDV("local_2", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # check that DVGeos with duplicate var names are not allowed
-            DVGeo3 = DVGeometry(ffdfile)
+            DVGeo3 = DVGeometry(ffdFile)
             DVGeo3.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             # create a DVConstraints object for the wing
@@ -921,13 +921,13 @@ class RegTestGeograd(unittest.TestCase):
             with self.assertRaises(ValueError):
                 DVCon.setDVGeo(DVGeo3, name="third")
 
-            p0 = testmesh.vectors[:, 0, :]
-            v1 = testmesh.vectors[:, 1, :] - p0
-            v2 = testmesh.vectors[:, 2, :] - p0
+            p0 = testMesh.vectors[:, 0, :]
+            v1 = testMesh.vectors[:, 1, :] - p0
+            v2 = testMesh.vectors[:, 2, :] - p0
             DVCon.setSurface([p0, v1, v2], addToDVGeo=True)
-            p0b = testobj.vectors[:, 0, :]
-            v1b = testobj.vectors[:, 1, :] - p0b
-            v2b = testobj.vectors[:, 2, :] - p0b
+            p0b = testObj.vectors[:, 0, :]
+            v1b = testObj.vectors[:, 1, :] - p0b
+            v2b = testObj.vectors[:, 2, :] - p0b
             p0b = p0b + np.array([0.0, 0.3, 0.0])
             DVCon.setSurface([p0b, v1b, v2b], name="blob", addToDVGeo=True, DVGeoName="second")
 
