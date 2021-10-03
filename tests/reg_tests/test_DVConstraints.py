@@ -646,14 +646,10 @@ class RegTestPyGeo(unittest.TestCase):
     def test_planarity_tri(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_planarity_tri.ref")
         with BaseRegTest(refFile, train=train) as handler:
-            ffdfile = os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz")
-            DVGeo = DVGeometry(ffdfile)
-            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+            # Set up a dummy DVGeo and DVCon
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_rect()
 
-            # create a DVConstraints object with a simple plane consisting of 2 triangles
-            DVCon = DVConstraints()
-            DVCon.setDVGeo(DVGeo)
-
+            # Set a DVConstraints surface consisting of a simple plane with 2 triangles
             p0 = np.zeros(shape=(2, 3))
             p1 = np.zeros(shape=(2, 3))
             p2 = np.zeros(shape=(2, 3))
@@ -670,9 +666,9 @@ class RegTestPyGeo(unittest.TestCase):
 
             v1 = p1 - p0
             v2 = p2 - p0
-            DVCon.setSurface([p0, v1, v2])
+            DVCon.setSurface([p0, v1, v2], name="tri")
 
-            DVCon.addPlanarityConstraint(origin=[0.0, -0.25, 2.0], planeAxis=[0.0, 1.0, 0.0])
+            DVCon.addPlanarityConstraint(origin=[0.0, -0.25, 2.0], planeAxis=[0.0, 1.0, 0.0], surfaceName="tri")
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
 
@@ -745,7 +741,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addTriangulatedVolumeConstraint(scaled=True)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
-            # Check that unscaled volume is computed correctly at baseline
+            # Check that the scaled and unscaled volumes are computed correctly at baseline
             handler.assert_allclose(
                 funcs["DVCon1_trivolume_constraint_1"], 1.0, name="scaled_volume_base", rtol=1e-7, atol=1e-7
             )
@@ -761,21 +757,25 @@ class RegTestPyGeo(unittest.TestCase):
             # dim 1 is each vertex of the triangle
             # dim 2 is x, y, z dimension
 
-            # create a DVGeo object with a few local thickness variables
-            DVGeo1 = DVGeometry(ffdfile)
-            nRefAxPts = DVGeo1.addRefAxis("wing", xFraction=0.25, alignIndex="k")
+            DVGeo = DVGeometry(ffdfile, child=self.child)
+            DVCon = DVConstraints()
+            nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
             self.nTwist = nRefAxPts - 1
+
+            if self.child:
+                parentFFD = os.path.join(self.base_path, "../../input_files/parent.xyz")
+                parentDVGeo = DVGeometry(parentFFD)
+                parentDVGeo.addChild(DVGeo)
+                DVCon.setDVGeo(parentDVGeo)
+            else:
+                DVCon.setDVGeo(DVGeo)
 
             def twist(val, geo):
                 for i in range(1, nRefAxPts):
                     geo.rot_z["wing"].coef[i] = val[i - 1]
 
-            DVGeo1.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo1.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
-
-            # create a DVConstraints object for the wing
-            DVCon = DVConstraints()
-            DVCon.setDVGeo(DVGeo1)
+            DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
 
             p0 = testmesh.vectors[:, 0, :]
             v1 = testmesh.vectors[:, 1, :] - p0
@@ -785,36 +785,16 @@ class RegTestPyGeo(unittest.TestCase):
             DVCon.addTriangulatedVolumeConstraint(scaled=False, name="unscaled_vol_con")
             DVCon.addTriangulatedVolumeConstraint(scaled=True)
 
-            funcs = {}
-            DVCon.evalFunctions(funcs, includeLinear=True)
-            handler.root_add_dict("funcs_base", funcs, rtol=1e-6, atol=1e-6)
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
 
+            # Check that the scaled and unscaled volumes are computed correctly at baseline
             handler.assert_allclose(
                 funcs["DVCon1_trivolume_constraint_1"], 1.0, name="scaled_volume_base", rtol=1e-7, atol=1e-7
             )
-
             # BWB volume computed with meshmixer
             handler.assert_allclose(
                 funcs["unscaled_vol_con"], 1103.57, name="unscaled_volume_base", rtol=1e-7, atol=1e-7
             )
-
-            funcsSens = {}
-            DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
-            # regress the derivatives
-            handler.root_add_dict("derivs_base", funcsSens, rtol=1e-6, atol=1e-6)
-            # FD check DVGeo1
-
-            funcsSensFD = evalFunctionsSensFD(DVGeo1, DVCon, fdstep=1e-6)
-            at_least_one_var = False
-            for outkey in funcs.keys():
-                for inkey in DVGeo1.getValues().keys():
-                    analytic = funcsSens[outkey][inkey]
-                    fd = funcsSensFD[outkey][inkey]
-                    handler.assert_allclose(analytic, fd, name="finite_diff_check", rtol=1e-5, atol=1e-5)
-                    # make sure there are actually checks happening
-                    self.assertTrue(np.sum(np.abs(fd)) > 1e-10)
-                    at_least_one_var = True
-            self.assertTrue(at_least_one_var)
 
 
 class RegTestGeograd(unittest.TestCase):
