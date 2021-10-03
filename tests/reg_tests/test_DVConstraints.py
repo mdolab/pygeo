@@ -189,6 +189,52 @@ class RegTestPyGeo(unittest.TestCase):
 
         return DVGeo, DVCon
 
+    def generate_dvgeo_dvcon_bwb(self, intersected=False):
+        """
+        The BWB is used for the triangulated surface and volume constraint tests.
+        """
+        meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
+        objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
+        ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
+        testmesh = mesh.Mesh.from_file(meshfile)
+        testobj = mesh.Mesh.from_file(objfile)
+        # test mesh dim 0 is triangle index
+        # dim 1 is each vertex of the triangle
+        # dim 2 is x, y, z dimension
+
+        DVGeo = DVGeometry(ffdfile, child=self.child)
+        DVCon = DVConstraints()
+        nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
+        self.nTwist = nRefAxPts - 1
+
+        if self.child:
+            parentFFD = os.path.join(self.base_path, "../../input_files/parent.xyz")
+            self.parentDVGeo = DVGeometry(parentFFD)
+            self.parentDVGeo.addChild(DVGeo)
+            DVCon.setDVGeo(self.parentDVGeo)
+        else:
+            DVCon.setDVGeo(DVGeo)
+
+        def twist(val, geo):
+            for i in range(1, nRefAxPts):
+                geo.rot_z["wing"].coef[i] = val[i - 1]
+
+        DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
+        DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
+
+        p0 = testmesh.vectors[:, 0, :]
+        v1 = testmesh.vectors[:, 1, :] - p0
+        v2 = testmesh.vectors[:, 2, :] - p0
+        DVCon.setSurface([p0, v1, v2], addToDVGeo=True)
+        p0b = testobj.vectors[:, 0, :]
+        v1b = testobj.vectors[:, 1, :] - p0b
+        v2b = testobj.vectors[:, 2, :] - p0b
+        if intersected:
+            p0b = p0b + np.array([0.0, 0.3, 0.0])
+        DVCon.setSurface([p0b, v1b, v2b], name="blob")
+
+        return DVGeo, DVCon
+
     def c172_test_twist(self, DVGeo, DVCon, handler):
         funcs = {}
         funcsSens = {}
@@ -732,6 +778,34 @@ class RegTestPyGeo(unittest.TestCase):
                 atol=1e-7,
             )
 
+    @unittest.skipIf(missing_geograd, "requires geograd")
+    def test_triangulatedSurface(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_bwb()
+
+            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=1000.0, addToPyOpt=True)
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, fdstep=1e-3)
+            handler.assert_allclose(
+                funcs["DVCon1_trisurf_constraint_0_KS"], 0.34660627481696404, name="KS", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(funcs["DVCon1_trisurf_constraint_0_perim"], 0.0, name="perim", rtol=1e-7, atol=1e-7)
+            funcs, funcsSens = self.c172_test_twist(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.c172_test_deformed(DVGeo, DVCon, handler)
+
+    @unittest.skipIf(missing_geograd, "requires geograd")
+    def test_triangulatedSurface_intersected(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon_bwb(intersected=True)
+
+            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+            np.testing.assert_array_less(np.zeros(1), funcs["DVCon1_trisurf_constraint_0_perim"])
+
     def test_triangulatedVolume_box(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedVolume_box.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -807,132 +881,8 @@ class RegTestGeograd(unittest.TestCase):
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
-    def bwb_test_twist(self, DVGeo, DVCon, handler):
-        funcs = {}
-        funcsSens = {}
-        # change the DVs
-        xDV = DVGeo.getValues()
-        xDV["twist"] = np.linspace(0, 10, self.nTwist)
-        DVGeo.setDesignVars(xDV)
-        # check the constraint values changed
-        DVCon.evalFunctions(funcs, includeLinear=True)
-
-        handler.root_add_dict("funcs_twisted", funcs, rtol=1e-6, atol=1e-6)
-        # check the derivatives are still right
-        DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
-        # regress the derivatives
-        handler.root_add_dict("derivs_twisted", funcsSens, rtol=1e-6, atol=1e-6)
-        return funcs, funcsSens
-
-    def bwb_test_deformed(self, DVGeo, DVCon, handler):
-        funcs = {}
-        funcsSens = {}
-        xDV = DVGeo.getValues()
-        np.random.seed(37)
-        xDV["local"] = np.random.normal(0.0, 0.05, 32)
-        DVGeo.setDesignVars(xDV)
-        DVCon.evalFunctions(funcs, includeLinear=True)
-        DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
-        handler.root_add_dict("funcs_deformed", funcs, rtol=1e-6, atol=1e-6)
-        handler.root_add_dict("derivs_deformed", funcsSens, rtol=1e-6, atol=1e-6)
-        return funcs, funcsSens
-
-    @unittest.skipIf(missing_geograd, "requires geograd")
-    def test_triangulatedSurface(self, train=False, refDeriv=False):
-        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface.ref")
-        with BaseRegTest(refFile, train=train) as handler:
-            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
-            objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
-            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
-            testmesh = mesh.Mesh.from_file(meshfile)
-            testobj = mesh.Mesh.from_file(objfile)
-            # test mesh dim 0 is triangle index
-            # dim 1 is each vertex of the triangle
-            # dim 2 is x, y, z dimension
-
-            # create a DVGeo object with a few local thickness variables
-            DVGeo = DVGeometry(ffdfile)
-            nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
-            self.nTwist = nRefAxPts - 1
-
-            def twist(val, geo):
-                for i in range(1, nRefAxPts):
-                    geo.rot_z["wing"].coef[i] = val[i - 1]
-
-            DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
-
-            # create a DVConstraints object for the wing
-            DVCon = DVConstraints()
-            DVCon.setDVGeo(DVGeo)
-            p0 = testmesh.vectors[:, 0, :]
-            v1 = testmesh.vectors[:, 1, :] - p0
-            v2 = testmesh.vectors[:, 2, :] - p0
-            DVCon.setSurface([p0, v1, v2], addToDVGeo=True)
-            p0b = testobj.vectors[:, 0, :]
-            v1b = testobj.vectors[:, 1, :] - p0b
-            v2b = testobj.vectors[:, 2, :] - p0b
-            DVCon.setSurface([p0b, v1b, v2b], name="blob")
-
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=1000.0, addToPyOpt=True)
-
-            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, fdstep=1e-3)
-            handler.assert_allclose(
-                funcs["DVCon1_trisurf_constraint_0_KS"], 0.34660627481696404, name="KS", rtol=1e-7, atol=1e-7
-            )
-            handler.assert_allclose(funcs["DVCon1_trisurf_constraint_0_perim"], 0.0, name="perim", rtol=1e-7, atol=1e-7)
-            funcs, funcsSens = self.bwb_test_twist(DVGeo, DVCon, handler)
-            funcs, funcsSens = self.bwb_test_deformed(DVGeo, DVCon, handler)
-
-    @unittest.skipIf(missing_geograd, "requires geograd")
-    def test_triangulatedSurface_intersected(self, train=False, refDeriv=False):
-        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected.ref")
-        with BaseRegTest(refFile, train=train) as handler:
-            meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
-            objfile = os.path.join(self.base_path, "../../input_files/blob_bwb_wing.stl")
-            ffdfile = os.path.join(self.base_path, "../../input_files/bwb.xyz")
-            testmesh = mesh.Mesh.from_file(meshfile)
-            testobj = mesh.Mesh.from_file(objfile)
-            # test mesh dim 0 is triangle index
-            # dim 1 is each vertex of the triangle
-            # dim 2 is x, y, z dimension
-
-            # create a DVGeo object with a few local thickness variables
-            DVGeo = DVGeometry(ffdfile)
-            nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
-            self.nTwist = nRefAxPts - 1
-
-            def twist(val, geo):
-                for i in range(1, nRefAxPts):
-                    geo.rot_z["wing"].coef[i] = val[i - 1]
-
-            DVGeo.addGlobalDV(dvName="twist", value=[0] * self.nTwist, func=twist, lower=-10, upper=10, scale=1)
-            DVGeo.addLocalDV("local", lower=-0.5, upper=0.5, axis="y", scale=1)
-
-            # create a DVConstraints object for the wing
-            DVCon = DVConstraints()
-            DVCon.setDVGeo(DVGeo)
-            p0 = testmesh.vectors[:, 0, :]
-            v1 = testmesh.vectors[:, 1, :] - p0
-            v2 = testmesh.vectors[:, 2, :] - p0
-            DVCon.setSurface([p0, v1, v2], addToDVGeo=True)
-            p0b = testobj.vectors[:, 0, :]
-            v1b = testobj.vectors[:, 1, :] - p0b
-            v2b = testobj.vectors[:, 2, :] - p0b
-            p0b = p0b + np.array([0.0, 0.3, 0.0])
-            DVCon.setSurface([p0b, v1b, v2b], name="blob")
-
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
-
-            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
-            np.testing.assert_array_less(np.zeros(1), funcs["DVCon1_trisurf_constraint_0_perim"])
-
     @unittest.skipIf(missing_geograd, "requires geograd")
     def test_triangulatedSurface_intersected_2DVGeos(self, train=False, refDeriv=False):
-        """
-        Test 17: Triangulated surface constraint, intersected, two DVGeos
-        """
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected_2DVGeos.ref")
         with BaseRegTest(refFile, train=train) as handler:
             meshfile = os.path.join(self.base_path, "../../input_files/bwb.stl")
@@ -990,8 +940,8 @@ class RegTestGeograd(unittest.TestCase):
             DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
             # regress the derivatives
             handler.root_add_dict("derivs_base", funcsSens, rtol=1e-6, atol=1e-6)
-            # FD check DVGeo1
 
+            # FD check DVGeo1
             funcsSensFD = evalFunctionsSensFD(DVGeo1, DVCon, fdstep=1e-3)
             at_least_one_var = False
             for outkey in funcs.keys():
@@ -1004,9 +954,9 @@ class RegTestGeograd(unittest.TestCase):
                     at_least_one_var = True
             self.assertTrue(at_least_one_var)
 
-            at_least_one_var = False
             # FD check DVGeo2
             funcsSensFD = evalFunctionsSensFD(DVGeo2, DVCon, fdstep=1e-3)
+            at_least_one_var = False
             for outkey in funcs.keys():
                 for inkey in DVGeo2.getValues().keys():
                     analytic = funcsSens[outkey][inkey]
