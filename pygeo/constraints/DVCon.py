@@ -1825,14 +1825,18 @@ class DVConstraints:
         indSetB : array of int
             Indices of control points on the *other* side of the FFD
         name : str
-             Normally this does not need to be set; a default name will
-             be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
-             be distinguished
+            Normally this does not need to be set; a default name will
+            be generated automatically. Only use this if you have
+            multiple DVCon objects and the constriant names need to
+            be distinguished
         config : str
-             The DVGeo configuration to apply this LETE con to. Must be either None
-             which will allpy to *ALL* the local DV groups or a single string specifying
-             a particular configuration.
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
+        childIdx : int
+            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
+            The index is defined by the order in which you add the child FFD to the parent.
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
 
         Examples
         --------
@@ -1944,7 +1948,17 @@ class DVConstraints:
         )
 
     def addLinearConstraintsShape(
-        self, indSetA, indSetB, factorA, factorB, lower=0, upper=0, name=None, config=None, DVGeoName="default"
+        self,
+        indSetA,
+        indSetB,
+        factorA,
+        factorB,
+        lower=0,
+        upper=0,
+        name=None,
+        config=None,
+        childIdx=None,
+        DVGeoName="default",
     ):
         """
         Add a complete generic set of linear constraints for the shape
@@ -1987,10 +2001,18 @@ class DVConstraints:
         upper : float or array
             The upper bound of the constraint(s)
         name : str
-             Normally this does not need to be set; a default name will
-             be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
-             be distinguished
+            Normally this does not need to be set; a default name will
+            be generated automatically. Only use this if you have
+            multiple DVCon objects and the constriant names need to
+            be distinguished
+        config : str
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
+            a particular configuration.
+        childIdx : int
+            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
+            The index is defined by the order in which you add the child FFD to the parent.
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
 
         Examples
         --------
@@ -2006,6 +2028,11 @@ class DVConstraints:
         """
 
         self._checkDVGeo(DVGeoName)
+
+        if childIdx is not None:
+            DVGeo = self.DVGeometries[DVGeoName].children[childIdx]
+        else:
+            DVGeo = self.DVGeometries[DVGeoName]
 
         if len(indSetA) != len(indSetB):
             raise Error("The length of the supplied indices are not " "the same length")
@@ -2044,7 +2071,7 @@ class DVConstraints:
 
         # Finally add the linear constraint object
         self.linearCon[conName] = LinearConstraint(
-            conName, indSetA, indSetB, factorA, factorB, lower, upper, self.DVGeometries[DVGeoName], config=config
+            conName, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config=config
         )
 
     def addGearPostConstraint(
@@ -2751,7 +2778,9 @@ class DVConstraints:
             addToPyOpt,
         )
 
-    def addMonotonicConstraints(self, key, slope=1.0, name=None, start=0, stop=-1, config=None, DVGeoName="default"):
+    def addMonotonicConstraints(
+        self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childIdx=None, DVGeoName="default"
+    ):
         """
         Parameters
         ----------
@@ -2773,15 +2802,24 @@ class DVConstraints:
             a design variable vector [4, 3, 6.5, 2, -5.4, -1], start=1 and
             stop=4 would constrain [3, 6.5, 2, -5.4] to be a monotonic sequence.
         config : str
-            The DVGeo configuration to apply this LETE con to. Must be either None
-            which will allpy to *ALL* the local DV groups or a single string specifying
+            The DVGeo configuration to apply this constraint to. Must be either None
+            which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
+        childIdx : int
+            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
+            The index is defined by the order in which you add the child FFD to the parent.
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
 
         Examples
         --------
         >>> DVCon.addMonotonicConstraints('chords', 1.0)
         """
         self._checkDVGeo(DVGeoName)
+
+        if childIdx is not None:
+            DVGeo = self.DVGeometries[DVGeoName].children[childIdx]
+        else:
+            DVGeo = self.DVGeometries[DVGeoName]
 
         if name is None:
             conName = "%s_monotonic_constraint_%d" % (self.name, len(self.linearCon))
@@ -2797,7 +2835,7 @@ class DVConstraints:
             options=options,
             lower=0,
             upper=None,
-            DVGeo=self.DVGeometries[DVGeoName],
+            DVGeo=DVGeo,
             config=config,
         )
 
