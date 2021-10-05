@@ -922,6 +922,7 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
 
+@unittest.skipIf(missing_geograd, "requires geograd")
 class RegTestGeograd(unittest.TestCase):
 
     N_PROCS = 1
@@ -932,7 +933,6 @@ class RegTestGeograd(unittest.TestCase):
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
-    @unittest.skipIf(missing_geograd, "requires geograd")
     def test_triangulatedSurface_intersected_2DVGeos(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected_2DVGeos.ref")
         with BaseRegTest(refFile, train=train) as handler:
