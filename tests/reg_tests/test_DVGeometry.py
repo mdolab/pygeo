@@ -900,6 +900,80 @@ class RegTestPyGeo(unittest.TestCase):
 
             handler.root_add_val("Updated FFD coordinates", FFD_coords, rtol=1e-12, atol=1e-12)
 
+    def test_demoDesignVars(self):
+        DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+        DVGeo.addChild(DVGeoChild)
+
+        # Add DVs to the child
+        globalVarName = "nestedX"
+        localVarName = "childXDir"
+        DVGeoChild.addGlobalDV(globalVarName, -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+        DVGeoChild.addLocalDV(localVarName, lower=-1.1, upper=1.1, axis="x", scale=1.0)
+
+        # Add a simple point set
+        ptName = "point"
+        pts = np.array(
+            [
+                [0, 0.5, 0.5],
+            ],
+            dtype="float",
+        )
+        DVGeo.addPointSet(points=pts, ptName=ptName)
+
+        # Demo DVs with just the FFD
+        DVGeo.demoDesignVars(self.base_path)
+
+        # Files that we expect to be output based on the DVs added
+        refNames = sorted(
+            [
+                f"{localVarName}_000_iter_000",
+                f"{localVarName}_000_iter_001",
+                f"{localVarName}_001_iter_000",
+                f"{localVarName}_001_iter_001",
+                f"{localVarName}_002_iter_000",
+                f"{localVarName}_002_iter_001",
+                f"{localVarName}_003_iter_000",
+                f"{localVarName}_003_iter_001",
+                f"{localVarName}_004_iter_000",
+                f"{localVarName}_004_iter_001",
+                f"{localVarName}_005_iter_000",
+                f"{localVarName}_005_iter_001",
+                f"{localVarName}_006_iter_000",
+                f"{localVarName}_006_iter_001",
+                f"{localVarName}_007_iter_000",
+                f"{localVarName}_007_iter_001",
+                f"{globalVarName}_000_iter_000",
+                f"{globalVarName}_000_iter_001",
+            ]
+        )
+        ffdRef = [name + ".dat" for name in refNames]
+        pointSetRef = [name + f"_{ptName}.dat" for name in refNames]
+
+        # Check that the generated FFD files match the expected result
+        ffdFiles = sorted(os.listdir("ffd"))
+        self.assertEqual(ffdFiles, ffdRef)
+
+        # Check that there are no other directories created
+        with self.assertRaises(FileNotFoundError):
+            os.listdir("pointset")
+            os.listdir("surf")
+
+        # Delete FFD files
+        os.system("rm -r ffd")
+
+        # Demo DVs with a point set
+        DVGeo.demoDesignVars(self.base_path, pointSet=ptName)
+
+        # Check that the FFD and point set files match the expected result
+        ffdFiles = sorted(os.listdir("ffd"))
+        pointSetFiles = sorted(os.listdir("pointset"))
+        self.assertEqual(ffdFiles, ffdRef)
+        self.assertEqual(pointSetFiles, pointSetRef)
+
+        # Delete FFD and point set files
+        os.system("rm -r ffd")
+        os.system("rm -r pointset")
+
 
 if __name__ == "__main__":
     unittest.main()
