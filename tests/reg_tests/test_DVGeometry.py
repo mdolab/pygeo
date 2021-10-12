@@ -949,30 +949,35 @@ class RegTestPyGeo(unittest.TestCase):
         ffdRef = [name + ".dat" for name in refNames]
         pointSetRef = [name + f"_{ptName}.dat" for name in refNames]
 
+        # Set paths
+        ffdPath = os.path.join(self.base_path, "ffd")
+        pointSetPath = os.path.join(self.base_path, "pointset")
+        surfPath = os.path.join(self.base_path, "surf")
+
         # Check that the generated FFD files match the expected result
-        ffdFiles = sorted(os.listdir("ffd"))
+        ffdFiles = sorted(os.listdir(ffdPath))
         self.assertEqual(ffdFiles, ffdRef)
 
         # Check that there are no other directories created
         with self.assertRaises(FileNotFoundError):
-            os.listdir("pointset")
-            os.listdir("surf")
+            os.listdir(pointSetPath)
+            os.listdir(surfPath)
 
         # Delete FFD files
-        os.system("rm -r ffd")
+        os.system(f"rm -r {ffdPath}")
 
         # Demo DVs with a point set
         DVGeo.demoDesignVars(self.base_path, pointSet=ptName)
 
         # Check that the FFD and point set files match the expected result
-        ffdFiles = sorted(os.listdir("ffd"))
-        pointSetFiles = sorted(os.listdir("pointset"))
+        ffdFiles = sorted(os.listdir(ffdPath))
+        pointSetFiles = sorted(os.listdir(pointSetPath))
         self.assertEqual(ffdFiles, ffdRef)
         self.assertEqual(pointSetFiles, pointSetRef)
 
         # Delete FFD and point set files
-        os.system("rm -r ffd")
-        os.system("rm -r pointset")
+        os.system(f"rm -r {ffdPath}")
+        os.system(f"rm -r {pointSetPath}")
 
 
 if __name__ == "__main__":
