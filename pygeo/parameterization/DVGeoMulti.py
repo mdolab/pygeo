@@ -10,7 +10,7 @@ from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_
 from . import DVGeometry
 
 
-class DVGeometryMulti(object):
+class DVGeometryMulti:
     """
     A class for manipulating multiple components using multiple FFDs
 
@@ -1022,7 +1022,7 @@ class DVGeometryMulti(object):
                             return xDV[k].copy()
 
 
-class component(object):
+class component:
     def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
 
         # save the info
@@ -1048,7 +1048,7 @@ class component(object):
         self.nodes = self.DVGeo.update("triMesh")
 
 
-class PointSet(object):
+class PointSet:
     def __init__(self, points, comm):
         self.points = points
         self.nPts = len(self.points)
@@ -1057,7 +1057,7 @@ class PointSet(object):
         self.comm = comm
 
 
-class CompIntersection(object):
+class CompIntersection:
     def __init__(
         self,
         compA,
