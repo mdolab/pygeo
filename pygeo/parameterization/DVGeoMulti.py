@@ -1,7 +1,6 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-import time
 from collections import OrderedDict
 import numpy
 from mpi4py import MPI
@@ -185,8 +184,6 @@ class DVGeometryMulti:
                 # dummy connectivity data for quad elements since we have all tris
                 quadConn = numpy.zeros((0, 4))
 
-                t0 = time.time()
-
                 # Compute set of nodal normals by taking the average normal of all
                 # elements surrounding the node. This allows the meshing algorithms,
                 # for instance, to march in an average direction near kinks.
@@ -205,9 +202,6 @@ class DVGeometryMulti:
                     MPI.COMM_SELF.py2f(),
                     comp,
                 )
-                t1 = time.time()
-                # if self.comm.rank == 0:
-                #     print("Building surface ADT for component",comp,"took",t1-t0,'seconds')
 
         # create the pointset class
         self.points[ptName] = PointSet(points, comm=comm)
@@ -408,7 +402,6 @@ class DVGeometryMulti:
         # get the new points
         newPts = numpy.zeros((self.points[ptSetName].nPts, 3))
 
-        t0 = time.time()
         # we first need to update all points with their respective DVGeo objects
         for comp in self.compNames:
             ptsComp = self.comps[comp].DVGeo.update(ptSetName)
@@ -419,9 +412,6 @@ class DVGeometryMulti:
 
         # get the delta
         delta = newPts - self.points[ptSetName].points
-
-        t1 = time.time()
-        print("[%d] timing one %.6f" % (self.comm.rank, t1 - t0))
 
         # then apply the intersection treatment
         for IC in self.intersectComps:
@@ -742,11 +732,8 @@ class DVGeometryMulti:
         if self.comm.rank == 0:
             print("Reading file %s" % filename)
             # use the default routine in tsurftools
-            t1 = time.time()
             nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
-            t2 = time.time()
             print("Finished reading the cgns file")
-            print("Reading the cgns file took", (t2 - t1))
 
             triConn = numpy.zeros((0, 3), dtype=numpy.int8)
             barsConn = {}
@@ -1248,10 +1235,7 @@ class CompIntersection:
         """This set the new udpated surface on which we need to compute the new intersection curve"""
 
         # get the updated surface coordinates
-        t0 = time.time()
         self._getUpdatedCoords()
-        t1 = time.time()
-        print("[%d] timing trimesh %.6f" % (self.comm.rank, t1 - t0))
 
         self.seam = self._getIntersectionSeam(comm)
 
@@ -1526,9 +1510,6 @@ class CompIntersection:
         # define an epsilon to avoid dividing by zero later on
         eps = 1e-50  # 1e-32
 
-        # time it!
-        t0 = time.time()
-
         # loop over the points that get affected
         for i in range(len(factors)):
             # j is the index of the point in the full set we are working with.
@@ -1636,12 +1617,6 @@ class CompIntersection:
             delta[j] = factors[i] * delta[j] + (1 - factors[i]) * interp
             # delta[j] = interp
 
-        t1 = time.time()
-        print(
-            "[%d] Time required to warp %d points using %d line elements is %.4f seconds"
-            % (rank, len(factors), len(conn), t1 - t0)
-        )
-        print("[%d] timing four %.6f" % (self.comm.rank, t1 - t0))
         # if comm:
         #     comm.Barrier()
 
@@ -1801,7 +1776,6 @@ class CompIntersection:
 
         self.comm.Barrier()
 
-        t00 = time.time()
         # check if we need to worry about either surface
         # we will use these flags to figure out if we need to do warping.
         # we need to do the comm for the updated curves regardless
@@ -1958,11 +1932,8 @@ class CompIntersection:
                 curvePtCoordsB = numpy.vstack((curvePtCoordsB, curvePtCoordsNew))
 
         self.comm.Barrier()
-        t01 = time.time()
-        print("[%d] timing six %.6f" % (self.comm.rank, t01 - t00))
 
         # then, we warp all of the nodes that were affected by the intersection treatment, using the deltas from the previous project to curve step
-        t0 = time.time()
 
         if flagA:
             self._warpSurfPts(self.points[ptSetName][0], newPts, self.surfIdxA[ptSetName], curvePtCoordsA, deltaA)
@@ -1974,13 +1945,6 @@ class CompIntersection:
         self.curveProjData[ptSetName]["curvePtCoordsA"] = curvePtCoordsA
         self.curveProjData[ptSetName]["curvePtCoordsB"] = curvePtCoordsB
 
-        # print timing result
-        t1 = time.time()
-        print(
-            "[%d] time required to warp %d points using %d points is %.4f"
-            % (rank, len(self.surfIdxB[ptSetName]), len(deltaB), t1 - t0)
-        )
-        print("[%d] timing seven %.6f" % (self.comm.rank, t1 - t0))
         # if comm:
         # comm.Barrier()
 
@@ -2003,9 +1967,6 @@ class CompIntersection:
             indB = self.projData[ptSetName]["compB"]["ind"]
             ptsB = newPts[indB]
             newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
-
-        t2 = time.time()
-        print("[%d] timing eight %.6f" % (self.comm.rank, t2 - t1))
 
     def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
@@ -2521,8 +2482,6 @@ class CompIntersection:
 
         # this function computes the intersection curve, cleans up the data and splits the curve based on features or curves specified by the user.
 
-        t0 = time.time()
-
         # create the dictionary to save all intermediate variables for reverse differentiation
         self.seamDict = {}
 
@@ -2801,8 +2760,6 @@ class CompIntersection:
         self.seamDict["seamSize"] = len(seam)
         self.seamDict["curveBegCoor"] = curveBegCoor.copy()
 
-        t1 = time.time()
-        print("[%d] timing two %.6f" % (self.comm.rank, t1 - t0))
         # save the intersection curve for the paper
         # if self.comm.rank == 0:
         #     curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
@@ -3013,9 +2970,6 @@ class CompIntersection:
 
         # save the connectivity
         self.seamConn = finalConn
-
-        t2 = time.time()
-        print("[%d] timing three %.6f" % (self.comm.rank, t2 - t1))
 
         # write to file to check
         # tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
