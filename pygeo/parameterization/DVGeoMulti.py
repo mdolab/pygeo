@@ -527,10 +527,10 @@ class DVGeometryMulti:
         The ``child`` and ``nDVStore`` options are only used
         internally and should not be changed by the user.
         """
-        if comm:
-            commPresent = True
-        else:
-            commPresent = False
+        # if comm:
+        #     commPresent = True
+        # else:
+        #     commPresent = False
 
         # print('[%d] called totalSensitivity with comm:'%self.comm.rank, commPresent)
 
@@ -571,13 +571,13 @@ class DVGeometryMulti:
         # print('[%d] finished project_b'%self.comm.rank)
 
         # get the pointset
-        ptSet = self.points[ptSetName]
+        # ptSet = self.points[ptSetName]
 
         # number of design variables
-        nDV = ptSet.jac.shape[1]
+        # nDV = ptSet.jac.shape[1]
 
         # We should keep track of the intersections that this pointset is close to. There is no point in including the intersections far from this pointset in the sensitivity calc as the derivative seeds will be just zeros there.
-        ptSetICs = []
+        # ptSetICs = []
 
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
@@ -726,7 +726,7 @@ class DVGeometryMulti:
         # Here, only the root proc reads the cgns file, broadcasts node and connectivity info.
 
         # create the featurecurve dictionary
-        curveConn = OrderedDict()
+        # curveConn = OrderedDict()
 
         # only root proc reads the file
         if self.comm.rank == 0:
@@ -833,7 +833,7 @@ class DVGeometryMulti:
                 n += 1
 
         # perturb the DVs on different procs and compute the new point coordinates.
-        reqs = []
+        # reqs = []
         for iDV in range(nDV):
             # I have to do this one.
             if iDV % nproc == rank:
@@ -1493,11 +1493,11 @@ class CompIntersection:
         factors = self.points[ptSetName][2]
 
         # get the comm
-        comm = self.points[ptSetName][3]
-        if comm:
-            rank = comm.rank
-        else:
-            rank = 0
+        # comm = self.points[ptSetName][3]
+        # if comm:
+        #     rank = comm.rank
+        # else:
+        #     rank = 0
 
         # coordinates for the remeshed curves
         # we use the initial seam coordinates here
@@ -1769,10 +1769,10 @@ class CompIntersection:
         # get the comm for this point set
         comm = self.points[ptSetName][3]
 
-        if comm:
-            rank = comm.rank
-        else:
-            rank = 0
+        # if comm:
+        #     rank = comm.rank
+        # else:
+        #     rank = 0
 
         self.comm.Barrier()
 
@@ -1859,7 +1859,7 @@ class CompIntersection:
                 self.curveProjData[ptSetName][curveName]["curveMask"] = curveMask
 
             # dist2 has the array of squared distances
-            d = numpy.sqrt(dist2)
+            # d = numpy.sqrt(dist2)
 
             # save some information for gradient comp
             self.curveProjData[ptSetName][curveName]["xyz"] = ptsOnCurve.copy()
@@ -2300,7 +2300,7 @@ class CompIntersection:
                 LdefoDist3 = LdefoDist ** 3
                 Wi = LdefoDist3
                 den = numpy.sum(Wi)
-                interp = numpy.zeros(3)
+                # interp = numpy.zeros(3)
 
                 for iDim in range(3):
                     deltaBar[k, :, iDim] += Wi * localVal[iDim] / den
@@ -2397,7 +2397,7 @@ class CompIntersection:
         uvw = projDict["uvw"]
         dist2 = projDict["dist2"]
         normProjNotNorm = projDict["normProjNotNorm"]
-        normProj = projDict["normProj"]
+        # normProj = projDict["normProj"]
 
         # get the original and projected points too
         xyz = projDict["xyz"]
@@ -2563,7 +2563,7 @@ class CompIntersection:
                 int_centers *= numpy.sign(self.intDir)
 
                 # get the argmax
-                int_index = numpy.argmax(int_centers)
+                # int_index = numpy.argmax(int_centers)
 
                 # this is the intersection seam!
                 seamConn = newConn[i].copy()
@@ -2659,7 +2659,7 @@ class CompIntersection:
 
         # first get an ordered list of the feature points
         # this is just our breakList "list"
-        featurePoints = intNodes[seamConn[breakList, 0]]
+        # featurePoints = intNodes[seamConn[breakList, 0]]
 
         # flip
         # we want breakList to be in increasing order...
