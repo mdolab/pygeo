@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 import numpy as np
 from baseclasses import BaseRegTest
@@ -964,7 +965,7 @@ class RegTestPyGeo(unittest.TestCase):
             os.listdir(surfPath)
 
         # Delete FFD files
-        os.system(f"rm -r {ffdPath}")
+        shutil.rmtree(ffdPath)
 
         # Demo DVs with a point set
         DVGeo.demoDesignVars(self.base_path, pointSet=ptName)
@@ -976,8 +977,8 @@ class RegTestPyGeo(unittest.TestCase):
         self.assertEqual(pointSetFiles, pointSetRef)
 
         # Delete FFD and point set files
-        os.system(f"rm -r {ffdPath}")
-        os.system(f"rm -r {pointSetPath}")
+        shutil.rmtree(ffdPath)
+        shutil.rmtree(pointSetPath)
 
 
 if __name__ == "__main__":

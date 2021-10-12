@@ -2667,11 +2667,11 @@ class DVGeometry:
             a given variable. If greater than 2, will do a sinusoidal sweep.
         """
         # Generate directories
-        os.system(f"mkdir -p {directory:s}/ffd")
+        os.makedirs(f"{directory}/ffd", exist_ok=True)
         if pointSet is not None:
-            os.system(f"mkdir -p {directory:s}/pointset")
+            os.makedirs(f"{directory}/pointset", exist_ok=True)
         if CFDSolver is not None:
-            os.system(f"mkdir -p {directory:s}/surf")
+            os.makedirs(f"{directory}/surf", exist_ok=True)
 
         # Get design variables
         dvDict = self.getValues()
