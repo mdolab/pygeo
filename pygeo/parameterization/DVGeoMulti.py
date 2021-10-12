@@ -1,51 +1,13 @@
 # ======================================================================
 #         Imports
 # ======================================================================
-from __future__ import print_function
-import copy, time
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        print("Could not find any OrderedDict class. For 2.6 and earlier, " "use:\n pip install ordereddict")
+import time
+from collections import OrderedDict
 import numpy
-from scipy import sparse
 from mpi4py import MPI
-from pyspline import pySpline
-from . import pyNetwork, pyBlock, geo_utils
-from pygeo import DVGeometry
-import pdb
-import os
-
-# directly import the interface to the fortran APIs
-from pysurf.geometryEngines.TSurf.python import intersectionAPI, curveSearchAPI, utilitiesAPI, tsurf_tools, adtAPI
-
-# generic import for all pysurf codes
-import pysurf
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a explicitly raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| DVGeometryMulti Error: "
-        i = 19
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+from baseclasses.utils import Error
+from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
+from . import DVGeometry
 
 
 class DVGeometryMulti(object):
@@ -502,7 +464,7 @@ class DVGeometryMulti(object):
             return True
 
     def getNDV(self):
-        """ Return the number of DVs"""
+        """Return the number of DVs"""
         # loop over components and sum number of DVs
         nDV = 0
         for comp in self.compNames:
@@ -1283,7 +1245,7 @@ class CompIntersection(object):
         self.seam = self.seam0.copy()
 
     def setSurface(self, comm):
-        """ This set the new udpated surface on which we need to comptue the new intersection curve"""
+        """This set the new udpated surface on which we need to compute the new intersection curve"""
 
         # get the updated surface coordinates
         t0 = time.time()
@@ -1474,7 +1436,7 @@ class CompIntersection(object):
 
                     # uncomment to get the output
                     # ptCoords = ptsToCurves[idxs]
-                    # pysurf.tecplot_interface.write_tecplot_scatter('%s.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptCoords)
+                    # tecplot_interface.write_tecplot_scatter('%s.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptCoords)
 
                     # also update the masking array
                     # we will use this to figure out the indices that did not get attached to any curves
@@ -1872,7 +1834,7 @@ class CompIntersection(object):
             deltaB = numpy.zeros((0, 3))
             curvePtCoordsB = numpy.zeros((0, 3))
 
-        # pysurf.tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
+        # tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
 
         # loop over the feature curves that we need to project
         for curveName in self.featureCurveNames:
@@ -1884,7 +1846,7 @@ class CompIntersection(object):
             # these are the updated coordinates that will be projected to the curve
             ptsOnCurve = newPts[idx, :].copy()
 
-            # pysurf.tecplot_interface.write_tecplot_scatter('%s_warped_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptsOnCurve)
+            # tecplot_interface.write_tecplot_scatter('%s_warped_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptsOnCurve)
 
             # conn of the current curve
             seamBeg = self.seamBeg[curveName]
@@ -1936,7 +1898,7 @@ class CompIntersection(object):
             # get the delta for the points on this proc
             deltaLocal = xyzProj - ptsOnCurve
 
-            # pysurf.tecplot_interface.write_tecplot_scatter('%s_projected_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], xyzProj)
+            # tecplot_interface.write_tecplot_scatter('%s_projected_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], xyzProj)
 
             # update the point coordinates on this processor.
             # we do not need to do any communication for this
@@ -2620,7 +2582,7 @@ class CompIntersection(object):
                 # we have multiple intersection curves but the user did not specify which direction to pick
                 for i in range(len(newConn)):
                     curvename = "%s_%s_%d" % (self.compA.name, self.compB.name, i)
-                    pysurf.tecplot_interface.writeTecplotFEdata(intNodes, newConn[i], curvename, curvename)
+                    tecplot_interface.writeTecplotFEdata(intNodes, newConn[i], curvename, curvename)
                 raise Error(
                     "more than one intersection curve between comps %s and %s\nThe curves are written as tecplot files in the current directory\n\nTry rerunning after specifying intDir option for the intersection."
                     % (self.compA.name, self.compB.name)
@@ -2844,7 +2806,7 @@ class CompIntersection(object):
         # save the intersection curve for the paper
         # if self.comm.rank == 0:
         #     curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
-        #     pysurf.tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
+        #     tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
 
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
@@ -3036,7 +2998,7 @@ class CompIntersection(object):
             # now save the feature curves
             # if self.comm.rank == 0:
             #     curvename = 'featureCurves_%d'%(self.counter)
-            #     pysurf.tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
+            #     tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
@@ -3056,7 +3018,7 @@ class CompIntersection(object):
         print("[%d] timing three %.6f" % (self.comm.rank, t2 - t1))
 
         # write to file to check
-        # pysurf.tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
+        # tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
 
         self.counter += 1
 
