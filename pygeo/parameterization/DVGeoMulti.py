@@ -1262,7 +1262,7 @@ class CompIntersection:
             elemIDs[:] = (
                 elemIDs + 1
             )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
-            curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+            curveSearchAPI.curvesearchapi.mindistancecurve(
                 pts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
             )
 
@@ -1367,10 +1367,9 @@ class CompIntersection:
                     # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                     # Remember that we should adjust some indices before calling the Fortran code
                     # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
-                    elemIDs[:] = (
-                        elemIDs + 1
-                    )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                    elemIDs[:] = elemIDs + 1
+                    # (we need to do this separetely because Fortran will actively change elemIDs contents.
+                    curveSearchAPI.curvesearchapi.mindistancecurve(
                         ptsToCurves.T, self.seam0.T, self.seamConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                     )
 
@@ -2038,7 +2037,7 @@ class CompIntersection:
         if comm:
             compSens = {}
             # because the results are in a dictionary, we need to loop over the items and sum
-            for k, v in compSens_local.items():
+            for k in compSens_local:
                 compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
         else:
             # we can just pass the dictionary
