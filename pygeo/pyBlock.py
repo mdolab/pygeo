@@ -6,29 +6,11 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
-from pyspline import pySpline
-from .geo_utils import readNValues, BlockTopology, blendKnotVectors
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a explicitly raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| pyBlock Error: "
-        i = 16
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+from pyspline import Volume
+from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
+from .geo_utils import readNValues, blendKnotVectors
+from .topology import BlockTopology
+from baseclasses.utils import Error
 
 
 class pyBlock:
@@ -93,7 +75,7 @@ class pyBlock:
         """
 
         binary = False  # Binary read no longer supported.
-        f = open(fileName, "r")
+        f = open(fileName)
         nVol = readNValues(f, 1, "int", False)[0]
         sizes = readNValues(f, nVol * 3, "int", False).reshape((nVol, 3))
         blocks = []
@@ -127,7 +109,7 @@ class pyBlock:
             #             self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
         def symmZero(axis, coords, tol):
-            """ set all coords within a certain tolerance of the symm plan to be exactly 0"""
+            """set all coords within a certain tolerance of the symm plan to be exactly 0"""
 
             if axis.lower() == "x":
                 index = 0
@@ -189,7 +171,7 @@ class pyBlock:
                 # construction symmetric
 
                 self.vols.append(
-                    pySpline.Volume(
+                    Volume(
                         ku=ku,
                         kv=kv,
                         kw=kw,
@@ -235,9 +217,7 @@ class pyBlock:
             # Note This doesn't actually fit the volumes...just produces
             # the parametrization and knot vectors
             for ivol in range(nVol):
-                self.vols.append(
-                    pySpline.Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False)
-                )
+                self.vols.append(Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False))
             self.nVol = len(self.vols)
         # end if (FFD Check)
 
@@ -390,7 +370,7 @@ class pyBlock:
         self.topo.printConnectivity()
 
     def _propagateKnotVectors(self):
-        """ Propagate the knot vectors to make consistent"""
+        """Propagate the knot vectors to make consistent"""
 
         nDG = -1
         ncoef = []
@@ -524,19 +504,19 @@ class pyBlock:
         """
 
         # Open File and output header
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
 
         if vols:
             for ivol in range(self.nVol):
                 self.vols[ivol].computeData()
-                pySpline.writeTecplot3D(f, "interpolated", self.vols[ivol].data)
+                writeTecplot3D(f, "interpolated", self.vols[ivol].data)
         if orig:
             for ivol in range(self.nVol):
-                pySpline.writeTecplot3D(f, "orig_data", self.vols[ivol].X)
+                writeTecplot3D(f, "orig_data", self.vols[ivol].X)
 
         if coef:
             for ivol in range(self.nVol):
-                pySpline.writeTecplot3D(f, "control_pts", self.vols[ivol].coef)
+                writeTecplot3D(f, "control_pts", self.vols[ivol].coef)
 
         # ---------------------------------------------
         #    Write out labels:
@@ -603,7 +583,7 @@ class pyBlock:
                 f2.write("%s" % (textString))
             f2.close()
 
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
 
     def writePlot3d(self, fileName):
         """Write the grid to a plot3d file. This isn't efficient as it
@@ -976,7 +956,7 @@ class pyBlock:
         return Xmin, Xmax
 
 
-class EmbeddedVolume(object):
+class EmbeddedVolume:
     """A Container class for a set of embedded volume points
 
     Parameters

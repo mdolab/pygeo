@@ -1,11 +1,12 @@
 # pyGeo
 [![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.pygeo?branchName=master)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=17&branchName=master)
 [![Documentation Status](https://readthedocs.com/projects/mdolab-pygeo/badge/?version=latest)](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/?badge=latest)
+[![codecov](https://codecov.io/gh/mdolab/pygeo/branch/master/graph/badge.svg?token=N2L58WGCDI)](https://codecov.io/gh/mdolab/pygeo)
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
 It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
 
-![](images/DPW4_FFD-27745.gif)
+![](doc/images/DPW4_FFD-27745.gif)
 
 ## Documentation
 
@@ -21,7 +22,6 @@ Please cite pyGeo in any publication for which you find it useful.
 For more background, theory, and figures, see the [this paper](http://umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf).
 
 G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
-
 ```
 @conference {Kenway:2010:C,
 	title = {A {CAD}-Free Approach to High-Fidelity Aerostructural Optimization},

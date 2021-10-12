@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath("../"))
 sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
-project = u"pyGeo"
+project = "pyGeo"
 
 # -- General configuration -----------------------------------------------------
 # Built-in Sphinx extensions are already contained in the imported variable
@@ -21,4 +21,4 @@ project = u"pyGeo"
 extensions.extend(["numpydoc"])
 
 # mock import for autodoc
-autodoc_mock_imports = ["numpy", "mpi4py", "scipy", "pyspline"]
+autodoc_mock_imports = ["numpy", "mpi4py", "scipy", "pyspline", "baseclasses"]

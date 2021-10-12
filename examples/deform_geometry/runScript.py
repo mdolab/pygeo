@@ -102,7 +102,7 @@ def deform_DVGeo(geo):
             geo.rot_z["wing"].coef[i] = val[i]
 
     # Add the Twist Design Variable to DVGeo
-    DVGeo.addGeoDVGlobal(dvName="twist", value=[0] * nRefAxPts, func=twist, lower=-10, upper=10, scale=1.0)
+    DVGeo.addGlobalDV(dvName="twist", value=[0] * nRefAxPts, func=twist, lower=-10, upper=10, scale=1.0)
 
     # Get Design Variables
     dvDict = DVGeo.getValues()

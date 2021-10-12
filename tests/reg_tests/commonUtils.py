@@ -11,7 +11,7 @@ from pyspline import Curve
 
 def setupDVGeo(base_path, rotType=None):
     # create the Parent FFD
-    FFDFile = os.path.join(base_path, "../inputFiles/outerBoxFFD.xyz")
+    FFDFile = os.path.join(base_path, "../../input_files/outerBoxFFD.xyz")
     DVGeo = DVGeometry(FFDFile)
 
     # create a reference axis for the parent
@@ -24,7 +24,7 @@ def setupDVGeo(base_path, rotType=None):
         DVGeo.addRefAxis("mainAxis", curve=c1, axis="y")
 
     # create the child FFD
-    FFDFile = os.path.join(base_path, "../inputFiles/simpleInnerFFD.xyz")
+    FFDFile = os.path.join(base_path, "../../input_files/simpleInnerFFD.xyz")
     DVGeoChild = DVGeometry(FFDFile, child=True)
 
     # create a reference axis for the child
@@ -37,8 +37,8 @@ def setupDVGeo(base_path, rotType=None):
 
 def setupDVGeoD8(base_path, isComplex):
     # create the Parent FFD
-    FFDFile = os.path.join(base_path, "../inputFiles/bodyFFD.xyz")
-    DVGeo = DVGeometry(FFDFile, complex=isComplex)
+    FFDFile = os.path.join(base_path, "../../input_files/bodyFFD.xyz")
+    DVGeo = DVGeometry(FFDFile, isComplex=isComplex)
 
     # create a reference axis for the parent
     axisPoints = [[0.0, 0.0, 0.0], [26.0, 0.0, 0.0], [30.5, 0.0, 0.9], [32.5, 0.0, 1.01], [34.0, 0.0, 0.95]]
@@ -46,8 +46,8 @@ def setupDVGeoD8(base_path, isComplex):
     DVGeo.addRefAxis("mainAxis", curve=c1, axis="y")
 
     # create the child FFD
-    FFDFile = os.path.join(base_path, "../inputFiles/nozzleFFD.xyz")
-    DVGeoChild = DVGeometry(FFDFile, child=True, complex=isComplex)
+    FFDFile = os.path.join(base_path, "../../input_files/nozzleFFD.xyz")
+    DVGeoChild = DVGeometry(FFDFile, child=True, isComplex=isComplex)
 
     # create a reference axis for the child
     axisPoints = [[32.4, 1.0, 1.0], [34, 1.0, 0.9]]
@@ -58,7 +58,7 @@ def setupDVGeoD8(base_path, isComplex):
 
 
 def setupDVGeoAxi(base_path):
-    FFDFile = os.path.join(base_path, "../inputFiles/axiTestFFD.xyz")
+    FFDFile = os.path.join(base_path, "../../input_files/axiTestFFD.xyz")
     DVGeo = DVGeometryAxi(FFDFile, center=(0.0, 0.0, 0.0), collapse_into=("x", "z"))
     axisPoints = [[0, 0.0, 0.0], [0, 0.0, 1.0]]
     c1 = Curve(X=axisPoints, k=2)
