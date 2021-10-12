@@ -16,6 +16,6 @@ try:
 except ImportError:
     pass
 try:
-    from .DVGeometryMulti import DVGeometryMulti
+    from .parameterization import DVGeometryMulti
 except ImportError:
     pass
