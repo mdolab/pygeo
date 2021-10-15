@@ -2660,8 +2660,9 @@ class DVGeometry:
         callBack : function
             This allows the user to perform an additional task at each new design
             variable iteration. The callback function must take two inputs:
-            1) the output directory name (str) and
-            2) the iteration count (int).
+
+            1. the output directory name (str) and
+            2. the iteration count (int).
         freq : int
             Number of snapshots to take between the upper and lower bounds of
             a given variable. If greater than 2, will do a sinusoidal sweep.
