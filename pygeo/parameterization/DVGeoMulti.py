@@ -222,9 +222,14 @@ class DVGeometryMulti:
             # loop over components and check if this point is in a single BBox
             for comp in compNames:
 
-                # check if inside
+                # apply a small tolerance for the bounding box in case points are coincident with the FFD
+                boundTol = 1e-16
                 xMin = self.comps[comp].xMin
                 xMax = self.comps[comp].xMax
+                xMin -= numpy.abs(xMin * boundTol) + boundTol
+                xMax += numpy.abs(xMax * boundTol) + boundTol
+
+                # check if inside
                 if (
                     xMin[0] < points[i, 0] < xMax[0]
                     and xMin[1] < points[i, 1] < xMax[1]
