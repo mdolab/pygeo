@@ -155,7 +155,7 @@ class DVGeometryMulti:
                 knew = comp + ":" + k
                 self.DV_listSectionLocal[knew] = v
 
-    def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=True, **kwargs):
+    def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=False, **kwargs):
 
         # if the user passes a list of compNames, we only use these comps.
         # we will still use all points to add the pointset, but by default,
