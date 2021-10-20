@@ -80,6 +80,11 @@ class CurvatureConstraint1D(GeometricConstraint):
             if (C[i] * C[i]) > maxC2:
                 maxC2 = C[i] * C[i]
 
+        # Assign the values for the end points for visualization purpose. The curvature at the end points
+        # are not used in the computation!!
+        C[0] = C[1]
+        C[nPts - 1] = C[nPts - 2]
+
         KSC2 = np.log(KSC2) / KSCoeff
         meanC2 = meanC2 / (nPts - 2)
         
@@ -127,11 +132,11 @@ class CurvatureConstraint1D(GeometricConstraint):
             Dictionary to place function values
         """
 
+        # we need to hand derive the derivatives of the curvature with respect to the projected points
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
             dC2dPt = np.zeros((self.coords.shape[0], self.coords.shape[1]))
             if self.type == "mean":
-                # we need to hand derive the derivatives of the curvature with respect to the projected points
                 tmp = 2 / (self.nPts - 2) / self.eps / self.eps
                 for i in range(self.nPts):
                     for j in range(3):
@@ -146,7 +151,22 @@ class CurvatureConstraint1D(GeometricConstraint):
                         else:
                             dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] - 2 * self.C[i] + self.C[i - 1])
             elif self.type == "aggregated":
-                raise Error("type=%s not supported! Options are: mean or aggregated" % self.type)
+                eSum = 0.0
+                for i in range(1, self.nPts - 1):
+                    eSum += np.exp(self.KSCoeff * self.C[i] * self.C[i]) 
+                tmp = 2 / eSum / self.eps / self.eps
+                for i in range(self.nPts):
+                    for j in range(3):
+                        if i == 0:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]))
+                        elif i == 1:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i]) + self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]))
+                        elif i == self.nPts - 1:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                        elif i == self.nPts - 2:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i]) + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                        else:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]) - 2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i]) + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
             else:
                 raise Error("type=%s not supported! Options are: mean or aggregated" % self.type)
 
