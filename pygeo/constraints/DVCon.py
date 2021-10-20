@@ -2777,7 +2777,7 @@ class DVConstraints:
             self.DVGeometries[DVGeoName],
             addToPyOpt,
         )
-    
+
     def addCurvatureConstraint1D(
         self,
         start,
@@ -2916,12 +2916,9 @@ class DVConstraints:
         self._checkDVGeo(DVGeoName)
 
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-        
+
         if nPts < 5:
-            raise Error(
-                "nPts should be at least 5 \n "
-                "while nPts = %d is given." % nPts
-            )
+            raise Error("nPts should be at least 5 \n " "while nPts = %d is given." % nPts)
 
         # Create mesh of itersections
         ptList = [start, end]
@@ -2955,7 +2952,18 @@ class DVConstraints:
             conName = name
 
         self.constraints[typeName][conName] = CurvatureConstraint1D(
-            conName, type, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
+            conName,
+            type,
+            coords,
+            axis,
+            eps,
+            KSCoeff,
+            lower,
+            upper,
+            scaled,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
         )
 
     def addMonotonicConstraints(

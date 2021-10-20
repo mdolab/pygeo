@@ -7,11 +7,12 @@ from scipy.sparse import csr_matrix
 from baseclasses.utils import Error
 from .baseConstraint import GeometricConstraint
 
+
 class CurvatureConstraint1D(GeometricConstraint):
     """
     DVConstraints representation of a set of 1D curvature
     constraints. One of these objects is created each time a
-    addCurvatureConstraints1D call is made. 
+    addCurvatureConstraints1D call is made.
     The user should not have to deal with this class directly.
     NOTE: the output is actually the square of the curvature
     """
@@ -40,15 +41,19 @@ class CurvatureConstraint1D(GeometricConstraint):
         self.DVGeo.addPointSet(self.coords, self.name)
 
         # Calculate the reference curvatures
-        self.C, self.KSC2Ref, self.meanC2Ref, self.maxC2 = self.calcCurvature2(self.coords, self.axis, self.nPts, self.eps, self.KSCoeff)
+        self.C, self.KSC2Ref, self.meanC2Ref, self.maxC2 = self.calcCurvature2(
+            self.coords, self.axis, self.nPts, self.eps, self.KSCoeff
+        )
 
         if MPI.COMM_WORLD.rank == 0:
-            print("Reference squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2))
-    
+            print(
+                "Reference squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
+            )
+
     def calcCurvature2(self, coords, axis, nPts, eps, KSCoeff):
         """
-        Calculate the curvature 
-        C = d^2y/dx^2  
+        Calculate the curvature
+        C = d^2y/dx^2
         Where C is the curvature, x is the distance between the points projected on to the design surface,
         y is the coordinates of the points projected to the axis direction.
         We calculate two types of curvatures,
@@ -70,7 +75,7 @@ class CurvatureConstraint1D(GeometricConstraint):
         C = np.zeros(nPts)
 
         # calculate curvatures
-        # NOTE: we do not calculate the curvatures at the end points!! 
+        # NOTE: we do not calculate the curvatures at the end points!!
         # this treatment allows us to use central FD for all points
         for i in range(1, nPts - 1):
             cFDC = (coordsP[i + 1] - 2 * coordsP[i] + coordsP[i - 1]) / eps / eps
@@ -87,7 +92,7 @@ class CurvatureConstraint1D(GeometricConstraint):
 
         KSC2 = np.log(KSC2) / KSCoeff
         meanC2 = meanC2 / (nPts - 2)
-        
+
         return C, KSC2, meanC2, maxC2
 
     def evalFunctions(self, funcs, config):
@@ -101,19 +106,26 @@ class CurvatureConstraint1D(GeometricConstraint):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        
-        self.C, self.KSC2, self.meanC2, self.maxC2 = self.calcCurvature2(self.coords, self.axis, self.nPts, self.eps, self.KSCoeff)
+
+        self.C, self.KSC2, self.meanC2, self.maxC2 = self.calcCurvature2(
+            self.coords, self.axis, self.nPts, self.eps, self.KSCoeff
+        )
 
         if MPI.COMM_WORLD.rank == 0:
-            print("Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2))
-        
+            print(
+                "Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
+            )
+
         if self.scaled:
             self.KSC2 /= self.KSC2Ref
             self.meanC2 /= self.meanC2Ref
-        
+
             if MPI.COMM_WORLD.rank == 0:
-                print("Normalized squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2))
-        
+                print(
+                    "Normalized squared-curvatures: KS: %f, mean: %f, max: %f"
+                    % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
+                )
+
         if self.type == "mean":
             funcs[self.name] = self.meanC2
         elif self.type == "aggregated":
@@ -153,20 +165,50 @@ class CurvatureConstraint1D(GeometricConstraint):
             elif self.type == "aggregated":
                 eSum = 0.0
                 for i in range(1, self.nPts - 1):
-                    eSum += np.exp(self.KSCoeff * self.C[i] * self.C[i]) 
+                    eSum += np.exp(self.KSCoeff * self.C[i] * self.C[i])
                 tmp = 2 / eSum / self.eps / self.eps
                 for i in range(self.nPts):
                     for j in range(3):
                         if i == 0:
-                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]))
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]))
+                            )
                         elif i == 1:
-                            dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i]) + self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]))
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (
+                                    -2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                                    + self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1])
+                                )
+                            )
                         elif i == self.nPts - 1:
-                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                            )
                         elif i == self.nPts - 2:
-                            dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i]) + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (
+                                    -2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                                    + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1])
+                                )
+                            )
                         else:
-                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]) - 2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i]) + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (
+                                    self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1])
+                                    - 2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                                    + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1])
+                                )
+                            )
             else:
                 raise Error("type=%s not supported! Options are: mean or aggregated" % self.type)
 
@@ -185,6 +227,21 @@ class CurvatureConstraint1D(GeometricConstraint):
 
         for i in range(len(self.coords) - 1):
             handle.write("%d %d\n" % (i + 1, i + 2))
+
+        # NOTE: in addition to write the points, we create a new file to write the actual curvature value
+        f = open("%s.dat" % self.name, "w")
+        f.write('TITLE = "DVConstraints Data"\n')
+        f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ" "Curvature"\n')
+        f.write("Zone T=%s\n" % self.name)
+        f.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) - 1))
+        f.write("DATAPACKING=POINT\n")
+        for i in range(len(self.coords)):
+            f.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f} {self.C[i]:f} \n")
+
+        for i in range(len(self.coords) - 1):
+            f.write("%d %d\n" % (i + 1, i + 2))
+        f.close()
+
 
 class CurvatureConstraint(GeometricConstraint):
     """
