@@ -16,7 +16,7 @@ from .colinearityConstraint import ColinearityConstraint
 from .gearPostConstraint import GearPostConstraint
 from .circularityConstraint import CircularityConstraint
 from .planarityConstraint import PlanarityConstraint
-from .curvatureConstraint import CurvatureConstraint
+from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
 
 
 class DVConstraints:
@@ -2776,6 +2776,186 @@ class DVConstraints:
             KSCoeff,
             self.DVGeometries[DVGeoName],
             addToPyOpt,
+        )
+    
+    def addCurvatureConstraint1D(
+        self,
+        start,
+        end,
+        nPts,
+        axis,
+        type="mean",
+        lower=-1e20,
+        upper=1e20,
+        scaled=True,
+        scale=1.0,
+        KSCoeff=None,
+        name=None,
+        addToPyOpt=False,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
+        """
+        Add a curvature contraint along the prescribed straightline on the design surface.
+        NOTE: the output is the square of the curvature to make sure the values are always positive
+        
+        See below for a schematic. 
+
+        .. code-block:: text
+
+          Planform view of the wing: 
+
+          Physical extent of wing
+                                   \
+          __________________________\_________
+          |                                  |
+          |                                  |
+          |                                  |
+          | +---x--x---x---x---x---x---x---+ |
+          |                                  |
+          |                                  |
+          |                                  |
+          |__________________________________/
+        
+          The '+' are the (three dimensional) points defined by 'start' and 'end'. Once the straightline 
+          is defined, we generate nPts-2 intermediate points along it and project these points to the design 
+          surface mesh in the prescirbed axis direction. Here 'x' are the intermediate points added by setting 
+          nPts = 9. The curvature will be calculated based on the projected intermediate points (x) on the design 
+          surface. NOTE: we do not calculate the curvatures at the two end points (+). So make sure to extend 
+          the start and end points a bit to fully cover the area where you want to compute the curvature 
+
+        Parameters
+        ----------
+        start/end : list of size 3
+            The 3D points forming a straight line along which the
+            curvature constraints will be added.
+
+        nPts : int
+            The number of intermediate points to add. We should prescribe nPts such that the point interval
+            should be larger than the mesh size and smaller than the interval of FFD points in that direction
+
+        axis : list of size 3
+            The direction along which the projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+            NOTE: we also compute the curvature based on this axis dir
+        
+        type : str
+            What type of curvature constraint to compute. Either mean or aggregated
+
+        lower : float
+            Lower bound for curvature integral.
+
+        upper : float
+            Upper bound for optimization constraint. See lower.
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting phyical volume magnitude is vastly different
+            from O(1).
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial curvature is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial curvature. lower=0.85, upper=1.15,
+              would allow for 15% change in curvature both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              curvature. lower and upper refer to the physical curvatures.
+
+        KSCoeff : float
+            The coefficient for KS function. This controls how close the KS function approximates 
+            the original functions.
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constriant names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of False if the
+            cost is part of the objective. If the integral is to be
+            used directly as a constraint, addToPyOpt should be True, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+        
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
+        Examples
+        --------
+        # define a 2 point poly-line along the wing spanwise direction (z) 
+        # and project to the design surface along y
+        >>> start = [0, 0, 0]
+        >>> end = [0, 0, 1]
+        >>> nPts = 10
+        >>> axis = [0, 1, 0]
+        >>> DVCon.addCurvatureConstraint1D(start, end, nPts, axis, lower=1.0, upper=3, scaled=True)
+        """
+
+        self._checkDVGeo(DVGeoName)
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        
+        if nPts < 5:
+            raise Error(
+                "nPts should be at least 5 \n "
+                "while nPts = %d is given." % nPts
+            )
+
+        # Create mesh of itersections
+        ptList = [start, end]
+        constr_line = Curve(X=ptList, k=2)
+        s = np.linspace(0, 1, nPts)
+        X = constr_line(s)
+        coords = np.zeros((nPts, 3))
+
+        # calculate the distance between coords, it should be uniform for all points
+        eps = np.linalg.norm(X[1] - X[0])
+
+        # Project all the points
+        for i in range(nPts):
+            # Project actual node:
+            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
+            if fail > 0:
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                )
+            coords[i] = up
+            # NOTE: we do not use the down projection
+
+        typeName = "curvCon1D"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = "%s_curvature_constraints_1d_%d" % (self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+
+        self.constraints[typeName][conName] = CurvatureConstraint1D(
+            conName, type, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
         )
 
     def addMonotonicConstraints(
