@@ -14,7 +14,7 @@ class RadiusConstraint(GeometricConstraint):
     to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
         self.name = name
         self.coords = coords
         self.nCon = len(self.coords) // 3
@@ -31,7 +31,7 @@ class RadiusConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Now get the reference lengths
         self.r0, self.c0 = self.computeCircle(self.coords)

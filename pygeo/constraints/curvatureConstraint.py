@@ -15,7 +15,7 @@ class CurvatureConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt):
+    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt, compNames):
         self.name = name
         self.nSurfs = len(surfs)  # we support multiple surfaces (plot3D files)
         self.X = []
@@ -64,7 +64,7 @@ class CurvatureConstraint(GeometricConstraint):
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided. We need to add a point set for each surface:
         for iSurf in range(self.nSurfs):
-            self.DVGeo.addPointSet(self.coords[iSurf], self.name + "%d" % (iSurf))
+            self.DVGeo.addPointSet(self.coords[iSurf], self.name + "%d" % (iSurf), compNames=compNames)
 
         # compute the reference curvature for normalization
         self.curvatureRef = 0.0

@@ -303,7 +303,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo, addToPyOpt):
+    def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo, addToPyOpt, compNames):
         self.name = name
         self.nCon = 1
         self.lower = lower
@@ -329,9 +329,9 @@ class SurfaceAreaConstraint(GeometricConstraint):
         # Now embed the coordinates into DVGeo
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
-        self.DVGeo.addPointSet(self.p0, self.name + "p0")
-        self.DVGeo.addPointSet(self.p1, self.name + "p1")
-        self.DVGeo.addPointSet(self.p2, self.name + "p2")
+        self.DVGeo.addPointSet(self.p0, self.name + "p0", compNames=compNames)
+        self.DVGeo.addPointSet(self.p1, self.name + "p1", compNames=compNames)
+        self.DVGeo.addPointSet(self.p2, self.name + "p2", compNames=compNames)
 
         # compute the reference area
         self.X0 = self._computeArea(self.p0, self.p1, self.p2)
@@ -476,7 +476,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt):
+    def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt, compNames):
         self.name = name
         self.nCon = 1
         self.lower = lower
@@ -504,9 +504,9 @@ class ProjectedAreaConstraint(GeometricConstraint):
         # Now embed the coordinates into DVGeo
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
-        self.DVGeo.addPointSet(self.p0, self.name + "p0")
-        self.DVGeo.addPointSet(self.p1, self.name + "p1")
-        self.DVGeo.addPointSet(self.p2, self.name + "p2")
+        self.DVGeo.addPointSet(self.p0, self.name + "p0", compNames=compNames)
+        self.DVGeo.addPointSet(self.p1, self.name + "p1", compNames=compNames)
+        self.DVGeo.addPointSet(self.p2, self.name + "p2", compNames=compNames)
 
         # compute the reference area
         self.X0 = self._computeArea(self.p0, self.p1, self.p2, self.axis)

@@ -12,7 +12,7 @@ class VolumeConstraint(GeometricConstraint):
     the DVConstraints class
     """
 
-    def __init__(self, name, nSpan, nChord, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, nSpan, nChord, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
 
         self.name = name
         self.nCon = 1
@@ -33,7 +33,7 @@ class VolumeConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Now get the reference volume
         self.V0 = self.evalVolume()
