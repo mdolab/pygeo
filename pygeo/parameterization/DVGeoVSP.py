@@ -781,18 +781,6 @@ class DVGeometryVSP:
                 openvsp.SetSetFlag(comp, exportSet, True)
                 self.exportComps.append(compName)
 
-        # First set the export flag for exportSet to False for everyone
-        for comp in allComps:
-            vsp.SetSetFlag(comp, self.exportSet, False)
-
-        self.exportComps = []
-        for comp in self.allComps:
-            # Check if this one is in our list:
-            compName = vsp.GetContainerName(comp)
-            if compName in comps:
-                vsp.SetSetFlag(comp, self.exportSet, True)
-                self.exportComps.append(compName)
-
         # Write the export file.
         openvsp.ExportFile(fileName, exportSet, openvsp.EXPORT_PLOT3D)
 
