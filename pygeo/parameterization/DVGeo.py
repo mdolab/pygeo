@@ -2009,21 +2009,36 @@ class DVGeometry:
         names = self.getVarNames()
         newvec = np.zeros(self.getNDV(), self.dtype)
         i = 0
-        for key in names:
-            if key in self.DV_listGlobal:
-                dv = self.DV_listGlobal[key]
-            elif key in self.DV_listSpanwiseLocal:
-                dv = self.DV_listSpanwiseLocal[key]
-            elif key in self.DV_listSectionLocal:
-                dv = self.DV_listSectionLocal[key]
-            else:
-                dv = self.DV_listLocal[key]
+        missingVars = set()
+        for vecKey in vec:
+            if vecKey not in names:
+                raise Error(f"{vecKey} is not a design variable, the full list is:{names}")
+        DVGeoList = self.getFlattenedChildren()
+        for geoObj in DVGeoList:
+            for key in names:
+                if key in geoObj.DV_listGlobal:
+                    dv = geoObj.DV_listGlobal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listSpanwiseLocal:
+                    dv = geoObj.DV_listSpanwiseLocal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listSectionLocal:
+                    dv = geoObj.DV_listSectionLocal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listLocal:
+                    dv = geoObj.DV_listLocal[key]
+                    missingVars.discard(key)
+                else:
+                    missingVars.add(key)
+                    continue
 
-            if key in vec:
-                newvec[i : i + dv.nVal] = vec[key]
+                if key in vec:
+                    newvec[i : i + dv.nVal] = vec[key]
 
-            i += dv.nVal
+                i += dv.nVal
 
+        if missingVars:
+            raise Error("The following DV did not belong to any DVGeo object:", missingVars)
         # perform the product
         if self.JT[ptSetName] is None:
             xsdot = np.zeros((0, 3))
