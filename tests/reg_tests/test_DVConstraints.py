@@ -814,7 +814,7 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, fdstep=1e-5)
             funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
-        
+
     def test_curvature1D(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_curvature1D.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -828,9 +828,13 @@ class RegTestPyGeo(unittest.TestCase):
             axis = [0, 1, 0]
             nPts = 10
             DVCon.addCurvatureConstraint1D(startP, endP, nPts, axis, "mean")
-            DVCon.addCurvatureConstraint1D(startP, endP, nPts, axis, "mean", scaled=False, name="unscaled_curvature_con")
+            DVCon.addCurvatureConstraint1D(
+                startP, endP, nPts, axis, "mean", scaled=False, name="unscaled_curvature_con"
+            )
             DVCon.addCurvatureConstraint1D(startP, endP, nPts, axis, "aggregated", KSCoeff=10.0)
-            DVCon.addCurvatureConstraint1D(startP, endP, nPts, axis, "aggregated", KSCoeff=10.0, scaled=False, name="unscaled_curvature_con")
+            DVCon.addCurvatureConstraint1D(
+                startP, endP, nPts, axis, "aggregated", KSCoeff=10.0, scaled=False, name="unscaled_curvature_con"
+            )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
             funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
