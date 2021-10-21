@@ -2789,7 +2789,7 @@ class DVConstraints:
         upper=1e20,
         scaled=True,
         scale=1.0,
-        KSCoeff=None,
+        KSCoeff=1.0,
         name=None,
         addToPyOpt=False,
         surfaceName="default",
