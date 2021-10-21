@@ -2797,17 +2797,17 @@ class DVConstraints:
     ):
         """
         Add a curvature contraint along the prescribed straightline on the design surface.
+        This can be used to impose a spanwise curvature constraint for wing aerodynamic optimization.
         NOTE: the output is the square of the curvature to make sure the values are always positive
-        
-        See below for a schematic. 
+
+        See below for a schematic.
 
         .. code-block:: text
 
-          Planform view of the wing: 
+          Planform view of the wing:
 
           Physical extent of wing
-                                   \
-          __________________________\_________
+          ____________________________________
           |                                  |
           |                                  |
           |                                  |
@@ -2816,13 +2816,13 @@ class DVConstraints:
           |                                  |
           |                                  |
           |__________________________________/
-        
-          The '+' are the (three dimensional) points defined by 'start' and 'end'. Once the straightline 
-          is defined, we generate nPts-2 intermediate points along it and project these points to the design 
-          surface mesh in the prescirbed axis direction. Here 'x' are the intermediate points added by setting 
-          nPts = 9. The curvature will be calculated based on the projected intermediate points (x) on the design 
-          surface. NOTE: we do not calculate the curvatures at the two end points (+). So make sure to extend 
-          the start and end points a bit to fully cover the area where you want to compute the curvature 
+
+          The '+' are the (three dimensional) points defined by 'start' and 'end'. Once the straightline
+          is defined, we generate nPts-2 intermediate points along it and project these points to the design
+          surface mesh in the prescirbed axis direction. Here 'x' are the intermediate points added by setting
+          nPts = 9. The curvature will be calculated based on the projected intermediate points (x) on the design
+          surface. NOTE: we do not calculate the curvatures at the two end points (+). So make sure to extend
+          the start and end points a bit to fully cover the area where you want to compute the curvature
 
         Parameters
         ----------
@@ -2838,7 +2838,7 @@ class DVConstraints:
             The direction along which the projections will occur.
             Typically this will be y or z axis ([0,1,0] or [0,0,1])
             NOTE: we also compute the curvature based on this axis dir
-        
+
         type : str
             What type of curvature constraint to compute. Either mean or aggregated
 
@@ -2872,7 +2872,7 @@ class DVConstraints:
               curvature. lower and upper refer to the physical curvatures.
 
         KSCoeff : float
-            The coefficient for KS function. This controls how close the KS function approximates 
+            The coefficient for KS function. This controls how close the KS function approximates
             the original functions.
 
         name : str
@@ -2891,7 +2891,7 @@ class DVConstraints:
             specified to a logical name for this computation. with
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
-        
+
         surfaceName : str
             Name of the surface to project to. This should be the same
             as the surfaceName provided when setSurface() was called.
@@ -2904,7 +2904,7 @@ class DVConstraints:
 
         Examples
         --------
-        # define a 2 point poly-line along the wing spanwise direction (z) 
+        # define a 2 point poly-line along the wing spanwise direction (z)
         # and project to the design surface along y
         >>> start = [0, 0, 0]
         >>> end = [0, 0, 1]
