@@ -2352,7 +2352,7 @@ class DVGeometry:
         spanwiselocalVars=True,
         ignoreVars=None,
         freezeVars=None,
-        prefix='',
+        prefix="",
     ):
         """
         Add the current set of variables to the optProb object.
