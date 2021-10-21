@@ -2784,7 +2784,7 @@ class DVConstraints:
         end,
         nPts,
         axis,
-        type="mean",
+        curvatureType="mean",
         lower=-1e20,
         upper=1e20,
         scaled=True,
@@ -2839,7 +2839,7 @@ class DVConstraints:
             Typically this will be y or z axis ([0,1,0] or [0,0,1])
             NOTE: we also compute the curvature based on this axis dir
 
-        type : str
+        curvatureType : str
             What type of curvature constraint to compute. Either mean or aggregated
 
         lower : float
@@ -2910,7 +2910,7 @@ class DVConstraints:
         >>> end = [0, 0, 1]
         >>> nPts = 10
         >>> axis = [0, 1, 0]
-        >>> DVCon.addCurvatureConstraint1D(start, end, nPts, axis, lower=1.0, upper=3, scaled=True)
+        >>> DVCon.addCurvatureConstraint1D(start, end, nPts, axis, "mean", lower=1.0, upper=3, scaled=True)
         """
 
         self._checkDVGeo(DVGeoName)
@@ -2953,7 +2953,7 @@ class DVConstraints:
 
         self.constraints[typeName][conName] = CurvatureConstraint1D(
             conName,
-            type,
+            curvatureType,
             coords,
             axis,
             eps,

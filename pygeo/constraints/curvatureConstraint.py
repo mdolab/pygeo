@@ -17,9 +17,9 @@ class CurvatureConstraint1D(GeometricConstraint):
     NOTE: the output is actually the square of the curvature
     """
 
-    def __init__(self, name, type, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, curvatureType, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, DVGeo, addToPyOpt):
         self.name = name
-        self.type = type
+        self.curvatureType = curvatureType
         self.coords = coords
         self.axis = axis
         self.eps = eps
@@ -126,12 +126,12 @@ class CurvatureConstraint1D(GeometricConstraint):
                     % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
                 )
 
-        if self.type == "mean":
+        if self.curvatureType == "mean":
             funcs[self.name] = self.meanC2
-        elif self.type == "aggregated":
+        elif self.curvatureType == "aggregated":
             funcs[self.name] = self.KSC2
         else:
-            raise Error("type=%s not supported! Options are: mean or aggregated" % self.type)
+            raise Error("curvatureType=%s not supported! Options are: mean or aggregated" % self.curvatureType)
 
     def evalFunctionsSens(self, funcsSens, config):
         """
@@ -148,7 +148,7 @@ class CurvatureConstraint1D(GeometricConstraint):
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
             dC2dPt = np.zeros((self.coords.shape[0], self.coords.shape[1]))
-            if self.type == "mean":
+            if self.curvatureType == "mean":
                 tmp = 2 / (self.nPts - 2) / self.eps / self.eps
                 for i in range(self.nPts):
                     for j in range(3):
@@ -162,7 +162,7 @@ class CurvatureConstraint1D(GeometricConstraint):
                             dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] + self.C[i - 1])
                         else:
                             dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] - 2 * self.C[i] + self.C[i - 1])
-            elif self.type == "aggregated":
+            elif self.curvatureType == "aggregated":
                 eSum = 0.0
                 for i in range(1, self.nPts - 1):
                     eSum += np.exp(self.KSCoeff * self.C[i] * self.C[i])
@@ -210,7 +210,7 @@ class CurvatureConstraint1D(GeometricConstraint):
                                 )
                             )
             else:
-                raise Error("type=%s not supported! Options are: mean or aggregated" % self.type)
+                raise Error("curvatureType=%s not supported! Options are: mean or aggregated" % self.curvatureType)
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(dC2dPt, self.name, config=config)
 
