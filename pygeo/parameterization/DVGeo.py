@@ -2630,56 +2630,59 @@ class DVGeometry:
 
         return flatChildren
 
-    def demoDesignVars(self, directory, includeLocal=True, includeGlobal=True, pointSet=None, callBack=None, freq=2):
+    def demoDesignVars(
+        self, directory, includeLocal=True, includeGlobal=True, pointSet=None, CFDSolver=None, callBack=None, freq=2
+    ):
         """
         This function can be used to "test" the design variable parametrization
         for a given optimization problem. It should be called in the script
         after DVGeo has been set up. The function will loop through all the
         design variables and write out a deformed FFD volume for the upper
-        and lower bound of every design variable. It will also write out the
-        deformed pointset of choice.
+        and lower bound of every design variable. It can also write out
+        deformed point sets and surface meshes.
 
         Parameters
         ----------
         directory : str
-            The directory where the FFD files should be written.
+            The directory where the files should be written.
         includeLocal : boolean
             False if you don't want to include the shape variables.
+        includeGlobal : boolean
+            False if you don't want to include global variables.
         pointSet : str
-            Name of the pointset to write out. If this is not specified, it will
-            take the first one in the list.
+            Name of the point set to write out.
+            If None, no point set output is generated.
+        CFDSolver : str
+            An ADflow instance that will be used to write out deformed surface
+            meshes. In addition to having a DVGeo object, CFDSolver must have
+            an AeroProblem set, for example with ``CFDSolver.setAeroProblem(ap)``.
+            If CFDSolver is None, no surface mesh output is generated.
         callBack : function
             This allows the user to perform an additional task at each new design
-            variable iteration (e.g. write out a deformed mesh). The callback
-            function must take two inputs: 1) the output directory name (str) and
-            2) the iteration count (int).
+            variable iteration. The callback function must take two inputs:
+
+            1. the output directory name (str) and
+            2. the iteration count (int).
         freq : int
             Number of snapshots to take between the upper and lower bounds of
             a given variable. If greater than 2, will do a sinusoidal sweep.
         """
         # Generate directories
-        os.system(f"mkdir -p {directory:s}/ffd")
-        os.system(f"mkdir -p {directory:s}/pointset")
+        os.makedirs(f"{directory}/ffd", exist_ok=True)
+        if pointSet is not None:
+            os.makedirs(f"{directory}/pointset", exist_ok=True)
+        if CFDSolver is not None:
+            os.makedirs(f"{directory}/surf", exist_ok=True)
 
         # Get design variables
         dvDict = self.getValues()
 
-        # Get pointSet
-        if pointSet is None:
-            writePointSet = False
-            if self.ptSetNames:
-                pointSet = self.ptSetNames[0]
-            else:
-                raise Error("DVGeo must have a point set to update for " "demoDesignVars to work.")
-        else:
-            writePointSet = True
-
         # Loop through design variables on self and children
         geoList = self.getFlattenedChildren()
-        count = 0
         for geo in geoList:
             for key in dvDict:
                 lower = []
+                upper = []
                 if key in geo.DV_listLocal:
                     if not includeLocal:
                         continue
@@ -2705,11 +2708,12 @@ class DVGeometry:
                     upper = geo.DV_listGlobal[key].upper
 
                 if lower is None or upper is None:
-                    raise Error("demoDesignVars requires upper and lower bounds" "on all design variables.")
+                    raise Error("demoDesignVars requires upper and lower bounds on all design variables.")
 
                 x = dvDict[key].flatten()
                 nDV = len(lower)
                 for j in range(nDV):
+                    count = 0
                     if freq == 2:
                         stops = [lower[j], upper[j]]
                     elif freq > 2:
@@ -2724,14 +2728,23 @@ class DVGeometry:
                         x[j] = val
                         dvDict.update({key: x})
                         self.setDesignVars(dvDict)
-                        self.update(pointSet)
+
+                        # Set output filename
+                        outFile = f"{key}_{j:03d}_iter_{count:03d}"
 
                         # Write FFD
-                        self.writeTecplot(f"{directory}/ffd/dv_{key}_{j:03d}_iter_{count:03d}.dat")
+                        self.writeTecplot(f"{directory}/ffd/{outFile}.dat")
 
-                        # Write pointset
-                        if writePointSet:
-                            self.writePointSet(pointSet, f"{directory}/pointset/iter_{count:03d}")
+                        # Write point set
+                        if pointSet is not None:
+                            self.update(pointSet)
+                            self.writePointSet(pointSet, f"{directory}/pointset/{outFile}")
+
+                        # Write surface mesh
+                        if CFDSolver is not None:
+                            CFDSolver.DVGeo.setDesignVars(dvDict)
+                            CFDSolver.setAeroProblem(CFDSolver.curAP)
+                            CFDSolver.writeSurfaceSolutionFileTecplot(f"{directory}/surf/{outFile}")
 
                         # Call user function
                         if callBack is not None:
