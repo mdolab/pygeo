@@ -2791,7 +2791,7 @@ class DVConstraints:
         scale=1.0,
         KSCoeff=1.0,
         name=None,
-        addToPyOpt=False,
+        addToPyOpt=True,
         surfaceName="default",
         DVGeoName="default",
     ):
