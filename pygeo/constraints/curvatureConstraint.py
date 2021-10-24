@@ -113,7 +113,7 @@ class CurvatureConstraint1D(GeometricConstraint):
 
         if MPI.COMM_WORLD.rank == 0:
             print(
-                "Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
+                "Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2, self.meanC2, self.maxC2)
             )
 
         if self.scaled:
@@ -123,7 +123,7 @@ class CurvatureConstraint1D(GeometricConstraint):
             if MPI.COMM_WORLD.rank == 0:
                 print(
                     "Normalized squared-curvatures: KS: %f, mean: %f, max: %f"
-                    % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
+                    % (self.KSC2, self.meanC2, self.maxC2)
                 )
 
         if self.curvatureType == "mean":
