@@ -81,7 +81,7 @@ class DVGeometry:
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
-        self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+        self.DV_listSpanwiseLocal = OrderedDict()  # Local Spanwise Design Variable List
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite

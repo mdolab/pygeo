@@ -131,6 +131,7 @@ class DVGeometryMulti:
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
+        self.DV_listSpanwiseLocal = OrderedDict()  # Local Spanwise Design Variable List
 
         # we loop over all components and add the dv objects
         for comp in self.compNames:
@@ -154,6 +155,11 @@ class DVGeometryMulti:
                 # change the key and add it to our dictionary...
                 knew = comp + ":" + k
                 self.DV_listSectionLocal[knew] = v
+
+            for k, v in DVGeoComp.DV_listSpanwiseLocal.items():
+                # change the key and add it to our dictionary...
+                knew = comp + ":" + k
+                self.DV_listSpanwiseLocal[knew] = v
 
     def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=False, **kwargs):
 
