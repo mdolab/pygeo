@@ -1,5 +1,4 @@
 import os
-import re
 import unittest
 import numpy as np
 from baseclasses import BaseRegTest
@@ -86,7 +85,7 @@ def removeComponentPrefix(funcsSens):
         for variable in constraintDict:
             # The full name of the DV is "comp:var" so get the part of the string after the colon
             try:
-                shortVariable = re.split("[-:]", variable)[1]
+                shortVariable = variable.split(":")[1]
             except IndexError:
                 # This DV has no component prefix
                 continue
