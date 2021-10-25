@@ -281,7 +281,7 @@ class DVGeometryMulti:
                         else:
                             raise Error(
                                 "The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is inside multiple FFDs but a triangulated mesh for component %s is not provided to determine which component owns this point."
-                                % (points[i, 0], points[i, 1], points[i, 1], ptName, comp)
+                                % (points[i, 0], points[i, 1], points[i, 2], ptName, comp)
                             )
 
             # this point was inside at least one FFD. If it was inside multiple,
