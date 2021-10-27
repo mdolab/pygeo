@@ -2843,10 +2843,10 @@ class DVConstraints:
             What type of curvature constraint to compute. Either mean or aggregated
 
         lower : float
-            Lower bound for curvature integral.
+            Lower bound of curvature integral used for optimization constraint
 
         upper : float
-            Upper bound for optimization constraint. See lower.
+            Upper bound of curvature integral used for optimization constraint
 
         scale : float
             This is the optimization scaling of the
