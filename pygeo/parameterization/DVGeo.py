@@ -2004,25 +2004,48 @@ class DVGeometry:
         internally and should not be changed by the user.
         """
 
-        self.computeTotalJacobian(ptSetName, config=config)
+        self.computeTotalJacobian(ptSetName, config=config)  # This computes and updates self.JT
 
         names = self.getVarNames()
         newvec = np.zeros(self.getNDV(), self.dtype)
+
         i = 0
-        for key in names:
-            if key in self.DV_listGlobal:
-                dv = self.DV_listGlobal[key]
-            elif key in self.DV_listSpanwiseLocal:
-                dv = self.DV_listSpanwiseLocal[key]
-            elif key in self.DV_listSectionLocal:
-                dv = self.DV_listSectionLocal[key]
-            else:
-                dv = self.DV_listLocal[key]
+        missingVars = set()  # set of variables
+        for vecKey in vec:
+            # check if the seed DV is actually a design variable for the DVGeo object
+            if vecKey not in names:
+                raise Error(f"{vecKey} is not a design variable, the full list is:{names}")
 
-            if key in vec:
-                newvec[i : i + dv.nVal] = vec[key]
+        DVGeoList = self.getFlattenedChildren()
 
-            i += dv.nVal
+        # iterate over parent and children/grandchildren FFDs
+        for geoObj in DVGeoList:
+            for key in names:
+                if key in geoObj.DV_listGlobal:
+                    dv = geoObj.DV_listGlobal[key]
+                    missingVars.discard(key)  # remove DV from missing list, if present
+                elif key in geoObj.DV_listSpanwiseLocal:
+                    dv = geoObj.DV_listSpanwiseLocal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listSectionLocal:
+                    dv = geoObj.DV_listSectionLocal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listLocal:
+                    dv = geoObj.DV_listLocal[key]
+                    missingVars.discard(key)
+                else:
+                    # keep track of DVs which are in the full name list but not in this DVGeo object
+                    missingVars.add(key)
+                    continue
+
+                if key in vec:
+                    newvec[i : i + dv.nVal] = vec[key]  # Update the DV vector with the seed
+
+                i += dv.nVal  # update the starting position in the vector update for the next key
+
+        if missingVars:
+            # if a DV name is listed by getVarNames() but was not found in the previous loop then something is wrong...
+            raise Error("The following DV did not belong to any DVGeo object:", missingVars)
 
         # perform the product
         if self.JT[ptSetName] is None:
