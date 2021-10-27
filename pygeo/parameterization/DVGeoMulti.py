@@ -123,44 +123,6 @@ class DVGeometryMulti:
         # return DVGeo objects so that users can add design variables
         return self.DVGeoDict
 
-    def finalizeDVs(self):
-        """
-        This function should be called after adding all DVGeoDVs
-        """
-
-        self.DV_listGlobal = OrderedDict()  # Global Design Variable List
-        self.DV_listLocal = OrderedDict()  # Local Design Variable List
-        self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
-        self.DV_listSpanwiseLocal = OrderedDict()  # Local Spanwise Design Variable List
-
-        # we loop over all components and add the dv objects
-        for comp in self.compNames:
-
-            # get this DVGeo
-            DVGeoComp = self.comps[comp].DVGeo
-
-            # loop over the DVGeo's DV lists
-
-            for k, v in DVGeoComp.DV_listGlobal.items():
-                # change the key and add it to our dictionary...
-                knew = comp + ":" + k
-                self.DV_listGlobal[knew] = v
-
-            for k, v in DVGeoComp.DV_listLocal.items():
-                # change the key and add it to our dictionary...
-                knew = comp + ":" + k
-                self.DV_listLocal[knew] = v
-
-            for k, v in DVGeoComp.DV_listSectionLocal.items():
-                # change the key and add it to our dictionary...
-                knew = comp + ":" + k
-                self.DV_listSectionLocal[knew] = v
-
-            for k, v in DVGeoComp.DV_listSpanwiseLocal.items():
-                # change the key and add it to our dictionary...
-                knew = comp + ":" + k
-                self.DV_listSpanwiseLocal[knew] = v
-
     def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=False, **kwargs):
 
         # if the user passes a list of compNames, we only use these comps.
@@ -338,28 +300,12 @@ class DVGeometryMulti:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dictionary are simply ignored.
         """
-
-        # first get the list of DVs from each comp so we can ignore extra entries
-        for comp in self.compNames:
-            self.comps[comp].dvDict = self.comps[comp].DVGeo.getValues()
-
-        # loop over all dvs we get as the input
-        for k, v in dvDict.items():
-            # we only set dvgeomulti DVs. Then k should always have a : in it
-            if ":" in k:
-                # get the component name
-                comp, dvName = k.split(":", 1)
-
-                # now check if this comp has this dv
-                if dvName in self.comps[comp].dvDict:
-                    # set the value
-                    self.comps[comp].dvDict[dvName] = v
 
         # loop over the components and set the values
         for comp in self.compNames:
-            self.comps[comp].DVGeo.setDesignVars(self.comps[comp].dvDict)
+            self.comps[comp].DVGeo.setDesignVars(dvDict)
 
         # We need to give the updated coordinates to each of the
         # intersectComps (if we have any) so they can update the new
@@ -392,9 +338,7 @@ class DVGeometryMulti:
             dvDictComp = self.comps[comp].DVGeo.getValues()
             # we need to loop over these DVs.
             for k, v in dvDictComp.items():
-                # We will add the name of the comp and a : to the full DV name
-                dvName = "%s:%s" % (comp, k)
-                dvDict[dvName] = v
+                dvDict[k] = v
 
         return dvDict
 
@@ -487,12 +431,8 @@ class DVGeometryMulti:
             # first get the list of DVs from this component
             varNames = self.comps[comp].DVGeo.getVarNames()
 
-            for var in varNames:
-                # then add the component's name to the DV name
-                dvName = "%s:%s" % (comp, var)
-
-                # finally append to the list
-                dvNames.append(dvName)
+            # add the component DVs to the full list
+            dvNames.extend(varNames)
 
         return dvNames
 
@@ -646,10 +586,8 @@ class DVGeometryMulti:
                 # this part of the sensitivity matrix is owned by this dvgeo
                 dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
 
-                # add the component names in front of the dictionary keys
                 for k, v in dIdxComp.items():
-                    dvName = "%s:%s" % (comp, k)
-                    dIdxDict[dvName] = v
+                    dIdxDict[k] = v
 
                 # also increment the offset
                 dvOffset += nDVComp
@@ -708,7 +646,7 @@ class DVGeometryMulti:
             comps = self.compNames
 
         # we can simply loop over all DV objects and call their respective
-        # addVariablesPyOpt function with the correct prefix.
+        # addVariablesPyOpt function.
         for comp in comps:
             self.comps[comp].DVGeo.addVariablesPyOpt(
                 optProb,
@@ -717,7 +655,6 @@ class DVGeometryMulti:
                 sectionlocalVars=sectionlocalVars,
                 ignoreVars=ignoreVars,
                 freezeVars=freezeVars,
-                prefix=comp + ":",
             )
 
     def getLocalIndex(self, iVol, comp):
@@ -2006,8 +1943,7 @@ class CompIntersection:
             )
 
             for k, v in compSensA.items():
-                kNew = "%s:%s" % (self.compA.name, k)
-                compSens_local[kNew] = v
+                compSens_local[k] = v
 
         # set the compSens entries to all zeros on these procs
         else:
@@ -2016,10 +1952,9 @@ class CompIntersection:
 
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
             for k, v in xA.items():
-                kNew = "%s:%s" % (self.compA.name, k)
                 # create the zero array:
                 zeroSens = numpy.zeros((N, v.shape[0]))
-                compSens_local[kNew] = zeroSens
+                compSens_local[k] = zeroSens
 
         # do the same for B
         if flagB:
@@ -2030,8 +1965,7 @@ class CompIntersection:
             )
 
             for k, v in compSensB.items():
-                kNew = "%s:%s" % (self.compB.name, k)
-                compSens_local[kNew] = v
+                compSens_local[k] = v
         # set the compSens entries to all zeros on these procs
         else:
             # get the values from each DVGeo
@@ -2039,10 +1973,9 @@ class CompIntersection:
 
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
             for k, v in xB.items():
-                kNew = "%s:%s" % (self.compB.name, k)
                 # create the zero array:
                 zeroSens = numpy.zeros((N, v.shape[0]))
-                compSens_local[kNew] = zeroSens
+                compSens_local[k] = zeroSens
 
         # finally sum the results across procs if we are provided with a comm
         if comm:
@@ -3258,13 +3191,11 @@ class CompIntersection:
         compSens_local = {}
         compSensA = self.compA.DVGeo.totalSensitivity(coorAb, "triMesh")
         for k, v in compSensA.items():
-            kNew = "%s:%s" % (self.compA.name, k)
-            compSens_local[kNew] = v
+            compSens_local[k] = v
 
         compSensB = self.compB.DVGeo.totalSensitivity(coorBb, "triMesh")
         for k, v in compSensB.items():
-            kNew = "%s:%s" % (self.compB.name, k)
-            compSens_local[kNew] = v
+            compSens_local[k] = v
 
         # finally sum the results across procs if we are provided with a comm
         if comm:

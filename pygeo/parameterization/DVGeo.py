@@ -1298,7 +1298,7 @@ class DVGeometry:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dictionary are simply ignored.
         """
 
         # Coefficients must be complexifed from here on if complex
@@ -2352,7 +2352,6 @@ class DVGeometry:
         spanwiselocalVars=True,
         ignoreVars=None,
         freezeVars=None,
-        prefix="",
     ):
         """
         Add the current set of variables to the optProb object.
@@ -2384,9 +2383,6 @@ class DVGeometry:
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
 
-        prefix : A prefix for the name of the DV. We use this with DVGeometryMulti
-            where each dv name will get a componentName: before the actual DV.
-
         """
         if ignoreVars is None:
             ignoreVars = set()
@@ -2416,14 +2412,13 @@ class DVGeometry:
                 for key in varLists[lst]:
                     if key not in ignoreVars:
                         dv = varLists[lst][key]
-                        dvName = prefix + dv.name
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dvName, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
                             )
                         else:
                             optProb.addVarGroup(
-                                dvName, dv.nVal, "c", value=dv.value, lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.value, upper=dv.value, scale=dv.scale
                             )
 
         # Add variables from the children

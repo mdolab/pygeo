@@ -71,33 +71,6 @@ def evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-2):
     return funcsSens
 
 
-def removeComponentPrefix(funcsSens):
-    """
-    Removes the component prefix from the variable names when using DVGeometryMulti.
-    This allows us to use the same ref files for all tests.
-    """
-
-    for constraintDict in funcsSens.values():
-        origVars = []
-        shortVars = []
-
-        # Store the variable names first to avoid modifying the OrderedDict in the loop
-        for variable in constraintDict:
-            # The full name of the DV is "comp:var" so get the part of the string after the colon
-            try:
-                shortVariable = variable.split(":")[1]
-            except IndexError:
-                # This DV has no component prefix
-                continue
-
-            origVars.append(variable)
-            shortVars.append(shortVariable)
-
-        # Now change the variable names
-        for i in range(len(origVars)):
-            constraintDict[shortVars[i]] = constraintDict.pop(origVars[i])
-
-
 def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
     linear_constraint_keywords = ["lete", "monotonic", "linear_constraint"]
     funcs = {}
@@ -105,7 +78,6 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
     handler.root_add_dict("funcs_base", funcs, rtol=1e-6, atol=1e-6)
     funcsSens = {}
     DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
-    removeComponentPrefix(funcsSens)
     # regress the derivatives
     if checkDerivs:
         handler.root_add_dict("derivs_base", funcsSens, rtol=1e-6, atol=1e-6)
@@ -270,7 +242,6 @@ class RegTestPyGeo(unittest.TestCase):
         handler.root_add_dict("funcs_twisted", funcs, rtol=1e-6, atol=1e-6)
         # check the derivatives are still right
         DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
-        removeComponentPrefix(funcsSens)
         # regress the derivatives
         handler.root_add_dict("derivs_twisted", funcsSens, rtol=1e-6, atol=1e-6)
         return funcs, funcsSens
@@ -284,7 +255,6 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.setDesignVars(xDV)
         DVCon.evalFunctions(funcs, includeLinear=True)
         DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
-        removeComponentPrefix(funcsSens)
         handler.root_add_dict("funcs_deformed", funcs, rtol=1e-6, atol=1e-6)
         handler.root_add_dict("derivs_deformed", funcsSens, rtol=1e-6, atol=1e-6)
         return funcs, funcsSens
