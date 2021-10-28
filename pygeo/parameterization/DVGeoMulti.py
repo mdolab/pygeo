@@ -15,7 +15,7 @@ class DVGeometryMulti:
 
     """
 
-    def __init__(self, comm=MPI.COMM_WORLD, dh=1e-6):
+    def __init__(self, comm=MPI.COMM_WORLD, dh=1e-6, checkDVs=True):
 
         self.compNames = []
         self.comps = OrderedDict()
@@ -25,6 +25,7 @@ class DVGeometryMulti:
         self.updated = {}
         self.dh = dh
         self.intersectComps = []
+        self.checkDVs = checkDVs
 
         # flag to keep track of IC jacobians
         self.ICJupdated = False
@@ -302,6 +303,16 @@ class DVGeometryMulti:
             must correspond to the design variable names. Any
             additional keys in the dictionary are simply ignored.
         """
+
+        # Check if we have duplicate DV names
+        if self.checkDVs:
+            dvNames = self.getVarNames()
+            duplicates = len(dvNames) != len(set(dvNames))
+            if duplicates:
+                raise Error(
+                    "There are duplicate DV names in a component or across components. "
+                    "If this is intended, initialize the DVGeometryMulti class with checkDVs=False."
+                )
 
         # loop over the components and set the values
         for comp in self.compNames:
