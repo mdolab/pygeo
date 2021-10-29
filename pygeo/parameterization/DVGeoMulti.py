@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 from collections import OrderedDict
-import numpy
+import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
 from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
@@ -147,11 +147,11 @@ class DVGeometryMulti:
                 # now we build the ADT
                 # from ney's code:
                 # Set bounding box for new tree
-                BBox = numpy.zeros((2, 3))
+                BBox = np.zeros((2, 3))
                 useBBox = False
 
                 # dummy connectivity data for quad elements since we have all tris
-                quadConn = numpy.zeros((0, 4))
+                quadConn = np.zeros((0, 4))
 
                 # Compute set of nodal normals by taking the average normal of all
                 # elements surrounding the node. This allows the meshing algorithms,
@@ -195,8 +195,8 @@ class DVGeometryMulti:
                 boundTol = 1e-16
                 xMin = self.comps[comp].xMin
                 xMax = self.comps[comp].xMax
-                xMin -= numpy.abs(xMin * boundTol) + boundTol
-                xMax += numpy.abs(xMax * boundTol) + boundTol
+                xMin -= np.abs(xMin * boundTol) + boundTol
+                xMax += np.abs(xMax * boundTol) + boundTol
 
                 # check if inside
                 if (
@@ -233,15 +233,15 @@ class DVGeometryMulti:
                         if self.comps[comp].triMesh:
                             # Initialize reference values (see explanation above)
                             numPts = 1
-                            dist2 = numpy.ones(numPts) * 1e10
-                            xyzProj = numpy.zeros((numPts, 3))
-                            normProjNotNorm = numpy.zeros((numPts, 3))
+                            dist2 = np.ones(numPts) * 1e10
+                            xyzProj = np.zeros((numPts, 3))
+                            normProjNotNorm = np.zeros((numPts, 3))
 
                             # Call projection function
                             _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(
                                 points[i].T, comp, dist2, xyzProj.T, self.comps[comp].nodal_normals.T, normProjNotNorm.T
                             )
-                            # print('Distance of point',points[i],'to comp',comp,'is',numpy.sqrt(dist2))
+                            # print('Distance of point',points[i],'to comp',comp,'is',np.sqrt(dist2))
                             # if this is closer than the previous min, take this comp
                             if dist2 < dMin2:
                                 dMin2 = dist2[0]
@@ -366,7 +366,7 @@ class DVGeometryMulti:
         """
 
         # get the new points
-        newPts = numpy.zeros((self.points[ptSetName].nPts, 3))
+        newPts = np.zeros((self.points[ptSetName].nPts, 3))
 
         # we first need to update all points with their respective DVGeo objects
         for comp in self.compNames:
@@ -506,7 +506,7 @@ class DVGeometryMulti:
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
-            dIdpt = numpy.array([dIdpt])
+            dIdpt = np.array([dIdpt])
         N = dIdpt.shape[0]
 
         # create a dictionary to save total sensitivity info that might come out of the ICs
@@ -518,7 +518,7 @@ class DVGeometryMulti:
         for IC in self.intersectComps:
             if IC.projectFlag and ptSetName in IC.points:
                 # initialize the seed contribution to the intersection seam and feature curves from project_b
-                IC.seamBarProj[ptSetName] = numpy.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
+                IC.seamBarProj[ptSetName] = np.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
 
                 # we pass in dIdpt and the intersection object, along with pointset information
                 # the intersection object adjusts the entries corresponding to projected points
@@ -694,14 +694,14 @@ class DVGeometryMulti:
             nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
             print("Finished reading the cgns file")
 
-            triConn = numpy.zeros((0, 3), dtype=numpy.int8)
+            triConn = np.zeros((0, 3), dtype=np.int8)
             barsConn = {}
             # print('Part names in triangulated cgns file for %s'%filename)
             for part in sectionDict:
                 # print(part)
                 if "triaConnF" in sectionDict[part].keys():
                     # this is a surface, read the tri connectivities
-                    triConn = numpy.vstack((triConn, sectionDict[part]["triaConnF"]))
+                    triConn = np.vstack((triConn, sectionDict[part]["triaConnF"]))
 
                 if "barsConn" in sectionDict[part].keys():
                     # this is a curve, save the curve connectivity
@@ -734,7 +734,7 @@ class DVGeometryMulti:
         nDV = self.getNDV()
 
         # allocate space for the jacobian.
-        jac = numpy.zeros((self.points[ptSetName].nPts * 3, nDV))
+        jac = np.zeros((self.points[ptSetName].nPts * 3, nDV))
 
         # ptset
         ptSet = self.points[ptSetName]
@@ -780,7 +780,7 @@ class DVGeometryMulti:
         # save the reference seams
         for IC in self.intersectComps:
             IC.seamRef = IC.seam.flatten()
-            IC.jac = numpy.zeros((len(IC.seamRef), nDV))
+            IC.jac = np.zeros((len(IC.seamRef), nDV))
 
         # We need to evaluate all the points on respective procs for FD computations
 
@@ -857,7 +857,7 @@ class DVGeometryMulti:
                     buf = IC.jac[:, iDV].copy()
                 else:
                     # receive buffer for procs that will get the result
-                    buf = numpy.zeros(len(IC.seamRef))
+                    buf = np.zeros(len(IC.seamRef))
 
                 # bcast the intersection jacobian directly from the proc that perturbed this DV
                 self.comm.Bcast([buf, len(IC.seamRef), MPI.DOUBLE], root=iDV % nproc)
@@ -1155,13 +1155,13 @@ class CompIntersection:
             else:
                 # get the direction we want to march
                 mdir = abs(marchDirs[ii]) - 1
-                msign = numpy.sign(marchDirs[ii])
+                msign = np.sign(marchDirs[ii])
 
                 # check if we need to flip
                 if msign * curveNodes[newConn[0][0]][mdir] > msign * curveNodes[newConn[0][1]][mdir]:
                     # flip on both axes bec. pleiades complains when we flip both at the same time
-                    newConn = numpy.flip(newConn, axis=0)
-                    newConn = numpy.flip(newConn, axis=1)
+                    newConn = np.flip(newConn, axis=0)
+                    newConn = np.flip(newConn, axis=1)
 
                 # save the new connectivity
                 curveComp.barsConn[curveName] = newConn
@@ -1207,10 +1207,10 @@ class CompIntersection:
         nPoints = len(pts)
 
         # Initialize references if user provided none
-        dist2 = numpy.ones(nPoints) * 1e10
-        xyzProj = numpy.zeros((nPoints, 3))
-        tanProj = numpy.zeros((nPoints, 3))
-        elemIDs = numpy.zeros((nPoints), dtype="int32")
+        dist2 = np.ones(nPoints) * 1e10
+        xyzProj = np.zeros((nPoints, 3))
+        tanProj = np.zeros((nPoints, 3))
+        elemIDs = np.zeros((nPoints), dtype="int32")
 
         # only call the fortran code if we have at least one point
         if nPoints > 0:
@@ -1229,7 +1229,7 @@ class CompIntersection:
             elemIDs[:] = elemIDs - 1
 
         # dist2 has the array of squared distances
-        d = numpy.sqrt(dist2)
+        d = np.sqrt(dist2)
 
         indices = []
         factors = []
@@ -1304,7 +1304,7 @@ class CompIntersection:
 
                 # convert the list to an array
                 # we specify the dtype because numpy cannot know the type when 'indices' is empty
-                indices = numpy.array(indices, dtype="intc")
+                indices = np.array(indices, dtype="intc")
 
                 # get the coordinates of all points affected by this intersection
                 ptsToCurves = pts[indices]
@@ -1315,10 +1315,10 @@ class CompIntersection:
                 nPoints = len(ptsToCurves)
 
                 # Initialize references if user provided none
-                dist2 = numpy.ones(nPoints) * 1e10
-                xyzProj = numpy.zeros((nPoints, 3))
-                tanProj = numpy.zeros((nPoints, 3))
-                elemIDs = numpy.zeros((nPoints), dtype="int32")
+                dist2 = np.ones(nPoints) * 1e10
+                xyzProj = np.zeros((nPoints, 3))
+                tanProj = np.zeros((nPoints, 3))
+                elemIDs = np.zeros((nPoints), dtype="int32")
 
                 # only call the fortran code if we have at least one point
                 if nPoints > 0:
@@ -1336,7 +1336,7 @@ class CompIntersection:
                     elemIDs[:] = elemIDs - 1
 
                 # dist2 has the array of squared distances
-                d = numpy.sqrt(dist2)
+                d = np.sqrt(dist2)
 
                 # get the names of all curves including the intersection
                 allCurves = ["intersection"]
@@ -1345,7 +1345,7 @@ class CompIntersection:
 
                 # track the points that dont get associated with any curve
                 # get a full masking array with zeros
-                allNodesBool = numpy.zeros(len(elemIDs))
+                allNodesBool = np.zeros(len(elemIDs))
 
                 # dict to save the pt indices
                 self.curveProjIdx[ptSetName] = {}
@@ -1366,15 +1366,15 @@ class CompIntersection:
 
                     # this returns a bool array of indices that satisfy the conditions
                     # we check for elemIDs because we projected to all curves at once
-                    curveBool = numpy.all([d < eps, elemIDs >= seamBeg, elemIDs < seamEnd], axis=0)
+                    curveBool = np.all([d < eps, elemIDs >= seamBeg, elemIDs < seamEnd], axis=0)
 
                     # get the indices of the points mapped to this element
-                    idxs = numpy.nonzero(curveBool)
+                    idxs = np.nonzero(curveBool)
 
                     # save the indices. idx has the indices of the "indices" array
                     # that had the indices of points that get any intersection treatment
                     # print("[%d] curvename: %s indices[idxs] idxs"%(self.comm.rank, curveName), indices[idxs], idxs)
-                    self.curveProjIdx[ptSetName][curveName] = numpy.array(indices[idxs])
+                    self.curveProjIdx[ptSetName][curveName] = np.array(indices[idxs])
 
                     # uncomment to get the output
                     # ptCoords = ptsToCurves[idxs]
@@ -1382,25 +1382,25 @@ class CompIntersection:
 
                     # also update the masking array
                     # we will use this to figure out the indices that did not get attached to any curves
-                    allNodesBool = numpy.any([curveBool, allNodesBool], axis=0)
+                    allNodesBool = np.any([curveBool, allNodesBool], axis=0)
 
                     # create an empty dict to save aux data later on
                     self.curveProjData[ptSetName][curveName] = {}
 
                 # negate the surface mask and get indices
-                surfPtIdx = numpy.nonzero(numpy.logical_not(allNodesBool))
+                surfPtIdx = np.nonzero(np.logical_not(allNodesBool))
 
                 # figure out which of these surfNodes live only on components A and B
-                allSurfIdx = numpy.array(indices[surfPtIdx[0]])
+                allSurfIdx = np.array(indices[surfPtIdx[0]])
 
                 # component A
-                mask = numpy.in1d(allSurfIdx, indA, assume_unique=True)
+                mask = np.in1d(allSurfIdx, indA, assume_unique=True)
                 # this is the local indices of the points affected
-                self.surfIdxA[ptSetName] = allSurfIdx[numpy.nonzero(mask)]
+                self.surfIdxA[ptSetName] = allSurfIdx[np.nonzero(mask)]
 
                 # component B
-                mask = numpy.in1d(allSurfIdx, indB, assume_unique=True)
-                self.surfIdxB[ptSetName] = allSurfIdx[numpy.nonzero(mask)]
+                mask = np.in1d(allSurfIdx, indB, assume_unique=True)
+                self.surfIdxB[ptSetName] = allSurfIdx[np.nonzero(mask)]
 
                 # initialize the bool dict for this pointset
                 self.curveProjFlag[ptSetName] = {}
@@ -1477,7 +1477,7 @@ class CompIntersection:
             rp = pts[j]
 
             # Run the weighted interp:
-            # num = numpy.zeros(3)
+            # num = np.zeros(3)
             # den = 0.0
 
             # # we loop over elements and compute the elemnent-wise integral on each line
@@ -1497,8 +1497,8 @@ class CompIntersection:
 
             #     # compute some re-occurring terms
             #     det = b*b - 4*a*c + 1e-32 # add an epsilon so that the determinant never becomes zero
-            #     sabc = numpy.sqrt(a+b+c)
-            #     sc   = numpy.sqrt(c)
+            #     sabc = np.sqrt(a+b+c)
+            #     sc   = np.sqrt(c)
 
             #     # denominators on the integral evaluations
             #     den1 = det*sabc
@@ -1536,7 +1536,7 @@ class CompIntersection:
             c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
 
             # distances for each element
-            dists = numpy.sqrt(numpy.maximum(a, 0.0))
+            dists = np.sqrt(np.maximum(a, 0.0))
 
             # compute some re-occurring terms
             # the determinant can be zero or negative, but it CANNOT be positive
@@ -1546,8 +1546,8 @@ class CompIntersection:
             # these might be negative 1e-20sth so clip them...
             # these will be strictly zero or greater than zero.
             # Numerically, they cannot be negative bec. we are working with real numbers
-            sabc = numpy.sqrt(numpy.maximum(a + b + c, 0.0))
-            sc = numpy.sqrt(numpy.maximum(c, 0.0))
+            sabc = np.sqrt(np.maximum(a + b + c, 0.0))
+            sc = np.sqrt(np.maximum(c, 0.0))
 
             # denominators on the integral evaluations
             # add an epsilon so that these terms never become zero
@@ -1560,13 +1560,13 @@ class CompIntersection:
             eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
 
             # denominator only gets one integral
-            den = numpy.sum(eval1)
+            den = np.sum(eval1)
 
             # do each direction separately
-            interp = numpy.zeros(3)
+            interp = np.zeros(3)
             for iDim in range(3):
                 # numerator gets two integrals with the delta components
-                num = numpy.sum((dr1[:, iDim] - dr0[:, iDim]) * eval2 + dr0[:, iDim] * eval1)
+                num = np.sum((dr1[:, iDim] - dr0[:, iDim]) * eval2 + dr0[:, iDim] * eval1)
                 # final result
                 interp[iDim] = num / den
 
@@ -1599,13 +1599,13 @@ class CompIntersection:
 
             # Do it vectorized
             rr = pts[j] - self.seam0
-            LdefoDist = 1.0 / numpy.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
             LdefoDist3 = LdefoDist ** 3
             Wi = LdefoDist3
-            den = numpy.sum(Wi)
-            interp_d = numpy.zeros(3)
+            den = np.sum(Wi)
+            interp_d = np.zeros(3)
             for iDim in range(3):
-                interp_d[iDim] = numpy.sum(Wi * dSeam[:, iDim]) / den
+                interp_d[iDim] = np.sum(Wi * dSeam[:, iDim]) / den
 
                 # Now the delta is replaced by 1-factor times the weighted
                 # interp of the seam * factor of the original:
@@ -1635,7 +1635,7 @@ class CompIntersection:
 
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
-        seamBar = numpy.zeros((dIdPt.shape[0], self.seam0.shape[0], self.seam0.shape[1]))
+        seamBar = np.zeros((dIdPt.shape[0], self.seam0.shape[0], self.seam0.shape[1]))
 
         # if we have the projection flag, then we need to add the contribution to seamBar from that
         if self.projectFlag:
@@ -1669,12 +1669,12 @@ class CompIntersection:
                 )
                 c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
                 # distances for each element
-                dists = numpy.sqrt(numpy.maximum(a, 0.0))
+                dists = np.sqrt(np.maximum(a, 0.0))
 
                 # compute some re-occurring terms
                 det = b * b - 4 * a * c
-                sabc = numpy.sqrt(numpy.maximum(a + b + c, 0.0))
-                sc = numpy.sqrt(numpy.maximum(c, 0.0))
+                sabc = np.sqrt(np.maximum(a + b + c, 0.0))
+                sc = np.sqrt(np.maximum(c, 0.0))
                 # denominators on the integral evaluations
                 den1 = det * sabc - eps
                 den2 = det * sc - eps
@@ -1683,7 +1683,7 @@ class CompIntersection:
                 eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
 
                 # denominator only gets one integral
-                den = numpy.sum(eval1)
+                den = np.sum(eval1)
 
                 evalDiff = eval1 - eval2
 
@@ -1705,7 +1705,7 @@ class CompIntersection:
         # instead, multiply this with the transpose of the jacobian
         # seamBar = seamBar.reshape( [dIdPt.shape[0], 3*self.seam0.shape[0]] )
 
-        # sb = numpy.zeros((dIdPt.shape[0],3*self.seam0.shape[0] ))
+        # sb = np.zeros((dIdPt.shape[0],3*self.seam0.shape[0] ))
         # for i in range(dIdPt.shape[0]):
         #     sb[i,:] = seamBar[i,:,:].flatten()
 
@@ -1753,18 +1753,18 @@ class CompIntersection:
         # also get the initial coordinates of these points. We use this during warping
         # intersection curve will be on both components
         if flagA:
-            deltaA = numpy.zeros((nptsg, 3))
+            deltaA = np.zeros((nptsg, 3))
             curvePtCoordsA = self.curvePtCoords[ptSetName]["intersection"].copy()
         else:
-            deltaA = numpy.zeros((0, 3))
-            curvePtCoordsA = numpy.zeros((0, 3))
+            deltaA = np.zeros((0, 3))
+            curvePtCoordsA = np.zeros((0, 3))
 
         if flagB:
-            deltaB = numpy.zeros((nptsg, 3))
+            deltaB = np.zeros((nptsg, 3))
             curvePtCoordsB = self.curvePtCoords[ptSetName]["intersection"].copy()
         else:
-            deltaB = numpy.zeros((0, 3))
-            curvePtCoordsB = numpy.zeros((0, 3))
+            deltaB = np.zeros((0, 3))
+            curvePtCoordsB = np.zeros((0, 3))
 
         # tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
 
@@ -1792,10 +1792,10 @@ class CompIntersection:
             # print('[%d] curveName: %s, nPoints on the fwd pass: %d'%(self.comm.rank, curveName, nPoints))
 
             # Initialize references if user provided none
-            dist2 = numpy.ones(nPoints) * 1e10
-            xyzProj = numpy.zeros((nPoints, 3))
-            tanProj = numpy.zeros((nPoints, 3))
-            elemIDs = numpy.zeros((nPoints), dtype="int32")
+            dist2 = np.ones(nPoints) * 1e10
+            xyzProj = np.zeros((nPoints, 3))
+            tanProj = np.zeros((nPoints, 3))
+            elemIDs = np.zeros((nPoints), dtype="int32")
 
             # only call the fortran code if we have at least one point
             if nPoints > 0:
@@ -1817,7 +1817,7 @@ class CompIntersection:
                 self.curveProjData[ptSetName][curveName]["curveMask"] = curveMask
 
             # dist2 has the array of squared distances
-            # d = numpy.sqrt(dist2)
+            # d = np.sqrt(dist2)
 
             # save some information for gradient comp
             self.curveProjData[ptSetName][curveName]["xyz"] = ptsOnCurve.copy()
@@ -1840,7 +1840,7 @@ class CompIntersection:
             # communicate the deltas
             if comm:
                 sizes = self.curvePtCounts[ptSetName][curveName]
-                disp = numpy.array([numpy.sum(sizes[:i]) for i in range(comm.size)], dtype="intc")
+                disp = np.array([np.sum(sizes[:i]) for i in range(comm.size)], dtype="intc")
 
                 # save these for grad comp
                 self.curveProjData[ptSetName][curveName]["sizes"] = sizes
@@ -1852,7 +1852,7 @@ class CompIntersection:
 
                 # recvbuf
                 nptsg = self.nCurvePts[ptSetName][curveName]
-                deltaGlobal = numpy.zeros(nptsg * 3)
+                deltaGlobal = np.zeros(nptsg * 3)
                 recvbuf = [deltaGlobal, sizes * 3, disp * 3, MPI.DOUBLE]
 
                 # do an allgatherv
@@ -1873,21 +1873,21 @@ class CompIntersection:
             # and we have points on compA surface
             if curveName in self.curvesOnA and flagA:
                 # stack the deltas
-                deltaA = numpy.vstack((deltaA, deltaGlobal))
+                deltaA = np.vstack((deltaA, deltaGlobal))
 
                 # also stack the original coordinates for warping
                 curvePtCoordsNew = self.curvePtCoords[ptSetName][curveName]
-                curvePtCoordsA = numpy.vstack((curvePtCoordsA, curvePtCoordsNew))
+                curvePtCoordsA = np.vstack((curvePtCoordsA, curvePtCoordsNew))
 
             # do the same for compB
             # we can use elif bec. one curve cannot be on both comps
             elif curveName in self.curvesOnB and flagB:
                 # stack the deltas
-                deltaB = numpy.vstack((deltaB, deltaGlobal))
+                deltaB = np.vstack((deltaB, deltaGlobal))
 
                 # also stack the original coordinates for warping
                 curvePtCoordsNew = self.curvePtCoords[ptSetName][curveName]
-                curvePtCoordsB = numpy.vstack((curvePtCoordsB, curvePtCoordsNew))
+                curvePtCoordsB = np.vstack((curvePtCoordsB, curvePtCoordsNew))
 
         self.comm.Barrier()
 
@@ -1964,7 +1964,7 @@ class CompIntersection:
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
             for k, v in xA.items():
                 # create the zero array:
-                zeroSens = numpy.zeros((N, v.shape[0]))
+                zeroSens = np.zeros((N, v.shape[0]))
                 compSens_local[k] = zeroSens
 
         # do the same for B
@@ -1985,7 +1985,7 @@ class CompIntersection:
             # loop over each entry in xA and xB and create a dummy zero gradient array for all
             for k, v in xB.items():
                 # create the zero array:
-                zeroSens = numpy.zeros((N, v.shape[0]))
+                zeroSens = np.zeros((N, v.shape[0]))
                 compSens_local[k] = zeroSens
 
         # finally sum the results across procs if we are provided with a comm
@@ -2037,7 +2037,7 @@ class CompIntersection:
                 dIdpt, self.points[ptSetName][0], self.surfIdxA[ptSetName], curvePtCoordsA
             )
         else:
-            deltaA_b_local = numpy.zeros((N, nCurvePtCoordsAG, 3))
+            deltaA_b_local = np.zeros((N, nCurvePtCoordsAG, 3))
 
         # do the same for comp B
         if flagB:
@@ -2045,7 +2045,7 @@ class CompIntersection:
                 dIdpt, self.points[ptSetName][0], self.surfIdxB[ptSetName], curvePtCoordsB
             )
         else:
-            deltaB_b_local = numpy.zeros((N, nCurvePtCoordsBG, 3))
+            deltaB_b_local = np.zeros((N, nCurvePtCoordsBG, 3))
 
         # reduce seeds for both
         if ptSetComm:
@@ -2080,7 +2080,7 @@ class CompIntersection:
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
-                    deltaBar = numpy.zeros((N, 0, 3))
+                    deltaBar = np.zeros((N, 0, 3))
 
                 # remove the seeds for this curve from deltaA_b seeds
                 deltaA_b = deltaA_b[:, disp[-1] + sizes[-1] :]
@@ -2096,7 +2096,7 @@ class CompIntersection:
 
                 # this proc does not have any pts projected, so set the seed to zero
                 else:
-                    deltaBar = numpy.zeros((N, 0, 3))
+                    deltaBar = np.zeros((N, 0, 3))
 
                 # remove the seeds for this curve from deltaA_b seeds
                 deltaB_b = deltaB_b[:, disp[-1] + sizes[-1] :]
@@ -2118,7 +2118,7 @@ class CompIntersection:
             elemIDs = self.curveProjData[ptSetName][curveName]["elemIDs"]
 
             # we dont use tangents so seeds are zero
-            tanProjb = numpy.zeros_like(tanProj)
+            tanProjb = np.zeros_like(tanProj)
 
             if nPoints > 0:
                 # also get the curveMask
@@ -2175,20 +2175,20 @@ class CompIntersection:
             nproc = comm.size
 
             # communicate the counts
-            sizes = numpy.array(comm.allgather(len(indices)), dtype="intc")
+            sizes = np.array(comm.allgather(len(indices)), dtype="intc")
 
             # total number of points
-            nptsg = numpy.sum(sizes)
+            nptsg = np.sum(sizes)
 
             # get the displacements
-            disp = numpy.array([numpy.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
+            disp = np.array([np.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
 
             # sendbuf
             ptsLocal = pts[indices].flatten()
             sendbuf = [ptsLocal, len(indices) * 3]
 
             # recvbuf
-            ptsGlobal = numpy.zeros(3 * nptsg)
+            ptsGlobal = np.zeros(3 * nptsg)
             recvbuf = [ptsGlobal, sizes * 3, disp * 3, MPI.DOUBLE]
 
             # do an allgatherv
@@ -2221,13 +2221,13 @@ class CompIntersection:
 
             # the vectorized point-based warping we had from older versions.
             rr = ptCoords - curvePtCoords
-            LdefoDist = 1.0 / numpy.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
             LdefoDist3 = LdefoDist ** 3
             Wi = LdefoDist3
-            den = numpy.sum(Wi)
-            interp = numpy.zeros(3)
+            den = np.sum(Wi)
+            interp = np.zeros(3)
             for iDim in range(3):
-                interp[iDim] = numpy.sum(Wi * delta[:, iDim]) / den
+                interp[iDim] = np.sum(Wi * delta[:, iDim]) / den
 
             # finally, update the coord in place
             ptsNew[j] = ptsNew[j] + interp
@@ -2235,7 +2235,7 @@ class CompIntersection:
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
 
         # seeds for delta
-        deltaBar = numpy.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
+        deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
 
         for k in range(dIdPt.shape[0]):
 
@@ -2250,11 +2250,11 @@ class CompIntersection:
 
                 # the vectorized point-based warping we had from older versions.
                 rr = ptCoords - curvePtCoords
-                LdefoDist = 1.0 / numpy.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+                LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
                 LdefoDist3 = LdefoDist ** 3
                 Wi = LdefoDist3
-                den = numpy.sum(Wi)
-                # interp = numpy.zeros(3)
+                den = np.sum(Wi)
+                # interp = np.zeros(3)
 
                 for iDim in range(3):
                     deltaBar[k, :, iDim] += Wi * localVal[iDim] / den
@@ -2266,11 +2266,11 @@ class CompIntersection:
         # we build an ADT using this component
         # from ney's code:
         # Set bounding box for new tree
-        BBox = numpy.zeros((2, 3))
+        BBox = np.zeros((2, 3))
         useBBox = False
 
         # dummy connectivity data for quad elements since we have all tris
-        quadConn = numpy.zeros((0, 4))
+        quadConn = np.zeros((0, 4))
 
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
@@ -2285,9 +2285,9 @@ class CompIntersection:
 
         # project
         numPts = pts.shape[0]
-        dist2 = numpy.ones(numPts) * 1e10
-        xyzProj = numpy.zeros((numPts, 3))
-        normProjNotNorm = numpy.zeros((numPts, 3))
+        dist2 = np.ones(numPts) * 1e10
+        xyzProj = np.zeros((numPts, 3))
+        normProjNotNorm = np.zeros((numPts, 3))
 
         # print("[%d] projecting to comp %s, pts.shape = "%(self.comm.rank, comp.name), pts.shape)
 
@@ -2327,11 +2327,11 @@ class CompIntersection:
         # we build an ADT using this component
         # from ney's code:
         # Set bounding box for new tree
-        BBox = numpy.zeros((2, 3))
+        BBox = np.zeros((2, 3))
         useBBox = False
 
         # dummy connectivity data for quad elements since we have all tris
-        quadConn = numpy.zeros((0, 4))
+        quadConn = np.zeros((0, 4))
 
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
@@ -2358,10 +2358,10 @@ class CompIntersection:
         xyzProj = projDict["xyzProj"]
 
         # also, we dont care about the normals, so the AD seeds for them should (?) be zero
-        normProjb = numpy.zeros_like(normProjNotNorm)
+        normProjb = np.zeros_like(normProjNotNorm)
 
         # also create the dIdtp for the triangulated surface nodes
-        dIdptComp = numpy.zeros((dIdpt.shape[0], comp.nodes.shape[0], 3))
+        dIdptComp = np.zeros((dIdpt.shape[0], comp.nodes.shape[0], 3))
 
         # now propagate the ad seeds back for each function
         for i in range(dIdpt.shape[0]):
@@ -2440,7 +2440,7 @@ class CompIntersection:
         self.seamDict = {}
 
         # Call Ney's code with the quad information.
-        dummyConn = numpy.zeros((0, 4))
+        dummyConn = np.zeros((0, 4))
         # compute the intersection curve, in the first step we just get the array sizes to hide allocatable arrays from python
         arraySizes = intersectionAPI.intersectionapi.computeintersection(
             self.compA.nodes.T,
@@ -2454,7 +2454,7 @@ class CompIntersection:
         )
 
         # Retrieve results from Fortran if we have an intersection
-        if numpy.max(arraySizes[1:]) > 0:
+        if np.max(arraySizes[1:]) > 0:
 
             # Second Fortran call to retrieve data from the CGNS file.
             intersectionArrays = intersectionAPI.intersectionapi.retrievedata(*arraySizes)
@@ -2463,12 +2463,12 @@ class CompIntersection:
             # We subtract one to make indices consistent with the Python 0-based indices.
             # We also need to transpose it since Python and Fortran use different orderings to store matrices in memory.
             # TODO Bug here?
-            intNodes = numpy.array(
+            intNodes = np.array(
                 intersectionArrays[0]
             ).T  # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
-            # intNodes = numpy.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
-            barsConn = numpy.array(intersectionArrays[1]).T - 1
-            parentTria = numpy.array(intersectionArrays[2]).T - 1
+            # intNodes = np.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
+            barsConn = np.array(intersectionArrays[1]).T - 1
+            parentTria = np.array(intersectionArrays[2]).T - 1
 
             # save these intermediate variables
             self.seamDict["barsConn"] = barsConn
@@ -2503,7 +2503,7 @@ class CompIntersection:
 
             # the user did specify which direction to pick
             else:
-                int_centers = numpy.zeros(len(newConn))
+                int_centers = np.zeros(len(newConn))
                 # we will figure out the locations of these points and pick the one closer to the user picked direction
                 for i in range(len(newConn)):
                     # get all the points
@@ -2511,13 +2511,13 @@ class CompIntersection:
 
                     # average the values
                     # the API uses a 1 based indexing, but here, we convert to a zero based indexing
-                    int_centers[i] = numpy.average(int_pts[abs(self.intDir) - 1])
+                    int_centers[i] = np.average(int_pts[abs(self.intDir) - 1])
 
                 # multiply the values with the sign of intDir
-                int_centers *= numpy.sign(self.intDir)
+                int_centers *= np.sign(self.intDir)
 
                 # get the argmax
-                int_index = numpy.argmax(int_centers)
+                int_index = np.argmax(int_centers)
 
                 # this is the intersection seam!
                 seamConn = newConn[int_index].copy()
@@ -2557,10 +2557,10 @@ class CompIntersection:
                 nPoints = len(intNodesOrd)
 
                 # Initialize references
-                dist2 = numpy.ones(nPoints) * 1e10
-                xyzProj = numpy.zeros((nPoints, 3))
-                tanProj = numpy.zeros((nPoints, 3))
-                elemIDs = numpy.zeros((nPoints), dtype="int32")
+                dist2 = np.ones(nPoints) * 1e10
+                xyzProj = np.zeros((nPoints, 3))
+                tanProj = np.zeros((nPoints, 3))
+                elemIDs = np.zeros((nPoints), dtype="int32")
 
                 # then find the closest point to the curve
 
@@ -2586,16 +2586,16 @@ class CompIntersection:
                     self.seamDict[curveName]["xyzProj"] = xyzProj.copy()
                     self.seamDict[curveName]["tanProj"] = tanProj.copy()
                     self.seamDict[curveName]["dist2"] = dist2.copy()
-                    self.seamDict[curveName]["projPtIndx"] = seamConn[:, 0][numpy.argmin(dist2)].copy()
+                    self.seamDict[curveName]["projPtIndx"] = seamConn[:, 0][np.argmin(dist2)].copy()
 
                 # now, find the index of the smallest distance
-                breakList.append(numpy.argmin(dist2))
+                breakList.append(np.argmin(dist2))
 
                 # also get which element is the closest to the feature point
-                curveBeg[curveName] = elemIDs[numpy.argmin(dist2)]
+                curveBeg[curveName] = elemIDs[np.argmin(dist2)]
 
                 # get which point on this element we projected to.
-                curveBegCoor[curveName] = xyzProj[numpy.argmin(dist2)]
+                curveBegCoor[curveName] = xyzProj[np.argmin(dist2)]
 
             else:
                 # if it is not on compB, we still need to set up some variables so that we remesh the whole curve
@@ -2623,9 +2623,9 @@ class CompIntersection:
         # we want breakList to be in increasing order...
         ii = 0
         for i in range(nFeature):
-            # print(i,breakList[i], breakList[numpy.mod(i+1, nFeature)])
+            # print(i,breakList[i], breakList[np.mod(i+1, nFeature)])
             # we loop over the breaklist elements and check if the element index is going up or down
-            if breakList[i] < breakList[numpy.mod(i + 1, nFeature)]:
+            if breakList[i] < breakList[np.mod(i + 1, nFeature)]:
                 ii += 1
 
         # print('increase index',ii)
@@ -2633,20 +2633,20 @@ class CompIntersection:
         if ii == 1:  # we need at least 2 features where the element number increases...
             # we need to reverse the order of our feature curves
             # and we will flip the elements too so keep track of this change
-            breakList = numpy.mod(seamConn.shape[0] - numpy.array(breakList), seamConn.shape[0])
+            breakList = np.mod(seamConn.shape[0] - np.array(breakList), seamConn.shape[0])
             # TODO we had a bug in this line
-            # breakList = numpy.mod(seamConn.shape[0] - numpy.flip(breakList, axis=0), seamConn.shape[0])
+            # breakList = np.mod(seamConn.shape[0] - np.flip(breakList, axis=0), seamConn.shape[0])
             # print(breakList)
 
             # and we need to invert the curves themselves
-            seamConn = numpy.flip(seamConn, axis=0)
-            seamConn = numpy.flip(seamConn, axis=1)
+            seamConn = np.flip(seamConn, axis=0)
+            seamConn = np.flip(seamConn, axis=1)
 
         # roll so that the first breakList entry is the first node
-        seamConn = numpy.roll(seamConn, -breakList[0], axis=0)
+        seamConn = np.roll(seamConn, -breakList[0], axis=0)
 
         # also adjust the feature indices
-        breakList = numpy.mod(breakList - breakList[0], nElem)
+        breakList = np.mod(breakList - breakList[0], nElem)
 
         # do we need this?
         # TODO figure this out?
@@ -2656,9 +2656,9 @@ class CompIntersection:
         # get the number of elements between each feature
         curveSizes = []
         for i in range(nFeature - 1):
-            curveSizes.append(numpy.mod(breakList[i + 1] - breakList[i], nElem))
+            curveSizes.append(np.mod(breakList[i + 1] - breakList[i], nElem))
         # check the last curve outside the loop
-        curveSizes.append(numpy.mod(breakList[0] - breakList[-1], nElem))
+        curveSizes.append(np.mod(breakList[0] - breakList[-1], nElem))
         # print('breaklist', breakList, "Curvesizes", curveSizes)
 
         # print("first node on the int:", seamConn[breakList[0], 0])
@@ -2670,8 +2670,8 @@ class CompIntersection:
 
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
         curInd = 0  # curveSizes[0] #+curveSizes[1]
-        seam = numpy.zeros((0, 3))
-        finalConn = numpy.zeros((0, 2), dtype="int32")
+        seam = np.zeros((0, 3))
+        finalConn = np.zeros((0, 2), dtype="int32")
         for i in range(nFeature):
             # just use the same number of points *2 for now
             nNewNodes = self.nElems[i] + 1
@@ -2700,10 +2700,10 @@ class CompIntersection:
             newBarsConn += len(seam)
 
             # now stack the nodes
-            seam = numpy.vstack((seam, newCoor))
+            seam = np.vstack((seam, newCoor))
 
             # and the conn
-            finalConn = numpy.vstack((finalConn, newBarsConn))
+            finalConn = np.vstack((finalConn, newBarsConn))
 
         if firstCall:
             # save the beginning and end indices of these elements
@@ -2731,8 +2731,8 @@ class CompIntersection:
                 self.nNodeFeature = {}
                 self.distFeature = {}
 
-            remeshedCurves = numpy.zeros((0, 3))
-            remeshedCurveConn = numpy.zeros((0, 2), dtype="int32")
+            remeshedCurves = np.zeros((0, 3))
+            remeshedCurveConn = np.zeros((0, 2), dtype="int32")
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
@@ -2766,10 +2766,10 @@ class CompIntersection:
                 secondNodes = curveComp.nodes[curveConn[elemBeg:, 1]]
                 diff = secondNodes - firstNodes
                 dist2 = diff[:, 0] ** 2 + diff[:, 1] ** 2 + diff[:, 2] ** 2
-                elemDist = numpy.sqrt(dist2)
+                elemDist = np.sqrt(dist2)
 
                 # get the cumulative distance
-                cumDist = numpy.cumsum(elemDist)
+                cumDist = np.cumsum(elemDist)
 
                 # if no marchdir for this curve, we use all of it
                 if curveName in self.remeshAll:
@@ -2789,10 +2789,10 @@ class CompIntersection:
                         nPoints = len(curvePts)
 
                         # Initialize references if user provided none
-                        dist2 = numpy.ones(nPoints) * 1e10
-                        xyzProj = numpy.zeros((nPoints, 3))
-                        tanProj = numpy.zeros((nPoints, 3))
-                        elemIDs = numpy.zeros((nPoints), dtype="int32")
+                        dist2 = np.ones(nPoints) * 1e10
+                        xyzProj = np.zeros((nPoints, 3))
+                        tanProj = np.zeros((nPoints, 3))
+                        elemIDs = np.zeros((nPoints), dtype="int32")
 
                         # then find the closest point to the curve
 
@@ -2809,10 +2809,10 @@ class CompIntersection:
                                 curvePts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                             )
 
-                        dNodes = numpy.sqrt(dist2)
+                        dNodes = np.sqrt(dist2)
 
                         # number of elements to use, subtract one to get the correct element count
-                        nElem = (numpy.abs(dNodes - dStarComp * 1.3)).argmin() - 1
+                        nElem = (np.abs(dNodes - dStarComp * 1.3)).argmin() - 1
 
                         # we want to be one after the actual distance, so correct if needed
                         if dNodes[nElem] < dStarComp * 1.3:
@@ -2831,7 +2831,7 @@ class CompIntersection:
 
                     else:
                         # figure out how many elements we need to go in this direction
-                        elemEnd = (numpy.abs(cumDist - self.distFeature[curveName])).argmin() + elemBeg
+                        elemEnd = (np.abs(cumDist - self.distFeature[curveName])).argmin() + elemBeg
 
                 # get the new connectivity data between the initial and final elements
                 curveConnTrim = curveConn[elemBeg : elemEnd + 1]
@@ -2858,9 +2858,9 @@ class CompIntersection:
                 newBarsConn += len(remeshedCurves)
 
                 # append this new curve to the featureCurve data
-                remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
+                remeshedCurves = np.vstack((remeshedCurves, newCoor))
 
-                remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
+                remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
 
                 # number of new nodes added in the opposite direction
                 nNewNodesReverse = 0
@@ -2886,8 +2886,8 @@ class CompIntersection:
 
                     newBarsConn = newBarsConn + len(remeshedCurves)
 
-                    remeshedCurves = numpy.vstack((remeshedCurves, newCoor))
-                    remeshedCurveConn = numpy.vstack((remeshedCurveConn, newBarsConn))
+                    remeshedCurves = np.vstack((remeshedCurves, newCoor))
+                    remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
@@ -2922,9 +2922,9 @@ class CompIntersection:
             # increment the conn from curves
             remeshedCurveConn += len(seam)
             # stack the nodes
-            seam = numpy.vstack((seam, remeshedCurves))
+            seam = np.vstack((seam, remeshedCurves))
             # stack the conn
-            finalConn = numpy.vstack((finalConn, remeshedCurveConn))
+            finalConn = np.vstack((finalConn, remeshedCurveConn))
 
         # save the connectivity
         self.seamConn = finalConn
@@ -2946,8 +2946,8 @@ class CompIntersection:
         # 3 coordinates for each point
 
         # allocate the space for component coordinate seeds
-        coorAb = numpy.zeros((N, self.compA.nodes.shape[0], self.compA.nodes.shape[1]))
-        coorBb = numpy.zeros((N, self.compB.nodes.shape[0], self.compB.nodes.shape[1]))
+        coorAb = np.zeros((N, self.compA.nodes.shape[0], self.compA.nodes.shape[1]))
+        coorBb = np.zeros((N, self.compB.nodes.shape[0], self.compB.nodes.shape[1]))
 
         # first, extract the actual intersection coordinates from feature curves.
         # we might not have any feature curves but the intersection curve will be there
@@ -2978,7 +2978,7 @@ class CompIntersection:
 
                 # get the derivative seeds
                 newCoorb = curveBar[:, iBeg : iBeg + nNewNodes, :].copy()
-                # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
+                # print('newCoorb',curveName, np.linalg.norm(newCoorb), newCoorb)
                 iBeg += nNewNodes
 
                 # figure out which comp owns this curve...
@@ -3017,7 +3017,7 @@ class CompIntersection:
                 initialSpacing = 0.1
                 finalSpacing = 0.1
 
-                cb = numpy.zeros((N, coor.shape[0], coor.shape[1]))
+                cb = np.zeros((N, coor.shape[0], coor.shape[1]))
 
                 # loop over functions
                 for ii in range(N):
@@ -3035,7 +3035,7 @@ class CompIntersection:
                     # derivative seeds for the coordinates.
                     cb[ii] = cbi.T.copy()
 
-                # print('cb',curveName, numpy.linalg.norm(cb), cb)
+                # print('cb',curveName, np.linalg.norm(cb), cb)
 
                 # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
                 if elemBeg > 0:
@@ -3047,7 +3047,7 @@ class CompIntersection:
 
                         # get the derivative seeds
                         newCoorb = curveBar[:, iBeg : iBeg + nNewNodes, :].copy()
-                        # print('newCoorb',curveName, numpy.linalg.norm(newCoorb), newCoorb)
+                        # print('newCoorb',curveName, np.linalg.norm(newCoorb), newCoorb)
                         iBeg += nNewNodes
 
                         # bars conn is everything up to elemBeg
@@ -3075,7 +3075,7 @@ class CompIntersection:
                     # print(curveName, projb)
 
                     # zero out the seed of the replaced node
-                    cb[:, curveConn[elemBeg, 0], :] = numpy.zeros((N, 3))
+                    cb[:, curveConn[elemBeg, 0], :] = np.zeros((N, 3))
 
                     # put the modified initial and final points back in place.
                     self.compB.nodes[curveConn[elemBeg, 0]] = ptBegSave.copy()
@@ -3092,15 +3092,15 @@ class CompIntersection:
                     barsConn = curveComp.barsConn[curveName]
 
                     # allocate zero seeds
-                    xyzProjb = numpy.zeros_like(xyzProj)
-                    tanProjb = numpy.zeros_like(tanProj)
+                    xyzProjb = np.zeros_like(xyzProj)
+                    tanProjb = np.zeros_like(tanProj)
 
-                    curveProjb[curveName] = numpy.zeros((N, 3))
+                    curveProjb[curveName] = np.zeros((N, 3))
 
                     for ii in range(N):
 
                         # the only nonzero seed is indexed by argmin dist2
-                        xyzProjb[numpy.argmin(dist2)] = projb[ii].copy()
+                        xyzProjb[np.argmin(dist2)] = projb[ii].copy()
 
                         xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
                             intNodesOrd.T,
@@ -3119,7 +3119,7 @@ class CompIntersection:
 
                         # xyzb_new is the seed for the intersection seam node
                         # instead of saving the array full of zeros, we just save the entry we know is nonzero
-                        curveProjb[curveName][ii] = xyzb_new.T[numpy.argmin(dist2)]
+                        curveProjb[curveName][ii] = xyzb_new.T[np.argmin(dist2)]
 
                 # all the remaining seeds in coorb live on the component tri-mesh...
                 coorb += cb
@@ -3131,7 +3131,7 @@ class CompIntersection:
         curveSizes = self.seamDict["curveSizes"]
 
         # seeds for the original intersection
-        intNodesb = numpy.zeros((N, intNodes.shape[0], intNodes.shape[1]))
+        intNodesb = np.zeros((N, intNodes.shape[0], intNodes.shape[1]))
 
         # loop over each feature and propagate the sensitivities
         curInd = 0  # curveSizes[0] +curveSizes[1]
@@ -3180,7 +3180,7 @@ class CompIntersection:
                 # add the contribution
                 intNodesb[ii, idx] += v[ii]
 
-        dummyConn = numpy.zeros((0, 4))
+        dummyConn = np.zeros((0, 4))
         barsConn = self.seamDict["barsConn"]
         parentTria = self.seamDict["parentTria"]
         # do the reverse intersection computation to get the seeds of coordinates
