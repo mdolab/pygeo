@@ -41,7 +41,7 @@ class DVGeometryMulti:
 
         if triMesh is not None:
             # We also need to read the triMesh and save the points
-            nodes, triConn, barsConn = self._readCGNSFile(triMesh)
+            nodes, triConn, triConnStack, barsConn = self._readCGNSFile(triMesh)
 
             # scale the nodes
             nodes *= scale
@@ -52,6 +52,7 @@ class DVGeometryMulti:
             # the user has not provided a triangulated surface mesh for this file
             nodes = None
             triConn = None
+            triConnStack = None
             barsConn = None
 
         # we will need the bounding box information later on, so save this here
@@ -72,7 +73,7 @@ class DVGeometryMulti:
             xMax[2] = bbox["zmax"]
 
         # initialize the component object
-        self.comps[comp] = component(comp, DVGeo, nodes, triConn, barsConn, xMin, xMax)
+        self.comps[comp] = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax)
 
         # add the name to the list
         self.compNames.append(comp)
@@ -95,6 +96,8 @@ class DVGeometryMulti:
         includeCurves=False,
         intDir=None,
         curveEpsDict={},
+        trackSurfaces={},
+        excludeSurfaces={},
         remeshBwd=True,
     ):
         """
@@ -116,6 +119,8 @@ class DVGeometryMulti:
                 includeCurves,
                 intDir,
                 curveEpsDict,
+                trackSurfaces,
+                excludeSurfaces,
                 remeshBwd,
             )
         )
@@ -157,14 +162,14 @@ class DVGeometryMulti:
                 # elements surrounding the node. This allows the meshing algorithms,
                 # for instance, to march in an average direction near kinks.
                 nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(
-                    self.comps[comp].nodes.T, self.comps[comp].triConn.T, quadConn.T
+                    self.comps[comp].nodes.T, self.comps[comp].triConnStack.T, quadConn.T
                 )
                 self.comps[comp].nodal_normals = nodal_normals.T
 
                 # Create new tree (the tree itself is stored in Fortran level)
                 adtAPI.adtapi.adtbuildsurfaceadt(
                     self.comps[comp].nodes.T,
-                    self.comps[comp].triConn.T,
+                    self.comps[comp].triConnStack.T,
                     quadConn.T,
                     BBox.T,
                     useBBox,
@@ -694,33 +699,37 @@ class DVGeometryMulti:
             nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
             print("Finished reading the cgns file")
 
-            triConn = np.zeros((0, 3), dtype=np.int8)
+            triConn = {}
+            triConnStack = np.zeros((0, 3), dtype=np.int8)
             barsConn = {}
             # print('Part names in triangulated cgns file for %s'%filename)
             for part in sectionDict:
                 # print(part)
                 if "triaConnF" in sectionDict[part].keys():
                     # this is a surface, read the tri connectivities
-                    triConn = np.vstack((triConn, sectionDict[part]["triaConnF"]))
+                    triConn[part.lower()] = sectionDict[part]["triaConnF"]
+                    triConnStack = np.vstack((triConnStack, sectionDict[part]["triaConnF"]))
 
                 if "barsConn" in sectionDict[part].keys():
                     # this is a curve, save the curve connectivity
                     barsConn[part.lower()] = sectionDict[part]["barsConn"]
 
-            print("The %s mesh has %d nodes and %d elements." % (filename, len(nodes), len(triConn)))
+            print("The %s mesh has %d nodes and %d elements." % (filename, len(nodes), len(triConnStack)))
         else:
             # create these to recieve the data
             nodes = None
             triConn = None
+            triConnStack = None
             barsConn = None
 
         # each proc gets the nodes and connectivities
         # CHECK if this should be bcast or Bcast...
         nodes = self.comm.bcast(nodes, root=0)
         triConn = self.comm.bcast(triConn, root=0)
+        triConnStack = self.comm.bcast(triConnStack, root=0)
         barsConn = self.comm.bcast(barsConn, root=0)
 
-        return nodes, triConn, barsConn
+        return nodes, triConn, triConnStack, barsConn
 
     def _computeTotalJacobian(self, ptSetName):
         """
@@ -969,13 +978,14 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, name, DVGeo, nodes, triConn, barsConn, xMin, xMax):
+    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax):
 
         # save the info
         self.name = name
         self.DVGeo = DVGeo
         self.nodes = nodes
         self.triConn = triConn
+        self.triConnStack = triConnStack
         self.barsConn = barsConn
         self.xMin = xMin
         self.xMax = xMax
@@ -1018,6 +1028,8 @@ class CompIntersection:
         includeCurves,
         intDir,
         curveEpsDict,
+        trackSurfaces,
+        excludeSurfaces,
         remeshBwd,
     ):
         """Class to store information required for an intersection.
@@ -1097,6 +1109,17 @@ class CompIntersection:
         self.dStarB = dStarB
         # self.halfdStar = self.dStar/2.0
         self.points = OrderedDict()
+
+        # Make surface names lowercase
+        self.trackSurfaces = {}
+        for k, v in trackSurfaces.items():
+            self.trackSurfaces[k.lower()] = v
+
+        self.excludeSurfaces = {}
+        for k, v in excludeSurfaces.items():
+            if k.lower() in self.trackSurfaces:
+                raise Error(f"Surface {k} cannot be in both trackSurfaces and excludeSurfaces.")
+            self.excludeSurfaces[k.lower()] = v
 
         # process the feature curves
 
@@ -1263,6 +1286,43 @@ class CompIntersection:
         #     intName = vsp.GetContainerName(self.compA)+'_'+vsp.GetContainerName(self.compB)
         #     print('DVGEO VSP:\n%d points associated with intersection %s'%(nPointGlobal, intName))
 
+        # Get all points included in the intersection computation
+        intersectPts = pts[indices]
+        nPoints = len(intersectPts)
+
+        # Create the dictionaries to save projection data
+        self.projData[ptSetName] = {
+            # We need one dictionary for each component
+            "compA": {"surfaceInd": {}},
+            "compB": {"surfaceInd": {}},
+        }
+
+        if nPoints > 0 and self.excludeSurfaces:
+
+            # Associate points with the excluded surfaces
+            for surface in self.excludeSurfaces:
+                surfaceEps = self.excludeSurfaces[surface]
+                self.associatePointsToSurface(intersectPts, ptSetName, surface, surfaceEps)
+
+            # Combine the excluded indices using a set to avoid duplicates
+            excludeSet = set()
+            for surface in self.excludeSurfaces:
+                if surface in self.compA.triConn:
+                    # Pop this surface from the saved data
+                    surfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"].pop(surface)
+                elif surface in self.compB.triConn:
+                    surfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"].pop(surface)
+
+                excludeSet.update(surfaceInd)
+
+            # Invert excludeSet to get the points we want to keep
+            oneToN = set(range(nPoints))
+            includeSet = oneToN.difference(excludeSet)
+
+            # Keep only the points not associated with the excluded surfaces
+            indices = [indices[i] for i in includeSet]
+            factors = [factors[i] for i in includeSet]
+
         # Save the affected indices and the factor in the little dictionary
         self.points[ptSetName] = [pts.copy(), indices, factors, comm]
 
@@ -1291,13 +1351,25 @@ class CompIntersection:
                     flagB = True
                     indB.append(ind)
 
-            # now we create the dictionaries to propogate projection data
-            self.projData[ptSetName] = {
-                # we need two dictionaries.
-                # we will save more data here, but for now, just save the flag and indices
-                "compA": {"flag": flagA, "ind": indA},
-                "compB": {"flag": flagB, "ind": indB},
-            }
+            # Save the flags and indices
+            self.projData[ptSetName]["compA"]["flag"] = flagA
+            self.projData[ptSetName]["compA"]["ind"] = indA
+            self.projData[ptSetName]["compB"]["flag"] = flagB
+            self.projData[ptSetName]["compB"]["ind"] = indB
+
+            # Associate points with the tracked surfaces
+            for surface in self.trackSurfaces:
+                surfaceEps = self.trackSurfaces[surface]
+                if surface in self.compA.triConn:
+                    compPoints = pts[indA]
+                elif surface in self.compB.triConn:
+                    compPoints = pts[indB]
+                else:
+                    raise Error(f"Surface {surface} was not found in either component.")
+
+                # This proc has some points to project
+                if len(compPoints) > 0:
+                    self.associatePointsToSurface(compPoints, ptSetName, surface, surfaceEps)
 
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
             if self.incCurves:
@@ -1912,16 +1984,38 @@ class CompIntersection:
 
         # call the actual driver with the info to prevent code multiplication
         if flagA:
-            # get the indices of points that get projected to compA
+            # First project points on the tracked surfaces
+            surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
+            for surface in surfaceIndA:
+                surfaceInd = surfaceIndA[surface]
+
+                # Get the subset of indices that is associated with this surface
+                indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
+
+                # get the points using the mapping
+                ptsA = newPts[indA]
+                # call the projection routine with the info
+                # this returns the projected points and we use the same mapping to put them back in place
+                newPts[indA] = self._projectToComponent(
+                    ptsA, self.compA, self.projData[ptSetName][surface], surface=surface
+                )
+
+            # Now project all points to the component as a whole
             indA = self.projData[ptSetName]["compA"]["ind"]
-            # get the points using the mapping
             ptsA = newPts[indA]
-            # call the projection routine with the info
-            # this returns the projected points and we use the same mapping to put them back in place
             newPts[indA] = self._projectToComponent(ptsA, self.compA, self.projData[ptSetName]["compA"])
 
         # do the same for B
         if flagB:
+            surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
+            for surface in surfaceIndB:
+                surfaceInd = surfaceIndB[surface]
+                indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
+                ptsB = newPts[indB]
+                newPts[indB] = self._projectToComponent(
+                    ptsB, self.compB, self.projData[ptSetName][surface], surface=surface
+                )
+
             indB = self.projData[ptSetName]["compB"]["ind"]
             ptsB = newPts[indB]
             newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
@@ -1943,15 +2037,34 @@ class CompIntersection:
 
         # call the actual driver with the info to prevent code multiplication
         if flagA:
-            # get the indices of points that get projected to compA
+
+            # Now project all points to the component as a whole
             indA = self.projData[ptSetName]["compA"]["ind"]
-            # get the points using the mapping
             dIdptA = dIdpt[:, indA]
-            # call the projection routine with the info
-            # this returns the projected points and we use the same mapping to put them back in place
             dIdpt[:, indA], compSensA = self._projectToComponent_b(
                 dIdptA, self.compA, self.projData[ptSetName]["compA"]
             )
+
+            # First project points on the tracked surfaces
+            surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
+            for surface in surfaceIndA:
+                surfaceInd = surfaceIndA[surface]
+
+                # Get the subset of indices that is associated with this surface
+                indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
+
+                # get the points using the mapping
+                dIdptA = dIdpt[:, indA]
+                # call the projection routine with the info
+                # this returns the projected points and we use the same mapping to put them back in place
+                dIdpt_temp, compSensA_temp = self._projectToComponent_b(
+                    dIdptA, self.compA, self.projData[ptSetName][surface], surface=surface
+                )
+
+                # Accumulate the derivatives from all projections
+                dIdpt[:, indA] += dIdpt_temp
+                for k in compSensA_temp:
+                    compSensA[k] += compSensA_temp[k]
 
             for k, v in compSensA.items():
                 compSens_local[k] = v
@@ -1975,8 +2088,22 @@ class CompIntersection:
                 dIdptB, self.compB, self.projData[ptSetName]["compB"]
             )
 
+            surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
+            for surface in surfaceIndB:
+                surfaceInd = surfaceIndB[surface]
+                indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
+                dIdptB = dIdpt[:, indB]
+                dIdpt_temp, compSensB_temp = self._projectToComponent_b(
+                    dIdptB, self.compB, self.projData[ptSetName][surface], surface=surface
+                )
+
+                dIdpt[:, indB] += dIdpt_temp
+                for k in compSensB_temp:
+                    compSensB[k] += compSensB_temp[k]
+
             for k, v in compSensB.items():
                 compSens_local[k] = v
+
         # set the compSens entries to all zeros on these procs
         else:
             # get the values from each DVGeo
@@ -2262,7 +2389,7 @@ class CompIntersection:
         # return the seeds for the delta vector
         return deltaBar
 
-    def _projectToComponent(self, pts, comp, projDict):
+    def _projectToComponent(self, pts, comp, projDict, surface=None):
         # we build an ADT using this component
         # from ney's code:
         # Set bounding box for new tree
@@ -2272,15 +2399,26 @@ class CompIntersection:
         # dummy connectivity data for quad elements since we have all tris
         quadConn = np.zeros((0, 4))
 
+        if surface is not None:
+            # Use the triConn for just this surface
+            triConn = comp.triConn[surface]
+            # Set the adtID as the surface name
+            adtID = surface
+        else:
+            # Use the stacked triConn for the whole component
+            triConn = comp.triConnStack
+            # Set the adtID as the component name
+            adtID = comp.name
+
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
         # for instance, to march in an average direction near kinks.
-        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, comp.triConn.T, quadConn.T)
+        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, triConn.T, quadConn.T)
         comp.nodal_normals = nodal_normals.T
 
         # Create new tree (the tree itself is stored in Fortran level)
         adtAPI.adtapi.adtbuildsurfaceadt(
-            comp.nodes.T, comp.triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), comp.name
+            comp.nodes.T, triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), adtID
         )
 
         # project
@@ -2293,7 +2431,7 @@ class CompIntersection:
 
         # Call projection function
         procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(
-            pts.T, comp.name, dist2, xyzProj.T, comp.nodal_normals.T, normProjNotNorm.T
+            pts.T, adtID, dist2, xyzProj.T, comp.nodal_normals.T, normProjNotNorm.T
         )
 
         # Adjust indices and ordering
@@ -2304,7 +2442,7 @@ class CompIntersection:
         normProj = tsurf_tools.normalize(normProjNotNorm)
 
         # deallocate ADT
-        adtAPI.adtapi.adtdeallocateadts(comp.name)
+        adtAPI.adtapi.adtdeallocateadts(adtID)
 
         # save the data
         projDict["procID"] = procID.copy()
@@ -2322,7 +2460,7 @@ class CompIntersection:
         # return projected points
         return xyzProj
 
-    def _projectToComponent_b(self, dIdpt, comp, projDict):
+    def _projectToComponent_b(self, dIdpt, comp, projDict, surface=None):
 
         # we build an ADT using this component
         # from ney's code:
@@ -2333,15 +2471,26 @@ class CompIntersection:
         # dummy connectivity data for quad elements since we have all tris
         quadConn = np.zeros((0, 4))
 
+        if surface is not None:
+            # Use the triConn for just this surface
+            triConn = comp.triConn[surface]
+            # Set the adtID as the surface name
+            adtID = surface
+        else:
+            # Use the stacked triConn for the whole component
+            triConn = comp.triConnStack
+            # Set the adtID as the component name
+            adtID = comp.name
+
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
         # for instance, to march in an average direction near kinks.
-        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, comp.triConn.T, quadConn.T)
+        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, triConn.T, quadConn.T)
         comp.nodal_normals = nodal_normals.T
 
         # Create new tree (the tree itself is stored in Fortran level)
         adtAPI.adtapi.adtbuildsurfaceadt(
-            comp.nodes.T, comp.triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), comp.name
+            comp.nodes.T, triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), adtID
         )
 
         # also extract the projection data we have from the fwd pass
@@ -2379,7 +2528,7 @@ class CompIntersection:
             # print('\n\nbefore fortran')
             xyzb, coorb, nodal_normalsb = adtAPI.adtapi.adtmindistancesearch_b(
                 xyz.T,
-                comp.name,
+                adtID,
                 procID,
                 elementType,
                 elementID + 1,
@@ -2411,7 +2560,7 @@ class CompIntersection:
             dIdptComp[i] = coorb
 
         # now we are done with the adt
-        adtAPI.adtapi.adtdeallocateadts(comp.name)
+        adtAPI.adtapi.adtdeallocateadts(adtID)
 
         # call the total sensitivity of the component's dvgeo
         compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh")
@@ -2441,13 +2590,14 @@ class CompIntersection:
 
         # Call Ney's code with the quad information.
         dummyConn = np.zeros((0, 4))
+
         # compute the intersection curve, in the first step we just get the array sizes to hide allocatable arrays from python
         arraySizes = intersectionAPI.intersectionapi.computeintersection(
             self.compA.nodes.T,
-            self.compA.triConn.T,
+            self.compA.triConnStack.T,
             dummyConn.T,
             self.compB.nodes.T,
-            self.compB.triConn.T,
+            self.compB.triConnStack.T,
             dummyConn.T,
             self.distTol,
             comm.py2f(),
@@ -3183,14 +3333,15 @@ class CompIntersection:
         dummyConn = np.zeros((0, 4))
         barsConn = self.seamDict["barsConn"]
         parentTria = self.seamDict["parentTria"]
+
         # do the reverse intersection computation to get the seeds of coordinates
         for ii in range(N):
             cAb, cBb = intersectionAPI.intersectionapi.computeintersection_b(
                 self.compA.nodes.T,
-                self.compA.triConn.T,
+                self.compA.triConnStack.T,
                 dummyConn.T,
                 self.compB.nodes.T,
-                self.compB.triConn.T,
+                self.compB.triConnStack.T,
                 dummyConn.T,
                 intNodes.T,
                 intNodesb[ii].T,
@@ -3223,3 +3374,26 @@ class CompIntersection:
             compSens = compSens_local
 
         return compSens
+
+    def associatePointsToSurface(self, points, ptSetName, surface, surfaceEps):
+        projDict = {}
+        # Compute the distance from each point to this surface and store it in projDict
+        if surface in self.compA.triConn:
+            self._projectToComponent(points, self.compA, projDict, surface=surface)
+            comp = "compA"
+        elif surface in self.compB.triConn:
+            self._projectToComponent(points, self.compB, projDict, surface=surface)
+            comp = "compB"
+        else:
+            raise Error(f"Surface {surface} was not found in either component.")
+
+        # Identify the points that are within the given tolerance from this surface
+        # surfaceInd contains indices of the provided points not the entire point set
+        surfaceDist = np.sqrt(np.array(projDict["dist2"]))
+        surfaceInd = [ind for ind, value in enumerate(surfaceDist) if (value < surfaceEps)]
+
+        # Save the indices only if there is at least one point
+        if surfaceInd:
+            self.projData[ptSetName][comp]["surfaceInd"][surface] = surfaceInd
+            # Initialize a data dictionary for this surface
+            self.projData[ptSetName][surface] = {}
