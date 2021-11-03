@@ -980,6 +980,32 @@ class RegTestPyGeo(unittest.TestCase):
         shutil.rmtree(ffdPath)
         shutil.rmtree(pointSetPath)
 
+    def test_writeRefAxes(self):
+        DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+        DVGeo.addChild(DVGeoChild)
+
+        # Add a simple point set
+        ptName = "point"
+        pts = np.array(
+            [
+                [0, 0.5, 0.5],
+            ],
+            dtype="float",
+        )
+        DVGeo.addPointSet(points=pts, ptName=ptName)
+
+        # Write out the axes
+        axesPath = os.path.join(self.base_path, "axis")
+        DVGeo.writeRefAxes(axesPath)
+
+        # Check that files were written
+        self.assertTrue(os.path.isfile(axesPath + "_parent.dat"))
+        self.assertTrue(os.path.isfile(axesPath + "_child000.dat"))
+
+        # Delete axis files
+        os.remove(axesPath + "_parent.dat")
+        os.remove(axesPath + "_child000.dat")
+
 
 if __name__ == "__main__":
     unittest.main()
