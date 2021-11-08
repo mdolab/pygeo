@@ -2672,10 +2672,6 @@ class CompIntersection:
                 # this is the intersection seam!
                 seamConn = newConn[int_index].copy()
 
-                print("intdir")
-                curvename = "%s_%s_%d" % (self.compA.name, self.compB.name, int_index)
-                tecplot_interface.writeTecplotFEdata(intNodes, seamConn, curvename, curvename)
-
         # Get the number of elements
         nElem = seamConn.shape[0]
 
