@@ -1535,7 +1535,14 @@ class CompIntersection:
         # bar connectivity for the remeshed elements
         conn = self.seamConn
         # deltas for each point (nNode, 3) in size
-        dr = self.seam - self.seam0
+        if self.seam.shape == self.seam0.shape:
+            dr = self.seam - self.seam0
+        else:
+            # The topology has changed so we do not update the intersection
+            # This will most likely break the mesh but allows
+            # 1) the mesh to be output for visualization
+            # 2) the optimization to continue after raising a fail flag
+            return delta
 
         # define an epsilon to avoid dividing by zero later on
         eps = 1e-50  # 1e-32
