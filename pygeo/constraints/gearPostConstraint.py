@@ -27,8 +27,8 @@ class GearPostConstraint(GeometricConstraint):
         DVGeo,
         addToPyOpt,
     ):
+        super().__init__(name, None, None, None, None, DVGeo, addToPyOpt)
 
-        self.name = name
         self.wimpress = wimpressCalc
         self.thickLower = thickLower
         self.thickUpper = thickUpper
@@ -36,10 +36,7 @@ class GearPostConstraint(GeometricConstraint):
         self.MACFracLower = MACFracLower
         self.MACFracUpper = MACFracUpper
         self.coords = np.array([up, down])
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, None, None, None, None, self.DVGeo, self.addToPyOpt)
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)

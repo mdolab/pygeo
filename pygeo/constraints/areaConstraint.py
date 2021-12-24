@@ -29,12 +29,13 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         max_perim,
         heuristic_dist,
     ):
-        self.name = name
+        super().__init__(name, 2, -1e10, 0.0, scale, None, addToPyOpt)
+
         # get the point sets
         self.surface_1_name = surface_1_name
         self.surface_2_name = surface_2_name
         if DVGeo1 is None and DVGeo2 is None:
-            raise ValueError("Must include at least one geometric parametrization in constraint " + str(name))
+            raise ValueError(f"Must include at least one geometric parametrization in constraint {name}")
         self.DVGeo1 = DVGeo1
         self.DVGeo2 = DVGeo2
 
@@ -62,16 +63,10 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.maxdim = heuristic_dist
         else:
             self.maxdim = computed_maxdim * 1.05
-        self.scale = scale
 
-        self.addToPyOpt = addToPyOpt
         self.rho = rho
         self.perim_scale = perim_scale
         self.max_perim = max_perim
-        self.nCon = 2
-
-        self.upper = 0.000
-        self.lower = -1e10
         self.smSize = None
         return
 
@@ -304,18 +299,8 @@ class SurfaceAreaConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = 1
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.scaled = scaled
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # create output array
         self.X = np.zeros(self.nCon)
@@ -477,18 +462,8 @@ class ProjectedAreaConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = 1
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.scaled = scaled
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # create output array
         self.X = np.zeros(self.nCon)

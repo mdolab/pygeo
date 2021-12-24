@@ -16,17 +16,7 @@ class PlanarityConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, axis, origin, p0, v1, v2, lower, upper, scale, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = 1  # len(p0)*3
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
 
         # create the output array
         self.X = np.zeros(self.nCon)

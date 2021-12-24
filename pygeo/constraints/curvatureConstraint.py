@@ -18,23 +18,14 @@ class CurvatureConstraint1D(GeometricConstraint):
     """
 
     def __init__(self, name, curvatureType, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, DVGeo, addToPyOpt):
-        self.name = name
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.curvatureType = curvatureType
         self.coords = coords
         self.axis = axis
         self.eps = eps
         self.KSCoeff = KSCoeff
         self.nPts = len(self.coords)
-        self.lower = lower
-        self.upper = upper
         self.scaled = scaled
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, 1, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -246,7 +237,8 @@ class CurvatureConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt):
-        self.name = name
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
+
         self.nSurfs = len(surfs)  # we support multiple surfaces (plot3D files)
         self.X = []
         self.X_map = []
@@ -272,24 +264,15 @@ class CurvatureConstraint(GeometricConstraint):
             ]
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
             self.coords += [np.reshape(self.X[iSurf], (surfs[iSurf].X.shape[0] * surfs[iSurf].X.shape[1], 3))]
-        self.nCon = 1
+
         self.curvatureType = curvatureType
-        self.lower = lower
-        self.upper = upper
         self.scaled = scaled
-        self.scale = scale
         self.KSCoeff = KSCoeff
         if self.KSCoeff is None:
             # set KSCoeff to be the number of points in the plot 3D files
             self.KSCoeff = 0.0
             for i in range(len(self.coords)):
                 self.KSCoeff += len(self.coords[i])
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided. We need to add a point set for each surface:

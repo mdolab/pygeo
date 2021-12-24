@@ -17,17 +17,7 @@ class ColinearityConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, axis, origin, coords, lower, upper, scale, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = len(coords)
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
+        super().__init__(name, len(coords), lower, upper, scale, DVGeo, addToPyOpt)
 
         # create the output array
         self.X = np.zeros(self.nCon)
