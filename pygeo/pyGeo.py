@@ -254,8 +254,6 @@ class pyGeo:
             self.surfs[-1].Nv = 3
             self.surfs[-1].origData = True
 
-        return
-
     def _init_lifting_surface(
         self,
         xsections,
@@ -737,8 +735,6 @@ class pyGeo:
         self.topo.calcGlobalNumbering(sizes)
 
         self.setSurfaceCoef()
-
-        return
 
     def fitGlobal(self):
         """

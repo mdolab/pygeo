@@ -810,8 +810,6 @@ class pyBlock:
                 self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
         # end if (Coordinate not none check)
 
-        return
-
     # ----------------------------------------------------------------------
     #             Geometric Functions
     # ----------------------------------------------------------------------

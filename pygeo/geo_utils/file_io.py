@@ -124,8 +124,6 @@ def writeAirfoilFile(fileName, name, x, y):
 
     f.close()
 
-    return
-
 
 def getCoordinatesFromFile(fileName):
     """Get a list of coordinates from a file - useful for testing

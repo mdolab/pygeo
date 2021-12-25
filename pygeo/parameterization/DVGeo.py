@@ -2360,8 +2360,6 @@ class DVGeometry:
             child.computeTotalJacobianCS(ptSetName, config=config)
             self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
 
-        return
-
     def addVariablesPyOpt(
         self,
         optProb,
@@ -3454,8 +3452,6 @@ class DVGeometry:
             # Now get jacobian from child and add to parent jacobian
             child.computeTotalJacobianFD(ptSetName, config=config)
             self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
-
-        return
 
     def _attachedPtJacobian(self, config):
         """

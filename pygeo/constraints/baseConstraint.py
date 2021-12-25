@@ -23,8 +23,6 @@ class GeometricConstraint:
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        return
-
     def setDesignVars(self, x):
         """
         take in the design var vector from pyopt and set the variables for this constraint
