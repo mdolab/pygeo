@@ -5,6 +5,7 @@ import copy
 from collections import OrderedDict
 import numpy as np
 from scipy import sparse
+from scipy.spatial import cKDTree
 from mpi4py import MPI
 from pyspline import Curve
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
@@ -114,19 +115,24 @@ class DVGeometry:
         # need to be set.
         self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
+
         self.coef = None
+        self.coef0 = None
         self.curPtSet = None
         self.refAxis = None
+
         self.rot_x = None
         self.rot_y = None
         self.rot_z = None
+        self.rot_theta = None
+        self.scale = None
         self.scale_x = None
         self.scale_y = None
         self.scale_z = None
-        self.coef0 = None
-        self.rot0_x = None
-        self.rot0_y = None
-        self.rot0_z = None
+
+        self.rot_x0 = None
+        self.rot_y0 = None
+        self.rot_z0 = None
         self.rot_theta0 = None
         self.scale0 = None
         self.scale_x0 = None
@@ -144,11 +150,6 @@ class DVGeometry:
         self.links_s = None
         self.links_x = None
         self.links_n = None
-        self.rot_theta = None
-        self.scale = None
-        self.rot_x0 = None
-        self.rot_y0 = None
-        self.rot_z0 = None
 
         # Jacobians:
         self.ptSetNames = []
@@ -1290,12 +1291,7 @@ class DVGeometry:
             baseCoords[:, index] = abs(baseCoords[:, index])
 
             # now use the baseCoords to create a KD tree
-            try:
-                from scipy.spatial import cKDTree
-            except ImportError as e:
-                raise Error("scipy.spatial " "must be available to use detect symmetry") from e
-
-            # Now make a KD-tree so we can use it to find the unique nodes
+            # so we can use it to find the unique nodes
             tree = cKDTree(baseCoords)
 
             # Now search through the +ve half of the points, ignoring anything within
