@@ -68,6 +68,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.perim_scale = perim_scale
         self.max_perim = max_perim
         self.smSize = None
+        self.perim_length = None
+        self.minimum_distance = None
 
     def getVarNames(self):
         """

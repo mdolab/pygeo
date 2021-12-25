@@ -320,7 +320,7 @@ class pyBlock:
         if fileName is not None and os.path.isfile(fileName):
             print(" ")
             print("Reading Connectivity File: %s" % (fileName))
-            self.topo = BlockTopology(file=fileName)
+            self.topo = BlockTopology(fileName=fileName)
             self._propagateKnotVectors()
         else:
             print(" ")
@@ -524,7 +524,7 @@ class pyBlock:
         if volLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".vol_labels.dat"
             f2 = open(labelFilename, "w")
             for ivol in range(self.nVol):

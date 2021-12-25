@@ -93,6 +93,8 @@ class DCELFace:
         self.external = None
         self.tag = "EXTERNAL"
         self.id = None
+        self.centroid = None
+        self.spatialCentroid = None
 
     def area(self):
         h = self.wedge

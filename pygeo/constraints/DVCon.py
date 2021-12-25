@@ -369,12 +369,9 @@ class DVConstraints:
         f.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (len(p0) * 3, len(p0)))
         f.write("DATAPACKING=POINT\n")
         for i in range(len(p0)):
-            points = []
-            points.append(p0[i])
-            points.append(p1[i])
-            points.append(p2[i])
-            for i in range(len(points)):
-                f.write(f"{points[i][0]:f} {points[i][1]:f} {points[i][2]:f}\n")
+            points = [p0[i], p1[i], p2[i]]
+            for j in range(len(points)):
+                f.write(f"{points[j][0]:f} {points[j][1]:f} {points[j][2]:f}\n")
 
         for i in range(len(p0)):
             f.write("%d %d %d\n" % (3 * i + 1, 3 * i + 2, 3 * i + 3))
@@ -396,8 +393,8 @@ class DVConstraints:
         """
         try:
             from stl import mesh
-        except ImportError:
-            raise ImportError("numpy-stl package must be installed")
+        except ImportError as e:
+            raise ImportError("numpy-stl package must be installed") from e
         if fromDVGeo is None:
             p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         else:
@@ -1383,8 +1380,8 @@ class DVConstraints:
         """
         try:
             import geograd  # noqa
-        except ImportError:
-            raise ImportError("Geograd package must be installed to use triangulated surface constraint")
+        except ImportError as e:
+            raise ImportError("Geograd package must be installed to use triangulated surface constraint") from e
         if DVGeo_1_name is not None:
             self._checkDVGeo(DVGeo_1_name)
             DVGeo1 = self.DVGeometries[DVGeo_1_name]
@@ -1748,12 +1745,10 @@ class DVConstraints:
         for vol in vols:
             try:
                 volCons.append(self.constraints[typeName][vol])
-            except KeyError:
+            except KeyError as e:
                 raise Error(
-                    "The supplied volume name '%s' has not"
-                    " already been added with a call to "
-                    "addVolumeConstraint()" % vol
-                )
+                    f"The supplied volume '{vol}' has not already been added with a call to addVolumeConstraint()"
+                ) from e
         self.constraints[typeName][conName] = CompositeVolumeConstraint(
             conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
         )
@@ -2933,7 +2928,7 @@ class DVConstraints:
         # Project all the points
         for i in range(nPts):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
+            up, _, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
             if fail > 0:
                 raise Error(
                     "There was an error projecting a node "
@@ -3096,7 +3091,7 @@ class DVConstraints:
         scalar will be 'upcast' to that size
         """
 
-        if np.isscalar:
+        if np.isscalar(value):
             return value * np.ones((dim1, dim2))
         else:
             temp = np.atleast_2d(value)
@@ -3112,7 +3107,7 @@ class DVConstraints:
         otherwise, a scalar will be 'upcast' to that size
         """
 
-        if np.isscalar:
+        if np.isscalar(value):
             return value * np.ones(dim1)
         else:
             temp = np.atleast_1d(value)

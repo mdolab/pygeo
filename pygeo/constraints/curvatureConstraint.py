@@ -98,24 +98,24 @@ class CurvatureConstraint1D(GeometricConstraint):
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
 
-        self.C, self.KSC2, self.meanC2, self.maxC2 = self.calcCurvature2(
+        self.C, KSC2, meanC2, self.maxC2 = self.calcCurvature2(
             self.coords, self.axis, self.nPts, self.eps, self.KSCoeff
         )
 
         if MPI.COMM_WORLD.rank == 0:
-            print("Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2, self.meanC2, self.maxC2))
+            print("Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (KSC2, meanC2, self.maxC2))
 
         if self.scaled:
-            self.KSC2 /= self.KSC2Ref + 1e-16
-            self.meanC2 /= self.meanC2Ref + 1e-16
+            KSC2 /= self.KSC2Ref + 1e-16
+            meanC2 /= self.meanC2Ref + 1e-16
 
             if MPI.COMM_WORLD.rank == 0:
-                print("Normalized squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2, self.meanC2, self.maxC2))
+                print("Normalized squared-curvatures: KS: %f, mean: %f, max: %f" % (KSC2, meanC2, self.maxC2))
 
         if self.curvatureType == "mean":
-            funcs[self.name] = self.meanC2
+            funcs[self.name] = meanC2
         elif self.curvatureType == "aggregated":
-            funcs[self.name] = self.KSC2
+            funcs[self.name] = KSC2
         else:
             raise Error("curvatureType=%s not supported! Options are: mean or aggregated" % self.curvatureType)
 

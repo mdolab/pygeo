@@ -94,6 +94,8 @@ class Topology:
         self.edges = None
         self.simple = None
         self.topoType = None
+        self.nDG = None
+        self.nEnt = None
 
     def _calcDGs(self, edges, edgeLink, edgeLinkSorted, edgeLinkInd):
 
@@ -1077,7 +1079,7 @@ class BlockTopology(Topology):
         lIndex = []
 
         def addNode(i, j, k, N, M, L):
-            _type, number, index1, index2 = indexPosition3D(i, j, k, N, M, L)
+            _type, number, _, _ = indexPosition3D(i, j, k, N, M, L)
 
             if _type == 1:  # Face
 

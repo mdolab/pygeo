@@ -471,8 +471,3 @@ class CompositeVolumeConstraint(GeometricConstraint):
             for i in range(1, len(tmp)):
                 for key in tmp[i]:
                     funcsSens[self.name][key] += tmp[i][key]
-
-    def writeTecplot(self, handle):
-        """No need to write the composite volume since each of the
-        individual ones are already written"""
-        pass

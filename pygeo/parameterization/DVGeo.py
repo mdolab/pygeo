@@ -76,7 +76,7 @@ class DVGeometry:
       >>>
     """
 
-    def __init__(self, fileName, isComplex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -114,6 +114,41 @@ class DVGeometry:
         # need to be set.
         self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
+        self.coef = None
+        self.curPtSet = None
+        self.refAxis = None
+        self.rot_x = None
+        self.rot_y = None
+        self.rot_z = None
+        self.scale_x = None
+        self.scale_y = None
+        self.scale_z = None
+        self.coef0 = None
+        self.rot0_x = None
+        self.rot0_y = None
+        self.rot0_z = None
+        self.rot_theta0 = None
+        self.scale0 = None
+        self.scale_x0 = None
+        self.scale_y0 = None
+        self.scale_z0 = None
+
+        self.ptAttach = None
+        self.ptAttachFull = None
+        self.ptAttachInd = None
+        self.nPtAttach = None
+        self.nPtAttachFull = None
+
+        self.curveIDs = None
+        self.curveIDNames = None
+        self.links_s = None
+        self.links_x = None
+        self.links_n = None
+        self.rot_theta = None
+        self.scale = None
+        self.rot_x0 = None
+        self.rot_y0 = None
+        self.rot_z0 = None
 
         # Jacobians:
         self.ptSetNames = []
@@ -198,7 +233,6 @@ class DVGeometry:
         rotAxisVar=None,
         rot0ang=None,
         rot0axis=[1, 0, 0],
-        xFractionOrder=2,
         includeVols=[],
         ignoreInd=[],
         raySize=1.5,
@@ -283,9 +317,6 @@ class DVGeometry:
             defining the [x,y,z] components of the axis direction.
             This is necessary to use the scaling functions `scale_x`, `scale_y`,
             and `scale_z` with rotType == 0.
-
-        xFractionOrder : int  (NOT USED?)
-            Order of spline used for refaxis curve.
 
         includeVols : list
             List of additional volumes to add to reference axis after the
@@ -760,9 +791,9 @@ class DVGeometry:
 
         if pointSelect is not None:
             if pointSelect.type != "ijkBounds":
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                _, ind = pointSelect.getPoints(self.FFD.coef)
             else:
-                pts, ind = pointSelect.getPoints_ijk(self)
+                _, ind = pointSelect.getPoints_ijk(self)
         elif volList is not None:
             if self.FFD.symmPlane is not None:
                 volListTmp = []
@@ -882,9 +913,9 @@ class DVGeometry:
 
         if pointSelect is not None:
             if pointSelect.type != "ijkBounds":
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                _, ind = pointSelect.getPoints(self.FFD.coef)
             else:
-                pts, ind = pointSelect.getPoints_ijk(self)
+                _, ind = pointSelect.getPoints_ijk(self)
         elif volList is not None:
             if self.FFD.symmPlane is not None:
                 volListTmp = []
@@ -1118,10 +1149,10 @@ class DVGeometry:
         # Pick out control points
         if pointSelect is not None:
             if pointSelect.type != "ijkBounds":
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                _, ind = pointSelect.getPoints(self.FFD.coef)
                 volList = np.arange(self.FFD.nVol)  # Select all volumes
             else:
-                pts, ind = pointSelect.getPoints_ijk(self)
+                _, ind = pointSelect.getPoints_ijk(self)
                 volList = pointSelect.ijkBounds.keys()  # Select only volumes used by pointSelect
         elif volList is not None:
             if self.FFD.symmPlane is not None:
@@ -1261,8 +1292,8 @@ class DVGeometry:
             # now use the baseCoords to create a KD tree
             try:
                 from scipy.spatial import cKDTree
-            except ImportError:
-                raise Error("scipy.spatial " "must be available to use detect symmetry")
+            except ImportError as e:
+                raise Error("scipy.spatial " "must be available to use detect symmetry") from e
 
             # Now make a KD-tree so we can use it to find the unique nodes
             tree = cKDTree(baseCoords)
@@ -1441,8 +1472,8 @@ class DVGeometry:
         """Get the sequential axis number from the name tag axisID"""
         try:
             return list(self.axis.keys()).index(axisID)
-        except IndexError:
-            raise Error("'The 'axisID' was invalid!")
+        except IndexError as e:
+            raise Error("'The 'axisID' was invalid!") from e
 
     def updateCalculations(self, new_pts, isComplex, config):
         """
@@ -2045,7 +2076,7 @@ class DVGeometry:
 
         if missingVars:
             # if a DV name is listed by getVarNames() but was not found in the previous loop then something is wrong...
-            raise Error("The following DV did not belong to any DVGeo object:", missingVars)
+            raise Error(f"The following DV did not belong to any DVGeo object: {missingVars}")
 
         # perform the product
         if self.JT[ptSetName] is None:

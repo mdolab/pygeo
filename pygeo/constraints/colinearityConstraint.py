@@ -143,7 +143,7 @@ class ColinearityConstraint(GeometricConstraint):
         Add the axis variable for the colinearity constraint to pyOpt
         """
 
-        if self.addVarToPyOpt:
+        if self.addToPyOpt:
             optProb.addVarGroup(
                 self.name, self.nVal, "c", value=self.value, lower=self.lower, upper=self.upper, scale=self.scale
             )

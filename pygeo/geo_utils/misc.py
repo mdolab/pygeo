@@ -59,7 +59,7 @@ def convertTo1D(value, dim1):
     otherwise, a scalar will be 'upcast' to that size
     """
 
-    if np.isscalar:
+    if np.isscalar(value):
         return value * np.ones(dim1)
     else:
         temp = np.atleast_1d(value)

@@ -92,7 +92,7 @@ class GeometricConstraint:
 class LinearConstraint:
     """
     This class is used to represet a set of generic set of linear
-    constriants coupling local shape variables together.
+    constraints coupling local shape variables together.
     """
 
     def __init__(self, name, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config):
@@ -363,8 +363,7 @@ class GlobalLinearConstraint:
 
     def writeTecplot(self, handle):
         """
-        Write the visualization of this set of lete constraints
-        to the open file handle
+        Write the visualization of this set of constraints to the open file handle
         """
 
         pass
