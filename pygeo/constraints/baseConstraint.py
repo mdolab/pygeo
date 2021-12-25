@@ -1,11 +1,12 @@
 # ======================================================================
 #         Imports
 # ======================================================================
+from abc import ABC, abstractmethod
 import numpy as np
 from baseclasses.utils import Error
 
 
-class GeometricConstraint:
+class GeometricConstraint(ABC):
     """
     This is a generic base class for all of the geometric constraints.
 
@@ -23,13 +24,15 @@ class GeometricConstraint:
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-    def setDesignVars(self, x):
-        """
-        take in the design var vector from pyopt and set the variables for this constraint
-        This function is constraint specific, so the baseclass doesn't implement anything.
-        """
-        pass
+    # @abstractmethod
+    # def setDesignVars(self, x):
+    #     """
+    #     take in the design var vector from pyopt and set the variables for this constraint
+    #     This function is constraint specific, so the baseclass doesn't implement anything.
+    #     """
+    #     return
 
+    @abstractmethod
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary.
@@ -40,8 +43,9 @@ class GeometricConstraint:
         funcs : dict
             Dictionary to place function values
         """
-        pass
+        return
 
+    @abstractmethod
     def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
@@ -53,7 +57,7 @@ class GeometricConstraint:
         funcsSens : dict
             Dictionary to place function values
         """
-        pass
+        return
 
     def getVarNames(self):
         """
@@ -80,13 +84,12 @@ class GeometricConstraint:
         #                         upper=self.upper, scale=self.scale,
         #                         wrt=self.getVarNames())
 
+    @abstractmethod
     def writeTecplot(self, handle):
         """
-        Write the visualization of this set of thickness constraints
-        to the open file handle
-        This function is constraint specific, so the baseclass doesn't implement anything.
+        Write the visualization of this constraint to the open file handle
         """
-        pass
+        return
 
 
 class LinearConstraint:
@@ -360,10 +363,3 @@ class GlobalLinearConstraint:
                 jacobian[i, start + i + 1] = -1.0 * slope
             self.jac[self.key] = jacobian
             self.ncon += ncon
-
-    def writeTecplot(self, handle):
-        """
-        Write the visualization of this set of constraints to the open file handle
-        """
-
-        pass

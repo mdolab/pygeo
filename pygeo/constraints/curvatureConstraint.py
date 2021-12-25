@@ -875,62 +875,55 @@ class CurvatureConstraint(GeometricConstraint):
 
     def diags(self, a):
         """
-        A standard vectorized sparse diagnal matrix function. Similar to the above \
-        function
-        some versions of scipy don't have this function, so this is here to prevent\
-
+        A standard vectorized sparse diagnal matrix function. Similar to the above function
+        some versions of scipy don't have this function, so this is here to prevent
         potential import problems.
         """
         ii = range(len(a))
         return csr_matrix((a, [ii, ii]), (len(a), len(a)))
 
-    def writeTecplot(self, handle1):
+    def writeTecplot(self, handle):
         """
         Write Curvature data on the surface to a tecplot file. Data includes
         mean curvature, H, and Gaussian curvature, K.
-
-        Input:
-
-            tec_file: name of TecPlot file.
         """
         # we ignore the input handle and use this separated name for curvature constraint tecplot file
-        # NOTE: we use this tecplot file to only visualize the local distribution of curctures.
+        # NOTE: we use this tecplot file to only visualize the local distribution of curvatures.
         # The plotted local curvatures are not exactly as that computed in the evalCurvArea function
-        handle = open("%s.dat" % self.name, "w")
-        handle.write('title = "DVConstraint curvature constraint"\n')
-        varbs = 'variables = "x", "y", "z", "K", "H" "C"'
-        handle.write(varbs + "\n")
-        for iSurf in range(self.nSurfs):
-            [_, K, H, C] = self.evalCurvArea(iSurf)
-            handle.write("Zone T=%s_%d\n" % (self.name, iSurf))
+        with open(f"{self.name}.dat", "w") as f:
+            f.write('title = "DVConstraint curvature constraint"\n')
+            varbs = 'variables = "x", "y", "z", "K", "H" "C"'
+            f.write(varbs + "\n")
+            for iSurf in range(self.nSurfs):
+                [_, K, H, C] = self.evalCurvArea(iSurf)
+                f.write("Zone T=%s_%d\n" % (self.name, iSurf))
 
-            handle.write(
-                "Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n"
-                % (len(self.coords[iSurf]), (self.X_map[iSurf].shape[0] - 1) * (self.X_map[iSurf].shape[1] - 1))
-            )
-            for i in range(self.X_map[iSurf].shape[0]):
-                for j in range(self.X_map[iSurf].shape[1]):
-                    handle.write(
-                        "%E %E %E %E %E %E\n"
-                        % (
-                            self.X[iSurf][self.X_map[iSurf][i, j, 0]],
-                            self.X[iSurf][self.X_map[iSurf][i, j, 1]],
-                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],
-                            K[self.node_map[iSurf][i, j]],
-                            H[self.node_map[iSurf][i, j]],
-                            C[self.node_map[iSurf][i, j]],
+                f.write(
+                    "Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n"
+                    % (len(self.coords[iSurf]), (self.X_map[iSurf].shape[0] - 1) * (self.X_map[iSurf].shape[1] - 1))
+                )
+                for i in range(self.X_map[iSurf].shape[0]):
+                    for j in range(self.X_map[iSurf].shape[1]):
+                        f.write(
+                            "%E %E %E %E %E %E\n"
+                            % (
+                                self.X[iSurf][self.X_map[iSurf][i, j, 0]],
+                                self.X[iSurf][self.X_map[iSurf][i, j, 1]],
+                                self.X[iSurf][self.X_map[iSurf][i, j, 2]],
+                                K[self.node_map[iSurf][i, j]],
+                                H[self.node_map[iSurf][i, j]],
+                                C[self.node_map[iSurf][i, j]],
+                            )
                         )
-                    )
-            handle.write("\n")
-            for i in range(self.X_map[iSurf].shape[0] - 1):
-                for j in range(self.X_map[iSurf].shape[1] - 1):
-                    handle.write(
-                        "%d %d %d %d\n"
-                        % (
-                            self.node_map[iSurf][i, j] + 1,
-                            self.node_map[iSurf][i + 1, j] + 1,
-                            self.node_map[iSurf][i + 1, j + 1] + 1,
-                            self.node_map[iSurf][i, j + 1] + 1,
+                f.write("\n")
+                for i in range(self.X_map[iSurf].shape[0] - 1):
+                    for j in range(self.X_map[iSurf].shape[1] - 1):
+                        f.write(
+                            "%d %d %d %d\n"
+                            % (
+                                self.node_map[iSurf][i, j] + 1,
+                                self.node_map[iSurf][i + 1, j] + 1,
+                                self.node_map[iSurf][i + 1, j + 1] + 1,
+                                self.node_map[iSurf][i, j + 1] + 1,
+                            )
                         )
-                    )
-        handle.close()

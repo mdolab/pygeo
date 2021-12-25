@@ -414,6 +414,9 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
 
         return grad_0 / 6.0, grad_1 / 6.0, grad_2 / 6.0
 
+    def writeTecplot(self, handle):
+        pass
+
 
 class CompositeVolumeConstraint(GeometricConstraint):
     """This class is used to represet a single volume constraints that is a
@@ -471,3 +474,6 @@ class CompositeVolumeConstraint(GeometricConstraint):
             for i in range(1, len(tmp)):
                 for key in tmp[i]:
                     funcsSens[self.name][key] += tmp[i][key]
+
+    def writeTecplot(self, handle):
+        pass

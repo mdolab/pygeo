@@ -290,6 +290,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 wrt=self.getVarNames(),
             )
 
+    def writeTecplot(self, handle):
+        pass
+
 
 class SurfaceAreaConstraint(GeometricConstraint):
     """

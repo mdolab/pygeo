@@ -123,3 +123,6 @@ class GearPostConstraint(GeometricConstraint):
             optProb.addCon(
                 self.name + "_MAC", lower=self.MACFracLower, upper=self.MACFracUpper, wrt=self.DVGeo.getVarNames()
             )
+
+    def writeTecplot(self, handle):
+        pass
