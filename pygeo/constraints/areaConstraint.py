@@ -547,7 +547,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
                     PAb = areasb[i]
                 else:
                     PAb = 0.0
-                SAvecb, axisb = geo_utils.dot_b(SAvec, self.axis, PAb)
+                SAvecb, _ = geo_utils.dot_b(SAvec, self.axis, PAb)
                 v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
                 p2b[i, :] = p2b[i, :] + v2b
                 p1b[i, :] = p1b[i, :] + v1b

@@ -65,7 +65,7 @@ class VolumeConstraint(GeometricConstraint):
 
     def writeTecplot(self, handle):
         """
-        Write the visualization of this volume constriant
+        Write the visualization of this volume constraint
         """
         # Reshape coordinates back to 3D format
         x = self.coords.reshape([self.nSpan, self.nChord, 2, 3])
@@ -142,7 +142,7 @@ class VolumeConstraint(GeometricConstraint):
 
     def evalVolumeHex(self, x0, x1, x2, x3, x4, x5, x6, x7):
         """
-        Evaluate the volume of the hexahedreal volume defined by the
+        Evaluate the volume of the hexahedral volume defined by the
         the 8 corners.
 
         Parameters

@@ -66,4 +66,4 @@ def convertTo1D(value, dim1):
         if temp.shape[0] == dim1:
             return value
         else:
-            raise Error("The size of the 1D array was the incorret shape")
+            raise Error("The size of the 1D array was the incorrect shape")

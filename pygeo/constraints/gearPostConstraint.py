@@ -95,7 +95,7 @@ class GearPostConstraint(GeometricConstraint):
                 np.array([[p1b, p2b]]), self.name, config=config
             )
 
-            # And now we need the sensitivty of the conLoc calc
+            # And now we need the sensitivity of the conLoc calc
             p1b[:] = 0
             p2b[:] = 0
             p1b[0] += 0.5 / wfuncs["MAC"]
@@ -103,7 +103,7 @@ class GearPostConstraint(GeometricConstraint):
 
             tmpSens = self.DVGeo.totalSensitivity(np.array([[p1b, p2b]]), self.name, config=config)
 
-            # And we need the sensitity of conLoc wrt 'xLEMAC' and 'MAC'
+            # And we need the sensitivity of conLoc wrt 'xLEMAC' and 'MAC'
             postLoc = 0.5 * (self.coords[0, 0] + self.coords[1, 0])
             for key in wSens["xLEMAC"]:
                 tmpSens[key] -= wSens["xLEMAC"][key] / wfuncs["MAC"]

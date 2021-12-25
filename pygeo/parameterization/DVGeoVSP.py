@@ -155,7 +155,7 @@ class DVGeometryVSP:
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of
@@ -763,7 +763,7 @@ class DVGeometryVSP:
 
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            # We use float here since sometimes pyoptsparse will give
+            # We use float here since sometimes pyOptsparse will give
             # stupid numpy zero-dimensional arrays, which swig does
             # not like.
             openvsp.SetParmVal(DV.parmID, float(DV.value))
@@ -806,7 +806,7 @@ class DVGeometryVSP:
                 new_value = ((DV.value + 180.0) % 360.0) - 180.0
                 openvsp.SetParmVal(DV.parmID, float(new_value))
             else:
-                # We use float here since sometimes pyoptsparse will give
+                # We use float here since sometimes pyOptsparse will give
                 # numpy zero-dimensional arrays, which swig does not like
                 openvsp.SetParmVal(DV.parmID, float(DV.value))
 

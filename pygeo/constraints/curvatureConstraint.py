@@ -340,7 +340,7 @@ class CurvatureConstraint(GeometricConstraint):
         Evaluate the integral K**2 over the surface area of the wing.
         Where K is the Gaussian curvature.
         """
-        # Evaluate the derivitive of the position vector of every point on the
+        # Evaluate the derivative of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], "u")
         t_v = self.evalDiff(iSurf, self.X[iSurf], "v")
@@ -353,7 +353,7 @@ class CurvatureConstraint(GeometricConstraint):
         n_hat[self.X_map[iSurf][:, :, 0]] = n[self.X_map[iSurf][:, :, 0]] / n_norm[self.node_map[iSurf][:, :]]
         n_hat[self.X_map[iSurf][:, :, 1]] = n[self.X_map[iSurf][:, :, 1]] / n_norm[self.node_map[iSurf][:, :]]
         n_hat[self.X_map[iSurf][:, :, 2]] = n[self.X_map[iSurf][:, :, 2]] / n_norm[self.node_map[iSurf][:, :]]
-        # Evaluate the second derivitives of the position vector wrt u and v
+        # Evaluate the second derivatives of the position vector wrt u and v
         t_uu = self.evalDiff(iSurf, t_u, "u")
         t_vv = self.evalDiff(iSurf, t_v, "v")
         t_uv = self.evalDiff(iSurf, t_v, "u")
@@ -386,19 +386,19 @@ class CurvatureConstraint(GeometricConstraint):
         one = np.ones(self.node_map[iSurf].size)
 
         if self.curvatureType == "Gaussian":
-            # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
+            # Now compute integral (K**2) over S, equivalent to sum(K**2*dS)
             kS = np.dot(one, K * K * dS)
             return [kS, K, H, C]
         elif self.curvatureType == "mean":
-            # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
+            # Now compute integral (H**2) over S, equivalent to sum(H**2*dS)
             hS = np.dot(one, H * H * dS)
             return [hS, K, H, C]
         elif self.curvatureType == "combined":
-            # Now compute integral C over S, equivelent to sum(C*dS)
+            # Now compute integral C over S, equivalent to sum(C*dS)
             cS = np.dot(one, C * dS)
             return [cS, K, H, C]
         elif self.curvatureType == "KSmean":
-            # Now compute the KS function for mean curvature, equivelent to KS(H*H*dS)
+            # Now compute the KS function for mean curvature, equivalent to KS(H*H*dS)
             sigmaH = np.dot(one, np.exp(self.KSCoeff * H * H * dS))
             KSmean = np.log(sigmaH) / self.KSCoeff
             if MPI.COMM_WORLD.rank == 0:
@@ -415,7 +415,7 @@ class CurvatureConstraint(GeometricConstraint):
         Compute sensitivity of the integral K**2 wrt the coordinate
         locations X
         """
-        # Evaluate the derivitive of the position vector of every point on the
+        # Evaluate the derivative of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], "u")
         Dt_uDX = self.evalDiffSens(iSurf, "u")
@@ -454,7 +454,7 @@ class CurvatureConstraint(GeometricConstraint):
         Dn_hatDn_norm = csr_matrix((data, [ii, jj]), shape=(n_hat.size, n_norm.size))
 
         Dn_hatDX = Dn_hatDn.dot(DnDX) + Dn_hatDn_norm.dot(Dn_normDX)
-        # Evaluate the second derivitives of the position vector wrt u and v
+        # Evaluate the second derivatives of the position vector wrt u and v
         t_uu = self.evalDiff(iSurf, t_u, "u")
         Dt_uuDt_u = self.evalDiffSens(iSurf, "u")
         Dt_uuDX = Dt_uuDt_u.dot(Dt_uDX)
@@ -533,12 +533,12 @@ class CurvatureConstraint(GeometricConstraint):
         one = np.ones(self.node_map[iSurf].size)
 
         if self.curvatureType == "Gaussian":
-            # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
+            # Now compute integral (K**2) over S, equivalent to sum(K**2*dS)
             # kS = np.dot(one, K * K * dS)
             DkSDX = (self.diags(2 * K * dS).dot(DKDX) + self.diags(K * K).dot(DdSDX)).T.dot(one)
             return DkSDX
         elif self.curvatureType == "mean":
-            # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
+            # Now compute integral (H**2) over S, equivalent to sum(H**2*dS)
             # hS = np.dot(one, H * H * dS)
             DhSDX = (self.diags(2 * H * dS).dot(DHDX) + self.diags(H * H).dot(DdSDX)).T.dot(one)
             return DhSDX
@@ -726,7 +726,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalDiff(self, iSurf, v, wrt):
         """
-        Diferentiate vector field v wrt the parameteric coordinate u or v.
+        Differentiate vector field v wrt the parameteric coordinate u or v.
         Second order accurate. Central difference for nodes in the center
         forward/backward difference for nodes on the edge
         """
@@ -769,7 +769,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalDiffSens(self, iSurf, wrt):
         """
-        Compute sensitivity of v_wrt with respect to input vector fiel v
+        Compute sensitivity of v_wrt with respect to input vector field v
         (Dv_wrt/Dv)
         """
         ii = []
@@ -875,7 +875,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def diags(self, a):
         """
-        A standard vectorized sparse diagnal matrix function. Similar to the above function
+        A standard vectorized sparse diagonal matrix function. Similar to the above function
         some versions of scipy don't have this function, so this is here to prevent
         potential import problems.
         """

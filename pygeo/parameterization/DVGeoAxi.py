@@ -151,7 +151,7 @@ class DVGeometryAxi(DVGeometry):
     2. Determine the derivative of the coordinates with respect to the
        design variables. That is the derivative :math:`\\frac{dX_{pt}}{dX_{DV}}`
 
-    DVGeometry uses the *Free-Form Deformation* approach for goemetry
+    DVGeometry uses the *Free-Form Deformation* approach for geometry
     manipulation. The basic idea is the coordinates are *embedded* in
     a clear-flexible jelly-like block. Then by stretching moving and
     'poking' the volume, the coordinates that are embedded inside move
@@ -225,7 +225,7 @@ class DVGeometryAxi(DVGeometry):
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of

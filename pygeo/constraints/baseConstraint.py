@@ -27,7 +27,7 @@ class GeometricConstraint(ABC):
     # @abstractmethod
     # def setDesignVars(self, x):
     #     """
-    #     take in the design var vector from pyopt and set the variables for this constraint
+    #     take in the design var vector from pyOpt and set the variables for this constraint
     #     This function is constraint specific, so the baseclass doesn't implement anything.
     #     """
     #     return
@@ -137,7 +137,7 @@ class LinearConstraint:
             elif key in self.DVGeo.DV_listSpanwiseLocal:
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listSpanwiseLocal[key].value))
             else:
-                raise Error(f"con {self.name} diffined wrt {key}, but {key} not found in DVGeo")
+                raise Error(f"con {self.name} defined wrt {key}, but {key} not found in DVGeo")
         funcs[self.name] = np.array(cons).real.astype("d")
 
     def evalFunctionsSens(self, funcsSens):
@@ -174,7 +174,7 @@ class LinearConstraint:
         """
         We have postponed actually determining the constraint jacobian
         until this function is called. Here we determine the actual
-        constraint jacobains as they relate to the actual sets of
+        constraint Jacobians as they relate to the actual sets of
         local shape variables that may (or may not) be present in the
         DVGeo object.
         """
@@ -271,7 +271,7 @@ class LinearConstraint:
 class GlobalLinearConstraint:
     """
     This class is used to represent a set of generic set of linear
-    constriants coupling global design variables together.
+    constraints coupling global design variables together.
     """
 
     def __init__(self, name, key, conType, options, lower, upper, DVGeo, config):

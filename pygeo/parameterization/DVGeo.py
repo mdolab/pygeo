@@ -38,7 +38,7 @@ class DVGeometry:
     2. Determine the derivative of the coordinates with respect to the
        design variables. That is the derivative :math:`\\frac{dX_{pt}}{dX_{DV}}`
 
-    DVGeometry uses the *Free-Form Deformation* approach for goemetry
+    DVGeometry uses the *Free-Form Deformation* approach for geometry
     manipulation. The basic idea is the coordinates are *embedded* in
     a clear-flexible jelly-like block. Then by stretching moving and
     'poking' the volume, the coordinates that are embedded inside move
@@ -93,7 +93,7 @@ class DVGeometry:
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
 
-        # Name (used for ensuring design variables names are unique to pyoptsparse)
+        # Name (used for ensuring design variables names are unique to pyOptsparse)
         self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
@@ -576,12 +576,12 @@ class DVGeometry:
         Add a set of coordinates to DVGeometry
 
         The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeoemtry to be manipulated.
+        list is given to DVGeometry to be manipulated.
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of
@@ -706,7 +706,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
         """
         # if the parent DVGeometry object has a name attribute, prepend it
         if self.name is not None:
@@ -740,7 +740,7 @@ class DVGeometry:
             The upper bound for the variable(s). This will be applied to
             all shape variables
 
-        scale : flot
+        scale : float
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
@@ -751,7 +751,7 @@ class DVGeometry:
             calls to addLocalDV with different axis values.
 
         volList : list
-            Use the control points on the volume indicies given in volList.
+            Use the control points on the volume indices given in volList.
             You should use pointSelect = None, otherwise this will not work.
 
         pointSelect : pointSelect object. Default is None Use a
@@ -764,7 +764,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
@@ -877,7 +877,7 @@ class DVGeometry:
             The upper bound for the variable(s). This will be applied to
             all shape variables
 
-        scale : flot
+        scale : float
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
@@ -889,7 +889,7 @@ class DVGeometry:
             volList.
 
         volList : list
-            Use the control points on the volume indicies given in volList.
+            Use the control points on the volume indices given in volList.
             You should use pointSelect = None, otherwise this will not work.
 
         config : str or list
@@ -1048,7 +1048,7 @@ class DVGeometry:
             The upper bound for the variable(s). This will be applied to
             all shape variables
 
-        scale : flot
+        scale : float
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
@@ -1084,7 +1084,7 @@ class DVGeometry:
             Check the other PointSelect options in geo_utils.py
 
         volList : list
-            Use the control points on the volume indicies given in volList. If
+            Use the control points on the volume indices given in volList. If
             None, all volumes will be included.
             PointSelect has priority over volList. So if you use PointSelect, the values
             defined in volList will have no effect.
@@ -1128,7 +1128,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
@@ -1226,7 +1226,7 @@ class DVGeometry:
         Parameters
         ----------
         volList : list
-            Use the control points on the volume indicies given in volList
+            Use the control points on the volume indices given in volList
 
         pointSelect : pointSelect object. Default is None Use a
             pointSelect object to select a subset of the total number
@@ -1473,7 +1473,7 @@ class DVGeometry:
 
     def updateCalculations(self, new_pts, isComplex, config):
         """
-        The core update rountine. pulled out here to eliminate duplication between update and
+        The core update routine. pulled out here to eliminate duplication between update and
         update_deriv.
         """
 
@@ -1612,11 +1612,11 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         """
         self.curPtSet = ptSetName
-        # We've postponed things as long as we can...do the finialization.
+        # We've postponed things as long as we can...do the finalization.
         self._finalize()
 
         # Make sure coefficients are complex
@@ -1928,7 +1928,7 @@ class DVGeometry:
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
         Specificly, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
@@ -1954,7 +1954,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
 
         Returns
@@ -1996,7 +1996,7 @@ class DVGeometry:
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, child=False, nDVStore=0, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
         Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
@@ -2019,7 +2019,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
@@ -2087,7 +2087,7 @@ class DVGeometry:
 
     def totalSensitivityTransProd(self, vec, ptSetName, comm=None, child=False, nDVStore=0, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
         Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec`
@@ -2115,7 +2115,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
