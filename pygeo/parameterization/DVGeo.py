@@ -1334,9 +1334,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listGlobal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables "
-                        "for DV: %s.\nExpecting %d variables and "
-                        "received %d variabes" % (key, self.DV_listGlobal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listGlobal[key].nVal} variables but received {len(vals_to_set)}"
                     )
 
                 self.DV_listGlobal[key].value = vals_to_set
@@ -1345,10 +1344,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listLocal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables \
-                    for DV: %s.\nExpecting %d variables and received \
-                    %d variabes"
-                        % (key, self.DV_listLocal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listLocal[key].nVal} variables but received {len(vals_to_set)}"
                     )
                 self.DV_listLocal[key].value = vals_to_set
 
@@ -1356,10 +1353,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listSectionLocal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables \
-                    for DV: %s.\nExpecting %d variables and received \
-                    %d variabes"
-                        % (key, self.DV_listSectionLocal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listSectionLocal[key].nVal} variables but received {len(vals_to_set)}"
                     )
                 self.DV_listSectionLocal[key].value = vals_to_set
 
@@ -1367,10 +1362,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listSpanwiseLocal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables \
-                    for DV: %s.\nExpecting %d variables and received \
-                    %d variabes"
-                        % (key, self.DV_listSpanwiseLocal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listSpanwiseLocal[key].nVal} variables but received {len(vals_to_set)}"
                     )
                 self.DV_listSpanwiseLocal[key].value = vals_to_set
 
@@ -1994,7 +1987,7 @@ class DVGeometry:
 
         return dIdx
 
-    def totalSensitivityProd(self, vec, ptSetName, comm=None, child=False, nDVStore=0, config=None):
+    def totalSensitivityProd(self, vec, ptSetName, config=None):
         """
         This function computes sensitivity information.
 
@@ -2085,7 +2078,7 @@ class DVGeometry:
 
         return xsdot
 
-    def totalSensitivityTransProd(self, vec, ptSetName, comm=None, child=False, nDVStore=0, config=None):
+    def totalSensitivityTransProd(self, vec, ptSetName, config=None):
         """
         This function computes sensitivity information.
 
@@ -3147,7 +3140,7 @@ class DVGeometry:
 
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count, self.nDVSW_count
 
-    def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0 / 1e-40, config=None, localDV=False):
+    def _update_deriv(self, iDV=0, oneoverh=1.0 / 1e-40, config=None, localDV=False):
 
         """Copy of update function for derivative calc"""
         new_pts = np.zeros((self.nPtAttach, 3), "D")
@@ -3534,7 +3527,7 @@ class DVGeometry:
                         self._complexifyCoef()  # Make sure coefficients are complex
                         self.refAxis._updateCurveCoef()
 
-                        deriv = oneoverh * np.imag(self._update_deriv(iDV, h, oneoverh, config=config)).flatten()
+                        deriv = oneoverh * np.imag(self._update_deriv(iDV, oneoverh, config=config)).flatten()
                         # reset the FFD and axis
                         self._unComplexifyCoef()
                         self.FFD.coef = self.FFD.coef.real.astype("d")
@@ -3855,7 +3848,7 @@ class DVGeometry:
 
                 # compute the deriv of the child FFD coords wrt the parent by processing
                 # the above CS perturbation
-                new_pts = self._update_deriv(iDV, h, oneoverh, config=config)
+                new_pts = self._update_deriv(iDV, oneoverh, config=config)
 
                 # insert this result in the the correct locations of a vector the correct
                 # size
@@ -3918,7 +3911,7 @@ class DVGeometry:
 
                 # compute the deriv of the child FFD coords wrt the parent by processing
                 # the above CS perturbation
-                new_pts = self._update_deriv(iDV, h, oneoverh, config=config, localDV=True)
+                new_pts = self._update_deriv(iDV, oneoverh, config=config, localDV=True)
                 np.put(self.FFD.coef[:, 0], self.ptAttachInd, new_pts[:, 0])
                 np.put(self.FFD.coef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 np.put(self.FFD.coef[:, 2], self.ptAttachInd, new_pts[:, 2])
@@ -4232,7 +4225,7 @@ class DVGeometry:
             X = np.reshape(pts, (nI * nJ, 3))
             c = np.mean(X, 0)
             A = X - c
-            U, S, V = np.linalg.svd(A.T)
+            U, _, _ = np.linalg.svd(A.T)
 
             # Choose section plane normal axis
             if orient2 == "svd":

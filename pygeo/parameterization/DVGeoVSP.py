@@ -150,7 +150,7 @@ class DVGeometryVSP:
         Add a set of coordinates to DVGeometry
 
         The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeoemtry to be manipulated.
+        list is given to DVGeometry to be manipulated.
 
         Parameters
         ----------

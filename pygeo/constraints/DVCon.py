@@ -3170,8 +3170,7 @@ class DVConstraints:
                     coords[i, j, 1] = up
                 else:
                     raise Error(
-                        "There was an error projecting a node \
-                     at (%f, %f, %f) with normal (%f, %f, %f)."
+                        "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
                         % (X[i, j, 0], X[i, j, 1], X[i, j, 2], upVec[0], upVec[1], upVec[2])
                     )
 

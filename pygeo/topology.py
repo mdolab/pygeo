@@ -180,10 +180,7 @@ class Topology:
             print("%5d        | %5d       " % (i, nList[i]))
 
         # Always have edges!
-        print(
-            "Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|\
-   DG   |  N     |"
-        )
+        print("Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |")
         for i in range(len(self.edges)):
             self.edges[i].writeInfo(i, sys.stdout)
 

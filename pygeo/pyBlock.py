@@ -54,10 +54,7 @@ class pyBlock:
         elif initType == "create":
             pass
         else:
-            raise Error(
-                'initType must be one of "plot3d" or "create". \
-            ("create" is only for expert debugging)'
-            )
+            raise Error("initType must be one of 'plot3d' or 'create'. ('create' is only for expert debugging)")
 
     # ----------------------------------------------------------------------
     #                     Initialization Types
@@ -543,7 +540,7 @@ class pyBlock:
         if edgeLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".edge_labels.dat"
             f2 = open(labelFilename, "w")
             for ivol in range(self.nVol):
@@ -913,9 +910,8 @@ class pyBlock:
             # Check to see if we have bad projections and print a warning:
             if counter > 0:
                 print(
-                    " -> Warning: %d point(s) not projected to tolerance: \
-                %g\n.  Max Error: %12.6g ; RMS Error: %12.6g"
-                    % (counter, eps, DMax, DRms)
+                    " -> Warning: %d point(s) not projected to tolerance: %g. " % (counter, eps)
+                    + "Max Error: %12.6g ; RMS Error: %12.6g" % (DMax, DRms)
                 )
                 print("List of Points is: (pt, delta):")
                 for i in range(len(badPts)):
