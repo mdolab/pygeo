@@ -1378,10 +1378,6 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
         """
-        try:
-            import geograd  # noqa
-        except ImportError as e:
-            raise ImportError("Geograd package must be installed to use triangulated surface constraint") from e
         if DVGeo_1_name is not None:
             self._checkDVGeo(DVGeo_1_name)
             DVGeo1 = self.DVGeometries[DVGeo_1_name]

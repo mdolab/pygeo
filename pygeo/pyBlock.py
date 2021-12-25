@@ -567,7 +567,7 @@ class pyBlock:
 
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".node_labels.dat"
             f2 = open(labelFilename, "w")
             for i in range(nNodes):

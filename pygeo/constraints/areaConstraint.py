@@ -6,6 +6,11 @@ from .. import geo_utils
 from mpi4py import MPI
 from .baseConstraint import GeometricConstraint
 
+try:
+    from geograd import geograd_parallel  # noqa
+except ImportError:
+    geograd_parallel = None
+
 
 class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
@@ -29,6 +34,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         max_perim,
         heuristic_dist,
     ):
+        if geograd_parallel is None:
+            raise ImportError("Geograd package must be installed to use triangulated surface constraint")
+
         super().__init__(name, 2, -1e10, 0.0, scale, None, addToPyOpt)
 
         # get the point sets
@@ -210,8 +218,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         Call geograd to compute the KS function and intersection length
         """
         # first compute the length of the intersection surface between the object and surf mesh
-        from geograd import geograd_parallel
-
         mindist_tmp = 0.0
 
         # first run to get the minimum distance
@@ -257,8 +263,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         Call geograd to compute the derivatives of the KS function and intersection length
         """
         # first compute the length of the intersection surface between the object and surf mesh
-        from geograd import geograd_parallel
-
         deriv_output = geograd_parallel.compute_derivs(
             self.surf1_p0,
             self.surf1_p1,
