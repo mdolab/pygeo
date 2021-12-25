@@ -1118,9 +1118,9 @@ class DVGeometry:
 
         orient2 : `svd` or `ffd`. Default is `svd`
             How to compute the orientation `2` axis. SVD is the
-            default bevaviour and is taken from the svd of the plane
+            default behaviour and is taken from the svd of the plane
             points. `ffd` Uses the vector along the FFD direction of
-            secIndex. This is requied to get consistent normals if you
+            secIndex. This is required to get consistent normals if you
             have a circular-type FFD when the SVD will swap the
             normals.
 
@@ -1301,7 +1301,7 @@ class DVGeometry:
             for pt in pts:
                 if pt[index] > tol:
                     # Now find any matching nodes within tol. there should be 2 and
-                    # only 2 if the mesh is symmtric
+                    # only 2 if the mesh is symmetric
                     Ind = tree.query_ball_point(pt, tol)  # should this be a separate tol
                     if not (len(Ind) == 2):
                         raise Error("more than 2 coefs found that match pt")
@@ -1640,7 +1640,7 @@ class DVGeometry:
                 imag_part = np.imag(tempCoef)
                 imag_j = 1j
 
-                dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+                dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
                 if dPtdCoef is not None:
                     for ii in range(3):
                         Xstart[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -1702,7 +1702,7 @@ class DVGeometry:
             imag_part = np.imag(tempCoef)
             imag_j = 1j
 
-            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+            dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
             if dPtdCoef is not None:
                 for ii in range(3):
                     Xfinal[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -1720,8 +1720,8 @@ class DVGeometry:
                 child._complexifyCoef()
                 child.FFD.coef = child.FFD.coef.astype("D")
 
-                dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                 if dXrefdCoef is not None:
                     for ii in range(3):
@@ -2226,8 +2226,8 @@ class DVGeometry:
         J_temp = self.computeDVJacobian(config=config)
 
         # now get the derivative of the points for this level wrt the coefficients(dPtdCoef)
-        if self.FFD.embededVolumes[ptSetName].dPtdCoef is not None:
-            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef.tocoo()
+        if self.FFD.embeddedVolumes[ptSetName].dPtdCoef is not None:
+            dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef.tocoo()
             # We have a slight problem...dPtdCoef only has the shape
             # functions, so it size Npt x Coef. We need a matrix of
             # size 3*Npt x 3*nCoef, where each non-zero entry of
@@ -3177,8 +3177,8 @@ class DVGeometry:
 
                 # get the derivative of the child axis and control points wrt the parent
                 # control points
-                dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                 # create a vector with the derivative of the parent control points wrt the
                 # parent global variables
@@ -3239,7 +3239,7 @@ class DVGeometry:
             imag_part = np.imag(tempCoef)
             imag_j = 1j
 
-            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+            dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
             if dPtdCoef is not None:
                 for ii in range(3):
                     Xstart[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -3279,7 +3279,7 @@ class DVGeometry:
         imag_part = np.imag(self.FFD.coef)
         imag_j = 1j
 
-        dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+        dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
         if dPtdCoef is not None:
             for ii in range(3):
                 Xfinal[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -3295,8 +3295,8 @@ class DVGeometry:
             child._complexifyCoef()
             child.FFD.coef = child.FFD.coef.astype("D")
 
-            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
             if dXrefdCoef is not None:
                 for ii in range(3):
@@ -3500,11 +3500,11 @@ class DVGeometry:
             # Create the storage arrays for the information that must be
             # passed to the children
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 # Derivative of reference axis points wrt global DVs at this level
                 self.children[iChild].dXrefdXdvg = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 # derivative of the control points wrt the global DVs at this level
                 self.children[iChild].dCcdXdvg = np.zeros((N * 3, self.nDV_T))
 
@@ -3570,10 +3570,10 @@ class DVGeometry:
             # passed to the children
 
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 self.children[iChild].dXrefdXdvl = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 self.children[iChild].dCcdXdvl = np.zeros((N * 3, self.nDV_T))
 
             iDVSpanwiseLocal = self.nDVSW_count
@@ -3608,8 +3608,8 @@ class DVGeometry:
                         for iChild in range(len(self.children)):
                             # Get derivatives of child ref axis and FFD control
                             # points w.r.t. parent's FFD control points
-                            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                             # derivative of Change in the FFD coef due to DVs
                             # same as Jacobian above, but differnt ordering
@@ -3662,10 +3662,10 @@ class DVGeometry:
             # passed to the children
 
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 self.children[iChild].dXrefdXdvl = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 self.children[iChild].dCcdXdvl = np.zeros((N * 3, self.nDV_T))
 
             iDVSectionLocal = self.nDVSL_count
@@ -3691,8 +3691,8 @@ class DVGeometry:
                         Jacobian[coef * 3 : (coef + 1) * 3, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         for iChild in range(len(self.children)):
 
-                            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
@@ -3741,10 +3741,10 @@ class DVGeometry:
             # Create the storage arrays for the information that must be
             # passed to the children
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 self.children[iChild].dXrefdXdvl = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 self.children[iChild].dCcdXdvl = np.zeros((N * 3, self.nDV_T))
 
             iDVLocal = self.nDVL_count
@@ -3766,8 +3766,8 @@ class DVGeometry:
                         for iChild in range(len(self.children)):
                             # Get derivatives of child ref axis and FFD control
                             # points w.r.t. parent's FFD control points
-                            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
