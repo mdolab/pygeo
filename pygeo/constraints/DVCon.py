@@ -17,6 +17,7 @@ from .gearPostConstraint import GearPostConstraint
 from .circularityConstraint import CircularityConstraint
 from .planarityConstraint import PlanarityConstraint
 from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
+from ..geo_utils.misc import convertTo2D
 
 
 class DVConstraints:
@@ -567,9 +568,9 @@ class DVConstraints:
         """
 
         self._checkDVGeo(DVGeoName)
-        upper = self._convertTo2D(upper, nSpan, nChord).flatten()
-        lower = self._convertTo2D(lower, nSpan, nChord).flatten()
-        scale = self._convertTo2D(scale, nSpan, nChord).flatten()
+        upper = convertTo2D(upper, nSpan, nChord).flatten()
+        lower = convertTo2D(lower, nSpan, nChord).flatten()
+        scale = convertTo2D(scale, nSpan, nChord).flatten()
 
         coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
 
@@ -3079,38 +3080,6 @@ class DVConstraints:
         p1 = self.surfaces[surfaceName][1]
         p2 = self.surfaces[surfaceName][2]
         return p0, p1, p2
-
-    def _convertTo2D(self, value, dim1, dim2):
-        """
-        Generic function to process 'value'. In the end, it must be dim1
-        by dim2. value is already that shape, excellent, otherwise, a
-        scalar will be 'upcast' to that size
-        """
-
-        if np.isscalar(value):
-            return value * np.ones((dim1, dim2))
-        else:
-            temp = np.atleast_2d(value)
-            if temp.shape[0] == dim1 and temp.shape[1] == dim2:
-                return value
-            else:
-                raise Error("The size of the 2D array was the incorrect shape")
-
-    def _convertTo1D(self, value, dim1):
-        """
-        Generic function to process 'value'. In the end, it must be
-        array of size dim1. value is already that shape, excellent,
-        otherwise, a scalar will be 'upcast' to that size
-        """
-
-        if np.isscalar(value):
-            return value * np.ones(dim1)
-        else:
-            temp = np.atleast_1d(value)
-            if temp.shape[0] == dim1:
-                return value
-            else:
-                raise Error("The size of the 1D array was the incorrect shape")
 
     def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
         """

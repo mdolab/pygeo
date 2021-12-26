@@ -89,6 +89,7 @@ class DVGeometryVSP:
         self.ptSetNames = []
         self.updated = {}
         self.updatedJac = {}
+        self.exportComps = []
 
         # this scales coordinates from vsp to mesh geometry
         self.vspScale = scale
@@ -773,7 +774,6 @@ class DVGeometryVSP:
         for comp in self.allComps:
             openvsp.SetSetFlag(comp, exportSet, False)
 
-        self.exportComps = []
         for comp in self.allComps:
             # Check if this one is in our list:
             compName = openvsp.GetContainerName(comp)
