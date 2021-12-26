@@ -133,7 +133,7 @@ class PointSelect:
         if self.type == "box":
             for i in range(len(points)):
                 u0, v0, _ = self.box.projectPoint(points[i])
-                if u0 > 0 and u0 < 1 and v0 > 0 and v0 < 1:  # Its Inside
+                if 0 < u0 < 1 and 0 < v0 < 1:  # Its Inside
                     ptList.append(points[i])
                     indList.append(i)
 
