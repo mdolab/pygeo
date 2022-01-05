@@ -1,6 +1,7 @@
 # Dependencies
 - testflo
 - pyspline
+- numpy-stl
 
 # Instructions and examples
 - To train all regression tests with specific function signature: `testflo reg_tests -m "train_*"`
