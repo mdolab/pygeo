@@ -7,8 +7,8 @@ To install, first clone the repo, then go into the root directory and type::
 
    pip install .
 
-The tests require a unique dependency on ``numpy-stl``.
-This and additional testing dependencies can be installed by using::
+The tests require unique dependencies ``numpy-stl`` and ``parameterized``.
+These and additional, generic, testing dependencies can be installed by using::
     
     pip install .[testing]
 
