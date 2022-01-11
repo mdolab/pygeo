@@ -2004,10 +2004,6 @@ class DVGeometry:
         ptSetName : str
             The name of set of points we are dealing with
 
-        comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
-
         config : str or list
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
@@ -2017,11 +2013,6 @@ class DVGeometry:
         Returns
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
-
-        Notes
-        -----
-        The ``child`` and ``nDVStore`` options are only used
-        internally and should not be changed by the user.
         """
 
         self.computeTotalJacobian(ptSetName, config=config)  # This computes and updates self.JT
