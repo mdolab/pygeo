@@ -295,7 +295,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             )
 
     def writeTecplot(self, handle):
-        pass
+        raise NotImplementedError()
 
 
 class SurfaceAreaConstraint(GeometricConstraint):

@@ -415,7 +415,7 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         return grad_0 / 6.0, grad_1 / 6.0, grad_2 / 6.0
 
     def writeTecplot(self, handle):
-        pass
+        raise NotImplementedError()
 
 
 class CompositeVolumeConstraint(GeometricConstraint):
@@ -476,4 +476,4 @@ class CompositeVolumeConstraint(GeometricConstraint):
                     funcsSens[self.name][key] += tmp[i][key]
 
     def writeTecplot(self, handle):
-        pass
+        raise NotImplementedError()

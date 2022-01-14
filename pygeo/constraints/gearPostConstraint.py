@@ -125,4 +125,4 @@ class GearPostConstraint(GeometricConstraint):
             )
 
     def writeTecplot(self, handle):
-        pass
+        raise NotImplementedError()
