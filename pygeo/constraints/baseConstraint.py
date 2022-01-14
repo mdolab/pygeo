@@ -24,14 +24,6 @@ class GeometricConstraint(ABC):
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-    # @abstractmethod
-    # def setDesignVars(self, x):
-    #     """
-    #     take in the design var vector from pyOpt and set the variables for this constraint
-    #     This function is constraint specific, so the baseclass doesn't implement anything.
-    #     """
-    #     return
-
     @abstractmethod
     def evalFunctions(self, funcs, config):
         """
@@ -43,7 +35,7 @@ class GeometricConstraint(ABC):
         funcs : dict
             Dictionary to place function values
         """
-        return
+        pass
 
     @abstractmethod
     def evalFunctionsSens(self, funcsSens, config):
@@ -57,7 +49,7 @@ class GeometricConstraint(ABC):
         funcsSens : dict
             Dictionary to place function values
         """
-        return
+        pass
 
     def getVarNames(self):
         """
@@ -89,7 +81,7 @@ class GeometricConstraint(ABC):
         """
         Write the visualization of this constraint to the open file handle
         """
-        return
+        pass
 
 
 class LinearConstraint:
