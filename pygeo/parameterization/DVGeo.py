@@ -17,7 +17,7 @@ from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectio
 
 
 class DVGeometry:
-    """
+    r"""
     A class for manipulating geometry.
 
     The purpose of the DVGeometry class is to provide a mapping from
@@ -31,12 +31,12 @@ class DVGeometry:
     functions:
 
     1. Given a new set of design variables, update the
-       three-dimensional coordinates: :math:`X_{DV}\\rightarrow
+       three-dimensional coordinates: :math:`X_{DV}\rightarrow
        X_{pt}` where :math:`X_{pt}` are the coordinates and :math:`X_{DV}`
        are the user variables.
 
     2. Determine the derivative of the coordinates with respect to the
-       design variables. That is the derivative :math:`\\frac{dX_{pt}}{dX_{DV}}`
+       design variables. That is the derivative :math:`\frac{dX_{pt}}{dX_{DV}}`
 
     DVGeometry uses the *Free-Form Deformation* approach for geometry
     manipulation. The basic idea is the coordinates are *embedded* in
@@ -1920,11 +1920,11 @@ class DVGeometry:
         return names
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
-        """
+        r"""
         This function computes sensitivity information.
 
         Specificly, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
+        :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
 
         Parameters
         ----------
@@ -1988,11 +1988,11 @@ class DVGeometry:
         return dIdx
 
     def totalSensitivityProd(self, vec, ptSetName, config=None):
-        """
+        r"""
         This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
+        :math:`\frac{dX_{pt}}{dX_{DV}} \times\mathrm{vec}`
 
         This is useful for forward AD mode.
 
@@ -2070,11 +2070,11 @@ class DVGeometry:
         return xsdot
 
     def totalSensitivityTransProd(self, vec, ptSetName, config=None):
-        """
+        r"""
         This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec`
+        :math:`\frac{dX_{pt}}{dX_{DV}}^T \times\mathrm{vec}`
 
         This is useful for reverse AD mode.
 
