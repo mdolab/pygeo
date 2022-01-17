@@ -41,7 +41,7 @@ def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         points.append(tmpSol[i, 3:6])
 
     if nSol > 1:
-        tmp, link = pointReduce(points, nodeTol=1e-12)
+        _, link = pointReduce(points, nodeTol=1e-12)
         nUnique = np.max(link) + 1
         points = np.zeros((nUnique, 3))
         uu = np.zeros(nUnique)
@@ -178,7 +178,7 @@ def projectNode(pt, upVec, p0, v1, v2):
         fail = 2
         return None, None, fail
 
-    sol, pid, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, _, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     # Check to see if any of the solutions happen be identical.
@@ -187,7 +187,7 @@ def projectNode(pt, upVec, p0, v1, v2):
         for i in range(nSol):
             points.append(sol[i, 3:6])
 
-        newPoints, link = pointReduce(points, nodeTol=1e-12)
+        newPoints, _ = pointReduce(points, nodeTol=1e-12)
         nSol = len(newPoints)
     else:
         newPoints = []
@@ -242,7 +242,7 @@ def projectNodePosOnly(pt, upVec, p0, v1, v2):
         fail = 1
         return None, fail
 
-    sol, pid, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
+    sol, _, nSol = line_plane(pt, upVec, p0.T, v1.T, v2.T)
     sol = sol.T
 
     if nSol == 0:

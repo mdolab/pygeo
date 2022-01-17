@@ -14,19 +14,10 @@ class CircularityConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, center, coords, lower, upper, scale, DVGeo, addToPyOpt):
-        self.name = name
+        super().__init__(name, coords.shape[0] - 1, lower, upper, scale, DVGeo, addToPyOpt)
+
         self.center = np.array(center).reshape((1, 3))
         self.coords = coords
-        self.nCon = self.coords.shape[0] - 1
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         self.X = np.zeros(self.nCon)
 

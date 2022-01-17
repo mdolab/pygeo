@@ -13,23 +13,13 @@ class VolumeConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, nSpan, nChord, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
 
-        self.name = name
-        self.nCon = 1
         self.nSpan = nSpan
         self.nChord = nChord
         self.coords = coords
-        self.lower = lower
-        self.upper = upper
         self.scaled = scaled
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
         self.flipVolume = False
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -75,7 +65,7 @@ class VolumeConstraint(GeometricConstraint):
 
     def writeTecplot(self, handle):
         """
-        Write the visualization of this volume constriant
+        Write the visualization of this volume constraint
         """
         # Reshape coordinates back to 3D format
         x = self.coords.reshape([self.nSpan, self.nChord, 2, 3])
@@ -152,7 +142,7 @@ class VolumeConstraint(GeometricConstraint):
 
     def evalVolumeHex(self, x0, x1, x2, x3, x4, x5, x6, x7):
         """
-        Evaluate the volume of the hexahedreal volume defined by the
+        Evaluate the volume of the hexahedral volume defined by the
         the 8 corners.
 
         Parameters
@@ -278,24 +268,16 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, surface, surface_name, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
 
-        self.name = name
         self.surface = surface
         self.surface_name = surface_name
-
         self.surf_size = surface[0].shape[0]
         self.surf_p0 = surface[0].reshape(self.surf_size, 3)
         self.surf_p1 = surface[1].reshape(self.surf_size, 3)
         self.surf_p2 = surface[2].reshape(self.surf_size, 3)
-        self.lower = lower
-        self.upper = upper
         self.scaled = scaled
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
         self.vol_0 = None
-        self.nCon = 1
-        return
 
     def evalFunctions(self, funcs, config):
         """
@@ -432,6 +414,9 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
 
         return grad_0 / 6.0, grad_1 / 6.0, grad_2 / 6.0
 
+    def writeTecplot(self, handle):
+        raise NotImplementedError()
+
 
 class CompositeVolumeConstraint(GeometricConstraint):
     """This class is used to represet a single volume constraints that is a
@@ -439,20 +424,10 @@ class CompositeVolumeConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, vols, lower, upper, scaled, scale, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = 1
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
+
         self.vols = vols
         self.scaled = scaled
-        self.lower = lower
-        self.upper = upper
-        self.scaled = scaled
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # Now get the reference volume
         self.V0 = 0.0
@@ -501,6 +476,4 @@ class CompositeVolumeConstraint(GeometricConstraint):
                     funcsSens[self.name][key] += tmp[i][key]
 
     def writeTecplot(self, handle):
-        """No need to write the composite volume since each of the
-        individual ones are already written"""
-        pass
+        raise NotImplementedError()

@@ -9,7 +9,7 @@ AXES = {"x", "y", "z"}
 
 
 class _AxiTransform:
-    """Collapses a set of cartesian coordiantes into a single plane to allow
+    """Collapses a set of cartesian coordinates into a single plane to allow
     for axi-symmetric FFD. Also expands them back to their original annular location
 
     Parameters
@@ -151,7 +151,7 @@ class DVGeometryAxi(DVGeometry):
     2. Determine the derivative of the coordinates with respect to the
        design variables. That is the derivative :math:`\\frac{dX_{pt}}{dX_{DV}}`
 
-    DVGeometry uses the *Free-Form Deformation* approach for goemetry
+    DVGeometry uses the *Free-Form Deformation* approach for geometry
     manipulation. The basic idea is the coordinates are *embedded* in
     a clear-flexible jelly-like block. Then by stretching moving and
     'poking' the volume, the coordinates that are embedded inside move
@@ -192,7 +192,7 @@ class DVGeometryAxi(DVGeometry):
       >>> DVGeo.addRefAxis('wing_axis', axis_curve)
       >>> # Define a global design variable function:
       >>> def twist(val, geo):
-      >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
+      >>>     geo.rot_z['wing_axis'].coef[:] = val[:]
       >>> # Now add this as a global variable:
       >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
       >>> # Now add local (shape) variables
@@ -200,7 +200,7 @@ class DVGeometryAxi(DVGeometry):
       >>>
     """
 
-    def __init__(self, fileName, center, collapse_into, isComplex=False, child=False, *args, **kwargs):
+    def __init__(self, fileName, center, collapse_into, *args, isComplex=False, child=False, **kwargs):
 
         self.axiTransforms = OrderedDict()  # TODO: Why is this ordered?
 
@@ -220,12 +220,12 @@ class DVGeometryAxi(DVGeometry):
         Add a set of coordinates to DVGeometry
 
         The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeoemtry to be manipulated.
+        list is given to DVGeometry to be manipulated.
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of

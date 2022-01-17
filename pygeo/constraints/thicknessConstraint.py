@@ -15,19 +15,10 @@ class ThicknessConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
-        self.name = name
-        self.coords = coords
-        self.nCon = len(self.coords) // 2
-        self.lower = lower
-        self.upper = upper
-        self.scaled = scaled
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
+        super().__init__(name, len(coords) // 2, lower, upper, scale, DVGeo, addToPyOpt)
 
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
+        self.coords = coords
+        self.scaled = scaled
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -107,18 +98,8 @@ class ThicknessToChordConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, coords, lower, upper, scale, DVGeo, addToPyOpt):
-        self.name = name
+        super().__init__(name, len(coords) // 4, lower, upper, scale, DVGeo, addToPyOpt)
         self.coords = coords
-        self.nCon = len(self.coords) // 4
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:

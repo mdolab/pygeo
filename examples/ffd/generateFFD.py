@@ -41,7 +41,6 @@ def writeFFDFile(fileName, nBlocks, nx, ny, nz, points):
         # end
     # end
     f.close()
-    return
 
 
 def returnBlockPoints(corners, nx, ny, nz):

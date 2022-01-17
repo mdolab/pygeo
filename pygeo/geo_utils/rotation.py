@@ -39,7 +39,7 @@ def rotyV(x, theta):
 
 
 def rotzV(x, theta):
-    """Roate a coordinate in the local z frame"""
+    """Rotate a coordinate in the local z frame"""
     M = [[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]
     return np.dot(M, x)
 

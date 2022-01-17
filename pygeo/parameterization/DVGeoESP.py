@@ -231,12 +231,12 @@ class DVGeometryESP:
         """
         Add a set of coordinates to DVGeometry
         The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeoemtry to be manipulated.
+        list is given to DVGeometry to be manipulated.
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of
@@ -752,7 +752,7 @@ class DVGeometryESP:
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
-        This function computes sensitivty information.
+        This function computes sensitivity information.
         Specificly, it computes the following:
         :math:`\frac{dI}{d_{pt}}\frac{dX_{pt}}{dX_{DV}}`
 
@@ -840,7 +840,7 @@ class DVGeometryESP:
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
         r"""
-        This function computes sensitivty information.
+        This function computes sensitivity information.
         Specificly, it computes the following:
         :math:`\frac{dX_{pt}}{dX_{DV}} \vec'`
 

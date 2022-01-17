@@ -76,8 +76,6 @@ def childAxisPoints(val, geo):
 
     geo.restoreCoef(C, "nestedAxis")
 
-    return
-
 
 # define a nested global design variable
 def mainAxisPoints(val, geo):
@@ -87,8 +85,6 @@ def mainAxisPoints(val, geo):
     C[0, 0] = val[0]
 
     geo.restoreCoef(C, "mainAxis")
-
-    return
 
 
 # define a nested global design variable
@@ -101,8 +97,6 @@ def childAxisPointsD8(val, geo):
 
     geo.restoreCoef(C, "nestedAxis")
 
-    return
-
 
 # define a nested global design variable
 def mainAxisPointsD8(val, geo):
@@ -114,15 +108,12 @@ def mainAxisPointsD8(val, geo):
 
     geo.restoreCoef(C, "mainAxis")
 
-    return
-
 
 def mainAxisPointAxi(val, DVgeo):
     C = DVgeo.extractCoef("stretch")
     C[0, 2] = val[0]
 
     DVgeo.restoreCoef(C, "stretch")
-    return
 
 
 def totalSensitivityFD(DVGeo, nPt, ptName, step=1e-1):
