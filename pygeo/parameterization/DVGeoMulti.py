@@ -1365,7 +1365,7 @@ class CompIntersection:
                 elif surface in self.compB.triConn:
                     compPoints = pts[indB]
                 else:
-                    raise Error(f"Surface {surface} was not found in either component.")
+                    raise Error(f"Surface {surface} was not found in {self.compA.name} or {self.compB.name}.")
 
                 # This proc has some points to project
                 if len(compPoints) > 0:
@@ -3388,7 +3388,7 @@ class CompIntersection:
             self._projectToComponent(points, self.compB, projDict, surface=surface)
             comp = "compB"
         else:
-            raise Error(f"Surface {surface} was not found in either component.")
+            raise Error(f"Surface {surface} was not found in {self.compA.name} or {self.compB.name}.")
 
         # Identify the points that are within the given tolerance from this surface
         # surfaceInd contains indices of the provided points not the entire point set
