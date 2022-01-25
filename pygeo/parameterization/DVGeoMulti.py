@@ -1290,38 +1290,39 @@ class CompIntersection:
         intersectPts = pts[indices]
         nPoints = len(intersectPts)
 
-        # Create the dictionaries to save projection data
-        self.projData[ptSetName] = {
-            # We need one dictionary for each component
-            "compA": {"surfaceInd": {}},
-            "compB": {"surfaceInd": {}},
-        }
+        if self.projectFlag:
+            # Create the dictionaries to save projection data
+            self.projData[ptSetName] = {
+                # We need one dictionary for each component
+                "compA": {"surfaceInd": {}},
+                "compB": {"surfaceInd": {}},
+            }
 
-        if nPoints > 0 and self.excludeSurfaces:
+            if nPoints > 0 and self.excludeSurfaces:
 
-            # Associate points with the excluded surfaces
-            for surface in self.excludeSurfaces:
-                surfaceEps = self.excludeSurfaces[surface]
-                self.associatePointsToSurface(intersectPts, ptSetName, surface, surfaceEps)
+                # Associate points with the excluded surfaces
+                for surface in self.excludeSurfaces:
+                    surfaceEps = self.excludeSurfaces[surface]
+                    self.associatePointsToSurface(intersectPts, ptSetName, surface, surfaceEps)
 
-            # Combine the excluded indices using a set to avoid duplicates
-            excludeSet = set()
-            for surface in self.excludeSurfaces:
-                if surface in self.compA.triConn:
-                    # Pop this surface from the saved data
-                    surfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"].pop(surface)
-                elif surface in self.compB.triConn:
-                    surfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"].pop(surface)
+                # Combine the excluded indices using a set to avoid duplicates
+                excludeSet = set()
+                for surface in self.excludeSurfaces:
+                    if surface in self.compA.triConn:
+                        # Pop this surface from the saved data
+                        surfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"].pop(surface)
+                    elif surface in self.compB.triConn:
+                        surfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"].pop(surface)
 
-                excludeSet.update(surfaceInd)
+                    excludeSet.update(surfaceInd)
 
-            # Invert excludeSet to get the points we want to keep
-            oneToN = set(range(nPoints))
-            includeSet = oneToN.difference(excludeSet)
+                # Invert excludeSet to get the points we want to keep
+                oneToN = set(range(nPoints))
+                includeSet = oneToN.difference(excludeSet)
 
-            # Keep only the points not associated with the excluded surfaces
-            indices = [indices[i] for i in includeSet]
-            factors = [factors[i] for i in includeSet]
+                # Keep only the points not associated with the excluded surfaces
+                indices = [indices[i] for i in includeSet]
+                factors = [factors[i] for i in includeSet]
 
         # Save the affected indices and the factor in the little dictionary
         self.points[ptSetName] = [pts.copy(), indices, factors, comm]
