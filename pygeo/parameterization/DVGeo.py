@@ -13,7 +13,7 @@ from .. import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
 from baseclasses.utils import Error
-from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
+from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
 
 
 class DVGeometry:
@@ -83,6 +83,7 @@ class DVGeometry:
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
         self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+        self.DVComposite = None  # Composite Design Variable
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
@@ -174,6 +175,7 @@ class DVGeometry:
         self.nDVL_count = 0  # number of local    (L)  variables
         self.nDVSL_count = 0  # number of section  (SL) local variables
         self.nDVSW_count = 0  # number of spanwise (SW) local variables
+        self.useComposite = False
 
         # The set of user supplied axis.
         self.axis = OrderedDict()
@@ -1215,6 +1217,24 @@ class DVGeometry:
 
         return self.DV_listSectionLocal[dvName].nVal
 
+    def addGeoDVComposite(self, dvName, ptSetName=None, u=None, s=None):
+        self.useComposite = True
+        if self.name is not None:
+            dvName = self.name + "_" + dvName
+        if u is None:
+            self.computeTotalJacobian(ptSetName)
+            J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
+            u, s, vt = np.linalg.svd(J_full)
+        else:
+            if s is None:
+                s = 1.0
+        # we are after a square matrix
+        NDV = self.getNDV()
+        if u.shape == (NDV, NDV):
+            self.DVComposite = geoDVComposite(dvName, NDV, u, scale=s)
+        else:
+            raise ValueError(f"Something went wrong and the shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+
     def addGeoDVSectionLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
         return self.addLocalSectionDV(*args, **kwargs)
@@ -1329,6 +1349,9 @@ class DVGeometry:
             self._finalize()
             self._complexifyCoef()
 
+        if self.useComposite:
+            dvDict = self.mapXDictToDVGeo(dvDict)
+
         for key in dvDict:
             if key in self.DV_listGlobal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
@@ -1425,6 +1448,9 @@ class DVGeometry:
         for child in self.children:
             childdvDict = child.getValues()
             dvDict.update(childdvDict)
+
+        if self.useComposite:
+            dvDict = self.mapXDictToComp(dvDict)
 
         return dvDict
 
@@ -1773,7 +1799,7 @@ class DVGeometry:
         else:
             return True
 
-    def convertSensitivityToDict(self, dIdx, out1D=False):
+    def convertSensitivityToDict(self, dIdx, out1D=False, compName=False):
         """
         This function takes the result of totalSensitivity and
         converts it to a dict for use in pyOptSparse
@@ -1838,13 +1864,21 @@ class DVGeometry:
 
         # Add in child portion
         for iChild in range(len(self.children)):
-            childdIdx = self.children[iChild].convertSensitivityToDict(dIdx, out1D=out1D)
+            childdIdx = self.children[iChild].convertSensitivityToDict(dIdx, out1D=out1D, compName=compName)
             # update the total sensitivities with the derivatives from the child
             for key in childdIdx:
                 if key in dIdxDict.keys():
                     dIdxDict[key] += childdIdx[key]
                 else:
                     dIdxDict[key] = childdIdx[key]
+
+        # replace other names with user
+        if compName and self.useComposite:
+            array = []
+            for key, val in dIdxDict.items():
+                array.append(val)
+            array = np.hstack(array)
+            dIdxDict = {self.DVComposite.name: array}
 
         return dIdxDict
 
@@ -1899,19 +1933,28 @@ class DVGeometry:
             dIdx += childdIdx
         return dIdx
 
-    def getVarNames(self):
+    def getVarNames(self, pyOptSparse=False):
         """
         Return a list of the design variable names. This is typically
         used when specifying a wrt= argument for pyOptSparse.
+
+        Parameters
+        ----------
+        pyOptSparse : bool
+            Flag to specify whether the DVs returned should be those in the optProb or those internal to DVGeo.
+            Only relevant if using composite DVs.
 
         Examples
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
-        names = list(self.DV_listGlobal.keys())
-        names.extend(list(self.DV_listLocal.keys()))
-        names.extend(list(self.DV_listSectionLocal.keys()))
-        names.extend(list(self.DV_listSpanwiseLocal.keys()))
+        if not pyOptSparse or not self.useComposite:
+            names = list(self.DV_listGlobal.keys())
+            names.extend(list(self.DV_listLocal.keys()))
+            names.extend(list(self.DV_listSectionLocal.keys()))
+            names.extend(list(self.DV_listSpanwiseLocal.keys()))
+        else:
+            names = [self.DVComposite.name]
 
         # Call the children recursively
         for iChild in range(len(self.children)):
@@ -1982,8 +2025,11 @@ class DVGeometry:
         else:
             dIdx = dIdx_local
 
+        if self.useComposite:
+            dIdx = self.mapSensToComp(dIdx)
+
         # Now convert to dict:
-        dIdx = self.convertSensitivityToDict(dIdx)
+        dIdx = self.convertSensitivityToDict(dIdx, compName=True)
 
         return dIdx
 
@@ -2425,6 +2471,38 @@ class DVGeometry:
                 ("spanwiselocalVars", self.DV_listSpanwiseLocal),
             ]
         )
+
+        # we add the composite DVs, and construct linear constraints that replace the existing bounds
+        # then we simply return without adding any of the other DVs
+        if self.useComposite:
+            dv = self.DVComposite
+            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+
+            # add the linear DV constraints that replace the existing bounds!
+            # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
+            lb = {}
+            ub = {}
+            for lst in varLists:
+                for key in varLists[lst]:
+                    dv = varLists[lst][key]
+                    lb[key] = dv.lower
+                    ub[key] = dv.upper
+
+            lb = self.convertDictToSensitivity(lb)
+            ub = self.convertDictToSensitivity(ub)
+
+            optProb.addConGroup(
+                f"{self.DVComposite.name}_con",
+                self.getNDV(),
+                lower=lb,
+                upper=ub,
+                scale=1.0,
+                linear=True,
+                wrt=self.DVComposite.name,
+                jac={self.DVComposite.name: self.DVComposite.u},
+            )
+            return
+
         for lst in varLists:
             if (
                 lst == "globalVars"
@@ -3337,6 +3415,39 @@ class DVGeometry:
                 self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.real.astype("d")
 
             self.coef = self.coef.real.astype("d")
+
+    def mapXDictToDVGeo(self, inDict):
+        # first make a copy so we don't modify in place
+        inDict = copy.deepcopy(inDict)
+        userVec = inDict.pop(self.DVComposite.name)
+        outVec = self.mapVecToDVGeo(userVec)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, compName=False)
+        # now merge inDict and outDict
+        for key in inDict:
+            outDict[key] = inDict[key]
+        return outDict
+
+    def mapXDictToComp(self, inDict):
+        # first make a copy so we don't modify in place
+        inDict = copy.deepcopy(inDict)
+        userVec = self.convertDictToSensitivity(inDict)
+        outVec = self.mapVecToComp(userVec)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, compName=True)
+        return outDict
+
+    def mapVecToDVGeo(self, inVec):
+        inVec = inVec.reshape(self.getNDV(), -1)
+        outVec = self.DVComposite.u @ inVec
+        return outVec.flatten()
+
+    def mapVecToComp(self, inVec):
+        inVec = inVec.reshape(self.getNDV(), -1)
+        outVec = self.DVComposite.u.T @ inVec
+        return outVec.flatten()
+
+    def mapSensToComp(self, inVec):
+        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
+        return outVec
 
     def computeTotalJacobianFD(self, ptSetName, config=None):
         """This function takes the total derivative of an objective,
