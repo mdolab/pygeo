@@ -2708,6 +2708,7 @@ class DVGeometry:
 
         # Get design variables
         dvDict = self.getValues()
+        dvDictOrig = self.getValues()
 
         # Loop through design variables on self and children
         geoList = self.getFlattenedChildren()
@@ -2788,6 +2789,7 @@ class DVGeometry:
 
                         # Iterate counter
                         count += 1
+        self.setDesignVars(dvDictOrig)
 
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
