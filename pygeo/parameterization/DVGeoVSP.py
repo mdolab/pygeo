@@ -89,6 +89,7 @@ class DVGeometryVSP:
         self.ptSetNames = []
         self.updated = {}
         self.updatedJac = {}
+        self.exportComps = []
 
         # this scales coordinates from vsp to mesh geometry
         self.vspScale = scale
@@ -150,12 +151,12 @@ class DVGeometryVSP:
         Add a set of coordinates to DVGeometry
 
         The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeoemtry to be manipulated.
+        list is given to DVGeometry to be manipulated.
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of
@@ -763,7 +764,7 @@ class DVGeometryVSP:
 
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            # We use float here since sometimes pyoptsparse will give
+            # We use float here since sometimes pyOptsparse will give
             # stupid numpy zero-dimensional arrays, which swig does
             # not like.
             openvsp.SetParmVal(DV.parmID, float(DV.value))
@@ -773,7 +774,6 @@ class DVGeometryVSP:
         for comp in self.allComps:
             openvsp.SetSetFlag(comp, exportSet, False)
 
-        self.exportComps = []
         for comp in self.allComps:
             # Check if this one is in our list:
             compName = openvsp.GetContainerName(comp)
@@ -806,7 +806,7 @@ class DVGeometryVSP:
                 new_value = ((DV.value + 180.0) % 360.0) - 180.0
                 openvsp.SetParmVal(DV.parmID, float(new_value))
             else:
-                # We use float here since sometimes pyoptsparse will give
+                # We use float here since sometimes pyOptsparse will give
                 # numpy zero-dimensional arrays, which swig does not like
                 openvsp.SetParmVal(DV.parmID, float(DV.value))
 

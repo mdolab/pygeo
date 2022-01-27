@@ -94,6 +94,8 @@ class Topology:
         self.edges = None
         self.simple = None
         self.topoType = None
+        self.nDG = None
+        self.nEnt = None
 
     def _calcDGs(self, edges, edgeLink, edgeLinkSorted, edgeLinkInd):
 
@@ -178,10 +180,7 @@ class Topology:
             print("%5d        | %5d       " % (i, nList[i]))
 
         # Always have edges!
-        print(
-            "Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|\
-   DG   |  N     |"
-        )
+        print("Edge Number    |   n0  |   n1  |  Cont | Degen | Intsct|   DG   |  N     |")
         for i in range(len(self.edges)):
             self.edges[i].writeInfo(i, sys.stdout)
 
@@ -346,8 +345,6 @@ class Topology:
         for iedge in range(self.nEdge):
             self.edges[iedge].N = nList[self.edges[iedge].dg]
 
-        return
-
     def _getDGList(self):
         """After calcGlobalNumbering is called with the size
         parameters, we can now produce a list of length ndg with the
@@ -413,7 +410,6 @@ class CurveTopology(Topology):
 
         self.nDG = self.nEdge
         self.nEnt = self.nEdge
-        return
 
     def calcGlobalNumbering(self, sizes, curveList=None):
         """Internal function to calculate the global/local numbering
@@ -476,8 +472,6 @@ class CurveTopology(Topology):
         self.nGlobal = len(gIndex)
         self.gIndex = gIndex
         self.lIndex = lIndex
-
-        return
 
 
 class SurfaceTopology(Topology):
@@ -789,8 +783,6 @@ class SurfaceTopology(Topology):
         self.gIndex = newGIndex
         self.lIndex = lIndex
 
-        return
-
     def getSurfaceFromEdge(self, edge):
         """Determine the surfaces and their edgeLink index that points to edge iedge"""
         # Its not efficient but it works - scales with Nface not constant
@@ -982,8 +974,6 @@ class BlockTopology(Topology):
         for i in range(self.nEdge):  # Create the edge objects
             self.edges.append(Edge(ue[i][0], ue[i][1], 0, 0, 0, ue[i][2], ue[i][3]))
 
-        return
-
     def calcGlobalNumbering(self, sizes=None, volumeList=None, greedyReorder=False, gIndex=True):
         """Internal function to calculate the global/local numbering for each volume"""
 
@@ -1086,7 +1076,7 @@ class BlockTopology(Topology):
         lIndex = []
 
         def addNode(i, j, k, N, M, L):
-            _type, number, index1, index2 = indexPosition3D(i, j, k, N, M, L)
+            _type, number, _, _ = indexPosition3D(i, j, k, N, M, L)
 
             if _type == 1:  # Face
 
@@ -1241,8 +1231,6 @@ class BlockTopology(Topology):
             self.gIndex = newGIndex
             self.lIndex = lIndex
         # end if (greedy reorder)
-
-        return
 
     def calcGlobalNumbering2(self, sizes=None, gIndex=True, volumeList=None, greedyReorder=False):
         """Internal function to calculate the global/local numbering for each volume"""
@@ -1429,8 +1417,6 @@ class BlockTopology(Topology):
             self.lIndex = lIndex
         # end if (greedy reorder)
 
-        return
-
     def reOrder(self, reOrderList):
         """This function takes as input a permutation list which is used to reorder the entities in the topology object"""
 
@@ -1445,5 +1431,3 @@ class BlockTopology(Topology):
         for i in range(6):
             self.faceLink[:, i] = self.faceLink[:, i].take(reOrderList)
             self.faceDir[:, i] = self.faceDir[:, i].take(reOrderList)
-
-        return

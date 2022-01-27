@@ -69,7 +69,7 @@ class DCELVertex:
 class DCELHedge:
     """Minimal implementation of a half-edge of a 2D dcel"""
 
-    def __init__(self, v1, v2, X, PID, uv, tag=None):
+    def __init__(self, v1, v2, PID, uv, tag=None):
         # The origin is defined as the vertex it points to
         self.origin = v2
         self.twin = None
@@ -93,6 +93,8 @@ class DCELFace:
         self.external = None
         self.tag = "EXTERNAL"
         self.id = None
+        self.centroid = None
+        self.spatialCentroid = None
 
     def area(self):
         h = self.wedge
@@ -264,8 +266,8 @@ class DCEL:
 
         for e in self.el:
 
-            h1 = DCELHedge(self.vertices[e.con[0]], self.vertices[e.con[1]], e.X, e.PID, e.uv, e.tag)
-            h2 = DCELHedge(self.vertices[e.con[1]], self.vertices[e.con[0]], e.X, e.PID, e.uv, e.tag)
+            h1 = DCELHedge(self.vertices[e.con[0]], self.vertices[e.con[1]], e.PID, e.uv, e.tag)
+            h2 = DCELHedge(self.vertices[e.con[1]], self.vertices[e.con[0]], e.PID, e.uv, e.tag)
 
             h1.twin = h2
             h2.twin = h1

@@ -6,6 +6,11 @@ from .. import geo_utils
 from mpi4py import MPI
 from .baseConstraint import GeometricConstraint
 
+try:
+    from geograd import geograd_parallel  # noqa
+except ImportError:
+    geograd_parallel = None
+
 
 class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
@@ -29,12 +34,16 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         max_perim,
         heuristic_dist,
     ):
-        self.name = name
+        if geograd_parallel is None:
+            raise ImportError("Geograd package must be installed to use triangulated surface constraint")
+
+        super().__init__(name, 2, -1e10, 0.0, scale, None, addToPyOpt)
+
         # get the point sets
         self.surface_1_name = surface_1_name
         self.surface_2_name = surface_2_name
         if DVGeo1 is None and DVGeo2 is None:
-            raise ValueError("Must include at least one geometric parametrization in constraint " + str(name))
+            raise ValueError(f"Must include at least one geometric parametrization in constraint {name}")
         self.DVGeo1 = DVGeo1
         self.DVGeo2 = DVGeo2
 
@@ -62,18 +71,13 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.maxdim = heuristic_dist
         else:
             self.maxdim = computed_maxdim * 1.05
-        self.scale = scale
 
-        self.addToPyOpt = addToPyOpt
         self.rho = rho
         self.perim_scale = perim_scale
         self.max_perim = max_perim
-        self.nCon = 2
-
-        self.upper = 0.000
-        self.lower = -1e10
         self.smSize = None
-        return
+        self.perim_length = None
+        self.minimum_distance = None
 
     def getVarNames(self):
         """
@@ -214,8 +218,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         Call geograd to compute the KS function and intersection length
         """
         # first compute the length of the intersection surface between the object and surf mesh
-        from geograd import geograd_parallel
-
         mindist_tmp = 0.0
 
         # first run to get the minimum distance
@@ -261,8 +263,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         Call geograd to compute the derivatives of the KS function and intersection length
         """
         # first compute the length of the intersection surface between the object and surf mesh
-        from geograd import geograd_parallel
-
         deriv_output = geograd_parallel.compute_derivs(
             self.surf1_p0,
             self.surf1_p1,
@@ -294,6 +294,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 wrt=self.getVarNames(),
             )
 
+    def writeTecplot(self, handle):
+        raise NotImplementedError()
+
 
 class SurfaceAreaConstraint(GeometricConstraint):
     """
@@ -304,18 +307,8 @@ class SurfaceAreaConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, p0, v1, v2, lower, upper, scale, scaled, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = 1
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.scaled = scaled
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # create output array
         self.X = np.zeros(self.nCon)
@@ -477,18 +470,8 @@ class ProjectedAreaConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt):
-        self.name = name
-        self.nCon = 1
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.scaled = scaled
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # create output array
         self.X = np.zeros(self.nCon)
@@ -568,7 +551,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
                     PAb = areasb[i]
                 else:
                     PAb = 0.0
-                SAvecb, axisb = geo_utils.dot_b(SAvec, self.axis, PAb)
+                SAvecb, _ = geo_utils.dot_b(SAvec, self.axis, PAb)
                 v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
                 p2b[i, :] = p2b[i, :] + v2b
                 p1b[i, :] = p1b[i, :] + v1b

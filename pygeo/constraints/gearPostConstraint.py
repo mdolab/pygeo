@@ -27,8 +27,8 @@ class GearPostConstraint(GeometricConstraint):
         DVGeo,
         addToPyOpt,
     ):
+        super().__init__(name, None, None, None, None, DVGeo, addToPyOpt)
 
-        self.name = name
         self.wimpress = wimpressCalc
         self.thickLower = thickLower
         self.thickUpper = thickUpper
@@ -36,10 +36,7 @@ class GearPostConstraint(GeometricConstraint):
         self.MACFracLower = MACFracLower
         self.MACFracUpper = MACFracUpper
         self.coords = np.array([up, down])
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
 
-        GeometricConstraint.__init__(self, self.name, None, None, None, None, self.DVGeo, self.addToPyOpt)
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
         self.DVGeo.addPointSet(self.coords, self.name)
@@ -98,7 +95,7 @@ class GearPostConstraint(GeometricConstraint):
                 np.array([[p1b, p2b]]), self.name, config=config
             )
 
-            # And now we need the sensitivty of the conLoc calc
+            # And now we need the sensitivity of the conLoc calc
             p1b[:] = 0
             p2b[:] = 0
             p1b[0] += 0.5 / wfuncs["MAC"]
@@ -106,7 +103,7 @@ class GearPostConstraint(GeometricConstraint):
 
             tmpSens = self.DVGeo.totalSensitivity(np.array([[p1b, p2b]]), self.name, config=config)
 
-            # And we need the sensitity of conLoc wrt 'xLEMAC' and 'MAC'
+            # And we need the sensitivity of conLoc wrt 'xLEMAC' and 'MAC'
             postLoc = 0.5 * (self.coords[0, 0] + self.coords[1, 0])
             for key in wSens["xLEMAC"]:
                 tmpSens[key] -= wSens["xLEMAC"][key] / wfuncs["MAC"]
@@ -126,3 +123,6 @@ class GearPostConstraint(GeometricConstraint):
             optProb.addCon(
                 self.name + "_MAC", lower=self.MACFracLower, upper=self.MACFracUpper, wrt=self.DVGeo.getVarNames()
             )
+
+    def writeTecplot(self, handle):
+        raise NotImplementedError()
