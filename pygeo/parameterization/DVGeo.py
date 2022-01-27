@@ -2789,6 +2789,9 @@ class DVGeometry:
                         # Iterate counter
                         count += 1
 
+        # Reset DV's to their original values
+        self.setDesignVars(dvDict)
+
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
     # ----------------------------------------------------------------------
