@@ -2348,6 +2348,10 @@ class CompIntersection:
         # curvePtCoords: original coordinates of points on curves
         # delta: displacements of the points on curves after projecting them
 
+        # Return if curvePtCoords is empty
+        if not np.any(curvePtCoords):
+            return
+
         for j in indices:
 
             # point coordinates with the baseline design
@@ -2371,6 +2375,10 @@ class CompIntersection:
 
         # seeds for delta
         deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
+
+        # Return zeros if curvePtCoords is empty
+        if not np.any(curvePtCoords):
+            return deltaBar
 
         for k in range(dIdPt.shape[0]):
 
