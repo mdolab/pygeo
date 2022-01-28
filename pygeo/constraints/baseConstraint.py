@@ -58,13 +58,23 @@ class GeometricConstraint(ABC):
         """
         return self.DVGeo.getVarNames()
 
-    def addConstraintsPyOpt(self, optProb):
+    def addConstraintsPyOpt(self, optProb, exclude_wrt=None):
         """
         Add the constraints to pyOpt, if the flag is set
         """
         if self.addToPyOpt:
+            wrt_names = self.getVarNames()
+
+            # we may want to remove specific dvs from the wrt list
+            if exclude_wrt is not None:
+                if isinstance(exclude_wrt, str):
+                    exclude_wrt = [exclude_wrt]
+
+                for name in exclude_wrt:
+                    wrt_names.remove(name)
+
             optProb.addConGroup(
-                self.name, self.nCon, lower=self.lower, upper=self.upper, scale=self.scale, wrt=self.getVarNames()
+                self.name, self.nCon, lower=self.lower, upper=self.upper, scale=self.scale, wrt=wrt_names
             )
 
     def addVariablesPyOpt(self, optProb):
