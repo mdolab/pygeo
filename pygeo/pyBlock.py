@@ -60,7 +60,7 @@ class pyBlock:
     #                     Initialization Types
     # ----------------------------------------------------------------------
 
-    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001):
+    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001, kmax=4):
         """Load a plot3D file and create the splines to go with each
         patch. See the pyBlock() docstring for more information.
 
@@ -159,9 +159,9 @@ class pyBlock:
                 return knots
 
             for ivol in range(nVol):
-                ku = min(4, sizes[ivol, 0])
-                kv = min(4, sizes[ivol, 1])
-                kw = min(4, sizes[ivol, 2])
+                ku = min(kmax, sizes[ivol, 0])
+                kv = min(kmax, sizes[ivol, 1])
+                kw = min(kmax, sizes[ivol, 2])
 
                 # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by
