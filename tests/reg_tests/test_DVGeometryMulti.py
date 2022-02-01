@@ -4,12 +4,19 @@ import numpy as np
 from mpi4py import MPI
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
-from pygeo import DVGeometryMulti
+
+try:
+    from pygeo import DVGeometryMulti
+
+    missing_pysurf = False
+except ImportError:
+    missing_pysurf = True
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 inputDir = os.path.join(baseDir, "../../input_files")
 
 
+@unittest.skipIf(missing_pysurf, "requires pySurf")
 class TestDVGeoMulti(unittest.TestCase):
 
     N_PROCS = 1
