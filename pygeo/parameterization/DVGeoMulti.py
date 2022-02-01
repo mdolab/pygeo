@@ -1990,6 +1990,10 @@ class CompIntersection:
         flagA = self.projData[ptSetName]["compA"]["flag"]
         flagB = self.projData[ptSetName]["compB"]["flag"]
 
+        # Initialize component-wide projection indices
+        indAComp = self.projData[ptSetName]["compA"]["ind"].copy()
+        indBComp = self.projData[ptSetName]["compB"]["ind"].copy()
+
         # call the actual driver with the info to prevent code multiplication
         if flagA:
             # First project points on the tracked surfaces
@@ -2000,6 +2004,10 @@ class CompIntersection:
                 # Get the subset of indices that is associated with this surface
                 indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
 
+                # Remove these points from the component-wide projection indices
+                for ind in indA:
+                    indAComp.remove(ind)
+
                 # get the points using the mapping
                 ptsA = newPts[indA]
                 # call the projection routine with the info
@@ -2008,10 +2016,10 @@ class CompIntersection:
                     ptsA, self.compA, self.projData[ptSetName][surface], surface=surface
                 )
 
-            # Now project all points to the component as a whole
-            indA = self.projData[ptSetName]["compA"]["ind"]
-            ptsA = newPts[indA]
-            newPts[indA] = self._projectToComponent(ptsA, self.compA, self.projData[ptSetName]["compA"])
+            # Project remaining points to the component as a whole
+            if indAComp:
+                ptsA = newPts[indAComp]
+                newPts[indAComp] = self._projectToComponent(ptsA, self.compA, self.projData[ptSetName]["compA"])
 
         # do the same for B
         if flagB:
@@ -2019,14 +2027,20 @@ class CompIntersection:
             for surface in surfaceIndB:
                 surfaceInd = surfaceIndB[surface]
                 indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
+                for ind in indB:
+                    indBComp.remove(ind)
                 ptsB = newPts[indB]
                 newPts[indB] = self._projectToComponent(
                     ptsB, self.compB, self.projData[ptSetName][surface], surface=surface
                 )
 
-            indB = self.projData[ptSetName]["compB"]["ind"]
-            ptsB = newPts[indB]
-            newPts[indB] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
+            if indBComp:
+                ptsB = newPts[indBComp]
+                newPts[indBComp] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
+
+        # Store component-wide indices for derivative computation
+        self.projData[ptSetName]["compA"]["indAComp"] = indAComp
+        self.projData[ptSetName]["compB"]["indBComp"] = indBComp
 
     def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
@@ -2040,18 +2054,21 @@ class CompIntersection:
         flagA = self.projData[ptSetName]["compA"]["flag"]
         flagB = self.projData[ptSetName]["compB"]["flag"]
 
-        # dictionary to accumulate triangulated mesh sensitivities
+        # Initialize dictionaries to accumulate triangulated mesh sensitivities
         compSens_local = {}
+        compSensA = {}
+        compSensB = {}
 
         # call the actual driver with the info to prevent code multiplication
         if flagA:
 
-            # Now project all points to the component as a whole
-            indA = self.projData[ptSetName]["compA"]["ind"]
-            dIdptA = dIdpt[:, indA]
-            dIdpt[:, indA], compSensA = self._projectToComponent_b(
-                dIdptA, self.compA, self.projData[ptSetName]["compA"]
-            )
+            # Project remaining points to the component as a whole
+            indAComp = self.projData[ptSetName]["compA"]["indAComp"]
+            if indAComp:
+                dIdptA = dIdpt[:, indAComp]
+                dIdpt[:, indAComp], compSensA = self._projectToComponent_b(
+                    dIdptA, self.compA, self.projData[ptSetName]["compA"]
+                )
 
             # First project points on the tracked surfaces
             surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
@@ -2065,14 +2082,16 @@ class CompIntersection:
                 dIdptA = dIdpt[:, indA]
                 # call the projection routine with the info
                 # this returns the projected points and we use the same mapping to put them back in place
-                dIdpt_temp, compSensA_temp = self._projectToComponent_b(
+                dIdpt[:, indA], compSensA_temp = self._projectToComponent_b(
                     dIdptA, self.compA, self.projData[ptSetName][surface], surface=surface
                 )
 
-                # Accumulate the derivatives from all projections
-                dIdpt[:, indA] += dIdpt_temp
-                for k in compSensA_temp:
-                    compSensA[k] += compSensA_temp[k]
+                # Accumulate triangulated mesh sensitivities
+                for k, v in compSensA_temp.items():
+                    try:
+                        compSensA[k] += v
+                    except KeyError:
+                        compSensA[k] = v
 
             for k, v in compSensA.items():
                 compSens_local[k] = v
@@ -2090,24 +2109,28 @@ class CompIntersection:
 
         # do the same for B
         if flagB:
-            indB = self.projData[ptSetName]["compB"]["ind"]
-            dIdptB = dIdpt[:, indB]
-            dIdpt[:, indB], compSensB = self._projectToComponent_b(
-                dIdptB, self.compB, self.projData[ptSetName]["compB"]
-            )
+
+            indBComp = self.projData[ptSetName]["compB"]["indBComp"]
+            if indBComp:
+                dIdptB = dIdpt[:, indBComp]
+                dIdpt[:, indBComp], compSensB = self._projectToComponent_b(
+                    dIdptB, self.compB, self.projData[ptSetName]["compB"]
+                )
 
             surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
             for surface in surfaceIndB:
                 surfaceInd = surfaceIndB[surface]
                 indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
                 dIdptB = dIdpt[:, indB]
-                dIdpt_temp, compSensB_temp = self._projectToComponent_b(
+                dIdpt[:, indB], compSensB_temp = self._projectToComponent_b(
                     dIdptB, self.compB, self.projData[ptSetName][surface], surface=surface
                 )
 
-                dIdpt[:, indB] += dIdpt_temp
-                for k in compSensB_temp:
-                    compSensB[k] += compSensB_temp[k]
+                for k, v in compSensB_temp.items():
+                    try:
+                        compSensB[k] += v
+                    except KeyError:
+                        compSensB[k] = v
 
             for k, v in compSensB.items():
                 compSens_local[k] = v
