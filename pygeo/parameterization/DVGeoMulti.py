@@ -6,7 +6,6 @@ import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
 from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
-from . import DVGeometry
 
 
 class DVGeometryMulti:
@@ -30,14 +29,10 @@ class DVGeometryMulti:
         # flag to keep track of IC jacobians
         self.ICJupdated = False
 
-    def addComponent(self, comp, ffdFile, triMesh=None, scale=1.0, bbox={}):
+    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox={}):
         """
         Method to add components to the DVGeometryMulti object.
-        Returns the DVGeo object for this component
         """
-
-        # we need to create a new DVGeo object for this component
-        DVGeo = DVGeometry(ffdFile)
 
         if triMesh is not None:
             # We also need to read the triMesh and save the points
@@ -80,8 +75,6 @@ class DVGeometryMulti:
 
         # also save the DVGeometry pointer in the dictionary we pass back
         self.DVGeoDict[comp] = DVGeo
-
-        return DVGeo
 
     def addIntersection(
         self,

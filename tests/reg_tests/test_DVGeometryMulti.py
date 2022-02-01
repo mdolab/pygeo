@@ -4,6 +4,7 @@ import numpy as np
 from mpi4py import MPI
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
+from pygeo import DVGeometry
 
 try:
     from pygeo import DVGeometryMulti
@@ -29,11 +30,16 @@ class TestDVGeoMulti(unittest.TestCase):
         ffdFiles = [os.path.join(inputDir, f"{comp}.xyz") for comp in comps]
         triMeshFiles = [os.path.join(inputDir, f"{comp}.cgns") for comp in comps]
 
+        # Set up component DVGeo objects
+        DVGeoBox1 = DVGeometry(ffdFiles[0])
+        DVGeoBox2 = DVGeometry(ffdFiles[1])
+        DVGeoBox3 = DVGeometry(ffdFiles[2])
+
         # Set up DVGeometryMulti object
         DVGeo = DVGeometryMulti()
-        _ = DVGeo.addComponent("box1", ffdFiles[0], triMeshFiles[0])
-        _ = DVGeo.addComponent("box2", ffdFiles[1], triMeshFiles[1])
-        _ = DVGeo.addComponent("box3", ffdFiles[2], None)
+        DVGeo.addComponent("box1", DVGeoBox1, triMeshFiles[0])
+        DVGeo.addComponent("box2", DVGeoBox2, triMeshFiles[1])
+        DVGeo.addComponent("box3", DVGeoBox3, None)
 
         # Define some feature curves
         featureCurves = [

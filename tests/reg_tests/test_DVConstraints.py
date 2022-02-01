@@ -166,15 +166,16 @@ class RegTestPyGeo(unittest.TestCase):
             ffdFile = os.path.join(self.base_path, "../../input_files/deform_geometry_ffd.xyz")
             xFraction = 0.25
 
+        DVGeo = DVGeometry(ffdFile, child=self.child)
         if self.multi:
-            DVGeoMulti = DVGeometryMulti()
-            # Add the deforming component
-            DVGeo = DVGeoMulti.addComponent("deforming", ffdFile)
             # Use the nozzle FFD as the stationary component because it is outside all other FFD volumes
             nozzleFile = os.path.join(self.base_path, "../../input_files/nozzleFFD.xyz")
-            DVGeoMulti.addComponent("stationary", nozzleFile)
-        else:
-            DVGeo = DVGeometry(ffdFile, child=self.child)
+            DVGeoNozzle = DVGeometry(nozzleFile)
+            # Set up the DVGeometryMulti object
+            DVGeoMulti = DVGeometryMulti()
+            DVGeoMulti.addComponent("deforming", DVGeo)
+            DVGeoMulti.addComponent("stationary", DVGeoNozzle)
+
         DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=xFraction, alignIndex="k")
         self.nTwist = nRefAxPts - 1
