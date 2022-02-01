@@ -244,8 +244,7 @@ class Edge:
 
     def writeInfo(self, i, handle):
         handle.write(
-            "  %5d        | %5d | %5d | %5d | %5d | %5d |\
-  %5d |  %5d |\n"
+            "  %5d        | %5d | %5d | %5d | %5d | %5d |  %5d |  %5d |\n"
             % (i, self.n1, self.n2, self.cont, self.degen, self.intersect, self.dg, self.N)
         )
 

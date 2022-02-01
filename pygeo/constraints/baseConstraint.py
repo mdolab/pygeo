@@ -1,11 +1,12 @@
 # ======================================================================
 #         Imports
 # ======================================================================
+from abc import ABC, abstractmethod
 import numpy as np
 from baseclasses.utils import Error
 
 
-class GeometricConstraint:
+class GeometricConstraint(ABC):
     """
     This is a generic base class for all of the geometric constraints.
 
@@ -23,15 +24,7 @@ class GeometricConstraint:
         self.DVGeo = DVGeo
         self.addToPyOpt = addToPyOpt
 
-        return
-
-    def setDesignVars(self, x):
-        """
-        take in the design var vector from pyopt and set the variables for this constraint
-        This function is constraint specific, so the baseclass doesn't implement anything.
-        """
-        pass
-
+    @abstractmethod
     def evalFunctions(self, funcs, config):
         """
         Evaluate the functions this object has and place in the funcs dictionary.
@@ -44,6 +37,7 @@ class GeometricConstraint:
         """
         pass
 
+    @abstractmethod
     def evalFunctionsSens(self, funcsSens, config):
         """
         Evaluate the sensitivity of the functions this object has and
@@ -82,11 +76,10 @@ class GeometricConstraint:
         #                         upper=self.upper, scale=self.scale,
         #                         wrt=self.getVarNames())
 
+    @abstractmethod
     def writeTecplot(self, handle):
         """
-        Write the visualization of this set of thickness constraints
-        to the open file handle
-        This function is constraint specific, so the baseclass doesn't implement anything.
+        Write the visualization of this constraint to the open file handle
         """
         pass
 
@@ -94,7 +87,7 @@ class GeometricConstraint:
 class LinearConstraint:
     """
     This class is used to represet a set of generic set of linear
-    constriants coupling local shape variables together.
+    constraints coupling local shape variables together.
     """
 
     def __init__(self, name, indSetA, indSetB, factorA, factorB, lower, upper, DVGeo, config):
@@ -136,7 +129,7 @@ class LinearConstraint:
             elif key in self.DVGeo.DV_listSpanwiseLocal:
                 cons.extend(self.jac[key].dot(self.DVGeo.DV_listSpanwiseLocal[key].value))
             else:
-                raise Error(f"con {self.name} diffined wrt {key}, but {key} not found in DVGeo")
+                raise Error(f"con {self.name} defined wrt {key}, but {key} not found in DVGeo")
         funcs[self.name] = np.array(cons).real.astype("d")
 
     def evalFunctionsSens(self, funcsSens):
@@ -173,7 +166,7 @@ class LinearConstraint:
         """
         We have postponed actually determining the constraint jacobian
         until this function is called. Here we determine the actual
-        constraint jacobains as they relate to the actual sets of
+        constraint Jacobians as they relate to the actual sets of
         local shape variables that may (or may not) be present in the
         DVGeo object.
         """
@@ -270,7 +263,7 @@ class LinearConstraint:
 class GlobalLinearConstraint:
     """
     This class is used to represent a set of generic set of linear
-    constriants coupling global design variables together.
+    constraints coupling global design variables together.
     """
 
     def __init__(self, name, key, conType, options, lower, upper, DVGeo, config):
@@ -362,11 +355,3 @@ class GlobalLinearConstraint:
                 jacobian[i, start + i + 1] = -1.0 * slope
             self.jac[self.key] = jacobian
             self.ncon += ncon
-
-    def writeTecplot(self, handle):
-        """
-        Write the visualization of this set of lete constraints
-        to the open file handle
-        """
-
-        pass

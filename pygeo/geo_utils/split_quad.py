@@ -71,7 +71,7 @@ def splitQuad(e0, e1, e2, e3, alpha, beta, NO):
 
     aspect = uBar / vBar
 
-    if aspect < 1:  # its higher than wide, logically roate the element
+    if aspect < 1:  # its higher than wide, logically rotate the element
         v, u = u, -v
         vBar, uBar = uBar, vBar
         alpha, beta = beta, alpha

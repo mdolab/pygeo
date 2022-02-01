@@ -1,5 +1,4 @@
 import numpy as np
-from baseclasses.utils import Error
 
 # --------------------------------------------------------------
 #             Truly Miscellaneous Functions
@@ -59,11 +58,28 @@ def convertTo1D(value, dim1):
     otherwise, a scalar will be 'upcast' to that size
     """
 
-    if np.isscalar:
+    if np.isscalar(value):
         return value * np.ones(dim1)
     else:
         temp = np.atleast_1d(value)
         if temp.shape[0] == dim1:
             return value
         else:
-            raise Error("The size of the 1D array was the incorret shape")
+            raise ValueError("The size of the 1D array was the incorrect shape")
+
+
+def convertTo2D(value, dim1, dim2):
+    """
+    Generic function to process 'value'. In the end, it must be dim1
+    by dim2. value is already that shape, excellent, otherwise, a
+    scalar will be 'upcast' to that size
+    """
+
+    if np.isscalar(value):
+        return value * np.ones((dim1, dim2))
+    else:
+        temp = np.atleast_2d(value)
+        if temp.shape[0] == dim1 and temp.shape[1] == dim2:
+            return value
+        else:
+            raise ValueError("The size of the 2D array was the incorrect shape")
