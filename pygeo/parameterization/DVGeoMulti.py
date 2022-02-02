@@ -10,7 +10,21 @@ from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_
 
 class DVGeometryMulti:
     """
-    A class for manipulating multiple components using multiple FFDs
+    A class for manipulating multiple components using multiple FFDs.
+
+    Parameters
+    ----------
+    comm : MPI.IntraComm, optional
+       The communicator associated with this geometry object.
+
+    dh : float, optional
+        FInite-difference step size (not used).
+
+    checkDVs : bool, optional
+        Flag to check whether there are duplicate DV names in or across components.
+
+    debug : bool, optional
+        Flag to generate output useful for debugging the intersection setup.
 
     """
 
@@ -33,6 +47,27 @@ class DVGeometryMulti:
     def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox={}):
         """
         Method to add components to the DVGeometryMulti object.
+
+        Parameters
+        ----------
+        comp : str
+            The name of the component.
+
+        DVGeo : DVGeometry
+            The DVGeometry object defining the component FFD.
+
+        triMesh : str, optional
+            Path to the triangulated mesh file for this component.
+
+        scale : float, optional
+            A multiplicative scaling factor applied to the triangulated mesh coordinates.
+            Useful for when the scales of the triangulated and CFD meshes do not match.
+
+        bbox : dict, optional
+            Specify a bounding box that is different from the bounds of the FFD.
+            The keys can include ``xmin``, ``xmax``, ``ymin``, ``ymax``, ``zmin``, ``zmax``.
+            If any of these are not provided, the FFD bound is used.
+
         """
 
         if triMesh is not None:
@@ -95,7 +130,65 @@ class DVGeometryMulti:
         remeshBwd=True,
     ):
         """
-        Method that defines intersections between components
+        Method that defines intersections between components.
+
+        Parameters
+        ----------
+        compA : str
+            The name of the first component.
+
+        compB : str
+            The name of the second component.
+
+        dStarA : float, optional
+            Distance from the intersection over which the inverse-distance deformation is applied on compA.
+
+        dStarB : float, optional
+            Distance from the intersection over which the inverse-distance deformation is applied on compB.
+
+        featureCurves : list or dict, optional
+            Points on feature curves will remain on the same curve after deformations and projections.
+            Feature curves can be specified as a list of curve names.
+            In this case, the march direction for all curves is ``marchDir``.
+            Alternatively, a dictionary can be provided.
+            In this case, the keys are the curve names and the values are the march directions for each curve.
+
+        distTol : float, optional
+            Distance tolerance to merge nearby nodes in the intersection curve.
+
+        project : bool, optional
+            Flag to specify whether to project points to curves and surfaces after the deformation step.
+
+        marchDir : int, optional
+            The direction in which feature curves are remeshed (if a list is provided for ``featureCurves``).
+            The sign determines the direction and the value (1, 2, 3) specifies the axis (x, y, z).
+
+        includeCurves : bool, optional
+            Flag to specify whether to include features curves in the inverse-distance deformation.
+
+        intDir : int, optional
+            If there are multiple intersection curves, this specifies which curve to choose.
+            The sign determines the direction and the value (1, 2, 3) specifies the axis (x, y, z).
+            For example, -1 specifies the intersection curve as the one that is further in the negative x-direction.
+
+        curveEpsDict : dict, optional
+            Required if using feature curves.
+            The keys of the dictionary are the curve names and the values are distances.
+            All points within the specified distance from the curve are considered to be on the curve.
+
+        trackSurfaces : dict, optional
+            Points on tracked surfaces will remain on the same surfaces after deformations and projections.
+            The keys of the dictionary are the surface names and the values are distances.
+            All points within the specified distance from the surface are considered to be on the surface.
+
+        excludeSurfaces : dict, optional
+            Points on excluded surfaces are removed from the intersection computations.
+            The keys of the dictionary are the surface names and the values are distances.
+            All points within the specified distance from the surface are considered to be on the surface.
+
+        remeshBwd : bool, optional
+            Flag to specify whether to remesh the sides of feature curves that are inside the outer mold line.
+
         """
 
         # just initialize the intersection object
@@ -121,16 +214,36 @@ class DVGeometryMulti:
         )
 
     def getDVGeoDict(self):
-        # return DVGeo objects so that users can add design variables
+        """Return a dictionary of component DVGeo objects."""
         return self.DVGeoDict
 
     def addPointSet(self, points, ptName, compNames=None, comm=None, applyIC=False, **kwargs):
+        """
+        Add a set of coordinates to DVGeometryMulti.
+        The is the main way that geometry, in the form of a coordinate list, is manipulated.
 
-        # if the user passes a list of compNames, we only use these comps.
-        # we will still use all points to add the pointset, but by default,
-        # the components not in this list will get 0 npoints. This is for
-        # consistency, each dvgeo will have all pointsets and book keeping
-        # becomes easier this way.
+        Parameters
+        ----------
+        points : array, size (N,3)
+            The coordinates to embed.
+            These coordinates should all be inside at least one FFD volume.
+        ptName : str
+            A user supplied name to associate with the set of coordinates.
+            This name will need to be provided when updating the coordinates
+            or when getting the derivatives of the coordinates.
+        compNames : list, optional
+            A list of component names that this point set should be added to.
+            To ease bookkeepping, an empty point set with ptName will be added to components not in this list.
+            If a list is not provided, this point set is added to all components.
+        comm : MPI.IntraComm, optional
+            Comm that is associated with the added point set. Does not
+            work now, just added to be consistent with the API of
+            other DVGeo types.
+        applyIC : bool, optional
+            Flag to specify whether this point set will follow the updated intersection curve(s).
+            This is typically only needed for the CFD surface mesh.
+
+        """
 
         # if compList is not provided, we use all components
         if compNames is None:
@@ -290,15 +403,15 @@ class DVGeometryMulti:
 
     def setDesignVars(self, dvDict):
         """
-        Standard routine for setting design variables from a design
-        variable dictionary.
+        Standard routine for setting design variables from a design variable dictionary.
 
         Parameters
         ----------
         dvDict : dict
-            Dictionary of design variables. The keys of the dictionary
-            must correspond to the design variable names. Any
-            additional keys in the dictionary are simply ignored.
+            Dictionary of design variables.
+            The keys of the dictionary must correspond to the design variable names.
+            Any additional keys in the dictionary are simply ignored.
+
         """
 
         # Check if we have duplicate DV names
@@ -330,14 +443,14 @@ class DVGeometryMulti:
 
     def getValues(self):
         """
-        Generic routine to return the current set of design
-        variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
+        Generic routine to return the current set of design variables.
+        Values are returned in a dictionary format that would be suitable for a subsequent call to setDesignVars().
 
         Returns
         -------
         dvDict : dict
-            Dictionary of design variables
+            Dictionary of design variables.
+
         """
 
         dvDict = {}
@@ -351,15 +464,16 @@ class DVGeometryMulti:
         return dvDict
 
     def update(self, ptSetName, config=None):
-        """This is the main routine for returning coordinates that have been
-        updated by design variables. Multiple configs are not
-        supported.
+        """
+        This is the main routine for returning coordinates that have been updated by design variables.
+        Multiple configs are not supported.
 
         Parameters
         ----------
         ptSetName : str
-            Name of point-set to return. This must match ones of the
-            given in an :func:`addPointSet()` call.
+            Name of point set to return.
+            This must match one of those added in an :func:`addPointSet()` call.
+
         """
 
         # get the new points
@@ -398,18 +512,16 @@ class DVGeometryMulti:
 
     def pointSetUpToDate(self, ptSetName):
         """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
+        This is used externally to query if the object needs to update its point set or not.
+        When update() is called with a point set, the self.updated value for pointSet is flagged as True.
+        We reset all flags to False when design variables are set because nothing (in general) will up to date anymore.
+        Here we just return that flag.
 
         Parameters
         ----------
         ptSetName : str
             The name of the pointset to check.
+
         """
         if ptSetName in self.updated:
             return self.updated[ptSetName]
@@ -417,8 +529,8 @@ class DVGeometryMulti:
             return True
 
     def getNDV(self):
-        """Return the number of DVs"""
-        # loop over components and sum number of DVs
+        """Return the number of DVs."""
+        # Loop over components and sum the number of DVs
         nDV = 0
         for comp in self.compNames:
             nDV += self.comps[comp].DVGeo.getNDV()
@@ -426,12 +538,13 @@ class DVGeometryMulti:
 
     def getVarNames(self):
         """
-        Return a list of the design variable names. This is typically
-        used when specifying a wrt= argument for pyOptSparse.
+        Return a list of the design variable names.
+        This is typically used when specifying a ``wrt=`` argument for pyOptSparse.
 
         Examples
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
+
         """
         dvNames = []
         # create a list of DVs from each comp
@@ -446,7 +559,7 @@ class DVGeometryMulti:
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
-        This function computes sensitivty information.
+        This function computes sensitivity information.
 
         Specificly, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
@@ -464,11 +577,11 @@ class DVGeometryMulti:
         ptSetName : str
             The name of set of points we are dealing with
 
-        comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
+        comm : MPI.IntraComm, optional
+            The communicator to use to reduce the final derivative.
+            If comm is None, no reduction takes place.
 
-        config : str or list
+        config : str or list, optional
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
@@ -477,14 +590,14 @@ class DVGeometryMulti:
 
         Returns
         -------
-        dIdxDict : dic
-            The dictionary containing the derivatives, suitable for
-            pyOptSparse
+        dIdxDict : dict
+            The dictionary containing the derivatives, suitable for pyOptSparse.
 
         Notes
         -----
         The ``child`` and ``nDVStore`` options are only used
         internally and should not be changed by the user.
+
         """
         # if comm:
         #     commPresent = True
@@ -637,16 +750,17 @@ class DVGeometryMulti:
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
 
-        comps : list of components we want to add DVs of. If no list is passed,
-            we will add all dvs of all components
+        comps : list
+            List of components we want to add the DVs of.
+            If no list is provided, we will add DVs from all components.
+
         """
 
-        # if no list was provided, we use all components
+        # If no list was provided, we use all components
         if comps is None:
             comps = self.compNames
 
-        # we can simply loop over all DV objects and call their respective
-        # addVariablesPyOpt function.
+        # We can simply loop over all DV objects and call their respective addVariablesPyOpt function
         for comp in comps:
             self.comps[comp].DVGeo.addVariablesPyOpt(
                 optProb,
@@ -658,9 +772,20 @@ class DVGeometryMulti:
             )
 
     def getLocalIndex(self, iVol, comp):
-        """Return the local index mapping that points to the global
-        coefficient list for a given volume"""
-        # call this on the respective DVGeo
+        """Return the local index mapping that points to the global coefficient list for a given volume.
+
+        Parameters
+        ----------
+
+        iVol : int
+            Index specifying the FFD volume.
+
+        comp : str
+            Name of the component.
+
+        """
+
+        # Call this on the component DVGeo
         DVGeo = self.comps[comp].DVGeo
         return DVGeo.FFD.topo.lIndex[iVol].copy()
 
@@ -1016,29 +1141,14 @@ class CompIntersection:
         remeshBwd,
         debug,
     ):
-        """Class to store information required for an intersection.
-        Here, we use some fortran code from pySurf.
+        """
+        Class to store information required for an intersection.
+        Here, we use some Fortran code from pySurf.
+        Internally, we store the indices and weights of the points that this intersection will modify.
+        This code is not super efficient because it is in Python.
 
-        Input
-        -----
-        compA: ID of the first component
-        compB: ID of the second component
+        See the documentation for ``addIntersection`` in DVGeometryMulti for the API.
 
-        dStar, real : Radius over which to attenuate the deformation
-
-        intDir, int : Direction of which intersection to pick,
-                      +/- specifies the direction and
-                      value (1,2,3) specifies the axis (x,y,z)
-
-        featureCurves: list or dict. If user provides a list,
-                       we pick the same marching direction for all
-                       curves. if the user provides a dict, the keys
-                       should be the curve names, and values should
-                       be the march direction for each curve.
-
-        Internally we will store the indices and the weights of the
-        points that this intersection will have to modify. In general,
-        all this code is not super efficient since it's all python
         """
 
         # same communicator with DVGeo
