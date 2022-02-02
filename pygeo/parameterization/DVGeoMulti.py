@@ -18,7 +18,7 @@ class DVGeometryMulti:
        The communicator associated with this geometry object.
 
     dh : float, optional
-        FInite-difference step size (not used).
+        Finite-difference step size (not used).
 
     checkDVs : bool, optional
         Flag to check whether there are duplicate DV names in or across components.
@@ -257,8 +257,7 @@ class DVGeometryMulti:
             # check if we have a trimesh for this component
             if self.comps[comp].triMesh:
 
-                # now we build the ADT
-                # from ney's code:
+                # Now we build the ADT using pySurf
                 # Set bounding box for new tree
                 BBox = np.zeros((2, 3))
                 useBBox = False
@@ -600,10 +599,6 @@ class DVGeometryMulti:
         internally and should not be changed by the user.
 
         """
-        # if comm:
-        #     commPresent = True
-        # else:
-        #     commPresent = False
 
         # compute the total jacobian for this pointset
         # TODO, we dont even need to do this
@@ -846,6 +841,7 @@ class DVGeometryMulti:
         from respective DVGeo objects and also computes the jacobians for
         the intersection seams. We then use this information in the
         totalSensitivity function.
+
         """
 
         # number of design variables
@@ -1321,9 +1317,9 @@ class CompIntersection:
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
 
-        # Figure out which points this intersection object has to deal with.
+        # Figure out which points this intersection object has to deal with
 
-        # use Ney's fortran code to project the point on curve
+        # Use pySurf to project the point on curve
         # Get number of points
         nPoints = len(pts)
 
@@ -1333,9 +1329,8 @@ class CompIntersection:
         tanProj = np.zeros((nPoints, 3))
         elemIDs = np.zeros((nPoints), dtype="int32")
 
-        # only call the fortran code if we have at least one point
+        # Only call the Fortran code if we have at least one point
         if nPoints > 0:
-            # Call fortran code
             # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
             # Remember that we should adjust some indices before calling the Fortran code
             # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
@@ -1475,7 +1470,7 @@ class CompIntersection:
                 ptsToCurves = pts[indices]
 
                 # project these to the combined curves
-                # use Ney's fortran code to project the point on curve
+                # Use pySurf to project the point on curve
                 # Get number of points
                 nPoints = len(ptsToCurves)
 
@@ -1485,9 +1480,8 @@ class CompIntersection:
                 tanProj = np.zeros((nPoints, 3))
                 elemIDs = np.zeros((nPoints), dtype="int32")
 
-                # only call the fortran code if we have at least one point
+                # Only call the Fortran code if we have at least one point
                 if nPoints > 0:
-                    # Call fortran code
                     # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                     # Remember that we should adjust some indices before calling the Fortran code
                     # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
@@ -1611,13 +1605,6 @@ class CompIntersection:
         # factors for each node in pointSet
         factors = self.points[ptSetName][2]
 
-        # get the comm
-        # comm = self.points[ptSetName][3]
-        # if comm:
-        #     rank = comm.rank
-        # else:
-        #     rank = 0
-
         # coordinates for the remeshed curves
         # we use the initial seam coordinates here
         coor = self.seam0
@@ -1634,7 +1621,7 @@ class CompIntersection:
             return delta
 
         # define an epsilon to avoid dividing by zero later on
-        eps = 1e-50  # 1e-32
+        eps = 1e-50
 
         # loop over the points that get affected
         for i in range(len(factors)):
@@ -1741,10 +1728,6 @@ class CompIntersection:
             # Now the delta is replaced by 1-factor times the weighted
             # interp of the seam * factor of the original:
             delta[j] = factors[i] * delta[j] + (1 - factors[i]) * interp
-            # delta[j] = interp
-
-        # if comm:
-        #     comm.Barrier()
 
         return delta
 
@@ -1890,11 +1873,6 @@ class CompIntersection:
         # get the comm for this point set
         comm = self.points[ptSetName][3]
 
-        # if comm:
-        #     rank = comm.rank
-        # else:
-        #     rank = 0
-
         self.comm.Barrier()
 
         # check if we need to worry about either surface
@@ -1948,8 +1926,7 @@ class CompIntersection:
             seamEnd = self.seamEnd[curveName]
             curveConn = self.seamConn[seamBeg:seamEnd]
 
-            # project these to the combined curves
-            # use Ney's fortran code to project the point on curve
+            # Project these to the combined curves using pySurf
             # Get number of points
             nPoints = ptsOnCurve.shape[0]
 
@@ -1962,9 +1939,8 @@ class CompIntersection:
             tanProj = np.zeros((nPoints, 3))
             elemIDs = np.zeros((nPoints), dtype="int32")
 
-            # only call the fortran code if we have at least one point
+            # only call the Fortran code if we have at least one point
             if nPoints > 0:
-                # Call fortran code
                 # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                 # Remember that we should adjust some indices before calling the Fortran code
                 # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
@@ -1980,9 +1956,6 @@ class CompIntersection:
 
                 # we only have the curvemask if we do the projection on this proc
                 self.curveProjData[ptSetName][curveName]["curveMask"] = curveMask
-
-            # dist2 has the array of squared distances
-            # d = np.sqrt(dist2)
 
             # save some information for gradient comp
             self.curveProjData[ptSetName][curveName]["xyz"] = ptsOnCurve.copy()
@@ -2070,9 +2043,6 @@ class CompIntersection:
         # save some info for the sens. computations
         self.curveProjData[ptSetName]["curvePtCoordsA"] = curvePtCoordsA
         self.curveProjData[ptSetName]["curvePtCoordsB"] = curvePtCoordsB
-
-        # if comm:
-        # comm.Barrier()
 
         # get the flags for components
         flagA = self.projData[ptSetName]["compA"]["flag"]
@@ -2265,10 +2235,8 @@ class CompIntersection:
         flagA = False
         flagB = False
         if len(self.curvesOnA) > 0:
-            # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
             flagA = True
         if len(self.curvesOnB) > 0:
-            # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
             flagB = True
 
         if ptSetComm:
@@ -2377,7 +2345,7 @@ class CompIntersection:
                     # add the contribution from dIdpt for the idx points themselves
                     xyzProjb += dIdpt[k, idx]
 
-                    # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
+                    # Call Fortran code (This will accumulate seeds in xyzb and self.coorb)
                     xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
                         xyz.T,
                         coor.T,
@@ -2404,13 +2372,16 @@ class CompIntersection:
         return compSens
 
     def _commCurveProj(self, pts, indices, comm):
-        # this function will get the points, indices, and comm.
-        # this function is called once for each feature curve
-        # the indices are the indices of points that was mapped to this curve
-        # we compute how many points we have mapped to this curve globally
-        # furthermore, we compute the displacements
-        # finally, we communicate the initial coordinates of these points,
-        # that will later be used in the point-based warping
+        """
+        This function will get the points, indices, and comm.
+        This function is called once for each feature curve.
+        The indices are the indices of points that was mapped to this curve.
+        We compute how many points we have mapped to this curve globally.
+        Furthermore, we compute the displacements.
+        Finally, we communicate the initial coordinates of these points.
+        These will later be used in the point-based warping.
+
+        """
 
         # only do this fancy stuff if this is a "parallel" pointset
         if comm:
@@ -2448,12 +2419,16 @@ class CompIntersection:
         return nptsg, sizes, curvePtCoords
 
     def _warpSurfPts(self, pts0, ptsNew, indices, curvePtCoords, delta):
-        # this function warps points using the displacements from curve projections
-        # pts0: the original surface point coordinates
-        # ptsNew: updated surface pt coordinates. we will add the warped delta to these inplace
-        # indices: indices of the points that we will use for this operation
-        # curvePtCoords: original coordinates of points on curves
-        # delta: displacements of the points on curves after projecting them
+        """
+        This function warps points using the displacements from curve projections.
+
+        pts0: The original surface point coordinates.
+        ptsNew: Updated surface pt coordinates. We will add the warped delta to these inplace.
+        indices: Indices of the points that we will use for this operation.
+        curvePtCoords: Original coordinates of points on curves.
+        delta: Displacements of the points on curves after projecting them.
+
+        """
 
         # Return if curvePtCoords is empty
         if not np.any(curvePtCoords):
@@ -2504,7 +2479,6 @@ class CompIntersection:
                 LdefoDist3 = LdefoDist ** 3
                 Wi = LdefoDist3
                 den = np.sum(Wi)
-                # interp = np.zeros(3)
 
                 for iDim in range(3):
                     deltaBar[k, :, iDim] += Wi * localVal[iDim] / den
@@ -2513,8 +2487,7 @@ class CompIntersection:
         return deltaBar
 
     def _projectToComponent(self, pts, comp, projDict, surface=None):
-        # we build an ADT using this component
-        # from ney's code:
+        # We build an ADT for this component using pySurf
         # Set bounding box for new tree
         BBox = np.zeros((2, 3))
         useBBox = False
@@ -2586,8 +2559,7 @@ class CompIntersection:
 
     def _projectToComponent_b(self, dIdpt, comp, projDict, surface=None):
 
-        # we build an ADT using this component
-        # from ney's code:
+        # We build an ADT for this component using pySurf
         # Set bounding box for new tree
         BBox = np.zeros((2, 3))
         useBBox = False
@@ -2669,24 +2641,15 @@ class CompIntersection:
             xyzb = xyzb.T
             coorb = coorb.T
 
-            # Compute derivative seed contributions of the normal vectors
-            # we dont need this...
-            # deltaCoorb = adtAPI.adtapi.adtcomputenodalnormals_b(comp.nodes.T,
-            # comp.triConn.T, quadConn.T,
-            # comp.nodal_normals.T, nodal_normalsb)
-
-            # Transpose Fortran results to make them consistent
-            # deltaCoorb = deltaCoorb.T
-
-            # put the reverse ad seed back into dIdpt
+            # Put the reverse ad seed back into dIdpt
             dIdpt[i] = xyzb
-            # also save the triangulated surface node seeds
+            # Also save the triangulated surface node seeds
             dIdptComp[i] = coorb
 
-        # now we are done with the adt
+        # Now we are done with the ADT
         adtAPI.adtapi.adtdeallocateadts(adtID)
 
-        # call the total sensitivity of the component's dvgeo
+        # Call the total sensitivity of the component's DVGeo
         compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh")
 
         # the entries in dIdpt is replaced with AD seeds of initial points that were projected
@@ -2712,7 +2675,7 @@ class CompIntersection:
         # create the dictionary to save all intermediate variables for reverse differentiation
         self.seamDict = {}
 
-        # Call Ney's code with the quad information.
+        # Call pySurf with the quad information.
         dummyConn = np.zeros((0, 4))
 
         # compute the intersection curve, in the first step we just get the array sizes to hide allocatable arrays from python
@@ -2751,7 +2714,7 @@ class CompIntersection:
         else:
             raise Error(f"The components {self.compA.name} and {self.compB.name} do not intersect.")
 
-        # Release memory used by fortran
+        # Release memory used by Fortran
         intersectionAPI.intersectionapi.releasememory()
 
         # sort the output
@@ -2818,8 +2781,8 @@ class CompIntersection:
                 # get the curve connectivity
                 curveConn = self.compB.barsConn[curveName]
 
-                # use Ney's fortran code to project the point on curve
-                # first, we need to get a list of nodes that define the intersection
+                # Use pySurf to project the point on curve
+                # First, we need to get a list of nodes that define the intersection
                 intNodesOrd = intNodes[seamConn[:, 0]]
 
                 # Get number of points
@@ -2833,8 +2796,8 @@ class CompIntersection:
 
                 # then find the closest point to the curve
 
-                # only call the fortran code if we have at least one point
-                # this is redundant but it is how its done in ney's code
+                # only call the Fortran code if we have at least one point
+                # this is redundant but it is how its done in pySurf
                 if nPoints > 0:
                     # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                     # Remember that we should adjust some indices before calling the Fortran code
@@ -2883,10 +2846,6 @@ class CompIntersection:
         else:
             if nFeature != self.nFeature:
                 raise Error("Number of features on the intersection curve has changed.")
-
-        # first get an ordered list of the feature points
-        # this is just our breakList "list"
-        # featurePoints = intNodes[seamConn[breakList, 0]]
 
         # flip
         # we want breakList to be in increasing order...
@@ -3053,9 +3012,8 @@ class CompIntersection:
 
                         # then find the closest point to the curve
 
-                        # only call the fortran code if we have at least one point
+                        # Only call the Fortran code if we have at least one point
                         if nPoints > 0:
-                            # Call fortran code
                             # This will modify xyzProj, tanProj, dist2, and elemIDs if we find better projections than dist2.
                             # Remember that we should adjust some indices before calling the Fortran code
                             # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
@@ -3235,12 +3193,10 @@ class CompIntersection:
                 if curveName in self.compB.barsConn:
                     curveComp = self.compB
                     coorb = coorBb
-                    # dStarComp = self.dStarB
 
                 elif curveName in self.compA.barsConn:
                     curveComp = self.compA
                     coorb = coorAb
-                    # dStarComp = self.dStarA
 
                 # connectivity for this curve.
                 curveConn = curveComp.barsConn[curveName]
