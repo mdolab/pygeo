@@ -361,8 +361,9 @@ class DVGeometryMulti:
 
                         else:
                             raise Error(
-                                "The point at \n(x, y, z) = (%.3f, %.3f, %.3f) \nin pointset %s is inside multiple FFDs but a triangulated mesh for component %s is not provided to determine which component owns this point."
-                                % (points[i, 0], points[i, 1], points[i, 2], ptName, comp)
+                                f"The point at (x, y, z) = ({points[i, 0]:.3f}, {points[i, 1]:.3f} {points[i, 2]:.3f})"
+                                + f"in point set {ptName} is inside multiple FFDs but a triangulated mesh "
+                                + f"for component {comp} is not provided to determine which component owns this point."
                             )
 
             # this point was inside at least one FFD. If it was inside multiple,
@@ -378,8 +379,8 @@ class DVGeometryMulti:
             # this point is outside any FFD...
             else:
                 raise Error(
-                    "The point at (x, y, z) = (%.3f, %.3f, %.3f) in pointset %s is not inside any FFDs"
-                    % (points[i, 0], points[i, 1], points[i, 1], ptName)
+                    f"The point at (x, y, z) = ({points[i, 0]:.3f}, {points[i, 1]:.3f} {points[i, 2]:.3f}) "
+                    + f"in point set {ptName} is not inside any FFDs."
                 )
 
         # using the mapping array, add the pointsets to respective DVGeo objects
@@ -803,7 +804,7 @@ class DVGeometryMulti:
 
         # only root proc reads the file
         if self.comm.rank == 0:
-            print("Reading file %s" % filename)
+            print(f"Reading file {filename}")
             # use the default routine in tsurftools
             nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
             print("Finished reading the cgns file")
@@ -1253,14 +1254,14 @@ class CompIntersection:
                 curveComp = self.compA
                 self.curvesOnA.append(curveName)
             else:
-                raise Error("Curve %s does not belong in %s or %s" % (curveName, self.compA.name, self.compB.name))
+                raise Error(f"Curve {curveName} does not belong in {self.compA.name} or {self.compB.name}.")
 
             # sort the feature curve
             newConn, newMap = tsurf_tools.FEsort(curveComp.barsConn[curveName].tolist())
 
             # we only want to have a single curve
             if len(newConn) > 1:
-                raise Error("the curve %s generated more than one curve with FESort" % curveName)
+                raise Error(f"The curve {curveName} generated more than one curve with FESort.")
 
             # get the connectivity
             newConn = newConn[0]
@@ -2748,9 +2749,7 @@ class CompIntersection:
             self.seamDict["parentTria"] = parentTria
 
         else:
-            raise Error(
-                "DVGeometryMulti Error: The components %s and %s do not intersect." % (self.compA.name, self.compB.name)
-            )
+            raise Error(f"The components {self.compA.name} and {self.compB.name} do not intersect.")
 
         # Release memory used by fortran
         intersectionAPI.intersectionapi.releasememory()
@@ -2767,11 +2766,12 @@ class CompIntersection:
             if self.intDir is None:
                 # we have multiple intersection curves but the user did not specify which direction to pick
                 for i in range(len(newConn)):
-                    curvename = "%s_%s_%d" % (self.compA.name, self.compB.name, i)
+                    curvename = f"{self.compA.name}_{self.compB.name}_{i}"
                     tecplot_interface.writeTecplotFEdata(intNodes, newConn[i], curvename, curvename)
                 raise Error(
-                    "more than one intersection curve between comps %s and %s\nThe curves are written as tecplot files in the current directory\n\nTry rerunning after specifying intDir option for the intersection."
-                    % (self.compA.name, self.compB.name)
+                    f"More than one intersection curve between comps {self.compA.name} and {self.compB.name}. "
+                    + "The curves are written as Tecplot files in the current directory. "
+                    + "Try rerunning after specifying intDir for the intersection."
                 )
 
             # the user did specify which direction to pick
