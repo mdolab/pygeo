@@ -14,7 +14,7 @@ class DVGeometryMulti:
 
     """
 
-    def __init__(self, comm=MPI.COMM_WORLD, dh=1e-6, checkDVs=True):
+    def __init__(self, comm=MPI.COMM_WORLD, dh=1e-6, checkDVs=True, debug=False):
 
         self.compNames = []
         self.comps = OrderedDict()
@@ -25,6 +25,7 @@ class DVGeometryMulti:
         self.dh = dh
         self.intersectComps = []
         self.checkDVs = checkDVs
+        self.debug = debug
 
         # flag to keep track of IC jacobians
         self.ICJupdated = False
@@ -115,6 +116,7 @@ class DVGeometryMulti:
                 trackSurfaces,
                 excludeSurfaces,
                 remeshBwd,
+                self.debug,
             )
         )
 
@@ -203,7 +205,6 @@ class DVGeometryMulti:
                     and xMin[2] < points[i, 2] < xMax[2]
                 ):
 
-                    # print('point',i,'is in comp',comp)
                     # add this component to the projection list
                     projList.append(comp)
 
@@ -239,7 +240,7 @@ class DVGeometryMulti:
                             _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(
                                 points[i].T, comp, dist2, xyzProj.T, self.comps[comp].nodal_normals.T, normProjNotNorm.T
                             )
-                            # print('Distance of point',points[i],'to comp',comp,'is',np.sqrt(dist2))
+
                             # if this is closer than the previous min, take this comp
                             if dist2 < dMin2:
                                 dMin2 = dist2[0]
@@ -271,7 +272,6 @@ class DVGeometryMulti:
         # using the mapping array, add the pointsets to respective DVGeo objects
         for comp in self.compNames:
             compMap = self.points[ptName].compMap[comp]
-            # print(comp,compMap)
             self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
 
         # check if this pointset will get the IC treatment
@@ -284,7 +284,6 @@ class DVGeometryMulti:
         for comp in compNames:
             if self.comps[comp].triMesh:
                 adtAPI.adtapi.adtdeallocateadts(comp)
-                # print('Deallocated ADT for component',comp)
 
         # mark this pointset as up to date
         self.updated[ptName] = False
@@ -492,8 +491,6 @@ class DVGeometryMulti:
         # else:
         #     commPresent = False
 
-        # print('[%d] called totalSensitivity with comm:'%self.comm.rank, commPresent)
-
         # compute the total jacobian for this pointset
         # TODO, we dont even need to do this
         self._computeTotalJacobian(ptSetName)
@@ -528,7 +525,8 @@ class DVGeometryMulti:
 
         # do the transpose multiplication
 
-        # print('[%d] finished project_b'%self.comm.rank)
+        if self.debug:
+            print(f"[{self.comm.rank}] finished project_b")
 
         # get the pointset
         # ptSet = self.points[ptSetName]
@@ -550,7 +548,8 @@ class DVGeometryMulti:
             # instead this saves the dIdx for this intersection in the IC object
             # IC.sens(dIdpt, ptSetName, comm)
 
-        # print('[%d] finished IC.sens'%self.comm.rank)
+        if self.debug:
+            print(f"[{self.comm.rank}] finished IC.sens")
 
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
@@ -568,16 +567,11 @@ class DVGeometryMulti:
         # for IC in self.intersectComps:
         #     dIdx_local = dIdx_local + IC.dIdx
 
-        if comm:  # If we have a comm, globaly reduce with sum
-            # print('[%d] before allreduce dIdx ='%self.comm.rank, dIdx_local)
-            # comm.Barrier()
+        # If we have a comm, globaly reduce with sum
+        if comm:
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
-            # print('[%d] after  allreduce dIdx ='%self.comm.rank, dIdx_local)
-            # comm.Barrier()
         else:
             dIdx = dIdx_local
-
-        # print('[%d] finished comm.allreduce'%self.comm.rank)
 
         # use respective DVGeo's convert to dict functionality
         dIdxDict = OrderedDict()
@@ -586,12 +580,8 @@ class DVGeometryMulti:
             DVGeo = self.comps[comp].DVGeo
             nDVComp = DVGeo.getNDV()
 
-            # print('[%d] full dIdx:'%(self.comm.rank), dIdx)
-            # print('[%d] dIdx shape:'%self.comm.rank, dIdx.shape)
-
             # we only do this if this component has at least one DV
             if nDVComp > 0:
-                # print('[%d] dIdx for comp %s:'%(self.comm.rank, comp), dIdx)
                 # this part of the sensitivity matrix is owned by this dvgeo
                 dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
 
@@ -608,7 +598,8 @@ class DVGeometryMulti:
                 # these will bring in effects from projections and intersection computations
                 dIdxDict[k] += v
 
-        # print('[%d] finished DVGeo.totalSensitivity!'%self.comm.rank)
+        if self.debug:
+            print(f"[{self.comm.rank}] finished DVGeo.totalSensitivity")
 
         return dIdxDict
 
@@ -695,9 +686,8 @@ class DVGeometryMulti:
             triConn = {}
             triConnStack = np.zeros((0, 3), dtype=np.int8)
             barsConn = {}
-            # print('Part names in triangulated cgns file for %s'%filename)
+
             for part in sectionDict:
-                # print(part)
                 if "triaConnF" in sectionDict[part].keys():
                     # this is a surface, read the tri connectivities
                     triConn[part.lower()] = sectionDict[part]["triaConnF"]
@@ -707,7 +697,7 @@ class DVGeometryMulti:
                     # this is a curve, save the curve connectivity
                     barsConn[part.lower()] = sectionDict[part]["barsConn"]
 
-            print("The %s mesh has %d nodes and %d elements." % (filename, len(nodes), len(triConnStack)))
+            print(f"The {filename} mesh has {len(nodes)} nodes and {len(triConnStack)} elements.")
         else:
             # create these to recieve the data
             nodes = None
@@ -1024,6 +1014,7 @@ class CompIntersection:
         trackSurfaces,
         excludeSurfaces,
         remeshBwd,
+        debug,
     ):
         """Class to store information required for an intersection.
         Here, we use some fortran code from pySurf.
@@ -1058,6 +1049,9 @@ class CompIntersection:
 
         # flag that determines if we will remesh the other side of the feature curves on compB
         self.remeshBwd = remeshBwd
+
+        # Flag for debug ouput
+        self.debug = debug
 
         # tolerance used for each curve when mapping nodes to curves
         self.curveEpsDict = {}
@@ -1202,7 +1196,7 @@ class CompIntersection:
 
         # only the node coordinates will be modified for the intersection calculations because we have calculated and saved all the connectivity information
         if self.comm.rank == 0:
-            print("Computing initial intersection between %s and %s" % (compA, compB))
+            print(f"Computing initial intersection between {compA} and {compB}")
         self.seam0 = self._getIntersectionSeam(self.comm, firstCall=True)
         self.seam = self.seam0.copy()
 
@@ -1272,12 +1266,6 @@ class CompIntersection:
                 # Save the index and factor
                 indices.append(i)
                 factors.append(factor)
-
-        # # Print the number of points that get associated with the intersection.
-        # nPointGlobal = self.comm.allreduce(len(factors), op=MPI.SUM)
-        # if self.comm.rank == 0:
-        #     intName = vsp.GetContainerName(self.compA)+'_'+vsp.GetContainerName(self.compB)
-        #     print('DVGEO VSP:\n%d points associated with intersection %s'%(nPointGlobal, intName))
 
         # Get all points included in the intersection computation
         intersectPts = pts[indices]
@@ -1439,12 +1427,13 @@ class CompIntersection:
 
                     # save the indices. idx has the indices of the "indices" array
                     # that had the indices of points that get any intersection treatment
-                    # print("[%d] curvename: %s indices[idxs] idxs"%(self.comm.rank, curveName), indices[idxs], idxs)
                     self.curveProjIdx[ptSetName][curveName] = np.array(indices[idxs])
 
-                    # uncomment to get the output
-                    # ptCoords = ptsToCurves[idxs]
-                    # tecplot_interface.write_tecplot_scatter('%s.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptCoords)
+                    if self.debug:
+                        ptCoords = ptsToCurves[idxs]
+                        tecplot_interface.write_tecplot_scatter(
+                            f"{curveName}.plt", curveName, ["X", "Y", "Z"], ptCoords
+                        )
 
                     # also update the masking array
                     # we will use this to figure out the indices that did not get attached to any curves
@@ -1485,11 +1474,6 @@ class CompIntersection:
 
                     # call the utility function
                     nPtsTotal, nPtsProcs, curvePtCoords = self._commCurveProj(pts, idxs, comm)
-
-                    # for i in range(comm.size):
-                    # if i == comm.rank:
-                    # print('[%d] data for %s:'%(self.comm.rank, curveName), '\nnptsTotal:',nPtsTotal, '\nnPtsProcs:', nPtsProcs,'\n',flush=True)
-                    # comm.Barrier()
 
                     # check if we have at least one point globally that mapped to this curve
                     # if nPtsTotal > 0:
@@ -1770,10 +1754,8 @@ class CompIntersection:
 
         # seamBar is the bwd seeds for the intersection curve...
         # it is N,nseampt,3 in size
-        # print('[%d] calling getIntersectionSeam_b'%comm.rank)
         # now call the reverse differentiated seam computation
         compSens = self._getIntersectionSeam_b(seamBar, comm)
-        # print('[%d] after getIntersectionSeam_b'%comm.rank)
 
         # instead, multiply this with the transpose of the jacobian
         # seamBar = seamBar.reshape( [dIdPt.shape[0], 3*self.seam0.shape[0]] )
@@ -1783,9 +1765,6 @@ class CompIntersection:
         #     sb[i,:] = seamBar[i,:,:].flatten()
 
         # dIdx = ((self.jac.T).dot(sb.T)).T
-
-        # print(dIdx.shape)
-        # quit()
 
         # now convert dIdx to dictionary
 
@@ -1839,19 +1818,19 @@ class CompIntersection:
             deltaB = np.zeros((0, 3))
             curvePtCoordsB = np.zeros((0, 3))
 
-        # tecplot_interface.write_tecplot_scatter('intersection_warped_pts.plt', 'intersection', ['X', 'Y', 'Z'], newPts[idx])
-
         # loop over the feature curves that we need to project
         for curveName in self.featureCurveNames:
 
             # get the indices of points we need to project
             idx = self.curveProjIdx[ptSetName][curveName]
-            # print('[%d] curvename: %s idx'%(rank, curveName), idx.shape, idx)
 
             # these are the updated coordinates that will be projected to the curve
             ptsOnCurve = newPts[idx, :].copy()
 
-            # tecplot_interface.write_tecplot_scatter('%s_warped_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], ptsOnCurve)
+            if self.debug:
+                tecplot_interface.write_tecplot_scatter(
+                    f"{curveName}_warped_pts.plt", "intersection", ["X", "Y", "Z"], ptsOnCurve
+                )
 
             # conn of the current curve
             seamBeg = self.seamBeg[curveName]
@@ -1862,7 +1841,9 @@ class CompIntersection:
             # use Ney's fortran code to project the point on curve
             # Get number of points
             nPoints = ptsOnCurve.shape[0]
-            # print('[%d] curveName: %s, nPoints on the fwd pass: %d'%(self.comm.rank, curveName, nPoints))
+
+            if self.debug:
+                print(f"[{self.comm.rank}] curveName: {curveName}, nPoints on the fwd pass: {nPoints}")
 
             # Initialize references if user provided none
             dist2 = np.ones(nPoints) * 1e10
@@ -1903,7 +1884,10 @@ class CompIntersection:
             # get the delta for the points on this proc
             deltaLocal = xyzProj - ptsOnCurve
 
-            # tecplot_interface.write_tecplot_scatter('%s_projected_pts.plt'%curveName, curveName, ['X', 'Y', 'Z'], xyzProj)
+            if self.debug:
+                tecplot_interface.write_tecplot_scatter(
+                    f"{curveName}_projected_pts.plt", curveName, ["X", "Y", "Z"], xyzProj
+                )
 
             # update the point coordinates on this processor.
             # we do not need to do any communication for this
@@ -2239,8 +2223,6 @@ class CompIntersection:
             # seeds from compB
             elif curveName in self.curvesOnB:
 
-                # print("[%d] checking curve: %s, flagB:"%(self.comm.rank, curveName), flagB)
-
                 if flagB:
                     # contribution on this proc
                     deltaBar = deltaB_b[:, disp[rank] : disp[rank] + sizes[rank]].copy()
@@ -2285,8 +2267,6 @@ class CompIntersection:
                     xyzProjb += dIdpt[k, idx]
 
                     # Call fortran code (This will accumulate seeds in xyzb and self.coorb)
-                    # print("[%d] right before crashing, xyzProjb.shape"%rank, xyzProjb.shape)
-                    # print("[%d] right before crashing, nPoints: %d len(idx): %d, idx:"%(rank, nPoints, len(idx)), idx)
                     xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
                         xyz.T,
                         coor.T,
@@ -2459,7 +2439,8 @@ class CompIntersection:
         xyzProj = np.zeros((numPts, 3))
         normProjNotNorm = np.zeros((numPts, 3))
 
-        # print("[%d] projecting to comp %s, pts.shape = "%(self.comm.rank, comp.name), pts.shape)
+        if self.debug:
+            print(f"[{self.comm.rank}] Projecting to component {comp.name}, pts.shape = {pts.shape}")
 
         # Call projection function
         procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(
@@ -2557,7 +2538,7 @@ class CompIntersection:
             # On the other hand, the variable "coor" here in Python corresponds to the variable "adtCoor" in Fortran.
             # I could not change this because the original ADT code already used "coor" to denote nodes that should be
             # projected.
-            # print('\n\nbefore fortran')
+
             xyzb, coorb, nodal_normalsb = adtAPI.adtapi.adtmindistancesearch_b(
                 xyz.T,
                 adtID,
@@ -2801,12 +2782,10 @@ class CompIntersection:
         # we want breakList to be in increasing order...
         ii = 0
         for i in range(nFeature):
-            # print(i,breakList[i], breakList[np.mod(i+1, nFeature)])
             # we loop over the breaklist elements and check if the element index is going up or down
             if breakList[i] < breakList[np.mod(i + 1, nFeature)]:
                 ii += 1
 
-        # print('increase index',ii)
         # now check if we need to flip the curve
         if ii == 1:  # we need at least 2 features where the element number increases...
             # we need to reverse the order of our feature curves
@@ -2814,7 +2793,6 @@ class CompIntersection:
             breakList = np.mod(seamConn.shape[0] - np.array(breakList), seamConn.shape[0])
             # TODO we had a bug in this line
             # breakList = np.mod(seamConn.shape[0] - np.flip(breakList, axis=0), seamConn.shape[0])
-            # print(breakList)
 
             # and we need to invert the curves themselves
             seamConn = np.flip(seamConn, axis=0)
@@ -2828,7 +2806,6 @@ class CompIntersection:
 
         # do we need this?
         # TODO figure this out?
-        # print(breakList)
         # breakList.sort()
 
         # get the number of elements between each feature
@@ -2837,10 +2814,6 @@ class CompIntersection:
             curveSizes.append(np.mod(breakList[i + 1] - breakList[i], nElem))
         # check the last curve outside the loop
         curveSizes.append(np.mod(breakList[0] - breakList[-1], nElem))
-        # print('breaklist', breakList, "Curvesizes", curveSizes)
-
-        # print("first node on the int:", seamConn[breakList[0], 0])
-        # print("last node on the int:", seamConn[breakList[-1]+curveSizes[-1]-1, 1])
 
         # copy the curveSizes for the first call
         if firstCall:
@@ -2855,7 +2828,6 @@ class CompIntersection:
             nNewNodes = self.nElems[i] + 1
             coor = intNodes
             barsConn = seamConn[curInd : curInd + curveSizes[i]]
-            # print('i feature: %d nNewNodes: %d, curind: %d, curveSizes[i]: %d'%(i, nNewNodes, curInd, curveSizes[i]), barsConn)
             curInd += curveSizes[i]
             method = "linear"
             spacing = "linear"
@@ -2869,8 +2841,6 @@ class CompIntersection:
             )
             newCoor = newCoor.T
             newBarsConn = newBarsConn.T - 1
-
-            # print('number of new nodes',len(newCoor))
 
             # add these n -resampled nodes back to back in seam and return a copy of the array
             # we don't need the connectivity info for now? we just need the coords
@@ -2896,10 +2866,10 @@ class CompIntersection:
         self.seamDict["seamSize"] = len(seam)
         self.seamDict["curveBegCoor"] = curveBegCoor.copy()
 
-        # save the intersection curve for the paper
-        # if self.comm.rank == 0:
-        #     curvename = '%s_%s_%d'%(self.compA.name, self.compB.name, self.counter)
-        #     tecplot_interface.writeTecplotFEdata(intNodes,seamConn,curvename,curvename)
+        # Output the intersection curve
+        if self.comm.rank == 0 and self.debug:
+            curvename = f"{self.compA.name}_{self.compB.name}_{self.counter}"
+            tecplot_interface.writeTecplotFEdata(intNodes, seamConn, curvename, curvename)
 
         # we need to re-mesh feature curves if the user wants...
         if self.incCurves:
@@ -2961,7 +2931,6 @@ class CompIntersection:
                     if firstCall:
                         # compute the distances from curve nodes to intersection seam
                         curvePts = curveComp.nodes[curveConn[elemBeg:, 0]]
-                        # print(curvePts)
 
                         # Get number of points
                         nPoints = len(curvePts)
@@ -3023,7 +2992,6 @@ class CompIntersection:
                 initialSpacing = 0.1
                 finalSpacing = 0.1
 
-                # print("remeshing curve %s with barsconn:"%curveName, barsConn)
                 # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
                 newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
@@ -3037,7 +3005,6 @@ class CompIntersection:
 
                 # append this new curve to the featureCurve data
                 remeshedCurves = np.vstack((remeshedCurves, newCoor))
-
                 remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
 
                 # number of new nodes added in the opposite direction
@@ -3069,7 +3036,6 @@ class CompIntersection:
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
-                    # print('putting it back in fwd pass')
                     self.compB.nodes[curveConn[elemBeg, 0]] = ptBegSave.copy()
 
                 # save some info for gradient computations later on
@@ -3088,10 +3054,10 @@ class CompIntersection:
                     )
                     self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
 
-            # now save the feature curves
-            # if self.comm.rank == 0:
-            #     curvename = 'featureCurves_%d'%(self.counter)
-            #     tecplot_interface.writeTecplotFEdata(remeshedCurves,remeshedCurveConn,curvename,curvename)
+            # Output the feature curves
+            if self.comm.rank == 0 and self.debug:
+                curvename = f"featureCurves_{self.counter}"
+                tecplot_interface.writeTecplotFEdata(remeshedCurves, remeshedCurveConn, curvename, curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
@@ -3106,9 +3072,6 @@ class CompIntersection:
 
         # save the connectivity
         self.seamConn = finalConn
-
-        # write to file to check
-        # tecplot_interface.writeTecplotFEdata(seam,finalConn, 'finalcurves', 'finalcurves')
 
         self.counter += 1
 
@@ -3156,7 +3119,6 @@ class CompIntersection:
 
                 # get the derivative seeds
                 newCoorb = curveBar[:, iBeg : iBeg + nNewNodes, :].copy()
-                # print('newCoorb',curveName, np.linalg.norm(newCoorb), newCoorb)
                 iBeg += nNewNodes
 
                 # figure out which comp owns this curve...
@@ -3213,8 +3175,6 @@ class CompIntersection:
                     # derivative seeds for the coordinates.
                     cb[ii] = cbi.T.copy()
 
-                # print('cb',curveName, np.linalg.norm(cb), cb)
-
                 # check if we adjusted the initial coordinate of the curve w/ a seam coordinate
                 if elemBeg > 0:
                     if self.remeshBwd:
@@ -3225,7 +3185,6 @@ class CompIntersection:
 
                         # get the derivative seeds
                         newCoorb = curveBar[:, iBeg : iBeg + nNewNodes, :].copy()
-                        # print('newCoorb',curveName, np.linalg.norm(newCoorb), newCoorb)
                         iBeg += nNewNodes
 
                         # bars conn is everything up to elemBeg
@@ -3249,8 +3208,6 @@ class CompIntersection:
 
                     # the first seed is for the projected point...
                     projb = cb[:, curveConn[elemBeg, 0], :].copy()
-                    # projb = cb[:,0:1,:].copy()
-                    # print(curveName, projb)
 
                     # zero out the seed of the replaced node
                     cb[:, curveConn[elemBeg, 0], :] = np.zeros((N, 3))
@@ -3320,7 +3277,6 @@ class CompIntersection:
             nNewNodes = nNewElems + 1
             coor = intNodes
             barsConn = seamConn[curInd : curInd + curveSizes[i]]
-            # print('SENS i feature: %d nNewNodes: %d, curind: %d, curveSizes[i]: %d'%(i, nNewNodes, curInd, curveSizes[i]))
 
             curInd += curveSizes[i]
             method = "linear"
@@ -3336,16 +3292,6 @@ class CompIntersection:
                     nNewElems, coor.T, newCoorb.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                 )
                 intNodesb[ii] += cb.T
-                # print('i=%d ii=%d, len(cb)'%(i,ii),len(cb.T))
-                # print(cb.T)
-
-            # test if newCoor is what we actually have in the intersection
-            # print("sizes of the seed and pts")
-            # print('i feature: %d'%i)
-            # print("shape of intBar",intBar.shape)
-            # print('curSeed : curseed+nNewNodes', curSeed, curSeed+nNewNodes)
-            # print('checking newcoor')
-            # print(newCoor.T - self.seam[curSeed:curSeed+nNewNodes])
 
             curSeed += nNewNodes
 
@@ -3353,7 +3299,8 @@ class CompIntersection:
         for curveName, v in curveProjb.items():
             # get the index
             idx = self.seamDict[curveName]["projPtIndx"]
-            # print('adding contributions from', curveName, v)
+            if self.debug:
+                print(f"Adding contributions from {curveName}")
             for ii in range(N):
                 # add the contribution
                 intNodesb[ii, idx] += v[ii]
@@ -3419,6 +3366,13 @@ class CompIntersection:
         # surfaceInd contains indices of the provided points not the entire point set
         surfaceDist = np.sqrt(np.array(projDict["dist2"]))
         surfaceInd = [ind for ind, value in enumerate(surfaceDist) if (value < surfaceEps)]
+
+        # Output the points associated with this surface
+        if self.debug:
+            data = [np.append(points[i], surfaceDist[i]) for i in surfaceInd]
+            tecplot_interface.write_tecplot_scatter(
+                f"{surface}_points_{self.comm.rank}.plt", f"{surface}", ["X", "Y", "Z", "dist"], data
+            )
 
         # Save the indices only if there is at least one point
         if surfaceInd:
