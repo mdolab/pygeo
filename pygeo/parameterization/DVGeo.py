@@ -5,6 +5,7 @@ import copy
 from collections import OrderedDict
 import numpy as np
 from scipy import sparse
+from scipy.spatial import cKDTree
 from mpi4py import MPI
 from pyspline import Curve
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
@@ -16,7 +17,7 @@ from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectio
 
 
 class DVGeometry:
-    """
+    r"""
     A class for manipulating geometry.
 
     The purpose of the DVGeometry class is to provide a mapping from
@@ -30,14 +31,14 @@ class DVGeometry:
     functions:
 
     1. Given a new set of design variables, update the
-       three-dimensional coordinates: :math:`X_{DV}\\rightarrow
+       three-dimensional coordinates: :math:`X_{DV}\rightarrow
        X_{pt}` where :math:`X_{pt}` are the coordinates and :math:`X_{DV}`
        are the user variables.
 
     2. Determine the derivative of the coordinates with respect to the
-       design variables. That is the derivative :math:`\\frac{dX_{pt}}{dX_{DV}}`
+       design variables. That is the derivative :math:`\frac{dX_{pt}}{dX_{DV}}`
 
-    DVGeometry uses the *Free-Form Deformation* approach for goemetry
+    DVGeometry uses the *Free-Form Deformation* approach for geometry
     manipulation. The basic idea is the coordinates are *embedded* in
     a clear-flexible jelly-like block. Then by stretching moving and
     'poking' the volume, the coordinates that are embedded inside move
@@ -76,7 +77,7 @@ class DVGeometry:
       >>>
     """
 
-    def __init__(self, fileName, isComplex=False, child=False, faceFreeze=None, name=None, *args, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -92,7 +93,7 @@ class DVGeometry:
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
 
-        # Name (used for ensuring design variables names are unique to pyoptsparse)
+        # Name (used for ensuring design variables names are unique to pyOptsparse)
         self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
@@ -114,6 +115,41 @@ class DVGeometry:
         # need to be set.
         self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
+
+        self.coef = None
+        self.coef0 = None
+        self.curPtSet = None
+        self.refAxis = None
+
+        self.rot_x = None
+        self.rot_y = None
+        self.rot_z = None
+        self.rot_theta = None
+        self.scale = None
+        self.scale_x = None
+        self.scale_y = None
+        self.scale_z = None
+
+        self.rot_x0 = None
+        self.rot_y0 = None
+        self.rot_z0 = None
+        self.rot_theta0 = None
+        self.scale0 = None
+        self.scale_x0 = None
+        self.scale_y0 = None
+        self.scale_z0 = None
+
+        self.ptAttach = None
+        self.ptAttachFull = None
+        self.ptAttachInd = None
+        self.nPtAttach = None
+        self.nPtAttachFull = None
+
+        self.curveIDs = None
+        self.curveIDNames = None
+        self.links_s = None
+        self.links_x = None
+        self.links_n = None
 
         # Jacobians:
         self.ptSetNames = []
@@ -198,7 +234,6 @@ class DVGeometry:
         rotAxisVar=None,
         rot0ang=None,
         rot0axis=[1, 0, 0],
-        xFractionOrder=2,
         includeVols=[],
         ignoreInd=[],
         raySize=1.5,
@@ -283,9 +318,6 @@ class DVGeometry:
             defining the [x,y,z] components of the axis direction.
             This is necessary to use the scaling functions `scale_x`, `scale_y`,
             and `scale_z` with rotType == 0.
-
-        xFractionOrder : int  (NOT USED?)
-            Order of spline used for refaxis curve.
 
         includeVols : list
             List of additional volumes to add to reference axis after the
@@ -544,12 +576,12 @@ class DVGeometry:
         Add a set of coordinates to DVGeometry
 
         The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeoemtry to be manipulated.
+        list is given to DVGeometry to be manipulated.
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These cordinates *should* all
+            The coordinates to embed. These coordinates *should* all
             project into the interior of the FFD volume.
         ptName : str
             A user supplied name to associate with the set of
@@ -674,7 +706,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
         """
         # if the parent DVGeometry object has a name attribute, prepend it
         if self.name is not None:
@@ -708,7 +740,7 @@ class DVGeometry:
             The upper bound for the variable(s). This will be applied to
             all shape variables
 
-        scale : flot
+        scale : float
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
@@ -719,7 +751,7 @@ class DVGeometry:
             calls to addLocalDV with different axis values.
 
         volList : list
-            Use the control points on the volume indicies given in volList.
+            Use the control points on the volume indices given in volList.
             You should use pointSelect = None, otherwise this will not work.
 
         pointSelect : pointSelect object. Default is None Use a
@@ -732,7 +764,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
@@ -760,9 +792,9 @@ class DVGeometry:
 
         if pointSelect is not None:
             if pointSelect.type != "ijkBounds":
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                _, ind = pointSelect.getPoints(self.FFD.coef)
             else:
-                pts, ind = pointSelect.getPoints_ijk(self)
+                _, ind = pointSelect.getPoints_ijk(self)
         elif volList is not None:
             if self.FFD.symmPlane is not None:
                 volListTmp = []
@@ -845,7 +877,7 @@ class DVGeometry:
             The upper bound for the variable(s). This will be applied to
             all shape variables
 
-        scale : flot
+        scale : float
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
@@ -857,7 +889,7 @@ class DVGeometry:
             volList.
 
         volList : list
-            Use the control points on the volume indicies given in volList.
+            Use the control points on the volume indices given in volList.
             You should use pointSelect = None, otherwise this will not work.
 
         config : str or list
@@ -882,9 +914,9 @@ class DVGeometry:
 
         if pointSelect is not None:
             if pointSelect.type != "ijkBounds":
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                _, ind = pointSelect.getPoints(self.FFD.coef)
             else:
-                pts, ind = pointSelect.getPoints_ijk(self)
+                _, ind = pointSelect.getPoints_ijk(self)
         elif volList is not None:
             if self.FFD.symmPlane is not None:
                 volListTmp = []
@@ -1016,7 +1048,7 @@ class DVGeometry:
             The upper bound for the variable(s). This will be applied to
             all shape variables
 
-        scale : flot
+        scale : float
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
@@ -1052,7 +1084,7 @@ class DVGeometry:
             Check the other PointSelect options in geo_utils.py
 
         volList : list
-            Use the control points on the volume indicies given in volList. If
+            Use the control points on the volume indices given in volList. If
             None, all volumes will be included.
             PointSelect has priority over volList. So if you use PointSelect, the values
             defined in volList will have no effect.
@@ -1086,9 +1118,9 @@ class DVGeometry:
 
         orient2 : `svd` or `ffd`. Default is `svd`
             How to compute the orientation `2` axis. SVD is the
-            default bevaviour and is taken from the svd of the plane
+            default behaviour and is taken from the svd of the plane
             points. `ffd` Uses the vector along the FFD direction of
-            secIndex. This is requied to get consistent normals if you
+            secIndex. This is required to get consistent normals if you
             have a circular-type FFD when the SVD will swap the
             normals.
 
@@ -1096,7 +1128,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
@@ -1118,10 +1150,10 @@ class DVGeometry:
         # Pick out control points
         if pointSelect is not None:
             if pointSelect.type != "ijkBounds":
-                pts, ind = pointSelect.getPoints(self.FFD.coef)
+                _, ind = pointSelect.getPoints(self.FFD.coef)
                 volList = np.arange(self.FFD.nVol)  # Select all volumes
             else:
-                pts, ind = pointSelect.getPoints_ijk(self)
+                _, ind = pointSelect.getPoints_ijk(self)
                 volList = pointSelect.ijkBounds.keys()  # Select only volumes used by pointSelect
         elif volList is not None:
             if self.FFD.symmPlane is not None:
@@ -1194,7 +1226,7 @@ class DVGeometry:
         Parameters
         ----------
         volList : list
-            Use the control points on the volume indicies given in volList
+            Use the control points on the volume indices given in volList
 
         pointSelect : pointSelect object. Default is None Use a
             pointSelect object to select a subset of the total number
@@ -1259,12 +1291,7 @@ class DVGeometry:
             baseCoords[:, index] = abs(baseCoords[:, index])
 
             # now use the baseCoords to create a KD tree
-            try:
-                from scipy.spatial import cKDTree
-            except ImportError:
-                raise Error("scipy.spatial " "must be available to use detect symmetry")
-
-            # Now make a KD-tree so we can use it to find the unique nodes
+            # so we can use it to find the unique nodes
             tree = cKDTree(baseCoords)
 
             # Now search through the +ve half of the points, ignoring anything within
@@ -1274,7 +1301,7 @@ class DVGeometry:
             for pt in pts:
                 if pt[index] > tol:
                     # Now find any matching nodes within tol. there should be 2 and
-                    # only 2 if the mesh is symmtric
+                    # only 2 if the mesh is symmetric
                     Ind = tree.query_ball_point(pt, tol)  # should this be a separate tol
                     if not (len(Ind) == 2):
                         raise Error("more than 2 coefs found that match pt")
@@ -1307,9 +1334,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listGlobal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables "
-                        "for DV: %s.\nExpecting %d variables and "
-                        "received %d variabes" % (key, self.DV_listGlobal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listGlobal[key].nVal} variables but received {len(vals_to_set)}"
                     )
 
                 self.DV_listGlobal[key].value = vals_to_set
@@ -1318,10 +1344,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listLocal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables \
-                    for DV: %s.\nExpecting %d variables and received \
-                    %d variabes"
-                        % (key, self.DV_listLocal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listLocal[key].nVal} variables but received {len(vals_to_set)}"
                     )
                 self.DV_listLocal[key].value = vals_to_set
 
@@ -1329,10 +1353,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listSectionLocal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables \
-                    for DV: %s.\nExpecting %d variables and received \
-                    %d variabes"
-                        % (key, self.DV_listSectionLocal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listSectionLocal[key].nVal} variables but received {len(vals_to_set)}"
                     )
                 self.DV_listSectionLocal[key].value = vals_to_set
 
@@ -1340,10 +1362,8 @@ class DVGeometry:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
                 if len(vals_to_set) != self.DV_listSpanwiseLocal[key].nVal:
                     raise Error(
-                        "Incorrect number of design variables \
-                    for DV: %s.\nExpecting %d variables and received \
-                    %d variabes"
-                        % (key, self.DV_listSpanwiseLocal[key].nVal, len(vals_to_set))
+                        f"Incorrect number of design variables for DV: {key}.\n"
+                        + f"Expecting {self.DV_listSpanwiseLocal[key].nVal} variables but received {len(vals_to_set)}"
                     )
                 self.DV_listSpanwiseLocal[key].value = vals_to_set
 
@@ -1441,12 +1461,12 @@ class DVGeometry:
         """Get the sequential axis number from the name tag axisID"""
         try:
             return list(self.axis.keys()).index(axisID)
-        except IndexError:
-            raise Error("'The 'axisID' was invalid!")
+        except IndexError as e:
+            raise Error("'The 'axisID' was invalid!") from e
 
     def updateCalculations(self, new_pts, isComplex, config):
         """
-        The core update rountine. pulled out here to eliminate duplication between update and
+        The core update routine. pulled out here to eliminate duplication between update and
         update_deriv.
         """
 
@@ -1585,11 +1605,11 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         """
         self.curPtSet = ptSetName
-        # We've postponed things as long as we can...do the finialization.
+        # We've postponed things as long as we can...do the finalization.
         self._finalize()
 
         # Make sure coefficients are complex
@@ -1613,7 +1633,7 @@ class DVGeometry:
                 imag_part = np.imag(tempCoef)
                 imag_j = 1j
 
-                dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+                dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
                 if dPtdCoef is not None:
                     for ii in range(3):
                         Xstart[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -1675,7 +1695,7 @@ class DVGeometry:
             imag_part = np.imag(tempCoef)
             imag_j = 1j
 
-            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+            dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
             if dPtdCoef is not None:
                 for ii in range(3):
                     Xfinal[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -1693,8 +1713,8 @@ class DVGeometry:
                 child._complexifyCoef()
                 child.FFD.coef = child.FFD.coef.astype("D")
 
-                dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                 if dXrefdCoef is not None:
                     for ii in range(3):
@@ -1900,11 +1920,11 @@ class DVGeometry:
         return names
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
-        """
-        This function computes sensitivty information.
+        r"""
+        This function computes sensitivity information.
 
         Specificly, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
+        :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
 
         Parameters
         ----------
@@ -1927,7 +1947,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
 
         Returns
@@ -1967,12 +1987,12 @@ class DVGeometry:
 
         return dIdx
 
-    def totalSensitivityProd(self, vec, ptSetName, comm=None, child=False, nDVStore=0, config=None):
-        """
-        This function computes sensitivty information.
+    def totalSensitivityProd(self, vec, ptSetName, config=None):
+        r"""
+        This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}} \\ vec`
+        :math:`\frac{dX_{pt}}{dX_{DV}} \times\mathrm{vec}`
 
         This is useful for forward AD mode.
 
@@ -1984,45 +2004,59 @@ class DVGeometry:
         ptSetName : str
             The name of set of points we are dealing with
 
-        comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
-
         config : str or list
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
-
-        Notes
-        -----
-        The ``child`` and ``nDVStore`` options are only used
-        internally and should not be changed by the user.
         """
 
-        self.computeTotalJacobian(ptSetName, config=config)
+        self.computeTotalJacobian(ptSetName, config=config)  # This computes and updates self.JT
 
         names = self.getVarNames()
         newvec = np.zeros(self.getNDV(), self.dtype)
+
         i = 0
-        for key in names:
-            if key in self.DV_listGlobal:
-                dv = self.DV_listGlobal[key]
-            elif key in self.DV_listSpanwiseLocal:
-                dv = self.DV_listSpanwiseLocal[key]
-            elif key in self.DV_listSectionLocal:
-                dv = self.DV_listSectionLocal[key]
-            else:
-                dv = self.DV_listLocal[key]
+        missingVars = set()  # set of variables
+        for vecKey in vec:
+            # check if the seed DV is actually a design variable for the DVGeo object
+            if vecKey not in names:
+                raise Error(f"{vecKey} is not a design variable, the full list is:{names}")
 
-            if key in vec:
-                newvec[i : i + dv.nVal] = vec[key]
+        DVGeoList = self.getFlattenedChildren()
 
-            i += dv.nVal
+        # iterate over parent and children/grandchildren FFDs
+        for geoObj in DVGeoList:
+            for key in names:
+                if key in geoObj.DV_listGlobal:
+                    dv = geoObj.DV_listGlobal[key]
+                    missingVars.discard(key)  # remove DV from missing list, if present
+                elif key in geoObj.DV_listSpanwiseLocal:
+                    dv = geoObj.DV_listSpanwiseLocal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listSectionLocal:
+                    dv = geoObj.DV_listSectionLocal[key]
+                    missingVars.discard(key)
+                elif key in geoObj.DV_listLocal:
+                    dv = geoObj.DV_listLocal[key]
+                    missingVars.discard(key)
+                else:
+                    # keep track of DVs which are in the full name list but not in this DVGeo object
+                    missingVars.add(key)
+                    continue
+
+                if key in vec:
+                    newvec[i : i + dv.nVal] = vec[key]  # Update the DV vector with the seed
+
+                i += dv.nVal  # update the starting position in the vector update for the next key
+
+        if missingVars:
+            # if a DV name is listed by getVarNames() but was not found in the previous loop then something is wrong...
+            raise Error(f"The following DV did not belong to any DVGeo object: {missingVars}")
 
         # perform the product
         if self.JT[ptSetName] is None:
@@ -2035,12 +2069,12 @@ class DVGeometry:
 
         return xsdot
 
-    def totalSensitivityTransProd(self, vec, ptSetName, comm=None, child=False, nDVStore=0, config=None):
-        """
-        This function computes sensitivty information.
+    def totalSensitivityTransProd(self, vec, ptSetName, config=None):
+        r"""
+        This function computes sensitivity information.
 
         Specifically, it computes the following:
-        :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\ vec`
+        :math:`\frac{dX_{pt}}{dX_{DV}}^T \times\mathrm{vec}`
 
         This is useful for reverse AD mode.
 
@@ -2065,7 +2099,7 @@ class DVGeometry:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
         Returns
         -------
@@ -2176,8 +2210,8 @@ class DVGeometry:
         J_temp = self.computeDVJacobian(config=config)
 
         # now get the derivative of the points for this level wrt the coefficients(dPtdCoef)
-        if self.FFD.embededVolumes[ptSetName].dPtdCoef is not None:
-            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef.tocoo()
+        if self.FFD.embeddedVolumes[ptSetName].dPtdCoef is not None:
+            dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef.tocoo()
             # We have a slight problem...dPtdCoef only has the shape
             # functions, so it size Npt x Coef. We need a matrix of
             # size 3*Npt x 3*nCoef, where each non-zero entry of
@@ -2337,8 +2371,6 @@ class DVGeometry:
             child.computeTotalJacobianCS(ptSetName, config=config)
             self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
 
-        return
-
     def addVariablesPyOpt(
         self,
         optProb,
@@ -2458,7 +2490,7 @@ class DVGeometry:
            extension will be added.
         """
         # Name here doesnt matter, just take the first one
-        self.update(self.points.keys()[0], childDelta=False)
+        self.update(list(self.points.keys())[0], childDelta=False)
 
         gFileName = fileName + "_parent.dat"
         if not len(self.axis) == 0:
@@ -2756,6 +2788,9 @@ class DVGeometry:
 
                         # Iterate counter
                         count += 1
+
+        # Reset DV's to their original values
+        self.setDesignVars(dvDict)
 
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
@@ -3099,7 +3134,7 @@ class DVGeometry:
 
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count, self.nDVSW_count
 
-    def _update_deriv(self, iDV=0, h=1.0e-40j, oneoverh=1.0 / 1e-40, config=None, localDV=False):
+    def _update_deriv(self, iDV=0, oneoverh=1.0 / 1e-40, config=None, localDV=False):
 
         """Copy of update function for derivative calc"""
         new_pts = np.zeros((self.nPtAttach, 3), "D")
@@ -3129,8 +3164,8 @@ class DVGeometry:
 
                 # get the derivative of the child axis and control points wrt the parent
                 # control points
-                dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                 # create a vector with the derivative of the parent control points wrt the
                 # parent global variables
@@ -3191,7 +3226,7 @@ class DVGeometry:
             imag_part = np.imag(tempCoef)
             imag_j = 1j
 
-            dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+            dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
             if dPtdCoef is not None:
                 for ii in range(3):
                     Xstart[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -3231,7 +3266,7 @@ class DVGeometry:
         imag_part = np.imag(self.FFD.coef)
         imag_j = 1j
 
-        dPtdCoef = self.FFD.embededVolumes[ptSetName].dPtdCoef
+        dPtdCoef = self.FFD.embeddedVolumes[ptSetName].dPtdCoef
         if dPtdCoef is not None:
             for ii in range(3):
                 Xfinal[:, ii] += imag_j * dPtdCoef.dot(imag_part[:, ii])
@@ -3247,8 +3282,8 @@ class DVGeometry:
             child._complexifyCoef()
             child.FFD.coef = child.FFD.coef.astype("D")
 
-            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
             if dXrefdCoef is not None:
                 for ii in range(3):
@@ -3432,8 +3467,6 @@ class DVGeometry:
             child.computeTotalJacobianFD(ptSetName, config=config)
             self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
 
-        return
-
     def _attachedPtJacobian(self, config):
         """
         Compute the derivative of the the attached points
@@ -3454,11 +3487,11 @@ class DVGeometry:
             # Create the storage arrays for the information that must be
             # passed to the children
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 # Derivative of reference axis points wrt global DVs at this level
                 self.children[iChild].dXrefdXdvg = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 # derivative of the control points wrt the global DVs at this level
                 self.children[iChild].dCcdXdvg = np.zeros((N * 3, self.nDV_T))
 
@@ -3488,7 +3521,7 @@ class DVGeometry:
                         self._complexifyCoef()  # Make sure coefficients are complex
                         self.refAxis._updateCurveCoef()
 
-                        deriv = oneoverh * np.imag(self._update_deriv(iDV, h, oneoverh, config=config)).flatten()
+                        deriv = oneoverh * np.imag(self._update_deriv(iDV, oneoverh, config=config)).flatten()
                         # reset the FFD and axis
                         self._unComplexifyCoef()
                         self.FFD.coef = self.FFD.coef.real.astype("d")
@@ -3524,10 +3557,10 @@ class DVGeometry:
             # passed to the children
 
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 self.children[iChild].dXrefdXdvl = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 self.children[iChild].dCcdXdvl = np.zeros((N * 3, self.nDV_T))
 
             iDVSpanwiseLocal = self.nDVSW_count
@@ -3562,8 +3595,8 @@ class DVGeometry:
                         for iChild in range(len(self.children)):
                             # Get derivatives of child ref axis and FFD control
                             # points w.r.t. parent's FFD control points
-                            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                             # derivative of Change in the FFD coef due to DVs
                             # same as Jacobian above, but differnt ordering
@@ -3616,10 +3649,10 @@ class DVGeometry:
             # passed to the children
 
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 self.children[iChild].dXrefdXdvl = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 self.children[iChild].dCcdXdvl = np.zeros((N * 3, self.nDV_T))
 
             iDVSectionLocal = self.nDVSL_count
@@ -3645,8 +3678,8 @@ class DVGeometry:
                         Jacobian[coef * 3 : (coef + 1) * 3, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         for iChild in range(len(self.children)):
 
-                            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
@@ -3695,10 +3728,10 @@ class DVGeometry:
             # Create the storage arrays for the information that must be
             # passed to the children
             for iChild in range(len(self.children)):
-                N = self.FFD.embededVolumes["child%d_axis" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].N
                 self.children[iChild].dXrefdXdvl = np.zeros((N * 3, self.nDV_T))
 
-                N = self.FFD.embededVolumes["child%d_coef" % (iChild)].N
+                N = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].N
                 self.children[iChild].dCcdXdvl = np.zeros((N * 3, self.nDV_T))
 
             iDVLocal = self.nDVL_count
@@ -3720,8 +3753,8 @@ class DVGeometry:
                         for iChild in range(len(self.children)):
                             # Get derivatives of child ref axis and FFD control
                             # points w.r.t. parent's FFD control points
-                            dXrefdCoef = self.FFD.embededVolumes["child%d_axis" % (iChild)].dPtdCoef
-                            dCcdCoef = self.FFD.embededVolumes["child%d_coef" % (iChild)].dPtdCoef
+                            dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
+                            dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
@@ -3809,7 +3842,7 @@ class DVGeometry:
 
                 # compute the deriv of the child FFD coords wrt the parent by processing
                 # the above CS perturbation
-                new_pts = self._update_deriv(iDV, h, oneoverh, config=config)
+                new_pts = self._update_deriv(iDV, oneoverh, config=config)
 
                 # insert this result in the the correct locations of a vector the correct
                 # size
@@ -3872,7 +3905,7 @@ class DVGeometry:
 
                 # compute the deriv of the child FFD coords wrt the parent by processing
                 # the above CS perturbation
-                new_pts = self._update_deriv(iDV, h, oneoverh, config=config, localDV=True)
+                new_pts = self._update_deriv(iDV, oneoverh, config=config, localDV=True)
                 np.put(self.FFD.coef[:, 0], self.ptAttachInd, new_pts[:, 0])
                 np.put(self.FFD.coef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 np.put(self.FFD.coef[:, 2], self.ptAttachInd, new_pts[:, 2])
@@ -4186,7 +4219,7 @@ class DVGeometry:
             X = np.reshape(pts, (nI * nJ, 3))
             c = np.mean(X, 0)
             A = X - c
-            U, S, V = np.linalg.svd(A.T)
+            U, _, _ = np.linalg.svd(A.T)
 
             # Choose section plane normal axis
             if orient2 == "svd":

@@ -46,7 +46,7 @@ class pyBlock:
         self.vols = []  # The list of volumes (pySpline volume)
         self.nVol = None  # The total number of volumessurfaces
         self.coef = None  # The global (reduced) set of control pts
-        self.embededVolumes = {}
+        self.embeddedVolumes = {}
         self.symmPlane = symmPlane
 
         if initType == "plot3d":
@@ -54,10 +54,7 @@ class pyBlock:
         elif initType == "create":
             pass
         else:
-            raise Error(
-                'initType must be one of "plot3d" or "create". \
-            ("create" is only for expert debugging)'
-            )
+            raise Error("initType must be one of 'plot3d' or 'create'. ('create' is only for expert debugging)")
 
     # ----------------------------------------------------------------------
     #                     Initialization Types
@@ -320,7 +317,7 @@ class pyBlock:
         if fileName is not None and os.path.isfile(fileName):
             print(" ")
             print("Reading Connectivity File: %s" % (fileName))
-            self.topo = BlockTopology(file=fileName)
+            self.topo = BlockTopology(fileName=fileName)
             self._propagateKnotVectors()
         else:
             print(" ")
@@ -524,7 +521,7 @@ class pyBlock:
         if volLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".vol_labels.dat"
             f2 = open(labelFilename, "w")
             for ivol in range(self.nVol):
@@ -543,7 +540,7 @@ class pyBlock:
         if edgeLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".edge_labels.dat"
             f2 = open(labelFilename, "w")
             for ivol in range(self.nVol):
@@ -570,7 +567,7 @@ class pyBlock:
 
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".node_labels.dat"
             f2 = open(labelFilename, "w")
             for i in range(nNodes):
@@ -683,11 +680,11 @@ class pyBlock:
         """
 
         # Extract values to make the code a little easier to read:
-        volID = self.embededVolumes[ptSetName].volID
-        u = self.embededVolumes[ptSetName].u
-        v = self.embededVolumes[ptSetName].v
-        w = self.embededVolumes[ptSetName].w
-        N = self.embededVolumes[ptSetName].N
+        volID = self.embeddedVolumes[ptSetName].volID
+        u = self.embeddedVolumes[ptSetName].u
+        v = self.embeddedVolumes[ptSetName].v
+        w = self.embeddedVolumes[ptSetName].w
+        N = self.embeddedVolumes[ptSetName].N
 
         # Get the maximum k (ku or kv for each volume)
         kmax = 2
@@ -706,8 +703,8 @@ class pyBlock:
             )
 
             rowPtr.append(rowPtr[-1] + kinc)
-            if self.embededVolumes[ptSetName].mask is not None:
-                if i not in self.embededVolumes[ptSetName].mask:
+            if self.embeddedVolumes[ptSetName].mask is not None:
+                if i not in self.embeddedVolumes[ptSetName].mask:
                     # Kill the values we just added
                     vals[rowPtr[-2] : rowPtr[-1]] = 0.0
 
@@ -716,7 +713,7 @@ class pyBlock:
         colInd = colInd[: rowPtr[-1]]
         # Now make a sparse matrix iff we actually have coordinates
         if N > 0:
-            self.embededVolumes[ptSetName].dPtdCoef = sparse.csr_matrix(
+            self.embeddedVolumes[ptSetName].dPtdCoef = sparse.csr_matrix(
                 (vals, colInd, rowPtr), shape=[N, len(self.coef)]
             )
 
@@ -736,20 +733,20 @@ class pyBlock:
             only the points corresponding to the indices in mask will be
             non-zero in the array.
         """
-        u = self.embededVolumes[ptSetName].u
-        v = self.embededVolumes[ptSetName].v
-        w = self.embededVolumes[ptSetName].w
-        N = self.embededVolumes[ptSetName].N
-        mask = self.embededVolumes[ptSetName].mask
+        u = self.embeddedVolumes[ptSetName].u
+        v = self.embeddedVolumes[ptSetName].v
+        w = self.embeddedVolumes[ptSetName].w
+        N = self.embeddedVolumes[ptSetName].N
+        mask = self.embeddedVolumes[ptSetName].mask
         coordinates = np.zeros((N, 3))
 
         # This evaluation is fast enough we don't really care about
         # only looping explictly over the mask values
-        for iVol in self.embededVolumes[ptSetName].indices:
-            indices = self.embededVolumes[ptSetName].indices[iVol]
-            u = self.embededVolumes[ptSetName].u[indices]
-            v = self.embededVolumes[ptSetName].v[indices]
-            w = self.embededVolumes[ptSetName].w[indices]
+        for iVol in self.embeddedVolumes[ptSetName].indices:
+            indices = self.embeddedVolumes[ptSetName].indices[iVol]
+            u = self.embeddedVolumes[ptSetName].u[indices]
+            v = self.embeddedVolumes[ptSetName].v[indices]
+            w = self.embeddedVolumes[ptSetName].w[indices]
             coords = self.vols[iVol](u, v, w)
             coordinates[indices, :] = coords
 
@@ -796,7 +793,7 @@ class pyBlock:
         if coordinates is not None:
             if not interiorOnly:
                 volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=True, eps=eps, **kwargs)
-                self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
+                self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
             else:
                 volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False, eps=eps, **kwargs)
 
@@ -807,10 +804,8 @@ class pyBlock:
                         mask.append(i)
 
                 # Now that we have the mask we can create the embedded volume
-                self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
+                self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
         # end if (Coordinate not none check)
-
-        return
 
     # ----------------------------------------------------------------------
     #             Geometric Functions
@@ -915,9 +910,8 @@ class pyBlock:
             # Check to see if we have bad projections and print a warning:
             if counter > 0:
                 print(
-                    " -> Warning: %d point(s) not projected to tolerance: \
-                %g\n.  Max Error: %12.6g ; RMS Error: %12.6g"
-                    % (counter, eps, DMax, DRms)
+                    " -> Warning: %d point(s) not projected to tolerance: %g. " % (counter, eps)
+                    + "Max Error: %12.6g ; RMS Error: %12.6g" % (DMax, DRms)
                 )
                 print("List of Points is: (pt, delta):")
                 for i in range(len(badPts)):

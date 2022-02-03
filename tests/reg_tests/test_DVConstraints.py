@@ -815,6 +815,31 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
+    def test_curvature1D(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_curvature1D.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+
+            # Use the RAE 2822 wing because we have a PLOT3D surface file for it
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("c172", addToDVGeo=True)
+
+            # Add both scaled and unscaled curvature constraints
+            startP = [0.1, 0, 1.0]
+            endP = [1.5, 0, 1.0]
+            axis = [0, 1, 0]
+            nPts = 10
+            DVCon.addCurvatureConstraint1D(startP, endP, nPts, axis, "mean")
+            DVCon.addCurvatureConstraint1D(
+                startP, endP, nPts, axis, "mean", scaled=False, name="unscaled_curvature_con"
+            )
+            DVCon.addCurvatureConstraint1D(startP, endP, nPts, axis, "aggregated", KSCoeff=10.0)
+            DVCon.addCurvatureConstraint1D(
+                startP, endP, nPts, axis, "aggregated", KSCoeff=10.0, scaled=False, name="unscaled_curvature_con"
+            )
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, checkDerivs=False)
+            funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
+            funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
+
     def test_LERadius(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_LERadius.ref")
         with BaseRegTest(refFile, train=train) as handler:

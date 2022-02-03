@@ -86,7 +86,7 @@ class pyNetwork:
 
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)
-        fileBaseName, fileExtension = os.path.splitext(fileName)
+        fileBaseName, _ = os.path.splitext(fileName)
 
         if curveLabels:
             # Split the filename off
@@ -276,7 +276,7 @@ class pyNetwork:
 
         return curveID, s
 
-    def projectPoints(self, points, curves=None, *args, **kwargs):
+    def projectPoints(self, points, *args, curves=None, **kwargs):
         """Project one or more points onto the nearest curve. This
         algorihm isn't exactly efficient: We simply project the nodes
         on each of the curves and take the lowest one.

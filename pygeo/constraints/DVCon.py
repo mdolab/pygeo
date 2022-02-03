@@ -16,7 +16,8 @@ from .colinearityConstraint import ColinearityConstraint
 from .gearPostConstraint import GearPostConstraint
 from .circularityConstraint import CircularityConstraint
 from .planarityConstraint import PlanarityConstraint
-from .curvatureConstraint import CurvatureConstraint
+from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
+from ..geo_utils.misc import convertTo2D
 
 
 class DVConstraints:
@@ -58,7 +59,7 @@ class DVConstraints:
     Parameters
     ----------
     name: str
-        A name for this object. Used to distiguish between DVCon objects
+        A name for this object. Used to distinguish between DVCon objects
         if multiple DVConstraint objects are used in an optimization.
 
     """
@@ -88,9 +89,9 @@ class DVConstraints:
         surf : pyGeo object or list
             This is the surface representation to use for
             projections. If available, a pyGeo surface object can be
-            used OR a triagnulaed surface in the form [p0, v1, v2] can
+            used OR a triangulated surface in the form [p0, v1, v2] can
             be used. This triangulated surface form can be supplied
-            form pyADflow or from pyTrian.
+            form pyADflow or from pyTripan.
 
         addToDVGeo : bool or str
             To embed the surface pointset in a DVGeo object,
@@ -184,11 +185,11 @@ class DVConstraints:
         # must be unique
         for existing_DVGeo_name in self.DVGeometries:
             existing_DVGeo = self.DVGeometries[existing_DVGeo_name]
-            for dvname in DVGeo.getVarNames():
-                for existing_dvname in existing_DVGeo.getVarNames():
-                    if dvname == existing_dvname:
+            for dvName in DVGeo.getVarNames():
+                for existing_dvName in existing_DVGeo.getVarNames():
+                    if dvName == existing_dvName:
                         msg = (
-                            f"Design variable {dvname} in the newly-added DVGeo already exists in DVGeo"
+                            f"Design variable {dvName} in the newly-added DVGeo already exists in DVGeo"
                             f"object named {existing_DVGeo_name} on this DVCon"
                         )
                         raise ValueError(msg)
@@ -210,7 +211,7 @@ class DVConstraints:
         """
 
         # loop over the generated constraint objects and add the necessary
-        # constraints to pyopt
+        # constraints to pyOpt
         for conTypeKey in self.constraints:
             constraint = self.constraints[conTypeKey]
             for key in constraint:
@@ -235,13 +236,13 @@ class DVConstraints:
         """
 
         # loop over the generated constraint objects and add the necessary
-        # variables to pyopt
+        # variables to pyOpt
         for conTypeKey in self.constraints:
             constraint = self.constraints[conTypeKey]
             for key in constraint:
                 constraint[key].addVariablesPyOpt(optProb)
 
-        # linear contraints are ignored because at the moment there are no linear
+        # linear constraints are ignored because at the moment there are no linear
         # constraints that have independent variables
 
     def setDesignVars(self, dvDict):
@@ -258,13 +259,13 @@ class DVConstraints:
         """
 
         # loop over the generated constraint objects and add the necessary
-        # variables to pyopt
+        # variables to pyOpt
         for conTypeKey in self.constraints:
             constraint = self.constraints[conTypeKey]
             for key in constraint:
                 constraint[key].setDesignVars(dvDict)
 
-        # linear contraints are ignored because at the moment there are no linear
+        # linear constraints are ignored because at the moment there are no linear
         # constraints that have independent variables
 
     def evalFunctions(self, funcs, includeLinear=False, config=None):
@@ -296,9 +297,9 @@ class DVConstraints:
 
     def evalFunctionsSens(self, funcsSens, includeLinear=False, config=None):
         """
-        Evaluate the derivative of all the 'funcitons' that this
+        Evaluate the derivative of all the 'functions' that this
         object has. These functions are just the constraint values.
-        Thse values will be set directly in the funcSens dictionary.
+        These values will be set directly in the funcSens dictionary.
 
         Parameters
         ----------
@@ -369,12 +370,9 @@ class DVConstraints:
         f.write("Nodes = %d, Elements = %d ZONETYPE=FETRIANGLE\n" % (len(p0) * 3, len(p0)))
         f.write("DATAPACKING=POINT\n")
         for i in range(len(p0)):
-            points = []
-            points.append(p0[i])
-            points.append(p1[i])
-            points.append(p2[i])
-            for i in range(len(points)):
-                f.write(f"{points[i][0]:f} {points[i][1]:f} {points[i][2]:f}\n")
+            points = [p0[i], p1[i], p2[i]]
+            for j in range(len(points)):
+                f.write(f"{points[j][0]:f} {points[j][1]:f} {points[j][2]:f}\n")
 
         for i in range(len(p0)):
             f.write("%d %d %d\n" % (3 * i + 1, 3 * i + 2, 3 * i + 3))
@@ -396,8 +394,8 @@ class DVConstraints:
         """
         try:
             from stl import mesh
-        except ImportError:
-            raise ImportError("numpy-stl package must be installed")
+        except ImportError as e:
+            raise ImportError("numpy-stl package must be installed") from e
         if fromDVGeo is None:
             p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         else:
@@ -525,7 +523,7 @@ class DVConstraints:
               aerodynamic shape optimizations, this option is used
               most often.
 
-            * scaled=False: No scaling is applied and the phyical lengths
+            * scaled=False: No scaling is applied and the physical lengths
               must be specified for the lower and upper bounds.
 
         scale : float or array of size (nSpan x nChord)
@@ -540,7 +538,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
+            you have multiple DVCon objects and the constraint names
             need to be distinguished **or** the values are to be used
             in a subsequent computation.
 
@@ -570,9 +568,9 @@ class DVConstraints:
         """
 
         self._checkDVGeo(DVGeoName)
-        upper = self._convertTo2D(upper, nSpan, nChord).flatten()
-        lower = self._convertTo2D(lower, nSpan, nChord).flatten()
-        scale = self._convertTo2D(scale, nSpan, nChord).flatten()
+        upper = convertTo2D(upper, nSpan, nChord).flatten()
+        lower = convertTo2D(lower, nSpan, nChord).flatten()
+        scale = convertTo2D(scale, nSpan, nChord).flatten()
 
         coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
 
@@ -664,7 +662,7 @@ class DVConstraints:
               aerodynamic shape optimizations, this option is used
               most often.
 
-            * scaled=False: No scaling is applied and the phyical lengths
+            * scaled=False: No scaling is applied and the physical lengths
               must be specified for the lower and upper bounds.
 
         scale : float or array of size nCon
@@ -678,7 +676,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
+            you have multiple DVCon objects and the constraint names
             need to be distinguished **or** you are using this set of
             thickness constraints for something other than a direct
             constraint in pyOptSparse.
@@ -702,7 +700,7 @@ class DVConstraints:
 
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        # Create mesh of itersections
+        # Create mesh of intersections
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
@@ -822,7 +820,7 @@ class DVConstraints:
               multiples of the initial radius. lower=0.85, upper=1.15, would
               allow for 15% change in each direction from the original radius.
 
-            * scaled=False: No scaling is applied and the phyical radii
+            * scaled=False: No scaling is applied and the physical radii
               must be specified for the lower and upper bounds.
 
         scale : float or array of size nSpan
@@ -835,7 +833,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if you have
-            multiple DVCon objects and the constriant names need to be
+            multiple DVCon objects and the constraint names need to be
             distinguished **or** you are using this set of thickness constraints
             for something other than a direct constraint in pyOptSparse.
 
@@ -857,7 +855,7 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        # Create mesh of itersections
+        # Create mesh of intersections
         constr_line = Curve(X=leList, k=2)
         s = np.linspace(0, 1, nSpan)
         X = constr_line(s)
@@ -971,7 +969,7 @@ class DVConstraints:
               for initial points close to zero this blows up, so this should
               be used with caution, therefore unscaled is the default.
 
-            * scaled=False: No scaling is applied and the phyical locations
+            * scaled=False: No scaling is applied and the physical locations
               must be specified for the lower and upper bounds.
 
         scale : float or array of size nCon
@@ -985,7 +983,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
+            you have multiple DVCon objects and the constraint names
             need to be distinguished **or** you are using this set of
             location constraints for something other than a direct
             constraint in pyOptSparse.
@@ -1005,7 +1003,7 @@ class DVConstraints:
         constr_line = Curve(X=ptList, k=2)
         s = np.linspace(0, 1, nCon)
         X = constr_line(s)
-        # X shouls now be in the shape we need
+        # X should now be in the shape we need
 
         if lower is None:
             lower = X.flatten()
@@ -1090,7 +1088,7 @@ class DVConstraints:
               for initial points close to zero this blows up, so this should
               be used with caution, therefore unscaled is the default.
 
-            * scaled=False: No scaling is applied and the phyical locations
+            * scaled=False: No scaling is applied and the physical locations
               must be specified for the lower and upper bounds.
 
         scale : float or array of size nCon
@@ -1104,7 +1102,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
+            you have multiple DVCon objects and the constraint names
             need to be distinguished **or** you are using this set of
             location constraints for something other than a direct
             constraint in pyOptSparse.
@@ -1244,7 +1242,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
+            you have multiple DVCon objects and the constraint names
             need to be distinguished **or** you are using this set of
             thickness constraints for something other than a direct
             constraint in pyOptSparse.
@@ -1281,7 +1279,7 @@ class DVConstraints:
             coords[i, 0] = up
             coords[i, 1] = down
             height = np.linalg.norm(coords[i, 0] - coords[i, 1])
-            # Third point is the mid-point of thsoe
+            # Third point is the mid-point of those
             coords[i, 2] = 0.5 * (up + down)
 
             # Fourth point is along the chordDir
@@ -1369,7 +1367,7 @@ class DVConstraints:
         scale : float
             This is the optimization scaling of the
             constraint. It may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         addToPyOpt : bool
@@ -1381,10 +1379,6 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
         """
-        try:
-            import geograd  # noqa
-        except ImportError:
-            raise ImportError("Geograd package must be installed to use triangulated surface constraint")
         if DVGeo_1_name is not None:
             self._checkDVGeo(DVGeo_1_name)
             DVGeo1 = self.DVGeometries[DVGeo_1_name]
@@ -1473,13 +1467,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -1563,7 +1557,7 @@ class DVConstraints:
         The region defined by the '----' boundary in the figure above
         will be meshed with nSpan x nChord points to form a 2D domain
         and then projected up and down onto the surface to form 3D
-        hexahedreal volumes. The accuracy of the volume computation
+        hexahedral volumes. The accuracy of the volume computation
         depends on how well these linear hexahedral volumes
         approximate the (assumed) continuous underlying surface.
 
@@ -1613,13 +1607,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -1711,13 +1705,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -1748,12 +1742,10 @@ class DVConstraints:
         for vol in vols:
             try:
                 volCons.append(self.constraints[typeName][vol])
-            except KeyError:
+            except KeyError as e:
                 raise Error(
-                    "The supplied volume name '%s' has not"
-                    " already been added with a call to "
-                    "addVolumeConstraint()" % vol
-                )
+                    f"The supplied volume '{vol}' has not already been added with a call to addVolumeConstraint()"
+                ) from e
         self.constraints[typeName][conName] = CompositeVolumeConstraint(
             conName, volCons, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt
         )
@@ -1781,9 +1773,9 @@ class DVConstraints:
 
         ie. x1 - x2 = 0.0
 
-        where x1 is the movment (in 1, 2, or 3 directions) of a
+        where x1 is the movement (in 1, 2, or 3 directions) of a
         control point on the top of the FFD and x2 is the control
-        poin on teh bottom of the FFD.
+        point on the bottom of the FFD.
 
         There are two ways of specifying these constraints:
 
@@ -1827,7 +1819,7 @@ class DVConstraints:
         name : str
             Normally this does not need to be set; a default name will
             be generated automatically. Only use this if you have
-            multiple DVCon objects and the constriant names need to
+            multiple DVCon objects and the constraint names need to
             be distinguished
         config : str
             The DVGeo configuration to apply this constraint to. Must be either None
@@ -2003,7 +1995,7 @@ class DVConstraints:
         name : str
             Normally this does not need to be set; a default name will
             be generated automatically. Only use this if you have
-            multiple DVCon objects and the constriant names need to
+            multiple DVCon objects and the constraint names need to
             be distinguished
         config : str
             The DVGeo configuration to apply this constraint to. Must be either None
@@ -2117,20 +2109,20 @@ class DVConstraints:
             Three dimensional position of the gear post constraint.
 
         axis : array of size 3
-            Direction to perofrm projection. Same as 'axis'
+            Direction to perform projection. Same as 'axis'
             in addThicknessConstraints1D
 
         thickLower : float
             Lower bound for thickness constraint. If thickScaled=True,
-            this is the pysical distance scaled by the initial length.
+            this is the physical distance scaled by the initial length.
             This value is used as the optimization constraint lower bound.
 
         thickUpper : float
             Upper bound for optimization constraint. See thickLower.
 
         thickScaled : bool
-            Flag specifiying if the constraint should be scaled.
-            It is true by default. The defalut values of thickScaled=True,
+            Flag specifying if the constraint should be scaled.
+            It is true by default. The default values of thickScaled=True,
             thickLower=1.0, ensures that the initial thickness does not
             decrease.
 
@@ -2144,7 +2136,7 @@ class DVConstraints:
 
         name : str
             Normally this does not need to be set. Only use this if
-            you have multiple DVCon objects and the constriant names
+            you have multiple DVCon objects and the constraint names
             need to be distinguished **or** the values are to be used
             in a subsequent computation.
 
@@ -2251,13 +2243,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -2336,13 +2328,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -2420,13 +2412,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -2504,13 +2496,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -2599,13 +2591,13 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -2690,7 +2682,7 @@ class DVConstraints:
             changed. If scaled=True, this automatically results in a
             well-scaled constraint and scale can be left at 1.0. If
             scaled=False, it may changed to a more suitable value of
-            the resulting phyical volume magnitude is vastly different
+            the resulting physical volume magnitude is vastly different
             from O(1).
 
         scaled : bool
@@ -2717,7 +2709,7 @@ class DVConstraints:
         name : str
              Normally this does not need to be set; a default name will
              be generated automatically. Only use this if you have
-             multiple DVCon objects and the constriant names need to
+             multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this volume
              computation for something other than a direct constraint
              in pyOpt, i.e. it is required for a subsequent
@@ -2741,7 +2733,7 @@ class DVConstraints:
         # we just fix them)
         node_tol = 1e-8
         edge_tol = 1e-8
-        # Explicity do the connectivity here since we don't want to
+        # Explicitly do the connectivity here since we don't want to
         # write a con file:
         geo._calcConnectivity(node_tol, edge_tol)
         surfs = geo.surfs
@@ -2778,6 +2770,194 @@ class DVConstraints:
             addToPyOpt,
         )
 
+    def addCurvatureConstraint1D(
+        self,
+        start,
+        end,
+        nPts,
+        axis,
+        curvatureType="mean",
+        lower=-1e20,
+        upper=1e20,
+        scaled=True,
+        scale=1.0,
+        KSCoeff=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+    ):
+        """
+        Add a curvature contraint along the prescribed straightline on the design surface.
+        This can be used to impose a spanwise curvature constraint for wing aerodynamic optimization.
+        NOTE: the output is the square of the curvature to make sure the values are always positive
+
+        See below for a schematic.
+
+        .. code-block:: text
+
+          Planform view of the wing:
+
+          Physical extent of wing
+          ____________________________________
+          |                                  |
+          |                                  |
+          |                                  |
+          | +---x--x---x---x---x---x---x---+ |
+          |                                  |
+          |                                  |
+          |                                  |
+          |__________________________________/
+
+          The '+' are the (three dimensional) points defined by 'start' and 'end'. Once the straightline
+          is defined, we generate nPts-2 intermediate points along it and project these points to the design
+          surface mesh in the prescirbed axis direction. Here 'x' are the intermediate points added by setting
+          nPts = 9. The curvature will be calculated based on the projected intermediate points (x) on the design
+          surface. NOTE: we do not calculate the curvatures at the two end points (+). So make sure to extend
+          the start and end points a bit to fully cover the area where you want to compute the curvature
+
+        Parameters
+        ----------
+        start/end : list of size 3
+            The 3D points forming a straight line along which the
+            curvature constraints will be added.
+
+        nPts : int
+            The number of intermediate points to add. We should prescribe nPts such that the point interval
+            should be larger than the mesh size and smaller than the interval of FFD points in that direction
+
+        axis : list of size 3
+            The direction along which the projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+            NOTE: we also compute the curvature based on this axis dir
+
+        curvatureType : str
+            What type of curvature constraint to compute. Either mean or aggregated
+
+        lower : float
+            Lower bound of curvature integral used for optimization constraint
+
+        upper : float
+            Upper bound of curvature integral used for optimization constraint
+
+        scale : float
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If scaled=True, this automatically results in a
+            well-scaled constraint and scale can be left at 1.0. If
+            scaled=False, it may changed to a more suitable value of
+            the resulting physical volume magnitude is vastly different
+            from O(1).
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial curvature is defined to be 1.0.
+              In this case, the lower and upper bounds are given in
+              multiple of the initial curvature. lower=0.85, upper=1.15,
+              would allow for 15% change in curvature both upper and
+              lower. For aerodynamic optimization, this is the most
+              widely used option .
+
+            * scaled=False: No scaling is applied and the physical
+              curvature. lower and upper refer to the physical curvatures.
+
+        KSCoeff : float
+            The coefficient for KS function. This controls how close the KS function approximates
+            the original functions.
+
+        name : str
+             Normally this does not need to be set; a default name will
+             be generated automatically. Only use this if you have
+             multiple DVCon objects and the constraint names need to
+             be distinguished **OR** you are using this volume
+             computation for something other than a direct constraint
+             in pyOpt, i.e. it is required for a subsequent
+             computation.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of False if the
+            cost is part of the objective. If the integral is to be
+            used directly as a constraint, addToPyOpt should be True, and name
+            specified to a logical name for this computation. with
+            addToPyOpt=False, the lower, upper and scale variables are
+            meaningless
+
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
+        Examples
+        --------
+        # define a 2 point poly-line along the wing spanwise direction (z)
+        # and project to the design surface along y
+        >>> start = [0, 0, 0]
+        >>> end = [0, 0, 1]
+        >>> nPts = 10
+        >>> axis = [0, 1, 0]
+        >>> DVCon.addCurvatureConstraint1D(start, end, nPts, axis, "mean", lower=1.0, upper=3, scaled=True)
+        """
+
+        self._checkDVGeo(DVGeoName)
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
+        if nPts < 5:
+            raise Error("nPts should be at least 5 \n " "while nPts = %d is given." % nPts)
+
+        # Create mesh of intersections
+        ptList = [start, end]
+        constr_line = Curve(X=ptList, k=2)
+        s = np.linspace(0, 1, nPts)
+        X = constr_line(s)
+        coords = np.zeros((nPts, 3))
+
+        # calculate the distance between coords, it should be uniform for all points
+        eps = np.linalg.norm(X[1] - X[0])
+
+        # Project all the points
+        for i in range(nPts):
+            # Project actual node:
+            up, _, fail = geo_utils.projectNode(X[i], axis, p0, p1 - p0, p2 - p0)
+            if fail > 0:
+                raise Error(
+                    "There was an error projecting a node "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                )
+            coords[i] = up
+            # NOTE: we do not use the down projection
+
+        typeName = "curvCon1D"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = "%s_curvature_constraints_1d_%d" % (self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+
+        self.constraints[typeName][conName] = CurvatureConstraint1D(
+            conName,
+            curvatureType,
+            coords,
+            axis,
+            eps,
+            KSCoeff,
+            lower,
+            upper,
+            scaled,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+        )
+
     def addMonotonicConstraints(
         self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childIdx=None, DVGeoName="default"
     ):
@@ -2793,7 +2973,7 @@ class DVConstraints:
         name : str
             Normally this does not need to be set; a default name will
             be generated automatically. Only use this if you have
-            multiple DVCon objects and the constriant names need to
+            multiple DVCon objects and the constraint names need to
             be distinguished
         start/stop: int
             This allows the user to specify a slice of the design variable to
@@ -2901,49 +3081,17 @@ class DVConstraints:
         p2 = self.surfaces[surfaceName][2]
         return p0, p1, p2
 
-    def _convertTo2D(self, value, dim1, dim2):
-        """
-        Generic function to process 'value'. In the end, it must be dim1
-        by dim2. value is already that shape, excellent, otherwise, a
-        scalar will be 'upcast' to that size
-        """
-
-        if np.isscalar:
-            return value * np.ones((dim1, dim2))
-        else:
-            temp = np.atleast_2d(value)
-            if temp.shape[0] == dim1 and temp.shape[1] == dim2:
-                return value
-            else:
-                raise Error("The size of the 2D array was the incorret shape")
-
-    def _convertTo1D(self, value, dim1):
-        """
-        Generic function to process 'value'. In the end, it must be
-        array of size dim1. value is already that shape, excellent,
-        otherwise, a scalar will be 'upcast' to that size
-        """
-
-        if np.isscalar:
-            return value * np.ones(dim1)
-        else:
-            temp = np.atleast_1d(value)
-            if temp.shape[0] == dim1:
-                return value
-            else:
-                raise Error("The size of the 1D array was the incorret shape")
-
     def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
         """
         Internal function to generate the grid points (nSpan x nChord)
         and to actual perform the intersections. This is in a separate
         functions since addThicknessConstraints2D, and volume based
-        constraints use the same conde. The list of projected
+        constraints use the same code. The list of projected
         coordinates are returned.
         """
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
 
-        # Create mesh of itersections
+        # Create mesh of intersections
         le_s = Curve(X=leList, k=2)
         te_s = Curve(X=teList, k=2)
         root_s = Curve(X=[leList[0], teList[0]], k=2)
@@ -2982,13 +3130,12 @@ class DVConstraints:
                     coords[i, j, 0] = up
                     coords[i, j, 1] = down
                 elif fail == -1:
-                    # More than 2 solutoins. Returned in sorted distance.
+                    # More than 2 solutions. Returned in sorted distance.
                     coords[i, j, 0] = down
                     coords[i, j, 1] = up
                 else:
                     raise Error(
-                        "There was an error projecting a node \
-                     at (%f, %f, %f) with normal (%f, %f, %f)."
+                        "There was an error projecting a node at (%f, %f, %f) with normal (%f, %f, %f)."
                         % (X[i, j, 0], X[i, j, 1], X[i, j, 2], upVec[0], upVec[1], upVec[2])
                     )
 

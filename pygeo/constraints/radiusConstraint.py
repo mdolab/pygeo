@@ -15,19 +15,10 @@ class RadiusConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
-        self.name = name
-        self.coords = coords
-        self.nCon = len(self.coords) // 3
-        self.lower = lower
-        self.upper = upper
-        self.scaled = scaled
-        self.scale = scale
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
+        super().__init__(name, len(coords) // 3, lower, upper, scale, DVGeo, addToPyOpt)
 
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
+        self.coords = coords
+        self.scaled = scaled
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
@@ -135,7 +126,7 @@ class RadiusConstraint(GeometricConstraint):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        r, c = self.computeCircle(self.coords)
+        r, _ = self.computeCircle(self.coords)
         if self.scaled:
             r /= self.r0
         funcs[self.name] = r
@@ -164,7 +155,7 @@ class RadiusConstraint(GeometricConstraint):
             for i in range(3):  # loop over pts at given slice
                 for j in range(3):  # loop over coordinates in pt
                     coords[i * self.nCon : (i + 1) * self.nCon, j] += 1e-40j
-                    r, c = self.computeCircle(coords)
+                    r, _ = self.computeCircle(coords)
 
                     drdPt[:, i * 3 + j] = r.imag / 1e-40
                     coords[i * self.nCon : (i + 1) * self.nCon, j] -= 1e-40j
@@ -193,7 +184,7 @@ class RadiusConstraint(GeometricConstraint):
         r, c = self.computeCircle(self.coords)
 
         # Compute origin and unit vectors (xi, eta) of 2d space
-        origin, nxi, neta = self.computeReferenceFrames(self.coords)
+        _, nxi, neta = self.computeReferenceFrames(self.coords)
 
         nres = 50
         theta = np.linspace(0, 2 * np.pi, nres + 1)[:-1]

@@ -254,8 +254,6 @@ class pyGeo:
             self.surfs[-1].Nv = 3
             self.surfs[-1].origData = True
 
-        return
-
     def _init_lifting_surface(
         self,
         xsections,
@@ -392,9 +390,9 @@ class pyGeo:
 
                     toInsert = []
                     # Now go over the indices and see if we need to add
-                    for i in range(len(indices)):
-                        if abs(baseKnots[indices[i]] - knots[i]) > 1e-12:
-                            toInsert.append(knots[i])
+                    for j in range(len(indices)):
+                        if abs(baseKnots[indices[j]] - knots[j]) > 1e-12:
+                            toInsert.append(knots[j])
 
                     # Finally add the new indices and resort
                     baseKnots.extend(toInsert)
@@ -738,8 +736,6 @@ class pyGeo:
 
         self.setSurfaceCoef()
 
-        return
-
     def fitGlobal(self):
         """
         Perform a global B-spline surface fit to determine the
@@ -1023,7 +1019,7 @@ class pyGeo:
 
         # Write out The Surface, Edge and Node Labels
         dirName, fileName = os.path.split(fileName)
-        fileBaseName, fileExtension = os.path.splitext(fileName)
+        fileBaseName, _ = os.path.splitext(fileName)
 
         if surfLabels:
             # Split the filename off
@@ -1223,7 +1219,7 @@ class pyGeo:
 
         return Xmin0, Xmax0
 
-    def projectCurve(self, curve, surfs=None, *args, **kwargs):
+    def projectCurve(self, curve, *args, surfs=None, **kwargs):
         """
         Project a pySpline curve onto the pyGeo object
 
@@ -1269,7 +1265,7 @@ class pyGeo:
 
         return result, patchID
 
-    def projectPoints(self, points, surfs=None, *args, **kwargs):
+    def projectPoints(self, points, *args, surfs=None, **kwargs):
         """Project on or more points onto the nearest surface.
 
         Parameters

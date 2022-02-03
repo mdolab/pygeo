@@ -8,6 +8,227 @@ from baseclasses.utils import Error
 from .baseConstraint import GeometricConstraint
 
 
+class CurvatureConstraint1D(GeometricConstraint):
+    """
+    DVConstraints representation of a set of 1D curvature
+    constraints. One of these objects is created each time a
+    addCurvatureConstraints1D call is made.
+    The user should not have to deal with this class directly.
+    NOTE: the output is actually the square of the curvature
+    """
+
+    def __init__(self, name, curvatureType, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
+        self.curvatureType = curvatureType
+        self.coords = coords
+        self.axis = axis
+        self.eps = eps
+        self.KSCoeff = KSCoeff
+        self.nPts = len(self.coords)
+        self.scaled = scaled
+
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name)
+
+        # Calculate the reference curvatures
+        self.C, self.KSC2Ref, self.meanC2Ref, self.maxC2 = self.calcCurvature2(
+            self.coords, self.axis, self.nPts, self.eps, self.KSCoeff
+        )
+
+        if MPI.COMM_WORLD.rank == 0:
+            print(
+                "Reference squared-curvatures: KS: %f, mean: %f, max: %f" % (self.KSC2Ref, self.meanC2Ref, self.maxC2)
+            )
+
+    def calcCurvature2(self, coords, axis, nPts, eps, KSCoeff):
+        """
+        Calculate the curvature
+        C = d^2y/dx^2
+        Where C is the curvature, x is the distance between the points projected on to the design surface,
+        y is the coordinates of the points projected to the axis direction.
+        We calculate two types of curvatures,
+        mean:       meanC2 = avg(C*C)
+        aggregated: KSC2   = log(sum(KSCoeff*C*C))/KSCoeff
+        We also print out the max curvature for these samples points. You need to tweak the KSCoeff to make sure
+        The max curvature should be slightly lower than the KS curvature.
+        NOTE: we always do a square of the curvatures to make sure they are positive
+        """
+        # project the coordinates to the axis direction, coordsP is a scalar now
+        coordsP = np.zeros(nPts)
+        for i in range(nPts):
+            coordsP[i] = np.dot(coords[i], axis)
+
+        # init KS, mean, and max curvatures
+        KSC2 = 0.0
+        meanC2 = 0.0
+        maxC2 = -1e16
+        C = np.zeros(nPts)
+
+        # calculate curvatures
+        # NOTE: we do not calculate the curvatures at the end points!!
+        # this treatment allows us to use central FD for all points
+        for i in range(1, nPts - 1):
+            cFDC = (coordsP[i + 1] - 2 * coordsP[i] + coordsP[i - 1]) / eps / eps
+            C[i] = cFDC
+            KSC2 += np.exp(KSCoeff * C[i] * C[i])
+            meanC2 += C[i] * C[i]
+            if (C[i] * C[i]) > maxC2:
+                maxC2 = C[i] * C[i]
+
+        # Assign the values for the end points for visualization purpose. The curvature at the end points
+        # are not used in the computation!!
+        C[0] = C[1]
+        C[nPts - 1] = C[nPts - 2]
+
+        KSC2 = np.log(KSC2) / KSCoeff
+        meanC2 = meanC2 / (nPts - 2)
+
+        return C, KSC2, meanC2, maxC2
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.coords = self.DVGeo.update(self.name, config=config)
+
+        self.C, KSC2, meanC2, self.maxC2 = self.calcCurvature2(
+            self.coords, self.axis, self.nPts, self.eps, self.KSCoeff
+        )
+
+        if MPI.COMM_WORLD.rank == 0:
+            print("Curvature squared-curvatures: KS: %f, mean: %f, max: %f" % (KSC2, meanC2, self.maxC2))
+
+        if self.scaled:
+            KSC2 /= self.KSC2Ref + 1e-16
+            meanC2 /= self.meanC2Ref + 1e-16
+
+            if MPI.COMM_WORLD.rank == 0:
+                print("Normalized squared-curvatures: KS: %f, mean: %f, max: %f" % (KSC2, meanC2, self.maxC2))
+
+        if self.curvatureType == "mean":
+            funcs[self.name] = meanC2
+        elif self.curvatureType == "aggregated":
+            funcs[self.name] = KSC2
+        else:
+            raise Error("curvatureType=%s not supported! Options are: mean or aggregated" % self.curvatureType)
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        # we need to hand derive the derivatives of the curvature with respect to the projected points
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dC2dPt = np.zeros((self.coords.shape[0], self.coords.shape[1]))
+            if self.curvatureType == "mean":
+                tmp = 2 / (self.nPts - 2) / self.eps / self.eps
+                for i in range(self.nPts):
+                    for j in range(3):
+                        if i == 0:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1])
+                        elif i == 1:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] + self.C[i + 1])
+                        elif i == self.nPts - 1:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i - 1])
+                        elif i == self.nPts - 2:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (-2 * self.C[i] + self.C[i - 1])
+                        else:
+                            dC2dPt[i][j] = self.axis[j] * tmp * (self.C[i + 1] - 2 * self.C[i] + self.C[i - 1])
+            elif self.curvatureType == "aggregated":
+                eSum = 0.0
+                for i in range(1, self.nPts - 1):
+                    eSum += np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                tmp = 2 / eSum / self.eps / self.eps
+                for i in range(self.nPts):
+                    for j in range(3):
+                        if i == 0:
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1]))
+                            )
+                        elif i == 1:
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (
+                                    -2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                                    + self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1])
+                                )
+                            )
+                        elif i == self.nPts - 1:
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1]))
+                            )
+                        elif i == self.nPts - 2:
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (
+                                    -2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                                    + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1])
+                                )
+                            )
+                        else:
+                            dC2dPt[i][j] = (
+                                self.axis[j]
+                                * tmp
+                                * (
+                                    self.C[i + 1] * np.exp(self.KSCoeff * self.C[i + 1] * self.C[i + 1])
+                                    - 2 * self.C[i] * np.exp(self.KSCoeff * self.C[i] * self.C[i])
+                                    + self.C[i - 1] * np.exp(self.KSCoeff * self.C[i - 1] * self.C[i - 1])
+                                )
+                            )
+            else:
+                raise Error("curvatureType=%s not supported! Options are: mean or aggregated" % self.curvatureType)
+
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dC2dPt, self.name, config=config)
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of the projected points on the design surface
+        """
+
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) - 1))
+        handle.write("DATAPACKING=POINT\n")
+        for i in range(len(self.coords)):
+            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
+
+        for i in range(len(self.coords) - 1):
+            handle.write("%d %d\n" % (i + 1, i + 2))
+
+        # NOTE: in addition to write the points, we create a new file to write the actual curvature value
+        f = open("%s.dat" % self.name, "w")
+        f.write('TITLE = "DVConstraints Data"\n')
+        f.write('VARIABLES = "CoordinateX" "CoordinateY" "CoordinateZ" "Curvature"\n')
+        f.write("Zone T=%s\n" % self.name)
+        f.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) - 1))
+        f.write("DATAPACKING=POINT\n")
+        for i in range(len(self.coords)):
+            f.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f} {self.C[i]:f} \n")
+
+        for i in range(len(self.coords) - 1):
+            f.write("%d %d\n" % (i + 1, i + 2))
+        f.close()
+
+
 class CurvatureConstraint(GeometricConstraint):
     """
     DVConstraints representation of a set of the curvature constraint.
@@ -16,7 +237,8 @@ class CurvatureConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt):
-        self.name = name
+        super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
+
         self.nSurfs = len(surfs)  # we support multiple surfaces (plot3D files)
         self.X = []
         self.X_map = []
@@ -42,24 +264,15 @@ class CurvatureConstraint(GeometricConstraint):
             ]
             # A list of the coordinates arrays for each surface, in the shape that DVGeo expects (N_nodes,3)
             self.coords += [np.reshape(self.X[iSurf], (surfs[iSurf].X.shape[0] * surfs[iSurf].X.shape[1], 3))]
-        self.nCon = 1
+
         self.curvatureType = curvatureType
-        self.lower = lower
-        self.upper = upper
         self.scaled = scaled
-        self.scale = scale
         self.KSCoeff = KSCoeff
         if self.KSCoeff is None:
             # set KSCoeff to be the number of points in the plot 3D files
             self.KSCoeff = 0.0
             for i in range(len(self.coords)):
                 self.KSCoeff += len(self.coords[i])
-        self.DVGeo = DVGeo
-        self.addToPyOpt = addToPyOpt
-
-        GeometricConstraint.__init__(
-            self, self.name, self.nCon, self.lower, self.upper, self.scale, self.DVGeo, self.addToPyOpt
-        )
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided. We need to add a point set for each surface:
@@ -127,7 +340,7 @@ class CurvatureConstraint(GeometricConstraint):
         Evaluate the integral K**2 over the surface area of the wing.
         Where K is the Gaussian curvature.
         """
-        # Evaluate the derivitive of the position vector of every point on the
+        # Evaluate the derivative of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], "u")
         t_v = self.evalDiff(iSurf, self.X[iSurf], "v")
@@ -140,7 +353,7 @@ class CurvatureConstraint(GeometricConstraint):
         n_hat[self.X_map[iSurf][:, :, 0]] = n[self.X_map[iSurf][:, :, 0]] / n_norm[self.node_map[iSurf][:, :]]
         n_hat[self.X_map[iSurf][:, :, 1]] = n[self.X_map[iSurf][:, :, 1]] / n_norm[self.node_map[iSurf][:, :]]
         n_hat[self.X_map[iSurf][:, :, 2]] = n[self.X_map[iSurf][:, :, 2]] / n_norm[self.node_map[iSurf][:, :]]
-        # Evaluate the second derivitives of the position vector wrt u and v
+        # Evaluate the second derivatives of the position vector wrt u and v
         t_uu = self.evalDiff(iSurf, t_u, "u")
         t_vv = self.evalDiff(iSurf, t_v, "v")
         t_uv = self.evalDiff(iSurf, t_v, "u")
@@ -173,19 +386,19 @@ class CurvatureConstraint(GeometricConstraint):
         one = np.ones(self.node_map[iSurf].size)
 
         if self.curvatureType == "Gaussian":
-            # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
+            # Now compute integral (K**2) over S, equivalent to sum(K**2*dS)
             kS = np.dot(one, K * K * dS)
             return [kS, K, H, C]
         elif self.curvatureType == "mean":
-            # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
+            # Now compute integral (H**2) over S, equivalent to sum(H**2*dS)
             hS = np.dot(one, H * H * dS)
             return [hS, K, H, C]
         elif self.curvatureType == "combined":
-            # Now compute integral C over S, equivelent to sum(C*dS)
+            # Now compute integral C over S, equivalent to sum(C*dS)
             cS = np.dot(one, C * dS)
             return [cS, K, H, C]
         elif self.curvatureType == "KSmean":
-            # Now compute the KS function for mean curvature, equivelent to KS(H*H*dS)
+            # Now compute the KS function for mean curvature, equivalent to KS(H*H*dS)
             sigmaH = np.dot(one, np.exp(self.KSCoeff * H * H * dS))
             KSmean = np.log(sigmaH) / self.KSCoeff
             if MPI.COMM_WORLD.rank == 0:
@@ -202,7 +415,7 @@ class CurvatureConstraint(GeometricConstraint):
         Compute sensitivity of the integral K**2 wrt the coordinate
         locations X
         """
-        # Evaluate the derivitive of the position vector of every point on the
+        # Evaluate the derivative of the position vector of every point on the
         # surface wrt to the parameteric corrdinate u and v
         t_u = self.evalDiff(iSurf, self.X[iSurf], "u")
         Dt_uDX = self.evalDiffSens(iSurf, "u")
@@ -241,7 +454,7 @@ class CurvatureConstraint(GeometricConstraint):
         Dn_hatDn_norm = csr_matrix((data, [ii, jj]), shape=(n_hat.size, n_norm.size))
 
         Dn_hatDX = Dn_hatDn.dot(DnDX) + Dn_hatDn_norm.dot(Dn_normDX)
-        # Evaluate the second derivitives of the position vector wrt u and v
+        # Evaluate the second derivatives of the position vector wrt u and v
         t_uu = self.evalDiff(iSurf, t_u, "u")
         Dt_uuDt_u = self.evalDiffSens(iSurf, "u")
         Dt_uuDX = Dt_uuDt_u.dot(Dt_uDX)
@@ -320,12 +533,12 @@ class CurvatureConstraint(GeometricConstraint):
         one = np.ones(self.node_map[iSurf].size)
 
         if self.curvatureType == "Gaussian":
-            # Now compute integral (K**2) over S, equivelent to sum(K**2*dS)
+            # Now compute integral (K**2) over S, equivalent to sum(K**2*dS)
             # kS = np.dot(one, K * K * dS)
             DkSDX = (self.diags(2 * K * dS).dot(DKDX) + self.diags(K * K).dot(DdSDX)).T.dot(one)
             return DkSDX
         elif self.curvatureType == "mean":
-            # Now compute integral (H**2) over S, equivelent to sum(H**2*dS)
+            # Now compute integral (H**2) over S, equivalent to sum(H**2*dS)
             # hS = np.dot(one, H * H * dS)
             DhSDX = (self.diags(2 * H * dS).dot(DHDX) + self.diags(H * H).dot(DdSDX)).T.dot(one)
             return DhSDX
@@ -513,7 +726,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalDiff(self, iSurf, v, wrt):
         """
-        Diferentiate vector field v wrt the parameteric coordinate u or v.
+        Differentiate vector field v wrt the parameteric coordinate u or v.
         Second order accurate. Central difference for nodes in the center
         forward/backward difference for nodes on the edge
         """
@@ -556,7 +769,7 @@ class CurvatureConstraint(GeometricConstraint):
 
     def evalDiffSens(self, iSurf, wrt):
         """
-        Compute sensitivity of v_wrt with respect to input vector fiel v
+        Compute sensitivity of v_wrt with respect to input vector field v
         (Dv_wrt/Dv)
         """
         ii = []
@@ -662,62 +875,55 @@ class CurvatureConstraint(GeometricConstraint):
 
     def diags(self, a):
         """
-        A standard vectorized sparse diagnal matrix function. Similar to the above \
-        function
-        some versions of scipy don't have this function, so this is here to prevent\
-
+        A standard vectorized sparse diagonal matrix function. Similar to the above function
+        some versions of scipy don't have this function, so this is here to prevent
         potential import problems.
         """
         ii = range(len(a))
         return csr_matrix((a, [ii, ii]), (len(a), len(a)))
 
-    def writeTecplot(self, handle1):
+    def writeTecplot(self, handle):
         """
         Write Curvature data on the surface to a tecplot file. Data includes
         mean curvature, H, and Gaussian curvature, K.
-
-        Input:
-
-            tec_file: name of TecPlot file.
         """
         # we ignore the input handle and use this separated name for curvature constraint tecplot file
-        # NOTE: we use this tecplot file to only visualize the local distribution of curctures.
+        # NOTE: we use this tecplot file to only visualize the local distribution of curvatures.
         # The plotted local curvatures are not exactly as that computed in the evalCurvArea function
-        handle = open("%s.dat" % self.name, "w")
-        handle.write('title = "DVConstraint curvature constraint"\n')
-        varbs = 'variables = "x", "y", "z", "K", "H" "C"'
-        handle.write(varbs + "\n")
-        for iSurf in range(self.nSurfs):
-            [_, K, H, C] = self.evalCurvArea(iSurf)
-            handle.write("Zone T=%s_%d\n" % (self.name, iSurf))
+        with open(f"{self.name}.dat", "w") as f:
+            f.write('title = "DVConstraint curvature constraint"\n')
+            varbs = 'variables = "x", "y", "z", "K", "H" "C"'
+            f.write(varbs + "\n")
+            for iSurf in range(self.nSurfs):
+                [_, K, H, C] = self.evalCurvArea(iSurf)
+                f.write("Zone T=%s_%d\n" % (self.name, iSurf))
 
-            handle.write(
-                "Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n"
-                % (len(self.coords[iSurf]), (self.X_map[iSurf].shape[0] - 1) * (self.X_map[iSurf].shape[1] - 1))
-            )
-            for i in range(self.X_map[iSurf].shape[0]):
-                for j in range(self.X_map[iSurf].shape[1]):
-                    handle.write(
-                        "%E %E %E %E %E %E\n"
-                        % (
-                            self.X[iSurf][self.X_map[iSurf][i, j, 0]],
-                            self.X[iSurf][self.X_map[iSurf][i, j, 1]],
-                            self.X[iSurf][self.X_map[iSurf][i, j, 2]],
-                            K[self.node_map[iSurf][i, j]],
-                            H[self.node_map[iSurf][i, j]],
-                            C[self.node_map[iSurf][i, j]],
+                f.write(
+                    "Nodes = %d, Elements = %d, f=fepoint, et=quadrilateral\n"
+                    % (len(self.coords[iSurf]), (self.X_map[iSurf].shape[0] - 1) * (self.X_map[iSurf].shape[1] - 1))
+                )
+                for i in range(self.X_map[iSurf].shape[0]):
+                    for j in range(self.X_map[iSurf].shape[1]):
+                        f.write(
+                            "%E %E %E %E %E %E\n"
+                            % (
+                                self.X[iSurf][self.X_map[iSurf][i, j, 0]],
+                                self.X[iSurf][self.X_map[iSurf][i, j, 1]],
+                                self.X[iSurf][self.X_map[iSurf][i, j, 2]],
+                                K[self.node_map[iSurf][i, j]],
+                                H[self.node_map[iSurf][i, j]],
+                                C[self.node_map[iSurf][i, j]],
+                            )
                         )
-                    )
-            handle.write("\n")
-            for i in range(self.X_map[iSurf].shape[0] - 1):
-                for j in range(self.X_map[iSurf].shape[1] - 1):
-                    handle.write(
-                        "%d %d %d %d\n"
-                        % (
-                            self.node_map[iSurf][i, j] + 1,
-                            self.node_map[iSurf][i + 1, j] + 1,
-                            self.node_map[iSurf][i + 1, j + 1] + 1,
-                            self.node_map[iSurf][i, j + 1] + 1,
+                f.write("\n")
+                for i in range(self.X_map[iSurf].shape[0] - 1):
+                    for j in range(self.X_map[iSurf].shape[1] - 1):
+                        f.write(
+                            "%d %d %d %d\n"
+                            % (
+                                self.node_map[iSurf][i, j] + 1,
+                                self.node_map[iSurf][i + 1, j] + 1,
+                                self.node_map[iSurf][i + 1, j + 1] + 1,
+                                self.node_map[iSurf][i, j + 1] + 1,
+                            )
                         )
-                    )
-        handle.close()
