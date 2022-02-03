@@ -251,7 +251,6 @@ class DVGeometryMulti:
 
         # before we do anything, we need to create surface ADTs
         # for which the user provided triangulated meshes
-        # TODO Time these, we can do them once and keep the ADTs
         for comp in compNames:
 
             # check if we have a trimesh for this component
@@ -600,8 +599,9 @@ class DVGeometryMulti:
 
         """
 
-        # compute the total jacobian for this pointset
-        # TODO, we dont even need to do this
+        # Compute the total Jacobian for this point set
+        # TODO: this can be done without converting sparse matrices to dense
+        # or with a function for mat-vec products with all DVGeos
         self._computeTotalJacobian(ptSetName)
 
         # compute IC jacobians if they are out of date
@@ -864,9 +864,9 @@ class DVGeometryMulti:
             self.comps[comp].DVGeo.computeTotalJacobian(ptSetName)
 
             if self.comps[comp].DVGeo.JT[ptSetName] is not None:
-                # we convert to dense storage.
-                # this is probably not a good way to do this...
-                # TODO: use sparse storage for these...
+                # We convert to dense storage
+                # This is not the best way to do this
+                # TODO: use sparse storage for these
                 compJ = self.comps[comp].DVGeo.JT[ptSetName].todense().T
 
                 # loop over the entries and add one by one....
@@ -1792,7 +1792,6 @@ class CompIntersection:
         if self.projectFlag:
             seamBar += self.seamBarProj[ptSetName]
 
-        # TODO we can vectorize the k-loop
         for k in range(dIdPt.shape[0]):
             for i in range(len(factors)):
 
@@ -2699,15 +2698,15 @@ class CompIntersection:
             # We need to do actual copies, otherwise data will be overwritten if we compute another intersection.
             # We subtract one to make indices consistent with the Python 0-based indices.
             # We also need to transpose it since Python and Fortran use different orderings to store matrices in memory.
-            # TODO Bug here?
-            intNodes = np.array(
-                intersectionArrays[0]
-            ).T  # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
-            # intNodes = np.array(intersectionArrays[0]).T[0:-1] # last entry is 0,0,0 for some reason, CHECK THIS! Checked, still zero for a proper intersection.
+
+            intNodes = np.array(intersectionArrays[0]).T
+            # The last entry of intNodes is always 0,0,0 for some reason, even for a proper intersection
+            # This is probably a bug in pySurf
+            # It has no effect here because the computation relies on connectivity, not individual points
             barsConn = np.array(intersectionArrays[1]).T - 1
             parentTria = np.array(intersectionArrays[2]).T - 1
 
-            # save these intermediate variables
+            # Save these intermediate variables
             self.seamDict["barsConn"] = barsConn
             self.seamDict["parentTria"] = parentTria
 
@@ -2717,14 +2716,14 @@ class CompIntersection:
         # Release memory used by Fortran
         intersectionAPI.intersectionapi.releasememory()
 
-        # sort the output
+        # Sort the output
         newConn, newMap = tsurf_tools.FEsort(barsConn.tolist())
 
         # newConn might have multiple intersection curves
         if len(newConn) == 1:
             # we have a single intersection curve, just take this.
             seamConn = newConn[0].copy()
-        # we have multiple intersection curves...
+        # We have multiple intersection curves
         else:
             if self.intDir is None:
                 # we have multiple intersection curves but the user did not specify which direction to pick
@@ -2860,8 +2859,6 @@ class CompIntersection:
             # we need to reverse the order of our feature curves
             # and we will flip the elements too so keep track of this change
             breakList = np.mod(seamConn.shape[0] - np.array(breakList), seamConn.shape[0])
-            # TODO we had a bug in this line
-            # breakList = np.mod(seamConn.shape[0] - np.flip(breakList, axis=0), seamConn.shape[0])
 
             # and we need to invert the curves themselves
             seamConn = np.flip(seamConn, axis=0)
@@ -2872,10 +2869,6 @@ class CompIntersection:
 
         # also adjust the feature indices
         breakList = np.mod(breakList - breakList[0], nElem)
-
-        # do we need this?
-        # TODO figure this out?
-        # breakList.sort()
 
         # get the number of elements between each feature
         curveSizes = []
