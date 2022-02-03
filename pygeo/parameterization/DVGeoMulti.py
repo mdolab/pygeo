@@ -145,6 +145,7 @@ class DVGeometryMulti:
             In this case, the march direction for all curves is ``marchDir``.
             Alternatively, a dictionary can be provided.
             In this case, the keys are the curve names and the values are the march directions for each curve.
+            See ``marchDir`` for the definition of march direction.
 
         distTol : float, optional
             Distance tolerance to merge nearby nodes in the intersection curve.
@@ -153,8 +154,12 @@ class DVGeometryMulti:
             Flag to specify whether to project points to curves and surfaces after the deformation step.
 
         marchDir : int, optional
-            The direction in which feature curves are remeshed (if a list is provided for ``featureCurves``).
+            The side of the intersection where the feature curves are remeshed.
             The sign determines the direction and the value (1, 2, 3) specifies the axis (x, y, z).
+            If ``remeshBwd`` is True, the other side is also remeshed.
+            In this case, the march direction only serves to define the 'free end' of the feature curve.
+            If None, the entire curve is remeshed.
+            This argument is only used if a list is provided for ``featureCurves``.
 
         includeCurves : bool, optional
             Flag to specify whether to include features curves in the inverse-distance deformation.
@@ -180,7 +185,8 @@ class DVGeometryMulti:
             All points within the specified distance from the surface are considered to be on the surface.
 
         remeshBwd : bool, optional
-            Flag to specify whether to remesh the sides of feature curves that are inside the outer mold line.
+            Flag to specify whether to remesh feature curves on the side opposite that
+            which is specified by the march direction.
 
         """
 
