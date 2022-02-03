@@ -17,9 +17,6 @@ class DVGeometryMulti:
     comm : MPI.IntraComm, optional
        The communicator associated with this geometry object.
 
-    dh : float, optional
-        Finite-difference step size (not used).
-
     checkDVs : bool, optional
         Flag to check whether there are duplicate DV names in or across components.
 
@@ -28,7 +25,7 @@ class DVGeometryMulti:
 
     """
 
-    def __init__(self, comm=MPI.COMM_WORLD, dh=1e-6, checkDVs=True, debug=False):
+    def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False):
 
         self.compNames = []
         self.comps = OrderedDict()
@@ -36,13 +33,9 @@ class DVGeometryMulti:
         self.points = OrderedDict()
         self.comm = comm
         self.updated = {}
-        self.dh = dh
         self.intersectComps = []
         self.checkDVs = checkDVs
         self.debug = debug
-
-        # flag to keep track of IC jacobians
-        self.ICJupdated = False
 
     def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox={}):
         """
@@ -428,17 +421,13 @@ class DVGeometryMulti:
             self.comps[comp].DVGeo.setDesignVars(dvDict)
 
         # We need to give the updated coordinates to each of the
-        # intersectComps (if we have any) so they can update the new
-        # intersection curve
+        # intersectComps (if we have any) so they can update the new intersection curve
         for IC in self.intersectComps:
             IC.setSurface(self.comm)
 
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
             self.updated[pointSet] = False
-
-        # also set IC Jacobians as out of date
-        self.ICJupdated = False
 
     def getValues(self):
         """
@@ -456,7 +445,7 @@ class DVGeometryMulti:
         # we need to loop over each DVGeo object and get the DVs
         for comp in self.compNames:
             dvDictComp = self.comps[comp].DVGeo.getValues()
-            # we need to loop over these DVs.
+            # we need to loop over these DVs
             for k, v in dvDictComp.items():
                 dvDict[k] = v
 
@@ -501,7 +490,7 @@ class DVGeometryMulti:
         # now, project the points that were warped back onto the trimesh
         for IC in self.intersectComps:
             if IC.projectFlag and ptSetName in IC.points:
-                # new points will be modified in place using .... newPts array
+                # new points will be modified in place using the newPts array
                 IC.project(ptSetName, newPts)
 
         # set the pointset up to date
@@ -604,10 +593,6 @@ class DVGeometryMulti:
         # or with a function for mat-vec products with all DVGeos
         self._computeTotalJacobian(ptSetName)
 
-        # compute IC jacobians if they are out of date
-        # if not self.ICJupdated:
-        #     self._computeICJacobian()
-
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
             dIdpt = np.array([dIdpt])
@@ -637,15 +622,6 @@ class DVGeometryMulti:
         if self.debug:
             print(f"[{self.comm.rank}] finished project_b")
 
-        # get the pointset
-        # ptSet = self.points[ptSetName]
-
-        # number of design variables
-        # nDV = ptSet.jac.shape[1]
-
-        # We should keep track of the intersections that this pointset is close to. There is no point in including the intersections far from this pointset in the sensitivity calc as the derivative seeds will be just zeros there.
-        # ptSetICs = []
-
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
         for IC in self.intersectComps:
@@ -653,9 +629,6 @@ class DVGeometryMulti:
                 compSens = IC.sens(dIdpt, ptSetName, comm)
                 # save the sensitivities from the intersection stuff
                 compSensList.append(compSens)
-
-            # instead this saves the dIdx for this intersection in the IC object
-            # IC.sens(dIdpt, ptSetName, comm)
 
         if self.debug:
             print(f"[{self.comm.rank}] finished IC.sens")
@@ -671,10 +644,6 @@ class DVGeometryMulti:
         # projections and intersections are handled separately in compSens
         dIdxT_local = jac.T.dot(dIdpt.T)
         dIdx_local = dIdxT_local.T
-
-        # # now add the contributions from the intersections
-        # for IC in self.intersectComps:
-        #     dIdx_local = dIdx_local + IC.dIdx
 
         # If we have a comm, globaly reduce with sum
         if comm:
@@ -794,9 +763,6 @@ class DVGeometryMulti:
         # node coordinates and element connectivities.
         # Here, only the root proc reads the cgns file, broadcasts node and connectivity info.
 
-        # create the featurecurve dictionary
-        # curveConn = OrderedDict()
-
         # only root proc reads the file
         if self.comm.rank == 0:
             print(f"Reading file {filename}")
@@ -827,7 +793,6 @@ class DVGeometryMulti:
             barsConn = None
 
         # each proc gets the nodes and connectivities
-        # CHECK if this should be bcast or Bcast...
         nodes = self.comm.bcast(nodes, root=0)
         triConn = self.comm.bcast(triConn, root=0)
         triConnStack = self.comm.bcast(triConnStack, root=0)
@@ -869,11 +834,7 @@ class DVGeometryMulti:
                 # TODO: use sparse storage for these
                 compJ = self.comps[comp].DVGeo.JT[ptSetName].todense().T
 
-                # loop over the entries and add one by one....
-                # for i in range(len(ptSet.compMapFlat[comp])):
-                #     jac[ptSet.compMapFlat[comp][i], dvOffset:dvOffset+nDVComp] = compJ[i,:]
-
-                # or, do it (kinda) vectorized!
+                # do it (kinda) vectorized
                 jac[ptSet.compMapFlat[comp], dvOffset : dvOffset + nDVComp] = compJ[:, :]
 
             # increment the offset
@@ -881,205 +842,6 @@ class DVGeometryMulti:
 
         # now we can save this jacobian in the pointset
         ptSet.jac = jac
-
-    def _computeICJacobian(self):
-
-        # loop over design variables and compute jacobians for all ICs
-
-        # counts
-        nDV = self.getNDV()
-        nproc = self.comm.size
-        rank = self.comm.rank
-
-        # save the reference seams
-        for IC in self.intersectComps:
-            IC.seamRef = IC.seam.flatten()
-            IC.jac = np.zeros((len(IC.seamRef), nDV))
-
-        # We need to evaluate all the points on respective procs for FD computations
-
-        # determine how many DVs this proc will perturb.
-        n = 0
-        for iDV in range(nDV):
-            # I have to do this one.
-            if iDV % nproc == rank:
-                n += 1
-
-        # perturb the DVs on different procs and compute the new point coordinates.
-        # reqs = []
-        for iDV in range(nDV):
-            # I have to do this one.
-            if iDV % nproc == rank:
-
-                # TODO Use separate step sizes for different DVs?
-                dh = self.dh
-
-                # second order FD
-                dvSave = self._getIthDV(iDV)
-                self._setIthDV(iDV, dvSave + dh)
-
-                # fwd step
-                for IC in self.intersectComps:
-                    IC.setSurface(MPI.COMM_SELF)
-                    IC.seamPlus = IC.seam.copy()
-
-                # bwd step and the actual FD comp
-                self._setIthDV(iDV, dvSave - dh)
-                for IC in self.intersectComps:
-                    IC.setSurface(MPI.COMM_SELF)
-                    IC.seamMinus = IC.seam.copy()
-
-                    IC.jac[:, iDV] = (IC.seamPlus.flatten() - IC.seamMinus.flatten()) / (2 * dh)
-
-                # first order FD
-                # # Perturb the DV
-                # dvSave = self._getIthDV(iDV)
-                # self._setIthDV(iDV, dvSave+dh)
-
-                # # Do any required intersections:
-                # for IC in self.intersectComps:
-                #     IC.setSurface(MPI.COMM_SELF)
-                #     IC.jac[:,iDV] = (IC.seam.flatten() - IC.seamRef) / dh
-
-                # Reset the DV
-                self._setIthDV(iDV, dvSave)
-
-        # Restore the seams
-        for IC in self.intersectComps:
-            IC.seam = IC.seamRef.reshape(len(IC.seam), 3)
-
-        # also do the computation again on processors that perturbed the design
-        for iDV in range(nDV):
-            # I have to do this one.
-            if iDV % nproc == rank:
-                for IC in self.intersectComps:
-                    # we only need to do this if we are using the projection for this intersection
-                    # because we will need the intermediate values to be consistent when we are
-                    # propagating the derivative seeds backward
-                    if IC.projectFlag:
-                        IC.setSurface(MPI.COMM_SELF)
-
-        # loop over the DVs and scatter the perturbed points to original procs
-        for iDV in range(nDV):
-
-            # also bcast the intersection jacobians
-            for IC in self.intersectComps:
-
-                # create send/recv buffers
-                if iDV % nproc == rank:
-                    # we have to copy this because we need a contiguous array for bcast
-                    buf = IC.jac[:, iDV].copy()
-                else:
-                    # receive buffer for procs that will get the result
-                    buf = np.zeros(len(IC.seamRef))
-
-                # bcast the intersection jacobian directly from the proc that perturbed this DV
-                self.comm.Bcast([buf, len(IC.seamRef), MPI.DOUBLE], root=iDV % nproc)
-
-                # set the value in the procs that dont have it
-                if iDV % nproc != rank:
-                    IC.jac[:, iDV] = buf.copy()
-
-                # the slower version of the same bcast code
-                # IC.jac[:,i] = self.comm.bcast(IC.jac[:,i], root=i%nproc)
-
-        # set the flag
-        self.ICJupdated = True
-
-    def _setIthDV(self, iDV, val):
-        # this function sets the design variable. The order is important, and we count every DV.
-
-        nDVCum = 0
-        # get the number of DVs from different DVGeos to figure out which DVGeo owns this DV
-        for comp in self.compNames:
-            # get the DVGeo object
-            DVGeo = self.comps[comp].DVGeo
-            # get the number of DVs on this DVGeo
-            nDVComp = DVGeo.getNDV()
-            # increment the cumulative number of DVs
-            nDVCum += nDVComp
-
-            # if we went past the index of the DV we are interested in
-            if nDVCum > iDV:
-                # this DVGeo owns the DV we want to set.
-                xDV = DVGeo.getValues()
-
-                # take back the global counter
-                nDVCum -= nDVComp
-
-                # loop over the DVs owned by this geo
-                for k, v in xDV.items():
-                    nDVKey = len(v)
-
-                    # add the number of DVs for this DV key
-                    nDVCum += nDVKey
-
-                    # check if we went past the value we want to set
-                    if nDVCum > iDV:
-                        # take back the counter
-                        nDVCum -= nDVKey
-
-                        # this was an array...
-                        if nDVKey > 1:
-                            for i in range(nDVKey):
-                                nDVCum += 1
-                                if nDVCum > iDV:
-                                    # finally...
-                                    xDV[k][i] = val
-                                    DVGeo.setDesignVars(xDV)
-                                    return
-
-                        # this is the value we want to set!
-                        else:
-                            xDV[k] = val
-                            DVGeo.setDesignVars(xDV)
-                            return
-
-    def _getIthDV(self, iDV):
-        # this function sets the design variable. The order is important, and we count every DV.
-
-        nDVCum = 0
-        # get the number of DVs from different DVGeos to figure out which DVGeo owns this DV
-        for comp in self.compNames:
-            # get the DVGeo object
-            DVGeo = self.comps[comp].DVGeo
-            # get the number of DVs on this DVGeo
-            nDVComp = DVGeo.getNDV()
-            # increment the cumulative number of DVs
-            nDVCum += nDVComp
-
-            # if we went past the index of the DV we are interested in
-            if nDVCum > iDV:
-                # this DVGeo owns the DV we want to set.
-                xDV = DVGeo.getValues()
-
-                # take back the global counter
-                nDVCum -= nDVComp
-
-                # loop over the DVs owned by this geo
-                for k, v in xDV.items():
-                    nDVKey = len(v)
-
-                    # add the number of DVs for this DV key
-                    nDVCum += nDVKey
-
-                    # check if we went past the value we want to set
-                    if nDVCum > iDV:
-                        # take back the counter
-                        nDVCum -= nDVKey
-
-                        # this was an array...
-                        if nDVKey > 1:
-                            for i in range(nDVKey):
-                                nDVCum += 1
-                                if nDVCum > iDV:
-                                    # finally...
-                                    return xDV[k][i]
-
-                        # this is the value we want to get!
-                        else:
-                            # assume single DVs come in arrays...
-                            return xDV[k].copy()
 
 
 class component:
@@ -1276,7 +1038,7 @@ class CompIntersection:
 
                 # check if we need to flip
                 if msign * curveNodes[newConn[0][0]][mdir] > msign * curveNodes[newConn[0][1]][mdir]:
-                    # flip on both axes bec. pleiades complains when we flip both at the same time
+                    # flip on both axes
                     newConn = np.flip(newConn, axis=0)
                     newConn = np.flip(newConn, axis=1)
 
@@ -1571,19 +1333,11 @@ class CompIntersection:
                 # we need to figure out if we have any points mapped to curves on comp A
                 for curveName in allCurves:
 
-                    # initialize the flag to false
-                    # self.curveProjFlag[ptSetName][curveName] = False
-
                     # get the indices mapped to this curve, on this proc
                     idxs = self.curveProjIdx[ptSetName][curveName]
 
                     # call the utility function
                     nPtsTotal, nPtsProcs, curvePtCoords = self._commCurveProj(pts, idxs, comm)
-
-                    # check if we have at least one point globally that mapped to this curve
-                    # if nPtsTotal > 0:
-                    # set the flag, we do have projected points on this curve
-                    # self.curveProjFlag[ptSetName][curveName] = True
 
                     # save the displacements and points
                     self.curvePtCounts[ptSetName][curveName] = nPtsProcs
@@ -1631,47 +1385,7 @@ class CompIntersection:
             # coordinates of the original point
             rp = pts[j]
 
-            # Run the weighted interp:
-            # num = np.zeros(3)
-            # den = 0.0
-
-            # # we loop over elements and compute the elemnent-wise integral on each line
-            # for k in range(len(conn)):
-            #     # get the two end points for this line
-            #     r0 = coor[conn[k,0]]
-            #     r1 = coor[conn[k,1]]
-
-            #     # get the deltas for two end points
-            #     dr0 = dr[conn[k,0]]
-            #     dr1 = dr[conn[k,1]]
-
-            #     # compute a, b, and c coefficients
-            #     a = (r1[0]-r0[0])**2 + (r1[1]-r0[1])**2 + (r1[2]-r0[2])**2
-            #     b = 2 * ((r1[0]-r0[0])*(r0[0]-rp[0]) + (r1[1]-r0[1])*(r0[1]-rp[1]) + (r1[2]-r0[2])*(r0[2]-rp[2]))
-            #     c = (r0[0]-rp[0])**2 + (r0[1]-rp[1])**2 + (r0[2]-rp[2])**2
-
-            #     # compute some re-occurring terms
-            #     det = b*b - 4*a*c + 1e-32 # add an epsilon so that the determinant never becomes zero
-            #     sabc = np.sqrt(a+b+c)
-            #     sc   = np.sqrt(c)
-
-            #     # denominators on the integral evaluations
-            #     den1 = det*sabc
-            #     den2 = det*sc
-
-            #     # integral evaluations
-            #     eval1 = -2*(2*a +b)/den1 + 2*b/den2
-            #     eval2 = (2*b + 4*c)/den1 - 4*c/den2
-
-            #     # numerator gets two integrals with the delta components
-            #     num += (dr1-dr0) * eval2 + dr0 * eval1
-
-            #     # denominator only gets one integral
-            #     den += eval1
-
-            # interp = num / den
-
-            # Do it vectorized!
+            # Run vectorized weighted interpolation
 
             # get the two end points for the line elements
             r0 = coor[conn[:, 0]]
@@ -1850,19 +1564,6 @@ class CompIntersection:
         # now call the reverse differentiated seam computation
         compSens = self._getIntersectionSeam_b(seamBar, comm)
 
-        # instead, multiply this with the transpose of the jacobian
-        # seamBar = seamBar.reshape( [dIdPt.shape[0], 3*self.seam0.shape[0]] )
-
-        # sb = np.zeros((dIdPt.shape[0],3*self.seam0.shape[0] ))
-        # for i in range(dIdPt.shape[0]):
-        #     sb[i,:] = seamBar[i,:,:].flatten()
-
-        # dIdx = ((self.jac.T).dot(sb.T)).T
-
-        # now convert dIdx to dictionary
-
-        # self.dIdx = dIdx
-
         return compSens
 
     def project(self, ptSetName, newPts):
@@ -1880,10 +1581,8 @@ class CompIntersection:
         flagA = False
         flagB = False
         if len(self.curvesOnA) > 0:
-            # if len(self.surfIdxA[ptSetName]) > 0 and len(self.curvesOnA) > 0:
             flagA = True
         if len(self.curvesOnB) > 0:
-            # if len(self.surfIdxB[ptSetName]) > 0 and len(self.curvesOnB) > 0:
             flagB = True
 
         # do the pts on the intersection outside the loop
@@ -2031,7 +1730,8 @@ class CompIntersection:
 
         self.comm.Barrier()
 
-        # then, we warp all of the nodes that were affected by the intersection treatment, using the deltas from the previous project to curve step
+        # then, we warp all of the nodes that were affected by the intersection treatment
+        # using the deltas from the previous project to curve step
 
         if flagA:
             self._warpSurfPts(self.points[ptSetName][0], newPts, self.surfIdxA[ptSetName], curvePtCoordsA, deltaA)
@@ -2314,6 +2014,7 @@ class CompIntersection:
 
             else:
                 print("This should not happen")
+
             # now we have the local seeds of projection points for all functions in xyzProjb
 
             # get the indices of points we need to project
@@ -2439,7 +2140,7 @@ class CompIntersection:
             # this is the point we will warp
             ptCoords = pts0[j]
 
-            # the vectorized point-based warping we had from older versions.
+            # Vectorized point-based warping
             rr = ptCoords - curvePtCoords
             LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
             LdefoDist3 = LdefoDist ** 3
@@ -2472,7 +2173,7 @@ class CompIntersection:
                 # local seed for 3 coords
                 localVal = dIdPt[k, j]
 
-                # the vectorized point-based warping we had from older versions.
+                # Vectorized point-based warping
                 rr = ptCoords - curvePtCoords
                 LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
                 LdefoDist3 = LdefoDist ** 3
@@ -2595,7 +2296,6 @@ class CompIntersection:
         uvw = projDict["uvw"]
         dist2 = projDict["dist2"]
         normProjNotNorm = projDict["normProjNotNorm"]
-        # normProj = projDict["normProj"]
 
         # get the original and projected points too
         xyz = projDict["xyz"]
@@ -2754,7 +2454,7 @@ class CompIntersection:
                 # get the argmax
                 int_index = np.argmax(int_centers)
 
-                # this is the intersection seam!
+                # this is the intersection seam
                 seamConn = newConn[int_index].copy()
 
         # Get the number of elements
@@ -2882,7 +2582,7 @@ class CompIntersection:
             self.nElems = curveSizes[:]
 
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
-        curInd = 0  # curveSizes[0] #+curveSizes[1]
+        curInd = 0
         seam = np.zeros((0, 3))
         finalConn = np.zeros((0, 2), dtype="int32")
         for i in range(nFeature):
@@ -3328,7 +3028,7 @@ class CompIntersection:
         intNodesb = np.zeros((N, intNodes.shape[0], intNodes.shape[1]))
 
         # loop over each feature and propagate the sensitivities
-        curInd = 0  # curveSizes[0] +curveSizes[1]
+        curInd = 0
         curSeed = 0
         for i in range(nFeature):
             # just use the same number of points *2 for now
