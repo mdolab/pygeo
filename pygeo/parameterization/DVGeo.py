@@ -1222,16 +1222,22 @@ class DVGeometry:
         if self.name is not None:
             dvName = self.name + "_" + dvName
         if u is None:
+            if ptSetName is None:
+                raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
-            u, s, vt = np.linalg.svd(J_full)
+            u, s, _ = np.linalg.svd(J_full)
         else:
             if s is None:
                 s = 1.0
+
         # we are after a square matrix
         NDV = self.getNDV()
         if u.shape == (NDV, NDV):
-            self.DVComposite = geoDVComposite(dvName, NDV, u, scale=s)
+            if s is not None:
+                self.DVComposite = geoDVComposite(dvName, NDV, u, scale=s)
+            else:
+                self.DVComposite = geoDVComposite(dvName, NDV, u)
         else:
             raise ValueError(f"Something went wrong and the shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
 
@@ -2248,7 +2254,7 @@ class DVGeometry:
         self._finalize()
         self.curPtSet = ptSetName
 
-        if not (self.JT[ptSetName] is None):
+        if self.JT[ptSetName] is not None:
             return
 
         # compute the derivatives of the coeficients of this level wrt all of the design
@@ -2311,7 +2317,7 @@ class DVGeometry:
         self._finalize()
         self.curPtSet = ptSetName
 
-        if not (self.JT[ptSetName] is None):
+        if self.JT[ptSetName] is not None:
             return
 
         if self.isChild:
@@ -3460,7 +3466,7 @@ class DVGeometry:
         self._finalize()
         self.curPtSet = ptSetName
 
-        if not (self.JT[ptSetName] is None):
+        if self.JT[ptSetName] is not None:
             return
 
         if self.isChild:
