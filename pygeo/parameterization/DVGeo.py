@@ -1217,25 +1217,26 @@ class DVGeometry:
 
         return self.DV_listSectionLocal[dvName].nVal
 
-    def addGeoDVComposite(self, dvName, ptSetName=None, u=None, s=None):
+    def addGeoDVComposite(self, dvName, ptSetName=None, u=None, scale=None):
         self.useComposite = True
         if self.name is not None:
-            dvName = self.name + "_" + dvName
+            dvName = f"{self.name}_{dvName}"
         if u is None:
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full)
+            scale = np.sqrt(s)
         else:
-            if s is None:
-                s = 1.0
+            if scale is None:
+                scale = 1.0
 
         # we are after a square matrix
         NDV = self.getNDV()
         if u.shape == (NDV, NDV):
-            if s is not None:
-                self.DVComposite = geoDVComposite(dvName, NDV, u, scale=s)
+            if scale is not None:
+                self.DVComposite = geoDVComposite(dvName, NDV, u, scale=scale)
             else:
                 self.DVComposite = geoDVComposite(dvName, NDV, u)
         else:
