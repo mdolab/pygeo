@@ -571,7 +571,7 @@ class DVGeometry:
 
         return nAxis
 
-    def addPointSet(self, points, ptName, origConfig=True, comm=None, **kwargs):
+    def addPointSet(self, points, ptName, origConfig=True, **kwargs):
         """
         Add a set of coordinates to DVGeometry
 
@@ -593,10 +593,8 @@ class DVGeometry:
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
             exactly what they are doing.
-        comm : None
-            Comm that is associated with the added point set. Does not
-            work now, just added to be consistent with the API of
-            other DVGeo types."""
+
+        """
 
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
