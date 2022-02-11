@@ -172,7 +172,7 @@ class TestDVGeoMulti(unittest.TestCase):
         nNodes = pts.shape[0]
         dIdpt = np.zeros((nNodes * 3, nNodes, 3))
 
-        # Set the seeds to one in the following fashion
+        # Set the seeds to one such that we get individual derivatives for each coordinate of each point
         # The first function of interest gets the first coordinate of the first point
         # The second function gets the second coordinate of first point, and so on
         for i in range(nNodes):
