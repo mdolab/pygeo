@@ -1378,6 +1378,8 @@ class CompIntersection:
             # This will most likely break the mesh but allows
             # 1) the mesh to be output for visualization
             # 2) the optimization to continue after raising a fail flag
+            if self.comm.rank == 0:
+                print("The intersection topology has changed. The intersection will not be updated.")
             return delta
 
         # define an epsilon to avoid dividing by zero later on
