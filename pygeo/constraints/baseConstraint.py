@@ -61,6 +61,15 @@ class GeometricConstraint(ABC):
     def addConstraintsPyOpt(self, optProb, exclude_wrt=None):
         """
         Add the constraints to pyOpt, if the flag is set
+
+        Parameters
+        ----------
+        exclude_wrt : list or str
+            DV names to exclude from the w.r.t. list when adding the constraint
+            to the opt problem. Example usages for this would be a tail rotation
+            angle or flap deflection; these are operating configurations and
+            do not affect constraints such as a volume or thickness constraint.
+
         """
         if self.addToPyOpt:
             wrt_names = self.getVarNames()

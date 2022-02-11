@@ -36,9 +36,18 @@ class pyBlock:
        the plot 3d file explicitly become the control points and
        uniform (and symmetric) knot vectors are assumed
        everywhere. This ensures a seamless FFD.
+
+    symPlane : {"x", "y", or "z"}
+        if a coordinate direciton is provided, the code will duplicate
+        the FFD in the mirroring direction.
+
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
     """
 
-    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
 
         self.initType = initType
         self.FFD = False
@@ -50,7 +59,7 @@ class pyBlock:
         self.symmPlane = symmPlane
 
         if initType == "plot3d":
-            self._readPlot3D(fileName, FFD=FFD, **kwargs)
+            self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
         elif initType == "create":
             pass
         else:
