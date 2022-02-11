@@ -131,9 +131,22 @@ def pointReduce(points, nodeTol=1e-4):
     for ipt in range(N):
         dists.append(np.sqrt(np.dot(points[ipt], points[ipt])))
 
-    temp = np.array(dists)
-    temp.sort()
-    ind = np.argsort(dists)
+    # we need to round the distances to 8 decimals before sorting
+    # because 2 points might have "identical" distances to the origin,
+    # but they might differ on the 16 significant figure. As a result
+    # the argsort might flip their order even though the elements
+    # should not take over each other. By rounding them to 8
+    # significant figures, we somewhat guarantee that nodes that
+    # have similar distances to the origin dont get shuffled
+    # because of floating point errors
+    dists_rounded = np.around(dists, decimals=8)
+
+    # the "stable" sorting algorithm guarantees that entries
+    # with the same values dont overtake each other.
+    # The entries with identical distances are fully checked
+    # in the brute force check below.
+    ind = np.argsort(dists_rounded, kind="stable")
+
     i = 0
     cont = True
     newPoints = []
