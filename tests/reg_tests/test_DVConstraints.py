@@ -112,7 +112,8 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
             "multi": False,
         },
         {
-            # One deforming component FFD and a non-intersecting stationary component FFD
+            # One deforming component FFD and a stationary component FFD
+            # The components do not intersect
             "name": "multi",
             "child": False,
             "multi": True,

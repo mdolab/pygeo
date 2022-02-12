@@ -10,7 +10,8 @@ from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_
 
 class DVGeometryMulti:
     """
-    A class for manipulating multiple components using multiple FFDs.
+    A class for manipulating multiple components using multiple FFDs
+    and handling design changes near component intersections.
 
     Parameters
     ----------
