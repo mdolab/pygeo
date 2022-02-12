@@ -36,9 +36,18 @@ class pyBlock:
        the plot 3d file explicitly become the control points and
        uniform (and symmetric) knot vectors are assumed
        everywhere. This ensures a seamless FFD.
+
+    symPlane : {"x", "y", or "z"}
+        if a coordinate direciton is provided, the code will duplicate
+        the FFD in the mirroring direction.
+
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
     """
 
-    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
 
         self.initType = initType
         self.FFD = False
@@ -50,7 +59,7 @@ class pyBlock:
         self.symmPlane = symmPlane
 
         if initType == "plot3d":
-            self._readPlot3D(fileName, FFD=FFD, **kwargs)
+            self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
         elif initType == "create":
             pass
         else:
@@ -60,7 +69,7 @@ class pyBlock:
     #                     Initialization Types
     # ----------------------------------------------------------------------
 
-    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001):
+    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001, kmax=4):
         """Load a plot3D file and create the splines to go with each
         patch. See the pyBlock() docstring for more information.
 
@@ -159,9 +168,9 @@ class pyBlock:
                 return knots
 
             for ivol in range(nVol):
-                ku = min(4, sizes[ivol, 0])
-                kv = min(4, sizes[ivol, 1])
-                kw = min(4, sizes[ivol, 2])
+                ku = min(kmax, sizes[ivol, 0])
+                kv = min(kmax, sizes[ivol, 1])
+                kw = min(kmax, sizes[ivol, 2])
 
                 # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by

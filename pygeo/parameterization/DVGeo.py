@@ -57,6 +57,10 @@ class DVGeometry:
     child : bool
         Flag to indicate that this object is a child of parent DVGeo object
 
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
 
     Examples
     --------
@@ -77,7 +81,7 @@ class DVGeometry:
       >>>
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -113,7 +117,7 @@ class DVGeometry:
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None

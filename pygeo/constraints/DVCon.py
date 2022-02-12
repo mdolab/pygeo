@@ -195,7 +195,7 @@ class DVConstraints:
                         raise ValueError(msg)
         self.DVGeometries[name] = DVGeo
 
-    def addConstraintsPyOpt(self, optProb):
+    def addConstraintsPyOpt(self, optProb, exclude_wrt=None):
         """
         Add all constraints to the optProb object. Only constraints
         the that have the addToPyOpt flags are actually added.
@@ -215,7 +215,7 @@ class DVConstraints:
         for conTypeKey in self.constraints:
             constraint = self.constraints[conTypeKey]
             for key in constraint:
-                constraint[key].addConstraintsPyOpt(optProb)
+                constraint[key].addConstraintsPyOpt(optProb, exclude_wrt=exclude_wrt)
 
         # add the linear constraints separately, since they are treated a bit differently
         for key in self.linearCon:
