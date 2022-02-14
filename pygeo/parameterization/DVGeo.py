@@ -472,6 +472,7 @@ class DVGeometry:
 
             # Count total number of sections and check if volumes are aligned
             # face to face along refaxis direction
+            # Local indices size is (N_x,N_y,N_z)
             lIndex = self.FFD.topo.lIndex
             nSections = []
             for i in range(len(volOrd)):
@@ -485,7 +486,7 @@ class DVGeometry:
             # Loop through sections and compute node location
             place = 0
             for j, vol in enumerate(volOrd):
-                # sectionArr: indices of FFD points grouped by section
+                # sectionArr: indices of FFD points grouped by section - i.e. the first tensor index now == nSections
                 sectionArr = np.rollaxis(lIndex[vol], alignIndex, 0)
                 skip = 0
                 if j > 0:
@@ -1507,21 +1508,19 @@ class DVGeometry:
             rotType = self.axis[self.curveIDNames[ipt]]["rotType"]
             if rotType == 0:
                 bp_ = np.copy(base_pt)  # copy of original pointset - will not be rotated
-                if isinstance(ang, (float, int)):  # rotation active only if a non-default value is provided
-                    ang *= np.pi / 180  # conv to [rad]
-                    # Rotating the FFD according to inputs
-                    # The FFD points should now be aligned with the main system of reference
-                    base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
+
                 deriv = self.refAxis.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv)  # Normalize
                 new_vec = -np.cross(deriv, self.links_n[ipt])
+
                 if isComplex:
                     new_pts[ipt] = bp_ + new_vec * scale  # using "unrotated" bp_ vector
                 else:
                     new_pts[ipt] = np.real(bp_ + new_vec * scale)
 
-                if isinstance(ang, (float, int)):
-                    # Rotating to be aligned with main sys ref
+                if isinstance(ang, (float, int)):  # rotation active only if a non-default value is provided
+                    ang *= np.pi / 180  # conv to [rad]
+                    # Rotating the FFD according to inputs to be aligned with main sys ref
                     nv_ = np.copy(new_vec)
                     new_vec = geo_utils.rotVbyW(nv_, ax_dir, ang)
 
@@ -2922,10 +2921,11 @@ class DVGeometry:
             self.links_x.append(self.ptAttach[i] - self.refAxis.curves[self.curveIDs[i]](s[i]))
             deriv = self.refAxis.curves[self.curveIDs[i]].getDerivative(self.links_s[i])
             deriv /= geo_utils.euclideanNorm(deriv)  # Normalize
-            self.links_n.append(np.cross(deriv, self.links_x[-1]))
+            self.links_n.append(np.cross(deriv, self.links_x[-1]))  # using the element just appended to self.links_x
 
         self.links_x = np.array(self.links_x)
         self.links_s = np.array(self.links_s)
+        self.links_n = np.array(self.links_n)
         self.finalized = True
 
     def _setInitialValues(self):
@@ -4093,7 +4093,6 @@ class DVGeometry:
 
                     if abs(relErr) > h and abs(absErr) > h:
                         print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
-                    # print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
 
                 DVCountSpanLoc += 1
                 self.DV_listSpanwiseLocal[key].value[j] = refVal
