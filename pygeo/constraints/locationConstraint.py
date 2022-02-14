@@ -13,14 +13,14 @@ class LocationConstraint(GeometricConstraint):
     made. The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, len(coords.flatten()), lower, upper, scale, DVGeo, addToPyOpt)
         self.coords = coords
         self.scaled = scaled
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Now get the reference lengths
         self.X0 = np.zeros(self.nCon)
