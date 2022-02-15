@@ -763,7 +763,9 @@ class pyBlock:
     #             Embedded Geometry Functions
     # ----------------------------------------------------------------------
 
-    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, faceFreeze=None, eps=1e-12, **kwargs):
+    def attachPoints(
+        self, coordinates, ptSetName, interiorOnly=False, faceFreeze=None, eps=1e-12, embTol=1e-10, **kwargs
+    ):
         """Embed a set of coordinates into the volumes. This is the
         main high level function that is used by DVGeometry when
         pyBlock is used as an FFD.
@@ -785,6 +787,9 @@ class pyBlock:
             will not be able to move in DVGeometry.
         eps : float
             Physical tolerance to which to converge Newton search
+        embTol : float
+            Tolerance on the distance between projected and closest point.
+            Determines if a point is embedded or not in the FFD volume if interiorOnly is True
         kwargs : dict
             kwargs pass through to the actual projectPoints() function
         """
@@ -792,15 +797,15 @@ class pyBlock:
         # Project Points, if some were actually passed in:
         if coordinates is not None:
             if not interiorOnly:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=True, eps=eps, **kwargs)
+                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=True, eps=eps, embTol=embTol, **kwargs)
                 self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
             else:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False, eps=eps, **kwargs)
+                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False, eps=eps, embTol=embTol, **kwargs)
 
                 mask = []
                 for i in range(len(D)):
                     Dnrm = np.linalg.norm(D[i])
-                    if Dnrm < 50 * eps:  # Sufficiently inside
+                    if Dnrm < embTol:  # Sufficiently inside
                         mask.append(i)
 
                 # Now that we have the mask we can create the embedded volume
@@ -811,7 +816,7 @@ class pyBlock:
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100):
+    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100, embTol=1e-10):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
@@ -832,12 +837,15 @@ class pyBlock:
             Physical tolerance to which to converge Newton search
         checkErrors : bool
             Flag to print out the error is points have not been projected
-            to tolerance eps.
+            to the tolerance defined by embTol.
         nIter : int
             Maximum number of Newton iterations to perform. The
             default of 100 should be sufficient for points that
             **actually** lie inside the volume, except for
             pathological or degenerate FFD volumes
+        embTol : float
+            Tolerance on the distance between projected and closest point.
+            Caution: Operations will continue even if a point does not match this tolerance.
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
@@ -874,7 +882,7 @@ class pyBlock:
 
                 # Now, if D0 is close enough to our tolerance, we can
                 # exit the loop since we know we won't do any better
-                if D0Norm < eps * 50:
+                if D0Norm < embTol:
                     break
             # end for (volume loop)
 
@@ -898,7 +906,7 @@ class pyBlock:
                     DMax = nrm
 
                 DRms += nrm ** 2
-                if nrm > eps * 50:
+                if nrm > embTol:
                     counter += 1
                     badPts.append([x0[i], D[i]])
 
