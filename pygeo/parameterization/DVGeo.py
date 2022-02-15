@@ -57,6 +57,10 @@ class DVGeometry:
     child : bool
         Flag to indicate that this object is a child of parent DVGeo object
 
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
 
     Examples
     --------
@@ -77,12 +81,12 @@ class DVGeometry:
       >>>
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
-        self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+        self.DV_listSpanwiseLocal = OrderedDict()  # Local Spanwise Design Variable List
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
@@ -113,7 +117,7 @@ class DVGeometry:
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None
@@ -593,7 +597,9 @@ class DVGeometry:
             Flag determine if the coordinates are projected into the
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
-            exactly what they are doing."""
+            exactly what they are doing.
+
+        """
 
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
@@ -1322,7 +1328,7 @@ class DVGeometry:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dictionary are simply ignored.
         """
 
         # Coefficients must be complexifed from here on if complex
@@ -2409,6 +2415,7 @@ class DVGeometry:
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
+
         """
         if ignoreVars is None:
             ignoreVars = set()
@@ -2646,7 +2653,7 @@ class DVGeometry:
         else:
             raise ValueError(f"Type {outputType} not recognized. Must be either 'iges' or 'tecplot'")
 
-    def getLocalIndex(self, iVol):
+    def getLocalIndex(self, iVol, comp=None):
         """Return the local index mapping that points to the global
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()

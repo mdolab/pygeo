@@ -16,7 +16,7 @@ class ColinearityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, axis, origin, coords, lower, upper, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, axis, origin, coords, lower, upper, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, len(coords), lower, upper, scale, DVGeo, addToPyOpt)
 
         # create the output array
@@ -29,8 +29,8 @@ class ColinearityConstraint(GeometricConstraint):
 
         # Now embed the coordinates and origin into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.origin, self.name + "origin")
-        self.DVGeo.addPointSet(self.coords, self.name + "coords")
+        self.DVGeo.addPointSet(self.origin, self.name + "origin", compNames=compNames)
+        self.DVGeo.addPointSet(self.coords, self.name + "coords", compNames=compNames)
 
     def evalFunctions(self, funcs, config):
         """

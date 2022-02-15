@@ -1006,6 +1006,26 @@ class RegTestPyGeo(unittest.TestCase):
         os.remove(axesPath + "_parent.dat")
         os.remove(axesPath + "_child000.dat")
 
+    def train_ffdSplineOrder(self, train=True, refDeriv=True):
+        self.test_ffdSplineOrder(train=train, refDeriv=refDeriv)
+
+    def test_ffdSplineOrder(self, train=False, refDeriv=False):
+        """
+        Test custom FFD spline order
+        """
+        refFile = os.path.join(self.base_path, "ref/test_ffd_spline_order.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test custom FFD spline order")
+            ffdfile = os.path.join(self.base_path, "../../input_files/deform_geometry_ffd.xyz")
+            DVGeo = DVGeometry(ffdfile, kmax=6)
+
+            # create local DVs
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=3)
+
 
 if __name__ == "__main__":
     unittest.main()
