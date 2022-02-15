@@ -772,7 +772,7 @@ class pyBlock:
     #             Embedded Geometry Functions
     # ----------------------------------------------------------------------
 
-    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, eps=1e-12, embTol=1e-10, **kwargs):
+    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, embTol=1e-10, **kwargs):
         """Embed a set of coordinates into the volumes. This is the
         main high level function that is used by DVGeometry when
         pyBlock is used as an FFD.
@@ -785,8 +785,6 @@ class pyBlock:
             The name given to this set of coordinates.
         interiorOnly : bool
             Project only points that lie fully inside the volume
-        eps : float
-            Physical tolerance to which to converge Newton search
         embTol : float
             Tolerance on the distance between projected and closest point.
             Determines if a point is embedded or not in the FFD volume if interiorOnly is True
@@ -796,6 +794,7 @@ class pyBlock:
 
         # Unpack kwargs
         nIter = kwargs.get("nIter", 100)
+        eps = kwargs.get("eps", 1e-12)
 
         # Project Points, if some were actually passed in:
         if coordinates is not None:

@@ -613,6 +613,8 @@ class DVGeometry:
 
         """
 
+        embTol = kwargs.get("embTol", 1e-10)  # see pyBlock.attachPoints() documentation
+
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
         self.zeroJacobians([ptName])
@@ -629,9 +631,9 @@ class DVGeometry:
 
         # Project the last set of points into the volume
         if self.isChild:
-            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=True, **kwargs)
+            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=True, embTol=embTol, **kwargs)
         else:
-            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=False)
+            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=False, embTol=embTol, **kwargs)
 
         if origConfig:
             self.FFD.coef = tmpCoef
