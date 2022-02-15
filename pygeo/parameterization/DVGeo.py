@@ -50,12 +50,24 @@ class DVGeometry:
        filename of FFD file. This must be a ascii formatted plot3D file
        in fortran ordering.
 
-    complex : bool
+    isComplex : bool
         Make the entire object complex. This should **only** be used when
         debugging the entire tool-chain with the complex step method.
 
     child : bool
         Flag to indicate that this object is a child of parent DVGeo object
+
+    faceFreeze : dict
+        A dictionary of lists of strings specifying which faces should be
+        'frozen'. Each dictionary represents one block in the FFD.
+        For example if faceFreeze =['0':['iLow'],'1':[]], then the
+        plane of control points corresponding to i=0, and i=1, in block '0'
+        will not be able to move in DVGeometry.
+
+    name : str
+        This is prepended to every DV name for ensuring design variables names are
+        unique to pyOptsparse. Only useful when using multiple DVGeos with
+        TriangulatedSurfaceConstraint()
 
     kmax : int
         maximum order of the splines used for the underlying formulation.
