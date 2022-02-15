@@ -1218,6 +1218,7 @@ class DVGeometry:
         return self.DV_listSectionLocal[dvName].nVal
 
     def addGeoDVComposite(self, dvName, ptSetName=None, u=None, scale=None):
+        NDV = self.getNDV()
         self.useComposite = True
         if self.name is not None:
             dvName = f"{self.name}_{dvName}"
@@ -1228,12 +1229,13 @@ class DVGeometry:
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full)
             scale = np.sqrt(s)
+            # normalize the scaling
+            scale = scale * (NDV / np.sum(scale))
         else:
             if scale is None:
                 scale = 1.0
 
         # we are after a square matrix
-        NDV = self.getNDV()
         if u.shape == (NDV, NDV):
             if scale is not None:
                 self.DVComposite = geoDVComposite(dvName, NDV, u, scale=scale)
