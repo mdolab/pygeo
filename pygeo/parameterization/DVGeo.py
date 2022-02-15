@@ -1222,7 +1222,14 @@ class DVGeometry:
         self.useComposite = True
         if self.name is not None:
             dvName = f"{self.name}_{dvName}"
-        if u is None:
+        if u is not None:
+            # we are after a square matrix
+            if u.shape != (NDV, NDV):
+                raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+            if scale is None:
+                raise ValueError("If u is provided, then scale must also be provided.")
+            s = None
+        else:
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
@@ -1231,18 +1238,8 @@ class DVGeometry:
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
-        else:
-            if scale is None:
-                scale = 1.0
 
-        # we are after a square matrix
-        if u.shape == (NDV, NDV):
-            if scale is not None:
-                self.DVComposite = geoDVComposite(dvName, NDV, u, scale=scale)
-            else:
-                self.DVComposite = geoDVComposite(dvName, NDV, u)
-        else:
-            raise ValueError(f"Something went wrong and the shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+        self.DVComposite = geoDVComposite(dvName, NDV, u, scale=scale, s=s)
 
     def addGeoDVSectionLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")

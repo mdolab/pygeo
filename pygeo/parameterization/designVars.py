@@ -302,7 +302,7 @@ class geoDVSectionLocal:
 
 
 class geoDVComposite(object):
-    def __init__(self, dvName, nVal, u, scale=1.0):
+    def __init__(self, dvName, nVal, u, scale=1.0, s=None):
         """
         Create a set of design variables which are linear combinations of existing design variables.
         """
@@ -313,3 +313,4 @@ class geoDVComposite(object):
         self.upper = None
         self.scale = convertTo1D(scale, self.nVal)
         self.u = u
+        self.s = s
