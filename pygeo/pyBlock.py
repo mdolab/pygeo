@@ -792,20 +792,16 @@ class pyBlock:
             kwargs pass through to the actual projectPoints() function
         """
 
-        # Unpack kwargs
-        nIter = kwargs.get("nIter", 100)
-        eps = kwargs.get("eps", 1e-12)
-
         # Project Points, if some were actually passed in:
         if coordinates is not None:
             if not interiorOnly:
                 volID, u, v, w, D = self.projectPoints(
-                    coordinates, eps=eps, checkErrors=True, nIter=nIter, embTol=embTol
+                    coordinates, checkErrors=True, embTol=embTol, **kwargs
                 )
                 self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
             else:
                 volID, u, v, w, D = self.projectPoints(
-                    coordinates, eps=eps, checkErrors=False, nIter=nIter, embTol=embTol
+                    coordinates, checkErrors=False, embTol=embTol, **kwargs
                 )
 
                 mask = []
