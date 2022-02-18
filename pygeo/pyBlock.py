@@ -818,7 +818,7 @@ class pyBlock:
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100, embTol=1e-10):
+    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100, embTol=1e-10, **kwargs):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
