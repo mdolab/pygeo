@@ -787,9 +787,13 @@ class pyBlock:
             Project only points that lie fully inside the volume
         embTol : float
             Tolerance on the distance between projected and closest point.
-            Determines if a point is embedded or not in the FFD volume if interiorOnly is True
-        kwargs : dict
-            kwargs pass through to the actual projectPoints() function
+            Determines if a point is embedded or not in the FFD volume if interiorOnly is True.
+        eps : float
+            Physical tolerance to which to converge Newton search
+        nIter : int
+            Maximum number of Newton iterations to perform. The default of 100 should be sufficient for points
+            that **actually** lie inside the volume, except for pathological or degenerate FFD volumes.
+
         """
 
         # Project Points, if some were actually passed in:
@@ -834,16 +838,10 @@ class pyBlock:
         checkErrors : bool
             Flag to print out the error is points have not been projected
             to the tolerance defined by embTol.
-        embTol : float
-            Tolerance on the distance between projected and closest point.
-            Caution: Operations will continue even if a point does not match this tolerance.
-        eps : float
-            Physical tolerance to which to converge Newton search
-        nIter : int
-            Maximum number of Newton iterations to perform. The
-            default of 100 should be sufficient for points that
-            **actually** lie inside the volume, except for
-            pathological or degenerate FFD volumes
+
+        See Also
+        --------
+        See the attachPoints() docstring for the other parameters.
 
         """
 
