@@ -613,6 +613,9 @@ class DVGeometry:
 
         """
 
+        # compNames is only needed for DVGeometryMulti, so remove it if passed
+        kwargs.pop("compNames", None)
+
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
         self.zeroJacobians([ptName])
