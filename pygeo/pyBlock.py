@@ -792,20 +792,16 @@ class pyBlock:
             kwargs pass through to the actual projectPoints() function
         """
 
-        # Unpack kwargs
-        nIter = kwargs.get("nIter", 100)
-        eps = kwargs.get("eps", 1e-12)
-
         # Project Points, if some were actually passed in:
         if coordinates is not None:
             if not interiorOnly:
                 volID, u, v, w, D = self.projectPoints(
-                    coordinates, eps=eps, checkErrors=True, nIter=nIter, embTol=embTol
+                    coordinates, checkErrors=True, embTol=embTol, **kwargs
                 )
                 self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
             else:
                 volID, u, v, w, D = self.projectPoints(
-                    coordinates, eps=eps, checkErrors=False, nIter=nIter, embTol=embTol
+                    coordinates, checkErrors=False, embTol=embTol, **kwargs
                 )
 
                 mask = []
@@ -822,7 +818,7 @@ class pyBlock:
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100, embTol=1e-10):
+    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100, embTol=1e-10, **kwargs):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.

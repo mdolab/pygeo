@@ -219,7 +219,7 @@ def testSensitivitiesD8(DVGeo, refDeriv, handler):
 
     # add points to the geometry object
     ptName = "testPoints"
-    DVGeo.addPointSet(points, ptName, faceFreeze={})
+    DVGeo.addPointSet(points, ptName)
 
     # generate dIdPt
     nPt = nPoints * 3
