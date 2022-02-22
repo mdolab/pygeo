@@ -772,7 +772,7 @@ class pyBlock:
     #             Embedded Geometry Functions
     # ----------------------------------------------------------------------
 
-    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, embTol=1e-10, **kwargs):
+    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, embTol=1e-10, nIter=100, eps=1e-12, **kwargs):
         """Embed a set of coordinates into the volumes. This is the
         main high level function that is used by DVGeometry when
         pyBlock is used as an FFD.
@@ -795,10 +795,10 @@ class pyBlock:
         # Project Points, if some were actually passed in:
         if coordinates is not None:
             if not interiorOnly:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=True, embTol=embTol, **kwargs)
+                volID, u, v, w, D = self.projectPoints(coordinates, True, embTol, eps, nIter)
                 self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
             else:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False, embTol=embTol, **kwargs)
+                volID, u, v, w, D = self.projectPoints(coordinates, False, embTol, eps, nIter)
 
                 mask = []
                 for i in range(len(D)):
@@ -814,7 +814,7 @@ class pyBlock:
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100, embTol=1e-10):
+    def projectPoints(self, x0, checkErrors, embTol, eps, nIter):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
@@ -831,19 +831,20 @@ class pyBlock:
         ----------
         x0 : array of points (Nx3 array)
             The list or array of points to use
-        eps : float
-            Physical tolerance to which to converge Newton search
         checkErrors : bool
             Flag to print out the error is points have not been projected
             to the tolerance defined by embTol.
+        embTol : float
+            Tolerance on the distance between projected and closest point.
+            Caution: Operations will continue even if a point does not match this tolerance.
+        eps : float
+            Physical tolerance to which to converge Newton search
         nIter : int
             Maximum number of Newton iterations to perform. The
             default of 100 should be sufficient for points that
             **actually** lie inside the volume, except for
             pathological or degenerate FFD volumes
-        embTol : float
-            Tolerance on the distance between projected and closest point.
-            Caution: Operations will continue even if a point does not match this tolerance.
+
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
