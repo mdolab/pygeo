@@ -1,8 +1,29 @@
 import numpy as np
+from . import euclideanNorm
 
 # --------------------------------------------------------------
 #                Polygon geometric functions
 # --------------------------------------------------------------
+
+
+def areaTri(p0, p1, p2):
+    """
+    compute area based on three point arrays
+    """
+    # convert p1 and p2 to v1 and v2
+    v1 = p1 - p0
+    v2 = p2 - p0
+
+    # compute the areas
+    areaVec = np.cross(v1, v2)
+
+    # area = np.linalg.norm(areaVec,axis=1)
+    area = 0
+    for i in range(len(areaVec)):
+        area += euclideanNorm(areaVec[i, :])
+
+    # return np.sum(area)/2.0
+    return area / 2.0
 
 
 def areaPoly(nodes):

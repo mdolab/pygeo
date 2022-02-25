@@ -127,6 +127,24 @@ def calculateRadii(centroid, p0, v1, v2):
     return innerRadius, outerRadius
 
 
+def computeDistToAxis(origin, coords, axis, dtype="d"):
+    """
+    compute the distance of coords from the defined axis.
+    """
+    # Compute the direction from each point to the origin
+    dirVec = origin - coords
+
+    # compute the cross product with the desired axis. Cross product
+    # will be zero if the direction vector is the same as the axis
+    resultDir = np.cross(axis, dirVec)
+
+    X = np.zeros(len(coords), dtype)
+    for i in range(len(resultDir)):
+        X[i] = euclideanNorm(resultDir[i, :])
+
+    return X
+
+
 # --------------------------------------------------------------
 #            Edge distance Function
 # --------------------------------------------------------------

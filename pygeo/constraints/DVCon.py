@@ -2832,7 +2832,7 @@ class DVConstraints:
               curvature. lower and upper refer to the physical curvatures.
 
         KSCoeff : float
-            The coefficient for KS function when curvatyreType=KSmean.
+            The coefficient for KS function when curvatureType=KSmean.
             This controls how close the KS function approximates the original
             functions. One should select a KSCoeff such that the printed "Reference curvature"
             is only slightly larger than the printed "Max curvature" for the baseline surface.
