@@ -3170,7 +3170,6 @@ class DVConstraints:
             config=config,
         )
 
-
     def _checkDVGeo(self, name="default"):
 
         """check if DVGeo exists"""
