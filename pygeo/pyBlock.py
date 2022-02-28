@@ -798,20 +798,19 @@ class pyBlock:
 
         # Project Points, if some were actually passed in:
         if coordinates is not None:
-            if not interiorOnly:
-                volID, u, v, w, D = self.projectPoints(coordinates, True, embTol, eps, nIter)
-                self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
-            else:
-                volID, u, v, w, D = self.projectPoints(coordinates, False, embTol, eps, nIter)
+            checkErrors = not interiorOnly
+            mask = None
+            volID, u, v, w, D = self.projectPoints(coordinates, checkErrors, embTol, eps, nIter)
 
+            if interiorOnly:
+                # Create the mask before creating the embedded volume
                 mask = []
                 for i in range(len(D)):
                     Dnrm = np.linalg.norm(D[i])
                     if Dnrm < embTol:  # Sufficiently inside
                         mask.append(i)
 
-                # Now that we have the mask we can create the embedded volume
-                self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
+            self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
         # end if (Coordinate not none check)
 
     # ----------------------------------------------------------------------
