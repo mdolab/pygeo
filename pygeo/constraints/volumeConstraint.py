@@ -4,10 +4,10 @@
 import numpy as np
 from .baseConstraint import GeometricConstraint
 from ..geo_utils.polygon import (
-    evalVolumeHex,
-    evalVolumeHex_b,
-    compute_triangulated_volume,
-    compute_triangulated_volume_b,
+    volumeHex,
+    volumeHex_b,
+    volumeTriangulatedMesh,
+    volumeTriangulatedMesh_b,
 )
 
 
@@ -91,7 +91,7 @@ class VolumeConstraint(GeometricConstraint):
         x = self.coords.reshape((self.nSpan, self.nChord, 2, 3))
         for j in range(self.nChord - 1):
             for i in range(self.nSpan - 1):
-                Volume += evalVolumeHex(
+                Volume += volumeHex(
                     x[i, j, 0],
                     x[i + 1, j, 0],
                     x[i, j + 1, 0],
@@ -117,7 +117,7 @@ class VolumeConstraint(GeometricConstraint):
         xb = np.zeros_like(x)
         for j in range(self.nChord - 1):
             for i in range(self.nSpan - 1):
-                evalVolumeHex_b(
+                volumeHex_b(
                     x[i, j, 0],
                     x[i + 1, j, 0],
                     x[i, j + 1, 0],
@@ -185,7 +185,7 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         self.surf_p1 = self.DVGeo.update(self.surface_name + "_p1", config=config).reshape(self.surf_size, 3)
         self.surf_p2 = self.DVGeo.update(self.surface_name + "_p2", config=config).reshape(self.surf_size, 3)
 
-        volume = compute_triangulated_volume(self.surf_p0, self.surf_p1, self.surf_p2)
+        volume = volumeTriangulatedMesh(self.surf_p0, self.surf_p1, self.surf_p2)
         if self.vol_0 is None:
             self.vol_0 = volume
 
@@ -214,7 +214,7 @@ class TriangulatedVolumeConstraint(GeometricConstraint):
         tmpTotal = {}
 
         # assume evalFunctions was called just prior and grad was stashed on rank=0
-        grad_vol = compute_triangulated_volume_b(self.surf_p0, self.surf_p1, self.surf_p2)
+        grad_vol = volumeTriangulatedMesh_b(self.surf_p0, self.surf_p1, self.surf_p2)
         if self.scaled:
             tmp_p0 = self.DVGeo.totalSensitivity(grad_vol[0] / self.vol_0, self.surface_name + "_p0", config=config)
             tmp_p1 = self.DVGeo.totalSensitivity(grad_vol[1] / self.vol_0, self.surface_name + "_p1", config=config)

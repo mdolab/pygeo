@@ -85,15 +85,17 @@ def volumePoly(lowerNodes, upperNodes):
         n[3] = upperNodes[ii]
         n[4] = uc
         n[5] = upperNodes[np.mod(ii + 1, ln)]
-        volume += volTetra([n[3], n[5], n[4], n[1]])
-        volume += volTetra([n[5], n[2], n[1], n[0]])
-        volume += volTetra([n[0], n[3], n[1], n[5]])
+        volume += volumeTetra([n[3], n[5], n[4], n[1]])
+        volume += volumeTetra([n[5], n[2], n[1], n[0]])
+        volume += volumeTetra([n[0], n[3], n[1], n[5]])
 
     return volume
 
 
-def volTetra(nodes):
-    # Compute volume of tetrahedra given by 4 nodes
+def volumeTetra(nodes):
+    """
+    Compute volume of tetrahedra given by 4 nodes
+    """
     a = nodes[1] - nodes[0]
     b = nodes[2] - nodes[0]
     c = nodes[3] - nodes[0]
@@ -103,7 +105,7 @@ def volTetra(nodes):
     return V
 
 
-def volpym(a, b, c, d, p):
+def volumePyramid(a, b, c, d, p):
     """
     Compute volume of a square-based pyramid
     """
@@ -120,7 +122,7 @@ def volpym(a, b, c, d, p):
     return volume
 
 
-def volpym_b(a, b, c, d, p, ab, bb, cb, db, pb):
+def volumePyramid_b(a, b, c, d, p, ab, bb, cb, db, pb):
     """
     Compute the reverse-mode derivative of the square-based
     pyramid. This has been copied from reverse-mode AD'ed tapenade
@@ -167,7 +169,7 @@ def volpym_b(a, b, c, d, p, ab, bb, cb, db, pb):
     pb[2] = pb[2] + tempb13
 
 
-def evalVolumeHex(x0, x1, x2, x3, x4, x5, x6, x7):
+def volumeHex(x0, x1, x2, x3, x4, x5, x6, x7):
     """
     Evaluate the volume of the hexahedral volume defined by the
     the 8 corners.
@@ -180,18 +182,18 @@ def evalVolumeHex(x0, x1, x2, x3, x4, x5, x6, x7):
 
     p = np.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
     V = 0.0
-    V += volpym(x0, x1, x3, x2, p)
-    V += volpym(x0, x2, x6, x4, p)
-    V += volpym(x0, x4, x5, x1, p)
-    V += volpym(x1, x5, x7, x3, p)
-    V += volpym(x2, x3, x7, x6, p)
-    V += volpym(x4, x6, x7, x5, p)
+    V += volumePyramid(x0, x1, x3, x2, p)
+    V += volumePyramid(x0, x2, x6, x4, p)
+    V += volumePyramid(x0, x4, x5, x1, p)
+    V += volumePyramid(x1, x5, x7, x3, p)
+    V += volumePyramid(x2, x3, x7, x6, p)
+    V += volumePyramid(x4, x6, x7, x5, p)
     V /= 6.0
 
     return V
 
 
-def evalVolumeHex_b(x0, x1, x2, x3, x4, x5, x6, x7, x0b, x1b, x2b, x3b, x4b, x5b, x6b, x7b):
+def volumeHex_b(x0, x1, x2, x3, x4, x5, x6, x7, x0b, x1b, x2b, x3b, x4b, x5b, x6b, x7b):
     """
     Evaluate the derivative of the volume defined by the 8
     coordinates in the array x.
@@ -209,12 +211,12 @@ def evalVolumeHex_b(x0, x1, x2, x3, x4, x5, x6, x7, x0b, x1b, x2b, x3b, x4b, x5b
 
     p = np.average([x0, x1, x2, x3, x4, x5, x6, x7], axis=0)
     pb = np.zeros(3)
-    volpym_b(x0, x1, x3, x2, p, x0b, x1b, x3b, x2b, pb)
-    volpym_b(x0, x2, x6, x4, p, x0b, x2b, x6b, x4b, pb)
-    volpym_b(x0, x4, x5, x1, p, x0b, x4b, x5b, x1b, pb)
-    volpym_b(x1, x5, x7, x3, p, x1b, x5b, x7b, x3b, pb)
-    volpym_b(x2, x3, x7, x6, p, x2b, x3b, x7b, x6b, pb)
-    volpym_b(x4, x6, x7, x5, p, x4b, x6b, x7b, x5b, pb)
+    volumePyramid_b(x0, x1, x3, x2, p, x0b, x1b, x3b, x2b, pb)
+    volumePyramid_b(x0, x2, x6, x4, p, x0b, x2b, x6b, x4b, pb)
+    volumePyramid_b(x0, x4, x5, x1, p, x0b, x4b, x5b, x1b, pb)
+    volumePyramid_b(x1, x5, x7, x3, p, x1b, x5b, x7b, x3b, pb)
+    volumePyramid_b(x2, x3, x7, x6, p, x2b, x3b, x7b, x6b, pb)
+    volumePyramid_b(x4, x6, x7, x5, p, x4b, x6b, x7b, x5b, pb)
 
     pb /= 8.0
     x0b += pb
@@ -227,7 +229,7 @@ def evalVolumeHex_b(x0, x1, x2, x3, x4, x5, x6, x7, x0b, x1b, x2b, x3b, x4b, x5b
     x7b += pb
 
 
-def compute_triangulated_volume(p0, p1, p2):
+def volumeTriangulatedMesh(p0, p1, p2):
     """
     Compute the volume of a triangulated volume by computing
     the signed areas.
@@ -265,7 +267,7 @@ def compute_triangulated_volume(p0, p1, p2):
     return volume
 
 
-def compute_triangulated_volume_b(p0, p1, p2):
+def volumeTriangulatedMesh_b(p0, p1, p2):
     """
     Compute the gradients of the volume with respect to
     the mesh vertices.
