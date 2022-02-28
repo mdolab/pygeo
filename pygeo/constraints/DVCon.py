@@ -18,6 +18,7 @@ from .circularityConstraint import CircularityConstraint
 from .planarityConstraint import PlanarityConstraint
 from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
 from ..geo_utils.misc import convertTo2D
+from ..geo_utils.file_io import readPlot3DSurfFile
 
 
 class DVConstraints:
@@ -128,7 +129,7 @@ class DVConstraints:
                 v2 = np.array(surf[2])
             elif isinstance(surf, str):
                 # Load the surf as a plot3d file
-                p0, v1, v2 = self._readPlot3DSurfFile(surf)
+                p0, v1, v2 = readPlot3DSurfFile(surf)
 
             elif isinstance(surf, pyGeo):  # Assume it's a pyGeo surface
                 p0, v1, v2 = self._generateDiscreteSurface(surf)
@@ -2832,7 +2833,7 @@ class DVConstraints:
               curvature. lower and upper refer to the physical curvatures.
 
         KSCoeff : float
-            The coefficient for KS function when curvatyreType=KSmean.
+            The coefficient for KS function when curvatureType=KSmean.
             This controls how close the KS function approximates the original
             functions. One should select a KSCoeff such that the printed "Reference curvature"
             is only slightly larger than the printed "Max curvature" for the baseline surface.
@@ -3168,50 +3169,6 @@ class DVConstraints:
             DVGeo=DVGeo,
             config=config,
         )
-
-    def _readPlot3DSurfFile(self, fileName):
-        """Read a plot3d file and return the points and connectivity in
-        an unstructured mesh format"""
-
-        pts = None
-
-        f = open(fileName)
-        nSurf = np.fromfile(f, "int", count=1, sep=" ")[0]
-        sizes = np.fromfile(f, "int", count=3 * nSurf, sep=" ").reshape((nSurf, 3))
-        nElem = 0
-        for i in range(nSurf):
-            nElem += (sizes[i, 0] - 1) * (sizes[i, 1] - 1)
-
-        # Generate the uncompacted point and connectivity list:
-        p0 = np.zeros((nElem * 2, 3))
-        v1 = np.zeros((nElem * 2, 3))
-        v2 = np.zeros((nElem * 2, 3))
-
-        elemCount = 0
-
-        for iSurf in range(nSurf):
-            curSize = sizes[iSurf, 0] * sizes[iSurf, 1]
-            pts = np.zeros((curSize, 3))
-            for idim in range(3):
-                pts[:, idim] = np.fromfile(f, "float", curSize, sep=" ")
-
-            pts = pts.reshape((sizes[iSurf, 0], sizes[iSurf, 1], 3), order="f")
-            for j in range(sizes[iSurf, 1] - 1):
-                for i in range(sizes[iSurf, 0] - 1):
-                    # Each quad is split into two triangles
-                    p0[elemCount] = pts[i, j]
-                    v1[elemCount] = pts[i + 1, j] - pts[i, j]
-                    v2[elemCount] = pts[i, j + 1] - pts[i, j]
-
-                    elemCount += 1
-
-                    p0[elemCount] = pts[i + 1, j]
-                    v1[elemCount] = pts[i + 1, j + 1] - pts[i + 1, j]
-                    v2[elemCount] = pts[i, j + 1] - pts[i + 1, j]
-
-                    elemCount += 1
-
-        return p0, v1, v2
 
     def _checkDVGeo(self, name="default"):
 
