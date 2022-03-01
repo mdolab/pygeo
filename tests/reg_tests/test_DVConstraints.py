@@ -7,11 +7,18 @@ from stl import mesh
 from parameterized import parameterized_class
 
 try:
-    import geograd  # noqa
+    import geograd  # noqa: F401
 
     missing_geograd = False
 except ImportError:
     missing_geograd = True
+
+try:
+    from pygeo import DVGeometryMulti
+
+    missing_pysurf = False
+except ImportError:
+    missing_pysurf = True
 
 
 def evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-2):
@@ -93,12 +100,23 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
 @parameterized_class(
     [
         {
+            # Standard one-level FFD
             "name": "standard",
             "child": False,
+            "multi": False,
         },
         {
+            # Deforming child FFD with a stationary parent FFD
             "name": "child",
             "child": True,
+            "multi": False,
+        },
+        {
+            # One deforming component FFD and a stationary component FFD
+            # The components do not intersect
+            "name": "multi",
+            "child": False,
+            "multi": True,
         },
     ]
 )
@@ -111,6 +129,10 @@ class RegTestPyGeo(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+
+        # Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
+        if self.multi and missing_pysurf:
+            self.skipTest("requires pySurf")
 
     def generate_dvgeo_dvcon(self, geometry, addToDVGeo=False, intersected=False):
         """
@@ -146,6 +168,15 @@ class RegTestPyGeo(unittest.TestCase):
             xFraction = 0.25
 
         DVGeo = DVGeometry(ffdFile, child=self.child)
+        if self.multi:
+            # Use the nozzle FFD as the stationary component because it is outside all other FFD volumes
+            nozzleFile = os.path.join(self.base_path, "../../input_files/nozzleFFD.xyz")
+            DVGeoNozzle = DVGeometry(nozzleFile)
+            # Set up the DVGeometryMulti object
+            DVGeoMulti = DVGeometryMulti()
+            DVGeoMulti.addComponent("deforming", DVGeo)
+            DVGeoMulti.addComponent("stationary", DVGeoNozzle)
+
         DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=xFraction, alignIndex="k")
         self.nTwist = nRefAxPts - 1
@@ -155,6 +186,8 @@ class RegTestPyGeo(unittest.TestCase):
             self.parentDVGeo = DVGeometry(parentFFD)
             self.parentDVGeo.addChild(DVGeo)
             DVCon.setDVGeo(self.parentDVGeo)
+        elif self.multi:
+            DVCon.setDVGeo(DVGeoMulti)
         else:
             DVCon.setDVGeo(DVGeo)
 
@@ -380,6 +413,9 @@ class RegTestPyGeo(unittest.TestCase):
             if self.child:
                 DVCon.addLeTeConstraints(0, "iLow", childIdx=0)
                 DVCon.addLeTeConstraints(0, "iHigh", childIdx=0)
+            elif self.multi:
+                DVCon.addLeTeConstraints(0, "iLow", comp="deforming")
+                DVCon.addLeTeConstraints(0, "iHigh", comp="deforming")
             else:
                 DVCon.addLeTeConstraints(0, "iLow")
                 DVCon.addLeTeConstraints(0, "iHigh")
@@ -572,6 +608,10 @@ class RegTestPyGeo(unittest.TestCase):
                 DVCon.addLinearConstraintsShape(
                     indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childIdx=0
                 )
+            elif self.multi:
+                DVCon.addLinearConstraintsShape(
+                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, comp="deforming"
+                )
             else:
                 DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0)
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
@@ -690,6 +730,9 @@ class RegTestPyGeo(unittest.TestCase):
             if self.child:
                 DVCon.addMonotonicConstraints("twist", childIdx=0)
                 DVCon.addMonotonicConstraints("twist", start=1, stop=2, childIdx=0)
+            elif self.multi:
+                DVCon.addMonotonicConstraints("twist", comp="deforming")
+                DVCon.addMonotonicConstraints("twist", start=1, stop=2, comp="deforming")
             else:
                 DVCon.addMonotonicConstraints("twist")
                 DVCon.addMonotonicConstraints("twist", start=1, stop=2)
