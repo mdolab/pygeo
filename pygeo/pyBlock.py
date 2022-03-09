@@ -36,9 +36,18 @@ class pyBlock:
        the plot 3d file explicitly become the control points and
        uniform (and symmetric) knot vectors are assumed
        everywhere. This ensures a seamless FFD.
+
+    symPlane : {"x", "y", or "z"}
+        if a coordinate direciton is provided, the code will duplicate
+        the FFD in the mirroring direction.
+
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
     """
 
-    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
 
         self.initType = initType
         self.FFD = False
@@ -50,7 +59,7 @@ class pyBlock:
         self.symmPlane = symmPlane
 
         if initType == "plot3d":
-            self._readPlot3D(fileName, FFD=FFD, **kwargs)
+            self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
         elif initType == "create":
             pass
         else:
@@ -60,7 +69,7 @@ class pyBlock:
     #                     Initialization Types
     # ----------------------------------------------------------------------
 
-    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001):
+    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001, kmax=4):
         """Load a plot3D file and create the splines to go with each
         patch. See the pyBlock() docstring for more information.
 
@@ -159,9 +168,9 @@ class pyBlock:
                 return knots
 
             for ivol in range(nVol):
-                ku = min(4, sizes[ivol, 0])
-                kv = min(4, sizes[ivol, 1])
-                kw = min(4, sizes[ivol, 2])
+                ku = min(kmax, sizes[ivol, 0])
+                kv = min(kmax, sizes[ivol, 1])
+                kw = min(kmax, sizes[ivol, 2])
 
                 # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by
@@ -763,7 +772,7 @@ class pyBlock:
     #             Embedded Geometry Functions
     # ----------------------------------------------------------------------
 
-    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, faceFreeze=None, eps=1e-12, **kwargs):
+    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, embTol=1e-10, nIter=100, eps=1e-12):
         """Embed a set of coordinates into the volumes. This is the
         main high level function that is used by DVGeometry when
         pyBlock is used as an FFD.
@@ -776,42 +785,39 @@ class pyBlock:
             The name given to this set of coordinates.
         interiorOnly : bool
             Project only points that lie fully inside the volume
-        faceFreeze :
-            A dictionary of lists of strings specifying which faces should be
-            'frozen'. Each dictionary represents one block in the FFD.
-            This is only used with child FFD's in DVGeometry.
-            For example if faceFreeze =['0':['iLow'],'1':[]], then the
-            plane of control points corresponding to i=0, and i=1, in block '0'
-            will not be able to move in DVGeometry.
+        embTol : float
+            Tolerance on the distance between projected and closest point.
+            Determines if a point is embedded or not in the FFD volume if interiorOnly is True.
         eps : float
             Physical tolerance to which to converge Newton search
-        kwargs : dict
-            kwargs pass through to the actual projectPoints() function
+        nIter : int
+            Maximum number of Newton iterations to perform. The default of 100 should be sufficient for points
+            that **actually** lie inside the volume, except for pathological or degenerate FFD volumes.
+
         """
 
         # Project Points, if some were actually passed in:
         if coordinates is not None:
-            if not interiorOnly:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=True, eps=eps, **kwargs)
-                self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
-            else:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False, eps=eps, **kwargs)
+            checkErrors = not interiorOnly
+            mask = None
+            volID, u, v, w, D = self.projectPoints(coordinates, checkErrors, embTol, eps, nIter)
 
+            if interiorOnly:
+                # Create the mask before creating the embedded volume
                 mask = []
                 for i in range(len(D)):
                     Dnrm = np.linalg.norm(D[i])
-                    if Dnrm < 50 * eps:  # Sufficiently inside
+                    if Dnrm < embTol:  # Sufficiently inside
                         mask.append(i)
 
-                # Now that we have the mask we can create the embedded volume
-                self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
+            self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
         # end if (Coordinate not none check)
 
     # ----------------------------------------------------------------------
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100):
+    def projectPoints(self, x0, checkErrors, embTol, eps, nIter):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
@@ -828,16 +834,14 @@ class pyBlock:
         ----------
         x0 : array of points (Nx3 array)
             The list or array of points to use
-        eps : float
-            Physical tolerance to which to converge Newton search
         checkErrors : bool
             Flag to print out the error is points have not been projected
-            to tolerance eps.
-        nIter : int
-            Maximum number of Newton iterations to perform. The
-            default of 100 should be sufficient for points that
-            **actually** lie inside the volume, except for
-            pathological or degenerate FFD volumes
+            to the tolerance defined by embTol.
+
+        See Also
+        --------
+        See the attachPoints() docstring for the other parameters.
+
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
@@ -874,7 +878,7 @@ class pyBlock:
 
                 # Now, if D0 is close enough to our tolerance, we can
                 # exit the loop since we know we won't do any better
-                if D0Norm < eps * 50:
+                if D0Norm < embTol:
                     break
             # end for (volume loop)
 
@@ -898,7 +902,7 @@ class pyBlock:
                     DMax = nrm
 
                 DRms += nrm ** 2
-                if nrm > eps * 50:
+                if nrm > embTol:
                     counter += 1
                     badPts.append([x0[i], D[i]])
 

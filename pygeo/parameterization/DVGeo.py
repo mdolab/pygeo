@@ -50,13 +50,29 @@ class DVGeometry:
        filename of FFD file. This must be a ascii formatted plot3D file
        in fortran ordering.
 
-    complex : bool
+    isComplex : bool
         Make the entire object complex. This should **only** be used when
         debugging the entire tool-chain with the complex step method.
 
     child : bool
         Flag to indicate that this object is a child of parent DVGeo object
 
+    faceFreeze : dict
+        A dictionary of lists of strings specifying which faces should be
+        'frozen'. Each dictionary represents one block in the FFD.
+        For example if faceFreeze =['0':['iLow'],'1':[]], then the
+        plane of control points corresponding to i=0, and i=1, in block '0'
+        will not be able to move in DVGeometry.
+
+    name : str
+        This is prepended to every DV name for ensuring design variables names are
+        unique to pyOptsparse. Only useful when using multiple DVGeos with
+        TriangulatedSurfaceConstraint()
+
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
 
     Examples
     --------
@@ -77,12 +93,12 @@ class DVGeometry:
       >>>
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
-        self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+        self.DV_listSpanwiseLocal = OrderedDict()  # Local Spanwise Design Variable List
         self.DVComposite = None  # Composite Design Variable
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
@@ -114,7 +130,7 @@ class DVGeometry:
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None
@@ -474,6 +490,7 @@ class DVGeometry:
 
             # Count total number of sections and check if volumes are aligned
             # face to face along refaxis direction
+            # Local indices size is (N_x,N_y,N_z)
             lIndex = self.FFD.topo.lIndex
             nSections = []
             for i in range(len(volOrd)):
@@ -487,7 +504,7 @@ class DVGeometry:
             # Loop through sections and compute node location
             place = 0
             for j, vol in enumerate(volOrd):
-                # sectionArr: indices of FFD points grouped by section
+                # sectionArr: indices of FFD points grouped by section - i.e. the first tensor index now == nSections
                 sectionArr = np.rollaxis(lIndex[vol], alignIndex, 0)
                 skip = 0
                 if j > 0:
@@ -594,7 +611,12 @@ class DVGeometry:
             Flag determine if the coordinates are projected into the
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
-            exactly what they are doing."""
+            exactly what they are doing.
+
+        """
+
+        # compNames is only needed for DVGeometryMulti, so remove it if passed
+        kwargs.pop("compNames", None)
 
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
@@ -614,7 +636,7 @@ class DVGeometry:
         if self.isChild:
             self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=True, **kwargs)
         else:
-            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=False)
+            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=False, **kwargs)
 
         if origConfig:
             self.FFD.coef = tmpCoef
@@ -1347,7 +1369,7 @@ class DVGeometry:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dictionary are simply ignored.
         """
 
         # Coefficients must be complexifed from here on if complex
@@ -1539,21 +1561,19 @@ class DVGeometry:
             rotType = self.axis[self.curveIDNames[ipt]]["rotType"]
             if rotType == 0:
                 bp_ = np.copy(base_pt)  # copy of original pointset - will not be rotated
-                if isinstance(ang, (float, int)):  # rotation active only if a non-default value is provided
-                    ang *= np.pi / 180  # conv to [rad]
-                    # Rotating the FFD according to inputs
-                    # The FFD points should now be aligned with the main system of reference
-                    base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
+
                 deriv = self.refAxis.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv)  # Normalize
                 new_vec = -np.cross(deriv, self.links_n[ipt])
+
                 if isComplex:
                     new_pts[ipt] = bp_ + new_vec * scale  # using "unrotated" bp_ vector
                 else:
                     new_pts[ipt] = np.real(bp_ + new_vec * scale)
 
-                if isinstance(ang, (float, int)):
-                    # Rotating to be aligned with main sys ref
+                if isinstance(ang, (float, int)):  # rotation active only if a non-default value is provided
+                    ang *= np.pi / 180  # conv to [rad]
+                    # Rotating the FFD according to inputs to be aligned with main sys ref
                     nv_ = np.copy(new_vec)
                     new_vec = geo_utils.rotVbyW(nv_, ax_dir, ang)
 
@@ -2462,6 +2482,7 @@ class DVGeometry:
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
+
         """
         if ignoreVars is None:
             ignoreVars = set()
@@ -2731,7 +2752,7 @@ class DVGeometry:
         else:
             raise ValueError(f"Type {outputType} not recognized. Must be either 'iges' or 'tecplot'")
 
-    def getLocalIndex(self, iVol):
+    def getLocalIndex(self, iVol, comp=None):
         """Return the local index mapping that points to the global
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
@@ -2873,6 +2894,9 @@ class DVGeometry:
                         # Iterate counter
                         count += 1
 
+        # Reset DV's to their original values
+        self.setDesignVars(dvDict)
+
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
     # ----------------------------------------------------------------------
@@ -3003,10 +3027,11 @@ class DVGeometry:
             self.links_x.append(self.ptAttach[i] - self.refAxis.curves[self.curveIDs[i]](s[i]))
             deriv = self.refAxis.curves[self.curveIDs[i]].getDerivative(self.links_s[i])
             deriv /= geo_utils.euclideanNorm(deriv)  # Normalize
-            self.links_n.append(np.cross(deriv, self.links_x[-1]))
+            self.links_n.append(np.cross(deriv, self.links_x[-1]))  # using the element just appended to self.links_x
 
         self.links_x = np.array(self.links_x)
         self.links_s = np.array(self.links_s)
+        self.links_n = np.array(self.links_n)
         self.finalized = True
 
     def _setInitialValues(self):
@@ -4207,7 +4232,6 @@ class DVGeometry:
 
                     if abs(relErr) > h and abs(absErr) > h:
                         print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
-                    # print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
 
                 DVCountSpanLoc += 1
                 self.DV_listSpanwiseLocal[key].value[j] = refVal

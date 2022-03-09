@@ -16,7 +16,7 @@ class ColinearityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, axis, origin, coords, lower, upper, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, axis, origin, coords, lower, upper, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, len(coords), lower, upper, scale, DVGeo, addToPyOpt)
 
         # create the output array
@@ -29,8 +29,8 @@ class ColinearityConstraint(GeometricConstraint):
 
         # Now embed the coordinates and origin into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.origin, self.name + "origin")
-        self.DVGeo.addPointSet(self.coords, self.name + "coords")
+        self.DVGeo.addPointSet(self.origin, self.name + "origin", compNames=compNames)
+        self.DVGeo.addPointSet(self.coords, self.name + "coords", compNames=compNames)
 
     def evalFunctions(self, funcs, config):
         """
@@ -54,7 +54,7 @@ class ColinearityConstraint(GeometricConstraint):
 
         # for i in range(len(resultDir)):
         #     self.X[i] = geo_utils.euclideanNorm(resultDir[i,:])
-        self.X = self._computeDist(self.origin, self.coords, self.axis)
+        self.X = geo_utils.norm.computeDistToAxis(self.origin, self.coords, self.axis)
 
         funcs[self.name] = self.X
 
@@ -162,20 +162,3 @@ class ColinearityConstraint(GeometricConstraint):
 
         for i in range(len(self.coords)):
             handle.write("%d %d\n" % (i + 1, i + 2))
-
-    def _computeDist(self, origin, coords, axis, dtype="d"):
-        """
-        compute the distance of coords from the defined axis.
-        """
-        # Compute the direction from each point to the origin
-        dirVec = origin - coords
-
-        # compute the cross product with the desired axis. Cross product
-        # will be zero if the direction vector is the same as the axis
-        resultDir = np.cross(axis, dirVec)
-
-        X = np.zeros(len(coords), dtype)
-        for i in range(len(resultDir)):
-            X[i] = geo_utils.euclideanNorm(resultDir[i, :])
-
-        return X

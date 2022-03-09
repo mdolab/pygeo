@@ -177,6 +177,9 @@ def testSensitivities(DVGeo, refDeriv, handler, pointset=1):
     elif pointset == 2:
         points[0, :] = [0.25, 0.4, 4]
         points[1, :] = [-0.8, 0.2, 7]
+    elif pointset == 3:
+        points[0, :] = [3.0, 0.0, 3.0]
+        points[1, :] = [6.25, 0.0, 9.30]
     else:
         raise Warning("Enter a valid pointset")
 
@@ -216,7 +219,7 @@ def testSensitivitiesD8(DVGeo, refDeriv, handler):
 
     # add points to the geometry object
     ptName = "testPoints"
-    DVGeo.addPointSet(points, ptName, faceFreeze={})
+    DVGeo.addPointSet(points, ptName)
 
     # generate dIdPt
     nPt = nPoints * 3

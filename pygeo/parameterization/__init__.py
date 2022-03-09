@@ -9,3 +9,7 @@ try:
     from .DVGeoESP import DVGeometryESP
 except ImportError:
     pass
+try:
+    from .DVGeoMulti import DVGeometryMulti
+except ImportError:
+    pass
