@@ -15,10 +15,9 @@ class ThicknessConstraint(GeometricConstraint):
     """
 
     def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
-        self.dtype = DVGeo.dtype
         super().__init__(name, len(coords) // 2, lower, upper, scale, DVGeo, addToPyOpt)
 
-        self.coords = np.array(coords, dtype=self.dtype)
+        self.coords = coords
         self.scaled = scaled
 
         # First thing we can do is embed the coordinates into DVGeo
@@ -26,7 +25,7 @@ class ThicknessConstraint(GeometricConstraint):
         self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Now get the reference lengths
-        self.D0 = np.zeros(self.nCon, dtype=self.dtype)
+        self.D0 = np.zeros(self.nCon)
         for i in range(self.nCon):
             self.D0[i] = geo_utils.norm.euclideanNorm(self.coords[2 * i] - self.coords[2 * i + 1])
 
@@ -41,7 +40,7 @@ class ThicknessConstraint(GeometricConstraint):
         """
         # Pull out the most recent set of coordinates:
         self.coords = self.DVGeo.update(self.name, config=config)
-        D = np.zeros(self.nCon, dtype=self.dtype)
+        D = np.zeros(self.nCon)
         for i in range(self.nCon):
             D[i] = geo_utils.norm.euclideanNorm(self.coords[2 * i] - self.coords[2 * i + 1])
             if self.scaled:
@@ -66,8 +65,8 @@ class ThicknessConstraint(GeometricConstraint):
             for i in range(self.nCon):
                 p1b, p2b = geo_utils.eDist_b(self.coords[2 * i, :], self.coords[2 * i + 1, :])
                 if self.scaled:
-                    p1b /= self.D0[i].real
-                    p2b /= self.D0[i].real
+                    p1b /= self.D0[i]
+                    p2b /= self.D0[i]
                 dTdPt[i, 2 * i, :] = p1b
                 dTdPt[i, 2 * i + 1, :] = p2b
 
