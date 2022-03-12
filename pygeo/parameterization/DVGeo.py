@@ -1840,6 +1840,11 @@ class DVGeometry:
             If true, creates a 1D array in the dictionary instead of 2D.
             This function is used in the matrix-vector product calculation.
 
+        compName : boolean
+            Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
+            If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
+            If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
+
         Returns
         -------
         dIdxDict : dictionary
@@ -2507,6 +2512,8 @@ class DVGeometry:
 
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
+            if len(ignoreVars) != 0:
+                warnings.warn("Use of ignoreVars is incompatible with composite DVs")
             lb = {}
             ub = {}
             for lst in varLists:
@@ -3448,6 +3455,20 @@ class DVGeometry:
             self.coef = self.coef.real.astype("d")
 
     def mapXDictToDVGeo(self, inDict):
+        """
+        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
+        without modifying them
+
+        Parameters
+        ----------
+        inDict : dict
+            The dictionary of DVs to be mapped
+
+        Returns
+        -------
+        dict
+            The mapped DVs in the same dictionary format
+        """
         # first make a copy so we don't modify in place
         inDict = copy.deepcopy(inDict)
         userVec = inDict.pop(self.DVComposite.name)
@@ -3459,6 +3480,19 @@ class DVGeometry:
         return outDict
 
     def mapXDictToComp(self, inDict):
+        """
+        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
+
+        Parameters
+        ----------
+        inDict : dict
+            The DVs to be mapped
+
+        Returns
+        -------
+        dict
+            The mapped DVs
+        """
         # first make a copy so we don't modify in place
         inDict = copy.deepcopy(inDict)
         userVec = self.convertDictToSensitivity(inDict)
@@ -3467,16 +3501,55 @@ class DVGeometry:
         return outDict
 
     def mapVecToDVGeo(self, inVec):
+        """
+        This is the vector version of :func:`mapDictToDVGeo`, where the actual mapping is done
+
+        Parameters
+        ----------
+        inVec : ndarray
+            The DVs in a single 1D array
+
+        Returns
+        -------
+        ndarray
+            The mapped DVs in a single 1D array
+        """
         inVec = inVec.reshape(self.getNDV(), -1)
         outVec = self.DVComposite.u @ inVec
         return outVec.flatten()
 
     def mapVecToComp(self, inVec):
+        """
+        This is the vector version of :func:`mapDictToComp`, where the actual mapping is done
+
+        Parameters
+        ----------
+        inVec : ndarray
+            The DVs in a single 1D array
+
+        Returns
+        -------
+        ndarray
+            The mapped DVs in a single 1D array
+        """
         inVec = inVec.reshape(self.getNDV(), -1)
         outVec = self.DVComposite.u.T @ inVec
         return outVec.flatten()
 
     def mapSensToComp(self, inVec):
+        """
+        Maps the sensitivity matrix to the composite design space
+
+        Parameters
+        ----------
+        inVec : ndarray
+            The sensitivities to be mapped
+
+        Returns
+        -------
+        ndarray
+            The mapped sensitivity matrix
+        """
         outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
         return outVec
 
