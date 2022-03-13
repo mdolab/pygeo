@@ -1239,7 +1239,22 @@ class DVGeometry:
 
         return self.DV_listSectionLocal[dvName].nVal
 
-    def addGeoDVComposite(self, dvName, ptSetName=None, u=None, scale=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None):
+        """
+        Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
+        at the moment.
+
+        Parameters
+        ----------
+        dvName : str
+            The name of the composite DVs
+        ptSetName : str, optional
+            If the matrices need to be computed, then a point set must be specified, by default None
+        u : ndarray, optional
+            The u matrix used for the composite DV, by default None
+        scale : float or ndarray, optional
+            The scaling applied to this DV, by default None
+        """
         NDV = self.getNDV()
         self.useComposite = True
         if self.name is not None:
