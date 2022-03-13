@@ -1825,7 +1825,7 @@ class DVGeometry:
         else:
             return True
 
-    def convertSensitivityToDict(self, dIdx, out1D=False, compName=False):
+    def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
         """
         This function takes the result of totalSensitivity and
         converts it to a dict for use in pyOptSparse
@@ -1840,7 +1840,7 @@ class DVGeometry:
             If true, creates a 1D array in the dictionary instead of 2D.
             This function is used in the matrix-vector product calculation.
 
-        compName : boolean
+        useCompositeNames : boolean
             Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
             If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
             If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
@@ -1895,7 +1895,9 @@ class DVGeometry:
 
         # Add in child portion
         for iChild in range(len(self.children)):
-            childdIdx = self.children[iChild].convertSensitivityToDict(dIdx, out1D=out1D, compName=compName)
+            childdIdx = self.children[iChild].convertSensitivityToDict(
+                dIdx, out1D=out1D, useCompositeNames=useCompositeNames
+            )
             # update the total sensitivities with the derivatives from the child
             for key in childdIdx:
                 if key in dIdxDict.keys():
@@ -1904,7 +1906,7 @@ class DVGeometry:
                     dIdxDict[key] = childdIdx[key]
 
         # replace other names with user
-        if compName and self.useComposite:
+        if useCompositeNames and self.useComposite:
             array = []
             for key, val in dIdxDict.items():
                 array.append(val)
@@ -2060,7 +2062,7 @@ class DVGeometry:
             dIdx = self.mapSensToComp(dIdx)
 
         # Now convert to dict:
-        dIdx = self.convertSensitivityToDict(dIdx, compName=True)
+        dIdx = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
 
         return dIdx
 
@@ -3473,7 +3475,7 @@ class DVGeometry:
         inDict = copy.deepcopy(inDict)
         userVec = inDict.pop(self.DVComposite.name)
         outVec = self.mapVecToDVGeo(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, compName=False)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
         # now merge inDict and outDict
         for key in inDict:
             outDict[key] = inDict[key]
@@ -3497,7 +3499,7 @@ class DVGeometry:
         inDict = copy.deepcopy(inDict)
         userVec = self.convertDictToSensitivity(inDict)
         outVec = self.mapVecToComp(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, compName=True)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
         return outDict
 
     def mapVecToDVGeo(self, inVec):
