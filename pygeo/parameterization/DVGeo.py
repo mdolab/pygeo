@@ -1908,7 +1908,7 @@ class DVGeometry:
         # replace other names with user
         if useCompositeNames and self.useComposite:
             array = []
-            for key, val in dIdxDict.items():
+            for _key, val in dIdxDict.items():
                 array.append(val)
             array = np.hstack(array)
             dIdxDict = {self.DVComposite.name: array}
