@@ -1,7 +1,7 @@
 # pyGeo
-[![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.pygeo?branchName=master)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=17&branchName=master)
+[![Build Status](https://dev.azure.com/mdolab/Public/_apis/build/status/mdolab.pygeo?branchName=main)](https://dev.azure.com/mdolab/Public/_build/latest?definitionId=17&branchName=main)
 [![Documentation Status](https://readthedocs.com/projects/mdolab-pygeo/badge/?version=latest)](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/?badge=latest)
-[![codecov](https://codecov.io/gh/mdolab/pygeo/branch/master/graph/badge.svg?token=N2L58WGCDI)](https://codecov.io/gh/mdolab/pygeo)
+[![codecov](https://codecov.io/gh/mdolab/pygeo/branch/main/graph/badge.svg?token=N2L58WGCDI)](https://codecov.io/gh/mdolab/pygeo)
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
 It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
