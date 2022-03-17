@@ -12,11 +12,7 @@ def euclideanNorm(inVec):
     CS derivatives.
     """
     inVec = np.array(inVec)
-    temp = 0.0
-    for i in range(inVec.shape[0]):
-        temp += inVec[i] ** 2
-
-    return np.sqrt(temp)
+    return np.sqrt(inVec.dot(inVec))
 
 
 def cross_b(a, b, crossb):
