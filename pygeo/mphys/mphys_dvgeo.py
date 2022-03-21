@@ -3,13 +3,11 @@ from pygeo import DVGeometry, DVConstraints
 
 try:
     from pygeo import DVGeometryVSP
-except:
+except ModuleNotFoundError:
     # not everyone might have openvsp installed, and thats okay
     pass
 from mpi4py import MPI
 import numpy as np
-from openmdao.utils.array_utils import evenly_distrib_idxs
-import time
 
 # class that actually calls the dvgeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
@@ -41,8 +39,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for var in inputs.keys():
             # check that the input name matches the convention for points
             if var[:2] == "x_":
-                # trim the _in and add a "0" to signify that these are initial conditions initial 
-                var_out = var[:-3] + '0'
+                # trim the _in and add a "0" to signify that these are initial conditions initial
+                var_out = var[:-3] + "0"
                 if var_out not in self.omPtSetList:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
@@ -156,7 +154,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
         return nCon
-    
+
     def nom_addLERadiusConstraints(self, name, leList, nSpan, axis, chordDir):
         self.DVCon.addLERadiusConstraints(leList=leList, nSpan=nSpan, axis=axis, chordDir=chordDir, name=name)
         comm = self.comm
@@ -164,7 +162,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_output(name, distributed=True, val=np.ones(nSpan), shape=nSpan)
         else:
             self.add_output(name, distributed=True, shape=0)
-    
+
     def nom_addCurvatureConstraint1D(self, name, start, end, nPts, axis, **kwargs):
         self.DVCon.addCurvatureConstraint1D(start=start, end=end, nPts=nPts, axis=axis, name=name, **kwargs)
         comm = self.comm
@@ -172,9 +170,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_output(name, distributed=True, val=1.0)
         else:
             self.add_output(name, distributed=True, shape=0)
-    
+
     def nom_addLinearConstraintsShape(self, name, indSetA, indSetB, factorA, factorB):
-        self.DVCon.addLinearConstraintsShape(indSetA=indSetA, indSetB=indSetB, factorA=factorA, factorB=factorB, name=name)
+        self.DVCon.addLinearConstraintsShape(
+            indSetA=indSetA, indSetB=indSetB, factorA=factorA, factorB=factorB, name=name
+        )
         lSize = len(indSetA)
         comm = self.comm
         if comm.rank == 0:
@@ -193,7 +193,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
         ni = len(list(d_inputs.keys()))
-        
+
         if mode == "rev" and ni > 0:
 
             # this flag will be set to True after every compute call.
