@@ -21,7 +21,7 @@ from baseclasses.utils import Error
 from pygeo.parameterization.BaseDVGeo import BaseDVGeo
 
 
-class BaseDVGeoSketchy(BaseDVGeo):
+class DVGeoSketch(BaseDVGeo):
     """A class for manipulating parametric geometry
 
     The purpose of the BaseDVGeoSketchy class is to provide translation
@@ -44,7 +44,7 @@ class BaseDVGeoSketchy(BaseDVGeo):
 
     4. It does not support separate configurations.
 
-    5. Because of limitations with ESP and OpenVSP does not provide sensitivities, this class
+    5. Because of limitations with ESP and OpenVSP, this class
     uses parallel finite differencing to obtain the required Jacobian
     matrices.
 
@@ -65,7 +65,7 @@ class BaseDVGeoSketchy(BaseDVGeo):
 
     """
 
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
 
         if comm.rank == 0:
             print("Initializing DVGeometry")

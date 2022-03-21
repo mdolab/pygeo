@@ -1750,7 +1750,7 @@ class DVGeometry:
                 np.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 np.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
 
-            # Apply just the complex part of the local varibales
+            # Apply just the complex part of the local variables
             for key in self.DV_listSpanwiseLocal:
                 self.DV_listSpanwiseLocal[key].updateComplex(tempCoef, config)
             for key in self.DV_listSectionLocal:
@@ -1820,6 +1820,7 @@ class DVGeometry:
         child.refAxis.coef = child.coef.copy()
         child.refAxis._updateCurveCoef()
 
+    # TODO axi doesn't have this?
     def pointSetUpToDate(self, ptSetName):
         """
         This is used externally to query if the object needs to update
@@ -2014,7 +2015,7 @@ class DVGeometry:
         r"""
         This function computes sensitivity information.
 
-        Specificly, it computes the following:
+        Specifically, it computes the following:
         :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
 
         Parameters
@@ -2299,7 +2300,7 @@ class DVGeometry:
         if self.JT[ptSetName] is not None:
             return
 
-        # compute the derivatives of the coeficients of this level wrt all of the design
+        # compute the derivatives of the coefficients of this level wrt all of the design
         # variables at this level and all levels above
         J_temp = self.computeDVJacobian(config=config)
 
@@ -2783,7 +2784,7 @@ class DVGeometry:
 
     def getFlattenedChildren(self):
         """
-        Return a flattened list of all DVGeo objects in the family heirarchy.
+        Return a flattened list of all DVGeo objects in the family hierarchy.
         """
         flatChildren = [self]
         for child in self.children:

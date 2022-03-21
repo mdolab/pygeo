@@ -1,8 +1,8 @@
 """
 BaseDVGeo
 
-Holds a basic version of a DVGeo geometry storage object
-Enables the use of different geometry parameterizations (OpenVSP, ESP, etc) with the MACH-Aero framework
+Holds a basic version of a DVGeo geometry object
+Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc) with the MACH-Aero framework
 """
 
 from abc import abstractmethod
@@ -43,7 +43,6 @@ class BaseDVGeo:
         """
         pass
 
-    @abstractmethod
     def setDesignVars(self, dvDict):
         """
         Standard routine for setting design variables from a design variable dictionary.
@@ -68,6 +67,26 @@ class BaseDVGeo:
             Dictionary of design variables
         """
         pass
+
+    def pointSetUpToDate(self, ptSetName):
+        """
+        This is used externally to query if the object needs to update
+        its pointset or not. Essentially what happens, is when
+        update() is called with a point set, it the self.updated dict
+        entry for pointSet is flagged as true. Here we just return
+        that flag. When design variables are set, we then reset all
+        the flags to False since, when DVs are set, nothing (in
+        general) will up to date anymore.
+
+        Parameters
+        ----------
+        ptSetName : str
+            The name of the pointset to check.
+        """
+        if ptSetName in self.updated:
+            return self.updated[ptSetName]
+        else:
+            return True
 
     @abstractmethod
     def getVarNames(self):

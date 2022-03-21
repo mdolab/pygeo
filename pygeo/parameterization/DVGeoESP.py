@@ -10,6 +10,7 @@ from mpi4py import MPI
 from pyOCSM import pyOCSM
 from contextlib import contextmanager
 from baseclasses.utils import Error
+from pygeo import DVGeoSketch
 
 
 @contextmanager
@@ -42,7 +43,7 @@ def stdout_redirected(flag, to=os.devnull):
         yield
 
 
-class DVGeometryESP:
+class DVGeometryESP(DVGeoSketch):
     """
     A class for manipulating Engineering Sketchpad (ESP) geometry
     The purpose of the DVGeometryESP class is to provide translation
@@ -57,7 +58,7 @@ class DVGeometryESP:
     intersections is fine as long as the intersection doesn't move
     3. It does not support complex numbers for the complex-step
     method.
-    4. It does not surpport separate configurations.
+    4. It does not support separate configurations.
 
     Parameters
     ----------
@@ -65,7 +66,7 @@ class DVGeometryESP:
        filename of .csm file containing the parameterized CAD
     comm : MPI Intra Comm
        Comm on which to build operate the object. This is used to
-       perform embarasisngly parallel finite differencing. Defaults to
+       perform embarrassingly parallel finite differencing. Defaults to
        MPI.COMM_WORLD.
     scale : float
        A global scale factor from the ESP geometry to incoming (CFD) mesh
@@ -718,7 +719,7 @@ class DVGeometryESP:
         """
         This is used externally to query if the object needs to update
         its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
+        update() is called with a point set, the self.updated dict
         entry for pointSet is flagged as true. Here we just return
         that flag. When design variables are set, we then reset all
         the flags to False since, when DVs are set, nothing (in
@@ -1465,7 +1466,7 @@ class DVGeometryESP:
 
         t2 = time.time()
         if rank == 0:
-            print("FD jacobian calcs with dvgeovsp took", (t2 - t1), "seconds in total")
+            print("FD jacobian calcs with DVGeoESP took", (t2 - t1), "seconds in total")
             print("updating the esp model took", tesp, "seconds")
             print("evaluating the new points took", teval, "seconds")
             print("communication took", tcomm, "seconds")

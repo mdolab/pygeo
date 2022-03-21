@@ -10,6 +10,8 @@ from baseclasses.utils import Error
 # mdolab packages
 from pyspline.utils import searchQuads
 
+from . import DVGeoSketch
+
 # openvsp python interface
 try:
     import openvsp
@@ -20,7 +22,7 @@ except ImportError:
         raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
 
 
-class DVGeometryVSP:
+class DVGeometryVSP(DVGeoSketch):
     """A class for manipulating VSP geometry
 
     The purpose of the DVGeometryVSP class is to provide translation
@@ -55,7 +57,7 @@ class DVGeometryVSP:
 
     comm : MPI Intra Comm
        Comm on which to build operate the object. This is used to
-       perform embarasisngly parallel finite differencing. Defaults to
+       perform embarrassingly parallel finite differencing. Defaults to
        MPI.COMM_WORLD.
 
     scale : float
