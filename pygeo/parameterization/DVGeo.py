@@ -1466,7 +1466,7 @@ class DVGeometry:
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
+        that would be suitable for a subsequent call to :func:`setDesignVars`
 
         Returns
         -------
