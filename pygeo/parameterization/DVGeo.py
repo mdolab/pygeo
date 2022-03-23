@@ -1256,7 +1256,6 @@ class DVGeometry:
             The scaling applied to this DV, by default None
         """
         NDV = self.getNDV()
-        self.useComposite = True
         if self.name is not None:
             dvName = f"{self.name}_{dvName}"
         if u is not None:
@@ -1276,7 +1275,13 @@ class DVGeometry:
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
 
-        self.DVComposite = geoDVComposite(dvName, NDV, u, scale=scale, s=s)
+        # map the initial design variable values
+        # we do this manually instead of calling self.mapVecToComp
+        # because self.DVComposite.u isn't available yet
+        values = u.T @ self.convertDictToSensitivity(self.getValues())
+
+        self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
+        self.useComposite = True
 
     def addGeoDVSectionLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
