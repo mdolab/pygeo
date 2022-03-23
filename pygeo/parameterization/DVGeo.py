@@ -1500,8 +1500,10 @@ class DVGeometry:
         if self.useComposite:
             dvDict = self.mapXDictToComp(dvDict)
 
-        for key, val in dvDict.items():
-            dvDict[key] = val.real
+        # cast DVs to real if we are in real mode
+        if not self.complex:
+            for key, val in dvDict.items():
+                dvDict[key] = val.real
 
         return dvDict
 
