@@ -3,7 +3,7 @@ from pygeo import DVGeometry, DVConstraints
 
 try:
     from pygeo import DVGeometryVSP
-except ModuleNotFoundError:
+except ImportError:
     # not everyone might have openvsp installed, and thats okay
     pass
 from mpi4py import MPI
