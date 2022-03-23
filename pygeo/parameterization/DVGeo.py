@@ -1500,6 +1500,9 @@ class DVGeometry:
         if self.useComposite:
             dvDict = self.mapXDictToComp(dvDict)
 
+        for key, val in dvDict.items():
+            dvDict[key] = val.real
+
         return dvDict
 
     def extractCoef(self, axisID):
