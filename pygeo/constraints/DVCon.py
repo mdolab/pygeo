@@ -582,20 +582,19 @@ class DVConstraints:
 
         coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
 
-        # nSpan needs to be the total number of sections for the remainder of the function
-        if isinstance(nSpan, list):
-            nSpan = sum(nSpan)
+        # Get the total number of spanwise sections
+        nSpanTotal = np.sum(nSpan)
 
         # Create the thickness constraint object:
-        coords = coords.reshape((nSpan * nChord * 2, 3))
+        coords = coords.reshape((nSpanTotal * nChord * 2, 3))
 
         typeName = "thickCon"
         if typeName not in self.constraints:
             self.constraints[typeName] = OrderedDict()
 
-        upper = convertTo2D(upper, nSpan, nChord).flatten()
-        lower = convertTo2D(lower, nSpan, nChord).flatten()
-        scale = convertTo2D(scale, nSpan, nChord).flatten()
+        upper = convertTo2D(upper, nSpanTotal, nChord).flatten()
+        lower = convertTo2D(lower, nSpanTotal, nChord).flatten()
+        scale = convertTo2D(scale, nSpanTotal, nChord).flatten()
 
         # Create a name
         if name is None:
@@ -1711,16 +1710,15 @@ class DVConstraints:
 
         coords = self._generateIntersections(leList, teList, nSpan, nChord, surfaceName)
 
-        # nSpan needs to be the total number of sections for the remainder of the function
-        if isinstance(nSpan, list):
-            nSpan = sum(nSpan)
+        # Get the total number of spanwise sections
+        nSpanTotal = np.sum(nSpan)
 
-        coords = coords.reshape((nSpan * nChord * 2, 3))
+        coords = coords.reshape((nSpanTotal * nChord * 2, 3))
 
         # Finally add the volume constraint object
         self.constraints[typeName][conName] = VolumeConstraint(
             conName,
-            nSpan,
+            nSpanTotal,
             nChord,
             coords,
             lower,
@@ -3260,25 +3258,25 @@ class DVConstraints:
                 te_span_s = np.append(
                     te_span_s, np.linspace(te_breakPoints[i], te_breakPoints[i + 1], nSpan[i], endpoint=endpoint)
                 )
-
-            # nSpan needs to be the total number of sections for the remainder of the function
-            nSpan = sum(nSpan)
         else:
             raise TypeError("nSpan must be either an int or a list.")
 
         # Generate chordwise parametric distances
         chord_s = np.linspace(0.0, 1.0, nChord)
 
+        # Get the total number of spanwise sections
+        nSpanTotal = np.sum(nSpan)
+
         # Generate a 2D region of intersections
         X = geo_utils.tfi_2d(le_s(le_span_s), te_s(te_span_s), root_s(chord_s), tip_s(chord_s))
-        coords = np.zeros((nSpan, nChord, 2, 3))
-        for i in range(nSpan):
+        coords = np.zeros((nSpanTotal, nChord, 2, 3))
+        for i in range(nSpanTotal):
             for j in range(nChord):
                 # Generate the 'up_vec' from taking the cross product
                 # across a quad
                 if i == 0:
                     uVec = X[i + 1, j] - X[i, j]
-                elif i == nSpan - 1:
+                elif i == nSpanTotal - 1:
                     uVec = X[i, j] - X[i - 1, j]
                 else:
                     uVec = X[i + 1, j] - X[i - 1, j]
