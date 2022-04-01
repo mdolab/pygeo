@@ -7,6 +7,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 
 from abc import abstractmethod
 from typing import OrderedDict
+from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
 
 
 class BaseDVGeo:
@@ -43,15 +44,39 @@ class BaseDVGeo:
         """
         pass
 
-    def setDesignVars(self, dvDict):
+    @abstractmethod
+    def addVariablesPyOpt(self, optProb):
         """
-        Standard routine for setting design variables from a design variable dictionary.
+        Add the current set of variables to the optProb object.
 
         Parameters
         ----------
-        dvDict : dict
-            Dictionary of design variables. The keys of the dictionary must correspond to the design variable names.
-            Any additional keys in the dictionary are simply ignored.
+        optProb : pyOpt_optimization class
+            Optimization problem definition to which variables are added
+        """
+        pass
+
+    @abstractmethod
+    def demoDesignVars(self, directory):
+        """
+        This function can be used to "test" the design variable parametrization
+        for a given optimization problem. It should be called in the script
+        after DVGeo has been set up. The function will loop through all the
+        design variables and write out a deformed FFD volume for the upper
+        and lower bound of every design variable. It can also write out
+        deformed point sets and surface meshes.
+        """
+        pass
+
+    @abstractmethod
+    def getNDV(self):
+        """
+        Return the total number of design variables this object has.
+
+        Returns
+        -------
+        nDV : int
+            Total number of design variables
         """
         pass
 
@@ -68,26 +93,6 @@ class BaseDVGeo:
         """
         pass
 
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
-
     @abstractmethod
     def getVarNames(self):
         """
@@ -100,12 +105,45 @@ class BaseDVGeo:
         pass
 
     @abstractmethod
-    def writeToFile(self, filename):
-        # TODO generalize the writing to files?
+    def pointSetUpToDate(self, ptSetName):
+        """
+        This is used externally to query if the object needs to update its pointset or not.
+        Essentially what happens is when update() is called with a point set, the self.updated dict entry for pointSet is flagged as true.
+        Here we just return that flag. When design variables are set, we then reset all the flags to False since,
+        when DVs are set, nothing (in general) will be up to date anymore.
+
+        Parameters
+        ----------
+        ptSetName : str
+            The name of the pointset to check.
+        """
+        if ptSetName in self.updated:
+            return self.updated[ptSetName]
+        else:
+            return True
+
+    @abstractmethod
+    def printDesignVariables(self, directory):
+        """
+        Print a formatted list of design variables to the screen
+        """
         pass
 
     @abstractmethod
-    def totalSensitivity(self, dIdpt, ptSetName):
+    def setDesignVars(self, dvDict):
+        """
+        Standard routine for setting design variables from a design variable dictionary.
+
+        Parameters
+        ----------
+        dvDict : dict
+            Dictionary of design variables. The keys of the dictionary must correspond to the design variable names.
+            Any additional keys in the dictionary are simply ignored.
+        """
+        pass
+
+    @abstractmethod
+    def totalSensitivity(self, dIdpt, ptSetName, comm=None):
         r"""
         This function computes sensitivity information.
 
@@ -115,13 +153,15 @@ class BaseDVGeo:
         Parameters
         ----------
         dIdpt : array of size (Npt, 3) or (N, Npt, 3)
-
             This is the total derivative of the objective or function of interest with respect to the coordinates in 'ptSetName'.
             This can be a single array of size (Npt, 3) **or** a group of N vectors of size (Npt, 3, N).
             If you have many to do, it is faster to do many at once.
 
         ptSetName : str
             The name of set of points we are dealing with
+
+        comm : MPI.IntraComm
+            The communicator to use to reduce the final derivative. If comm is None, no reduction takes place.
 
         Returns
         -------
@@ -142,11 +182,14 @@ class BaseDVGeo:
 
         Parameters
         ----------
-        vec : dictionary whose keys are the design variable names, and whose
-              values are the derivative seeds of the corresponding design variable.
+        vec : dictionary whose keys are the design variable names
+            and whose values are the derivative seeds of the corresponding design variable.
 
         ptSetName : str
             The name of set of points we are dealing with
+
+        comm : MPI.IntraComm
+            The communicator to use to reduce the final derivative. If comm is None, no reduction takes place.
 
         Returns
         -------
@@ -155,27 +198,39 @@ class BaseDVGeo:
         pass
 
     @abstractmethod
-    def addVariablesPyOpt(self, optProb):
+    def update(self, ptSetName):
         """
-        Add the current set of variables to the optProb object.
+        This is the main routine for returning coordinates that have been updated by design variables.
 
         Parameters
         ----------
-        optProb : pyOpt_optimization class
-            Optimization problem definition to which variables are added
+        ptSetName : str
+            Name of point-set to return. This must match ones of the given in an :func:`addPointSet()` call.
         """
-        pass
-
-    @abstractmethod
-    def printDesignVariables(self, directory):
         pass
 
     @abstractmethod
     def writePointSet(self, name, fileName):
-        pass
+        """
+        Write a given point set to a tecplot file
+
+        Parameters
+        ----------
+        name : str
+             The name of the point set to write to a file
+
+        fileName : str
+           Filename for tecplot file. Should have no extension, an extension will be added
+        """
+        coords = self.update(name, childDelta=True)
+        fileName = fileName + "_%s.dat" % name
+        f = openTecplot(fileName, 3)
+        writeTecplot1D(f, name, coords)
+        closeTecplot(f)
 
     @abstractmethod
-    def demoDesignVars(self, directory):
+    def writeToFile(self, filename):
+        # TODO generalize the writing to files?
         pass
 
     # TODO should there be a base class for design variables? regular has global and local, VSP/ESP has one general type
