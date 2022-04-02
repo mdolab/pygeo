@@ -1,5 +1,6 @@
 from .DVGeo import DVGeometry
 from .DVGeoAxi import DVGeometryAxi
+from .DVGeoCST import DVGeometryCST
 
 try:
     from .DVGeoVSP import DVGeometryVSP
