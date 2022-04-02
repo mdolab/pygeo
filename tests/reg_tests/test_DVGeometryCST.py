@@ -135,12 +135,6 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
         self.DVGeo.addPointSet(coords, "test")
 
-        plt.figure()
-        plt.scatter(coords[self.DVGeo.points["test"]["upper"], 0], coords[self.DVGeo.points["test"]["upper"], 1], marker='^')
-        plt.scatter(coords[self.DVGeo.points["test"]["lower"], 0], coords[self.DVGeo.points["test"]["lower"], 1], marker='v')
-        plt.scatter(coords[self.DVGeo.points["test"]["trailingEdge"], 0], coords[self.DVGeo.points["test"]["trailingEdge"], 1], marker='>')
-        plt.show()
-
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
         np.testing.assert_equal(idxTE, self.DVGeo.points["test"]["trailingEdge"])
