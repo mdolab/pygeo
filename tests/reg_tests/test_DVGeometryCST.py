@@ -23,6 +23,7 @@ from mpi4py import MPI
 # ==============================================================================
 from pygeo import DVGeometryCST
 
+
 class DVGeometryCSTUnitTest(unittest.TestCase):
 
     N_PROCS = 1
@@ -32,23 +33,22 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         self.sensTol = 1e-10
         self.coordTol = 1e-10
         self.maxNumCoeff = 10
-        self.x = np.linspace(0,1,100)
+        self.x = np.linspace(0, 1, 100)
         self.yte = 1e-3
 
     def test_ClassShape(self):
-        """Test that for w_i = 1, the class shape has the expected shape
-        """
+        """Test that for w_i = 1, the class shape has the expected shape"""
         N1 = 0.5
         N2 = 1.0
-        yExact = np.sqrt(self.x)*(1-self.x)
-        for n in range(1, self.maxNumCoeff+1):
+        yExact = np.sqrt(self.x) * (1 - self.x)
+        for n in range(1, self.maxNumCoeff + 1):
             w = np.ones(n)
             y = DVGeometryCST.computeClassShape(self.x, N1, N2)
             np.testing.assert_allclose(y, yExact, atol=self.coordTol, rtol=self.coordTol)
 
     def test_ShapeFunctions(self):
         """Test that the shape functions sum to 1 when all weights are 1"""
-        for n in range(1, self.maxNumCoeff+1):
+        for n in range(1, self.maxNumCoeff + 1):
             w = np.ones(n)
             y = DVGeometryCST.computeShapeFunctions(self.x, w)
             np.testing.assert_allclose(y.sum(axis=0), 1.0, atol=self.coordTol, rtol=self.coordTol)
@@ -57,11 +57,11 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         """Test the derivatives of the CST curve height w.r.t N1"""
         N1 = self.rng.random(1)
         N2 = self.rng.random(1)
-        for n in range(1, self.maxNumCoeff+1):
+        for n in range(1, self.maxNumCoeff + 1):
             w = self.rng.random(n)
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w, self.yte)
-            dydN1_CS = np.imag(DVGeometryCST.computeCSTdydN1(self.x, N1+1e-200*1j, N2, w, self.yte))*1e200
+            dydN1_CS = np.imag(DVGeometryCST.computeCSTdydN1(self.x, N1 + 1e-200 * 1j, N2, w, self.yte)) * 1e200
             np.testing.assert_allclose(dydN1, dydN1_CS, atol=self.sensTol, rtol=self.sensTol)
 
 
@@ -166,7 +166,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
             self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
         else:
-            self.DVGeo.addPointSet(coords[rank * nPerProc:, :], "test")
+            self.DVGeo.addPointSet(coords[rank * nPerProc :, :], "test")
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
@@ -199,7 +199,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
             self.DVGeo.addPointSet(coordsRand[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
         else:
-            self.DVGeo.addPointSet(coordsRand[rank * nPerProc:, :], "test")
+            self.DVGeo.addPointSet(coordsRand[rank * nPerProc :, :], "test")
 
         np.testing.assert_equal(idxUpperRand, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLowerRand, self.DVGeo.points["test"]["lower"])
@@ -207,5 +207,6 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -43,8 +43,9 @@ class DVGeometryCST:
 
     Here x is the normalized chordwise coordinate, ranging from 0 to 1 from front to the rear of the shape.
 
-    This class 
+    This class
     """
+
     def __init__(self, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD):
         """
         Initialize DVGeometryCST.
@@ -110,7 +111,9 @@ class DVGeometryCST:
 
         # Check that the leading edge is at y = 0
         if abs(pointsGlobal[idxLE, self.yIdx]) > 1e-2:
-            raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {pointsGlobal[idxLE, self.yIdx]}")
+            raise ValueError(
+                f"Leading edge y (or idxVertical) value must equal zero, not {pointsGlobal[idxLE, self.yIdx]}"
+            )
 
         # Trailing edge points are at maximum chord
         idxTE = np.where(pointsGlobal[:, self.xIdx] == np.max(pointsGlobal[:, self.xIdx]))[0]
@@ -140,7 +143,7 @@ class DVGeometryCST:
             "lower": np.where(lowerBool)[0],
             "trailingEdge": idxTE,
             "xMin": np.min(pointsGlobal[:, self.xIdx]),
-            "xMax": np.max(pointsGlobal[:, self.xIdx])
+            "xMax": np.max(pointsGlobal[:, self.xIdx]),
         }
 
     def setDesignVars(self, dvDict):
@@ -306,33 +309,33 @@ class DVGeometryCST:
         """
         C = DVGeometryCST.computeClassShape(x, N1, N2)
         S = DVGeometryCST.computeShapeFunctions(x, w)
-        return C * S.sum(axis=0) + yte*x
+        return C * S.sum(axis=0) + yte * x
 
     @staticmethod
     def computeClassShape(x, N1, N2):
         """
         Compute the class shape of a CST curve
         """
-        return x**N1 * (1.0-x)**N2
+        return x**N1 * (1.0 - x) ** N2
 
     @staticmethod
     def computeShapeFunctions(x, w):
-        """ Compute the Bernstein polynomial shape function of a CST curve 
+        """Compute the Bernstein polynomial shape function of a CST curve
 
         This function assumes x has been normalised to the range [0,1]
         """
         numCoeffs = len(w)
-        order = numCoeffs-1
+        order = numCoeffs - 1
         S = np.zeros((numCoeffs, len(x)))
-        facts = factorial(np.arange(0, order+1))
+        facts = factorial(np.arange(0, order + 1))
         for i in range(numCoeffs):
-            binom = facts[-1] / (facts[i] * facts[order-i])
-            S[i]= w[i] * binom * x**(i) * (1.0-x)**(order-i)
+            binom = facts[-1] / (facts[i] * facts[order - i])
+            S[i] = w[i] * binom * x ** (i) * (1.0 - x) ** (order - i)
         return S
 
     @staticmethod
     def computeCSTdydw(x, N1, N2, w):
-        """ Compute the drivatives of the height of a CST curve with respect to the shape function coefficients
+        """Compute the drivatives of the height of a CST curve with respect to the shape function coefficients
 
         Given y = C(x) * sum [w_i * p_i(x)]
         dy/dw_i = C(x) * p_i(x)
@@ -345,7 +348,7 @@ class DVGeometryCST:
 
     @staticmethod
     def computeCSTdydN1(x, N1, N2, w, yte):
-        """ Compute the drivatives of the height of a CST curve with respect to N1
+        """Compute the drivatives of the height of a CST curve with respect to N1
 
         Given y = C(x, N1, N2) * S(x)
         dy/dN1 = S(x) * dC/dN1 = S(x) * C(x, N1, N2) * ln(x)
@@ -358,7 +361,7 @@ class DVGeometryCST:
 
     @staticmethod
     def computeCSTdydN2(x, N1, N2, w, yte):
-        """ Compute the drivatives of the height of a CST curve with respect to N2
+        """Compute the drivatives of the height of a CST curve with respect to N2
 
         Given y = C(x, N1, N2) * S(x)
         dy/dN2 = S(x) * dC/dN2 = S(x) * C(x, N1, N2) * ln(1-x)
