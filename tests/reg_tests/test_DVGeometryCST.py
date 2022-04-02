@@ -9,6 +9,7 @@ DVGeoCST: Test suite for the DVGeoCST module.
 # ==============================================================================
 import unittest
 import os
+from parameterized import parameterized_class
 
 # ==============================================================================
 # External Python modules
@@ -23,6 +24,8 @@ from mpi4py import MPI
 # ==============================================================================
 from pygeo import DVGeometryCST
 
+# LEUpper is true if the leading edge point is considered to be on the upper surface
+airfoils = [{"fName": "naca2412.dat", "LEUpper": False}, {"fName": "naca0012.dat", "LEUpper": True}]
 
 class DVGeometryCSTUnitTest(unittest.TestCase):
 
@@ -65,6 +68,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             np.testing.assert_allclose(dydN1, dydN1_CS, atol=self.sensTol, rtol=self.sensTol)
 
 
+@parameterized_class(airfoils)
 class DVGeometryCSTPointSetSerial(unittest.TestCase):
     # Test in serial
     N_PROCS = 1
@@ -76,11 +80,11 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
     def test_addPointSet_sorted(self):
         # Read in NACA 2412 coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE)  # TODO: should the LE be in both upper and lower? I think probably not
-        idxLower = np.arange(idxLE, coords.shape[0])
+        idxUpper = np.arange(0, idxLE + self.LEUpper)  # TODO: should the LE be in both upper and lower? I think probably not
+        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         idxTE = np.array([0, coords.shape[0] - 1])
 
         self.DVGeo.addPointSet(coords, "test")
@@ -93,11 +97,11 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
     def test_addPointSet_randomized(self):
         # Read in NACA 2412 coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE)  # TODO: should the LE be in both upper and lower? I think probably not
-        idxLower = np.arange(idxLE, coords.shape[0])
+        idxUpper = np.arange(0, idxLE + self.LEUpper)
+        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         idxTE = np.array([0, coords.shape[0] - 1])
 
         # Randomize the index order (do indices so we can track where they end up)
@@ -120,7 +124,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
     def test_addPointSet_bluntTE(self):  # includes a blunt trailing edge with points along it
         # Read in NACA 2412 coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         nPointsTE = 6  # total points on the trailing edge
         pointsTE = np.ones((nPointsTE - 2, 3), dtype=float)
@@ -128,8 +132,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         pointsTE[:, 1] = np.linspace(coords[-1, 1] + 1e-4, coords[0, 1] - 1e-4, pointsTE.shape[0])
         coords = np.vstack((coords, pointsTE))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE)
-        idxLower = np.arange(idxLE, coords.shape[0] - nPointsTE + 2)
+        idxUpper = np.arange(0, idxLE + self.LEUpper)
+        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - nPointsTE + 2)
         idxTE = np.zeros(nPointsTE)
         idxTE[1:] = np.arange(coords.shape[0] - nPointsTE + 1, coords.shape[0])
 
@@ -142,6 +146,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
+@parameterized_class(airfoils)
 class DVGeometryCSTPointSetParallel(unittest.TestCase):
     # Test in parallel
     N_PROCS = 4
@@ -153,11 +158,11 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
     def test_addPointSet_sorted(self):
         # Read in NACA 2412 coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE)
-        idxLower = np.arange(idxLE, coords.shape[0])
+        idxUpper = np.arange(0, idxLE + self.LEUpper)
+        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         idxTE = np.array([0, coords.shape[0] - 1])
 
         # Divide up the points among the procs (mostly evenly, but not quite to check the harder case)
@@ -176,11 +181,11 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
     def test_addPointSet_randomized(self):
         # Read in NACA 2412 coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE)
-        idxLower = np.arange(idxLE, coords.shape[0])
+        idxUpper = np.arange(0, idxLE + self.LEUpper)
+        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         idxTE = np.array([0, coords.shape[0] - 1])
 
         # Randomize the index order (do indices so we can track where they end up)

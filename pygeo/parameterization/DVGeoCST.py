@@ -75,7 +75,10 @@ class DVGeometryCST:
             - The geometry is exclusively an extruded shape (no spanwise changes allowed)
             - The airfoil's leading edge is on the left (min x or idxChord) and trailing edge is
               on the right (max x or idxChord)
-            - The airfoil's leading edge is at y (or idxVertical) equals zero
+            - The airfoil's leading edge is at y (or idxVertical) equals zero (within 1e-2)
+            - The current approach to split the upper and lower surfaces fits a 9th order polynomial to the airfoil
+              coordinates and the upper surface is anything above and lower, anything below. The downside is this
+              method may not work for airfoils with a very thin and cambered trailing edge.
 
         Parameters
         ----------
