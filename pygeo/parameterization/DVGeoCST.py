@@ -329,7 +329,7 @@ class DVGeometryCST:
         """
         numCoeffs = len(w)
         order = numCoeffs - 1
-        S = np.zeros((numCoeffs, len(x)))
+        S = np.zeros((numCoeffs, len(x)), dtype=w.dtype)
         facts = factorial(np.arange(0, order + 1))
         for i in range(numCoeffs):
             binom = facts[-1] / (facts[i] * facts[order - i])

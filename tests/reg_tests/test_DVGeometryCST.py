@@ -38,6 +38,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         self.maxNumCoeff = 10
         self.x = np.linspace(0, 1, 100)
         self.yte = 1e-3
+        self.CS_delta = 1e-200
 
     def test_ClassShape(self):
         """Test that for w_i = 1, the class shape has the expected shape"""
@@ -56,7 +57,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             y = DVGeometryCST.computeShapeFunctions(self.x, w)
             np.testing.assert_allclose(y.sum(axis=0), 1.0, atol=self.coordTol, rtol=self.coordTol)
 
-    def test_dYdN1(self):
+    def test_dydN1(self):
         """Test the derivatives of the CST curve height w.r.t N1"""
         N1 = self.rng.random(1)
         N2 = self.rng.random(1)
@@ -64,8 +65,36 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             w = self.rng.random(n)
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w, self.yte)
-            dydN1_CS = np.imag(DVGeometryCST.computeCSTdydN1(self.x, N1 + 1e-200 * 1j, N2, w, self.yte)) * 1e200
+            dydN1_CS = np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte)) / self.CS_delta
             np.testing.assert_allclose(dydN1, dydN1_CS, atol=self.sensTol, rtol=self.sensTol)
+    
+    def test_dydN2(self):
+        """Test the derivatives of the CST curve height w.r.t N2"""
+        N1 = self.rng.random(1)
+        N2 = self.rng.random(1)
+        for n in range(1, self.maxNumCoeff + 1):
+            w = self.rng.random(n)
+            y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
+            dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w, self.yte)
+            dydN2_CS = np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte)) / self.CS_delta
+            np.testing.assert_allclose(dydN2, dydN2_CS, atol=self.sensTol, rtol=self.sensTol)
+
+    def test_dydw(self):
+        """Test the derivatives of the CST curve height w.r.t N2"""
+        N1 = self.rng.random(1)
+        N2 = self.rng.random(1)
+        for n in range(1, self.maxNumCoeff + 1):
+            w = self.rng.random(n)
+            y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
+            dydw = DVGeometryCST.computeCSTdydw(self.x, N1, N2, w)
+            dydw_CS = np.zeros((n, self.x.size), dtype=float)
+            w = w.astype(complex)
+            for i in range(n):
+                w[i] += self.CS_delta * 1j
+                dydw_CS[i, :] = np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)) / self.CS_delta
+                w[i] -= self.CS_delta * 1j
+
+            np.testing.assert_allclose(dydw, dydw_CS, atol=self.sensTol, rtol=self.sensTol)
 
 
 @parameterized_class(airfoils)
