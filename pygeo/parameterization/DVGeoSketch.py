@@ -99,7 +99,7 @@ class DVGeoSketch(BaseDVGeo):
                 self.DVs[key].value = dvDict[key]
 
         # we just need to set the design variables in the VSP model and we are done
-        self._updateVSPModel()
+        self._updateModel()
 
         # update the projected coordinates
         self._updateProjectedPts()
@@ -277,27 +277,21 @@ class DVGeoSketch(BaseDVGeo):
 
         return dIdxDict
 
-    # TODO these are so similar see if they can be combined
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
         r"""
         This function computes sensitivity information.
-
         Specifically, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}} \ vec`
-
-        This is useful for forward AD mode.
+        :math:`\frac{dX_{pt}}{dX_{DV}} \vec'`
 
         Parameters
         ----------
         vec : dictionary whose keys are the design variable names, and whose
               values are the derivative seeds of the corresponding design variable.
-
         ptSetName : str
             The name of set of points we are dealing with
-
         comm : MPI.IntraComm
-            inactive parameter, this has no effect on the final result
-            because with this method, the reduction is performed externally
+            The communicator to use to reduce the final derivative. If
+            comm is None, no reduction takes place.
 
         Returns
         -------
@@ -330,12 +324,14 @@ class DVGeoSketch(BaseDVGeo):
 
     # totalSensitivityTransProd is only VSP
 
-    # these are too different
     @abstractmethod
     def addVariable(self):
+        """
+        Add a design variable definition.
+        """
         pass
 
-    # TODO these could be aligned if VSP's variables changed slightly
+    # TODO VSP uses addVar not addVarGroup so this might not be equivalent
     def addVariablesPyOpt(self, optProb):
         """
         Add the current set of variables to the optProb object.
@@ -348,9 +344,8 @@ class DVGeoSketch(BaseDVGeo):
 
         for dvName in self.DVs:
             dv = self.DVs[dvName]
-            optProb.addVar(dvName, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
-    # TODO ESP doesn't have this but it could be nice, the structure is probably too different to use the same
     @abstractmethod
     def printDesignVariables(self):
         """
@@ -358,59 +353,27 @@ class DVGeoSketch(BaseDVGeo):
         """
         pass
 
-    # createDesignFile is just VSP
-    # also writePlot3D
-
     # ----------------------------------------------------------------------- #
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
     # ----------------------------------------------------------------------- #
 
-    # TODO can I call this updateModel and have it be general?
+    @abstractmethod
     def _updateModel(self):
         """
-        Set each of the DVs. We have the parmID stored so its easy.
+        Set each of the DVs for the respective parametric model.
         """
         pass
 
+    @abstractmethod
     def _updateProjectedPts(self):
         """
-        internally updates the coordinates of the projected points
+        Internally updates the coordinates of the projected points.
         """
-
         pass
 
-    #  _getBBox is just VSP
-    # also _getuv
-
-    # TODO this is too different
+    @abstractmethod
     def _computeSurfJacobian(self):
+        """
+        Comptues the jacobian of the surface with respect to the design variables.
+        """
         pass
-
-
-# TODO make this a general DV class? they do store different information so this might not work
-class vspDV:
-    def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
-        """Inernal class for storing VSP design variable information"""
-        self.parmID = parmID
-        self.component = component
-        self.group = group
-        self.parm = parm
-        self.value = np.array(value)
-        self.lower = lower
-        self.upper = upper
-        self.dh = dh
-        self.scale = scale
-
-
-class PointSet:
-    """Internal class for storing the projection details of each pointset"""
-
-    def __init__(self, points, pts, geom, u, v):
-        self.points = points
-        self.pts = pts
-        self.geom = geom
-        self.u = u
-        self.v = v
-        self.offset = self.pts - self.points
-        self.nPts = len(self.pts)
-        self.jac = None
