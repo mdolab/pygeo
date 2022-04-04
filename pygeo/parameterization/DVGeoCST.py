@@ -66,6 +66,30 @@ class DVGeometryCST:
         self.yIdx = idxVertical
         self.comm = comm
 
+        # Store the DVs and flags to determine if the limited options have already been specified
+        # Each DV in the DVs dictionary (with the key as the DV name) contains
+        #   "type": the DV's type among "upper", "lower", "n1", and "n2"
+        #   "value": the DV's value, initialized to zero(s)
+        #   "lower": lower bound
+        #   "upper": upper bound
+        #   "scale": variable scaling for optimizer
+        self.DVs = {}
+        self.DVExists = {
+            "upper": False,
+            "lower": False,
+            "n1": False,
+            "n2": False
+        }
+
+        # Default CST variables
+        # TODO: fit CST coefficients to the input airfoil so if upper or lower DVs aren't specified, it will keep the airfoil
+        self.defaultDV = {
+            "upper": np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
+            "lower": -np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
+            "n1": np.array([0.5]),
+            "n2": np.array([1.])
+        }
+
     def addPointSet(self, points, ptName):
         """
         Add a set of coordinates to DVGeometry
@@ -140,6 +164,7 @@ class DVGeometryCST:
         # idxUpper = np.arange(idxUpperTE, idxLE + 1)  # include leading and trailing edges
         # idxLower = np.arange(idxLE, idxLowerTE + 1)  # include leading and trailing edges
 
+        self.updated[ptName] = False
         self.points[ptName] = {
             "points": pointsGlobal,
             "upper": np.where(upperBool)[0],
@@ -148,6 +173,75 @@ class DVGeometryCST:
             "xMin": np.min(pointsGlobal[:, self.xIdx]),
             "xMax": np.max(pointsGlobal[:, self.xIdx]),
         }
+    
+    def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0):
+        """
+        Add one or more local design variables ot the DVGeometry
+        object. Local variables are used for small shape modifications.
+
+        Parameters
+        ----------
+        dvName : str
+            A unique name to be given to this design variable group
+
+        dvType : str
+            Define the type of CST design variable being added. The options (not case sensitive) are
+                `"upper"`: upper surface CST coefficients (specify `dvNum` to define how many)
+                `"lower"`: lower surface CST coefficients (specify `dvNum` to define how many)
+                `"N1"`: first class shape parameter (adds a single DV)
+                `"N2"`: second class shape parameter (adds a single DV)
+
+        dvNum : int
+            If dvType is `"upper"` or `"lower"`, use `dvNum` to specify the number of
+            CST parameters to use. This must be given by the user for upper and lower DVs.
+
+        lower : float or ndarray
+            The upper bound for the variable(s). This will be applied to
+            all shape variables
+
+        upper : float or ndarray
+            The upper bound for the variable(s). This will be applied to
+            all shape variables
+
+        scale : float
+            The scaling of the variables. A good approximate scale to
+            start with is approximately 1.0/(upper-lower). This gives
+            variables that are of order ~1.0.
+
+        Returns
+        -------
+        N : int
+            The number of design variables added.
+        """
+        # Do some error checking
+        if dvType.lower() not in ["upper", "lower", "n1", "n2"]:
+            raise ValueError(f"dvType must be one of \"upper\", \"lower\", \"N1\", or \"N2\", not {dvType}")
+        dvType = dvType.lower()
+
+        if dvType in ["upper", "lower"] and dvNum is None:
+                raise ValueError(f"dvNum must be specified if dvType is \"upper\" or \"lower\"")
+        else:
+            dvNum = 1
+
+        # Check that a duplicate DV doesn't already exist
+        if self.DVExists[dvType]:
+            raise ValueError(f"\"{dvType}\" design variable already exists")
+        else:
+            self.DVExists[dvType] = True
+        
+        if dvName in self.DVs.keys():
+            raise ValueError(f"A design variable with the name \"{dvName}\" already exists")
+
+        # Add the DV to the internally-stored list
+        self.DVs[dvName] = {
+            "type": dvType,
+            "value": np.zeros(dvNum, dtype=float),
+            "lower": lower,
+            "upper": upper,
+            "scale": scale
+        }
+
+        return dvNum
 
     def setDesignVars(self, dvDict):
         """
@@ -159,7 +253,16 @@ class DVGeometryCST:
             Dictionary of design variables. The keys of the dictionary must correspond to the design variable names.
             Any additional keys in the dictionary are simply ignored.
         """
-        pass
+        for dvName, dvVal in dvDict.items():
+            if dvName in self.DVs:
+                if dvVal.shape != self.DVs[dvName]["value"].shape:
+                    raise ValueError(f"Input shape of {dvVal.shape} for the DV named \"{dvName}\" does " +
+                                     f"not match the DV's shape of {self.DVs[dvName]['value'].shape}")
+                self.DVs[dvName]["value"] = dvVal
+
+        # Flag all the pointSets as not being up to date
+        for pointSet in self.updated:
+            self.updated[pointSet] = False
 
     def getValues(self):
         """
@@ -171,7 +274,12 @@ class DVGeometryCST:
         dvDict : dict
             Dictionary of design variables
         """
-        pass
+        # Format the dictonary into the desired shape
+        DVs = {}
+        for dvName in self.DVs.keys():
+            DVs[dvName] = self.DVs[dvName]["value"]
+
+        return DVs
 
     def pointSetUpToDate(self, ptSetName):
         """
@@ -201,7 +309,7 @@ class DVGeometryCST:
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
-        pass
+        return list(self.DVs.keys())
 
     def writeToFile(self, filename):
         # TODO generalize the writing to files?
@@ -258,7 +366,9 @@ class DVGeometryCST:
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
         """
-        pass
+        for dvName, DV in self.DVs.items():
+            optProb.addVarGroup(dvName, DV["value"].size, "c", value=self.defaultDV[DV["type"]],
+                                lower=DV["lower"], upper=DV["upper"], scale=DV["scale"])
 
     def update(self, ptSetName, childDelta=True, config=None):
         """
@@ -281,7 +391,39 @@ class DVGeometryCST:
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
         """
-        pass
+        wUpper = self.defaultDV["upper"].copy()
+        wLower = self.defaultDV["lower"].copy()
+        N1 = self.defaultDV["n1"].copy()
+        N2 = self.defaultDV["n2"].copy()
+
+        for DV in self.DVs.values():
+            if DV["type"] == "upper":
+                wUpper = DV["value"]
+            elif DV["type"] == "lower":
+                wLower = DV["value"]
+            elif DV["type"] == "n1":
+                N1 = DV["value"]
+            else:
+                N2 = DV["value"]
+
+        # Unpack the points to make variable names more accessible
+        idxUpper = self.points[ptSetName]["upper"]
+        idxLower = self.points[ptSetName]["lower"]
+        idxTE = self.points[ptSetName]["trailingEdge"]
+        points = self.points[ptSetName]["points"]
+        ptsX = points[:, self.xIdx]
+        ptsY = points[:, self.yIdx]
+
+        # Scale the airfoil to the range 0 to 1 in x direction
+        shift = min(ptsX)
+        chord = max(ptsX) - shift
+        scaledX = (ptsX - shift) / chord
+        yTE = (max(ptsY[idxTE]) - min(ptsY[idxTE])) / chord  # scaled trailing edge thickness
+
+        ptsY[idxUpper] = chord * self.computeCSTCoordinates(scaledX[idxUpper], N1, N2, wUpper, yTE)
+        ptsY[idxLower] = chord * self.computeCSTCoordinates(scaledX[idxLower], N1, N2, wLower, yTE)
+
+        self.updated[ptSetName] = True
 
     def getNDV(self):
         """
@@ -292,7 +434,7 @@ class DVGeometryCST:
         nDV : int
             Total number of design variables
         """
-        pass
+        return len(self.DVs)
 
     def printDesignVariables(self, directory):
         pass
