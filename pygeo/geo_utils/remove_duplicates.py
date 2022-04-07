@@ -7,23 +7,23 @@ from .norm import eDist
 
 
 def unique(s):
-    """Return a list of the elements in s, but without duplicates.
+    r"""Return a list of the elements in s, but without duplicates.
 
-    For example, unique([1,2,3,1,2,3]) is some permutation of [1,2,3],
-    unique("abcabc") some permutation of ["a", "b", "c"], and
-    unique(([1, 2], [2, 3], [1, 2])) some permutation of
-    [[2, 3], [1, 2]].
+    For example, ``unique([1,2,3,1,2,3])`` is some permutation of ``[1,2,3]``,
+    ``unique("abcabc")`` some permutation of ``["a", "b", "c"]``, and
+    ``unique(([1, 2], [2, 3], [1, 2]))`` some permutation of
+    ``[[2, 3], [1, 2]]``.
 
     For best speed, all sequence elements should be hashable.  Then
-    unique() will usually work in linear time.
+    ``unique()`` will usually work in linear time.
 
     If not possible, the sequence elements should enjoy a total
-    ordering, and if list(s).sort() doesn't raise TypeError it's
-    assumed that they do enjoy a total ordering.  Then unique() will
-    usually work in O(N*log2(N)) time.
+    ordering, and if ``list(s).sort()`` doesn't raise ``TypeError`` it's
+    assumed that they do enjoy a total ordering.  Then ``unique()`` will
+    usually work in :math:`\mathcal{O}(N\log_2(N))` time.
 
     If that's not possible either, the sequence elements must support
-    equality-testing.  Then unique() will usually work in quadratic
+    equality-testing.  Then ``unique()`` will usually work in quadratic
     time.
     """
 
@@ -131,9 +131,22 @@ def pointReduce(points, nodeTol=1e-4):
     for ipt in range(N):
         dists.append(np.sqrt(np.dot(points[ipt], points[ipt])))
 
-    temp = np.array(dists)
-    temp.sort()
-    ind = np.argsort(dists)
+    # we need to round the distances to 8 decimals before sorting
+    # because 2 points might have "identical" distances to the origin,
+    # but they might differ on the 16 significant figure. As a result
+    # the argsort might flip their order even though the elements
+    # should not take over each other. By rounding them to 8
+    # significant figures, we somewhat guarantee that nodes that
+    # have similar distances to the origin dont get shuffled
+    # because of floating point errors
+    dists_rounded = np.around(dists, decimals=8)
+
+    # the "stable" sorting algorithm guarantees that entries
+    # with the same values dont overtake each other.
+    # The entries with identical distances are fully checked
+    # in the brute force check below.
+    ind = np.argsort(dists_rounded, kind="stable")
+
     i = 0
     cont = True
     newPoints = []
@@ -178,8 +191,9 @@ def pointReduceBruteForce(points, nodeTol=1e-4):
     duplicates, return a list of the unique points AND a pointer list
     for the original points to the reduced set
 
-    BRUTE FORCE VERSION
-
+    Warnings
+    --------
+    This is the brute force version of :func:`pointReduce`.
     """
     N = len(points)
     if N == 0:

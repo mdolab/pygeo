@@ -13,7 +13,7 @@ from .. import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
 from baseclasses.utils import Error
-from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal
+from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
 
 
 class DVGeometry:
@@ -50,13 +50,29 @@ class DVGeometry:
        filename of FFD file. This must be a ascii formatted plot3D file
        in fortran ordering.
 
-    complex : bool
+    isComplex : bool
         Make the entire object complex. This should **only** be used when
         debugging the entire tool-chain with the complex step method.
 
     child : bool
         Flag to indicate that this object is a child of parent DVGeo object
 
+    faceFreeze : dict
+        A dictionary of lists of strings specifying which faces should be
+        'frozen'. Each dictionary represents one block in the FFD.
+        For example if faceFreeze =['0':['iLow'],'1':[]], then the
+        plane of control points corresponding to i=0, and i=1, in block '0'
+        will not be able to move in DVGeometry.
+
+    name : str
+        This is prepended to every DV name for ensuring design variables names are
+        unique to pyOptsparse. Only useful when using multiple DVGeos with
+        TriangulatedSurfaceConstraint()
+
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
 
     Examples
     --------
@@ -77,12 +93,13 @@ class DVGeometry:
       >>>
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
-        self.DV_listSpanwiseLocal = OrderedDict()  # Local Normal Design Variable List
+        self.DV_listSpanwiseLocal = OrderedDict()  # Local Spanwise Design Variable List
+        self.DVComposite = None  # Composite Design Variable
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
@@ -113,7 +130,7 @@ class DVGeometry:
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, *args, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, *args, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None
@@ -174,6 +191,7 @@ class DVGeometry:
         self.nDVL_count = 0  # number of local    (L)  variables
         self.nDVSL_count = 0  # number of section  (SL) local variables
         self.nDVSW_count = 0  # number of spanwise (SW) local variables
+        self.useComposite = False
 
         # The set of user supplied axis.
         self.axis = OrderedDict()
@@ -472,6 +490,7 @@ class DVGeometry:
 
             # Count total number of sections and check if volumes are aligned
             # face to face along refaxis direction
+            # Local indices size is (N_x,N_y,N_z)
             lIndex = self.FFD.topo.lIndex
             nSections = []
             for i in range(len(volOrd)):
@@ -485,7 +504,7 @@ class DVGeometry:
             # Loop through sections and compute node location
             place = 0
             for j, vol in enumerate(volOrd):
-                # sectionArr: indices of FFD points grouped by section
+                # sectionArr: indices of FFD points grouped by section - i.e. the first tensor index now == nSections
                 sectionArr = np.rollaxis(lIndex[vol], alignIndex, 0)
                 skip = 0
                 if j > 0:
@@ -592,7 +611,12 @@ class DVGeometry:
             Flag determine if the coordinates are projected into the
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
-            exactly what they are doing."""
+            exactly what they are doing.
+
+        """
+
+        # compNames is only needed for DVGeometryMulti, so remove it if passed
+        kwargs.pop("compNames", None)
 
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
@@ -612,7 +636,7 @@ class DVGeometry:
         if self.isChild:
             self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=True, **kwargs)
         else:
-            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=False)
+            self.FFD.attachPoints(self.points[ptName], ptName, interiorOnly=False, **kwargs)
 
         if origConfig:
             self.FFD.coef = tmpCoef
@@ -1215,6 +1239,50 @@ class DVGeometry:
 
         return self.DV_listSectionLocal[dvName].nVal
 
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None):
+        """
+        Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
+        at the moment.
+
+        Parameters
+        ----------
+        dvName : str
+            The name of the composite DVs
+        ptSetName : str, optional
+            If the matrices need to be computed, then a point set must be specified, by default None
+        u : ndarray, optional
+            The u matrix used for the composite DV, by default None
+        scale : float or ndarray, optional
+            The scaling applied to this DV, by default None
+        """
+        NDV = self.getNDV()
+        if self.name is not None:
+            dvName = f"{self.name}_{dvName}"
+        if u is not None:
+            # we are after a square matrix
+            if u.shape != (NDV, NDV):
+                raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+            if scale is None:
+                raise ValueError("If u is provided, then scale must also be provided.")
+            s = None
+        else:
+            if ptSetName is None:
+                raise ValueError("If u and s need to be computed, you must specify the ptSetName")
+            self.computeTotalJacobian(ptSetName)
+            J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
+            u, s, _ = np.linalg.svd(J_full)
+            scale = np.sqrt(s)
+            # normalize the scaling
+            scale = scale * (NDV / np.sum(scale))
+
+        # map the initial design variable values
+        # we do this manually instead of calling self.mapVecToComp
+        # because self.DVComposite.u isn't available yet
+        values = u.T @ self.convertDictToSensitivity(self.getValues())
+
+        self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
+        self.useComposite = True
+
     def addGeoDVSectionLocal(self, *args, **kwargs):
         warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
         return self.addLocalSectionDV(*args, **kwargs)
@@ -1321,13 +1389,16 @@ class DVGeometry:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dictionary are simply ignored.
         """
 
         # Coefficients must be complexifed from here on if complex
         if self.complex:
             self._finalize()
             self._complexifyCoef()
+
+        if self.useComposite:
+            dvDict = self.mapXDictToDVGeo(dvDict)
 
         for key in dvDict:
             if key in self.DV_listGlobal:
@@ -1395,7 +1466,7 @@ class DVGeometry:
         """
         Generic routine to return the current set of design
         variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
+        that would be suitable for a subsequent call to :func:`setDesignVars`
 
         Returns
         -------
@@ -1425,6 +1496,14 @@ class DVGeometry:
         for child in self.children:
             childdvDict = child.getValues()
             dvDict.update(childdvDict)
+
+        if self.useComposite:
+            dvDict = self.mapXDictToComp(dvDict)
+
+        # cast DVs to real if we are in real mode
+        if not self.complex:
+            for key, val in dvDict.items():
+                dvDict[key] = val.real
 
         return dvDict
 
@@ -1507,21 +1586,19 @@ class DVGeometry:
             rotType = self.axis[self.curveIDNames[ipt]]["rotType"]
             if rotType == 0:
                 bp_ = np.copy(base_pt)  # copy of original pointset - will not be rotated
-                if isinstance(ang, (float, int)):  # rotation active only if a non-default value is provided
-                    ang *= np.pi / 180  # conv to [rad]
-                    # Rotating the FFD according to inputs
-                    # The FFD points should now be aligned with the main system of reference
-                    base_pt = geo_utils.rotVbyW(bp_, ax_dir, ang)
+
                 deriv = self.refAxis.curves[self.curveIDs[ipt]].getDerivative(self.links_s[ipt])
                 deriv /= geo_utils.euclideanNorm(deriv)  # Normalize
                 new_vec = -np.cross(deriv, self.links_n[ipt])
+
                 if isComplex:
                     new_pts[ipt] = bp_ + new_vec * scale  # using "unrotated" bp_ vector
                 else:
                     new_pts[ipt] = np.real(bp_ + new_vec * scale)
 
-                if isinstance(ang, (float, int)):
-                    # Rotating to be aligned with main sys ref
+                if isinstance(ang, (float, int)):  # rotation active only if a non-default value is provided
+                    ang *= np.pi / 180  # conv to [rad]
+                    # Rotating the FFD according to inputs to be aligned with main sys ref
                     nv_ = np.copy(new_vec)
                     new_vec = geo_utils.rotVbyW(nv_, ax_dir, ang)
 
@@ -1773,7 +1850,7 @@ class DVGeometry:
         else:
             return True
 
-    def convertSensitivityToDict(self, dIdx, out1D=False):
+    def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
         """
         This function takes the result of totalSensitivity and
         converts it to a dict for use in pyOptSparse
@@ -1787,6 +1864,11 @@ class DVGeometry:
         out1D : boolean
             If true, creates a 1D array in the dictionary instead of 2D.
             This function is used in the matrix-vector product calculation.
+
+        useCompositeNames : boolean
+            Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
+            If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
+            If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
 
         Returns
         -------
@@ -1838,13 +1920,23 @@ class DVGeometry:
 
         # Add in child portion
         for iChild in range(len(self.children)):
-            childdIdx = self.children[iChild].convertSensitivityToDict(dIdx, out1D=out1D)
+            childdIdx = self.children[iChild].convertSensitivityToDict(
+                dIdx, out1D=out1D, useCompositeNames=useCompositeNames
+            )
             # update the total sensitivities with the derivatives from the child
             for key in childdIdx:
                 if key in dIdxDict.keys():
                     dIdxDict[key] += childdIdx[key]
                 else:
                     dIdxDict[key] = childdIdx[key]
+
+        # replace other names with user
+        if useCompositeNames and self.useComposite:
+            array = []
+            for _key, val in dIdxDict.items():
+                array.append(val)
+            array = np.hstack(array)
+            dIdxDict = {self.DVComposite.name: array}
 
         return dIdxDict
 
@@ -1899,19 +1991,28 @@ class DVGeometry:
             dIdx += childdIdx
         return dIdx
 
-    def getVarNames(self):
+    def getVarNames(self, pyOptSparse=False):
         """
         Return a list of the design variable names. This is typically
         used when specifying a wrt= argument for pyOptSparse.
+
+        Parameters
+        ----------
+        pyOptSparse : bool
+            Flag to specify whether the DVs returned should be those in the optProb or those internal to DVGeo.
+            Only relevant if using composite DVs.
 
         Examples
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
-        names = list(self.DV_listGlobal.keys())
-        names.extend(list(self.DV_listLocal.keys()))
-        names.extend(list(self.DV_listSectionLocal.keys()))
-        names.extend(list(self.DV_listSpanwiseLocal.keys()))
+        if not pyOptSparse or not self.useComposite:
+            names = list(self.DV_listGlobal.keys())
+            names.extend(list(self.DV_listLocal.keys()))
+            names.extend(list(self.DV_listSectionLocal.keys()))
+            names.extend(list(self.DV_listSpanwiseLocal.keys()))
+        else:
+            names = [self.DVComposite.name]
 
         # Call the children recursively
         for iChild in range(len(self.children)):
@@ -1982,8 +2083,11 @@ class DVGeometry:
         else:
             dIdx = dIdx_local
 
+        if self.useComposite:
+            dIdx = self.mapSensToComp(dIdx)
+
         # Now convert to dict:
-        dIdx = self.convertSensitivityToDict(dIdx)
+        dIdx = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
 
         return dIdx
 
@@ -2202,7 +2306,7 @@ class DVGeometry:
         self._finalize()
         self.curPtSet = ptSetName
 
-        if not (self.JT[ptSetName] is None):
+        if self.JT[ptSetName] is not None:
             return
 
         # compute the derivatives of the coeficients of this level wrt all of the design
@@ -2265,7 +2369,7 @@ class DVGeometry:
         self._finalize()
         self.curPtSet = ptSetName
 
-        if not (self.JT[ptSetName] is None):
+        if self.JT[ptSetName] is not None:
             return
 
         if self.isChild:
@@ -2410,6 +2514,7 @@ class DVGeometry:
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
+
         """
         if ignoreVars is None:
             ignoreVars = set()
@@ -2425,6 +2530,40 @@ class DVGeometry:
                 ("spanwiselocalVars", self.DV_listSpanwiseLocal),
             ]
         )
+
+        # we add the composite DVs, and construct linear constraints that replace the existing bounds
+        # then we simply return without adding any of the other DVs
+        if self.useComposite:
+            dv = self.DVComposite
+            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+
+            # add the linear DV constraints that replace the existing bounds!
+            # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
+            if len(ignoreVars) != 0:
+                warnings.warn("Use of ignoreVars is incompatible with composite DVs")
+            lb = {}
+            ub = {}
+            for lst in varLists:
+                for key in varLists[lst]:
+                    dv = varLists[lst][key]
+                    lb[key] = dv.lower
+                    ub[key] = dv.upper
+
+            lb = self.convertDictToSensitivity(lb)
+            ub = self.convertDictToSensitivity(ub)
+
+            optProb.addConGroup(
+                f"{self.DVComposite.name}_con",
+                self.getNDV(),
+                lower=lb,
+                upper=ub,
+                scale=1.0,
+                linear=True,
+                wrt=self.DVComposite.name,
+                jac={self.DVComposite.name: self.DVComposite.u},
+            )
+            return
+
         for lst in varLists:
             if (
                 lst == "globalVars"
@@ -2647,7 +2786,7 @@ class DVGeometry:
         else:
             raise ValueError(f"Type {outputType} not recognized. Must be either 'iges' or 'tecplot'")
 
-    def getLocalIndex(self, iVol):
+    def getLocalIndex(self, iVol, comp=None):
         """Return the local index mapping that points to the global
         coefficient list for a given volume"""
         return self.FFD.topo.lIndex[iVol].copy()
@@ -2922,10 +3061,11 @@ class DVGeometry:
             self.links_x.append(self.ptAttach[i] - self.refAxis.curves[self.curveIDs[i]](s[i]))
             deriv = self.refAxis.curves[self.curveIDs[i]].getDerivative(self.links_s[i])
             deriv /= geo_utils.euclideanNorm(deriv)  # Normalize
-            self.links_n.append(np.cross(deriv, self.links_x[-1]))
+            self.links_n.append(np.cross(deriv, self.links_x[-1]))  # using the element just appended to self.links_x
 
         self.links_x = np.array(self.links_x)
         self.links_s = np.array(self.links_s)
+        self.links_n = np.array(self.links_n)
         self.finalized = True
 
     def _setInitialValues(self):
@@ -3341,6 +3481,105 @@ class DVGeometry:
 
             self.coef = self.coef.real.astype("d")
 
+    def mapXDictToDVGeo(self, inDict):
+        """
+        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
+        without modifying them
+
+        Parameters
+        ----------
+        inDict : dict
+            The dictionary of DVs to be mapped
+
+        Returns
+        -------
+        dict
+            The mapped DVs in the same dictionary format
+        """
+        # first make a copy so we don't modify in place
+        inDict = copy.deepcopy(inDict)
+        userVec = inDict.pop(self.DVComposite.name)
+        outVec = self.mapVecToDVGeo(userVec)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
+        # now merge inDict and outDict
+        for key in inDict:
+            outDict[key] = inDict[key]
+        return outDict
+
+    def mapXDictToComp(self, inDict):
+        """
+        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
+
+        Parameters
+        ----------
+        inDict : dict
+            The DVs to be mapped
+
+        Returns
+        -------
+        dict
+            The mapped DVs
+        """
+        # first make a copy so we don't modify in place
+        inDict = copy.deepcopy(inDict)
+        userVec = self.convertDictToSensitivity(inDict)
+        outVec = self.mapVecToComp(userVec)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
+        return outDict
+
+    def mapVecToDVGeo(self, inVec):
+        """
+        This is the vector version of :func:`mapDictToDVGeo`, where the actual mapping is done
+
+        Parameters
+        ----------
+        inVec : ndarray
+            The DVs in a single 1D array
+
+        Returns
+        -------
+        ndarray
+            The mapped DVs in a single 1D array
+        """
+        inVec = inVec.reshape(self.getNDV(), -1)
+        outVec = self.DVComposite.u @ inVec
+        return outVec.flatten()
+
+    def mapVecToComp(self, inVec):
+        """
+        This is the vector version of :func:`mapDictToComp`, where the actual mapping is done
+
+        Parameters
+        ----------
+        inVec : ndarray
+            The DVs in a single 1D array
+
+        Returns
+        -------
+        ndarray
+            The mapped DVs in a single 1D array
+        """
+        inVec = inVec.reshape(self.getNDV(), -1)
+        outVec = self.DVComposite.u.T @ inVec
+        return outVec.flatten()
+
+    def mapSensToComp(self, inVec):
+        """
+        Maps the sensitivity matrix to the composite design space
+
+        Parameters
+        ----------
+        inVec : ndarray
+            The sensitivities to be mapped
+
+        Returns
+        -------
+        ndarray
+            The mapped sensitivity matrix
+        """
+        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
+        return outVec
+
     def computeTotalJacobianFD(self, ptSetName, config=None):
         """This function takes the total derivative of an objective,
         I, with respect the points controlled on this processor using FD.
@@ -3352,7 +3591,7 @@ class DVGeometry:
         self._finalize()
         self.curPtSet = ptSetName
 
-        if not (self.JT[ptSetName] is None):
+        if self.JT[ptSetName] is not None:
             return
 
         if self.isChild:
@@ -4093,7 +4332,6 @@ class DVGeometry:
 
                     if abs(relErr) > h and abs(absErr) > h:
                         print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
-                    # print(ii, deriv[ii], Jac[DVCountSpanLoc, ii], relErr, absErr)
 
                 DVCountSpanLoc += 1
                 self.DV_listSpanwiseLocal[key].value[j] = refVal

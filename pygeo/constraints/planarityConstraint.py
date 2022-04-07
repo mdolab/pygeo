@@ -15,7 +15,7 @@ class PlanarityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, axis, origin, p0, v1, v2, lower, upper, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, axis, origin, p0, v1, v2, lower, upper, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
 
         # create the output array
@@ -33,10 +33,10 @@ class PlanarityConstraint(GeometricConstraint):
         # with the name provided:
         # TODO this is duplicating a DVGeo pointset (same as the surface which originally created the constraint)
         # issue 53
-        self.DVGeo.addPointSet(self.p0, self.name + "p0")
-        self.DVGeo.addPointSet(self.p1, self.name + "p1")
-        self.DVGeo.addPointSet(self.p2, self.name + "p2")
-        self.DVGeo.addPointSet(self.origin, self.name + "origin")
+        self.DVGeo.addPointSet(self.p0, self.name + "p0", compNames=compNames)
+        self.DVGeo.addPointSet(self.p1, self.name + "p1", compNames=compNames)
+        self.DVGeo.addPointSet(self.p2, self.name + "p2", compNames=compNames)
+        self.DVGeo.addPointSet(self.origin, self.name + "origin", compNames=compNames)
 
     def evalFunctions(self, funcs, config):
         """

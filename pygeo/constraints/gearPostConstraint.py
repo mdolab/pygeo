@@ -26,6 +26,7 @@ class GearPostConstraint(GeometricConstraint):
         MACFracUpper,
         DVGeo,
         addToPyOpt,
+        compNames,
     ):
         super().__init__(name, None, None, None, None, DVGeo, addToPyOpt)
 
@@ -39,7 +40,7 @@ class GearPostConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Compute the reference length
         self.D0 = np.linalg.norm(self.coords[0] - self.coords[1])

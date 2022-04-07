@@ -14,7 +14,7 @@ class ThicknessConstraint(GeometricConstraint):
     made. The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, len(coords) // 2, lower, upper, scale, DVGeo, addToPyOpt)
 
         self.coords = coords
@@ -22,12 +22,12 @@ class ThicknessConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Now get the reference lengths
         self.D0 = np.zeros(self.nCon)
         for i in range(self.nCon):
-            self.D0[i] = np.linalg.norm(self.coords[2 * i] - self.coords[2 * i + 1])
+            self.D0[i] = geo_utils.norm.euclideanNorm(self.coords[2 * i] - self.coords[2 * i + 1])
 
     def evalFunctions(self, funcs, config):
         """
@@ -42,7 +42,7 @@ class ThicknessConstraint(GeometricConstraint):
         self.coords = self.DVGeo.update(self.name, config=config)
         D = np.zeros(self.nCon)
         for i in range(self.nCon):
-            D[i] = np.linalg.norm(self.coords[2 * i] - self.coords[2 * i + 1])
+            D[i] = geo_utils.norm.euclideanNorm(self.coords[2 * i] - self.coords[2 * i + 1])
             if self.scaled:
                 D[i] /= self.D0[i]
         funcs[self.name] = D
@@ -97,13 +97,13 @@ class ThicknessToChordConstraint(GeometricConstraint):
     have to deal with this class directly.
     """
 
-    def __init__(self, name, coords, lower, upper, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, coords, lower, upper, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, len(coords) // 4, lower, upper, scale, DVGeo, addToPyOpt)
         self.coords = coords
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Now get the reference lengths
         self.ToC0 = np.zeros(self.nCon)

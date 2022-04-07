@@ -429,7 +429,7 @@ class DVGeometryVSP:
         """
         return len(self.DVs)
 
-    def getVarNames(self):
+    def getVarNames(self, pyOptSparse=False):
         """
         Return a list of the design variable names. This is typically
         used when specifying a wrt= argument for pyOptSparse.
