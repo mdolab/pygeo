@@ -299,3 +299,18 @@ class geoDVSectionLocal:
                 cons.append([up, down])
 
         return cons
+
+
+class geoDVComposite(object):
+    def __init__(self, dvName, value, nVal, u, scale=1.0, s=None):
+        """
+        Create a set of design variables which are linear combinations of existing design variables.
+        """
+        self.name = dvName
+        self.nVal = nVal
+        self.value = value
+        self.lower = None
+        self.upper = None
+        self.scale = convertTo1D(scale, self.nVal)
+        self.u = u
+        self.s = s

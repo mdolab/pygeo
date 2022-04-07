@@ -1,4 +1,4 @@
-__version__ = "1.8.0"
+__version__ = "1.11.0"
 
 from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
@@ -13,5 +13,9 @@ except ImportError:
     pass
 try:
     from .parameterization import DVGeometryESP
+except ImportError:
+    pass
+try:
+    from .parameterization import DVGeometryMulti
 except ImportError:
     pass

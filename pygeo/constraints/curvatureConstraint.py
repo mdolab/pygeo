@@ -17,7 +17,9 @@ class CurvatureConstraint1D(GeometricConstraint):
     NOTE: the output is actually the square of the curvature
     """
 
-    def __init__(self, name, curvatureType, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, DVGeo, addToPyOpt):
+    def __init__(
+        self, name, curvatureType, coords, axis, eps, KSCoeff, lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames
+    ):
         super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.curvatureType = curvatureType
         self.coords = coords
@@ -29,7 +31,7 @@ class CurvatureConstraint1D(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name)
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
 
         # Calculate the reference curvatures
         self.C, self.KSC2Ref, self.meanC2Ref, self.maxC2 = self.calcCurvature2(
@@ -236,7 +238,7 @@ class CurvatureConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt):
+    def __init__(self, name, surfs, curvatureType, lower, upper, scaled, scale, KSCoeff, DVGeo, addToPyOpt, compNames):
         super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
 
         self.nSurfs = len(surfs)  # we support multiple surfaces (plot3D files)
@@ -277,7 +279,7 @@ class CurvatureConstraint(GeometricConstraint):
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided. We need to add a point set for each surface:
         for iSurf in range(self.nSurfs):
-            self.DVGeo.addPointSet(self.coords[iSurf], self.name + "%d" % (iSurf))
+            self.DVGeo.addPointSet(self.coords[iSurf], self.name + "%d" % (iSurf), compNames=compNames)
 
         # compute the reference curvature for normalization
         self.curvatureRef = 0.0

@@ -306,3 +306,48 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
                 f.write(line + "\n")
 
     f.close()
+
+
+def readPlot3DSurfFile(fileName):
+    """Read a plot3d file and return the points and connectivity in
+    an unstructured mesh format"""
+
+    pts = None
+
+    f = open(fileName)
+    nSurf = np.fromfile(f, "int", count=1, sep=" ")[0]
+    sizes = np.fromfile(f, "int", count=3 * nSurf, sep=" ").reshape((nSurf, 3))
+    nElem = 0
+    for i in range(nSurf):
+        nElem += (sizes[i, 0] - 1) * (sizes[i, 1] - 1)
+
+    # Generate the uncompacted point and connectivity list:
+    p0 = np.zeros((nElem * 2, 3))
+    v1 = np.zeros((nElem * 2, 3))
+    v2 = np.zeros((nElem * 2, 3))
+
+    elemCount = 0
+
+    for iSurf in range(nSurf):
+        curSize = sizes[iSurf, 0] * sizes[iSurf, 1]
+        pts = np.zeros((curSize, 3))
+        for idim in range(3):
+            pts[:, idim] = np.fromfile(f, "float", curSize, sep=" ")
+
+        pts = pts.reshape((sizes[iSurf, 0], sizes[iSurf, 1], 3), order="f")
+        for j in range(sizes[iSurf, 1] - 1):
+            for i in range(sizes[iSurf, 0] - 1):
+                # Each quad is split into two triangles
+                p0[elemCount] = pts[i, j]
+                v1[elemCount] = pts[i + 1, j] - pts[i, j]
+                v2[elemCount] = pts[i, j + 1] - pts[i, j]
+
+                elemCount += 1
+
+                p0[elemCount] = pts[i + 1, j]
+                v1[elemCount] = pts[i + 1, j + 1] - pts[i + 1, j]
+                v2[elemCount] = pts[i, j + 1] - pts[i + 1, j]
+
+                elemCount += 1
+
+    return p0, v1, v2

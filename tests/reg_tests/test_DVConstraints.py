@@ -7,11 +7,18 @@ from stl import mesh
 from parameterized import parameterized_class
 
 try:
-    import geograd  # noqa
+    import geograd  # noqa: F401
 
     missing_geograd = False
 except ImportError:
     missing_geograd = True
+
+try:
+    from pygeo import DVGeometryMulti
+
+    missing_pysurf = False
+except ImportError:
+    missing_pysurf = True
 
 
 def evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-2):
@@ -93,12 +100,23 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
 @parameterized_class(
     [
         {
+            # Standard one-level FFD
             "name": "standard",
             "child": False,
+            "multi": False,
         },
         {
+            # Deforming child FFD with a stationary parent FFD
             "name": "child",
             "child": True,
+            "multi": False,
+        },
+        {
+            # One deforming component FFD and a stationary component FFD
+            # The components do not intersect
+            "name": "multi",
+            "child": False,
+            "multi": True,
         },
     ]
 )
@@ -111,6 +129,10 @@ class RegTestPyGeo(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+
+        # Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
+        if self.multi and missing_pysurf:
+            self.skipTest("requires pySurf")
 
     def generate_dvgeo_dvcon(self, geometry, addToDVGeo=False, intersected=False):
         """
@@ -146,6 +168,15 @@ class RegTestPyGeo(unittest.TestCase):
             xFraction = 0.25
 
         DVGeo = DVGeometry(ffdFile, child=self.child)
+        if self.multi:
+            # Use the nozzle FFD as the stationary component because it is outside all other FFD volumes
+            nozzleFile = os.path.join(self.base_path, "../../input_files/nozzleFFD.xyz")
+            DVGeoNozzle = DVGeometry(nozzleFile)
+            # Set up the DVGeometryMulti object
+            DVGeoMulti = DVGeometryMulti()
+            DVGeoMulti.addComponent("deforming", DVGeo)
+            DVGeoMulti.addComponent("stationary", DVGeoNozzle)
+
         DVCon = DVConstraints()
         nRefAxPts = DVGeo.addRefAxis("wing", xFraction=xFraction, alignIndex="k")
         self.nTwist = nRefAxPts - 1
@@ -155,6 +186,8 @@ class RegTestPyGeo(unittest.TestCase):
             self.parentDVGeo = DVGeometry(parentFFD)
             self.parentDVGeo.addChild(DVGeo)
             DVCon.setDVGeo(self.parentDVGeo)
+        elif self.multi:
+            DVCon.setDVGeo(DVGeoMulti)
         else:
             DVCon.setDVGeo(DVGeo)
 
@@ -297,6 +330,31 @@ class RegTestPyGeo(unittest.TestCase):
 
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
+    def test_thickness2D_nSpanList(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thickness2D.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
+
+            leList = [[0.7, 0.0, 0.1], [0.7, 0.0, 1.325], [0.7, 0.0, 5.0]]
+            teList = [[0.9, 0.0, 0.1], [0.9, 0.0, 1.325], [0.9, 0.0, 5.0]]
+
+            # Use a list for nSpan instead of an integer
+            DVCon.addThicknessConstraints2D(leList, teList, [1, 4], 5)
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+            # 2D thickness should be all ones at the start
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_0"], np.ones(25), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+
+            funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
+            # 2D thickness shouldn't change much under only twist
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_0"], np.ones(25), name="thickness_twisted", rtol=1e-2, atol=1e-2
+            )
+
+            funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
+
     def test_thickness2D_box(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thickness2D_box.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -351,6 +409,31 @@ class RegTestPyGeo(unittest.TestCase):
 
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
+    def test_volume_nSpanList(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_volume.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
+
+            leList = [[0.7, 0.0, 0.1], [0.7, 0.0, 1.325], [0.7, 0.0, 5.0]]
+            teList = [[0.9, 0.0, 0.1], [0.9, 0.0, 1.325], [0.9, 0.0, 5.0]]
+
+            # Use a list for nSpan instead of an integer
+            DVCon.addVolumeConstraint(leList, teList, [1, 4], 5)
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+            # Volume should be normalized to 1 at the start
+            handler.assert_allclose(
+                funcs["DVCon1_volume_constraint_0"], np.ones(1), name="volume_base", rtol=1e-7, atol=1e-7
+            )
+
+            funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
+            # Volume shouldn't change much with twist only
+            handler.assert_allclose(
+                funcs["DVCon1_volume_constraint_0"], np.ones(1), name="volume_twisted", rtol=1e-2, atol=1e-2
+            )
+
+            funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
+
     def test_volume_box(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_volume_box.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -380,6 +463,9 @@ class RegTestPyGeo(unittest.TestCase):
             if self.child:
                 DVCon.addLeTeConstraints(0, "iLow", childIdx=0)
                 DVCon.addLeTeConstraints(0, "iHigh", childIdx=0)
+            elif self.multi:
+                DVCon.addLeTeConstraints(0, "iLow", comp="deforming")
+                DVCon.addLeTeConstraints(0, "iHigh", comp="deforming")
             else:
                 DVCon.addLeTeConstraints(0, "iLow")
                 DVCon.addLeTeConstraints(0, "iHigh")
@@ -572,6 +658,10 @@ class RegTestPyGeo(unittest.TestCase):
                 DVCon.addLinearConstraintsShape(
                     indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childIdx=0
                 )
+            elif self.multi:
+                DVCon.addLinearConstraintsShape(
+                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, comp="deforming"
+                )
             else:
                 DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0)
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
@@ -690,6 +780,9 @@ class RegTestPyGeo(unittest.TestCase):
             if self.child:
                 DVCon.addMonotonicConstraints("twist", childIdx=0)
                 DVCon.addMonotonicConstraints("twist", start=1, stop=2, childIdx=0)
+            elif self.multi:
+                DVCon.addMonotonicConstraints("twist", comp="deforming")
+                DVCon.addMonotonicConstraints("twist", start=1, stop=2, comp="deforming")
             else:
                 DVCon.addMonotonicConstraints("twist")
                 DVCon.addMonotonicConstraints("twist", start=1, stop=2)

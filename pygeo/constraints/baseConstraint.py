@@ -2,6 +2,7 @@
 #         Imports
 # ======================================================================
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 import numpy as np
 from baseclasses.utils import Error
 
@@ -56,15 +57,34 @@ class GeometricConstraint(ABC):
         return the var names relevant to this constraint. By default, this is the DVGeo
         variables, but some constraints may extend this to include other variables.
         """
-        return self.DVGeo.getVarNames()
+        return self.DVGeo.getVarNames(pyOptSparse=True)
 
-    def addConstraintsPyOpt(self, optProb):
+    def addConstraintsPyOpt(self, optProb, exclude_wrt=None):
         """
         Add the constraints to pyOpt, if the flag is set
+
+        Parameters
+        ----------
+        exclude_wrt : list or str
+            DV names to exclude from the w.r.t. list when adding the constraint
+            to the opt problem. Example usages for this would be a tail rotation
+            angle or flap deflection; these are operating configurations and
+            do not affect constraints such as a volume or thickness constraint.
+
         """
         if self.addToPyOpt:
+            wrt_names = self.getVarNames()
+
+            # we may want to remove specific dvs from the wrt list
+            if exclude_wrt is not None:
+                if isinstance(exclude_wrt, str):
+                    exclude_wrt = [exclude_wrt]
+
+                for name in exclude_wrt:
+                    wrt_names.remove(name)
+
             optProb.addConGroup(
-                self.name, self.nCon, lower=self.lower, upper=self.upper, scale=self.scale, wrt=self.getVarNames()
+                self.name, self.nCon, lower=self.lower, upper=self.upper, scale=self.scale, wrt=wrt_names
             )
 
     def addVariablesPyOpt(self, optProb):
@@ -236,6 +256,32 @@ class LinearConstraint:
 
         # with-respect-to are just the keys of the jacobian
         self.wrt = list(self.jac.keys())
+
+        # now map the jac to composite domain:
+        # we assume jac is always only wrt "local" DVs
+        if self.DVGeo.useComposite:
+            nDV = self.DVGeo.getNDV()
+            # for the jac, we need to "pad" the rest of the matrix with zero, then perform mat-mat product
+            newJac = np.zeros((self.ncon, nDV))
+            for i in range(self.ncon):
+                temp_dict = {}
+                # all_DVs just contains all the DVs so we can loop over them easily
+                all_DVs = OrderedDict({})
+                all_DVs.update(self.DVGeo.DV_listGlobal)
+                all_DVs.update(self.DVGeo.DV_listLocal)
+                all_DVs.update(self.DVGeo.DV_listSectionLocal)
+                all_DVs.update(self.DVGeo.DV_listSpanwiseLocal)
+
+                for dv in all_DVs.keys():
+                    if dv in self.wrt:
+                        temp_dict[dv] = self.jac[dv][i, :].flatten()
+                    else:
+                        temp_dict[dv] = np.zeros(all_DVs[dv].nVal)
+                newJac[i, :] = self.DVGeo.convertDictToSensitivity(temp_dict)
+            # now multiply by the mapping
+            newJac = newJac @ self.DVGeo.DVComposite.u
+            self.jac = {self.DVGeo.DVComposite.name: newJac}
+            self.wrt = [self.DVGeo.DVComposite.name]
 
     def writeTecplot(self, handle):
         """

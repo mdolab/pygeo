@@ -13,7 +13,7 @@ class CircularityConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, center, coords, lower, upper, scale, DVGeo, addToPyOpt):
+    def __init__(self, name, center, coords, lower, upper, scale, DVGeo, addToPyOpt, compNames):
         super().__init__(name, coords.shape[0] - 1, lower, upper, scale, DVGeo, addToPyOpt)
 
         self.center = np.array(center).reshape((1, 3))
@@ -23,8 +23,8 @@ class CircularityConstraint(GeometricConstraint):
 
         # First thing we can do is embed the coordinates into DVGeo
         # with the name provided:
-        self.DVGeo.addPointSet(self.coords, self.name + "coords")
-        self.DVGeo.addPointSet(self.center, self.name + "center")
+        self.DVGeo.addPointSet(self.coords, self.name + "coords", compNames=compNames)
+        self.DVGeo.addPointSet(self.center, self.name + "center", compNames=compNames)
 
     def evalFunctions(self, funcs, config):
         """
