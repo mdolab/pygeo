@@ -1474,7 +1474,7 @@ class CompIntersection:
             # Do it vectorized
             rr = pts[j] - self.seam0
             LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-            LdefoDist3 = LdefoDist ** 3
+            LdefoDist3 = LdefoDist**3
             Wi = LdefoDist3
             den = np.sum(Wi)
             interp_d = np.zeros(3)
@@ -2152,7 +2152,7 @@ class CompIntersection:
             # Vectorized point-based warping
             rr = ptCoords - curvePtCoords
             LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-            LdefoDist3 = LdefoDist ** 3
+            LdefoDist3 = LdefoDist**3
             Wi = LdefoDist3
             den = np.sum(Wi)
             interp = np.zeros(3)
@@ -2185,7 +2185,7 @@ class CompIntersection:
                 # Vectorized point-based warping
                 rr = ptCoords - curvePtCoords
                 LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-                LdefoDist3 = LdefoDist ** 3
+                LdefoDist3 = LdefoDist**3
                 Wi = LdefoDist3
                 den = np.sum(Wi)
 

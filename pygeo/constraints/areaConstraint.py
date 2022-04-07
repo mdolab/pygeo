@@ -390,7 +390,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
                 # for j in range(3):
                 #     areas(i) = areas(i) + crosses(i, j)**2
                 # areas[i] = np.sum(crosses[i, :]**2)
-                areas = np.sum(crosses ** 2, axis=1)
+                areas = np.sum(crosses**2, axis=1)
                 for i in range(self.n):  # DO i=1,n
                     if areas[i] == 0.0:
                         areasb[i] = 0.0
