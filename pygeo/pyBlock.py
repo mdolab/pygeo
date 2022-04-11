@@ -901,7 +901,7 @@ class pyBlock:
                 if nrm > DMax:
                     DMax = nrm
 
-                DRms += nrm ** 2
+                DRms += nrm**2
                 if nrm > embTol:
                     counter += 1
                     badPts.append([x0[i], D[i]])
