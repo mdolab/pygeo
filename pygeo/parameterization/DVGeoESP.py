@@ -701,6 +701,17 @@ class DVGeometryESP(DVGeoSketch):
         if self.comm.rank == 0:
             self.espModel.Save(fileName)
 
+    def getNDV(self):
+        """
+        Return the number of DVs
+
+        Returns
+        _______
+        len(self.DVs) : int
+            number of design variables
+        """
+        return len(self.globalDVList)
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
         This function computes sensitivity information.

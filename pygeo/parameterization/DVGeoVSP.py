@@ -380,6 +380,17 @@ class DVGeometryVSP(DVGeoSketch):
         """
         openvsp.WriteVSPFile(fileName, exportSet)
 
+    def getNDV(self):
+        """
+        Return the number of DVs
+
+        Returns
+        _______
+        len(self.DVs) : int
+            number of design variables
+        """
+        return len(self.DVs)
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
         This function computes sensitivity information.

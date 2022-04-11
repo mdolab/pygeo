@@ -139,6 +139,7 @@ class DVGeoSketch(BaseDVGeo):
         else:
             return True
 
+    @abstractmethod
     def getNDV(self):
         """
         Return the number of DVs
@@ -148,7 +149,7 @@ class DVGeoSketch(BaseDVGeo):
         len(self.DVs) : int
             number of design variables
         """
-        return len(self.DVs)
+        pass
 
     def getVarNames(self, pyOptSparse=False):
         """
