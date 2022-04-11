@@ -74,9 +74,16 @@ class DVGeoSketch(BaseDVGeo):
         self.updated = {}
         self.updatedJac = {}
 
+    @abstractmethod
     def addPointSet(self, points, ptName, **kwargs):
+        """
+        Add a set of coordinates to DVGeometry
+        The is the main way that geometry, in the form of a coordinate
+        list is given to DVGeometry to be manipulated.
+        """
         pass
 
+    @abstractmethod
     def setDesignVars(self, dvDict):
         """
         Standard routine for setting design variables from a design
@@ -89,27 +96,7 @@ class DVGeoSketch(BaseDVGeo):
             must correspond to the design variable names. Any
             additional keys in the dv-dictionary are simply ignored.
         """
-
-        # Just dump in the values
-        for key in dvDict:
-            if key in self.DVs:
-                self.DVs[key].value = dvDict[key]
-
-        # we just need to set the design variables in the VSP model and we are done
-        self._updateVSPModel()
-
-        # update the projected coordinates
-        self._updateProjectedPts()
-
-        # Flag all the pointSets as not being up to date:
-        for pointSet in self.updated:
-            self.updated[pointSet] = False
-
-        # set the jacobian flag to false
-        for ptName in self.pointSets:
-            self.updatedJac[ptName] = False
-
-        # TODO these are not exactly the same method, maybe change ESP
+        pass
 
     def getValues(self):
         """
@@ -128,23 +115,9 @@ class DVGeoSketch(BaseDVGeo):
 
         return dvDict
 
+    @abstractmethod
     def update(self, ptSetName, config=None):
         pass
-        # TODO these look too dissimilar?
-
-    def writeVSPFile(self, fileName, exportSet=0):
-        """
-        Take the current design and write a new VSP file
-
-        Parameters
-        ----------
-        fileName : str
-            Name of the output VSP file
-        exportSet : int
-            optional input parameter to select an export set in VSP
-        """
-        openvsp.WriteVSPFile(fileName, exportSet)
-        # TODO can this be general?
 
     def pointSetUpToDate(self, ptSetName):
         """
@@ -165,7 +138,6 @@ class DVGeoSketch(BaseDVGeo):
             return self.updated[ptSetName]
         else:
             return True
-        # TODO i think this is the same everywhere? just put in base base
 
     def getNDV(self):
         """
@@ -176,9 +148,8 @@ class DVGeoSketch(BaseDVGeo):
         len(self.DVs) : int
             number of design variables
         """
-        return len(self.DVs)  # TODO change the name of this in ESP, global doesn't make sense
+        return len(self.DVs)
 
-    # this one is the same for both
     def getVarNames(self, pyOptSparse=False):
         """
         Return a list of the design variable names. This is typically
@@ -190,8 +161,9 @@ class DVGeoSketch(BaseDVGeo):
         """
         return list(self.DVs.keys())
 
-    # TODO i think these are doing the same things in different orders. double check
+    @abstractmethod
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
+        # TODO see if VSP and ESP can be reconciled
         r"""
         This function computes sensitivity information.
 
@@ -221,61 +193,11 @@ class DVGeoSketch(BaseDVGeo):
             The dictionary containing the derivatives, suitable for
             pyOptSparse
         """
+        pass
 
-        # We may not have set the variables so the surf jac might not be computed.
-        if self.pointSets[ptSetName].jac is None:
-            # in this case, we updated our pts when we added our pointset,
-            # therefore the reference pts are up to date.
-            self._computeSurfJacobian()
-
-        # if the jacobian for this pointset is not up to date
-        # update all the points
-        if not self.updatedJac[ptSetName]:
-            self._computeSurfJacobian()
-
-        # The following code computes the final sensitivity product:
-        #
-        #        T       T
-        #   pXpt     pI
-        #  ------  ------
-        #   pXdv    pXpt
-        #
-        # Where I is the objective, Xpt are the externally coordinates
-        # supplied in addPointSet
-
-        # Make dIdpt at least 3D
-        if len(dIdpt.shape) == 2:
-            dIdpt = np.array([dIdpt])
-
-        # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
-        dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
-
-        # jacobian of the projected points
-        jac = self.pointSets[ptSetName].jac
-
-        # local product
-        dIdxT_local = jac.T.dot(dIdpt.T)
-
-        # take the transpose to get the jacobian itself dI/dx
-        dIdx_local = dIdxT_local.T
-
-        # sum the results if we are provided a comm
-        if comm:
-            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
-        else:
-            dIdx = dIdx_local
-
-        # Now convert to dict:
-        dIdxDict = {}
-        i = 0
-        for dvName in self.DVs:
-            dIdxDict[dvName] = np.array(dIdx[:, i]).T
-            i += 1
-
-        return dIdxDict
-
-    # TODO these are so similar see if they can be combined
+    @abstractmethod
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
+        # TODO see if VSP and ESP can be reconciled
         r"""
         This function computes sensitivity information.
 
@@ -300,39 +222,17 @@ class DVGeoSketch(BaseDVGeo):
         -------
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
         """
-
-        # We may not have set the variables so the surf jac might not be computed.
-        if self.pointSets[ptSetName].jac is None:
-            # in this case, we updated our pts when we added our pointset,
-            # therefore the reference pts are up to date.
-            self._computeSurfJacobian()
-
-        # if the jacobian for this pointset is not up to date
-        # update all the points
-        if not self.updatedJac[ptSetName]:
-            self._computeSurfJacobian()
-
-        # vector that has all the derivative seeds of the design vars
-        newvec = np.zeros(self.getNDV())
-
-        # populate newvec
-        for i, dv in enumerate(self.DVs):
-            if dv in vec:
-                newvec[i] = vec[dv]
-
-        # we need to multiply with the surface jacobian
-        dPt = self.pointSets[ptSetName].jac.dot(newvec)
-
-        return dPt
-
-    # totalSensitivityTransProd is only VSP
-
-    # these are too different
-    @abstractmethod
-    def addVariable(self):
         pass
 
-    # TODO these could be aligned if VSP's variables changed slightly
+    @abstractmethod
+    def addVariable(self):
+        """
+        Add a design variable definition.
+        """
+        pass
+
+    # TODO I think these have to stay separate - VSP doesn't have grouped DVs
+    @abstractmethod
     def addVariablesPyOpt(self, optProb):
         """
         Add the current set of variables to the optProb object.
@@ -342,12 +242,8 @@ class DVGeoSketch(BaseDVGeo):
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
         """
+        pass
 
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            optProb.addVar(dvName, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
-
-    # TODO ESP doesn't have this but it could be nice, the structure is probably too different to use the same
     @abstractmethod
     def printDesignVariables(self):
         """
@@ -355,50 +251,36 @@ class DVGeoSketch(BaseDVGeo):
         """
         pass
 
-    # createDesignFile is just VSP
-    # also writePlot3D
-
     # ----------------------------------------------------------------------- #
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
     # ----------------------------------------------------------------------- #
 
-    # TODO can I call this updateModel and have it be general?
+    @abstractmethod
     def _updateModel(self):
         """
-        Set each of the DVs. We have the parmID stored so its easy.
+        Set each of the DVs in the internal ESP/VSP model
         """
         pass
 
+    @abstractmethod
     def _updateProjectedPts(self):
         """
-        internally updates the coordinates of the projected points
+        Internally updates the coordinates of the projected points
         """
-
         pass
 
-    #  _getBBox is just VSP
-    # also _getuv
-
-    # TODO this is too different
+    @abstractmethod
     def _computeSurfJacobian(self):
+        """
+        This routine comptues the jacobian of the surface with respect
+        to the design variables. Since our point sets are rigidly linked to
+        the projection points, this is all we need to calculate. The input
+        pointSets is a list or dictionary of pointSets to calculate the jacobian for.
+        """
         pass
 
 
-# TODO make this a general DV class? they do store different information so this might not work
-class vspDV:
-    def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
-        """Inernal class for storing VSP design variable information"""
-        self.parmID = parmID
-        self.component = component
-        self.group = group
-        self.parm = parm
-        self.value = np.array(value)
-        self.lower = lower
-        self.upper = upper
-        self.dh = dh
-        self.scale = scale
-
-
+# TODO PointSet is the same for both - pull out on its own?
 class PointSet:
     """Internal class for storing the projection details of each pointset"""
 

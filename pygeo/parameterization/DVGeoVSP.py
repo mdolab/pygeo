@@ -330,7 +330,7 @@ class DVGeometryVSP(DVGeoSketch):
                 self.DVs[key].value = dvDict[key]
 
         # we just need to set the design variables in the VSP model and we are done
-        self._updateVSPModel()
+        self._updateModel()
 
         # update the projected coordinates
         self._updateProjectedPts()
@@ -342,23 +342,6 @@ class DVGeometryVSP(DVGeoSketch):
         # set the jacobian flag to false
         for ptName in self.pointSets:
             self.updatedJac[ptName] = False
-
-    def getValues(self):
-        """
-        Generic routine to return the current set of design
-        variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
-
-        Returns
-        -------
-        dvDict : dict
-            Dictionary of design variables
-        """
-        dvDict = OrderedDict()
-        for dvName in self.DVs:
-            dvDict[dvName] = self.DVs[dvName].value
-
-        return dvDict
 
     def update(self, ptSetName, config=None):
         """
@@ -396,48 +379,6 @@ class DVGeometryVSP(DVGeoSketch):
             optional input parameter to select an export set in VSP
         """
         openvsp.WriteVSPFile(fileName, exportSet)
-
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
-
-    def getNDV(self):
-        """
-        Return the number of DVs
-
-        Returns
-        _______
-        len(self.DVs) : int
-            number of design variables
-        """
-        return len(self.DVs)
-
-    def getVarNames(self, pyOptSparse=False):
-        """
-        Return a list of the design variable names. This is typically
-        used when specifying a wrt= argument for pyOptSparse.
-
-        Examples
-        --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
-        """
-        return list(self.DVs.keys())
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
@@ -787,7 +728,7 @@ class DVGeometryVSP(DVGeoSketch):
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
     # ----------------------------------------------------------------------- #
 
-    def _updateVSPModel(self):
+    def _updateModel(self):
         """
         Set each of the DVs. We have the parmID stored so its easy.
         """
@@ -1011,7 +952,7 @@ class DVGeometryVSP(DVGeoSketch):
 
                 # update the vsp model
                 t11 = time.time()
-                self._updateVSPModel()
+                self._updateModel()
                 t12 = time.time()
                 tvsp += t12 - t11
 
@@ -1039,7 +980,7 @@ class DVGeometryVSP(DVGeoSketch):
 
         # reset the model.
         t11 = time.time()
-        self._updateVSPModel()
+        self._updateModel()
         t12 = time.time()
         tvsp += t12 - t11
 

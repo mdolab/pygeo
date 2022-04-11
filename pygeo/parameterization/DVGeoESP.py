@@ -617,7 +617,7 @@ class DVGeometryESP(DVGeoSketch):
                 self.DVs[key].value = dvDict[key].copy()
 
         # we need to update the design variables in the ESP model and rebuild
-        built_successfully = self._updateESPModel()
+        built_successfully = self._updateModel()
         if not built_successfully:
             # failed geometry, return fail flag
             return built_successfully
@@ -657,23 +657,6 @@ class DVGeometryESP(DVGeoSketch):
                 n_branches, modelCopy.GetCode("dump"), "<none>", 0, filename, "0", "0", "", "", "", "", "", ""
             )
             modelCopy.Build(0, 0)
-
-    def getValues(self):
-        """
-        Generic routine to return the current set of design
-        variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
-
-        Returns
-        -------
-        dvDict : dict
-            Dictionary of design variables
-        """
-        dvDict = OrderedDict()
-        for dvName in self.DVs:
-            dvDict[dvName] = self.DVs[dvName].value
-
-        return dvDict
 
     def update(self, ptSetName, config=None):
         """
@@ -717,42 +700,6 @@ class DVGeometryESP(DVGeoSketch):
             raise OSError('Must use ".csm" file extension')
         if self.comm.rank == 0:
             self.espModel.Save(fileName)
-
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
-
-    def getNDV(self):
-        """
-        Return the number of DVs"""
-        return len(self.globalDVList)
-
-    def getVarNames(self, pyOptSparse=False):
-        """
-        Return a list of the design variable names. This is typically
-        used when specifying a wrt= argument for pyOptSparse.
-
-        Examples
-        --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
-        """
-        return list(self.DVs.keys())
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
@@ -1025,6 +972,17 @@ class DVGeometryESP(DVGeoSketch):
             dv = self.DVs[dvName]
             optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
+    def printDesignVariables(self):
+        """
+        Print a formatted list of design variables to the screen
+        """
+        print("-" * 85)
+        print("{:>30}{:>20}{:>20}".format("CSM Design Parameter", "Group", "Value"))
+        print("-" * 85)
+        for dvName in self.DVs:
+            DV = self.DVs[dvName]
+            print(f"{DV.csmDesPmtr:>30}{DV.name:>20}{DV.value:>20}")
+
     # # ----------------------------------------------------------------------
     # #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
     # # ----------------------------------------------------------------------
@@ -1128,7 +1086,7 @@ class DVGeometryESP(DVGeoSketch):
                 # duplicates
                 raise Error("Duplicate indices specified in the cols of design variable " + dvName + ": " + str(cols))
 
-    def _updateESPModel(self):
+    def _updateModel(self):
         """
         Sets design parameters in ESP to the correct value
         then rebuilds the model.
@@ -1258,7 +1216,8 @@ class DVGeometryESP(DVGeoSketch):
         return ug, vg, tg, faceIDg, bodyIDg, edgeIDg, uvlimitsg, tlimitsg, sizes
 
     def _computeSurfJacobian(self, fd=True):
-        """This routine comptues the jacobian of the ESP surface with respect
+        """
+        This routine comptues the jacobian of the ESP surface with respect
         to the design variables. Since our point sets are rigidly linked to
         the ESP projection points, this is all we need to calculate. The input
         pointSets is a list or dictionary of pointSets to calculate the jacobian for.
@@ -1379,7 +1338,7 @@ class DVGeometryESP(DVGeoSketch):
 
                     # update the esp model
                     t11 = time.time()
-                    self._updateESPModel()
+                    self._updateModel()
                     t12 = time.time()
                     tesp += t12 - t11
 
@@ -1404,7 +1363,7 @@ class DVGeometryESP(DVGeoSketch):
 
             # reset the model.
             t11 = time.time()
-            self._updateESPModel()
+            self._updateModel()
             t12 = time.time()
             tesp += t12 - t11
 
