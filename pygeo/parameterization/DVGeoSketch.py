@@ -15,10 +15,7 @@ import time
 import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
-
-# mdolab packages
-
-from pygeo.parameterization.BaseDVGeo import BaseDVGeo
+from .BaseDVGeo import BaseDVGeo
 
 
 class DVGeoSketch(BaseDVGeo):

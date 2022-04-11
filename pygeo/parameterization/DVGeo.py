@@ -14,9 +14,10 @@ import os
 import warnings
 from baseclasses.utils import Error
 from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
+from .BaseDVGeo import BaseDVGeo
 
 
-class DVGeometry:
+class DVGeometry(BaseDVGeo):
     r"""
     A class for manipulating geometry.
 

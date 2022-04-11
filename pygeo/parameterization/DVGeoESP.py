@@ -10,7 +10,7 @@ from mpi4py import MPI
 from pyOCSM import pyOCSM
 from contextlib import contextmanager
 from baseclasses.utils import Error
-from pygeo import DVGeoSketch
+from .DVGeoSketch import DVGeoSketch
 
 
 @contextmanager

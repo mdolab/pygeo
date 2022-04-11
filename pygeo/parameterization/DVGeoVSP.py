@@ -6,11 +6,8 @@ import time
 import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
-
-# mdolab packages
+from .DVGeoSketch import DVGeoSketch
 from pyspline.utils import searchQuads
-
-from . import DVGeoSketch
 
 # openvsp python interface
 try:
