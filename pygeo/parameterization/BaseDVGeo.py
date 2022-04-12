@@ -99,7 +99,6 @@ class BaseDVGeo:
         """
         pass
 
-    @abstractmethod
     def pointSetUpToDate(self, ptSetName):
         """
         This is used externally to query if the object needs to update its pointset or not.
@@ -222,5 +221,3 @@ class BaseDVGeo:
         f = openTecplot(fileName, 3)
         writeTecplot1D(f, name, coords)
         closeTecplot(f)
-
-    # TODO should there be a base class for design variables? regular has global and local, VSP/ESP has one general type
