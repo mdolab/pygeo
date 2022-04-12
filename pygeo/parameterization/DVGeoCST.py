@@ -100,7 +100,6 @@ class DVGeometryCST:
         }
 
         # Default DVs specific to each point set
-        # TODO: fit CST coefficients to the input airfoil so if upper or lower DVs aren't specified, it will keep the airfoil
         self.defaultDVs = {}
 
     def addPointSet(self, points, ptName):
@@ -186,6 +185,7 @@ class DVGeometryCST:
         }
 
         # Set the default design variables based on the input airfoil
+        # TODO: fit CST coefficients to the input airfoil so if upper or lower DVs aren't specified, it will keep the airfoil
         self.defaultDVs[ptName] = deepcopy(self.rootDefaultDV)
         self.defaultDVs[ptName]["chord"] = np.array([self.points[ptName]["xMax"] - self.points[ptName]["xMin"]])
 
@@ -275,7 +275,7 @@ class DVGeometryCST:
         # Add the DV to the internally-stored list
         self.DVs[dvName] = {
             "type": dvType,
-            "value": np.zeros(dvNum, dtype=float),
+            "value": self.rootDefaultDV[dvType],
             "lower": lower,
             "upper": upper,
             "scale": scale
@@ -407,7 +407,7 @@ class DVGeometryCST:
             Optimization problem definition to which variables are added
         """
         for dvName, DV in self.DVs.items():
-            optProb.addVarGroup(dvName, DV["value"].size, "c", value=self.defaultDV[DV["type"]],
+            optProb.addVarGroup(dvName, DV["value"].size, "c", value=DV["value"],
                                 lower=DV["lower"], upper=DV["upper"], scale=DV["scale"])
 
     def update(self, ptSetName, childDelta=True, config=None):
@@ -431,13 +431,13 @@ class DVGeometryCST:
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
         """
-        wUpper = self.defaultDV[ptSetName]["upper"].copy()
-        wLower = self.defaultDV[ptSetName]["lower"].copy()
-        N1Upper = self.defaultDV[ptSetName]["n1_upper"].copy()
-        N2Upper = self.defaultDV[ptSetName]["n2_upper"].copy()
-        N1Lower = self.defaultDV[ptSetName]["n1_lower"].copy()
-        N2Lower = self.defaultDV[ptSetName]["n2_lower"].copy()
-        chordDV = self.defaultDV[ptSetName]["chord"].copy()
+        wUpper = self.defaultDVs[ptSetName]["upper"].copy()
+        wLower = self.defaultDVs[ptSetName]["lower"].copy()
+        N1Upper = self.defaultDVs[ptSetName]["n1_upper"].copy()
+        N2Upper = self.defaultDVs[ptSetName]["n2_upper"].copy()
+        N1Lower = self.defaultDVs[ptSetName]["n1_lower"].copy()
+        N2Lower = self.defaultDVs[ptSetName]["n2_lower"].copy()
+        chordDV = self.defaultDVs[ptSetName]["chord"].copy()
 
         for DV in self.DVs.values():
             if DV["type"] == "upper":
