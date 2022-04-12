@@ -980,7 +980,7 @@ class DVGeometryESP(DVGeoSketch):
         Print a formatted list of design variables to the screen
         """
         print("-" * 85)
-        print("{:>30}{:>20}{:>20}".format("CSM Design Parameter", "Group", "Value"))
+        print("{:>30}{:>20}{:>20}".format("CSM Design Parameter", "Name", "Value"))
         print("-" * 85)
         for dvName in self.DVs:
             DV = self.DVs[dvName]
