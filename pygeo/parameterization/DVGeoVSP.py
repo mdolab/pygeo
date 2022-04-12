@@ -49,7 +49,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     Parameters
     ----------
-    vspFile : str
+    fileName : str
        filename of .vsp3 file.
 
     comm : MPI Intra Comm
@@ -77,33 +77,21 @@ class DVGeometryVSP(DVGeoSketch):
 
     """
 
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
-
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
         if comm.rank == 0:
             print("Initializing DVGeometryVSP")
             t0 = time.time()
 
-        self.points = OrderedDict()
-        self.pointSets = OrderedDict()
-        self.ptSetNames = []
-        self.updated = {}
-        self.updatedJac = {}
-        self.exportComps = []
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
 
-        # this scales coordinates from vsp to mesh geometry
-        self.vspScale = scale
-        # and this scales coordinates from mesh to vsp geometry
-        self.meshScale = 1.0 / scale
-        self.projTol = projTol * self.meshScale  # default input is in meters.
-        self.comm = comm
-        self.vspFile = vspFile
+        self.exportComps = []
 
         # Clear the vsp model
         openvsp.ClearVSPModel()
 
         t1 = time.time()
         # read the model
-        openvsp.ReadVSPFile(vspFile)
+        openvsp.ReadVSPFile(fileName)
         t2 = time.time()
         if self.comm.rank == 0:
             print("Loading the vsp model took:", (t2 - t1))
@@ -132,9 +120,6 @@ class DVGeometryVSP(DVGeoSketch):
         for c in self.allComps:
             self.compNames.append(openvsp.GetContainerName(c))
             self.bbox[c] = self._getBBox(c)
-
-        # Initial list of DVs
-        self.DVs = OrderedDict()
 
         # Now, we need to form our own quad meshes for fast projections
         if comm.rank == 0:
@@ -291,9 +276,9 @@ class DVGeometryVSP(DVGeoSketch):
 
             # We need to evaluate this pnt to get its coordinates in physical space
             pnt = openvsp.CompPnt01(self.allComps[geom[i]], 0, u[i], v[i])
-            pts[i, 0] = pnt.x() * self.vspScale
-            pts[i, 1] = pnt.y() * self.vspScale
-            pts[i, 2] = pnt.z() * self.vspScale
+            pts[i, 0] = pnt.x() * self.modelScale
+            pts[i, 1] = pnt.y() * self.modelScale
+            pts[i, 2] = pnt.z() * self.modelScale
 
         # some debug info
         dMax_global = self.comm.allreduce(dMax, op=MPI.MAX)
@@ -790,7 +775,7 @@ class DVGeometryVSP(DVGeoSketch):
                 newPts[i, :] = (pnt.x(), pnt.y(), pnt.z())
 
             # scale vsp coordinates to mesh coordinates, do it safely above for now
-            newPts *= self.vspScale
+            newPts *= self.modelScale
 
             # set the updated coordinates
             self.pointSets[ptSetName].pts = newPts
@@ -828,7 +813,7 @@ class DVGeometryVSP(DVGeoSketch):
             bbox[i, 1] = nodes[:, i].max()
 
         # finally scale the bounding box and return
-        bbox *= self.vspScale
+        bbox *= self.modelScale
 
         # also give some offset on all directions
         bbox[:, 0] -= 0.1
@@ -985,7 +970,7 @@ class DVGeometryVSP(DVGeoSketch):
                 i += 1
 
         # scale the points
-        ptsNew *= self.vspScale
+        ptsNew *= self.modelScale
 
         # Now, we have perturbed points on each proc that perturbed a DV
 
@@ -1122,7 +1107,7 @@ class DVGeometryVSP(DVGeoSketch):
             gind += 1
 
         # finally, scale the points and save the data
-        self.pts0 = pts * self.vspScale
+        self.pts0 = pts * self.modelScale
         self.conn = conn
         self.sizes = sizes
         self.cumSizes = cumSizes

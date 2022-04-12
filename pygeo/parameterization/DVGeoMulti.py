@@ -28,13 +28,12 @@ class DVGeometryMulti(BaseDVGeo):
     """
 
     def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False):
+        super().__init__(fileName="")
 
         self.compNames = []
         self.comps = OrderedDict()
         self.DVGeoDict = OrderedDict()
-        self.points = OrderedDict()
         self.comm = comm
-        self.updated = {}
         self.intersectComps = []
         self.checkDVs = checkDVs
         self.debug = debug

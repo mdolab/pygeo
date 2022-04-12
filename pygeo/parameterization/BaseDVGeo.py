@@ -7,7 +7,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 
 from abc import abstractmethod
 from typing import OrderedDict
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
+from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D
 
 
 class BaseDVGeo:
@@ -15,18 +15,13 @@ class BaseDVGeo:
     Abstract class for a basic geometry object
     """
 
-    def init__(self, name, category, fileName):
-        # TODO add docstring once all params are in
-        self.name = name
-        self.category = category
-        self.fileName = fileName  # TODO - each type has a different file and build process - can this be expanded in the respective init or do we need a separate method?
+    def __init__(self, fileName):
+        self.fileName = fileName
 
-        self.points = OrderedDict
-        self.pointSets = OrderedDict
+        self.points = OrderedDict()
+        self.pointSets = OrderedDict()
         self.updated = {}
-        # TODO there is a lot of stuff in the ESP and VSP inits should the building be moved out?
-
-    # TODO There are a lof of methods duplicated just between DVGeoESP and DVGeoVSP - should there be another class they inherit from under this one?
+        self.ptSetNames = []
 
     @abstractmethod
     def addPointSet(self, points, ptName):
@@ -227,10 +222,5 @@ class BaseDVGeo:
         f = openTecplot(fileName, 3)
         writeTecplot1D(f, name, coords)
         closeTecplot(f)
-
-    @abstractmethod
-    def writeToFile(self, filename):
-        # TODO generalize the writing to files?
-        pass
 
     # TODO should there be a base class for design variables? regular has global and local, VSP/ESP has one general type

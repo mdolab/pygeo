@@ -11,10 +11,7 @@ Enables the use of ESP (Engineering Sketch Pad) and OpenVSP (Open Vehicle Sketch
 # ======================================================================
 from abc import abstractmethod
 from collections import OrderedDict
-import time
-import numpy as np
 from mpi4py import MPI
-from baseclasses.utils import Error
 from .BaseDVGeo import BaseDVGeo
 
 
@@ -62,17 +59,20 @@ class DVGeoSketch(BaseDVGeo):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, projTol=0.01):
+        super().__init__(fileName=fileName)
 
-        if comm.rank == 0:
-            print("Initializing DVGeometry")
-            t0 = time.time()
+        # this scales coordinates from model to mesh geometry
+        self.modelScale = scale
+        # and this scales coordinates from mesh to model geometry
+        self.meshScale = 1.0 / scale
+        self.projTol = projTol * self.meshScale  # default input is in meters.
 
-        self.points = OrderedDict()
-        self.pointSets = OrderedDict()
-        self.ptSetNames = []
-        self.updated = {}
         self.updatedJac = {}
+        self.comm = comm
+
+        # Initial list of DVs
+        self.DVs = OrderedDict()
 
     @abstractmethod
     def addPointSet(self, points, ptName, **kwargs):

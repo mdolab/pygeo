@@ -62,7 +62,7 @@ class DVGeometryESP(DVGeoSketch):
 
     Parameters
     ----------
-    espFile : str
+    fileName : str
        filename of .csm file containing the parameterized CAD
     comm : MPI Intra Comm
        Comm on which to build operate the object. This is used to
@@ -102,7 +102,7 @@ class DVGeometryESP(DVGeoSketch):
 
     def __init__(
         self,
-        espFile,
+        fileName,
         comm=MPI.COMM_WORLD,
         scale=1.0,
         bodies=[],
@@ -114,26 +114,21 @@ class DVGeometryESP(DVGeoSketch):
         ulimits=None,
         vlimits=None,
     ):
-
         if comm.rank == 0:
             print("Initializing DVGeometryESP")
             t0 = time.time()
+
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
+
         self.maxproc = maxproc
         self.esp = True
-        self.points = OrderedDict()
-        self.pointSets = OrderedDict()
-        self.updated = {}
-        self.updatedJac = {}
-        self.globalDVList = (
-            []
-        )  # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
+
+        # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
+        self.globalDVList = []
+
         self.suppress_stdout = suppress_stdout
         self.exclude_edge_projections = exclude_edge_projections
-        # this scales coordinates from esp to mesh geometry
-        self.espScale = scale
-        # and this scales coordinates from mesh to esp geometry
-        self.meshScale = 1.0 / scale
-        self.projTol = projTol * self.meshScale  # default input is in meters.
+
         if ulimits is not None:
             self.ulimits = ulimits
         else:
@@ -142,13 +137,11 @@ class DVGeometryESP(DVGeoSketch):
             self.vlimits = vlimits
         else:
             self.vlimits = np.array([-99999.0, 99999.0])
-        self.comm = comm
-        self.espFile = espFile
         self.debug = debug
 
         t1 = time.time()
         # read the model
-        self.espModel = ocsm.Ocsm(self.espFile)
+        self.espModel = ocsm.Ocsm(self.fileName)
         ocsm.SetOutLevel(0)
 
         # build the baseline model
@@ -191,7 +184,6 @@ class DVGeometryESP(DVGeoSketch):
                 )
 
         # Initial list of DVs
-        self.DVs = OrderedDict()
         self.csmDesPmtrs = OrderedDict()
 
         # Get metadata about external design parameters in the CSM model
@@ -539,7 +531,7 @@ class DVGeometryESP(DVGeoSketch):
             dists[ptidx] = dist_best
             proj_pts_esp[ptidx, :] = xyzbest
 
-        proj_pts = proj_pts_esp * self.espScale
+        proj_pts = proj_pts_esp * self.modelScale
         if points.shape[0] != 0:
             dMax = np.max(np.sqrt(np.sum((points - proj_pts) ** 2, axis=1)))
         else:
@@ -1157,7 +1149,7 @@ class DVGeometryESP(DVGeoSketch):
                 unew = (u[ptidx] - uvlim0[0]) * urange / urange0 + uvlim[0]
                 vnew = (v[ptidx] - uvlim0[2]) * vrange / vrange0 + uvlim[2]
                 points[ptidx, :] = self.espModel.GetXYZ(bid, ocsm.FACE, fid, 1, [unew, vnew])
-        points = points * self.espScale
+        points = points * self.modelScale
         return points
 
     def _updateProjectedPts(self):
