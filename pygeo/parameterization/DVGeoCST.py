@@ -10,6 +10,7 @@ DVGeo: CST Parameterisation
 # Standard Python modules
 # ==============================================================================
 from collections import OrderedDict
+from copy import deepcopy
 
 # ==============================================================================
 # External Python modules
@@ -68,7 +69,8 @@ class DVGeometryCST:
 
         # Store the DVs and flags to determine if the limited options have already been specified
         # Each DV in the DVs dictionary (with the key as the DV name) contains
-        #   "type": the DV's type among "upper", "lower", "n1", "n2", "n1_upper", "n1_lower", "n2_upper", and "n2_lower"
+        #   "type": the DV's type among "upper", "lower", "n1", "n2", "n1_upper",
+        #           "n1_lower", "n2_upper", "n2_lower", and "chord"
         #   "value": the DV's value, initialized to zero(s)
         #   "lower": lower bound
         #   "upper": upper bound
@@ -80,12 +82,12 @@ class DVGeometryCST:
             "n1_upper": False,
             "n2_upper": False,
             "n1_lower": False,
-            "n2_lower": False
+            "n2_lower": False,
+            "chord": False,
         }
 
-        # Default CST variables
-        # TODO: fit CST coefficients to the input airfoil so if upper or lower DVs aren't specified, it will keep the airfoil
-        self.defaultDV = {
+        # Default DVs to be copied for each point set
+        self.rootDefaultDV = {
             "upper": np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
             "lower": -np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
             "n1_upper": np.array([0.5]),
@@ -94,7 +96,12 @@ class DVGeometryCST:
             "n2_lower": np.array([1.]),
             "n1": np.array([0.5]),
             "n2": np.array([1.]),
+            "chord": np.array([1.])
         }
+
+        # Default DVs specific to each point set
+        # TODO: fit CST coefficients to the input airfoil so if upper or lower DVs aren't specified, it will keep the airfoil
+        self.defaultDVs = {}
 
     def addPointSet(self, points, ptName):
         """
@@ -167,6 +174,7 @@ class DVGeometryCST:
         dispLocal = disp[self.comm.rank]  # displacement of current proc in global array
         idxLocal = np.arange(dispLocal, dispLocal + points.shape[0])
 
+        # Add the points
         self.updated[ptName] = False
         self.points[ptName] = {
             "points": points,
@@ -176,7 +184,11 @@ class DVGeometryCST:
             "xMin": np.min(pointsGlobal[:, self.xIdx]),
             "xMax": np.max(pointsGlobal[:, self.xIdx]),
         }
-    
+
+        # Set the default design variables based on the input airfoil
+        self.defaultDVs[ptName] = deepcopy(self.rootDefaultDV)
+        self.defaultDVs[ptName]["chord"] = np.array([self.points[ptName]["xMax"] - self.points[ptName]["xMin"]])
+
     def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0):
         """
         Add one or more local design variables ot the DVGeometry
@@ -199,6 +211,8 @@ class DVGeometryCST:
                 `"N1_lower"`: first class shape parameters for lower surface (adds a single DV)
                 `"N2_upper"`: second class shape parameters for upper surface (adds a single DV)
                 `"N2_lower"`: second class shape parameters for lower surface (adds a single DV)
+                `"chord"`: chord length in whatever units the point set length is defined and scaled
+                           to keep the leading edge at the same position (adds a single DV)
 
         dvNum : int
             If dvType is `"upper"` or `"lower"`, use `dvNum` to specify the number of
@@ -223,9 +237,9 @@ class DVGeometryCST:
             The number of design variables added.
         """
         # Do some error checking
-        if dvType.lower() not in ["upper", "lower", "n1", "n2", "n1_upper", "n1_lower", "n2_upper", "n2_lower"]:
+        if dvType.lower() not in ["upper", "lower", "n1", "n2", "n1_upper", "n1_lower", "n2_upper", "n2_lower", "chord"]:
             raise ValueError(f"dvType must be one of \"upper\", \"lower\", \"N1\", \"N2\", \"N1_upper\", \"N1_lower\", " +
-                             f"\"N2_upper\", or \"N2_lower\" not {dvType}")
+                             f"\"N2_upper\", \"N2_lower\", or \"chord\" not {dvType}")
         dvType = dvType.lower()
 
         if dvType in ["upper", "lower"] and dvNum is None:
@@ -417,12 +431,13 @@ class DVGeometryCST:
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
         """
-        wUpper = self.defaultDV["upper"].copy()
-        wLower = self.defaultDV["lower"].copy()
-        N1Upper = self.defaultDV["n1_upper"].copy()
-        N2Upper = self.defaultDV["n2_upper"].copy()
-        N1Lower = self.defaultDV["n1_lower"].copy()
-        N2Lower = self.defaultDV["n2_lower"].copy()
+        wUpper = self.defaultDV[ptSetName]["upper"].copy()
+        wLower = self.defaultDV[ptSetName]["lower"].copy()
+        N1Upper = self.defaultDV[ptSetName]["n1_upper"].copy()
+        N2Upper = self.defaultDV[ptSetName]["n2_upper"].copy()
+        N1Lower = self.defaultDV[ptSetName]["n1_lower"].copy()
+        N2Lower = self.defaultDV[ptSetName]["n2_lower"].copy()
+        chordDV = self.defaultDV[ptSetName]["chord"].copy()
 
         for DV in self.DVs.values():
             if DV["type"] == "upper":
@@ -441,8 +456,10 @@ class DVGeometryCST:
                 N2Upper = DV["value"]
             elif DV["type"] == "n1_lower":
                 N1Lower = DV["value"]
-            else:  # n2_lower
+            elif DV["type"] == "n2_lower":
                 N2Lower = DV["value"]
+            else:  # chord
+                chordDV = DV["value"]
 
         # Unpack the points to make variable names more accessible
         idxUpper = self.points[ptSetName]["upper"]
@@ -458,8 +475,11 @@ class DVGeometryCST:
         scaledX = (ptsX - shift) / chord
         yTE = thicknessTE / chord  # scaled trailing edge thickness
 
-        ptsY[idxUpper] = chord * self.computeCSTCoordinates(scaledX[idxUpper], N1Upper, N2Upper, wUpper, yTE)
-        ptsY[idxLower] = chord * self.computeCSTCoordinates(scaledX[idxLower], N1Lower, N2Lower, wLower, yTE)
+        ptsY[idxUpper] = chordDV * self.computeCSTCoordinates(scaledX[idxUpper], N1Upper, N2Upper, wUpper, yTE)
+        ptsY[idxLower] = chordDV * self.computeCSTCoordinates(scaledX[idxLower], N1Lower, N2Lower, wLower, yTE)
+
+        # Scale the chord according to the chord DV
+        points[:, self.xIdx] = (points[:, self.xIdx] - shift) * chordDV / chord + shift
 
         self.updated[ptSetName] = True
 
