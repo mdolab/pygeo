@@ -6,11 +6,8 @@ import time
 import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
-
-# mdolab packages
+from .DVGeoSketch import DVGeoSketch
 from pyspline.utils import searchQuads
-
-from . import DVGeoSketch
 
 # openvsp python interface
 try:
@@ -52,7 +49,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     Parameters
     ----------
-    vspFile : str
+    fileName : str
        filename of .vsp3 file.
 
     comm : MPI Intra Comm
@@ -80,33 +77,21 @@ class DVGeometryVSP(DVGeoSketch):
 
     """
 
-    def __init__(self, vspFile, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
-
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
         if comm.rank == 0:
             print("Initializing DVGeometryVSP")
             t0 = time.time()
 
-        self.points = OrderedDict()
-        self.pointSets = OrderedDict()
-        self.ptSetNames = []
-        self.updated = {}
-        self.updatedJac = {}
-        self.exportComps = []
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
 
-        # this scales coordinates from vsp to mesh geometry
-        self.vspScale = scale
-        # and this scales coordinates from mesh to vsp geometry
-        self.meshScale = 1.0 / scale
-        self.projTol = projTol * self.meshScale  # default input is in meters.
-        self.comm = comm
-        self.vspFile = vspFile
+        self.exportComps = []
 
         # Clear the vsp model
         openvsp.ClearVSPModel()
 
         t1 = time.time()
         # read the model
-        openvsp.ReadVSPFile(vspFile)
+        openvsp.ReadVSPFile(fileName)
         t2 = time.time()
         if self.comm.rank == 0:
             print("Loading the vsp model took:", (t2 - t1))
@@ -135,9 +120,6 @@ class DVGeometryVSP(DVGeoSketch):
         for c in self.allComps:
             self.compNames.append(openvsp.GetContainerName(c))
             self.bbox[c] = self._getBBox(c)
-
-        # Initial list of DVs
-        self.DVs = OrderedDict()
 
         # Now, we need to form our own quad meshes for fast projections
         if comm.rank == 0:
@@ -294,9 +276,9 @@ class DVGeometryVSP(DVGeoSketch):
 
             # We need to evaluate this pnt to get its coordinates in physical space
             pnt = openvsp.CompPnt01(self.allComps[geom[i]], 0, u[i], v[i])
-            pts[i, 0] = pnt.x() * self.vspScale
-            pts[i, 1] = pnt.y() * self.vspScale
-            pts[i, 2] = pnt.z() * self.vspScale
+            pts[i, 0] = pnt.x() * self.modelScale
+            pts[i, 1] = pnt.y() * self.modelScale
+            pts[i, 2] = pnt.z() * self.modelScale
 
         # some debug info
         dMax_global = self.comm.allreduce(dMax, op=MPI.MAX)
@@ -333,7 +315,7 @@ class DVGeometryVSP(DVGeoSketch):
                 self.DVs[key].value = dvDict[key]
 
         # we just need to set the design variables in the VSP model and we are done
-        self._updateVSPModel()
+        self._updateModel()
 
         # update the projected coordinates
         self._updateProjectedPts()
@@ -345,23 +327,6 @@ class DVGeometryVSP(DVGeoSketch):
         # set the jacobian flag to false
         for ptName in self.pointSets:
             self.updatedJac[ptName] = False
-
-    def getValues(self):
-        """
-        Generic routine to return the current set of design
-        variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
-
-        Returns
-        -------
-        dvDict : dict
-            Dictionary of design variables
-        """
-        dvDict = OrderedDict()
-        for dvName in self.DVs:
-            dvDict[dvName] = self.DVs[dvName].value
-
-        return dvDict
 
     def update(self, ptSetName, config=None):
         """
@@ -400,26 +365,6 @@ class DVGeometryVSP(DVGeoSketch):
         """
         openvsp.WriteVSPFile(fileName, exportSet)
 
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
-
     def getNDV(self):
         """
         Return the number of DVs
@@ -430,17 +375,6 @@ class DVGeometryVSP(DVGeoSketch):
             number of design variables
         """
         return len(self.DVs)
-
-    def getVarNames(self, pyOptSparse=False):
-        """
-        Return a list of the design variable names. This is typically
-        used when specifying a wrt= argument for pyOptSparse.
-
-        Examples
-        --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
-        """
-        return list(self.DVs.keys())
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
@@ -778,7 +712,7 @@ class DVGeometryVSP(DVGeoSketch):
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
     # ----------------------------------------------------------------------- #
 
-    def _updateVSPModel(self):
+    def _updateModel(self):
         """
         Set each of the DVs. We have the parmID stored so its easy.
         """
@@ -829,7 +763,7 @@ class DVGeometryVSP(DVGeoSketch):
                 newPts[i, :] = (pnt.x(), pnt.y(), pnt.z())
 
             # scale vsp coordinates to mesh coordinates, do it safely above for now
-            newPts *= self.vspScale
+            newPts *= self.modelScale
 
             # set the updated coordinates
             self.pointSets[ptSetName].pts = newPts
@@ -867,7 +801,7 @@ class DVGeometryVSP(DVGeoSketch):
             bbox[i, 1] = nodes[:, i].max()
 
         # finally scale the bounding box and return
-        bbox *= self.vspScale
+        bbox *= self.modelScale
 
         # also give some offset on all directions
         bbox[:, 0] -= 0.1
@@ -1002,7 +936,7 @@ class DVGeometryVSP(DVGeoSketch):
 
                 # update the vsp model
                 t11 = time.time()
-                self._updateVSPModel()
+                self._updateModel()
                 t12 = time.time()
                 tvsp += t12 - t11
 
@@ -1024,13 +958,13 @@ class DVGeometryVSP(DVGeoSketch):
                 i += 1
 
         # scale the points
-        ptsNew *= self.vspScale
+        ptsNew *= self.modelScale
 
         # Now, we have perturbed points on each proc that perturbed a DV
 
         # reset the model.
         t11 = time.time()
-        self._updateVSPModel()
+        self._updateModel()
         t12 = time.time()
         tvsp += t12 - t11
 
@@ -1161,7 +1095,7 @@ class DVGeometryVSP(DVGeoSketch):
             gind += 1
 
         # finally, scale the points and save the data
-        self.pts0 = pts * self.vspScale
+        self.pts0 = pts * self.modelScale
         self.conn = conn
         self.sizes = sizes
         self.cumSizes = cumSizes

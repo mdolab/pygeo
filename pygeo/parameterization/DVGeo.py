@@ -15,6 +15,7 @@ import os
 import warnings
 from baseclasses.utils import Error
 from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
+from .BaseDVGeo import BaseDVGeo
 
 
 class DVGeometry(BaseDVGeo):
@@ -95,6 +96,7 @@ class DVGeometry(BaseDVGeo):
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
+        super().__init__(fileName=fileName)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -170,7 +172,6 @@ class DVGeometry(BaseDVGeo):
         self.links_n = None
 
         # Jacobians:
-        self.ptSetNames = []
         self.JT = {}
         self.nPts = {}
 

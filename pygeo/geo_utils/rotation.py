@@ -63,17 +63,17 @@ def rotVbyW(V, W, theta):
 
     R = np.zeros((3, 3), dtype)
 
-    R[0, 0] = ux ** 2 + (1 - ux ** 2) * c
+    R[0, 0] = ux**2 + (1 - ux**2) * c
     R[0, 1] = ux * uy * (1 - c) - uz * s
     R[0, 2] = ux * uz * (1 - c) + uy * s
 
     R[1, 0] = ux * uy * (1 - c) + uz * s
-    R[1, 1] = uy ** 2 + (1 - uy ** 2) * c
+    R[1, 1] = uy**2 + (1 - uy**2) * c
     R[1, 2] = uy * uz * (1 - c) - ux * s
 
     R[2, 0] = ux * uz * (1 - c) - uy * s
     R[2, 1] = uy * uz * (1 - c) + ux * s
-    R[2, 2] = uz ** 2 + (1 - uz ** 2) * c
+    R[2, 2] = uz**2 + (1 - uz**2) * c
 
     return np.dot(R, V)
 
