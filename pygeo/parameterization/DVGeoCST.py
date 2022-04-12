@@ -68,7 +68,7 @@ class DVGeometryCST:
 
         # Store the DVs and flags to determine if the limited options have already been specified
         # Each DV in the DVs dictionary (with the key as the DV name) contains
-        #   "type": the DV's type among "upper", "lower", "n1", and "n2"
+        #   "type": the DV's type among "upper", "lower", "n1", "n2", "n1_upper", "n1_lower", "n2_upper", and "n2_lower"
         #   "value": the DV's value, initialized to zero(s)
         #   "lower": lower bound
         #   "upper": upper bound
@@ -77,8 +77,10 @@ class DVGeometryCST:
         self.DVExists = {
             "upper": False,
             "lower": False,
-            "n1": False,
-            "n2": False
+            "n1_upper": False,
+            "n2_upper": False,
+            "n1_lower": False,
+            "n2_lower": False
         }
 
         # Default CST variables
@@ -86,8 +88,12 @@ class DVGeometryCST:
         self.defaultDV = {
             "upper": np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
             "lower": -np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
+            "n1_upper": np.array([0.5]),
+            "n2_upper": np.array([1.]),
+            "n1_lower": np.array([0.5]),
+            "n2_lower": np.array([1.]),
             "n1": np.array([0.5]),
-            "n2": np.array([1.])
+            "n2": np.array([1.]),
         }
 
     def addPointSet(self, points, ptName):
@@ -130,16 +136,12 @@ class DVGeometryCST:
             # Copy resulting column into global point array
             pointsGlobal[:, col] = tempColGlobal.copy()
 
-        # # Sort the points in the expected dat file order
-        # points = self._orderAirfoilCoordinates(pointsGlobal)
-
-        # Find the leading edge point to split upper and lower surfaces
-        idxLE = np.argmin(pointsGlobal[:, self.xIdx])
-
         # Check that the leading edge is at y = 0
-        if abs(pointsGlobal[idxLE, self.yIdx]) > 1e-2:
+        idxLE = np.argmin(pointsGlobal[:, self.xIdx])
+        yLE = pointsGlobal[idxLE, self.yIdx]
+        if abs(yLE) > 1e-2:
             raise ValueError(
-                f"Leading edge y (or idxVertical) value must equal zero, not {pointsGlobal[idxLE, self.yIdx]}"
+                f"Leading edge y (or idxVertical) value must equal zero, not {yLE}"
             )
 
         # Trailing edge points are at maximum chord
@@ -186,11 +188,17 @@ class DVGeometryCST:
             A unique name to be given to this design variable group
 
         dvType : str
-            Define the type of CST design variable being added. The options (not case sensitive) are
+            Define the type of CST design variable being added. Either the upper/lower surface class shape
+            parameter DV can be defined (e.g., `"N1_upper"`), or the DV for both the upper and lower surfaces' class shape
+            parameter can be defined (e.g., `"N1"`), but not both. The options (not case sensitive) are
                 `"upper"`: upper surface CST coefficients (specify `dvNum` to define how many)
                 `"lower"`: lower surface CST coefficients (specify `dvNum` to define how many)
-                `"N1"`: first class shape parameter (adds a single DV)
-                `"N2"`: second class shape parameter (adds a single DV)
+                `"N1"`: first class shape parameter for both upper and lower surfaces (adds a single DV)
+                `"N2"`: second class shape parameter for both upper and lower surfaces (adds a single DV)
+                `"N1_upper"`: first class shape parameters for upper surface (adds a single DV)
+                `"N1_lower"`: first class shape parameters for lower surface (adds a single DV)
+                `"N2_upper"`: second class shape parameters for upper surface (adds a single DV)
+                `"N2_lower"`: second class shape parameters for lower surface (adds a single DV)
 
         dvNum : int
             If dvType is `"upper"` or `"lower"`, use `dvNum` to specify the number of
@@ -215,8 +223,9 @@ class DVGeometryCST:
             The number of design variables added.
         """
         # Do some error checking
-        if dvType.lower() not in ["upper", "lower", "n1", "n2"]:
-            raise ValueError(f"dvType must be one of \"upper\", \"lower\", \"N1\", or \"N2\", not {dvType}")
+        if dvType.lower() not in ["upper", "lower", "n1", "n2", "n1_upper", "n1_lower", "n2_upper", "n2_lower"]:
+            raise ValueError(f"dvType must be one of \"upper\", \"lower\", \"N1\", \"N2\", \"N1_upper\", \"N1_lower\", " +
+                             f"\"N2_upper\", or \"N2_lower\" not {dvType}")
         dvType = dvType.lower()
 
         if dvType in ["upper", "lower"] and dvNum is None:
@@ -225,11 +234,27 @@ class DVGeometryCST:
             dvNum = 1
 
         # Check that a duplicate DV doesn't already exist
-        if self.DVExists[dvType]:
-            raise ValueError(f"\"{dvType}\" design variable already exists")
+        if dvType in ["n1", "n2", "n1_upper", "n1_lower", "n2_upper", "n2_lower"]:
+            if dvType in ["n1", "n2"]:  # if either of these is added, the individual lower and upper params can't be
+                if self.DVExists[dvType + "_lower"]:
+                    raise ValueError(f"\"{dvType}\" cannot be added when \"{dvType}_lower\" already exists")
+                elif self.DVExists[dvType + "_upper"]:
+                    raise ValueError(f"\"{dvType}\" cannot be added when \"{dvType}_upper\" already exists")
+                else:
+                    self.DVExists[dvType + "_lower"] = True
+                    self.DVExists[dvType + "_upper"] = True
+            else:  # the parameter that controls both the upper and lower surfaces simultaneously can't be added
+                param = dvType.split("_")[0]  # either N1 or N2
+                if self.DVExists[dvType]:
+                    raise ValueError(f"\"{dvType}\" cannot be added when \"{param}\" or \"{dvType}\" already exist")
+                else:
+                    self.DVExists[dvType] = True
         else:
-            self.DVExists[dvType] = True
-        
+            if self.DVExists[dvType]:
+                raise ValueError(f"\"{dvType}\" design variable already exists")
+            else:
+                self.DVExists[dvType] = True
+
         if dvName in self.DVs.keys():
             raise ValueError(f"A design variable with the name \"{dvName}\" already exists")
 
@@ -394,8 +419,10 @@ class DVGeometryCST:
         """
         wUpper = self.defaultDV["upper"].copy()
         wLower = self.defaultDV["lower"].copy()
-        N1 = self.defaultDV["n1"].copy()
-        N2 = self.defaultDV["n2"].copy()
+        N1Upper = self.defaultDV["n1_upper"].copy()
+        N2Upper = self.defaultDV["n2_upper"].copy()
+        N1Lower = self.defaultDV["n1_lower"].copy()
+        N2Lower = self.defaultDV["n2_lower"].copy()
 
         for DV in self.DVs.values():
             if DV["type"] == "upper":
@@ -403,9 +430,19 @@ class DVGeometryCST:
             elif DV["type"] == "lower":
                 wLower = DV["value"]
             elif DV["type"] == "n1":
-                N1 = DV["value"]
-            else:
-                N2 = DV["value"]
+                N1Upper = DV["value"]
+                N1Lower = DV["value"]
+            elif DV["type"] == "n2":
+                N2Upper = DV["value"]
+                N2Lower = DV["value"]
+            elif DV["type"] == "n1_upper":
+                N1Upper = DV["value"]
+            elif DV["type"] == "n2_upper":
+                N2Upper = DV["value"]
+            elif DV["type"] == "n1_lower":
+                N1Lower = DV["value"]
+            else:  # n2_lower
+                N2Lower = DV["value"]
 
         # Unpack the points to make variable names more accessible
         idxUpper = self.points[ptSetName]["upper"]
@@ -421,8 +458,8 @@ class DVGeometryCST:
         scaledX = (ptsX - shift) / chord
         yTE = thicknessTE / chord  # scaled trailing edge thickness
 
-        ptsY[idxUpper] = chord * self.computeCSTCoordinates(scaledX[idxUpper], N1, N2, wUpper, yTE)
-        ptsY[idxLower] = chord * self.computeCSTCoordinates(scaledX[idxLower], N1, N2, wLower, yTE)
+        ptsY[idxUpper] = chord * self.computeCSTCoordinates(scaledX[idxUpper], N1Upper, N2Upper, wUpper, yTE)
+        ptsY[idxLower] = chord * self.computeCSTCoordinates(scaledX[idxLower], N1Lower, N2Lower, wLower, yTE)
 
         self.updated[ptSetName] = True
 
