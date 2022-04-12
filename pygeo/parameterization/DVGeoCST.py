@@ -148,6 +148,7 @@ class DVGeometryCST:
         # The trailing edge point at the maximum y value begins the upper surface, minimum ends lower surface
         idxUpperTE = idxTE[np.argmax(pointsGlobal[idxTE, self.yIdx])]
         idxLowerTE = idxTE[np.argmin(pointsGlobal[idxTE, self.yIdx])]
+        thicknessTE = pointsGlobal[idxUpperTE, self.yIdx] - pointsGlobal[idxLowerTE, self.yIdx]
 
         # Fit a polynomial to the airfoil to approximate the camber line
         # Upper surface is above that line and lower is below
@@ -160,16 +161,16 @@ class DVGeometryCST:
         lowerBool[idxTE] = False
         lowerBool[idxLowerTE] = True
 
-        # # Now we have the range of indices for upper and lower surfaces
-        # idxUpper = np.arange(idxUpperTE, idxLE + 1)  # include leading and trailing edges
-        # idxLower = np.arange(idxLE, idxLowerTE + 1)  # include leading and trailing edges
+        # Indices of the local points in the pointsGlobal array
+        dispLocal = disp[self.comm.rank]  # displacement of current proc in global array
+        idxLocal = np.arange(dispLocal, dispLocal + points.shape[0])
 
         self.updated[ptName] = False
         self.points[ptName] = {
-            "points": pointsGlobal,
-            "upper": np.where(upperBool)[0],
-            "lower": np.where(lowerBool)[0],
-            "trailingEdge": idxTE,
+            "points": points,
+            "upper": np.where(upperBool[idxLocal])[0],
+            "lower": np.where(lowerBool[idxLocal])[0],
+            "thicknessTE": thicknessTE,
             "xMin": np.min(pointsGlobal[:, self.xIdx]),
             "xMax": np.max(pointsGlobal[:, self.xIdx]),
         }
@@ -409,16 +410,16 @@ class DVGeometryCST:
         # Unpack the points to make variable names more accessible
         idxUpper = self.points[ptSetName]["upper"]
         idxLower = self.points[ptSetName]["lower"]
-        idxTE = self.points[ptSetName]["trailingEdge"]
+        thicknessTE = self.points[ptSetName]["thicknessTE"]
         points = self.points[ptSetName]["points"]
         ptsX = points[:, self.xIdx]
         ptsY = points[:, self.yIdx]
 
         # Scale the airfoil to the range 0 to 1 in x direction
-        shift = min(ptsX)
-        chord = max(ptsX) - shift
+        shift = self.points[ptSetName]["xMin"]
+        chord = self.points[ptSetName]["xMax"] - shift
         scaledX = (ptsX - shift) / chord
-        yTE = (max(ptsY[idxTE]) - min(ptsY[idxTE])) / chord  # scaled trailing edge thickness
+        yTE = thicknessTE / chord  # scaled trailing edge thickness
 
         ptsY[idxUpper] = chord * self.computeCSTCoordinates(scaledX[idxUpper], N1, N2, wUpper, yTE)
         ptsY[idxLower] = chord * self.computeCSTCoordinates(scaledX[idxLower], N1, N2, wLower, yTE)

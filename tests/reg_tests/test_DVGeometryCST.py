@@ -114,13 +114,13 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)  # TODO: should the LE be in both upper and lower? I think probably not
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        idxTE = np.array([0, coords.shape[0] - 1])
+        thickTE = coords[0, 1] - coords[-1, 1]
 
         self.DVGeo.addPointSet(coords, "test")
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(idxTE, self.DVGeo.points["test"]["trailingEdge"])
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -131,7 +131,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        idxTE = np.array([0, coords.shape[0] - 1])
+        thickTE = coords[0, 1] - coords[-1, 1]
 
         # Randomize the index order (do indices so we can track where they end up)
         rng = np.random.default_rng(1)
@@ -141,13 +141,12 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         coordsRand[idx, :] = coords
         idxUpperRand = np.sort(idx[idxUpper])
         idxLowerRand = np.sort(idx[idxLower])
-        idxTERand = np.sort(idx[idxTE])
 
         self.DVGeo.addPointSet(coordsRand, "test")
 
         np.testing.assert_equal(idxUpperRand, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLowerRand, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(idxTERand, self.DVGeo.points["test"]["trailingEdge"])
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -163,14 +162,13 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - nPointsTE + 2)
-        idxTE = np.zeros(nPointsTE)
-        idxTE[1:] = np.arange(coords.shape[0] - nPointsTE + 1, coords.shape[0])
+        thickTE = coords[0, 1] - coords[coords.shape[0] - nPointsTE + 1, 1]
 
         self.DVGeo.addPointSet(coords, "test")
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(idxTE, self.DVGeo.points["test"]["trailingEdge"])
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -190,21 +188,29 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE + self.LEUpper)
-        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        idxTE = np.array([0, coords.shape[0] - 1])
+
+        isUpper = np.zeros(coords.shape[0])
+        isUpper[:idxLE + self.LEUpper] = 1
+        isUpper = isUpper == 1
+        isLower = np.logical_not(isUpper)
+
+        thickTE = coords[0, 1] - coords[-1, 1]
 
         # Divide up the points among the procs (mostly evenly, but not quite to check the harder case)
         nPerProc = int(coords.shape[0] // 3.5)
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
             self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
+            idxUpper = np.where(isUpper[rank * nPerProc : (rank + 1) * nPerProc])[0]
+            idxLower = np.where(isLower[rank * nPerProc : (rank + 1) * nPerProc])[0]
         else:
             self.DVGeo.addPointSet(coords[rank * nPerProc :, :], "test")
+            idxUpper = np.where(isUpper[rank * nPerProc :])[0]
+            idxLower = np.where(isLower[rank * nPerProc :])[0]
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(idxTE, self.DVGeo.points["test"]["trailingEdge"])
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -213,31 +219,40 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE + self.LEUpper)
-        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        idxTE = np.array([0, coords.shape[0] - 1])
+
+        isUpper = np.zeros(coords.shape[0])
+        isUpper[:idxLE + self.LEUpper] = 1
+        isUpper = isUpper == 1
+        isLower = np.logical_not(isUpper)
+
+        thickTE = coords[0, 1] - coords[-1, 1]
 
         # Randomize the index order (do indices so we can track where they end up)
         rng = np.random.default_rng(1)
         idx = np.arange(0, coords.shape[0])  # maps from the original index to the new one
         rng.shuffle(idx)
         coordsRand = np.zeros(coords.shape)
+        isUpperRand = np.full(isUpper.shape, False)
+        isLowerRand = np.full(isLower.shape, False)
         coordsRand[idx, :] = coords
-        idxUpperRand = np.sort(idx[idxUpper])
-        idxLowerRand = np.sort(idx[idxLower])
-        idxTERand = np.sort(idx[idxTE])
+        isUpperRand[idx] = isUpper
+        isLowerRand[idx] = isLower
 
         # Divide up the points among the procs (mostly evenly, but not quite to check the harder case)
         nPerProc = int(coordsRand.shape[0] // 3.5)
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
             self.DVGeo.addPointSet(coordsRand[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
+            idxUpper = np.where(isUpperRand[rank * nPerProc : (rank + 1) * nPerProc])[0]
+            idxLower = np.where(isLowerRand[rank * nPerProc : (rank + 1) * nPerProc])[0]
         else:
             self.DVGeo.addPointSet(coordsRand[rank * nPerProc :, :], "test")
+            idxUpper = np.where(isUpperRand[rank * nPerProc :])[0]
+            idxLower = np.where(isLowerRand[rank * nPerProc :])[0]
 
-        np.testing.assert_equal(idxUpperRand, self.DVGeo.points["test"]["upper"])
-        np.testing.assert_equal(idxLowerRand, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(idxTERand, self.DVGeo.points["test"]["trailingEdge"])
+        np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
+        np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
