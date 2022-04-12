@@ -27,6 +27,7 @@ from pygeo import DVGeometryCST
 # LEUpper is true if the leading edge point is considered to be on the upper surface
 airfoils = [{"fName": "naca2412.dat", "LEUpper": False}, {"fName": "naca0012.dat", "LEUpper": True}]
 
+
 class DVGeometryCSTUnitTest(unittest.TestCase):
 
     N_PROCS = 1
@@ -65,9 +66,12 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             w = self.rng.random(n)
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w, self.yte)
-            dydN1_CS = np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte)) / self.CS_delta
+            dydN1_CS = (
+                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte))
+                / self.CS_delta
+            )
             np.testing.assert_allclose(dydN1, dydN1_CS, atol=self.sensTol, rtol=self.sensTol)
-    
+
     def test_dydN2(self):
         """Test the derivatives of the CST curve height w.r.t N2"""
         N1 = self.rng.random(1)
@@ -76,7 +80,10 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             w = self.rng.random(n)
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w, self.yte)
-            dydN2_CS = np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte)) / self.CS_delta
+            dydN2_CS = (
+                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte))
+                / self.CS_delta
+            )
             np.testing.assert_allclose(dydN2, dydN2_CS, atol=self.sensTol, rtol=self.sensTol)
 
     def test_dydw(self):
@@ -91,7 +98,9 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             w = w.astype(complex)
             for i in range(n):
                 w[i] += self.CS_delta * 1j
-                dydw_CS[i, :] = np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)) / self.CS_delta
+                dydw_CS[i, :] = (
+                    np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)) / self.CS_delta
+                )
                 w[i] -= self.CS_delta * 1j
 
             np.testing.assert_allclose(dydw, dydw_CS, atol=self.sensTol, rtol=self.sensTol)
@@ -112,7 +121,9 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(0, idxLE + self.LEUpper)  # TODO: should the LE be in both upper and lower? I think probably not
+        idxUpper = np.arange(
+            0, idxLE + self.LEUpper
+        )  # TODO: should the LE be in both upper and lower? I think probably not
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         thickTE = coords[0, 1] - coords[-1, 1]
 
@@ -190,7 +201,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
 
         isUpper = np.zeros(coords.shape[0])
-        isUpper[:idxLE + self.LEUpper] = 1
+        isUpper[: idxLE + self.LEUpper] = 1
         isUpper = isUpper == 1
         isLower = np.logical_not(isUpper)
 
@@ -221,7 +232,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
 
         isUpper = np.zeros(coords.shape[0])
-        isUpper[:idxLE + self.LEUpper] = 1
+        isUpper[: idxLE + self.LEUpper] = 1
         isUpper = isUpper == 1
         isLower = np.logical_not(isUpper)
 

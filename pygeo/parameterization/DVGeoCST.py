@@ -91,12 +91,12 @@ class DVGeometryCST:
             "upper": np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
             "lower": -np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
             "n1_upper": np.array([0.5]),
-            "n2_upper": np.array([1.]),
+            "n2_upper": np.array([1.0]),
             "n1_lower": np.array([0.5]),
-            "n2_lower": np.array([1.]),
+            "n2_lower": np.array([1.0]),
             "n1": np.array([0.5]),
-            "n2": np.array([1.]),
-            "chord": np.array([1.])
+            "n2": np.array([1.0]),
+            "chord": np.array([1.0]),
         }
 
         # Default DVs specific to each point set
@@ -146,9 +146,7 @@ class DVGeometryCST:
         idxLE = np.argmin(pointsGlobal[:, self.xIdx])
         yLE = pointsGlobal[idxLE, self.yIdx]
         if abs(yLE) > 1e-2:
-            raise ValueError(
-                f"Leading edge y (or idxVertical) value must equal zero, not {yLE}"
-            )
+            raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {yLE}")
 
         # Trailing edge points are at maximum chord
         idxTE = np.where(pointsGlobal[:, self.xIdx] == np.max(pointsGlobal[:, self.xIdx]))[0]
@@ -237,13 +235,25 @@ class DVGeometryCST:
             The number of design variables added.
         """
         # Do some error checking
-        if dvType.lower() not in ["upper", "lower", "n1", "n2", "n1_upper", "n1_lower", "n2_upper", "n2_lower", "chord"]:
-            raise ValueError(f"dvType must be one of \"upper\", \"lower\", \"N1\", \"N2\", \"N1_upper\", \"N1_lower\", " +
-                             f"\"N2_upper\", \"N2_lower\", or \"chord\" not {dvType}")
+        if dvType.lower() not in [
+            "upper",
+            "lower",
+            "n1",
+            "n2",
+            "n1_upper",
+            "n1_lower",
+            "n2_upper",
+            "n2_lower",
+            "chord",
+        ]:
+            raise ValueError(
+                f'dvType must be one of "upper", "lower", "N1", "N2", "N1_upper", "N1_lower", '
+                + f'"N2_upper", "N2_lower", or "chord" not {dvType}'
+            )
         dvType = dvType.lower()
 
         if dvType in ["upper", "lower"] and dvNum is None:
-                raise ValueError(f"dvNum must be specified if dvType is \"upper\" or \"lower\"")
+            raise ValueError(f'dvNum must be specified if dvType is "upper" or "lower"')
         else:
             dvNum = 1
 
@@ -251,26 +261,26 @@ class DVGeometryCST:
         if dvType in ["n1", "n2", "n1_upper", "n1_lower", "n2_upper", "n2_lower"]:
             if dvType in ["n1", "n2"]:  # if either of these is added, the individual lower and upper params can't be
                 if self.DVExists[dvType + "_lower"]:
-                    raise ValueError(f"\"{dvType}\" cannot be added when \"{dvType}_lower\" already exists")
+                    raise ValueError(f'"{dvType}" cannot be added when "{dvType}_lower" already exists')
                 elif self.DVExists[dvType + "_upper"]:
-                    raise ValueError(f"\"{dvType}\" cannot be added when \"{dvType}_upper\" already exists")
+                    raise ValueError(f'"{dvType}" cannot be added when "{dvType}_upper" already exists')
                 else:
                     self.DVExists[dvType + "_lower"] = True
                     self.DVExists[dvType + "_upper"] = True
             else:  # the parameter that controls both the upper and lower surfaces simultaneously can't be added
                 param = dvType.split("_")[0]  # either N1 or N2
                 if self.DVExists[dvType]:
-                    raise ValueError(f"\"{dvType}\" cannot be added when \"{param}\" or \"{dvType}\" already exist")
+                    raise ValueError(f'"{dvType}" cannot be added when "{param}" or "{dvType}" already exist')
                 else:
                     self.DVExists[dvType] = True
         else:
             if self.DVExists[dvType]:
-                raise ValueError(f"\"{dvType}\" design variable already exists")
+                raise ValueError(f'"{dvType}" design variable already exists')
             else:
                 self.DVExists[dvType] = True
 
         if dvName in self.DVs.keys():
-            raise ValueError(f"A design variable with the name \"{dvName}\" already exists")
+            raise ValueError(f'A design variable with the name "{dvName}" already exists')
 
         # Add the DV to the internally-stored list
         self.DVs[dvName] = {
@@ -278,7 +288,7 @@ class DVGeometryCST:
             "value": self.rootDefaultDV[dvType],
             "lower": lower,
             "upper": upper,
-            "scale": scale
+            "scale": scale,
         }
 
         return dvNum
@@ -296,8 +306,10 @@ class DVGeometryCST:
         for dvName, dvVal in dvDict.items():
             if dvName in self.DVs:
                 if dvVal.shape != self.DVs[dvName]["value"].shape:
-                    raise ValueError(f"Input shape of {dvVal.shape} for the DV named \"{dvName}\" does " +
-                                     f"not match the DV's shape of {self.DVs[dvName]['value'].shape}")
+                    raise ValueError(
+                        f'Input shape of {dvVal.shape} for the DV named "{dvName}" does '
+                        + f"not match the DV's shape of {self.DVs[dvName]['value'].shape}"
+                    )
                 self.DVs[dvName]["value"] = dvVal
 
         # Flag all the pointSets as not being up to date
@@ -407,8 +419,15 @@ class DVGeometryCST:
             Optimization problem definition to which variables are added
         """
         for dvName, DV in self.DVs.items():
-            optProb.addVarGroup(dvName, DV["value"].size, "c", value=DV["value"],
-                                lower=DV["lower"], upper=DV["upper"], scale=DV["scale"])
+            optProb.addVarGroup(
+                dvName,
+                DV["value"].size,
+                "c",
+                value=DV["value"],
+                lower=DV["lower"],
+                upper=DV["upper"],
+                scale=DV["scale"],
+            )
 
     def update(self, ptSetName, childDelta=True, config=None):
         """
