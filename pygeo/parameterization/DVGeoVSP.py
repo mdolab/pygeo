@@ -485,7 +485,19 @@ class DVGeometryVSP(DVGeoSketch):
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
         """
 
-        super.totalSensitivityProd(self, vec, ptSetName)
+        # We may not have set the variables so the surf jac might not be computed.
+        if self.pointSets[ptSetName].jac is None:
+            # in this case, we updated our pts when we added our pointset,
+            # therefore the reference pts are up to date.
+            self._computeSurfJacobian()
+
+        # if the jacobian for this pointset is not up to date
+        # update all the points
+        if not self.updatedJac[ptSetName]:
+            self._computeSurfJacobian()
+
+        # vector that has all the derivative seeds of the design vars
+        newvec = np.zeros(self.getNDV())
 
         # populate newvec
         for i, dv in enumerate(self.DVs):
@@ -633,19 +645,19 @@ class DVGeometryVSP(DVGeoSketch):
 
         self.DVs[dvName] = vspDV(parm_id, component, group, parm, value, lower, upper, scale, dh)
 
-    # def addVariablesPyOpt(self, optProb):
-    #     """
-    #     Add the current set of variables to the optProb object.
+    def addVariablesPyOpt(self, optProb):
+        """
+        Add the current set of variables to the optProb object.
 
-    #     Parameters
-    #     ----------
-    #     optProb : pyOpt_optimization class
-    #         Optimization problem definition to which variables are added
-    #     """
+        Parameters
+        ----------
+        optProb : pyOpt_optimization class
+            Optimization problem definition to which variables are added
+        """
 
-    #     for dvName in self.DVs:
-    #         dv = self.DVs[dvName]
-    #         optProb.addVar(dvName, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+        for dvName in self.DVs:
+            dv = self.DVs[dvName]
+            optProb.addVar(dvName, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
     def printDesignVariables(self):
         """

@@ -961,32 +961,19 @@ class DVGeometryESP(DVGeoSketch):
 
         self.DVs[dvName] = espDV(csmDesPmtr, dvName, value, lower, upper, scale, rows, cols, dh, globalStartInd)
 
-    # TODO if this is exactly in the class 1 above it doesn't need repeated right
-    # def addVariablesPyOpt(self, optProb):
-    #     """
-    #     Add the current set of variables to the optProb object.
-
-    #     Parameters
-    #     ----------
-    #     optProb : pyOpt_optimization class
-    #         Optimization problem definition to which variables are added
-    #     """
-
-    #     for dvName in self.DVs:
-    #         dv = self.DVs[dvName]
-    #         optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
-
-    def printDesignVariables(self):
+    def addVariablesPyOpt(self, optProb):
         """
-        Print a formatted list of design variables to the screen
-        TODO make the parts being printed something that makes sense
+        Add the current set of variables to the optProb object.
+
+        Parameters
+        ----------
+        optProb : pyOpt_optimization class
+            Optimization problem definition to which variables are added
         """
-        print("-" * 85)
-        print("{:>30}{:>20}{:>20}{:>15}".format("CSM Design Parameter", "Rows", "Cols", "Value"))
-        print("-" * 85)
+
         for dvName in self.DVs:
-            DV = self.DVs[dvName]
-            print(f"{DV.csmDesPmtr:>30}{DV.rows:>20}{DV.cols:>20}{DV.value:15g}")
+            dv = self.DVs[dvName]
+            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
     def printDesignVariables(self):
         """

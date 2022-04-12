@@ -181,18 +181,23 @@ class DVGeoSketch(BaseDVGeo):
         # TODO see if VSP and ESP can be reconciled
         r"""
         This function computes sensitivity information.
+
         Specifically, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}} \vec'`
+        :math:`\frac{dX_{pt}}{dX_{DV}} \ vec`
+
+        This is useful for forward AD mode.
 
         Parameters
         ----------
         vec : dictionary whose keys are the design variable names, and whose
               values are the derivative seeds of the corresponding design variable.
+
         ptSetName : str
             The name of set of points we are dealing with
+
         comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
+            inactive parameter, this has no effect on the final result
+            because with this method, the reduction is performed externally
 
         Returns
         -------

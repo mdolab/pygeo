@@ -9,7 +9,6 @@ from scipy.spatial import cKDTree
 from mpi4py import MPI
 from pyspline import Curve
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
-from . import BaseDVGeo
 from .. import pyNetwork, pyBlock, geo_utils
 import os
 import warnings
@@ -1832,6 +1831,7 @@ class DVGeometry(BaseDVGeo):
         child.refAxis.coef = child.coef.copy()
         child.refAxis._updateCurveCoef()
 
+    # TODO axi doesn't have this?
     def pointSetUpToDate(self, ptSetName):
         """
         This is used externally to query if the object needs to update
