@@ -7,10 +7,9 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 
 from abc import abstractmethod
 from typing import OrderedDict
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D
 
 
-class BaseDVGeo:
+class BaseDVGeometry:
     """
     Abstract class for a basic geometry object
     """
@@ -216,8 +215,4 @@ class BaseDVGeo:
         fileName : str
            Filename for tecplot file. Should have no extension, an extension will be added
         """
-        coords = self.update(name, childDelta=True)
-        fileName = fileName + "_%s.dat" % name
-        f = openTecplot(fileName, 3)
-        writeTecplot1D(f, name, coords)
-        closeTecplot(f)
+        pass

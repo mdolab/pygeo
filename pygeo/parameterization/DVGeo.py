@@ -14,10 +14,10 @@ import os
 import warnings
 from baseclasses.utils import Error
 from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
-from .BaseDVGeo import BaseDVGeo
+from .BaseDVGeo import BaseDVGeometry
 
 
-class DVGeometry(BaseDVGeo):
+class DVGeometry(BaseDVGeometry):
     r"""
     A class for manipulating geometry.
 
@@ -119,8 +119,6 @@ class DVGeometry(BaseDVGeo):
         self.isChild = child
         self.children = []
         self.iChild = None
-        self.points = OrderedDict()
-        self.updated = {}
         self.masks = None
         self.finalized = False
         self.complex = isComplex
@@ -1830,27 +1828,6 @@ class DVGeometry(BaseDVGeo):
         # Update the reference axes on the child
         child.refAxis.coef = child.coef.copy()
         child.refAxis._updateCurveCoef()
-
-    # TODO axi doesn't have this?
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
 
     def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
         """

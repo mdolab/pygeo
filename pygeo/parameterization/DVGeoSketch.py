@@ -12,10 +12,11 @@ Enables the use of ESP (Engineering Sketch Pad) and OpenVSP (Open Vehicle Sketch
 from abc import abstractmethod
 from collections import OrderedDict
 from mpi4py import MPI
-from .BaseDVGeo import BaseDVGeo
+from .BaseDVGeo import BaseDVGeometry
+from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D
 
 
-class DVGeoSketch(BaseDVGeo):
+class DVGeoSketch(BaseDVGeometry):
     """A class for manipulating parametric geometry
 
     The purpose of the BaseDVGeoSketchy class is to provide translation
@@ -231,6 +232,25 @@ class DVGeoSketch(BaseDVGeo):
         Print a formatted list of design variables to the screen
         """
         pass
+
+    def writePointSet(self, name, fileName):
+        """
+        Write a given point set to a tecplot file
+
+        Parameters
+        ----------
+        name : str
+             The name of the point set to write to a file
+
+        fileName : str
+           Filename for tecplot file. Should have no extension, an
+           extension will be added
+        """
+        coords = self.update(name)
+        fileName = fileName + "_%s.dat" % name
+        f = openTecplot(fileName, 3)
+        writeTecplot1D(f, name, coords)
+        closeTecplot(f)
 
     # ----------------------------------------------------------------------- #
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
