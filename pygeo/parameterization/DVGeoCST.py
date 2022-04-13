@@ -60,6 +60,7 @@ class DVGeometryCST:
         comm : MPI communicator
             Communicator for DVGeometryCST instance
         """
+        # TODO: think about a better way to handle complex numbers than the current hacky one
         self.points = OrderedDict()  # For each point set, it contains a dictionary with the coordinates,
         # indices of upper, lower, and trailing edge points, and the minimum and maximum chordwise coordinates
         self.updated = {}
