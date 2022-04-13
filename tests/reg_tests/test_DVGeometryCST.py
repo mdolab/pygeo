@@ -65,7 +65,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         for n in range(1, self.maxNumCoeff + 1):
             w = self.rng.random(n)
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
-            dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w, self.yte)
+            dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w)
             dydN1_CS = (
                 np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte))
                 / self.CS_delta
@@ -79,7 +79,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         for n in range(1, self.maxNumCoeff + 1):
             w = self.rng.random(n)
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
-            dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w, self.yte)
+            dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w)
             dydN2_CS = (
                 np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte))
                 / self.CS_delta
