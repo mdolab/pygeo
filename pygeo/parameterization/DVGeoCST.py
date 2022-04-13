@@ -204,6 +204,11 @@ class DVGeometryCST:
             N2=self.rootDefaultDV["n2_lower"],
         )
 
+        # Set initial DV values based on the CST parameter fit
+        for DV in self.DVs.values():
+            if DV["type"] in ["chord", "upper", "lower"]:
+                DV[DV["type"]] = self.defaultDVs[ptName][DV["type"]]
+
     def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
         """
         Add one or more local design variables ot the DVGeometry
@@ -318,6 +323,7 @@ class DVGeometryCST:
                 self.rootDefaultDV[f"{dvType}_upper"] = default.copy()
 
         # Add the DV to the internally-stored list
+        # TODO: handling the DV default values is currently quite messy, clean this up
         self.DVs[dvName] = {
             "type": dvType,
             "value": default.copy(),
