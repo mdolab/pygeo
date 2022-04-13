@@ -102,7 +102,7 @@ class DVGeometryCST:
         # Default DVs specific to each point set
         self.defaultDVs = {}
 
-    def addPointSet(self, points, ptName, compNames=None):
+    def addPointSet(self, points, ptName, **kwargs):
         """
         Add a set of coordinates to DVGeometry
         The is the main way that geometry in the form of a coordinate list is given to DVGeometry to be manipulated.
@@ -123,8 +123,9 @@ class DVGeometryCST:
         ptName : str
             A user supplied name to associate with the set of coordinates.
             This name will need to be provided when updating the coordinates or when getting the derivatives of the coordinates.
-        compNames : str
-            Ignored input to match interface with DVCon's implementation.
+        kwargs
+            Any other parameters ignored, but this is maintained to allow the same
+            interface as other DVGeo implementations.
         """
         # Only parts of the points may be passed in to each DVGeo instance on each proc, so we must share the entire point cloud
         nCols = 3  # number of dimensions for each point
@@ -370,7 +371,7 @@ class DVGeometryCST:
         # TODO generalize the writing to files?
         pass
 
-    def totalSensitivity(self, dIdpt, ptSetName):
+    def totalSensitivity(self, dIdpt, ptSetName, **kwargs):
         r"""
         This function computes sensitivity information.
         Specifically, it computes the following:
@@ -380,19 +381,107 @@ class DVGeometryCST:
         ----------
         dIdpt : array of size (Npt, 3) or (N, Npt, 3)
             This is the total derivative of the objective or function of interest with respect to the coordinates in 'ptSetName'.
-            This can be a single array of size (Npt, 3) **or** a group of N vectors of size (Npt, 3, N).
+            This can be a single array of size (Npt, 3) **or** a group of N vectors of size (N, Npt, 3).
             If you have many to do, it is faster to do many at once.
         ptSetName : str
             The name of set of points we are dealing with
+        kwargs
+            Any other parameters ignored, but this is maintained to allow the same
+            interface as other DVGeo implementations.
 
         Returns
         -------
         dIdxDict : dict
             The dictionary containing the derivatives, suitable for pyOptSparse
         """
-        pass
 
-    def totalSensitivityProd(self, vec, ptSetName, config=None):
+        # Unpack some useful variables
+        vars = self._unpackDVs(ptSetName)
+        ptsX = self.points[ptSetName]["points"][:, self.xIdx]
+        scaledX = (ptsX - self.points[ptSetName]["xMin"]) / (
+            self.points[ptSetName]["xMax"] - self.points[ptSetName]["xMin"]
+        )
+        idxUpper = self.points[ptSetName]["upper"]
+        idxLower = self.points[ptSetName]["lower"]
+        funcSens = {}
+
+        # TODO: is this what needs to be done in the case where dIdpt is (N, Npt, 3)?
+        dim = dIdpt.shape
+        if len(dim) == 3:
+            dIdpt = dIdpt.reshape((dim[1], dim[2], dim[0]))
+
+        for dvName, DV in self.DVs.items():
+            dvType = DV["type"]
+
+            # TODO: these are wrong because they don't take into account the initial scaling of the
+            #       x values and then how xMax changes with the new chord
+            if dvType == "upper":
+                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                dydUpperCST *= vars["chord"]
+                funcSens[dvName] = dydUpperCST @ dIdpt[idxUpper, self.yIdx]
+            elif dvType == "lower":
+                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                dydLowerCST *= vars["chord"]
+                funcSens[dvName] = dydLowerCST @ dIdpt[idxLower, self.yIdx]
+            elif dvType == "n1_upper":
+                funcSens[dvName] = (
+                    vars["chord"]
+                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    @ dIdpt[idxUpper, self.yIdx]
+                )
+            elif dvType == "n2_upper":
+                funcSens[dvName] = (
+                    vars["chord"]
+                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    @ dIdpt[idxUpper, self.yIdx]
+                )
+            elif dvType == "n1_lower":
+                funcSens[dvName] = (
+                    vars["chord"]
+                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    @ dIdpt[idxLower, self.yIdx]
+                )
+            elif dvType == "n2_lower":
+                funcSens[dvName] = (
+                    vars["chord"]
+                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    @ dIdpt[idxLower, self.yIdx]
+                )
+            elif dvType == "n1":
+                funcSens[dvName] = (
+                    vars["chord"]
+                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    @ dIdpt[idxUpper, self.yIdx]
+                )
+                funcSens[dvName] += (
+                    vars["chord"]
+                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    @ dIdpt[idxLower, self.yIdx]
+                )
+            elif dvType == "n2":
+                funcSens[dvName] = (
+                    vars["chord"]
+                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    @ dIdpt[idxUpper, self.yIdx]
+                )
+                funcSens[dvName] += (
+                    vars["chord"]
+                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    @ dIdpt[idxLower, self.yIdx]
+                )
+            else:  # chord
+                dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
+                dxdchord = (ptsX - self.points[ptSetName]["xMin"]) / vars["chord"]
+                funcSens[dvName] = dydchord @ dIdpt[:, self.yIdx]
+                funcSens[dvName] += dxdchord @ dIdpt[:, self.xIdx]
+
+        if len(dim) == 3:
+            for dvName in funcSens.keys():
+                funcSens[dvName] = funcSens[dvName].reshape((dim[0], len(self.DVs[dvName]["value"])))
+
+        return funcSens
+
+    def totalSensitivityProd(self, vec, ptSetName, **kwargs):
         """
         This function computes sensitivity information.
         Specifically, it computes the following:
@@ -405,9 +494,9 @@ class DVGeometryCST:
               values are the derivative seeds of the corresponding design variable.
         ptSetName : str
             The name of set of points we are dealing with
-        config : str
-            Unused parameter but kept to maintain the same interface
-            as ADflow's totalSensitivityProd function.
+        kwargs
+            Any other parameters ignored, but this is maintained to allow the same
+            interface as other DVGeo implementations.
 
         Returns
         -------
@@ -416,41 +505,59 @@ class DVGeometryCST:
         # Unpack some useful variables
         vars = self._unpackDVs(ptSetName)
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
-        scaledX = (ptsX - self.points[ptSetName]["xMin"]) / (self.points[ptSetName]["xMax"] - self.points[ptSetName]["xMin"])
+        scaledX = (ptsX - self.points[ptSetName]["xMin"]) / (
+            self.points[ptSetName]["xMax"] - self.points[ptSetName]["xMin"]
+        )
         idxUpper = self.points[ptSetName]["upper"]
         idxLower = self.points[ptSetName]["lower"]
+        idxTE = np.full((self.points[ptSetName]["points"].shape[0],), True, dtype=bool)
+        idxTE[idxUpper] = False
+        idxTE[idxLower] = False
         xsdot = np.zeros(self.points[ptSetName]["points"].shape)
 
         for dvName, dvSeed in vec.items():
-            dvName = dvName.lower()
+            dvType = self.DVs[dvName]["type"]
 
-            if dvName == "upper":
+            # TODO: these are wrong because they don't take into account the initial scaling of the
+            #       x values and then how xMax changes with the new chord
+            if dvType == "upper":
                 dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
                 dydUpperCST *= vars["chord"]
                 xsdot[idxUpper, self.yIdx] += dydUpperCST.T @ dvSeed
-            elif dvName == "lower":
+            if dvType == "lower":
                 dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
                 dydLowerCST *= vars["chord"]
                 xsdot[idxLower, self.yIdx] += dydLowerCST.T @ dvSeed
-            elif dvName == "n1_upper":
-                xsdot[idxUpper, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
-            elif dvName == "n2_upper":
-                xsdot[idxUpper, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
-            elif dvName == "n1_lower":
-                xsdot[idxLower, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
-            elif dvName == "n2_lower":
-                xsdot[idxLower, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
-            elif dvName == "n1":
-                xsdot[idxUpper, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
-                xsdot[idxLower, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
-            elif dvName == "n2":
-                xsdot[idxUpper, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
-                xsdot[idxLower, self.yIdx] += dvSeed * vars["chord"] * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
-            else:  # chord
-                xsdot[idxUpper, self.yIdx] += self.points[ptSetName]["points"][idxUpper, self.yIdx] / vars["chord"]
-                xsdot[idxLower, self.yIdx] += self.points[ptSetName]["points"][idxLower, self.yIdx] / vars["chord"]
-                xsdot[:, self.xIdx] += (ptsX - self.points[ptSetName]["xMin"]) / vars["chord"]
-        
+            if dvType == "n1_upper" or dvType == "n1":
+                xsdot[idxUpper, self.yIdx] += (
+                    dvSeed
+                    * vars["chord"]
+                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                )
+            if dvType == "n2_upper" or dvType == "n2":
+                xsdot[idxUpper, self.yIdx] += (
+                    dvSeed
+                    * vars["chord"]
+                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                )
+            if dvType == "n1_lower" or dvType == "n1":
+                xsdot[idxLower, self.yIdx] += (
+                    dvSeed
+                    * vars["chord"]
+                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                )
+            if dvType == "n2_lower" or dvType == "n2":
+                xsdot[idxLower, self.yIdx] += (
+                    dvSeed
+                    * vars["chord"]
+                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                )
+            if dvType == "chord":
+                dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
+                dxdchord = (ptsX - self.points[ptSetName]["xMin"]) / vars["chord"]
+                xsdot[:, self.yIdx] += dvSeed * dydchord
+                xsdot[:, self.xIdx] += dvSeed * dxdchord
+
         return xsdot
 
     def addVariablesPyOpt(self, optProb):
@@ -473,7 +580,7 @@ class DVGeometryCST:
                 scale=DV["scale"],
             )
 
-    def update(self, ptSetName, childDelta=True, config=None):
+    def update(self, ptSetName, **kwargs):
         """
         This is the main routine for returning coordinates that have
         been updated by design variables.
@@ -483,40 +590,51 @@ class DVGeometryCST:
         ptSetName : str
             Name of point-set to return. This must match ones of the
             given in an :func:`addPointSet()` call.
+        kwargs
+            Any other parameters ignored, but this is maintained to allow the same
+            interface as other DVGeo implementations.
 
-        childDelta : bool
-            Return updates on child as a delta. The user should not
-            need to ever change this parameter.
-
-        config : str or list
-            Define what configurations this design variable will be applied to
-            Use a string for a single configuration or a list for multiple
-            configurations. The default value of None implies that the design
-            variable applies to *ALL* configurations.
+        Returns
+        -------
+        points : ndarray (N x 3)
+            Updated point set coordinates.
         """
         vars = self._unpackDVs(ptSetName)
 
         # Unpack the points to make variable names more accessible
         idxUpper = self.points[ptSetName]["upper"]
         idxLower = self.points[ptSetName]["lower"]
+        idxTE = np.full((self.points[ptSetName]["points"].shape[0],), True, dtype=bool)
+        idxTE[idxUpper] = False
+        idxTE[idxLower] = False
         thicknessTE = self.points[ptSetName]["thicknessTE"]
         points = self.points[ptSetName]["points"]
         ptsX = points[:, self.xIdx]
         ptsY = points[:, self.yIdx]
 
         # Scale the airfoil to the range 0 to 1 in x direction
+        # TODO: the scaling is wrong if the point set is not the whole airfoil,
+        #       which could be the case with DVCon's point sets
         shift = self.points[ptSetName]["xMin"]
         chord = self.points[ptSetName]["xMax"] - self.points[ptSetName]["xMin"]
         scaledX = (ptsX - shift) / chord
-        yTE = thicknessTE / chord  # scaled trailing edge thickness
+        yTE = thicknessTE / chord / 2  # half the scaled trailing edge thickness
 
-        ptsY[idxUpper] = vars["chord"] * self.computeCSTCoordinates(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE)
-        ptsY[idxLower] = vars["chord"] * self.computeCSTCoordinates(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], yTE)
+        ptsY[idxUpper] = vars["chord"] * self.computeCSTCoordinates(
+            scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE
+        )
+        ptsY[idxLower] = vars["chord"] * self.computeCSTCoordinates(
+            scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], yTE
+        )
+        ptsY[idxTE] *= vars["chord"] / chord
 
         # Scale the chord according to the chord DV
         points[:, self.xIdx] = (points[:, self.xIdx] - shift) * vars["chord"] / chord + shift
+        self.points[ptSetName]["xMax"] = (self.points[ptSetName]["xMax"] - shift) * vars["chord"] / chord + shift
 
         self.updated[ptSetName] = True
+
+        return points
 
     def getNDV(self):
         """
@@ -578,6 +696,8 @@ class DVGeometryCST:
                 vars[f"{DV['type']}_lower"] = DV["value"]
             else:
                 vars[DV["type"]] = DV["value"]
+
+        return vars
 
     @staticmethod
     def computeCSTCoordinates(x, N1, N2, w, yte):
