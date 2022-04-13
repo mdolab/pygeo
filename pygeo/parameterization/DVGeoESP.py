@@ -11,6 +11,7 @@ from pyOCSM import ocsm
 from contextlib import contextmanager
 from baseclasses.utils import Error
 from .DVGeoSketch import DVGeoSketch
+from .designVars import espDV
 
 
 @contextmanager
@@ -1435,22 +1436,6 @@ class ESPParameter:
         self.numRow = numRow
         self.numCol = numCol
         self.baseValue = baseValue
-
-
-class espDV:
-    def __init__(self, csmDesPmtr, name, value, lower, upper, scale, rows, cols, dh, globalstartind):
-        """Internal class for storing ESP design variable information"""
-        self.csmDesPmtr = csmDesPmtr
-        self.name = name
-        self.value = np.array(value)
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
-        self.rows = rows
-        self.cols = cols
-        self.nVal = len(rows) * len(cols)
-        self.dh = dh
-        self.globalStartInd = globalstartind
 
 
 class PointSet:

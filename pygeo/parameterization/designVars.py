@@ -5,24 +5,38 @@ import numpy as np
 from pygeo.geo_utils import convertTo1D
 
 
-class geoDVGlobal:
-    def __init__(self, dv_name, value, lower, upper, scale, function, config):
-        """Create a geometric design variable (or design variable group)
-        See addGlobalDV in DVGeometry class for more information
-        """
-        self.name = dv_name
-        self.value = np.atleast_1d(np.array(value)).astype("D")
-        self.nVal = len(self.value)
-        self.lower = None
-        self.upper = None
-        self.config = config
-        self.function = function
+class geoDV:
+    def __init__(self, name, value, nVal, lower, upper, scale):
+        self.name = name
+        self.value = value
+        self.nVal = nVal
+
         if lower is not None:
             self.lower = convertTo1D(lower, self.nVal)
         if upper is not None:
             self.upper = convertTo1D(upper, self.nVal)
         if scale is not None:
             self.scale = convertTo1D(scale, self.nVal)
+
+
+class geoDVGlobal(geoDV):
+    def __init__(self, name, value, lower, upper, scale, function, config):
+        """
+        Create a geometric design variable (or design variable group)
+        See addGlobalDV in DVGeometry class for more information
+        """
+        value = np.atleast_1d(np.array(value)).astype("D")
+        super().__init__(
+            name=name,
+            value=value,
+            nVal=len(value),
+            lower=lower,
+            upper=upper,
+            scale=scale,
+        )
+
+        self.config = config
+        self.function = function
 
     def __call__(self, geo, config):
         """When the object is called, actually apply the function"""
@@ -39,10 +53,10 @@ class geoDVGlobal:
                 return self.function(np.real(self.value), geo)
 
 
-class geoDVLocal:
-    def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask, config):
-
-        """Create a set of geometric design variables which change the shape
+class geoDVLocal(geoDV):
+    def __init__(self, name, lower, upper, scale, axis, coefListIn, mask, config):
+        """
+        Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
         See addLocalDV for more information
@@ -55,19 +69,10 @@ class geoDVLocal:
                 coefList.append(coefListIn[i])
 
         N = len(axis)
-        self.nVal = len(coefList) * N
-        self.value = np.zeros(self.nVal, "D")
-        self.name = dvName
-        self.lower = None
-        self.upper = None
-        self.config = config
-        if lower is not None:
-            self.lower = convertTo1D(lower, self.nVal)
-        if upper is not None:
-            self.upper = convertTo1D(upper, self.nVal)
-        if scale is not None:
-            self.scale = convertTo1D(scale, self.nVal)
+        nVal = len(coefList) * N
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal * N, lower=lower, upper=lower, scale=scale)
 
+        self.config = config
         self.coefList = np.zeros((self.nVal, 2), "intc")
         j = 0
 
@@ -125,15 +130,14 @@ class geoDVLocal:
         return cons
 
 
-class geoDVSpanwiseLocal(geoDVLocal):
-    def __init__(self, dvName, lower, upper, scale, axis, vol_dv_to_coefs, mask, config):
-
-        """Create a set of geometric design variables which change the shape
+class geoDVSpanwiseLocal(geoDV):
+    def __init__(self, name, lower, upper, scale, axis, vol_dv_to_coefs, mask, config):
+        """
+        Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
         in all three axis.
         See addLocalDV for more information
         """
-
         self.dv_to_coefs = []
 
         # add all the coefs to a flat array, but check that it isn't masked first
@@ -150,6 +154,9 @@ class geoDVSpanwiseLocal(geoDVLocal):
 
                 self.dv_to_coefs.append(loc_dv_to_coefs)
 
+        nVal = len(self.dv_to_coefs)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=lower, scale=scale)
+
         if "x" == axis.lower():
             self.axis = 0
         elif "y" == axis.lower():
@@ -159,24 +166,12 @@ class geoDVSpanwiseLocal(geoDVLocal):
         else:
             raise NotImplementedError
 
-        self.nVal = len(self.dv_to_coefs)
-        self.value = np.zeros(self.nVal, "D")
-
-        self.name = dvName
-        self.lower = None
-        self.upper = None
         self.config = config
 
-        if lower is not None:
-            self.lower = convertTo1D(lower, self.nVal)
-        if upper is not None:
-            self.upper = convertTo1D(upper, self.nVal)
-        if scale is not None:
-            self.scale = convertTo1D(scale, self.nVal)
-
     def __call__(self, coef, config):
-        """When the object is called, apply the design variable values to
-        coefficients"""
+        """
+        When the object is called, apply the design variable values to coefficients
+        """
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             for i in range(self.nVal):
                 coef[self.dv_to_coefs[i], self.axis] += self.value[i].real
@@ -194,7 +189,6 @@ class geoDVSpanwiseLocal(geoDVLocal):
         """
         Map the index sets from the full coefficient indices to the local set.
         """
-
         cons = []
         for j in range(len(indSetA)):
             # Try to find this index # in the coefList (temp)
@@ -218,25 +212,22 @@ class geoDVSpanwiseLocal(geoDVLocal):
         return cons
 
 
-class geoDVSectionLocal:
-    def __init__(self, dvName, lower, upper, scale, axis, coefListIn, mask, config, sectionTransform, sectionLink):
+class geoDVSectionLocal(geoDV):
+    def __init__(self, name, lower, upper, scale, axis, coefListIn, mask, config, sectionTransform, sectionLink):
         """
         Create a set of geometric design variables which change the shape
         of a surface.
         See `addLocalSectionDV` for more information
         """
-
         self.coefList = []
-        # create a new coefficent list that excludes any values that are masked
+        # create a new coefficient list that excludes any values that are masked
         for i in range(len(coefListIn)):
             if not mask[coefListIn[i]]:
                 self.coefList.append(coefListIn[i])
 
-        self.nVal = len(self.coefList)
-        self.value = np.zeros(self.nVal, "D")
-        self.name = dvName
-        self.lower = None
-        self.upper = None
+        nVal = len(self.coefList)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=None, upper=None, scale=scale)
+
         self.config = config
         if lower is not None:
             self.lower = convertTo1D(lower, self.nVal)
@@ -251,8 +242,9 @@ class geoDVSectionLocal:
         self.axis = axis
 
     def __call__(self, coef, coefRotM, config):
-        """When the object is called, apply the design variable values to
-        coefficients"""
+        """
+        When the object is called, apply the design variable values to coefficients
+        """
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             for i in range(len(self.coefList)):
                 T = self.sectionTransform[self.sectionLink[self.coefList[i]]]
@@ -301,16 +293,40 @@ class geoDVSectionLocal:
         return cons
 
 
-class geoDVComposite(object):
-    def __init__(self, dvName, value, nVal, u, scale=1.0, s=None):
+class geoDVComposite(geoDV):
+    def __init__(self, name, value, nVal, u, scale=1.0, s=None):
         """
         Create a set of design variables which are linear combinations of existing design variables.
         """
-        self.name = dvName
-        self.nVal = nVal
-        self.value = value
-        self.lower = None
-        self.upper = None
-        self.scale = convertTo1D(scale, self.nVal)
+        super().__init__(name=name, value=value, nVal=nVal, lower=None, upper=None, scale=convertTo1D(scale, nVal))
         self.u = u
         self.s = s
+
+
+class espDV(geoDV):
+    def __init__(self, csmDesPmtr, name, value, lower, upper, scale, rows, cols, dh, globalstartind):
+        """
+        Internal class for storing ESP design variable information
+        """
+        nVal = len(rows) * len(cols)
+        super().__init__(name=name, value=np.array(value), nVal=nVal, lower=lower, upper=upper, scale=scale)
+
+        self.csmDesPmtr = csmDesPmtr
+        self.rows = rows
+        self.cols = cols
+        self.nVal = len(rows) * len(cols)
+        self.dh = dh
+        self.globalStartInd = globalstartind
+
+
+class vspDV(geoDV):
+    def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
+        """
+        Internal class for storing VSP design variable information
+        """
+        super().__init__(name=None, value=value, nVal=1, lower=lower, upper=upper, scale=scale)
+        self.parmID = parmID
+        self.component = component
+        self.group = group
+        self.parm = parm
+        self.dh = dh

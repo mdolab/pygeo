@@ -8,6 +8,7 @@ from mpi4py import MPI
 from baseclasses.utils import Error
 from .DVGeoSketch import DVGeoSketch
 from pyspline.utils import searchQuads
+from .designVars import vspDV
 
 # openvsp python interface
 try:
@@ -1098,21 +1099,6 @@ class DVGeometryVSP(DVGeoSketch):
         self.sizes = sizes
         self.cumSizes = cumSizes
         self.uv = uv
-
-
-class vspDV:
-    def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
-        """Inernal class for storing VSP design variable information"""
-        self.parmID = parmID
-        self.component = component
-        self.group = group
-        self.parm = parm
-        self.value = np.array(value)
-        self.lower = lower
-        self.upper = upper
-        self.dh = dh
-        self.scale = scale
-        self.nVal = 1
 
 
 class PointSet:
