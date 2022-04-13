@@ -6,10 +6,10 @@ import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
 from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
-from .DVGeoSketch import BaseDVGeo
+from .DVGeoSketch import BaseDVGeometry
 
 
-class DVGeometryMulti(BaseDVGeo):
+class DVGeometryMulti(BaseDVGeometry):
     """
     A class for manipulating multiple components using multiple FFDs
     and handling design changes near component intersections.
