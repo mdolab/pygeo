@@ -27,7 +27,7 @@ from pygeo import DVGeometryCST
 # LEUpper is true if the leading edge point is considered to be on the upper surface
 airfoils = [{"fName": "naca2412.dat", "LEUpper": False}, {"fName": "naca0012.dat", "LEUpper": True}]
 
-
+@parameterized_class(airfoils)
 class DVGeometryCSTUnitTest(unittest.TestCase):
 
     N_PROCS = 1
@@ -40,6 +40,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         self.x = np.linspace(0, 1, 100)
         self.yte = 1e-3
         self.CS_delta = 1e-200
+        self.curDir = os.path.abspath(os.path.dirname(__file__))
 
     def test_ClassShape(self):
         """Test that for w_i = 1, the class shape has the expected shape"""
@@ -104,7 +105,29 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
                 w[i] -= self.CS_delta * 1j
 
             np.testing.assert_allclose(dydw, dydw_CS, atol=self.sensTol, rtol=self.sensTol)
+    
+    def test_fitCST(self):
+        """Test the CST parameter fitting"""
+        # Read in airfoil coordinates to test with and split up the surfaces
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
+        idxLE = np.argmin(coords[:, 0])
+        idxUpper = np.arange(0, idxLE + self.LEUpper)
+        idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
+        yTE = coords[0, 1]
+        N1 = 0.5
+        N2 = 1.0
 
+        for nCST in range(2, 10):
+            # Fit the CST parameters and then compute the coordinates
+            # with those parameters and check that it's close
+            upperCST = DVGeometryCST.computeCSTfromCoords(coords[idxUpper, 0], coords[idxUpper, 1], nCST, N1=N1, N2=N2)
+            lowerCST = DVGeometryCST.computeCSTfromCoords(coords[idxLower, 0], coords[idxLower, 1], nCST, N1=N1, N2=N2)
+            fitCoordsUpper = DVGeometryCST.computeCSTCoordinates(coords[idxUpper, 0], N1, N2, upperCST, yTE)
+            fitCoordsLower = DVGeometryCST.computeCSTCoordinates(coords[idxLower, 0], N1, N2, lowerCST, -yTE)
+
+            np.testing.assert_allclose(fitCoordsUpper, coords[idxUpper, 1], atol=1e-3, rtol=1e-1)
+            np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=1e-3, rtol=1e-1)
 
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetSerial(unittest.TestCase):
@@ -117,7 +140,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         self.DVGeo = DVGeometryCST(comm=self.comm)
 
     def test_addPointSet_sorted(self):
-        # Read in NACA 2412 coordinates to test with and split up the surfaces
+        # Read in airfoil coordinates to test with and split up the surfaces
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
@@ -136,7 +159,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
     def test_addPointSet_randomized(self):
-        # Read in NACA 2412 coordinates to test with and split up the surfaces
+        # Read in airfoil coordinates to test with and split up the surfaces
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
@@ -162,7 +185,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
     def test_addPointSet_bluntTE(self):  # includes a blunt trailing edge with points along it
-        # Read in NACA 2412 coordinates to test with and split up the surfaces
+        # Read in airfoil coordinates to test with and split up the surfaces
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         nPointsTE = 6  # total points on the trailing edge
@@ -195,7 +218,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         self.DVGeo = DVGeometryCST(comm=self.comm)
 
     def test_addPointSet_sorted(self):
-        # Read in NACA 2412 coordinates to test with and split up the surfaces
+        # Read in airfoil coordinates to test with and split up the surfaces
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
@@ -226,7 +249,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
     def test_addPointSet_randomized(self):
-        # Read in NACA 2412 coordinates to test with and split up the surfaces
+        # Read in airfoil coordinates to test with and split up the surfaces
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])

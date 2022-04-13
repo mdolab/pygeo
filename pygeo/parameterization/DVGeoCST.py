@@ -88,8 +88,8 @@ class DVGeometryCST:
 
         # Default DVs to be copied for each point set
         self.rootDefaultDV = {
-            "upper": np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
-            "lower": -np.array([0.17356, 0.14769, 0.17954, 0.12373, 0.16701, 0.12967, 0.14308, 0.13890]),  # NACA 0012
+            "upper": 0.5 * np.ones(8),
+            "lower": -0.5 * np.ones(8),
             "n1_upper": np.array([0.5]),
             "n2_upper": np.array([1.0]),
             "n1_lower": np.array([0.5]),
@@ -105,7 +105,8 @@ class DVGeometryCST:
     def addPointSet(self, points, ptName, **kwargs):
         """
         Add a set of coordinates to DVGeometry
-        The is the main way that geometry in the form of a coordinate list is given to DVGeometry to be manipulated.
+        The is the main way that geometry in the form of a coordinate list is given to DVGeometry
+        to be manipulated. This method will fit CST coefficients to the point set.
         This assumes...
             - Trailing edge is vertical or sharp and at maximum x (or idxChord) values
             - The geometry is exclusively an extruded shape (no spanwise changes allowed)
@@ -186,12 +187,24 @@ class DVGeometryCST:
         }
 
         # Set the default design variables based on the input airfoil
-        # TODO: fit CST coefficients to the input airfoil so if upper or lower DVs aren't specified, it will keep the airfoil
-        #       also, this will not currently work for CST shape variables with dvNum != 8 because the default is 8 (and will initialize pyOptSparse this way)
         self.defaultDVs[ptName] = deepcopy(self.rootDefaultDV)
         self.defaultDVs[ptName]["chord"] = np.array([self.points[ptName]["xMax"] - self.points[ptName]["xMin"]])
+        self.defaultDVs[ptName]["upper"] = self.computeCSTfromCoords(
+            pointsGlobal[upperBool, self.xIdx],
+            pointsGlobal[upperBool, self.yIdx],
+            self.rootDefaultDV["upper"].size,
+            N1=self.rootDefaultDV["n1_upper"],
+            N2=self.rootDefaultDV["n2_upper"],
+        )
+        self.defaultDVs[ptName]["lower"] = self.computeCSTfromCoords(
+            pointsGlobal[lowerBool, self.xIdx],
+            pointsGlobal[lowerBool, self.yIdx],
+            self.rootDefaultDV["lower"].size,
+            N1=self.rootDefaultDV["n1_lower"],
+            N2=self.rootDefaultDV["n2_lower"],
+        )
 
-    def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0):
+    def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
         """
         Add one or more local design variables ot the DVGeometry
         object. Local variables are used for small shape modifications.
@@ -200,7 +213,6 @@ class DVGeometryCST:
         ----------
         dvName : str
             A unique name to be given to this design variable group
-
         dvType : str
             Define the type of CST design variable being added. Either the upper/lower surface class shape
             parameter DV can be defined (e.g., `"N1_upper"`), or the DV for both the upper and lower surfaces' class shape
@@ -215,23 +227,21 @@ class DVGeometryCST:
                 `"N2_lower"`: second class shape parameters for lower surface (adds a single DV)
                 `"chord"`: chord length in whatever units the point set length is defined and scaled
                            to keep the leading edge at the same position (adds a single DV)
-
         dvNum : int
             If dvType is `"upper"` or `"lower"`, use `dvNum` to specify the number of
             CST parameters to use. This must be given by the user for upper and lower DVs.
-
-        lower : float or ndarray
+        lower : float or ndarray, optional
             The upper bound for the variable(s). This will be applied to
             all shape variables
-
-        upper : float or ndarray
+        upper : float or ndarray, optional
             The upper bound for the variable(s). This will be applied to
             all shape variables
-
-        scale : float
+        scale : float, optional
             The scaling of the variables. A good approximate scale to
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
+        default : ndarray, optional
+            Default value for design variable (must be same length as number of DVs added).
 
         Returns
         -------
@@ -256,8 +266,9 @@ class DVGeometryCST:
             )
         dvType = dvType.lower()
 
-        if dvType in ["upper", "lower"] and dvNum is None:
-            raise ValueError(f'dvNum must be specified if dvType is "upper" or "lower"')
+        if dvType in ["upper", "lower"]:
+            if dvNum is None:
+                raise ValueError(f'dvNum must be specified if dvType is "upper" or "lower"')
         else:
             dvNum = 1
 
@@ -286,10 +297,30 @@ class DVGeometryCST:
         if dvName in self.DVs.keys():
             raise ValueError(f'A design variable with the name "{dvName}" already exists')
 
+        # Set the default value
+        if default is None:
+            if dvType in ["upper", "lower"]:  # use an array with the correct number of CST coefficients
+                self.rootDefaultDV[dvType] = self.rootDefaultDV[dvType][0] * np.ones(dvNum)
+            default = self.rootDefaultDV[dvType]
+        else:
+            if not isinstance(default, np.ndarray):
+                raise ValueError(f"The default value for the {dvName} DV must be a NumPy array, not a {type(default)}")
+            default = default.flatten()
+            if default.size != dvNum:
+                raise ValueError(
+                    f"The default value for the {dvName} DV must have a length of {dvNum}, not {default.size}"
+                )
+
+            # Set new root default
+            self.rootDefaultDV[dvType] = default.copy()
+            if dvType in ["n1", "n2"]:
+                self.rootDefaultDV[f"{dvType}_lower"] = default.copy()
+                self.rootDefaultDV[f"{dvType}_upper"] = default.copy()
+
         # Add the DV to the internally-stored list
         self.DVs[dvName] = {
             "type": dvType,
-            "value": self.rootDefaultDV[dvType],
+            "value": default.copy(),
             "lower": lower,
             "upper": upper,
             "scale": scale,
@@ -624,7 +655,7 @@ class DVGeometryCST:
             scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE
         )
         ptsY[idxLower] = vars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], yTE
+            scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], -yTE
         )
         ptsY[idxTE] *= vars["chord"] / chord
 
@@ -740,6 +771,8 @@ class DVGeometryCST:
         dy/dw_i = C(x) * p_i(x)
 
         This function assumes x has been normalised to the range [0,1]
+
+        Only the shape and data type of w are used, not the values
         """
         C = DVGeometryCST.computeClassShape(x, N1, N2)
         S = DVGeometryCST.computeShapeFunctions(x, np.ones_like(w))
@@ -770,6 +803,44 @@ class DVGeometryCST:
         C = DVGeometryCST.computeClassShape(x, N1, N2)
         S = DVGeometryCST.computeShapeFunctions(x, w)
         return np.sum(S, axis=0) * C * np.log(1 - x)
+
+    @staticmethod
+    def computeCSTfromCoords(xCoord, yCoord, nCST, N1=0.5, N2=1.0):
+        """
+        Compute the CST coefficients that fit a set of airfoil
+        coordinates (either for the upper or lower surface, not both).
+
+        This function internally normalizes the x and y-coordinates.
+
+        Parameters
+        ----------
+        xCoord : ndarray
+            Upper or lower surface airfoil x-coordinates (same length
+            as yCoord vector).
+        yCoord : ndarray
+            Upper or lower surface airfoil y-coordinates (same length
+            as xCoord vector).
+        nCST : int
+            Number of CST coefficients to fit.
+        N1 : float, optional
+            First class shape parameter to assume in fitting, by default 0.5
+        N2 : float, optional
+            Second class shape parameter to assume in fitting, by default 1.0
+
+        Returns
+        -------
+        np.ndarray (nCST,)
+            CST coefficients fit to the airfoil surface.
+        """
+        # Normalize x and y
+        chord = np.max(xCoord) - np.min(xCoord)
+        xCoord = (xCoord - np.min(xCoord)) / chord
+        yCoord /= chord
+
+        # Compute the coefficients via linear least squares
+        dydw = DVGeometryCST.computeCSTdydw(xCoord, N1, N2, np.ones(nCST))
+        w = np.linalg.lstsq(dydw.T, yCoord, rcond=None)[0]
+        return w
 
     def _orderAirfoilCoordinates(self, points, alpha=0.25):
         """
