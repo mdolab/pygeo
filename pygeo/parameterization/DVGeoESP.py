@@ -961,20 +961,6 @@ class DVGeometryESP(DVGeoSketch):
 
         self.DVs[dvName] = espDV(csmDesPmtr, dvName, value, lower, upper, scale, rows, cols, dh, globalStartInd)
 
-    def addVariablesPyOpt(self, optProb):
-        """
-        Add the current set of variables to the optProb object.
-
-        Parameters
-        ----------
-        optProb : pyOpt_optimization class
-            Optimization problem definition to which variables are added
-        """
-
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
-
     def printDesignVariables(self):
         """
         Print a formatted list of design variables to the screen

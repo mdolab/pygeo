@@ -213,8 +213,6 @@ class DVGeoSketch(BaseDVGeometry):
         """
         pass
 
-    # TODO I think these have to stay separate - VSP doesn't have grouped DVs
-    @abstractmethod
     def addVariablesPyOpt(self, optProb):
         """
         Add the current set of variables to the optProb object.
@@ -224,7 +222,9 @@ class DVGeoSketch(BaseDVGeometry):
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
         """
-        pass
+        for dvName in self.DVs:
+            dv = self.DVs[dvName]
+            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
     @abstractmethod
     def printDesignVariables(self):
