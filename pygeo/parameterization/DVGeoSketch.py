@@ -279,18 +279,3 @@ class DVGeoSketch(BaseDVGeometry):
         pointSets is a list or dictionary of pointSets to calculate the jacobian for.
         """
         pass
-
-
-# TODO PointSet is the same for both - pull out on its own?
-class PointSet:
-    """Internal class for storing the projection details of each pointset"""
-
-    def __init__(self, points, pts, geom, u, v):
-        self.points = points
-        self.pts = pts
-        self.geom = geom
-        self.u = u
-        self.v = v
-        self.offset = self.pts - self.points
-        self.nPts = len(self.pts)
-        self.jac = None
