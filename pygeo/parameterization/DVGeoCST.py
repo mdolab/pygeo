@@ -134,14 +134,20 @@ class DVGeometryCST:
         sizes = np.array(self.comm.allgather(NLoc), dtype="intc")  # number of points on each proc
         disp = np.hstack(([0], np.cumsum(sizes)))[:-1]  # starting index for each part of the distributed point set
         N = np.sum(sizes)  # total points in the point set
-        pointsGlobal = np.zeros((N, 3), dtype=float)  # full point set
+        pointsGlobal = np.zeros((N, 3), dtype=points.dtype)  # full point set
+
+        # Get MPI type of points
+        if points.dtype == complex:
+            typeMPI = MPI.DOUBLE_COMPLEX
+        else:
+            typeMPI = MPI.DOUBLE
 
         # Gather one column at a time
         for col in range(nCols):
             # Copy data into 1D arrays so data is contiguous in memory for MPI
             pointsCol = points[:, col].copy()
-            tempColGlobal = np.zeros(N, dtype=float)
-            self.comm.Allgatherv([pointsCol, NLoc], [tempColGlobal, sizes, disp, MPI.DOUBLE])
+            tempColGlobal = np.zeros(N, dtype=points.dtype)
+            self.comm.Allgatherv([pointsCol, NLoc], [tempColGlobal, sizes, disp, typeMPI])
 
             # Copy resulting column into global point array
             pointsGlobal[:, col] = tempColGlobal.copy()
@@ -550,7 +556,7 @@ class DVGeometryCST:
         idxTE = np.full((self.points[ptSetName]["points"].shape[0],), True, dtype=bool)
         idxTE[idxUpper] = False
         idxTE[idxLower] = False
-        xsdot = np.zeros(self.points[ptSetName]["points"].shape)
+        xsdot = np.zeros_like(self.points[ptSetName]["points"])
 
         for dvName, dvSeed in vec.items():
             dvType = self.DVs[dvName]["type"]

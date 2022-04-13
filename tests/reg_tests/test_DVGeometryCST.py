@@ -291,5 +291,99 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
+@parameterized_class(airfoils)
+class DVGeometryCSTSensitivityProd(unittest.TestCase):
+    # Test in serial
+    N_PROCS = 1
+
+    def setUp(self):
+        self.curDir = os.path.abspath(os.path.dirname(__file__))
+        self.comm = MPI.COMM_WORLD
+        self.DVGeo = DVGeometryCST(comm=self.comm)
+
+        # Read in airfoil coordinates
+        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))  # z-coordinates
+        self.coords = coords.astype(complex)
+        idxLE = np.argmin(coords[:, 0])
+        self.idxUpper = np.arange(0, idxLE + self.LEUpper)
+        self.idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
+        self.thickTE = coords[0, 1] - coords[-1, 1]
+        self.ptName = "pt"
+
+        self.sensTol = 1e-10
+        self.coordTol = 1e-10
+        self.CS_delta = 1e-200
+
+    def test_upper(self):
+        self.DVGeo.addDV("upper", dvType="upper", dvNum=4)
+        self.DVGeo.addDV("lower", dvType="lower", dvNum=5)
+        self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        DVs = self.DVGeo.getValues()
+
+        # First compute the analytic ones with the built in function
+        sensProd = []
+        for i in range(DVs["upper"].size):
+            vec = np.zeros(DVs["upper"].shape)
+            vec[i] = 1
+            sensProd.append(self.DVGeo.totalSensitivityProd({"upper": vec}, self.ptName))
+        
+        # Then check them against doing it with complex step
+        upper = DVs["upper"].astype(complex)
+        for i in range(DVs["upper"].size):
+            upper[i] += self.CS_delta * 1j
+            self.DVGeo.setDesignVars({"upper": upper})
+            pertCoords = self.DVGeo.update(self.ptName)
+            upper[i] -= self.CS_delta * 1j
+
+            dXdw = np.imag(pertCoords) / self.CS_delta
+            np.testing.assert_allclose(sensProd[i], dXdw, atol=self.sensTol, rtol=self.sensTol)
+
+    def test_lower(self):
+        self.DVGeo.addDV("upper", dvType="upper", dvNum=4)
+        self.DVGeo.addDV("lower", dvType="lower", dvNum=5)
+        self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        DVs = self.DVGeo.getValues()
+
+        # First compute the analytic ones with the built in function
+        sensProd = []
+        for i in range(DVs["lower"].size):
+            vec = np.zeros(DVs["lower"].shape)
+            vec[i] = 1
+            sensProd.append(self.DVGeo.totalSensitivityProd({"lower": vec}, self.ptName))
+        
+        # Then check them against doing it with complex step
+        lower = DVs["lower"].astype(complex)
+        for i in range(DVs["lower"].size):
+            lower[i] += self.CS_delta * 1j
+            self.DVGeo.setDesignVars({"lower": lower})
+            pertCoords = self.DVGeo.update(self.ptName)
+            lower[i] -= self.CS_delta * 1j
+
+            dXdw = np.imag(pertCoords) / self.CS_delta
+            np.testing.assert_allclose(sensProd[i], dXdw, atol=self.sensTol, rtol=self.sensTol)
+
+    def test_chord(self):
+        self.DVGeo.addDV("chord", dvType="chord")
+        self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        DVs = self.DVGeo.getValues()
+
+        # First compute the analytic one with the built in function
+        sensProd = self.DVGeo.totalSensitivityProd({"chord": np.ones(1)}, self.ptName)
+        
+        # Then check it against doing it with complex step
+        chord = DVs["chord"].astype(complex)
+        chord += self.CS_delta * 1j
+        self.DVGeo.setDesignVars({"chord": chord})
+        pertCoords = self.DVGeo.update(self.ptName)
+        chord -= self.CS_delta * 1j
+
+        dXdc = np.imag(pertCoords) / self.CS_delta
+        np.testing.assert_allclose(sensProd, dXdc, atol=self.sensTol, rtol=self.sensTol)
+
+
 if __name__ == "__main__":
     unittest.main()
