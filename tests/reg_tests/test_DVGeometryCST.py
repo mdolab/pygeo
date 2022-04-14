@@ -318,6 +318,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
 
     def setUp(self):
         self.curDir = os.path.abspath(os.path.dirname(__file__))
+        self.rng = np.random.default_rng(1)
         self.comm = MPI.COMM_WORLD
         self.DVGeo = DVGeometryCST(comm=self.comm, isComplex=True)
 
@@ -341,6 +342,10 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
         self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        # Set DV to random values
+        self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
+        self.DVGeo.update(self.ptName)
 
         DVs = self.DVGeo.getValues()
 
@@ -368,6 +373,10 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
         self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        # Set DV to random values
+        self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
+        self.DVGeo.update(self.ptName)
 
         # dIdXpt of all ones means the total sensitivities will just be the sum of the
         # derivatives at each of the coordianates
@@ -401,6 +410,10 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
         self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        # Set DV to random values
+        self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
+        self.DVGeo.update(self.ptName)
 
         # dIdXpt of all ones means the total sensitivities will just be the sum of the
         # derivatives at each of the coordianates

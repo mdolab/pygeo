@@ -716,7 +716,10 @@ class DVGeometryCST:
 
         # Scale the chord according to the chord DV
         points[:, self.xIdx] = (points[:, self.xIdx] - shift) * vars["chord"] / chord + shift
+
+        # Scale the point set's properties based on the new chord length
         self.points[ptSetName]["xMax"] = (self.points[ptSetName]["xMax"] - shift) * vars["chord"] / chord + shift
+        self.points[ptSetName]["thicknessTE"] *= vars["chord"] / chord
 
         self.updated[ptSetName] = True
 
