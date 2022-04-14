@@ -207,7 +207,7 @@ class DVGeometryCST:
             self.rootDefaultDV["upper"].size,
             N1=self.rootDefaultDV["n1_upper"],
             N2=self.rootDefaultDV["n2_upper"],
-            dtype=self.dtype
+            dtype=self.dtype,
         )
         self.defaultDVs[ptName]["lower"] = self.computeCSTfromCoords(
             pointsGlobal[lowerBool, self.xIdx],
@@ -215,7 +215,7 @@ class DVGeometryCST:
             self.rootDefaultDV["lower"].size,
             N1=self.rootDefaultDV["n1_lower"],
             N2=self.rootDefaultDV["n2_lower"],
-            dtype=self.dtype
+            dtype=self.dtype,
         )
 
         # Set initial DV values based on the CST parameter fit
@@ -456,10 +456,11 @@ class DVGeometryCST:
         idxLower = self.points[ptSetName]["lower"]
         funcSens = {}
 
-        # TODO: is this what needs to be done in the case where dIdpt is (N, Npt, 3)?
+        # If dIdpt is a group of vectors, reorder the axes so it
+        # is handled properly by the matrix multiplies
         dim = dIdpt.shape
         if len(dim) == 3:
-            dIdpt = dIdpt.reshape((dim[1], dim[2], dim[0]))
+            dIdpt = np.moveaxis(dIdpt, 0, -1)
 
         for dvName, DV in self.DVs.items():
             dvType = DV["type"]
@@ -467,57 +468,77 @@ class DVGeometryCST:
             # TODO: these are wrong because they don't take into account the initial scaling of the
             #       x values and then how xMax changes with the new chord
             if dvType == "upper":
-                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                dydUpperCST = self.computeCSTdydw(
+                    scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                )
                 dydUpperCST *= vars["chord"]
                 funcSens[dvName] = dydUpperCST @ dIdpt[idxUpper, self.yIdx]
             elif dvType == "lower":
-                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                dydLowerCST = self.computeCSTdydw(
+                    scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                )
                 dydLowerCST *= vars["chord"]
                 funcSens[dvName] = dydLowerCST @ dIdpt[idxLower, self.yIdx]
             elif dvType == "n1_upper":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                    * self.computeCSTdydN1(
+                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n2_upper":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                    * self.computeCSTdydN2(
+                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n1_lower":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                    * self.computeCSTdydN1(
+                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2_lower":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                    * self.computeCSTdydN2(
+                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n1":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                    * self.computeCSTdydN1(
+                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
                 funcSens[dvName] += (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                    * self.computeCSTdydN1(
+                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                    * self.computeCSTdydN2(
+                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
                 funcSens[dvName] += (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                    * self.computeCSTdydN2(
+                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             else:  # chord
@@ -526,9 +547,11 @@ class DVGeometryCST:
                 funcSens[dvName] = dydchord @ dIdpt[:, self.yIdx]
                 funcSens[dvName] += dxdchord @ dIdpt[:, self.xIdx]
 
+        # If the axes were reordered to handle a group of dIdpt vectors,
+        # switch them back to the expected order for output
         if len(dim) == 3:
             for dvName in funcSens.keys():
-                funcSens[dvName] = funcSens[dvName].reshape((dim[0], len(self.DVs[dvName]["value"])))
+                funcSens[dvName] = np.moveaxis(np.atleast_2d(funcSens[dvName]), 0, -1)
 
         return funcSens
 
@@ -572,36 +595,48 @@ class DVGeometryCST:
             # TODO: these are wrong because they don't take into account the initial scaling of the
             #       x values and then how xMax changes with the new chord
             if dvType == "upper":
-                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                dydUpperCST = self.computeCSTdydw(
+                    scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                )
                 dydUpperCST *= vars["chord"]
                 xsdot[idxUpper, self.yIdx] += dydUpperCST.T @ dvSeed
             if dvType == "lower":
-                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                dydLowerCST = self.computeCSTdydw(
+                    scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                )
                 dydLowerCST *= vars["chord"]
                 xsdot[idxLower, self.yIdx] += dydLowerCST.T @ dvSeed
             if dvType == "n1_upper" or dvType == "n1":
                 xsdot[idxUpper, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                    * self.computeCSTdydN1(
+                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    )
                 )
             if dvType == "n2_upper" or dvType == "n2":
                 xsdot[idxUpper, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
+                    * self.computeCSTdydN2(
+                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    )
                 )
             if dvType == "n1_lower" or dvType == "n1":
                 xsdot[idxLower, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                    * self.computeCSTdydN1(
+                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    )
                 )
             if dvType == "n2_lower" or dvType == "n2":
                 xsdot[idxLower, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
+                    * self.computeCSTdydN2(
+                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    )
                 )
             if dvType == "chord":
                 dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
@@ -766,7 +801,14 @@ class DVGeometryCST:
         """
         Compute the class shape of a CST curve
         """
-        return x**N1 * (1.0 - x) ** N2
+        C = x**N1 * (1.0 - x) ** N2
+
+        # 0 to the power of a complex number is undefined, so anywhere
+        # x is 0 or 1, set C to zero (doesn't change the result for float)
+        C[x == 0.] = 0.
+        C[x == 1.] = 0.
+
+        return C
 
     @staticmethod
     def computeShapeFunctions(x, w, dtype=float):
@@ -809,7 +851,9 @@ class DVGeometryCST:
         """
         C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
         S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
-        return np.sum(S, axis=0) * C * np.log(x)
+        dydN1 = np.sum(S, axis=0) * C * np.log(x)
+        dydN1[x == 0] = 0
+        return dydN1
 
     @staticmethod
     def computeCSTdydN2(x, N1, N2, w, dtype=float):
@@ -822,7 +866,9 @@ class DVGeometryCST:
         """
         C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
         S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
-        return np.sum(S, axis=0) * C * np.log(1 - x)
+        dydN2 = np.sum(S, axis=0) * C * np.log(1 - x)
+        dydN2[x == 1] = 0
+        return dydN2
 
     @staticmethod
     def computeCSTfromCoords(xCoord, yCoord, nCST, N1=0.5, N2=1.0, dtype=float):

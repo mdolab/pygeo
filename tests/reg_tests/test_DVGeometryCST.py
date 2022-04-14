@@ -27,6 +27,20 @@ from pygeo import DVGeometryCST
 # LEUpper is true if the leading edge point is considered to be on the upper surface
 airfoils = [{"fName": "naca2412.dat", "LEUpper": False}, {"fName": "naca0012.dat", "LEUpper": True}]
 
+# Parameterization of design variables
+DVs = [
+    {"dvName": "upper", "dvNum": 5},
+    {"dvName": "lower", "dvNum": 5},
+    {"dvName": "n1", "dvNum": 1},
+    {"dvName": "n2", "dvNum": 1},
+    {"dvName": "n1_upper", "dvNum": 1},
+    {"dvName": "n1_lower", "dvNum": 1},
+    {"dvName": "n2_upper", "dvNum": 1},
+    {"dvName": "n2_lower", "dvNum": 1},
+    {"dvName": "chord", "dvNum": 1},
+]
+
+
 @parameterized_class(airfoils)
 class DVGeometryCSTUnitTest(unittest.TestCase):
 
@@ -68,7 +82,9 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w)
             dydN1_CS = (
-                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte, dtype=complex))
+                np.imag(
+                    DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte, dtype=complex)
+                )
                 / self.CS_delta
             )
             np.testing.assert_allclose(dydN1, dydN1_CS, atol=self.sensTol, rtol=self.sensTol)
@@ -82,7 +98,9 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w)
             dydN2_CS = (
-                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte, dtype=complex))
+                np.imag(
+                    DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte, dtype=complex)
+                )
                 / self.CS_delta
             )
             np.testing.assert_allclose(dydN2, dydN2_CS, atol=self.sensTol, rtol=self.sensTol)
@@ -100,12 +118,13 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             for i in range(n):
                 w[i] += self.CS_delta * 1j
                 dydw_CS[i, :] = (
-                    np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte, dtype=complex)) / self.CS_delta
+                    np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte, dtype=complex))
+                    / self.CS_delta
                 )
                 w[i] -= self.CS_delta * 1j
 
             np.testing.assert_allclose(dydw, dydw_CS, atol=self.sensTol, rtol=self.sensTol)
-    
+
     def test_fitCST(self):
         """Test the CST parameter fitting"""
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -128,6 +147,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
 
             np.testing.assert_allclose(fitCoordsUpper, coords[idxUpper, 1], atol=1e-3, rtol=1e-1)
             np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=1e-3, rtol=1e-1)
+
 
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetSerial(unittest.TestCase):
@@ -291,8 +311,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
-@parameterized_class(airfoils)
-class DVGeometryCSTSensitivityProd(unittest.TestCase):
+@parameterized_class(DVs)
+class DVGeometryCSTSensitivity(unittest.TestCase):
     # Test in serial
     N_PROCS = 1
 
@@ -301,13 +321,13 @@ class DVGeometryCSTSensitivityProd(unittest.TestCase):
         self.comm = MPI.COMM_WORLD
         self.DVGeo = DVGeometryCST(comm=self.comm, isComplex=True)
 
-        # Read in airfoil coordinates
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        # Read in airfoil coordinates (use NACA 2412)
+        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))  # z-coordinates
         self.coords = coords.astype(complex)
         idxLE = np.argmin(coords[:, 0])
-        self.idxUpper = np.arange(0, idxLE + self.LEUpper)
-        self.idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
+        self.idxUpper = np.arange(0, idxLE)
+        self.idxLower = np.arange(idxLE, coords.shape[0])
         self.thickTE = coords[0, 1] - coords[-1, 1]
         self.ptName = "pt"
 
@@ -315,74 +335,100 @@ class DVGeometryCSTSensitivityProd(unittest.TestCase):
         self.coordTol = 1e-10
         self.CS_delta = 1e-200
 
-    def test_upper(self):
-        self.DVGeo.addDV("upper", dvType="upper", dvNum=4)
-        self.DVGeo.addDV("lower", dvType="lower", dvNum=5)
+    def test_DV_sensitivityProd(self):
+        """
+        Test DVGeo.totalSensitivityProd for all design variables
+        """
+        self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
         self.DVGeo.addPointSet(self.coords, self.ptName)
 
         DVs = self.DVGeo.getValues()
 
         # First compute the analytic ones with the built in function
         sensProd = []
-        for i in range(DVs["upper"].size):
-            vec = np.zeros(DVs["upper"].shape)
+        for i in range(self.dvNum):
+            vec = np.zeros(self.dvNum)
             vec[i] = 1
-            sensProd.append(self.DVGeo.totalSensitivityProd({"upper": vec}, self.ptName))
-        
+            sensProd.append(self.DVGeo.totalSensitivityProd({self.dvName: vec}, self.ptName).astype(float))
+
         # Then check them against doing it with complex step
-        upper = DVs["upper"].astype(complex)
-        for i in range(DVs["upper"].size):
-            upper[i] += self.CS_delta * 1j
-            self.DVGeo.setDesignVars({"upper": upper})
+        valDV = DVs[self.dvName]
+        for i in range(DVs[self.dvName].size):
+            valDV[i] += self.CS_delta * 1j
+            self.DVGeo.setDesignVars({self.dvName: valDV})
             pertCoords = self.DVGeo.update(self.ptName)
-            upper[i] -= self.CS_delta * 1j
+            valDV[i] -= self.CS_delta * 1j
 
-            dXdw = np.imag(pertCoords) / self.CS_delta
-            np.testing.assert_allclose(sensProd[i], dXdw, atol=self.sensTol, rtol=self.sensTol)
+            dXdDV = np.imag(pertCoords) / self.CS_delta
+            np.testing.assert_allclose(sensProd[i], dXdDV, atol=self.sensTol, rtol=self.sensTol)
 
-    def test_lower(self):
-        self.DVGeo.addDV("upper", dvType="upper", dvNum=4)
-        self.DVGeo.addDV("lower", dvType="lower", dvNum=5)
+    def test_DV_sensitivity_simple(self):
+        """
+        Test DVGeo.totalSensitivity for all design variables with dIdXpt of all ones
+        """
+        self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
         self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        # dIdXpt of all ones means the total sensitivities will just be the sum of the
+        # derivatives at each of the coordianates
+        dIdXpt = np.ones_like(self.coords)
 
         DVs = self.DVGeo.getValues()
 
         # First compute the analytic ones with the built in function
-        sensProd = []
-        for i in range(DVs["lower"].size):
-            vec = np.zeros(DVs["lower"].shape)
-            vec[i] = 1
-            sensProd.append(self.DVGeo.totalSensitivityProd({"lower": vec}, self.ptName))
-        
+        sens = self.DVGeo.totalSensitivity(dIdXpt, self.ptName)[self.dvName].astype(float)
+
         # Then check them against doing it with complex step
-        lower = DVs["lower"].astype(complex)
-        for i in range(DVs["lower"].size):
-            lower[i] += self.CS_delta * 1j
-            self.DVGeo.setDesignVars({"lower": lower})
+        valDV = DVs[self.dvName]
+        sensCS = np.zeros(self.dvNum)
+        for i in range(DVs[self.dvName].size):
+            valDV[i] += self.CS_delta * 1j
+            self.DVGeo.setDesignVars({self.dvName: valDV})
             pertCoords = self.DVGeo.update(self.ptName)
-            lower[i] -= self.CS_delta * 1j
+            valDV[i] -= self.CS_delta * 1j
 
-            dXdw = np.imag(pertCoords) / self.CS_delta
-            np.testing.assert_allclose(sensProd[i], dXdw, atol=self.sensTol, rtol=self.sensTol)
+            dXdDV = np.imag(pertCoords) / self.CS_delta
 
-    def test_chord(self):
-        self.DVGeo.addDV("chord", dvType="chord")
+            # Sum the derivatives
+            sensCS[i] = np.sum(dXdDV)
+
+        np.testing.assert_allclose(sens, sensCS, atol=self.sensTol, rtol=self.sensTol)
+
+    def test_DV_sensitivity_parallel(self):
+        """
+        Test DVGeo.totalSensitivity for all design variables with dIdXpt containing
+        three different Npts x 3 arrays (another possible input)
+        """
+        self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
         self.DVGeo.addPointSet(self.coords, self.ptName)
+
+        # dIdXpt of all ones means the total sensitivities will just be the sum of the
+        # derivatives at each of the coordianates
+        dIdXpt = np.ones_like(self.coords)
+        coeff = np.array([0.1, 0.5, 1.])
+        dIdXptVectorized = np.array([coeff[0] * dIdXpt, coeff[1] * dIdXpt, coeff[2] * dIdXpt])
 
         DVs = self.DVGeo.getValues()
 
-        # First compute the analytic one with the built in function
-        sensProd = self.DVGeo.totalSensitivityProd({"chord": np.ones(1)}, self.ptName)
-        
-        # Then check it against doing it with complex step
-        chord = DVs["chord"].astype(complex)
-        chord += self.CS_delta * 1j
-        self.DVGeo.setDesignVars({"chord": chord})
-        pertCoords = self.DVGeo.update(self.ptName)
-        chord -= self.CS_delta * 1j
+        # First compute the analytic ones with the built in function
+        sens = self.DVGeo.totalSensitivity(dIdXptVectorized, self.ptName)[self.dvName].astype(float)
 
-        dXdc = np.imag(pertCoords) / self.CS_delta
-        np.testing.assert_allclose(sensProd, dXdc, atol=self.sensTol, rtol=self.sensTol)
+        # Then check them against doing it with complex step
+        valDV = DVs[self.dvName]
+        sensCS = np.zeros((dIdXptVectorized.shape[0], self.dvNum))
+        for i in range(DVs[self.dvName].size):
+            valDV[i] += self.CS_delta * 1j
+            self.DVGeo.setDesignVars({self.dvName: valDV})
+            pertCoords = self.DVGeo.update(self.ptName)
+            valDV[i] -= self.CS_delta * 1j
+
+            dXdDV = np.imag(pertCoords) / self.CS_delta
+
+            # Sum the derivatives
+            for j in range(sensCS.shape[0]):
+                sensCS[j, i] = coeff[j] * np.sum(dXdDV)
+
+        np.testing.assert_allclose(sens, sensCS, atol=self.sensTol, rtol=self.sensTol)
 
 
 if __name__ == "__main__":
