@@ -47,7 +47,7 @@ class DVGeometryCST:
     This class
     """
 
-    def __init__(self, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD):
+    def __init__(self, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False):
         """
         Initialize DVGeometryCST.
 
@@ -57,16 +57,24 @@ class DVGeometryCST:
             Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
         idxVertical : int, optional
             Index of the column in the point set to use as the vertical (y in CST) airfoil coordinates, by default 1
-        comm : MPI communicator
-            Communicator for DVGeometryCST instance
+        comm : MPI communicator, optional
+            Communicator for DVGeometryCST instance, by default MPI.COMM_WORLD
+        isComplex : bool, optional
+            Initialize variables to complex types where necessary
         """
-        # TODO: think about a better way to handle complex numbers than the current hacky one
         self.points = OrderedDict()  # For each point set, it contains a dictionary with the coordinates,
         # indices of upper, lower, and trailing edge points, and the minimum and maximum chordwise coordinates
         self.updated = {}
         self.xIdx = idxChord
         self.yIdx = idxVertical
         self.comm = comm
+        self.isComplex = isComplex
+        if isComplex:
+            self.dtype = complex
+            self.dtypeMPI = MPI.DOUBLE_COMPLEX
+        else:
+            self.dtype = float
+            self.dtypeMPI = MPI.DOUBLE
 
         # Store the DVs and flags to determine if the limited options have already been specified
         # Each DV in the DVs dictionary (with the key as the DV name) contains
@@ -89,15 +97,15 @@ class DVGeometryCST:
 
         # Default DVs to be copied for each point set
         self.rootDefaultDV = {
-            "upper": 0.5 * np.ones(8),
-            "lower": -0.5 * np.ones(8),
-            "n1_upper": np.array([0.5]),
-            "n2_upper": np.array([1.0]),
-            "n1_lower": np.array([0.5]),
-            "n2_lower": np.array([1.0]),
-            "n1": np.array([0.5]),
-            "n2": np.array([1.0]),
-            "chord": np.array([1.0]),
+            "upper": 0.5 * np.ones(8, dtype=self.dtype),
+            "lower": -0.5 * np.ones(8, dtype=self.dtype),
+            "n1_upper": np.array([0.5], dtype=self.dtype),
+            "n2_upper": np.array([1.0], dtype=self.dtype),
+            "n1_lower": np.array([0.5], dtype=self.dtype),
+            "n2_lower": np.array([1.0], dtype=self.dtype),
+            "n1": np.array([0.5], dtype=self.dtype),
+            "n2": np.array([1.0], dtype=self.dtype),
+            "chord": np.array([1.0], dtype=self.dtype),
         }
 
         # Default DVs specific to each point set
@@ -129,26 +137,23 @@ class DVGeometryCST:
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
         """
+        # Convert points to the type specified at initialization (with isComplex)
+        points = points.astype(self.dtype)
+
         # Only parts of the points may be passed in to each DVGeo instance on each proc, so we must share the entire point cloud
         nCols = 3  # number of dimensions for each point
         NLoc = points.shape[0]  # number of coordinates on current proc
         sizes = np.array(self.comm.allgather(NLoc), dtype="intc")  # number of points on each proc
         disp = np.hstack(([0], np.cumsum(sizes)))[:-1]  # starting index for each part of the distributed point set
         N = np.sum(sizes)  # total points in the point set
-        pointsGlobal = np.zeros((N, 3), dtype=points.dtype)  # full point set
-
-        # Get MPI type of points
-        if points.dtype == complex:
-            typeMPI = MPI.DOUBLE_COMPLEX
-        else:
-            typeMPI = MPI.DOUBLE
+        pointsGlobal = np.zeros((N, 3), dtype=self.dtype)  # full point set
 
         # Gather one column at a time
         for col in range(nCols):
             # Copy data into 1D arrays so data is contiguous in memory for MPI
             pointsCol = points[:, col].copy()
-            tempColGlobal = np.zeros(N, dtype=points.dtype)
-            self.comm.Allgatherv([pointsCol, NLoc], [tempColGlobal, sizes, disp, typeMPI])
+            tempColGlobal = np.zeros(N, dtype=self.dtype)
+            self.comm.Allgatherv([pointsCol, NLoc], [tempColGlobal, sizes, disp, self.dtypeMPI])
 
             # Copy resulting column into global point array
             pointsGlobal[:, col] = tempColGlobal.copy()
@@ -202,6 +207,7 @@ class DVGeometryCST:
             self.rootDefaultDV["upper"].size,
             N1=self.rootDefaultDV["n1_upper"],
             N2=self.rootDefaultDV["n2_upper"],
+            dtype=self.dtype
         )
         self.defaultDVs[ptName]["lower"] = self.computeCSTfromCoords(
             pointsGlobal[lowerBool, self.xIdx],
@@ -209,12 +215,13 @@ class DVGeometryCST:
             self.rootDefaultDV["lower"].size,
             N1=self.rootDefaultDV["n1_lower"],
             N2=self.rootDefaultDV["n2_lower"],
+            dtype=self.dtype
         )
 
         # Set initial DV values based on the CST parameter fit
-        for DV in self.DVs.values():
+        for dvName, DV in self.DVs.items():
             if DV["type"] in ["chord", "upper", "lower"]:
-                DV[DV["type"]] = self.defaultDVs[ptName][DV["type"]]
+                self.DVs[dvName]["value"] = self.defaultDVs[ptName][DV["type"]]
 
     def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
         """
@@ -312,7 +319,7 @@ class DVGeometryCST:
         # Set the default value
         if default is None:
             if dvType in ["upper", "lower"]:  # use an array with the correct number of CST coefficients
-                self.rootDefaultDV[dvType] = self.rootDefaultDV[dvType][0] * np.ones(dvNum)
+                self.rootDefaultDV[dvType] = self.rootDefaultDV[dvType][0] * np.ones(dvNum, dtype=self.dtype)
             default = self.rootDefaultDV[dvType]
         else:
             if not isinstance(default, np.ndarray):
@@ -324,16 +331,16 @@ class DVGeometryCST:
                 )
 
             # Set new root default
-            self.rootDefaultDV[dvType] = default.copy()
+            self.rootDefaultDV[dvType] = default.astype(self.dtype)
             if dvType in ["n1", "n2"]:
-                self.rootDefaultDV[f"{dvType}_lower"] = default.copy()
-                self.rootDefaultDV[f"{dvType}_upper"] = default.copy()
+                self.rootDefaultDV[f"{dvType}_lower"] = default.astype(self.dtype)
+                self.rootDefaultDV[f"{dvType}_upper"] = default.astype(self.dtype)
 
         # Add the DV to the internally-stored list
         # TODO: handling the DV default values is currently quite messy, clean this up
         self.DVs[dvName] = {
             "type": dvType,
-            "value": default.copy(),
+            "value": default.astype(self.dtype),
             "lower": lower,
             "upper": upper,
             "scale": scale,
@@ -358,7 +365,7 @@ class DVGeometryCST:
                         f'Input shape of {dvVal.shape} for the DV named "{dvName}" does '
                         + f"not match the DV's shape of {self.DVs[dvName]['value'].shape}"
                     )
-                self.DVs[dvName]["value"] = dvVal
+                self.DVs[dvName]["value"] = dvVal.astype(self.dtype)
 
         # Flag all the pointSets as not being up to date
         for pointSet in self.updated:
@@ -460,57 +467,57 @@ class DVGeometryCST:
             # TODO: these are wrong because they don't take into account the initial scaling of the
             #       x values and then how xMax changes with the new chord
             if dvType == "upper":
-                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                 dydUpperCST *= vars["chord"]
                 funcSens[dvName] = dydUpperCST @ dIdpt[idxUpper, self.yIdx]
             elif dvType == "lower":
-                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                 dydLowerCST *= vars["chord"]
                 funcSens[dvName] = dydLowerCST @ dIdpt[idxLower, self.yIdx]
             elif dvType == "n1_upper":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n2_upper":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n1_lower":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2_lower":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n1":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                     @ dIdpt[idxUpper, self.yIdx]
                 )
                 funcSens[dvName] += (
                     vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2":
                 funcSens[dvName] = (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                     @ dIdpt[idxUpper, self.yIdx]
                 )
                 funcSens[dvName] += (
                     vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                     @ dIdpt[idxLower, self.yIdx]
                 )
             else:  # chord
@@ -557,7 +564,7 @@ class DVGeometryCST:
         idxTE = np.full((self.points[ptSetName]["points"].shape[0],), True, dtype=bool)
         idxTE[idxUpper] = False
         idxTE[idxLower] = False
-        xsdot = np.zeros_like(self.points[ptSetName]["points"])
+        xsdot = np.zeros_like(self.points[ptSetName]["points"], dtype=self.dtype)
 
         for dvName, dvSeed in vec.items():
             dvType = self.DVs[dvName]["type"]
@@ -565,36 +572,36 @@ class DVGeometryCST:
             # TODO: these are wrong because they don't take into account the initial scaling of the
             #       x values and then how xMax changes with the new chord
             if dvType == "upper":
-                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                dydUpperCST = self.computeCSTdydw(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                 dydUpperCST *= vars["chord"]
                 xsdot[idxUpper, self.yIdx] += dydUpperCST.T @ dvSeed
             if dvType == "lower":
-                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                dydLowerCST = self.computeCSTdydw(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                 dydLowerCST *= vars["chord"]
                 xsdot[idxLower, self.yIdx] += dydLowerCST.T @ dvSeed
             if dvType == "n1_upper" or dvType == "n1":
                 xsdot[idxUpper, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    * self.computeCSTdydN1(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                 )
             if dvType == "n2_upper" or dvType == "n2":
                 xsdot[idxUpper, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"])
+                    * self.computeCSTdydN2(scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype)
                 )
             if dvType == "n1_lower" or dvType == "n1":
                 xsdot[idxLower, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    * self.computeCSTdydN1(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                 )
             if dvType == "n2_lower" or dvType == "n2":
                 xsdot[idxLower, self.yIdx] += (
                     dvSeed
                     * vars["chord"]
-                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"])
+                    * self.computeCSTdydN2(scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype)
                 )
             if dvType == "chord":
                 dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
@@ -665,10 +672,10 @@ class DVGeometryCST:
         yTE = thicknessTE / chord / 2  # half the scaled trailing edge thickness
 
         ptsY[idxUpper] = vars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE
+            scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE, dtype=self.dtype
         )
         ptsY[idxLower] = vars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], -yTE
+            scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], -yTE, dtype=self.dtype
         )
         ptsY[idxTE] *= vars["chord"] / chord
 
@@ -744,32 +751,32 @@ class DVGeometryCST:
         return vars
 
     @staticmethod
-    def computeCSTCoordinates(x, N1, N2, w, yte):
+    def computeCSTCoordinates(x, N1, N2, w, yte, dtype=float):
         """
         Compute the vertical coordinates of a CST curve
 
         This function assumes x has been normalised to the range [0,1]
         """
-        C = DVGeometryCST.computeClassShape(x, N1, N2)
-        S = DVGeometryCST.computeShapeFunctions(x, w)
+        C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
+        S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
         return C * S.sum(axis=0) + yte * x
 
     @staticmethod
-    def computeClassShape(x, N1, N2):
+    def computeClassShape(x, N1, N2, dtype=float):
         """
         Compute the class shape of a CST curve
         """
         return x**N1 * (1.0 - x) ** N2
 
     @staticmethod
-    def computeShapeFunctions(x, w):
+    def computeShapeFunctions(x, w, dtype=float):
         """Compute the Bernstein polynomial shape function of a CST curve
 
         This function assumes x has been normalised to the range [0,1]
         """
         numCoeffs = len(w)
         order = numCoeffs - 1
-        S = np.zeros((numCoeffs, len(x)), dtype=w.dtype)
+        S = np.zeros((numCoeffs, len(x)), dtype=dtype)
         facts = factorial(np.arange(0, order + 1))
         for i in range(numCoeffs):
             binom = facts[-1] / (facts[i] * facts[order - i])
@@ -777,7 +784,7 @@ class DVGeometryCST:
         return S
 
     @staticmethod
-    def computeCSTdydw(x, N1, N2, w):
+    def computeCSTdydw(x, N1, N2, w, dtype=float):
         """Compute the drivatives of the height of a CST curve with respect to the shape function coefficients
 
         Given y = C(x) * sum [w_i * p_i(x)]
@@ -787,12 +794,12 @@ class DVGeometryCST:
 
         Only the shape and data type of w are used, not the values
         """
-        C = DVGeometryCST.computeClassShape(x, N1, N2)
-        S = DVGeometryCST.computeShapeFunctions(x, np.ones_like(w))
+        C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
+        S = DVGeometryCST.computeShapeFunctions(x, np.ones_like(w), dtype=dtype)
         return C * S
 
     @staticmethod
-    def computeCSTdydN1(x, N1, N2, w):
+    def computeCSTdydN1(x, N1, N2, w, dtype=float):
         """Compute the drivatives of the height of a CST curve with respect to N1
 
         Given y = C(x, N1, N2) * S(x)
@@ -800,12 +807,12 @@ class DVGeometryCST:
 
         This function assumes x has been normalised to the range [0,1]
         """
-        C = DVGeometryCST.computeClassShape(x, N1, N2)
-        S = DVGeometryCST.computeShapeFunctions(x, w)
+        C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
+        S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
         return np.sum(S, axis=0) * C * np.log(x)
 
     @staticmethod
-    def computeCSTdydN2(x, N1, N2, w):
+    def computeCSTdydN2(x, N1, N2, w, dtype=float):
         """Compute the drivatives of the height of a CST curve with respect to N2
 
         Given y = C(x, N1, N2) * S(x)
@@ -813,12 +820,12 @@ class DVGeometryCST:
 
         This function assumes x has been normalised to the range [0,1]
         """
-        C = DVGeometryCST.computeClassShape(x, N1, N2)
-        S = DVGeometryCST.computeShapeFunctions(x, w)
+        C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
+        S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
         return np.sum(S, axis=0) * C * np.log(1 - x)
 
     @staticmethod
-    def computeCSTfromCoords(xCoord, yCoord, nCST, N1=0.5, N2=1.0):
+    def computeCSTfromCoords(xCoord, yCoord, nCST, N1=0.5, N2=1.0, dtype=float):
         """
         Compute the CST coefficients that fit a set of airfoil
         coordinates (either for the upper or lower surface, not both).
@@ -839,6 +846,8 @@ class DVGeometryCST:
             First class shape parameter to assume in fitting, by default 0.5
         N2 : float, optional
             Second class shape parameter to assume in fitting, by default 1.0
+        dtype : type, optional
+            Type for instantiated arrays, by default float
 
         Returns
         -------
@@ -851,7 +860,7 @@ class DVGeometryCST:
         yCoord /= chord
 
         # Compute the coefficients via linear least squares
-        dydw = DVGeometryCST.computeCSTdydw(xCoord, N1, N2, np.ones(nCST))
+        dydw = DVGeometryCST.computeCSTdydw(xCoord, N1, N2, np.ones(nCST), dtype=dtype)
         w = np.linalg.lstsq(dydw.T, yCoord, rcond=None)[0]
         return w
 

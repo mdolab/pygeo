@@ -68,7 +68,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w)
             dydN1_CS = (
-                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte))
+                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1 + self.CS_delta * 1j, N2, w, self.yte, dtype=complex))
                 / self.CS_delta
             )
             np.testing.assert_allclose(dydN1, dydN1_CS, atol=self.sensTol, rtol=self.sensTol)
@@ -82,7 +82,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w)
             dydN2_CS = (
-                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte))
+                np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2 + self.CS_delta * 1j, w, self.yte, dtype=complex))
                 / self.CS_delta
             )
             np.testing.assert_allclose(dydN2, dydN2_CS, atol=self.sensTol, rtol=self.sensTol)
@@ -100,7 +100,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             for i in range(n):
                 w[i] += self.CS_delta * 1j
                 dydw_CS[i, :] = (
-                    np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)) / self.CS_delta
+                    np.imag(DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte, dtype=complex)) / self.CS_delta
                 )
                 w[i] -= self.CS_delta * 1j
 
@@ -299,7 +299,7 @@ class DVGeometryCSTSensitivityProd(unittest.TestCase):
     def setUp(self):
         self.curDir = os.path.abspath(os.path.dirname(__file__))
         self.comm = MPI.COMM_WORLD
-        self.DVGeo = DVGeometryCST(comm=self.comm)
+        self.DVGeo = DVGeometryCST(comm=self.comm, isComplex=True)
 
         # Read in airfoil coordinates
         coords = readCoordFile(os.path.join(self.curDir, self.fName))
