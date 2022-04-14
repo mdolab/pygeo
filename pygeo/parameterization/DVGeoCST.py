@@ -808,8 +808,8 @@ class DVGeometryCST:
 
         # 0 to the power of a complex number is undefined, so anywhere
         # x is 0 or 1, set C to zero (doesn't change the result for float)
-        C[x == 0.] = 0.
-        C[x == 1.] = 0.
+        C[x == 0.0] = 0.0
+        C[x == 1.0] = 0.0
 
         return C
 
