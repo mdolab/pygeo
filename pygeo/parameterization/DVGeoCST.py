@@ -465,8 +465,6 @@ class DVGeometryCST:
         for dvName, DV in self.DVs.items():
             dvType = DV["type"]
 
-            # TODO: these are wrong because they don't take into account the initial scaling of the
-            #       x values and then how xMax changes with the new chord
             if dvType == "upper":
                 dydUpperCST = self.computeCSTdydw(
                     scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
