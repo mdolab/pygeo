@@ -156,3 +156,125 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
                 f.write(line + "\n")
 
     f.close()
+
+
+def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord, absMargins, relMargins, liftIndex):
+
+    """
+    Generates a wing FFD with chordwise points that follow the airfoil geometry.
+
+    Parameters
+    ----------
+    surf : pyGeo object or list or str
+        The surface around which the FFD will be created.
+        See the documentation for ``setSurface`` in DVConstraints for details.
+
+    surfFormat : str
+        The surface format.
+        See the documentation for ``setSurface`` in DVConstraints for details.
+
+    outFile : str
+        Name of output file written in PLOT3D format.
+
+    leList : list or array
+        List or array of points (of size Nx3 where N is at least 2) defining the 'leading edge'.
+
+    teList : list or array
+        Same as leList but for the trailing edge.
+
+    nSpan : int or list of int
+        Number of spanwise sections in the FFD.
+        Use a list of length N-1 to specify the number for each segment defined by leList and teList
+        and to precisely match intermediate locations.
+
+    nChord : int
+        Number of chordwise points in the FFD.
+
+    absMargins : list of float
+        List with 3 items specifying the absolute margins in the [chordwise, spanwise, thickness] directions.
+
+    relMargins : list of float
+        List with 3 items specifying the relative margins in the [chordwise, spanwise, thickness] directions.
+        Relative margins are applied as a fraction of local chord, span, and local thickness.
+
+    liftIndex : int
+        Index specifying which direction lift is in (same as the ADflow option).
+        Either 2 for the y-axis or 3 for the z-axis.
+        This is used to determine the wing's spanwise direction.
+
+    """
+
+    # Import inside this function to avoid circular imports
+    from pygeo import DVConstraints
+
+    # Set the triangulated surface in DVCon
+    DVCon = DVConstraints()
+    DVCon.setSurface(surf, surfFormat=surfFormat)
+
+    # Get the surface intersections; surfCoords has dimensions [nSpan, nChord, 2, 3]
+    surfCoords = DVCon._generateIntersections(leList, teList, nSpan, nChord, surfaceName="default")
+
+    nSpanTotal = np.sum(nSpan)
+
+    # Initialize FFD coordinates to the surface coordinates
+    FFDCoords = surfCoords.copy()
+
+    # Swap axes to get the FFD coordinates into PLOT3D ordering [x, y, z, 3]
+    FFDCoords = np.swapaxes(FFDCoords, 0, 1)  # [nChord, nSpanTotal, 2, 3]
+    if liftIndex == 2:
+        # Swap axes again so that z is the spanwise direction instead of y
+        FFDCoords = np.swapaxes(FFDCoords, 1, 2)  # [nChord, 2, nSpanTotal, 3]
+
+    # Assign coordinates and dimensions in each direction
+
+    # x is always the chordwise direction
+    leadingEdge = FFDCoords[0, :, :, 0]
+    trailingEdge = FFDCoords[-1, :, :, 0]
+    Nx = nChord
+
+    # y and z depend on the liftIndex
+    if liftIndex == 2:
+        root = FFDCoords[:, :, 0, 2]
+        tip = FFDCoords[:, :, -1, 2]
+
+        upperSurface = FFDCoords[:, 0, :, 1]
+        lowerSurface = FFDCoords[:, 1, :, 1]
+
+        Ny = 2
+        Nz = nSpanTotal
+    elif liftIndex == 3:
+        root = FFDCoords[:, 0, :, 1]
+        tip = FFDCoords[:, -1, :, 1]
+
+        upperSurface = FFDCoords[:, :, 1, 2]
+        lowerSurface = FFDCoords[:, :, 0, 2]
+
+        Ny = nSpanTotal
+        Nz = 2
+    else:
+        raise ValueError("liftIndex must be 2 (for y-axis) or 3 (for z-axis)")
+
+    # Add margins to FFD coordinates
+    chordLength = trailingEdge - leadingEdge
+    leadingEdge -= chordLength * relMargins[0] + absMargins[0]
+    trailingEdge += chordLength * relMargins[0] + absMargins[0]
+
+    span = np.max(tip - root)
+    root -= span * relMargins[1] + absMargins[1]
+    tip += span * relMargins[1] + absMargins[1]
+
+    thickness = upperSurface - lowerSurface
+    upperSurface += thickness * relMargins[2] + absMargins[2]
+    lowerSurface -= thickness * relMargins[2] + absMargins[2]
+
+    # Write FFD file
+    f = open(outFile, "w")
+    f.write("1\n")
+    f.write(f"{Nx} {Ny} {Nz}\n")
+    for ell in range(3):
+        for k in range(Nz):
+            for j in range(Ny):
+                for i in range(Nx):
+                    f.write("%.15f " % (FFDCoords[i, j, k, ell]))
+                f.write("\n")
+    f.close()
