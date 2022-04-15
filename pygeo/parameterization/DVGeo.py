@@ -2461,7 +2461,7 @@ class DVGeometry:
                 optProb, globalVars, localVars, sectionlocalVars, spanwiselocalVars, ignoreVars, freezeVars
             )
 
-    def writeTecplot(self, fileName):
+    def writeTecplot(self, fileName, solutionTime=None):
         """Write the (deformed) current state of the FFD's to a tecplot file,
         including the children
 
@@ -2469,6 +2469,9 @@ class DVGeometry:
         ----------
         fileName : str
            Filename for tecplot file. Should have a .dat extension
+        SolutionTime : float
+            Solution time to write to the file. This could be a fictitious time to 
+            make visualization easier in tecplot.
         """
 
         # Name here doesn't matter, just take the first one
@@ -2480,7 +2483,7 @@ class DVGeometry:
         vol_counter = 0
 
         # Write master volumes:
-        vol_counter += self._writeVols(f, vol_counter)
+        vol_counter += self._writeVols(f, vol_counter, solutionTime)
 
         closeTecplot(f)
         if len(self.points) > 0:
@@ -2530,7 +2533,7 @@ class DVGeometry:
 
         closeTecplot(f)
 
-    def writePointSet(self, name, fileName):
+    def writePointSet(self, name, fileName, solutionTime=None):
         """
         Write a given point set to a tecplot file
 
@@ -2542,6 +2545,9 @@ class DVGeometry:
         fileName : str
            Filename for tecplot file. Should have no extension, an
            extension will be added
+        SolutionTime : float
+            Solution time to write to the file. This could be a fictitious time to 
+            make visualization easier in tecplot.
         """
         if self.isChild:
             raise Error('Must call "writePointSet" from parent DVGeo.')
@@ -2549,7 +2555,7 @@ class DVGeometry:
             coords = self.update(name, childDelta=True)
             fileName = fileName + "_%s.dat" % name
             f = openTecplot(fileName, 3)
-            writeTecplot1D(f, name, coords)
+            writeTecplot1D(f, name, coords, solutionTime)
             closeTecplot(f)
 
     def writePlot3d(self, fileName):
@@ -3935,14 +3941,16 @@ class DVGeometry:
 
         return Jacobian
 
-    def _writeVols(self, handle, vol_counter):
+    def _writeVols(self, handle, vol_counter, solutionTime):
         for i in range(len(self.FFD.vols)):
-            writeTecplot3D(handle, "vol%d" % i, self.FFD.vols[i].coef)
+            writeTecplot3D(handle, "FFD_vol%d" % i, self.FFD.vols[i].coef, solutionTime)
+            self.FFD.vols[i].computeData(recompute=True)
+            writeTecplot3D(handle, 'embedding_vol', self.FFD.vols[i].data, solutionTime)
             vol_counter += 1
 
         # Write children volumes:
         for iChild in range(len(self.children)):
-            vol_counter += self.children[iChild]._writeVols(handle, vol_counter)
+            vol_counter += self.children[iChild]._writeVols(handle, vol_counter, solutionTime)
 
         return vol_counter
 
