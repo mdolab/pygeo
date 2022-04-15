@@ -7,6 +7,7 @@
 from .bilinear_map import *  # noqa: F401, F403
 from .dcel import *  # noqa: F401, F403
 from .file_io import *  # noqa: F401, F403
+from .ffd_generation import *  # noqa: F401, F403
 from .index_position import *  # noqa: F401, F403
 from .knotvector import *  # noqa: F401, F403
 from .misc import *  # noqa: F401, F403
