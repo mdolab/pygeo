@@ -324,7 +324,7 @@ class vspDV(geoDV):
         """
         Internal class for storing VSP design variable information
         """
-        super().__init__(name=None, value=value, nVal=1, lower=lower, upper=upper, scale=scale)
+        super().__init__(name=None, value=np.atleast_1d(np.array(value)), nVal=1, lower=lower, upper=upper, scale=scale)
         self.parmID = parmID
         self.component = component
         self.group = group
