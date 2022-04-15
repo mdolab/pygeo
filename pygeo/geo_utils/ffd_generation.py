@@ -167,11 +167,11 @@ def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord
     ----------
     surf : pyGeo object or list or str
         The surface around which the FFD will be created.
-        See the documentation for ``setSurface`` in DVConstraints for details.
+        See the documentation for :meth:`pygeo.DVConstraints.setSurface` for details.
 
     surfFormat : str
         The surface format.
-        See the documentation for ``setSurface`` in DVConstraints for details.
+        See the documentation for :meth:`pygeo.DVConstraints.setSurface` for details.
 
     outFile : str
         Name of output file written in PLOT3D format.
@@ -201,6 +201,19 @@ def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord
         Index specifying which direction lift is in (same as the ADflow option).
         Either 2 for the y-axis or 3 for the z-axis.
         This is used to determine the wing's spanwise direction.
+
+    Examples
+    --------
+    >>> CFDSolver = ADFLOW(options=aeroOptions)
+    >>> surf = CFDSolver.getTriangulatedMeshSurface()
+    >>> surfFormat = "point-vector"
+    >>> outFile = "wing_ffd.xyz"
+    >>> nSpan = [4, 4]
+    >>> nChord = 8
+    >>> relMargins = [0.01, 0.001, 0.01]
+    >>> absMargins = [0.05, 0.001, 0.05]
+    >>> liftIndex = 3
+    >>> createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord, absMargins, relMargins, liftIndex)
 
     """
 
