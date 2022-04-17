@@ -19,6 +19,7 @@ import numpy as np
 from mpi4py import MPI
 from scipy.special import factorial, comb
 from scipy.spatial import Delaunay
+from prefoil.preFoil import readCoordFile
 
 # ==============================================================================
 # Extension modules
@@ -47,12 +48,15 @@ class DVGeometryCST:
     This class
     """
 
-    def __init__(self, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False):
+    def __init__(self, datFile, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False):
         """
         Initialize DVGeometryCST.
 
         Parameters
         ----------
+        datFile : str
+            Filename of dat file that represents the initial airfoil. The coordinates in this file will be used to
+            determine the camber line, which is the dividing line to distinguish upper and lower surface points.
         idxChord : int, optional
             Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
         idxVertical : int, optional
@@ -97,8 +101,8 @@ class DVGeometryCST:
 
         # Default DVs to be copied for each point set
         self.defaultDV = {
-            "upper": 0.2 * np.ones(8, dtype=self.dtype),
-            "lower": -0.2 * np.ones(8, dtype=self.dtype),
+            "upper": 0.1 * np.ones(8, dtype=self.dtype),
+            "lower": -0.1 * np.ones(8, dtype=self.dtype),
             "n1_upper": np.array([0.5], dtype=self.dtype),
             "n2_upper": np.array([1.0], dtype=self.dtype),
             "n1_lower": np.array([0.5], dtype=self.dtype),
@@ -108,25 +112,48 @@ class DVGeometryCST:
             "chord": np.array([1.0], dtype=self.dtype),
         }
 
-        # Variables needed to determine which point set is the full airfoil
-        # that is associated with the solver. This is necessary for computing
-        # the "camber line" (in addPointSet) which is used to figure out which
-        # points are associated with the upper surface and which are for the lower.
-        self.foilPtSet = None  # point set name of the airfoil
-        self.camberPoly = None  # polynomial coefficients of the camber line
-        self.thicknessTE = None  # trailing edge thickness
-        self.xMin = None  # minimum chordwise x coordinate (leading edge)
-        self.xMax = None  # maximum chordwise x coordinate (trailing edge)
+        # ========== Process the input airfoil and set variables accordingly ==========
+        coords = readCoordFile(datFile)
+        self.foilCoords = np.zeros_like(coords, dtype=self.dtype)
+        self.foilCoords[:, self.xIdx] = coords[:, 0]
+        self.foilCoords[:, self.yIdx] = coords[:, 1]
 
-        # Optimization problem. If design variables for it are set before
-        # CST parameters are fit to airfoil, DV values must be updated.
-        self.optProb = None
+        # Set the leading and trailing edge x coordinates
+        self.xMin = np.min(self.foilCoords[:, self.xIdx])
+        self.xMax = np.max(self.foilCoords[:, self.xIdx])
 
-    def addPointSet(self, points, ptName, fitAirfoil=False, **kwargs):
+        # Check that the leading edge is at y = 0
+        idxLE = np.argmin(self.foilCoords[:, self.xIdx])
+        yLE = self.foilCoords[idxLE, self.yIdx]
+        if abs(yLE) > 1e-2:
+            raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {yLE}")
+
+        # Determine the trailing edge thickness
+        idxTE = np.where(self.foilCoords[:, self.xIdx] == self.xMax)[0]
+        self.thicknessTE = np.max(self.foilCoords[idxTE, self.yIdx]) - np.min(self.foilCoords[idxTE, self.yIdx])
+
+        # Fit a polynomial to the airfoil to approximate the camber line
+        self.camberPoly = np.polyfit(self.foilCoords[:, self.xIdx], self.foilCoords[:, self.yIdx], 9)
+
+        # Fit CST parameters to the airfoil's upper and lower surface
+        self.idxFoil = {}
+        self.idxFoil["upper"], self.idxFoil["lower"] = self._splitUpperLower(self.foilCoords)
+        self.defaultDV["chord"][0] = self.xMax - self.xMin
+        for dvType in ["upper", "lower"]:
+            self.defaultDV[dvType] = self.computeCSTfromCoords(
+                self.foilCoords[self.idxFoil[dvType], self.xIdx],
+                self.foilCoords[self.idxFoil[dvType], self.yIdx],
+                self.defaultDV[dvType].size,
+                N1=self.defaultDV[f"n1_{dvType}"],
+                N2=self.defaultDV[f"n2_{dvType}"],
+                dtype=self.dtype,
+            )
+
+    def addPointSet(self, points, ptName, **kwargs):
         """
         Add a set of coordinates to DVGeometry
         The is the main way that geometry in the form of a coordinate list is given to DVGeometry
-        to be manipulated. This method will fit CST coefficients to the point set.
+        to be manipulated.
         This assumes...
             - Trailing edge is vertical or sharp and at maximum x (or idxChord) values
             - The geometry is exclusively an extruded shape (no spanwise changes allowed)
@@ -145,109 +172,16 @@ class DVGeometryCST:
             A user supplied name to associate with the set of coordinates.
             This name will need to be provided when updating the coordinates or when
             getting the derivatives of the coordinates.
-        fitAirfoil : bool
-            If true, fits the CST coefficients to the airfoil in this point set and applies those coefficients
-            to all point sets. This point set is also used to compute the camber line with which to split
-            upper and lower surfaces and to determine the trailing edge thickness. fitAirfoil must be true
-            for exactly one of the point sets (set by adding the argument pointSetKwargs={"fitAirfoil": True}
-            to the solver.setDVGeo() call).
         kwargs
             Any other parameters are ignored.
         """
         # Convert points to the type specified at initialization (with isComplex) and store the points
         points = points.astype(self.dtype)
         self.updated[ptName] = False
-        self.points[ptName] = {
-            "points": points,
-            "upper": None,  # will store the indices in points of the upper surface coordinates
-            "lower": None,  # will store the indices in points of the lower surface coordinates
-        }
+        self.points[ptName] = {"points": points}
 
-        # If this is the full airfoil point set (as opposed to ones passed in by constraints),
-        # fit a polynomial to the point set to determine the camber line
-        if fitAirfoil:
-            if self.foilPtSet is not None:
-                raise ValueError(f"fitAirfoil should be set to true for only the aero solver's point set")
-            self.foilPtSet = ptName
-
-            # Only parts of the points may be passed in to each DVGeo instance on each proc, so we must share the entire point cloud
-            nCols = 3  # number of dimensions for each point
-            NLoc = points.shape[0]  # number of coordinates on current proc
-            sizes = np.array(self.comm.allgather(NLoc), dtype="intc")  # number of points on each proc
-            disp = np.hstack(([0], np.cumsum(sizes)))[:-1]  # starting index for each part of the distributed point set
-            N = np.sum(sizes)  # total points in the point set
-            pointsGlobal = np.zeros((N, 3), dtype=self.dtype)  # full point set
-
-            # Gather one column at a time
-            for col in range(nCols):
-                # Copy data into 1D arrays so data is contiguous in memory for MPI
-                pointsCol = points[:, col].copy()
-                tempColGlobal = np.zeros(N, dtype=self.dtype)
-                self.comm.Allgatherv([pointsCol, NLoc], [tempColGlobal, sizes, disp, self.dtypeMPI])
-
-                # Copy resulting column into global point array
-                pointsGlobal[:, col] = tempColGlobal.copy()
-
-            # Set the leading and trailing edge x coordinates
-            self.xMin = np.min(pointsGlobal[:, self.xIdx])
-            self.xMax = np.max(pointsGlobal[:, self.xIdx])
-
-            # Check that the leading edge is at y = 0
-            idxLE = np.argmin(pointsGlobal[:, self.xIdx])
-            yLE = pointsGlobal[idxLE, self.yIdx]
-            if abs(yLE) > 1e-2:
-                raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {yLE}")
-
-            # Determine the trailing edge thickness
-            idxTE = np.where(pointsGlobal[:, self.xIdx] == self.xMax)[0]
-            self.thicknessTE = np.max(pointsGlobal[idxTE, self.yIdx]) - np.min(pointsGlobal[idxTE, self.yIdx])
-
-            # Fit a polynomial to the airfoil to approximate the camber line
-            self.camberPoly = np.polyfit(pointsGlobal[:, self.xIdx], pointsGlobal[:, self.yIdx], 9)
-
-            # Split the upper and lower surfaces for all existing point sets
-            for pointSet in self.points.values():
-                pointSet["upper"], pointSet["lower"] = self._splitUpperLower(pointSet["points"])
-
-            # Fit CST parameters to the airfoil's upper and lower surface
-            idxU, idxL = self._splitUpperLower(pointsGlobal)  # upper and lower points in full airfoil coords
-            self.defaultDV["upper"] = self.computeCSTfromCoords(
-                pointsGlobal[idxU, self.xIdx],
-                pointsGlobal[idxU, self.yIdx],
-                self.defaultDV["upper"].size,
-                N1=self.defaultDV["n1_upper"],
-                N2=self.defaultDV["n2_upper"],
-                dtype=self.dtype,
-            )
-            self.defaultDV["lower"] = self.computeCSTfromCoords(
-                pointsGlobal[idxL, self.xIdx],
-                pointsGlobal[idxL, self.yIdx],
-                self.defaultDV["lower"].size,
-                N1=self.defaultDV["n1_lower"],
-                N2=self.defaultDV["n2_lower"],
-                dtype=self.dtype,
-            )
-            self.defaultDV["chord"][0] = self.xMax - self.xMin
-
-
-            # # TODO: How can we properly set the initial values for these design variables
-            # #       based on the fit from the airfoil? The problem is that once we make it
-            # #       into this part of the code, the optimization problem has already started!
-            # # Reset any design variables to the fitted values
-            # for DV in self.DVs.values():
-            #     DV["value"] = self.defaultDV[DV["type"]].copy()
-
-            # # Set the design variable values in the optimization problem
-            # if self.optProb is not None:
-            #     valDV = {}
-            #     for dvName, DV in self.DVs.items():
-            #         valDV[dvName] = DV["value"]
-            #     self.optProb.setDVs(valDV)
-
-        # If the camber line has already been fit to the airfoil, split
-        # the upper and lower surfaces of the current point set
-        elif self.foilPtSet is not None:
-            self.points[ptName]["upper"], self.points[ptName]["lower"] = self._splitUpperLower(points)
+        # Determine which points are on the upper and lower surfaces
+        self.points[ptName]["upper"], self.points[ptName]["lower"] = self._splitUpperLower(points)
 
     def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
         """
@@ -286,9 +220,7 @@ class DVGeometryCST:
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
         default : ndarray, optional
-            Default value for design variable (must be same length as number of DVs added). Do not use
-            this to specify upper or lower surface CST parameters because they will be overwritten
-            when the parameters are fit to the initial airfoil points.
+            Default value for design variable (must be same length as number of DVs added).
 
         Returns
         -------
@@ -346,8 +278,17 @@ class DVGeometryCST:
 
         # Set the default value
         if default is None:
-            if dvType in ["upper", "lower"]:  # use an array with the correct number of CST coefficients
-                self.defaultDV[dvType] = self.defaultDV[dvType][0] * np.ones(dvNum, dtype=self.dtype)
+            # If the number of CST parameters for the upper or lower surface is different than the
+            # existing default, refit the airfoil with the new number of CST coefficients
+            if dvType in ["upper", "lower"] and self.defaultDV[dvType].size != dvNum:
+                self.defaultDV[dvType] = self.computeCSTfromCoords(
+                    self.foilCoords[self.idxFoil[dvType], self.xIdx],
+                    self.foilCoords[self.idxFoil[dvType], self.yIdx],
+                    dvNum,
+                    N1=self.defaultDV[f"n1_{dvType}"],
+                    N2=self.defaultDV[f"n2_{dvType}"],
+                    dtype=self.dtype,
+                )
             default = self.defaultDV[dvType]
         else:
             if not isinstance(default, np.ndarray):
@@ -674,10 +615,6 @@ class DVGeometryCST:
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
         """
-        # Store the optimization problem to set initial design to the fitted
-        # airfoil shape once the point sets are passed in
-        self.optProb = optProb
-
         # Add design variables to the problem
         for dvName, DV in self.DVs.items():
             optProb.addVarGroup(
@@ -709,14 +646,6 @@ class DVGeometryCST:
         points : ndarray (N x 3)
             Updated point set coordinates.
         """
-        # Check that at least one of the point sets was specified to be the full airfoil,
-        # and therefore that initial CST coefficients were fit and upper and lower surfaces
-        # were split for each point set
-        if self.foilPtSet is None:
-            raise ValueError("The fitAirfoil argument for addPointSet must be set to true for the point set " +
-                             "corresponding to the full airfoil coordinates. This should be done " +
-                             "by setting pointSetKwargs={\"fitAirfoil\": True} in the solver.setDVGeo() call.")
-
         vars = self._unpackDVs(ptSetName)
 
         # Unpack the points to make variable names more accessible

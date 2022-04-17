@@ -156,12 +156,13 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
     def setUp(self):
         self.curDir = os.path.abspath(os.path.dirname(__file__))
+        self.datFile = os.path.join(self.curDir, self.fName)
         self.comm = MPI.COMM_WORLD
-        self.DVGeo = DVGeometryCST(comm=self.comm)
+        self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm)
 
     def test_addPointSet_sorted(self):
         # Read in airfoil coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(
@@ -170,7 +171,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         thickTE = coords[0, 1] - coords[-1, 1]
 
-        self.DVGeo.addPointSet(coords, "test", fitAirfoil=True)
+        self.DVGeo.addPointSet(coords, "test")
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
@@ -180,7 +181,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
     def test_addPointSet_randomized(self):
         # Read in airfoil coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
@@ -196,7 +197,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxUpperRand = np.sort(idx[idxUpper])
         idxLowerRand = np.sort(idx[idxLower])
 
-        self.DVGeo.addPointSet(coordsRand, "test", fitAirfoil=True)
+        self.DVGeo.addPointSet(coordsRand, "test")
 
         np.testing.assert_equal(idxUpperRand, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLowerRand, self.DVGeo.points["test"]["lower"])
@@ -206,7 +207,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
     def test_addPointSet_bluntTE(self):  # includes a blunt trailing edge with points along it
         # Read in airfoil coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         nPointsTE = 6  # total points on the trailing edge
         pointsTE = np.ones((nPointsTE - 2, 3), dtype=float)
@@ -218,7 +219,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - nPointsTE + 2)
         thickTE = coords[0, 1] - coords[coords.shape[0] - nPointsTE + 1, 1]
 
-        self.DVGeo.addPointSet(coords, "test", fitAirfoil=True)
+        self.DVGeo.addPointSet(coords, "test")
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
@@ -234,12 +235,13 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
     def setUp(self):
         self.curDir = os.path.abspath(os.path.dirname(__file__))
+        self.datFile = os.path.join(self.curDir, self.fName)
         self.comm = MPI.COMM_WORLD
-        self.DVGeo = DVGeometryCST(comm=self.comm)
+        self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm)
 
     def test_addPointSet_sorted(self):
         # Read in airfoil coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
 
@@ -254,11 +256,11 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         nPerProc = int(coords.shape[0] // 3.5)
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
-            self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test", fitAirfoil=True)
+            self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
             idxUpper = np.where(isUpper[rank * nPerProc : (rank + 1) * nPerProc])[0]
             idxLower = np.where(isLower[rank * nPerProc : (rank + 1) * nPerProc])[0]
         else:
-            self.DVGeo.addPointSet(coords[rank * nPerProc :, :], "test", fitAirfoil=True)
+            self.DVGeo.addPointSet(coords[rank * nPerProc :, :], "test")
             idxUpper = np.where(isUpper[rank * nPerProc :])[0]
             idxLower = np.where(isLower[rank * nPerProc :])[0]
 
@@ -270,7 +272,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
     def test_addPointSet_randomized(self):
         # Read in airfoil coordinates to test with and split up the surfaces
-        coords = readCoordFile(os.path.join(self.curDir, self.fName))
+        coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
 
@@ -296,11 +298,11 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         nPerProc = int(coordsRand.shape[0] // 3.5)
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
-            self.DVGeo.addPointSet(coordsRand[rank * nPerProc : (rank + 1) * nPerProc, :], "test", fitAirfoil=True)
+            self.DVGeo.addPointSet(coordsRand[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
             idxUpper = np.where(isUpperRand[rank * nPerProc : (rank + 1) * nPerProc])[0]
             idxLower = np.where(isLowerRand[rank * nPerProc : (rank + 1) * nPerProc])[0]
         else:
-            self.DVGeo.addPointSet(coordsRand[rank * nPerProc :, :], "test", fitAirfoil=True)
+            self.DVGeo.addPointSet(coordsRand[rank * nPerProc :, :], "test")
             idxUpper = np.where(isUpperRand[rank * nPerProc :])[0]
             idxLower = np.where(isLowerRand[rank * nPerProc :])[0]
 
@@ -318,12 +320,13 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
 
     def setUp(self):
         self.curDir = os.path.abspath(os.path.dirname(__file__))
+        self.datFile = os.path.join(self.curDir, "naca2412.dat")
         self.rng = np.random.default_rng(1)
         self.comm = MPI.COMM_WORLD
-        self.DVGeo = DVGeometryCST(comm=self.comm, isComplex=True)
+        self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm, isComplex=True)
 
         # Read in airfoil coordinates (use NACA 2412)
-        coords = readCoordFile(os.path.join(self.curDir, "naca2412.dat"))
+        coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))  # z-coordinates
         self.coords = coords.astype(complex)
         idxLE = np.argmin(coords[:, 0])
@@ -341,7 +344,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         Test DVGeo.totalSensitivityProd for all design variables
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
-        self.DVGeo.addPointSet(self.coords, self.ptName, fitAirfoil=True)
+        self.DVGeo.addPointSet(self.coords, self.ptName)
 
         # Set DV to random values
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
@@ -372,7 +375,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         Test DVGeo.totalSensitivity for all design variables with dIdXpt of all ones
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
-        self.DVGeo.addPointSet(self.coords, self.ptName, fitAirfoil=True)
+        self.DVGeo.addPointSet(self.coords, self.ptName)
 
         # Set DV to random values
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
@@ -409,7 +412,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         three different Npts x 3 arrays (another possible input)
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
-        self.DVGeo.addPointSet(self.coords, self.ptName, fitAirfoil=True)
+        self.DVGeo.addPointSet(self.coords, self.ptName)
 
         # Set DV to random values
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
