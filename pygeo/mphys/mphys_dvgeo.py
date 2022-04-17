@@ -143,8 +143,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
 
-    def nom_add_LETEConstraint(self, name, volID, faceID):
-        self.DVCon.addLeTeConstraints(volID, faceID, name=name)
+    def nom_add_LETEConstraint(self, name, volID, faceID, topID=None):
+        self.DVCon.addLeTeConstraints(volID, faceID, name=name, topID=topID)
         # how many are there?
         conobj = self.DVCon.linearCon[name]
         nCon = len(conobj.indSetA)
