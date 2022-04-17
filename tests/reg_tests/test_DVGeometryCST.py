@@ -170,13 +170,13 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         thickTE = coords[0, 1] - coords[-1, 1]
 
-        self.DVGeo.addPointSet(coords, "test")
+        self.DVGeo.addPointSet(coords, "test", fitAirfoil=True)
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
+        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
 
     def test_addPointSet_randomized(self):
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -196,13 +196,13 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxUpperRand = np.sort(idx[idxUpper])
         idxLowerRand = np.sort(idx[idxLower])
 
-        self.DVGeo.addPointSet(coordsRand, "test")
+        self.DVGeo.addPointSet(coordsRand, "test", fitAirfoil=True)
 
         np.testing.assert_equal(idxUpperRand, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLowerRand, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
+        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
 
     def test_addPointSet_bluntTE(self):  # includes a blunt trailing edge with points along it
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -218,13 +218,13 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - nPointsTE + 2)
         thickTE = coords[0, 1] - coords[coords.shape[0] - nPointsTE + 1, 1]
 
-        self.DVGeo.addPointSet(coords, "test")
+        self.DVGeo.addPointSet(coords, "test", fitAirfoil=True)
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
+        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
 
 
 @parameterized_class(airfoils)
@@ -254,19 +254,19 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         nPerProc = int(coords.shape[0] // 3.5)
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
-            self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
+            self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test", fitAirfoil=True)
             idxUpper = np.where(isUpper[rank * nPerProc : (rank + 1) * nPerProc])[0]
             idxLower = np.where(isLower[rank * nPerProc : (rank + 1) * nPerProc])[0]
         else:
-            self.DVGeo.addPointSet(coords[rank * nPerProc :, :], "test")
+            self.DVGeo.addPointSet(coords[rank * nPerProc :, :], "test", fitAirfoil=True)
             idxUpper = np.where(isUpper[rank * nPerProc :])[0]
             idxLower = np.where(isLower[rank * nPerProc :])[0]
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
+        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
 
     def test_addPointSet_randomized(self):
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -296,19 +296,19 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         nPerProc = int(coordsRand.shape[0] // 3.5)
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
-            self.DVGeo.addPointSet(coordsRand[rank * nPerProc : (rank + 1) * nPerProc, :], "test")
+            self.DVGeo.addPointSet(coordsRand[rank * nPerProc : (rank + 1) * nPerProc, :], "test", fitAirfoil=True)
             idxUpper = np.where(isUpperRand[rank * nPerProc : (rank + 1) * nPerProc])[0]
             idxLower = np.where(isLowerRand[rank * nPerProc : (rank + 1) * nPerProc])[0]
         else:
-            self.DVGeo.addPointSet(coordsRand[rank * nPerProc :, :], "test")
+            self.DVGeo.addPointSet(coordsRand[rank * nPerProc :, :], "test", fitAirfoil=True)
             idxUpper = np.where(isUpperRand[rank * nPerProc :])[0]
             idxLower = np.where(isLowerRand[rank * nPerProc :])[0]
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
+        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
 
 
 @parameterized_class(DVs)
@@ -341,7 +341,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         Test DVGeo.totalSensitivityProd for all design variables
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
-        self.DVGeo.addPointSet(self.coords, self.ptName)
+        self.DVGeo.addPointSet(self.coords, self.ptName, fitAirfoil=True)
 
         # Set DV to random values
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
@@ -372,7 +372,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         Test DVGeo.totalSensitivity for all design variables with dIdXpt of all ones
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
-        self.DVGeo.addPointSet(self.coords, self.ptName)
+        self.DVGeo.addPointSet(self.coords, self.ptName, fitAirfoil=True)
 
         # Set DV to random values
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})
@@ -409,7 +409,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         three different Npts x 3 arrays (another possible input)
         """
         self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
-        self.DVGeo.addPointSet(self.coords, self.ptName)
+        self.DVGeo.addPointSet(self.coords, self.ptName, fitAirfoil=True)
 
         # Set DV to random values
         self.DVGeo.setDesignVars({self.dvName: self.rng.random(self.dvNum)})

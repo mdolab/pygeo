@@ -97,8 +97,8 @@ class DVGeometryCST:
 
         # Default DVs to be copied for each point set
         self.defaultDV = {
-            "upper": 0.1 * np.ones(8, dtype=self.dtype),
-            "lower": -0.1 * np.ones(8, dtype=self.dtype),
+            "upper": 0.2 * np.ones(8, dtype=self.dtype),
+            "lower": -0.2 * np.ones(8, dtype=self.dtype),
             "n1_upper": np.array([0.5], dtype=self.dtype),
             "n2_upper": np.array([1.0], dtype=self.dtype),
             "n1_lower": np.array([0.5], dtype=self.dtype),
@@ -117,6 +117,10 @@ class DVGeometryCST:
         self.thicknessTE = None  # trailing edge thickness
         self.xMin = None  # minimum chordwise x coordinate (leading edge)
         self.xMax = None  # maximum chordwise x coordinate (trailing edge)
+
+        # Optimization problem. If design variables for it are set before
+        # CST parameters are fit to airfoil, DV values must be updated.
+        self.optProb = None
 
     def addPointSet(self, points, ptName, fitAirfoil=False, **kwargs):
         """
@@ -225,6 +229,21 @@ class DVGeometryCST:
             )
             self.defaultDV["chord"][0] = self.xMax - self.xMin
 
+
+            # # TODO: How can we properly set the initial values for these design variables
+            # #       based on the fit from the airfoil? The problem is that once we make it
+            # #       into this part of the code, the optimization problem has already started!
+            # # Reset any design variables to the fitted values
+            # for DV in self.DVs.values():
+            #     DV["value"] = self.defaultDV[DV["type"]].copy()
+
+            # # Set the design variable values in the optimization problem
+            # if self.optProb is not None:
+            #     valDV = {}
+            #     for dvName, DV in self.DVs.items():
+            #         valDV[dvName] = DV["value"]
+            #     self.optProb.setDVs(valDV)
+
         # If the camber line has already been fit to the airfoil, split
         # the upper and lower surfaces of the current point set
         elif self.foilPtSet is not None:
@@ -267,7 +286,9 @@ class DVGeometryCST:
             start with is approximately 1.0/(upper-lower). This gives
             variables that are of order ~1.0.
         default : ndarray, optional
-            Default value for design variable (must be same length as number of DVs added).
+            Default value for design variable (must be same length as number of DVs added). Do not use
+            this to specify upper or lower surface CST parameters because they will be overwritten
+            when the parameters are fit to the initial airfoil points.
 
         Returns
         -------
@@ -653,6 +674,11 @@ class DVGeometryCST:
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
         """
+        # Store the optimization problem to set initial design to the fitted
+        # airfoil shape once the point sets are passed in
+        self.optProb = optProb
+
+        # Add design variables to the problem
         for dvName, DV in self.DVs.items():
             optProb.addVarGroup(
                 dvName,
@@ -847,12 +873,12 @@ class DVGeometryCST:
         """
         Compute the class shape of a CST curve
         """
-        C = x**N1 * (1.0 - x) ** N2
+        C = np.zeros_like(x, dtype=dtype)
 
         # 0 to the power of a complex number is undefined, so anywhere
-        # x is 0 or 1, set C to zero (doesn't change the result for float)
-        C[x == 0.0] = 0.0
-        C[x == 1.0] = 0.0
+        # x is 0 or 1, just keep C as zero (doesn't change the result for real)
+        mask = np.logical_and(x != 0.0, x != 1.0)
+        C[mask] = x[mask]**N1 * (1.0 - x[mask]) ** N2
 
         return C
 
@@ -895,10 +921,10 @@ class DVGeometryCST:
 
         This function assumes x has been normalised to the range [0,1]
         """
-        C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
-        S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
-        dydN1 = np.sum(S, axis=0) * C * np.log(x)
-        dydN1[x == 0] = 0
+        C = DVGeometryCST.computeClassShape(x[x != 0.0], N1, N2, dtype=dtype)
+        S = DVGeometryCST.computeShapeFunctions(x[x != 0.0], w, dtype=dtype)
+        dydN1 = np.zeros_like(x, dtype=dtype)
+        dydN1[x != 0.0] = np.sum(S, axis=0) * C * np.log(x[x != 0.0])
         return dydN1
 
     @staticmethod
@@ -910,10 +936,10 @@ class DVGeometryCST:
 
         This function assumes x has been normalised to the range [0,1]
         """
-        C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
-        S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
-        dydN2 = np.sum(S, axis=0) * C * np.log(1 - x)
-        dydN2[x == 1] = 0
+        C = DVGeometryCST.computeClassShape(x[x != 1.0], N1, N2, dtype=dtype)
+        S = DVGeometryCST.computeShapeFunctions(x[x != 1.0], w, dtype=dtype)
+        dydN2 = np.zeros_like(x, dtype=dtype)
+        dydN2[x != 1.0] = np.sum(S, axis=0) * C * np.log(1 - x[x != 1.0])
         return dydN2
 
     @staticmethod
