@@ -175,9 +175,9 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
     def test_addPointSet_randomized(self):
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -201,9 +201,9 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
         np.testing.assert_equal(idxUpperRand, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLowerRand, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
     def test_addPointSet_bluntTE(self):  # includes a blunt trailing edge with points along it
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -223,9 +223,9 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
 @parameterized_class(airfoils)
@@ -266,9 +266,9 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
     def test_addPointSet_randomized(self):
         # Read in airfoil coordinates to test with and split up the surfaces
@@ -308,9 +308,9 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
 
         np.testing.assert_equal(idxUpper, self.DVGeo.points["test"]["upper"])
         np.testing.assert_equal(idxLower, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.thicknessTE)
-        self.assertEqual(min(coords[:, 0]), self.DVGeo.xMin)
-        self.assertEqual(max(coords[:, 0]), self.DVGeo.xMax)
+        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
+        self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
 @parameterized_class(DVs)

@@ -177,8 +177,18 @@ class DVGeometryCST:
         """
         # Convert points to the type specified at initialization (with isComplex) and store the points
         points = points.astype(self.dtype)
+
+        # Check that all points are within the airfoil x bounds
+        if np.any(points[:, self.xIdx] < self.xMin) or np.any(points[:, self.xIdx] > self.xMax):
+            raise ValueError(f"Points in the point set \"{ptName}\" have x coordinates outside" +
+                             f"the min and max x values in the initial dat file ({self.xMin} and {self.xMax})")
         self.updated[ptName] = False
-        self.points[ptName] = {"points": points}
+        self.points[ptName] = {
+            "points": points,
+            "xMax": self.xMax.copy(),
+            "xMin": self.xMin.copy(),
+            "thicknessTE": self.thicknessTE.copy(),
+        }
 
         # Determine which points are on the upper and lower surfaces
         self.points[ptName]["upper"], self.points[ptName]["lower"] = self._splitUpperLower(points)
@@ -413,11 +423,12 @@ class DVGeometryCST:
         dIdxDict : dict
             The dictionary containing the derivatives, suitable for pyOptSparse
         """
-
         # Unpack some useful variables
         vars = self._unpackDVs(ptSetName)
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
-        scaledX = (ptsX - self.xMin) / (self.xMax - self.xMin)
+        xMax = self.points[ptSetName]["xMax"]
+        xMin = self.points[ptSetName]["xMin"]
+        scaledX = (ptsX - xMin) / (xMax - xMin)
         idxUpper = self.points[ptSetName]["upper"]
         idxLower = self.points[ptSetName]["lower"]
         funcSens = {}
@@ -507,9 +518,8 @@ class DVGeometryCST:
                 )
             else:  # chord
                 dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
-                dxdchord = (ptsX - self.xMin) / vars["chord"]
-                funcSens[dvName] = dydchord @ dIdpt[:, self.yIdx]
-                funcSens[dvName] += dxdchord @ dIdpt[:, self.xIdx]
+                dxdchord = (ptsX - xMin) / vars["chord"]
+                funcSens[dvName] = dxdchord @ dIdpt[:, self.xIdx] + dydchord @ dIdpt[:, self.yIdx]
 
         # If the axes were reordered to handle a group of dIdpt vectors,
         # switch them back to the expected order for output
@@ -543,7 +553,9 @@ class DVGeometryCST:
         # Unpack some useful variables
         vars = self._unpackDVs(ptSetName)
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
-        scaledX = (ptsX - self.xMin) / (self.xMax - self.xMin)
+        xMax = self.points[ptSetName]["xMax"]
+        xMin = self.points[ptSetName]["xMin"]
+        scaledX = (ptsX - xMin) / (xMax - xMin)
         idxUpper = self.points[ptSetName]["upper"]
         idxLower = self.points[ptSetName]["lower"]
         idxTE = np.full((self.points[ptSetName]["points"].shape[0],), True, dtype=bool)
@@ -600,7 +612,7 @@ class DVGeometryCST:
                 )
             if dvType == "chord":
                 dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
-                dxdchord = (ptsX - self.xMin) / vars["chord"]
+                dxdchord = (ptsX - xMin) / vars["chord"]
                 xsdot[:, self.yIdx] += dvSeed * dydchord
                 xsdot[:, self.xIdx] += dvSeed * dxdchord
 
@@ -657,12 +669,15 @@ class DVGeometryCST:
         points = self.points[ptSetName]["points"]
         ptsX = points[:, self.xIdx]
         ptsY = points[:, self.yIdx]
+        xMax = self.points[ptSetName]["xMax"]
+        xMin = self.points[ptSetName]["xMin"]
+        thicknessTE = self.points[ptSetName]["thicknessTE"]
 
         # Scale the airfoil to the range 0 to 1 in x direction
-        shift = self.xMin
-        chord = self.xMax - self.xMin
+        shift = xMin
+        chord = xMax - xMin
         scaledX = (ptsX - shift) / chord
-        yTE = self.thicknessTE / chord / 2  # half the scaled trailing edge thickness
+        yTE = thicknessTE / chord / 2  # half the scaled trailing edge thickness
 
         ptsY[idxUpper] = vars["chord"] * self.computeCSTCoordinates(
             scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE, dtype=self.dtype
@@ -676,8 +691,8 @@ class DVGeometryCST:
         points[:, self.xIdx] = (points[:, self.xIdx] - shift) * vars["chord"] / chord + shift
 
         # Scale the point set's properties based on the new chord length
-        self.xMax = (self.xMax - shift) * vars["chord"] / chord + shift
-        self.thicknessTE *= vars["chord"] / chord
+        self.points[ptSetName]["xMax"] = (xMax - shift) * vars["chord"] / chord + shift
+        self.points[ptSetName]["thicknessTE"] *= vars["chord"] / chord
 
         self.updated[ptSetName] = True
 
