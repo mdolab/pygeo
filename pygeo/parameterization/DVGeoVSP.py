@@ -707,6 +707,38 @@ class DVGeometryVSP(DVGeoSketch):
         # Write the export file.
         openvsp.ExportFile(fileName, exportSet, openvsp.EXPORT_PLOT3D)
 
+    def demoDesignVars(self, directory, pointSet=None, CFDSolver=None, callBack=None, freq=2):
+        """
+        This function can be used to "test" the design variable parametrization
+        for a given optimization problem. It should be called in the script
+        after DVGeo has been set up. The function will loop through all the
+        design variables and write out a deformed FFD volume for the upper
+        and lower bound of every design variable. It can also write out
+        deformed point sets and surface meshes.
+        Note: this function has no need for includeLocal and includeGlobal as DVGeoESP has no distinction.
+        Parameters
+        ----------
+        directory : str
+            The directory where the files should be written.
+        pointSet : str
+            Name of the point set to write out.
+            If None, no point set output is generated.
+        CFDSolver : str
+            An ADflow instance that will be used to write out deformed surface
+            meshes. In addition to having a DVGeo object, CFDSolver must have
+            an AeroProblem set, for example with ``CFDSolver.setAeroProblem(ap)``.
+            If CFDSolver is None, no surface mesh output is generated.
+        callBack : function
+            This allows the user to perform an additional task at each new design
+            variable iteration. The callback function must take two inputs:
+            1. the output directory name (str) and
+            2. the iteration count (int).
+        freq : int
+            Number of snapshots to take between the upper and lower bounds of
+            a given variable. If greater than 2, will do a sinusoidal sweep.
+        """
+        print("Coming soon, I promise!")
+
     # ----------------------------------------------------------------------- #
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
     # ----------------------------------------------------------------------- #
