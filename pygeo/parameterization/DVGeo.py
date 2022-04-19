@@ -2470,7 +2470,7 @@ class DVGeometry:
         fileName : str
            Filename for tecplot file. Should have a .dat extension
         SolutionTime : float
-            Solution time to write to the file. This could be a fictitious time to 
+            Solution time to write to the file. This could be a fictitious time to
             make visualization easier in tecplot.
         """
 
@@ -2546,7 +2546,7 @@ class DVGeometry:
            Filename for tecplot file. Should have no extension, an
            extension will be added
         SolutionTime : float
-            Solution time to write to the file. This could be a fictitious time to 
+            Solution time to write to the file. This could be a fictitious time to
             make visualization easier in tecplot.
         """
         if self.isChild:
@@ -3945,7 +3945,7 @@ class DVGeometry:
         for i in range(len(self.FFD.vols)):
             writeTecplot3D(handle, "FFD_vol%d" % i, self.FFD.vols[i].coef, solutionTime)
             self.FFD.vols[i].computeData(recompute=True)
-            writeTecplot3D(handle, 'embedding_vol', self.FFD.vols[i].data, solutionTime)
+            writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
             vol_counter += 1
 
         # Write children volumes:
