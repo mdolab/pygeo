@@ -137,6 +137,7 @@ class BaseDVGeometry(ABC):
 
     @abstractmethod
     def totalSensitivity(self, dIdpt, ptSetName, comm=None):
+        # TODO see if VSP and ESP can be reconciled
         r"""
         This function computes sensitivity information.
 
@@ -165,6 +166,7 @@ class BaseDVGeometry(ABC):
 
     @abstractmethod
     def totalSensitivityProd(self, vec, ptSetName):
+        # TODO see if VSP and ESP can be reconciled
         r"""
         This function computes sensitivity information.
 

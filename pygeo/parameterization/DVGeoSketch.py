@@ -104,69 +104,6 @@ class DVGeoSketch(BaseDVGeometry):
         return list(self.DVs.keys())
 
     @abstractmethod
-    def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
-        # TODO see if VSP and ESP can be reconciled
-        r"""
-        This function computes sensitivity information.
-
-        Specifically, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
-
-        Parameters
-        ----------
-        dIdpt : array of size (Npt, 3) or (N, Npt, 3)
-
-            This is the total derivative of the objective or function
-            of interest with respect to the coordinates in
-            'ptSetName'. This can be a single array of size (Npt, 3)
-            **or** a group of N vectors of size (Npt, 3, N). If you
-            have many to do, it is faster to do many at once.
-
-        ptSetName : str
-            The name of set of points we are dealing with
-
-        comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
-
-        Returns
-        -------
-        dIdxDict : dict
-            The dictionary containing the derivatives, suitable for
-            pyOptSparse
-        """
-        pass
-
-    @abstractmethod
-    def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
-        # TODO see if VSP and ESP can be reconciled
-        r"""
-        This function computes sensitivity information.
-
-        Specifically, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}} \ vec`
-
-        This is useful for forward AD mode.
-
-        Parameters
-        ----------
-        vec : dictionary whose keys are the design variable names, and whose
-              values are the derivative seeds of the corresponding design variable.
-
-        ptSetName : str
-            The name of set of points we are dealing with
-
-        comm : MPI.IntraComm
-            inactive parameter, this has no effect on the final result
-            because with this method, the reduction is performed externally
-
-        Returns
-        -------
-        xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
-        """
-        pass
-
-    @abstractmethod
     def addVariable(self):
         """
         Add a design variable definition.
