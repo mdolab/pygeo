@@ -5,11 +5,11 @@ Holds a basic version of a DVGeo geometry object
 Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc) with the MACH-Aero framework
 """
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import OrderedDict
 
 
-class BaseDVGeometry:
+class BaseDVGeometry(ABC):
     """
     Abstract class for a basic geometry object
     """
