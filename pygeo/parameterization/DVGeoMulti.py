@@ -6,10 +6,9 @@ import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
 from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
-from .DVGeoSketch import BaseDVGeometry
 
 
-class DVGeometryMulti(BaseDVGeometry):
+class DVGeometryMulti:
     """
     A class for manipulating multiple components using multiple FFDs
     and handling design changes near component intersections.
@@ -28,12 +27,13 @@ class DVGeometryMulti(BaseDVGeometry):
     """
 
     def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False):
-        super().__init__(fileName="")
 
         self.compNames = []
         self.comps = OrderedDict()
         self.DVGeoDict = OrderedDict()
+        self.points = OrderedDict()
         self.comm = comm
+        self.updated = {}
         self.intersectComps = []
         self.checkDVs = checkDVs
         self.debug = debug
