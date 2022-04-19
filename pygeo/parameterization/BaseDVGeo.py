@@ -5,11 +5,11 @@ Holds a basic version of a DVGeo geometry object
 Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc) with the MACH-Aero framework
 """
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import OrderedDict
 
 
-class BaseDVGeometry:
+class BaseDVGeometry(ABC):
     """
     Abstract class for a basic geometry object
     """
@@ -47,18 +47,6 @@ class BaseDVGeometry:
         ----------
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
-        """
-        pass
-
-    @abstractmethod
-    def demoDesignVars(self, directory):
-        """
-        This function can be used to "test" the design variable parametrization
-        for a given optimization problem. It should be called in the script
-        after DVGeo has been set up. The function will loop through all the
-        design variables and write out a deformed FFD volume for the upper
-        and lower bound of every design variable. It can also write out
-        deformed point sets and surface meshes.
         """
         pass
 
@@ -116,13 +104,6 @@ class BaseDVGeometry:
             return True
 
     @abstractmethod
-    def printDesignVariables(self, directory):
-        """
-        Print a formatted list of design variables to the screen
-        """
-        pass
-
-    @abstractmethod
     def setDesignVars(self, dvDict):
         """
         Standard routine for setting design variables from a design variable dictionary.
@@ -164,33 +145,6 @@ class BaseDVGeometry:
         pass
 
     @abstractmethod
-    def totalSensitivityProd(self, vec, ptSetName):
-        r"""
-        This function computes sensitivity information.
-
-        Specifically, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}} \times\mathrm{vec}`
-
-        This is useful for forward AD mode.
-
-        Parameters
-        ----------
-        vec : dictionary whose keys are the design variable names
-            and whose values are the derivative seeds of the corresponding design variable.
-
-        ptSetName : str
-            The name of set of points we are dealing with
-
-        comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If comm is None, no reduction takes place.
-
-        Returns
-        -------
-        xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
-        """
-        pass
-
-    @abstractmethod
     def update(self, ptSetName):
         """
         This is the main routine for returning coordinates that have been updated by design variables.
@@ -199,20 +153,5 @@ class BaseDVGeometry:
         ----------
         ptSetName : str
             Name of point-set to return. This must match ones of the given in an :func:`addPointSet()` call.
-        """
-        pass
-
-    @abstractmethod
-    def writePointSet(self, name, fileName):
-        """
-        Write a given point set to a tecplot file
-
-        Parameters
-        ----------
-        name : str
-             The name of the point set to write to a file
-
-        fileName : str
-           Filename for tecplot file. Should have no extension, an extension will be added
         """
         pass
