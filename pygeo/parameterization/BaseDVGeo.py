@@ -51,18 +51,6 @@ class BaseDVGeometry(ABC):
         pass
 
     @abstractmethod
-    def demoDesignVars(self, directory):
-        """
-        This function can be used to "test" the design variable parametrization
-        for a given optimization problem. It should be called in the script
-        after DVGeo has been set up. The function will loop through all the
-        design variables and write out a deformed FFD volume for the upper
-        and lower bound of every design variable. It can also write out
-        deformed point sets and surface meshes.
-        """
-        pass
-
-    @abstractmethod
     def getNDV(self):
         """
         Return the total number of design variables this object has.
@@ -114,13 +102,6 @@ class BaseDVGeometry(ABC):
             return self.updated[ptSetName]
         else:
             return True
-
-    @abstractmethod
-    def printDesignVariables(self, directory):
-        """
-        Print a formatted list of design variables to the screen
-        """
-        pass
 
     @abstractmethod
     def setDesignVars(self, dvDict):
@@ -201,20 +182,5 @@ class BaseDVGeometry(ABC):
         ----------
         ptSetName : str
             Name of point-set to return. This must match ones of the given in an :func:`addPointSet()` call.
-        """
-        pass
-
-    @abstractmethod
-    def writePointSet(self, name, fileName):
-        """
-        Write a given point set to a tecplot file
-
-        Parameters
-        ----------
-        name : str
-             The name of the point set to write to a file
-
-        fileName : str
-           Filename for tecplot file. Should have no extension, an extension will be added
         """
         pass
