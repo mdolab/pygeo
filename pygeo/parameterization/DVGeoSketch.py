@@ -75,30 +75,6 @@ class DVGeoSketch(BaseDVGeometry):
         # Initial list of DVs
         self.DVs = OrderedDict()
 
-    @abstractmethod
-    def addPointSet(self, points, ptName, **kwargs):
-        """
-        Add a set of coordinates to DVGeometry
-        The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeometry to be manipulated.
-        """
-        pass
-
-    @abstractmethod
-    def setDesignVars(self, dvDict):
-        """
-        Standard routine for setting design variables from a design
-        variable dictionary.
-
-        Parameters
-        ----------
-        dvDict : dict
-            Dictionary of design variables. The keys of the dictionary
-            must correspond to the design variable names. Any
-            additional keys in the dv-dictionary are simply ignored.
-        """
-        pass
-
     def getValues(self):
         """
         Generic routine to return the current set of design
@@ -115,22 +91,6 @@ class DVGeoSketch(BaseDVGeometry):
             dvDict[dvName] = self.DVs[dvName].value
 
         return dvDict
-
-    @abstractmethod
-    def update(self, ptSetName, config=None):
-        pass
-
-    @abstractmethod
-    def getNDV(self):
-        """
-        Return the number of DVs
-
-        Returns
-        _______
-        len(self.DVs) : int
-            number of design variables
-        """
-        pass
 
     def getVarNames(self, pyOptSparse=False):
         """
@@ -225,13 +185,6 @@ class DVGeoSketch(BaseDVGeometry):
         for dvName in self.DVs:
             dv = self.DVs[dvName]
             optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
-
-    @abstractmethod
-    def printDesignVariables(self):
-        """
-        Print a formatted list of design variables to the screen
-        """
-        pass
 
     def writePointSet(self, name, fileName):
         """
