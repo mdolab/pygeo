@@ -56,7 +56,7 @@ class _AxiTransform:
         beta = pts[:, self.beta_idx] - center[self.beta_idx]
         gamma = pts[:, self.gamma_idx] - center[self.gamma_idx]
 
-        self.radii = np.sqrt(beta ** 2 + gamma ** 2)
+        self.radii = np.sqrt(beta**2 + gamma**2)
         # need to get the real part because arctan2 is not complex save
         # but its ok, becuase these are constants
         self.thetas = np.arctan2(gamma.real, beta.real)

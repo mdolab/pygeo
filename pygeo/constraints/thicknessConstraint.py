@@ -27,7 +27,7 @@ class ThicknessConstraint(GeometricConstraint):
         # Now get the reference lengths
         self.D0 = np.zeros(self.nCon)
         for i in range(self.nCon):
-            self.D0[i] = np.linalg.norm(self.coords[2 * i] - self.coords[2 * i + 1])
+            self.D0[i] = geo_utils.norm.euclideanNorm(self.coords[2 * i] - self.coords[2 * i + 1])
 
     def evalFunctions(self, funcs, config):
         """
@@ -42,7 +42,7 @@ class ThicknessConstraint(GeometricConstraint):
         self.coords = self.DVGeo.update(self.name, config=config)
         D = np.zeros(self.nCon)
         for i in range(self.nCon):
-            D[i] = np.linalg.norm(self.coords[2 * i] - self.coords[2 * i + 1])
+            D[i] = geo_utils.norm.euclideanNorm(self.coords[2 * i] - self.coords[2 * i + 1])
             if self.scaled:
                 D[i] /= self.D0[i]
         funcs[self.name] = D
@@ -155,8 +155,8 @@ class ThicknessToChordConstraint(GeometricConstraint):
 
                 dToCdPt[i, 4 * i, :] = p1b / c / self.ToC0[i]
                 dToCdPt[i, 4 * i + 1, :] = p2b / c / self.ToC0[i]
-                dToCdPt[i, 4 * i + 2, :] = (-p3b * t / c ** 2) / self.ToC0[i]
-                dToCdPt[i, 4 * i + 3, :] = (-p4b * t / c ** 2) / self.ToC0[i]
+                dToCdPt[i, 4 * i + 2, :] = (-p3b * t / c**2) / self.ToC0[i]
+                dToCdPt[i, 4 * i + 3, :] = (-p4b * t / c**2) / self.ToC0[i]
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(dToCdPt, self.name, config=config)
 

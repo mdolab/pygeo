@@ -86,11 +86,11 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         variables, but some constraints may extend this to include other variables.
         """
         if self.DVGeo1 is not None:
-            varnamelist = self.DVGeo1.getVarNames()
+            varnamelist = self.DVGeo1.getVarNames(pyOptSparse=True)
             if self.DVGeo2 is not None:
-                varnamelist.extend(self.DVGeo2.getVarNames())
+                varnamelist.extend(self.DVGeo2.getVarNames(pyOptSparse=True))
         else:
-            varnamelist = self.DVGeo2.getVarNames()
+            varnamelist = self.DVGeo2.getVarNames(pyOptSparse=True)
 
         return varnamelist
 
@@ -390,7 +390,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
                 # for j in range(3):
                 #     areas(i) = areas(i) + crosses(i, j)**2
                 # areas[i] = np.sum(crosses[i, :]**2)
-                areas = np.sum(crosses ** 2, axis=1)
+                areas = np.sum(crosses**2, axis=1)
                 for i in range(self.n):  # DO i=1,n
                     if areas[i] == 0.0:
                         areasb[i] = 0.0
