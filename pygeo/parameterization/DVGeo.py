@@ -14,9 +14,10 @@ import os
 import warnings
 from baseclasses.utils import Error
 from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
+from .BaseDVGeo import BaseDVGeometry
 
 
-class DVGeometry:
+class DVGeometry(BaseDVGeometry):
     r"""
     A class for manipulating geometry.
 
@@ -94,6 +95,7 @@ class DVGeometry:
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
+        super().__init__(fileName=fileName)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -117,8 +119,6 @@ class DVGeometry:
         self.isChild = child
         self.children = []
         self.iChild = None
-        self.points = OrderedDict()
-        self.updated = {}
         self.masks = None
         self.finalized = False
         self.complex = isComplex
@@ -169,7 +169,6 @@ class DVGeometry:
         self.links_n = None
 
         # Jacobians:
-        self.ptSetNames = []
         self.JT = {}
         self.nPts = {}
 
@@ -1760,7 +1759,7 @@ class DVGeometry:
                 np.put(tempCoef[:, 1], self.ptAttachInd, new_pts[:, 1])
                 np.put(tempCoef[:, 2], self.ptAttachInd, new_pts[:, 2])
 
-            # Apply just the complex part of the local varibales
+            # Apply just the complex part of the local variables
             for key in self.DV_listSpanwiseLocal:
                 self.DV_listSpanwiseLocal[key].updateComplex(tempCoef, config)
             for key in self.DV_listSectionLocal:
@@ -1829,26 +1828,6 @@ class DVGeometry:
         # Update the reference axes on the child
         child.refAxis.coef = child.coef.copy()
         child.refAxis._updateCurveCoef()
-
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
 
     def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
         """
@@ -2024,7 +2003,7 @@ class DVGeometry:
         r"""
         This function computes sensitivity information.
 
-        Specificly, it computes the following:
+        Specifically, it computes the following:
         :math:`\frac{dX_{pt}}{dX_{DV}}^T \frac{dI}{d_{pt}}`
 
         Parameters
@@ -2309,7 +2288,7 @@ class DVGeometry:
         if self.JT[ptSetName] is not None:
             return
 
-        # compute the derivatives of the coeficients of this level wrt all of the design
+        # compute the derivatives of the coefficients of this level wrt all of the design
         # variables at this level and all levels above
         J_temp = self.computeDVJacobian(config=config)
 
@@ -2793,7 +2772,7 @@ class DVGeometry:
 
     def getFlattenedChildren(self):
         """
-        Return a flattened list of all DVGeo objects in the family heirarchy.
+        Return a flattened list of all DVGeo objects in the family hierarchy.
         """
         flatChildren = [self]
         for child in self.children:
