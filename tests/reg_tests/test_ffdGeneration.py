@@ -48,6 +48,7 @@ class TestFFDGeneration(unittest.TestCase):
         leList = np.array([[0.0, 0.0, 0.1], [10.0, 0.0, 2500.0], [160.0, 0.0, 5280.0]]) * 1e-3
         teList = np.array([[1600.0, 0.0, 0.1], [1650.0, 0.0, 2500.0], [1320.0, 0.0, 5280.0]]) * 1e-3
 
+        # Get the surface definition from the STL file
         meshFile = os.path.join(baseDir, "../../input_files/c172.stl")
         stlMesh = Mesh.from_file(meshFile)
         p0 = stlMesh.vectors[:, 0, :] * 1e-3
@@ -55,12 +56,15 @@ class TestFFDGeneration(unittest.TestCase):
         p2 = stlMesh.vectors[:, 2, :] * 1e-3
         surf = [p0, p1, p2]
         surfFormat = "point-point"
+
+        # Set the other FFD generation inputs
         outFile = "wing_ffd.xyz"
         nSpan = [4, 4]
         nChord = 8
         relMargins = [0.02, 0.01, 0.01]
         absMargins = [0.04, 0.01, 0.02]
         liftIndex = 2
+
         createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord, absMargins, relMargins, liftIndex)
 
         # Check that the generated FFD file matches the reference
