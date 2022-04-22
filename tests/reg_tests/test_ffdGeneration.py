@@ -3,14 +3,44 @@ import unittest
 import numpy as np
 from stl.mesh import Mesh
 from pygeo import DVGeometry
-from pygeo.geo_utils import createFittedWingFFD
+from pygeo.geo_utils import write_wing_FFD_file, createFittedWingFFD
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestFittedFFD(unittest.TestCase):
+class TestFFDGeneration(unittest.TestCase):
 
     N_PROCS = 1
+
+    def test_box_ffd(self, train=False, refDeriv=False):
+
+        # Write duplicate of outerBoxFFD
+        axes = ["i", "k", "j"]
+        slices = np.array(
+            [
+                # Slice 1
+                [[[-1, -1, -1], [-1, 1, -1]], [[-1, -1, 1], [-1, 1, 1]]],
+                # Slice 2
+                [[[1, -1, -1], [1, 1, -1]], [[1, -1, 1], [1, 1, 1]]],
+                # Slice 3
+                [[[2, -1, -1], [2, 1, -1]], [[2, -1, 1], [2, 1, 1]]],
+            ]
+        )
+
+        N0 = [2, 2]
+        N1 = [2, 2]
+        N2 = [2, 2]
+
+        copyName = os.path.join(baseDir, "../../input_files/test1.xyz")
+        write_wing_FFD_file(copyName, slices, N0, N1, N2, axes=axes)
+
+        # Load original and duplicate
+        origFFD = DVGeometry(os.path.join(baseDir, "../../input_files/outerBoxFFD.xyz"))
+        copyFFD = DVGeometry(copyName)
+        np.testing.assert_allclose(origFFD.FFD.coef, copyFFD.FFD.coef, rtol=1e-7)
+
+        # Delete the duplicate FFD file
+        os.remove(copyName)
 
     def test_c172_fitted(self):
 
