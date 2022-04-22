@@ -10,6 +10,8 @@ from mpi4py import MPI
 from pyOCSM import ocsm
 from contextlib import contextmanager
 from baseclasses.utils import Error
+from .DVGeoSketch import DVGeoSketch
+from .designVars import espDV
 
 
 @contextmanager
@@ -42,7 +44,7 @@ def stdout_redirected(flag, to=os.devnull):
         yield
 
 
-class DVGeometryESP:
+class DVGeometryESP(DVGeoSketch):
     """
     A class for manipulating Engineering Sketchpad (ESP) geometry
     The purpose of the DVGeometryESP class is to provide translation
@@ -57,15 +59,15 @@ class DVGeometryESP:
     intersections is fine as long as the intersection doesn't move
     3. It does not support complex numbers for the complex-step
     method.
-    4. It does not surpport separate configurations.
+    4. It does not support separate configurations.
 
     Parameters
     ----------
-    espFile : str
+    fileName : str
        filename of .csm file containing the parameterized CAD
     comm : MPI Intra Comm
        Comm on which to build operate the object. This is used to
-       perform embarasisngly parallel finite differencing. Defaults to
+       perform embarrassingly parallel finite differencing. Defaults to
        MPI.COMM_WORLD.
     scale : float
        A global scale factor from the ESP geometry to incoming (CFD) mesh
@@ -101,7 +103,7 @@ class DVGeometryESP:
 
     def __init__(
         self,
-        espFile,
+        fileName,
         comm=MPI.COMM_WORLD,
         scale=1.0,
         bodies=[],
@@ -113,26 +115,21 @@ class DVGeometryESP:
         ulimits=None,
         vlimits=None,
     ):
-
         if comm.rank == 0:
             print("Initializing DVGeometryESP")
             t0 = time.time()
+
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
+
         self.maxproc = maxproc
         self.esp = True
-        self.points = OrderedDict()
-        self.pointSets = OrderedDict()
-        self.updated = {}
-        self.updatedJac = {}
-        self.globalDVList = (
-            []
-        )  # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
+
+        # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
+        self.globalDVList = []
+
         self.suppress_stdout = suppress_stdout
         self.exclude_edge_projections = exclude_edge_projections
-        # this scales coordinates from esp to mesh geometry
-        self.espScale = scale
-        # and this scales coordinates from mesh to esp geometry
-        self.meshScale = 1.0 / scale
-        self.projTol = projTol * self.meshScale  # default input is in meters.
+
         if ulimits is not None:
             self.ulimits = ulimits
         else:
@@ -141,13 +138,11 @@ class DVGeometryESP:
             self.vlimits = vlimits
         else:
             self.vlimits = np.array([-99999.0, 99999.0])
-        self.comm = comm
-        self.espFile = espFile
         self.debug = debug
 
         t1 = time.time()
         # read the model
-        self.espModel = ocsm.Ocsm(self.espFile)
+        self.espModel = ocsm.Ocsm(self.fileName)
         ocsm.SetOutLevel(0)
 
         # build the baseline model
@@ -190,7 +185,6 @@ class DVGeometryESP:
                 )
 
         # Initial list of DVs
-        self.DVs = OrderedDict()
         self.csmDesPmtrs = OrderedDict()
 
         # Get metadata about external design parameters in the CSM model
@@ -538,7 +532,7 @@ class DVGeometryESP:
             dists[ptidx] = dist_best
             proj_pts_esp[ptidx, :] = xyzbest
 
-        proj_pts = proj_pts_esp * self.espScale
+        proj_pts = proj_pts_esp * self.modelScale
         if points.shape[0] != 0:
             dMax = np.max(np.sqrt(np.sum((points - proj_pts) ** 2, axis=1)))
         else:
@@ -616,7 +610,7 @@ class DVGeometryESP:
                 self.DVs[key].value = dvDict[key].copy()
 
         # we need to update the design variables in the ESP model and rebuild
-        built_successfully = self._updateESPModel()
+        built_successfully = self._updateModel()
         if not built_successfully:
             # failed geometry, return fail flag
             return built_successfully
@@ -656,23 +650,6 @@ class DVGeometryESP:
                 n_branches, modelCopy.GetCode("dump"), "<none>", 0, filename, "0", "0", "", "", "", "", "", ""
             )
             modelCopy.Build(0, 0)
-
-    def getValues(self):
-        """
-        Generic routine to return the current set of design
-        variables. Values are returned in a dictionary format
-        that would be suitable for a subsequent call to setValues()
-
-        Returns
-        -------
-        dvDict : dict
-            Dictionary of design variables
-        """
-        dvDict = OrderedDict()
-        for dvName in self.DVs:
-            dvDict[dvName] = self.DVs[dvName].value
-
-        return dvDict
 
     def update(self, ptSetName, config=None):
         """
@@ -717,41 +694,16 @@ class DVGeometryESP:
         if self.comm.rank == 0:
             self.espModel.Save(fileName)
 
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
-
     def getNDV(self):
         """
-        Return the number of DVs"""
+        Return the number of DVs
+
+        Returns
+        _______
+        len(self.DVs) : int
+            number of design variables
+        """
         return len(self.globalDVList)
-
-    def getVarNames(self, pyOptSparse=False):
-        """
-        Return a list of the design variable names. This is typically
-        used when specifying a wrt= argument for pyOptSparse.
-
-        Examples
-        --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
-        """
-        return list(self.DVs.keys())
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
@@ -1010,19 +962,16 @@ class DVGeometryESP:
 
         self.DVs[dvName] = espDV(csmDesPmtr, dvName, value, lower, upper, scale, rows, cols, dh, globalStartInd)
 
-    def addVariablesPyOpt(self, optProb):
+    def printDesignVariables(self):
         """
-        Add the current set of variables to the optProb object.
-
-        Parameters
-        ----------
-        optProb : pyOpt_optimization class
-            Optimization problem definition to which variables are added
+        Print a formatted list of design variables to the screen
         """
-
+        print("-" * 85)
+        print("{:>30}{:>20}{:>20}".format("CSM Design Parameter", "Name", "Value"))
+        print("-" * 85)
         for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            DV = self.DVs[dvName]
+            print(f"{DV.csmDesPmtr:>30}{DV.name:>20}{DV.value:>20}")
 
     # # ----------------------------------------------------------------------
     # #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
@@ -1127,7 +1076,7 @@ class DVGeometryESP:
                 # duplicates
                 raise Error("Duplicate indices specified in the cols of design variable " + dvName + ": " + str(cols))
 
-    def _updateESPModel(self):
+    def _updateModel(self):
         """
         Sets design parameters in ESP to the correct value
         then rebuilds the model.
@@ -1187,7 +1136,7 @@ class DVGeometryESP:
                 unew = (u[ptidx] - uvlim0[0]) * urange / urange0 + uvlim[0]
                 vnew = (v[ptidx] - uvlim0[2]) * vrange / vrange0 + uvlim[2]
                 points[ptidx, :] = self.espModel.GetXYZ(bid, ocsm.FACE, fid, 1, [unew, vnew])
-        points = points * self.espScale
+        points = points * self.modelScale
         return points
 
     def _updateProjectedPts(self):
@@ -1257,7 +1206,8 @@ class DVGeometryESP:
         return ug, vg, tg, faceIDg, bodyIDg, edgeIDg, uvlimitsg, tlimitsg, sizes
 
     def _computeSurfJacobian(self, fd=True):
-        """This routine comptues the jacobian of the ESP surface with respect
+        """
+        This routine comptues the jacobian of the ESP surface with respect
         to the design variables. Since our point sets are rigidly linked to
         the ESP projection points, this is all we need to calculate. The input
         pointSets is a list or dictionary of pointSets to calculate the jacobian for.
@@ -1378,7 +1328,7 @@ class DVGeometryESP:
 
                     # update the esp model
                     t11 = time.time()
-                    self._updateESPModel()
+                    self._updateModel()
                     t12 = time.time()
                     tesp += t12 - t11
 
@@ -1403,7 +1353,7 @@ class DVGeometryESP:
 
             # reset the model.
             t11 = time.time()
-            self._updateESPModel()
+            self._updateModel()
             t12 = time.time()
             tesp += t12 - t11
 
@@ -1468,7 +1418,7 @@ class DVGeometryESP:
 
         t2 = time.time()
         if rank == 0:
-            print("FD jacobian calcs with dvgeovsp took", (t2 - t1), "seconds in total")
+            print("FD jacobian calcs with DVGeoESP took", (t2 - t1), "seconds in total")
             print("updating the esp model took", tesp, "seconds")
             print("evaluating the new points took", teval, "seconds")
             print("communication took", tcomm, "seconds")
@@ -1486,22 +1436,6 @@ class ESPParameter:
         self.numRow = numRow
         self.numCol = numCol
         self.baseValue = baseValue
-
-
-class espDV:
-    def __init__(self, csmDesPmtr, name, value, lower, upper, scale, rows, cols, dh, globalstartind):
-        """Internal class for storing ESP design variable information"""
-        self.csmDesPmtr = csmDesPmtr
-        self.name = name
-        self.value = np.array(value)
-        self.lower = lower
-        self.upper = upper
-        self.scale = scale
-        self.rows = rows
-        self.cols = cols
-        self.nVal = len(rows) * len(cols)
-        self.dh = dh
-        self.globalStartInd = globalstartind
 
 
 class PointSet:
