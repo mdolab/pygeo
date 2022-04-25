@@ -5,6 +5,7 @@ import numpy as np
 from .. import geo_utils
 from mpi4py import MPI
 from .baseConstraint import GeometricConstraint
+from ..geo_utils.polygon import areaTri
 
 try:
     from geograd import geograd_parallel  # noqa
@@ -85,11 +86,11 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         variables, but some constraints may extend this to include other variables.
         """
         if self.DVGeo1 is not None:
-            varnamelist = self.DVGeo1.getVarNames()
+            varnamelist = self.DVGeo1.getVarNames(pyOptSparse=True)
             if self.DVGeo2 is not None:
-                varnamelist.extend(self.DVGeo2.getVarNames())
+                varnamelist.extend(self.DVGeo2.getVarNames(pyOptSparse=True))
         else:
-            varnamelist = self.DVGeo2.getVarNames()
+            varnamelist = self.DVGeo2.getVarNames(pyOptSparse=True)
 
         return varnamelist
 
@@ -327,7 +328,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
         self.DVGeo.addPointSet(self.p2, self.name + "p2", compNames=compNames)
 
         # compute the reference area
-        self.X0 = self._computeArea(self.p0, self.p1, self.p2)
+        self.X0 = areaTri(self.p0, self.p1, self.p2)
 
     def evalFunctions(self, funcs, config):
         """
@@ -343,7 +344,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
         self.p1 = self.DVGeo.update(self.name + "p1", config=config)
         self.p2 = self.DVGeo.update(self.name + "p2", config=config)
 
-        self.X = self._computeArea(self.p0, self.p1, self.p2)
+        self.X = areaTri(self.p0, self.p1, self.p2)
         if self.scaled:
             self.X /= self.X0
         funcs[self.name] = self.X
@@ -389,7 +390,7 @@ class SurfaceAreaConstraint(GeometricConstraint):
                 # for j in range(3):
                 #     areas(i) = areas(i) + crosses(i, j)**2
                 # areas[i] = np.sum(crosses[i, :]**2)
-                areas = np.sum(crosses ** 2, axis=1)
+                areas = np.sum(crosses**2, axis=1)
                 for i in range(self.n):  # DO i=1,n
                     if areas[i] == 0.0:
                         areasb[i] = 0.0
@@ -420,25 +421,6 @@ class SurfaceAreaConstraint(GeometricConstraint):
                 tmpTotal[key] = tmpp0[key] + tmpp1[key] + tmpp2[key]
 
             funcsSens[self.name] = tmpTotal
-
-    def _computeArea(self, p0, p1, p2):
-        """
-        compute area based on three point arrays
-        """
-        # convert p1 and p2 to v1 and v2
-        v1 = p1 - p0
-        v2 = p2 - p0
-
-        # compute the areas
-        areaVec = np.cross(v1, v2)
-
-        # area = np.linalg.norm(areaVec,axis=1)
-        area = 0
-        for i in range(len(areaVec)):
-            area += geo_utils.euclideanNorm(areaVec[i, :])
-
-        # return np.sum(area)/2.0
-        return area / 2.0
 
     def writeTecplot(self, handle):
         """
@@ -492,7 +474,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
         self.DVGeo.addPointSet(self.p2, self.name + "p2", compNames=compNames)
 
         # compute the reference area
-        self.X0 = self._computeArea(self.p0, self.p1, self.p2, self.axis)
+        self.X0 = self._computeProjectedAreaTri(self.p0, self.p1, self.p2, self.axis)
 
     def evalFunctions(self, funcs, config):
         """
@@ -508,7 +490,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
         self.p1 = self.DVGeo.update(self.name + "p1", config=config)
         self.p2 = self.DVGeo.update(self.name + "p2", config=config)
 
-        self.X = self._computeArea(self.p0, self.p1, self.p2, self.axis)
+        self.X = self._computeProjectedAreaTri(self.p0, self.p1, self.p2, self.axis)
         if self.scaled:
             self.X /= self.X0
         funcs[self.name] = self.X
@@ -566,7 +548,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
 
         funcsSens[self.name] = tmpTotal
 
-    def _computeArea(self, p0, p1, p2, axis, plot=False):
+    def _computeProjectedAreaTri(self, p0, p1, p2, axis, plot=False):
         """
         Compute projected surface area
         """
@@ -601,7 +583,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
         Write the visualization of this set of thickness constraints
         to the open file handle
         """
-        self._computeArea(self.p0, self.p1, self.p2, self.axis, plot=True)
+        self._computeProjectedAreaTri(self.p0, self.p1, self.p2, self.axis, plot=True)
         nActiveTris = int(np.sum(self.activeTris))
         p0 = self.p0.copy()
         p1 = self.p1.copy()

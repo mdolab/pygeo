@@ -7,23 +7,23 @@ from .norm import eDist
 
 
 def unique(s):
-    """Return a list of the elements in s, but without duplicates.
+    r"""Return a list of the elements in s, but without duplicates.
 
-    For example, unique([1,2,3,1,2,3]) is some permutation of [1,2,3],
-    unique("abcabc") some permutation of ["a", "b", "c"], and
-    unique(([1, 2], [2, 3], [1, 2])) some permutation of
-    [[2, 3], [1, 2]].
+    For example, ``unique([1,2,3,1,2,3])`` is some permutation of ``[1,2,3]``,
+    ``unique("abcabc")`` some permutation of ``["a", "b", "c"]``, and
+    ``unique(([1, 2], [2, 3], [1, 2]))`` some permutation of
+    ``[[2, 3], [1, 2]]``.
 
     For best speed, all sequence elements should be hashable.  Then
-    unique() will usually work in linear time.
+    ``unique()`` will usually work in linear time.
 
     If not possible, the sequence elements should enjoy a total
-    ordering, and if list(s).sort() doesn't raise TypeError it's
-    assumed that they do enjoy a total ordering.  Then unique() will
-    usually work in O(N*log2(N)) time.
+    ordering, and if ``list(s).sort()`` doesn't raise ``TypeError`` it's
+    assumed that they do enjoy a total ordering.  Then ``unique()`` will
+    usually work in :math:`\mathcal{O}(N\log_2(N))` time.
 
     If that's not possible either, the sequence elements must support
-    equality-testing.  Then unique() will usually work in quadratic
+    equality-testing.  Then ``unique()`` will usually work in quadratic
     time.
     """
 
@@ -191,8 +191,9 @@ def pointReduceBruteForce(points, nodeTol=1e-4):
     duplicates, return a list of the unique points AND a pointer list
     for the original points to the reduced set
 
-    BRUTE FORCE VERSION
-
+    Warnings
+    --------
+    This is the brute force version of :func:`pointReduce`.
     """
     N = len(points)
     if N == 0:
