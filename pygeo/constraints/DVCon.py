@@ -1843,39 +1843,41 @@ class DVConstraints:
         constraints arise when the shape variables can effectively
         emulate a 'twist' variable (actually a shearing twist). The
         purpose of these constraints is to make control points at the
-        leading and trailing edge move in equal and opposite diretion.
+        leading and trailing edge move in equal and opposite direction.
 
-        ie. x1 - x2 = 0.0
+        .. math:: x_1 - x_2 = 0.0
 
-        where x1 is the movement (in 1, 2, or 3 directions) of a
-        control point on the top of the FFD and x2 is the control
+        where :math:`x_1` is the movement (in 1, 2, or 3 directions) of a
+        control point on the top of the FFD and :math:`x_2` is the control
         point on the bottom of the FFD.
 
         There are two ways of specifying these constraints:
 
-        volID and faceID: Provide the index of the FFD block and the
-        faceID (one of 'ilow', 'ihigh', 'jlow', 'jhigh', 'klow', or
-        'khigh'). This it the preferred approach. Both volID and faceID
-        can be determined by examining the FFD file in TecPlot or ICEM.
-        Use 'prob data' tool in TecPlot to click on the surface of which
-        you want to put constraints on (e.g. the front or LE of FFD and
-        the back surface or TE of the FFD). You will see which plane
-        it coresponding to. For example, 'I-Plane' with I-index = 1 is
-        'iLow'.
-        topID provides a second input for blocks that have 2x2 faces.
+        ``volID`` and ``faceID``
+            Provide the index of the FFD block and the
+            ``faceID`` (one of ``ilow``, ``ihigh``, ``jlow``, ``jhigh``, ``klow``, or
+            ``khigh``). This it the preferred approach. Both ``volID`` and ``faceID``
+            can be determined by examining the FFD file in TecPlot or ICEM.
+            Use 'prob data' tool in TecPlot to click on the surface of which
+            you want to put constraints on (e.g. the front or LE of FFD and
+            the back surface or TE of the FFD). You will see which plane
+            it coresponding to. For example, 'I-Plane' with I-index = 1 is
+            ``iLow``.
+            ``topID`` provides a second input for blocks that have 2x2 faces.
+        ``indSetA`` and ``indSetB``
+            Alternatively, two sets of indices can be provided.
+            Both must be the same length. These indices may
+            be obtained from the ``lindex`` array of the FFD object.
 
-        Alternatively, two sets of indices can be provided, 'indSetA'
-        and 'indSetB'. Both must be the same length. These indices may
-        be obtained from the 'lindex' array of the FFD object.
+                >>> lIndex = DVGeo.getLocalIndex(iVol)
 
-        lIndex = DVGeo.getLocalIndex(iVol)
+            ``lIndex`` is a three dimensional set of indices that provide the
+            index into the global set of control points. See below for
+            examples.
 
-        lIndex is a three dimensional set of indices that provide the
-        index into the global set of control points. See below for
-        examples.
-
-        Note that these constraints *will* be added to pyOptSparse
-        automatically with a call to addConstraintsPyOpt()
+        .. note::
+            These constraints *will* be added to pyOptSparse automatically with a call to
+            :func:`addConstraintsPyOpt`
 
         Parameters
         ----------
@@ -2036,28 +2038,29 @@ class DVConstraints:
         """
         Add a complete generic set of linear constraints for the shape
         variables that have been added to DVGeo. The constraints are
-        specified in the following general form:
+        specified in the following general form::
 
-        lower <= factorA*dvA + factorB*dvB <= upper
+            lower <= factorA*dvA + factorB*dvB <= upper
 
-        The lists indSetA and indSetB are used to specify the pairs of
+        The lists ``indSetA`` and ``indSetB`` are used to specify the pairs of
         control points that are to be linked with linear variables. If
-        more than one pair is specified (ie len(indSetA)=len(indSetB)
-        > 1) then factorA, factorB, lower and upper may all be arrays
+        more than one pair is specified (i.e. :code:`len(indSetA)=len(indSetB)
+        > 1`) then ``factorA``, ``factorB``, ``lower`` and ``upper`` may all be arrays
         of the same length or a constant which will applied to all.
 
-        Two sets of indices can be provided, 'indSetA'
-        and 'indSetB'. Both must be the same length. These indices may
-        be obtained from the 'lindex' array of the FFD object.
+        Two sets of indices can be provided, ``indSetA``
+        and ``indSetB``. Both must be the same length. These indices may
+        be obtained from the ``lindex`` array of the FFD object.
 
-        lIndex = DVGeo.getLocalIndex(iVol)
+            >>> lIndex = DVGeo.getLocalIndex(iVol)
 
-        lIndex is a three dimensional set of indices that provide the
+        ``lIndex`` is a three dimensional set of indices that provide the
         index into the global set of control points. See below for
         examples.
 
-        Note that these constraints *will* be added to pyOptSparse
-        automatically with a call to addConstraintsPyOpt()
+        .. note::
+            These constraints will be added to pyOptSparse automatically with a call to
+            :func:`addConstraintsPyOpt`.
 
         Parameters
         ----------
