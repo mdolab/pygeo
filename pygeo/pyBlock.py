@@ -840,8 +840,7 @@ class pyBlock:
 
         See Also
         --------
-        See the attachPoints() docstring for the other parameters.
-
+        attachPoints : description of the other parameters
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
