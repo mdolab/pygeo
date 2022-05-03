@@ -70,7 +70,7 @@ class geoDVLocal(geoDV):
 
         N = len(axis)
         nVal = len(coefList) * N
-        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal * N, lower=lower, upper=lower, scale=scale)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
 
         self.config = config
         self.coefList = np.zeros((self.nVal, 2), "intc")
@@ -155,7 +155,7 @@ class geoDVSpanwiseLocal(geoDV):
                 self.dv_to_coefs.append(loc_dv_to_coefs)
 
         nVal = len(self.dv_to_coefs)
-        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=lower, scale=scale)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
 
         if "x" == axis.lower():
             self.axis = 0
@@ -229,12 +229,6 @@ class geoDVSectionLocal(geoDV):
         super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=None, upper=None, scale=scale)
 
         self.config = config
-        if lower is not None:
-            self.lower = convertTo1D(lower, self.nVal)
-        if upper is not None:
-            self.upper = convertTo1D(upper, self.nVal)
-        if scale is not None:
-            self.scale = convertTo1D(scale, self.nVal)
 
         self.sectionTransform = sectionTransform
         self.sectionLink = sectionLink
