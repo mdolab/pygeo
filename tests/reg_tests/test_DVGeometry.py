@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from baseclasses import BaseRegTest
 import commonUtils
-from pygeo import geo_utils, DVGeometry, DVConstraints
+from pygeo import DVGeometry, DVConstraints
 from stl import mesh
 
 
