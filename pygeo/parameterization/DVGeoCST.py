@@ -431,7 +431,7 @@ class DVGeometryCST:
         scaledX = (ptsX - xMin) / (xMax - xMin)
         idxUpper = self.points[ptSetName]["upper"]
         idxLower = self.points[ptSetName]["lower"]
-        funcSens = {}
+        funcSens_local = {}
 
         # If dIdpt is a group of vectors, reorder the axes so it
         # is handled properly by the matrix multiplies
@@ -447,15 +447,15 @@ class DVGeometryCST:
                     scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
                 )
                 dydUpperCST *= vars["chord"]
-                funcSens[dvName] = dydUpperCST @ dIdpt[idxUpper, self.yIdx]
+                funcSens_local[dvName] = dydUpperCST @ dIdpt[idxUpper, self.yIdx]
             elif dvType == "lower":
                 dydLowerCST = self.computeCSTdydw(
                     scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
                 )
                 dydLowerCST *= vars["chord"]
-                funcSens[dvName] = dydLowerCST @ dIdpt[idxLower, self.yIdx]
+                funcSens_local[dvName] = dydLowerCST @ dIdpt[idxLower, self.yIdx]
             elif dvType == "n1_upper":
-                funcSens[dvName] = (
+                funcSens_local[dvName] = (
                     vars["chord"]
                     * self.computeCSTdydN1(
                         scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
@@ -463,7 +463,7 @@ class DVGeometryCST:
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n2_upper":
-                funcSens[dvName] = (
+                funcSens_local[dvName] = (
                     vars["chord"]
                     * self.computeCSTdydN2(
                         scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
@@ -471,7 +471,7 @@ class DVGeometryCST:
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n1_lower":
-                funcSens[dvName] = (
+                funcSens_local[dvName] = (
                     vars["chord"]
                     * self.computeCSTdydN1(
                         scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
@@ -479,7 +479,7 @@ class DVGeometryCST:
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2_lower":
-                funcSens[dvName] = (
+                funcSens_local[dvName] = (
                     vars["chord"]
                     * self.computeCSTdydN2(
                         scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
@@ -487,14 +487,14 @@ class DVGeometryCST:
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n1":
-                funcSens[dvName] = (
+                funcSens_local[dvName] = (
                     vars["chord"]
                     * self.computeCSTdydN1(
                         scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
                     )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
-                funcSens[dvName] += (
+                funcSens_local[dvName] += (
                     vars["chord"]
                     * self.computeCSTdydN1(
                         scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
@@ -502,14 +502,14 @@ class DVGeometryCST:
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2":
-                funcSens[dvName] = (
+                funcSens_local[dvName] = (
                     vars["chord"]
                     * self.computeCSTdydN2(
                         scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
                     )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
-                funcSens[dvName] += (
+                funcSens_local[dvName] += (
                     vars["chord"]
                     * self.computeCSTdydN2(
                         scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
@@ -519,13 +519,20 @@ class DVGeometryCST:
             else:  # chord
                 dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
                 dxdchord = (ptsX - xMin) / vars["chord"]
-                funcSens[dvName] = dxdchord @ dIdpt[:, self.xIdx] + dydchord @ dIdpt[:, self.yIdx]
+                funcSens_local[dvName] = dxdchord @ dIdpt[:, self.xIdx] + dydchord @ dIdpt[:, self.yIdx]
 
         # If the axes were reordered to handle a group of dIdpt vectors,
         # switch them back to the expected order for output
         if len(dim) == 3:
-            for dvName in funcSens.keys():
-                funcSens[dvName] = np.moveaxis(np.atleast_2d(funcSens[dvName]), 0, -1)
+            for dvName in funcSens_local.keys():
+                funcSens_local[dvName] = np.moveaxis(np.atleast_2d(funcSens_local[dvName]), 0, -1)
+        
+        if comm:
+            funcSens = {}
+            for dvName in funcSens_local.keys():
+                funcSens[dvName] = comm.allreduce(funcSens_local[dvName], op=MPI.SUM)
+        else:
+            funcSens = funcSens_local
 
         return funcSens
 
