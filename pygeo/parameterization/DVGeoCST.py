@@ -400,7 +400,7 @@ class DVGeometryCST:
         # TODO generalize the writing to files?
         pass
 
-    def totalSensitivity(self, dIdpt, ptSetName, **kwargs):
+    def totalSensitivity(self, dIdpt, ptSetName, comm=None, **kwargs):
         r"""
         This function computes sensitivity information.
         Specifically, it computes the following:
