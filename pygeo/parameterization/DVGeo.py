@@ -3514,7 +3514,7 @@ class DVGeometry(BaseDVGeometry):
 
     def mapVecToDVGeo(self, inVec):
         """
-        This is the vector version of :func:`mapDictToDVGeo`, where the actual mapping is done
+        This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
 
         Parameters
         ----------
@@ -3532,7 +3532,7 @@ class DVGeometry(BaseDVGeometry):
 
     def mapVecToComp(self, inVec):
         """
-        This is the vector version of :func:`mapDictToComp`, where the actual mapping is done
+        This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
 
         Parameters
         ----------
