@@ -18,8 +18,14 @@ from copy import deepcopy
 import numpy as np
 from mpi4py import MPI
 from scipy.special import factorial, comb
-from scipy.spatial import Delaunay
 from prefoil.preFoil import readCoordFile
+
+try:
+    import matplotlib.pyplot as plt
+    pltImport = True
+except ModuleNotFoundError:
+    pltImport = False
+
 
 # ==============================================================================
 # Extension modules
@@ -48,7 +54,7 @@ class DVGeometryCST:
     This class
     """
 
-    def __init__(self, datFile, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False):
+    def __init__(self, datFile, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False):
         """
         Initialize DVGeometryCST.
 
@@ -64,7 +70,10 @@ class DVGeometryCST:
         comm : MPI communicator, optional
             Communicator for DVGeometryCST instance, by default MPI.COMM_WORLD
         isComplex : bool, optional
-            Initialize variables to complex types where necessary
+            Initialize variables to complex types where necessary, by default False
+        debug : bool, optional
+            Show plots when addPointSet is called to visually verify that it is correctly splitting
+            the upper and lower surfaces of the airfoil points, by default False
         """
         self.points = OrderedDict()  # For each point set, it contains a dictionary with the coordinates,
         # indices of upper, lower, and trailing edge points, and the minimum and maximum chordwise coordinates
@@ -79,6 +88,9 @@ class DVGeometryCST:
         else:
             self.dtype = float
             self.dtypeMPI = MPI.DOUBLE
+        self.debug = debug
+        if debug and not pltImport:
+            raise ImportError("matplotlib.pyplot could not be imported and is required for DVGeoCST debug mode")
 
         # Store the DVs and flags to determine if the limited options have already been specified
         # Each DV in the DVs dictionary (with the key as the DV name) contains
@@ -192,6 +204,15 @@ class DVGeometryCST:
 
         # Determine which points are on the upper and lower surfaces
         self.points[ptName]["upper"], self.points[ptName]["lower"] = self._splitUpperLower(points)
+
+        # If debug mode is on, plot the upper and lower surface points
+        if self.debug:
+            fig = plt.figure()
+            plt.scatter(self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["upper"]], self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["upper"]], c="b")
+            plt.scatter(self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["lower"]], self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["lower"]], c="r")
+            plt.legend(["Upper", "Lower"])
+            plt.show()
+            plt.close(fig)
 
     def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
         """
@@ -933,66 +954,45 @@ class DVGeometryCST:
         w = np.linalg.lstsq(dydw.T, yCoord, rcond=None)[0]
         return w
 
-    def _orderAirfoilCoordinates(self, points, alpha=0.25):
-        """
-        Takes in a set of points and returns them sorted in the same
-        order that they would be in a dat file (starting at the TE, traversing
-        the upper surface to the LE, then around the lower surface back to the TE).
-        This process computes the alpha shape to order the edges and is roughly
-        based on https://stackoverflow.com/questions/50549128/boundary-enclosing-a-given-set-of-points.
+    @staticmethod
+    def plotCST(upperCoeff, lowerCoeff, N1=0.5, N2=1.0, nPts=100, ax=None, **kwargs):
+        """Simple utility to generate a plot from CST coefficients.
 
         Parameters
         ----------
-        points : array, size (N,3)
-            Set of airfoil coordinates in an arbitrary order.
-        alpha : float, optional
-            Value related to the edge size for the alpha shape (default is likely fine)
+        upperCoeff : ndarray
+            One dimensional array of CST coefficients for the upper surface.
+        lowerCoeff : ndarray
+            One dimensional array of CST coefficients for the lower surface.
+        N1 : float
+            First class shape parameter.
+        N2 : float
+            Second class shape parameter.
+        nPts : int, optional
+            Number of coordinates to compute on each surface.
+        ax : matplotlib Axes, optional
+            Axes on which to plot airfoil.
+        **kwargs
+            Keyword arguments passed to matplotlib.pyplot.plot
 
         Returns
         -------
-        sortedPoints : array, size (N,3)
-            Airfoil coordinates sorted in dat file order.
+        matplotlib Axes
+            Axes with airfoil plotted
         """
-        points2D = points[:, (self.xIdx, self.yIdx)]  # take only the chordwise and vertical coordinates
-        assert points2D.shape[0] > 3, "Need at least four points"
+        if not pltImport:
+            raise ImportError("matplotlib could not be imported and is required for plotCST")
 
-        def add_edge(edges, i, j):
-            """
-            Add an edge between the i-th and j-th points,
-            if not in the list already
-            """
-            if (i, j) in edges or (j, i) in edges:
-                # already added
-                assert (j, i) in edges, "Can't go twice over same directed edge right?"
-                # if both neighboring triangles are in shape, it's not a boundary edge
-                edges.remove((j, i))
-                return
-            edges.add((i, j))
+        if ax is None:
+            _ = plt.figure()
+            ax = plt.gca()
 
-        tri = Delaunay(points2D)
-        edges = set()
-        # Loop over triangles:
-        # ia, ib, ic = indices of corner points of the triangle
-        for ia, ib, ic in tri.simplices:
-            pa = points2D[ia]
-            pb = points2D[ib]
-            pc = points2D[ic]
-            # Computing radius of triangle circumcircle
-            # www.mathalino.com/reviewer/derivation-of-formulas/derivation-of-formula-for-radius-of-circumcircle
-            a = np.sqrt((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2)
-            b = np.sqrt((pb[0] - pc[0]) ** 2 + (pb[1] - pc[1]) ** 2)
-            c = np.sqrt((pc[0] - pa[0]) ** 2 + (pc[1] - pa[1]) ** 2)
-            s = (a + b + c) / 2.0
-            area = np.sqrt(s * (s - a) * (s - b) * (s - c))
-            circum_r = a * b * c / (4.0 * area)
-            if circum_r < alpha:
-                add_edge(edges, ia, ib)
-                add_edge(edges, ib, ic)
-                add_edge(edges, ic, ia)
+        x = np.linspace(0, 1, nPts)
+        yUpper = DVGeometryCST.computeCSTCoordinates(x, N1, N2, upperCoeff, 0.)
+        yLower = DVGeometryCST.computeCSTCoordinates(x, N1, N2, lowerCoeff, 0.)
 
-        edges_arr = np.asarray(list(edges))
-        n = np.shape(edges_arr)[0]
-        edge_half = edges_arr[:, 0]
-        edge_sort = np.sort(edge_half)
+        ax.plot(x, yUpper, **kwargs)
+        ax.plot(x, yLower, **kwargs)
+        ax.set_aspect("equal")
 
-        return points[edge_sort]
+        return ax
