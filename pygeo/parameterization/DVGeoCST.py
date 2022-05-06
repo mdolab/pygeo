@@ -10,18 +10,18 @@ DVGeo: CST Parameterisation
 # Standard Python modules
 # ==============================================================================
 from collections import OrderedDict
-from copy import deepcopy
 
 # ==============================================================================
 # External Python modules
 # ==============================================================================
 import numpy as np
 from mpi4py import MPI
-from scipy.special import factorial, comb
+from scipy.special import factorial
 from prefoil.preFoil import readCoordFile
 
 try:
     import matplotlib.pyplot as plt
+
     pltImport = True
 except ModuleNotFoundError:
     pltImport = False
@@ -192,8 +192,10 @@ class DVGeometryCST:
 
         # Check that all points are within the airfoil x bounds
         if np.any(points[:, self.xIdx] < self.xMin) or np.any(points[:, self.xIdx] > self.xMax):
-            raise ValueError(f"Points in the point set \"{ptName}\" have x coordinates outside" +
-                             f"the min and max x values in the initial dat file ({self.xMin} and {self.xMax})")
+            raise ValueError(
+                f'Points in the point set "{ptName}" have x coordinates outside'
+                + f"the min and max x values in the initial dat file ({self.xMin} and {self.xMax})"
+            )
         self.updated[ptName] = False
         self.points[ptName] = {
             "points": points,
@@ -208,8 +210,16 @@ class DVGeometryCST:
         # If debug mode is on, plot the upper and lower surface points
         if self.debug:
             fig = plt.figure()
-            plt.scatter(self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["upper"]], self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["upper"]], c="b")
-            plt.scatter(self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["lower"]], self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["lower"]], c="r")
+            plt.scatter(
+                self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["upper"]],
+                self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["upper"]],
+                c="b",
+            )
+            plt.scatter(
+                self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["lower"]],
+                self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["lower"]],
+                c="r",
+            )
             plt.legend(["Upper", "Lower"])
             plt.show()
             plt.close(fig)
@@ -547,7 +557,7 @@ class DVGeometryCST:
         if len(dim) == 3:
             for dvName in funcSens_local.keys():
                 funcSens_local[dvName] = np.moveaxis(np.atleast_2d(funcSens_local[dvName]), 0, -1)
-        
+
         if comm:
             funcSens = {}
             for dvName in funcSens_local.keys():
@@ -850,7 +860,7 @@ class DVGeometryCST:
         # 0 to the power of a complex number is undefined, so anywhere
         # x is 0 or 1, just keep C as zero (doesn't change the result for real)
         mask = np.logical_and(x != 0.0, x != 1.0)
-        C[mask] = x[mask]**N1 * (1.0 - x[mask]) ** N2
+        C[mask] = x[mask] ** N1 * (1.0 - x[mask]) ** N2
 
         return C
 
@@ -988,8 +998,8 @@ class DVGeometryCST:
             ax = plt.gca()
 
         x = np.linspace(0, 1, nPts)
-        yUpper = DVGeometryCST.computeCSTCoordinates(x, N1, N2, upperCoeff, 0.)
-        yLower = DVGeometryCST.computeCSTCoordinates(x, N1, N2, lowerCoeff, 0.)
+        yUpper = DVGeometryCST.computeCSTCoordinates(x, N1, N2, upperCoeff, 0.0)
+        yLower = DVGeometryCST.computeCSTCoordinates(x, N1, N2, lowerCoeff, 0.0)
 
         ax.plot(x, yUpper, **kwargs)
         ax.plot(x, yLower, **kwargs)
