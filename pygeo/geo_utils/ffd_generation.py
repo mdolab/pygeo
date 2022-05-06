@@ -192,10 +192,13 @@ def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord
 
     absMargins : list of float
         List with 3 items specifying the absolute margins in the [chordwise, spanwise, thickness] directions.
+        This is useful for areas where the relative margin is too small, such as the trailing edge or wing tip.
+        The total margin is the sum of the absolute and relative margins.
 
     relMargins : list of float
         List with 3 items specifying the relative margins in the [chordwise, spanwise, thickness] directions.
-        Relative margins are applied as a fraction of local chord, span, and local thickness.
+        Relative margins are applied as a fraction of local chord, wing span, and local thickness.
+        The total margin is the sum of the absolute and relative margins.
 
     liftIndex : int
         Index specifying which direction lift is in (same as the ADflow option).
