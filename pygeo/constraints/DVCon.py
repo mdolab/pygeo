@@ -59,7 +59,7 @@ class DVConstraints:
 
     Parameters
     ----------
-    name: str
+    name : str
         A name for this object. Used to distinguish between DVCon objects
         if multiple DVConstraint objects are used in an optimization.
 
@@ -87,16 +87,19 @@ class DVConstraints:
 
         Parameters
         ----------
-        surf : pyGeo object or list
-            This is the surface representation to use for
-            projections. If available, a pyGeo surface object can be
-            used OR a triangulated surface in the form [p0, v1, v2] can
-            be used. This triangulated surface form can be supplied
-            form pyADflow or from pyTripan.
+        surf : pyGeo object or list or str
+            The triangulated surface representation to use for projections.
+            There are a few possible ways of defining a surface.
+            1) A pyGeo surface object. `surfFormat` must be "point-vector".
+            2) List of [p0, v1, v2] with `surfFormat` "point-vector".
+            3) List of [p0, p1, p2] with `surfFormat` "point-point".
+            4) Path to a PLOT3D surface file. `surfFormat` must be "point-vector".
 
-        addToDVGeo : bool or str
-            To embed the surface pointset in a DVGeo object,
-            give the DVGeo name as a string. Otherwise, leave False
+            Option 2 is the most common, where the list is computed by an AeroSolver like ADflow.
+
+        addToDVGeo : bool
+            Flag to embed the surface point set in a DVGeo object.
+            If True, `DVGeoName` must be set appropriately.
 
         name : str
             Name associated with the surface. Must be unique. For backward compatibility,
@@ -106,6 +109,10 @@ class DVConstraints:
             Name of the DVGeo object to set the surface to. You only
             need to set this if you're using multiple DVGeo objects
             for a problem. For backward compatibility, the name is 'default' by default
+
+        surfFormat : str
+            The surface format. Either "point-vector" or "point-point".
+            See `surf` for details.
 
         Examples
         --------
