@@ -17,7 +17,7 @@ from collections import OrderedDict
 import numpy as np
 from mpi4py import MPI
 from scipy.special import factorial
-from prefoil.preFoil import readCoordFile
+from prefoil.utils import readCoordFile
 
 try:
     import matplotlib.pyplot as plt
