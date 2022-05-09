@@ -10,6 +10,7 @@ class geoDV:
         self.name = name
         self.value = value
         self.nVal = nVal
+        self.lower = self.upper = self.scale = None
 
         if lower is not None:
             self.lower = convertTo1D(lower, self.nVal)
@@ -63,7 +64,7 @@ class geoDVLocal(geoDV):
         """
 
         coefList = []
-        # create a new coefficent list that excludes any values that are masked
+        # create a new coefficient list that excludes any values that are masked
         for i in range(len(coefListIn)):
             if not mask[coefListIn[i]]:
                 coefList.append(coefListIn[i])
