@@ -242,6 +242,7 @@ class DVGeometry:
         self,
         name,
         curve=None,
+        curve_symm=None,
         xFraction=None,
         yFraction=None,
         zFraction=None,
@@ -254,6 +255,7 @@ class DVGeometry:
         rot0axis=[1, 0, 0],
         includeVols=[],
         ignoreInd=[],
+        ignoreIndSymm=[],
         raySize=1.5,
     ):
         """
@@ -416,10 +418,12 @@ class DVGeometry:
                 for volume in volumes:
                     volumesSymm.append(volume + self.FFD.nVol / 2)
 
-                curveSymm = copy.deepcopy(curve)
-                curveSymm.reverse()
-                for _coef in curveSymm.coef:
-                    curveSymm.coef[:, index] = -curveSymm.coef[:, index]
+                # TODO instead, do a full initialization here. a deep copy is error prone or figure out all the computations needed to do the full init
+                # curveSymm = copy.deepcopy(curve)
+                # curveSymm.reverse()
+                # for _coef in curveSymm.coef:
+                    # curveSymm.coef[:, index] = -curveSymm.coef[:, index]
+                # curveSymm.recompute(nIter=1)
                 self.axis[name] = {
                     "curve": curve,
                     "volumes": volumes,
@@ -429,7 +433,7 @@ class DVGeometry:
                     "rot0axis": rot0axis,
                 }
                 self.axis[name + "Symm"] = {
-                    "curve": curveSymm,
+                    "curve": curve_symm,
                     "volumes": volumesSymm,
                     "rotType": rotType,
                     "axis": axis,
@@ -584,6 +588,10 @@ class DVGeometry:
 
         # Specify indices to be ignored
         self.axis[name]["ignoreInd"] = ignoreInd
+        if self.FFD.symmPlane is not None:
+            # TODO this ignore indSymm can be automated by getting the indices of the duplicate nodes
+            self.axis[name + "Symm"]["ignoreInd"] = ignoreIndSymm
+            self.axis[name + "Symm"]["raySize"] = raySize
 
         # Add the raySize multiplication factor for this axis
         self.axis[name]["raySize"] = raySize
