@@ -56,7 +56,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, 8)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
@@ -294,7 +294,7 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, 8)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
@@ -495,7 +495,7 @@ class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, 8)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
@@ -655,7 +655,7 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, max_dist_tol)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         updated_dist_max = np.max(np.sqrt(np.sum((p0 - DVGeo.pointSets["airfoil_p0"].proj_pts) ** 2, axis=1)))
