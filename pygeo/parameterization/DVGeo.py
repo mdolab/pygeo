@@ -862,7 +862,7 @@ class DVGeometry(BaseDVGeometry):
                 for vol in volList:
                     volListTmp.append(vol)
                 for vol in volList:
-                    volListTmp.append(vol + self.FFD.nVol / 2)
+                    volListTmp.append(vol + self.FFD.nVol // 2)
                 volList = volListTmp
 
             volList = np.atleast_1d(volList).astype("int")
@@ -984,7 +984,7 @@ class DVGeometry(BaseDVGeometry):
                 for vol in volList:
                     volListTmp.append(vol)
                 for vol in volList:
-                    volListTmp.append(vol + self.FFD.nVol / 2)
+                    volListTmp.append(vol + self.FFD.nVol // 2)
                 volList = volListTmp
 
             volList = np.atleast_1d(volList).astype("int")
@@ -1222,7 +1222,7 @@ class DVGeometry(BaseDVGeometry):
                 for vol in volList:
                     volListTmp.append(vol)
                 for vol in volList:
-                    volListTmp.append(vol + self.FFD.nVol / 2)
+                    volListTmp.append(vol + self.FFD.nVol // 2)
                 volList = volListTmp
 
             volList = np.atleast_1d(volList).astype("int")
