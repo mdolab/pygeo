@@ -241,7 +241,6 @@ class DVGeometry(BaseDVGeometry):
         self,
         name,
         curve=None,
-        curve_symm=None,
         xFraction=None,
         yFraction=None,
         zFraction=None,
@@ -254,7 +253,6 @@ class DVGeometry(BaseDVGeometry):
         rot0axis=[1, 0, 0],
         includeVols=[],
         ignoreInd=[],
-        ignoreIndSymm=[],
         raySize=1.5,
     ):
         """
@@ -417,12 +415,21 @@ class DVGeometry(BaseDVGeometry):
                 for volume in volumes:
                     volumesSymm.append(volume + self.FFD.nVol / 2)
 
-                # TODO instead, do a full initialization here. a deep copy is error prone or figure out all the computations needed to do the full init
+                # TODO AY: the lines below tried to do a deep copy of the symmetry curve but it did not work, so I disabled this and am re-initializing the curve using the spline order and the X array. this is still probably not the best and most general way of doing it. The ideal way would be to fully figure out why the deepcopy and reverse approach does not work and fix it directly.
                 # curveSymm = copy.deepcopy(curve)
                 # curveSymm.reverse()
                 # for _coef in curveSymm.coef:
-                    # curveSymm.coef[:, index] = -curveSymm.coef[:, index]
+                # curveSymm.coef[:, index] = -curveSymm.coef[:, index]
                 # curveSymm.recompute(nIter=1)
+
+                # do a full re-initialization using the X array and spline order
+                symm_curve_X = curve.X.copy()
+
+                # flip the coefs
+                symm_curve_X[:, index] = -symm_curve_X[:, index]
+                symm_curve_k = curve.k
+                curveSymm = Curve(k=symm_curve_k, X=symm_curve_X)
+
                 self.axis[name] = {
                     "curve": curve,
                     "volumes": volumes,
@@ -432,7 +439,7 @@ class DVGeometry(BaseDVGeometry):
                     "rot0axis": rot0axis,
                 }
                 self.axis[name + "Symm"] = {
-                    "curve": curve_symm,
+                    "curve": curveSymm,
                     "volumes": volumesSymm,
                     "rotType": rotType,
                     "axis": axis,
@@ -587,13 +594,36 @@ class DVGeometry(BaseDVGeometry):
 
         # Specify indices to be ignored
         self.axis[name]["ignoreInd"] = ignoreInd
-        if self.FFD.symmPlane is not None:
-            # TODO this ignore indSymm can be automated by getting the indices of the duplicate nodes
-            self.axis[name + "Symm"]["ignoreInd"] = ignoreIndSymm
-            self.axis[name + "Symm"]["raySize"] = raySize
 
         # Add the raySize multiplication factor for this axis
         self.axis[name]["raySize"] = raySize
+
+        # do the same for the other half if we have a symmetry plane
+        if self.FFD.symmPlane is not None:
+            # we need to figure out the correct indices to ignore for the mirrored FFDs
+
+            # first get the matching indices between the current and mirroring FFDs.
+            # we want to include the the nodes on the symmetry plane.
+            # these will appear as the same indices on FFDs on both sides
+            indSetA, indSetB = self.getSymmetricCoefList(getSymmPlane=True)
+
+            # loop over the inds_to_ignore list and find the corresponding symmetries
+            # TODO this can be improved.
+            ignoreIndSymm = []
+            for ind in ignoreInd:
+                try:
+                    tmp = indSetA.index(ind)
+                except ValueError:
+                    raise Error(
+                        f"""the index {ind} is not in indSetA. This is likely due to a weird issue caused by the point reduction routines during initialization. reduce the offset of the FFD control points from the symmetry plane to avoid it. the max deviation from the symmetry plane needs to be less than around 1e-5 if rest of the default tolerances in pygeo is used."""
+                    )
+                ind_mirror = indSetB[tmp]
+                ignoreIndSymm.append(ind_mirror)
+
+            self.axis[name + "Symm"]["ignoreInd"] = ignoreIndSymm
+
+            # we just take the same raySize as the original curve
+            self.axis[name + "Symm"]["raySize"] = raySize
 
         return nAxis
 
@@ -1294,7 +1324,7 @@ class DVGeometry(BaseDVGeometry):
         warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
         return self.addLocalSectionDV(*args, **kwargs)
 
-    def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8):
+    def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8, getSymmPlane=False):
         """
         Determine the pairs of coefs that need to be constrained for symmetry.
 
@@ -1310,6 +1340,12 @@ class DVGeometry(BaseDVGeometry):
         tol : float
               Tolerance for ignoring nodes around the symmetry plane. These should be
               merged by the network/connectivity anyway
+        getSymmPlane : bool
+              If this flag is set to True, we also return the points on the symmetry plane
+              for all volumes. e.g. a reduced point on the symmetry plane with the same indices on both volumes will show up as the same value in both arrays. This is useful when determining
+              the indices to ignore when adding pointsets. The default behavior will not include
+              the points exactly on the symmetry plane. this is more useful for adding them as
+              linear constraints
 
         Returns
         -------
@@ -1345,7 +1381,7 @@ class DVGeometry(BaseDVGeometry):
                 for vol in volList:
                     volListTmp.append(vol)
                 for vol in volList:
-                    volListTmp.append(vol + self.FFD.nVol / 2)
+                    volListTmp.append(vol + self.FFD.nVol // 2)
                 volList = volListTmp
 
                 volList = np.atleast_1d(volList).astype("int")
@@ -1378,11 +1414,28 @@ class DVGeometry(BaseDVGeometry):
                     # Now find any matching nodes within tol. there should be 2 and
                     # only 2 if the mesh is symmetric
                     Ind = tree.query_ball_point(pt, tol)  # should this be a separate tol
-                    if not (len(Ind) == 2):
-                        raise Error("more than 2 coefs found that match pt")
+                    if len(Ind) == 2:
+                        # check which point is on which side
+                        if pts[Ind[0], index] > 0:
+                            # first one is on the primary side
+                            indSetA.append(Ind[0])
+                            indSetB.append(Ind[1])
+                        else:
+                            # flip the order
+                            indSetA.append(Ind[1])
+                            indSetB.append(Ind[0])
                     else:
+                        raise Error("more than 2 coefs found that match pt")
+
+                elif (abs(pt[index]) < tol) and getSymmPlane:
+                    # this point is on the symmetry plane
+                    # if everything went right so far, this should return only one point
+                    Ind = tree.query_ball_point(pt, tol)
+                    if len(Ind) == 1:
                         indSetA.append(Ind[0])
-                        indSetB.append(Ind[1])
+                        indSetB.append(Ind[0])
+                    else:
+                        raise Error("more than 1 coefs found that match pt on symmetry plane")
 
         return indSetA, indSetB
 
