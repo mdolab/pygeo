@@ -15,8 +15,7 @@ from parameterized import parameterized_class
 # External Python modules
 # ==============================================================================
 import numpy as np
-import matplotlib.pyplot as plt
-from prefoil.preFoil import readCoordFile
+from prefoil.utils import readCoordFile
 from mpi4py import MPI
 
 # ==============================================================================

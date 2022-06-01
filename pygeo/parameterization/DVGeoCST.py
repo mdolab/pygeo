@@ -2,7 +2,7 @@
 ==============================================================================
 DVGeo: CST Parameterisation
 ==============================================================================
-@Author  :   Alasdair Christison Gray, Eytan Adler
+@Author : Eytan Adler, Alasdair Christison Gray
 @Description : A DVGeo implementation based on the Class-Shape Transformation method
 """
 
