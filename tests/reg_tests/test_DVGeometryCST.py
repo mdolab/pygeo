@@ -266,7 +266,10 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         thickTE = coords[0, 1] - coords[-1, 1]
 
         # Divide up the points among the procs (mostly evenly, but not quite to check the harder case)
-        nPerProc = int(coords.shape[0] // 3.5)
+        if self.N_PROCS == 1:
+            nPerProc = coords.shape[0]
+        else:
+            nPerProc = int(coords.shape[0] // (self.N_PROCS - 0.5))
         rank = self.comm.rank
         if self.comm.rank < self.comm.size - 1:  # all but last proc takes nPerProc elements
             self.DVGeo.addPointSet(coords[rank * nPerProc : (rank + 1) * nPerProc, :], "test")

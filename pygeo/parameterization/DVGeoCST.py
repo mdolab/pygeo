@@ -143,7 +143,9 @@ class DVGeometryCST:
 
         # Determine the trailing edge thickness
         idxTE = np.where(self.foilCoords[:, self.xIdx] == self.xMax)[0]
-        self.thicknessTE = np.max(self.foilCoords[idxTE, self.yIdx]) - np.min(self.foilCoords[idxTE, self.yIdx])
+        self.yUpperTE = np.max(self.foilCoords[idxTE, self.yIdx])
+        self.yLowerTE = np.min(self.foilCoords[idxTE, self.yIdx])
+        self.thicknessTE = self.yUpperTE - self.yLowerTE
 
         # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet)
         self.foil = Airfoil(coords)
@@ -829,18 +831,18 @@ class DVGeometryCST:
         upperBool = upperDist < lowerDist
         lowerBool = np.logical_not(upperBool)
 
-        # Find any trailing edge points if they're in this point set
-        idxTE = np.where(points[:, self.xIdx] == self.xMax)[0]
+        # Find any trailing edge points that are not on the upper or lower
+        # surface (on the surface of the blunt trailing edge)
+        isTE = points[:, self.xIdx] == self.xMax
+        tol = 1e-13
+        isNotUpperSurface = points[:, self.yIdx] < self.yUpperTE - tol
+        isNotLowerSurface = points[:, self.yIdx] > self.yLowerTE + tol
+        isNotSurface = np.logical_and(isNotLowerSurface, isNotUpperSurface)
+        idxTE = np.where(np.logical_and(isTE, isNotSurface))[0]
 
-        # If there are trailing edge points, remove any that are on the blunt part of the
-        # trailing edge from the upper and lower surfaces
-        if idxTE.size > 0:
-            idxUpperTE = idxTE[np.argmax(points[idxTE, self.yIdx])]
-            idxLowerTE = idxTE[np.argmin(points[idxTE, self.yIdx])]
-            upperBool[idxTE] = False
-            upperBool[idxUpperTE] = True
-            lowerBool[idxTE] = False
-            lowerBool[idxLowerTE] = True
+        # Remove points on the blunt trailing edge
+        upperBool[idxTE] = False
+        lowerBool[idxTE] = False
 
         return np.where(upperBool)[0], np.where(lowerBool)[0]
 
