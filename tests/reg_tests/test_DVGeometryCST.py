@@ -27,7 +27,7 @@ from pygeo import DVGeometryCST
 airfoils = [
     {"fName": "naca2412.dat", "LEUpper": False},
     {"fName": "naca0012.dat", "LEUpper": True},
-    {"fName": "e63.dat", "LEUpper": False}
+    {"fName": "e63.dat", "LEUpper": False},
 ]
 
 # Parameterization of design variables
@@ -152,7 +152,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             if self.fName == "e63.dat":
                 if nCST < 4:
                     atol = 1e-1
-                    rtol = 1.
+                    rtol = 1.0
                 else:
                     atol = 1e-2
                     rtol = 6e-1
@@ -434,7 +434,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         # dIdXpt of all ones means the total sensitivities will just be the sum of the
         # derivatives at each of the coordianates
         dIdXpt = np.ones_like(self.coords)
-        coeff = np.array([0.1, 0.5, 1.])
+        coeff = np.array([0.1, 0.5, 1.0])
         dIdXptVectorized = np.array([coeff[0] * dIdXpt, coeff[1] * dIdXpt, coeff[2] * dIdXpt])
 
         DVs = self.DVGeo.getValues()
