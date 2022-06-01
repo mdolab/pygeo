@@ -155,8 +155,8 @@ class ThicknessToChordConstraint(GeometricConstraint):
 
                 dToCdPt[i, 4 * i, :] = p1b / c / self.ToC0[i]
                 dToCdPt[i, 4 * i + 1, :] = p2b / c / self.ToC0[i]
-                dToCdPt[i, 4 * i + 2, :] = (-p3b * t / c ** 2) / self.ToC0[i]
-                dToCdPt[i, 4 * i + 3, :] = (-p4b * t / c ** 2) / self.ToC0[i]
+                dToCdPt[i, 4 * i + 2, :] = (-p3b * t / c**2) / self.ToC0[i]
+                dToCdPt[i, 4 * i + 3, :] = (-p4b * t / c**2) / self.ToC0[i]
 
             funcsSens[self.name] = self.DVGeo.totalSensitivity(dToCdPt, self.name, config=config)
 

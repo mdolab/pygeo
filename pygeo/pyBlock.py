@@ -840,8 +840,7 @@ class pyBlock:
 
         See Also
         --------
-        See the attachPoints() docstring for the other parameters.
-
+        attachPoints : description of the other parameters
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
@@ -901,7 +900,7 @@ class pyBlock:
                 if nrm > DMax:
                     DMax = nrm
 
-                DRms += nrm ** 2
+                DRms += nrm**2
                 if nrm > embTol:
                     counter += 1
                     badPts.append([x0[i], D[i]])

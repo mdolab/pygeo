@@ -64,10 +64,8 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         N1 = 0.5
         N2 = 1.0
         yExact = np.sqrt(self.x) * (1 - self.x)
-        for n in range(1, self.maxNumCoeff + 1):
-            w = np.ones(n)
-            y = DVGeometryCST.computeClassShape(self.x, N1, N2)
-            np.testing.assert_allclose(y, yExact, atol=self.coordTol, rtol=self.coordTol)
+        y = DVGeometryCST.computeClassShape(self.x, N1, N2)
+        np.testing.assert_allclose(y, yExact, atol=self.coordTol, rtol=self.coordTol)
 
     def test_ShapeFunctions(self):
         """Test that the shape functions sum to 1 when all weights are 1"""
@@ -82,7 +80,6 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         N2 = self.rng.random(1)
         for n in range(1, self.maxNumCoeff + 1):
             w = self.rng.random(n)
-            y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN1 = DVGeometryCST.computeCSTdydN1(self.x, N1, N2, w)
             dydN1_CS = (
                 np.imag(
@@ -98,7 +95,6 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         N2 = self.rng.random(1)
         for n in range(1, self.maxNumCoeff + 1):
             w = self.rng.random(n)
-            y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydN2 = DVGeometryCST.computeCSTdydN2(self.x, N1, N2, w)
             dydN2_CS = (
                 np.imag(
@@ -114,7 +110,6 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         N2 = self.rng.random(1)
         for n in range(1, self.maxNumCoeff + 1):
             w = self.rng.random(n)
-            y0 = DVGeometryCST.computeCSTCoordinates(self.x, N1, N2, w, self.yte)
             dydw = DVGeometryCST.computeCSTdydw(self.x, N1, N2, w)
             dydw_CS = np.zeros((n, self.x.size), dtype=float)
             w = w.astype(complex)
