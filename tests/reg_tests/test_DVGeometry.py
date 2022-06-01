@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from baseclasses import BaseRegTest
 import commonUtils
-from pygeo import geo_utils, DVGeometry, DVConstraints
+from pygeo import DVGeometry, DVConstraints
 from stl import mesh
 
 
@@ -730,44 +730,6 @@ class RegTestPyGeo(unittest.TestCase):
                 # Compute the analytic derivatives
                 dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
                 handler.root_add_dict("dIdx", dIdx, rtol=1e-7, atol=1e-7)
-
-    def train_22(self, train=True, refDeriv=True):
-        self.test_22(train=train, refDeriv=refDeriv)
-
-    def test_22(self, train=False, refDeriv=False):
-        """
-        Test 22
-        """
-        refFile = os.path.join(self.base_path, "ref/test_DVGeometry_22.ref")
-        with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test FFD writing function")
-
-            # Write duplicate of outerbox FFD
-            axes = ["i", "k", "j"]
-            slices = np.array(
-                [
-                    # Slice 1
-                    [[[-1, -1, -1], [-1, 1, -1]], [[-1, -1, 1], [-1, 1, 1]]],
-                    # Slice 2
-                    [[[1, -1, -1], [1, 1, -1]], [[1, -1, 1], [1, 1, 1]]],
-                    # Slice 3
-                    [[[2, -1, -1], [2, 1, -1]], [[2, -1, 1], [2, 1, 1]]],
-                ]
-            )
-
-            N0 = [2, 2]
-            N1 = [2, 2]
-            N2 = [2, 2]
-
-            copyName = os.path.join(self.base_path, "../../input_files/test1.xyz")
-            geo_utils.write_wing_FFD_file(copyName, slices, N0, N1, N2, axes=axes)
-
-            # Load original and duplicate
-            origFFD = DVGeometry(os.path.join(self.base_path, "../../input_files/outerBoxFFD.xyz"))
-            copyFFD = DVGeometry(copyName)
-            norm_diff = np.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
-            handler.par_add_norm("norm", norm_diff, rtol=1e-7, atol=1e-7)
-            os.remove(copyName)
 
     def test_spanwise_dvs(self, train=False, refDeriv=False):
         """
