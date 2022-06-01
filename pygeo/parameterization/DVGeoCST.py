@@ -18,6 +18,7 @@ import numpy as np
 from mpi4py import MPI
 from scipy.special import factorial
 from prefoil.utils import readCoordFile
+from prefoil.airfoil import Airfoil
 
 try:
     import matplotlib.pyplot as plt
@@ -144,8 +145,9 @@ class DVGeometryCST:
         idxTE = np.where(self.foilCoords[:, self.xIdx] == self.xMax)[0]
         self.thicknessTE = np.max(self.foilCoords[idxTE, self.yIdx]) - np.min(self.foilCoords[idxTE, self.yIdx])
 
-        # Fit a polynomial to the airfoil to approximate the camber line
-        self.camberPoly = np.polyfit(self.foilCoords[:, self.xIdx], self.foilCoords[:, self.yIdx], 9)
+        # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet)
+        self.foil = Airfoil(coords)
+        self.upperSpline, self.lowerSpline = self.foil.splitAirfoil()
 
         # Fit CST parameters to the airfoil's upper and lower surface
         self.idxFoil = {}
@@ -172,9 +174,6 @@ class DVGeometryCST:
             - The airfoil's leading edge is on the left (min x or idxChord) and trailing edge is
               on the right (max x or idxChord)
             - The airfoil's leading edge is at y (or idxVertical) equals zero (within 1e-2)
-            - The current approach to split the upper and lower surfaces fits a 9th order polynomial to the airfoil
-              coordinates and the upper surface is anything above and lower, anything below. The downside is this
-              method may not work for airfoils with a very thin and cambered trailing edge.
 
         Parameters
         ----------
@@ -220,14 +219,20 @@ class DVGeometryCST:
                 self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["lower"]],
                 c="r",
             )
+            plt.scatter(
+                self.points[ptName]["points"][:, self.xIdx],
+                self.points[ptName]["points"][:, self.yIdx],
+                s=3,
+                c="k",
+                zorder=3,
+            )
             plt.legend(["Upper", "Lower"])
             plt.show()
             plt.close(fig)
 
     def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
         """
-        Add one or more local design variables ot the DVGeometry
-        object. Local variables are used for small shape modifications.
+        Add design variables to the DVGeometryCST object.
 
         Parameters
         ----------
@@ -426,10 +431,6 @@ class DVGeometryCST:
         optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
         return list(self.DVs.keys())
-
-    def writeToFile(self, filename):
-        # TODO generalize the writing to files?
-        pass
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, **kwargs):
         r"""
@@ -747,14 +748,15 @@ class DVGeometryCST:
         """
         return len(self.DVs)
 
-    def printDesignVariables(self, directory):
-        pass
-
-    def writePointSet(self, name, fileName):
-        pass
-
-    def demoDesignVars(self, directory):
-        pass
+    def printDesignVariables(self):
+        """
+        Print a formatted list of design variables to the screen
+        """
+        print("\nDVGeometryCST design variables")
+        print("==============================")
+        for dvName, DV in self.DVs.items():
+            print(f"{dvName} ({DV['type']} type): {DV['value']}")
+        print("")
 
     def _unpackDVs(self, ptSetName):
         """
@@ -803,8 +805,8 @@ class DVGeometryCST:
         """
         Figure out the indices of points on the upper and lower
         surfaces of the airfoil. This requires that the attributes
-        self.xMax, self.camberPoly, self.xIdx, and self.yIdx have
-        already been set.
+        self.xMax, self.lowerSpline, self.upperSpline, self.xIdx,
+        and self.yIdx have already been set.
 
         Parameters
         ----------
@@ -818,11 +820,14 @@ class DVGeometryCST:
         ndarray (1D)
             Indices of lower surface points (correspond to rows in points)
         """
-        yCamberLine = np.polyval(self.camberPoly, points[:, self.xIdx])
+        # Determine which surface each point is on based on which spline it is closer to
+        _, upperDist = self.upperSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
+        _, lowerDist = self.lowerSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
+        upperDist = np.linalg.norm(upperDist, axis=1)
+        lowerDist = np.linalg.norm(lowerDist, axis=1)
 
-        # Split the upper and lower surfaces
-        upperBool = yCamberLine < points[:, self.yIdx]
-        lowerBool = points[:, self.yIdx] <= yCamberLine
+        upperBool = upperDist < lowerDist
+        lowerBool = np.logical_not(upperBool)
 
         # Find any trailing edge points if they're in this point set
         idxTE = np.where(points[:, self.xIdx] == self.xMax)[0]

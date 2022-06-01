@@ -23,8 +23,12 @@ from mpi4py import MPI
 # ==============================================================================
 from pygeo import DVGeometryCST
 
-# LEUpper is true if the leading edge point is considered to be on the upper surface
-airfoils = [{"fName": "naca2412.dat", "LEUpper": False}, {"fName": "naca0012.dat", "LEUpper": True}]
+# LEUpper is true if the leading edge (minimum x) point is considered to be on the upper surface
+airfoils = [
+    {"fName": "naca2412.dat", "LEUpper": False},
+    {"fName": "naca0012.dat", "LEUpper": True},
+    {"fName": "e63.dat", "LEUpper": False}
+]
 
 # Parameterization of design variables
 DVs = [
@@ -144,8 +148,20 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             fitCoordsUpper = DVGeometryCST.computeCSTCoordinates(coords[idxUpper, 0], N1, N2, upperCST, yTE)
             fitCoordsLower = DVGeometryCST.computeCSTCoordinates(coords[idxLower, 0], N1, N2, lowerCST, -yTE)
 
-            np.testing.assert_allclose(fitCoordsUpper, coords[idxUpper, 1], atol=1e-3, rtol=1e-1)
-            np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=1e-3, rtol=1e-1)
+            # Loosen the tolerances for the challenging e63 airfoil
+            if self.fName == "e63.dat":
+                if nCST < 4:
+                    atol = 1e-1
+                    rtol = 1.
+                else:
+                    atol = 1e-2
+                    rtol = 6e-1
+            else:
+                atol = 1e-3
+                rtol = 1e-1
+
+            np.testing.assert_allclose(fitCoordsUpper, coords[idxUpper, 1], atol=atol, rtol=rtol)
+            np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=atol, rtol=rtol)
 
 
 @parameterized_class(airfoils)
@@ -164,9 +180,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         coords = readCoordFile(self.datFile)
         coords = np.hstack((coords, np.zeros((coords.shape[0], 1))))
         idxLE = np.argmin(coords[:, 0])
-        idxUpper = np.arange(
-            0, idxLE + self.LEUpper
-        )  # TODO: should the LE be in both upper and lower? I think probably not
+        idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
         thickTE = coords[0, 1] - coords[-1, 1]
 
