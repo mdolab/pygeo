@@ -286,14 +286,14 @@ class DVGeometryCST:
             "chord",
         ]:
             raise ValueError(
-                f'dvType must be one of "upper", "lower", "N1", "N2", "N1_upper", "N1_lower", '
+                'dvType must be one of "upper", "lower", "N1", "N2", "N1_upper", "N1_lower", '
                 + f'"N2_upper", "N2_lower", or "chord" not {dvType}'
             )
         dvType = dvType.lower()
 
         if dvType in ["upper", "lower"]:
             if dvNum is None:
-                raise ValueError(f'dvNum must be specified if dvType is "upper" or "lower"')
+                raise ValueError('dvNum must be specified if dvType is "upper" or "lower"')
         else:
             dvNum = 1
 
@@ -456,7 +456,7 @@ class DVGeometryCST:
             The dictionary containing the derivatives, suitable for pyOptSparse
         """
         # Unpack some useful variables
-        vars = self._unpackDVs(ptSetName)
+        desVars = self._unpackDVs(ptSetName)
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
         xMax = self.points[ptSetName]["xMax"]
         xMin = self.points[ptSetName]["xMin"]
@@ -476,81 +476,81 @@ class DVGeometryCST:
 
             if dvType == "upper":
                 dydUpperCST = self.computeCSTdydw(
-                    scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                 )
-                dydUpperCST *= vars["chord"]
+                dydUpperCST *= desVars["chord"]
                 funcSens_local[dvName] = dydUpperCST @ dIdpt[idxUpper, self.yIdx]
             elif dvType == "lower":
                 dydLowerCST = self.computeCSTdydw(
-                    scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                 )
-                dydLowerCST *= vars["chord"]
+                dydLowerCST *= desVars["chord"]
                 funcSens_local[dvName] = dydLowerCST @ dIdpt[idxLower, self.yIdx]
             elif dvType == "n1_upper":
                 funcSens_local[dvName] = (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN1(
-                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                        scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                     )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n2_upper":
                 funcSens_local[dvName] = (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN2(
-                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                        scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                     )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
             elif dvType == "n1_lower":
                 funcSens_local[dvName] = (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN1(
-                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                        scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                     )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2_lower":
                 funcSens_local[dvName] = (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN2(
-                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                        scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                     )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n1":
                 funcSens_local[dvName] = (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN1(
-                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                        scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                     )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
                 funcSens_local[dvName] += (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN1(
-                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                        scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                     )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             elif dvType == "n2":
                 funcSens_local[dvName] = (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN2(
-                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                        scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                     )
                     @ dIdpt[idxUpper, self.yIdx]
                 )
                 funcSens_local[dvName] += (
-                    vars["chord"]
+                    desVars["chord"]
                     * self.computeCSTdydN2(
-                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                        scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                     )
                     @ dIdpt[idxLower, self.yIdx]
                 )
             else:  # chord
-                dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
-                dxdchord = (ptsX - xMin) / vars["chord"]
+                dydchord = self.points[ptSetName]["points"][:, self.yIdx] / desVars["chord"]
+                dxdchord = (ptsX - xMin) / desVars["chord"]
                 funcSens_local[dvName] = dxdchord @ dIdpt[:, self.xIdx] + dydchord @ dIdpt[:, self.yIdx]
 
         # If the axes were reordered to handle a group of dIdpt vectors,
@@ -590,7 +590,7 @@ class DVGeometryCST:
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
         """
         # Unpack some useful variables
-        vars = self._unpackDVs(ptSetName)
+        desVars = self._unpackDVs(ptSetName)
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
         xMax = self.points[ptSetName]["xMax"]
         xMin = self.points[ptSetName]["xMin"]
@@ -607,51 +607,51 @@ class DVGeometryCST:
 
             if dvType == "upper":
                 dydUpperCST = self.computeCSTdydw(
-                    scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                    scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                 )
-                dydUpperCST *= vars["chord"]
+                dydUpperCST *= desVars["chord"]
                 xsdot[idxUpper, self.yIdx] += dydUpperCST.T @ dvSeed
             if dvType == "lower":
                 dydLowerCST = self.computeCSTdydw(
-                    scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                    scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                 )
-                dydLowerCST *= vars["chord"]
+                dydLowerCST *= desVars["chord"]
                 xsdot[idxLower, self.yIdx] += dydLowerCST.T @ dvSeed
             if dvType == "n1_upper" or dvType == "n1":
                 xsdot[idxUpper, self.yIdx] += (
                     dvSeed
-                    * vars["chord"]
+                    * desVars["chord"]
                     * self.computeCSTdydN1(
-                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                        scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                     )
                 )
             if dvType == "n2_upper" or dvType == "n2":
                 xsdot[idxUpper, self.yIdx] += (
                     dvSeed
-                    * vars["chord"]
+                    * desVars["chord"]
                     * self.computeCSTdydN2(
-                        scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], dtype=self.dtype
+                        scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], dtype=self.dtype
                     )
                 )
             if dvType == "n1_lower" or dvType == "n1":
                 xsdot[idxLower, self.yIdx] += (
                     dvSeed
-                    * vars["chord"]
+                    * desVars["chord"]
                     * self.computeCSTdydN1(
-                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                        scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                     )
                 )
             if dvType == "n2_lower" or dvType == "n2":
                 xsdot[idxLower, self.yIdx] += (
                     dvSeed
-                    * vars["chord"]
+                    * desVars["chord"]
                     * self.computeCSTdydN2(
-                        scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], dtype=self.dtype
+                        scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], dtype=self.dtype
                     )
                 )
             if dvType == "chord":
-                dydchord = self.points[ptSetName]["points"][:, self.yIdx] / vars["chord"]
-                dxdchord = (ptsX - xMin) / vars["chord"]
+                dydchord = self.points[ptSetName]["points"][:, self.yIdx] / desVars["chord"]
+                dxdchord = (ptsX - xMin) / desVars["chord"]
                 xsdot[:, self.yIdx] += dvSeed * dydchord
                 xsdot[:, self.xIdx] += dvSeed * dxdchord
 
@@ -697,7 +697,7 @@ class DVGeometryCST:
         points : ndarray (N x 3)
             Updated point set coordinates.
         """
-        vars = self._unpackDVs(ptSetName)
+        desVars = self._unpackDVs(ptSetName)
 
         # Unpack the points to make variable names more accessible
         idxUpper = self.points[ptSetName]["upper"]
@@ -718,20 +718,20 @@ class DVGeometryCST:
         scaledX = (ptsX - shift) / chord
         yTE = thicknessTE / chord / 2  # half the scaled trailing edge thickness
 
-        ptsY[idxUpper] = vars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxUpper], vars["n1_upper"], vars["n2_upper"], vars["upper"], yTE, dtype=self.dtype
+        ptsY[idxUpper] = desVars["chord"] * self.computeCSTCoordinates(
+            scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], yTE, dtype=self.dtype
         )
-        ptsY[idxLower] = vars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxLower], vars["n1_lower"], vars["n2_lower"], vars["lower"], -yTE, dtype=self.dtype
+        ptsY[idxLower] = desVars["chord"] * self.computeCSTCoordinates(
+            scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], -yTE, dtype=self.dtype
         )
-        ptsY[idxTE] *= vars["chord"] / chord
+        ptsY[idxTE] *= desVars["chord"] / chord
 
         # Scale the chord according to the chord DV
-        points[:, self.xIdx] = (points[:, self.xIdx] - shift) * vars["chord"] / chord + shift
+        points[:, self.xIdx] = (points[:, self.xIdx] - shift) * desVars["chord"] / chord + shift
 
         # Scale the point set's properties based on the new chord length
-        self.points[ptSetName]["xMax"] = (xMax - shift) * vars["chord"] / chord + shift
-        self.points[ptSetName]["thicknessTE"] *= vars["chord"] / chord
+        self.points[ptSetName]["xMax"] = (xMax - shift) * desVars["chord"] / chord + shift
+        self.points[ptSetName]["thicknessTE"] *= desVars["chord"] / chord
 
         self.updated[ptSetName] = True
 
@@ -773,7 +773,7 @@ class DVGeometryCST:
 
         Returns
         -------
-        vars : dict
+        desVars : dict
             Dictionary containing the following airfoil shape parameters:
                 `"upper"`: upper surface CST coefficients
                 `"lower"`: lower surface CST coefficients
@@ -783,23 +783,23 @@ class DVGeometryCST:
                 `"n2_upper"`: second class shape parameter on upper surface
                 `"chord"`: chord length
         """
-        vars = {}
-        vars["upper"] = self.defaultDV["upper"].copy()
-        vars["lower"] = self.defaultDV["lower"].copy()
-        vars["n1_upper"] = self.defaultDV["n1_upper"].copy()
-        vars["n2_upper"] = self.defaultDV["n2_upper"].copy()
-        vars["n1_lower"] = self.defaultDV["n1_lower"].copy()
-        vars["n2_lower"] = self.defaultDV["n2_lower"].copy()
-        vars["chord"] = self.defaultDV["chord"].copy()
+        desVars = {}
+        desVars["upper"] = self.defaultDV["upper"].copy()
+        desVars["lower"] = self.defaultDV["lower"].copy()
+        desVars["n1_upper"] = self.defaultDV["n1_upper"].copy()
+        desVars["n2_upper"] = self.defaultDV["n2_upper"].copy()
+        desVars["n1_lower"] = self.defaultDV["n1_lower"].copy()
+        desVars["n2_lower"] = self.defaultDV["n2_lower"].copy()
+        desVars["chord"] = self.defaultDV["chord"].copy()
 
         for DV in self.DVs.values():
             if DV["type"] in ["n1", "n2"]:
-                vars[f"{DV['type']}_upper"] = DV["value"]
-                vars[f"{DV['type']}_lower"] = DV["value"]
+                desVars[f"{DV['type']}_upper"] = DV["value"]
+                desVars[f"{DV['type']}_lower"] = DV["value"]
             else:
-                vars[DV["type"]] = DV["value"]
+                desVars[DV["type"]] = DV["value"]
 
-        return vars
+        return desVars
 
     def _splitUpperLower(self, points):
         """
