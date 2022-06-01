@@ -64,9 +64,8 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         N1 = 0.5
         N2 = 1.0
         yExact = np.sqrt(self.x) * (1 - self.x)
-        for n in range(1, self.maxNumCoeff + 1):
-            y = DVGeometryCST.computeClassShape(self.x, N1, N2)
-            np.testing.assert_allclose(y, yExact, atol=self.coordTol, rtol=self.coordTol)
+        y = DVGeometryCST.computeClassShape(self.x, N1, N2)
+        np.testing.assert_allclose(y, yExact, atol=self.coordTol, rtol=self.coordTol)
 
     def test_ShapeFunctions(self):
         """Test that the shape functions sum to 1 when all weights are 1"""
