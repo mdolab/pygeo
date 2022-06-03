@@ -350,7 +350,7 @@ class DVGeometryCST(BaseDVGeometry):
             lower=lower,
             upper=upper,
             scale=scale,
-            type=dvType,
+            dvType=dvType,
         )
 
         return dvNum
@@ -545,7 +545,7 @@ class DVGeometryCST(BaseDVGeometry):
         r"""
         This function computes sensitivity information.
         Specifically, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}} \times\mathrm{vec}`
+        :math:`\frac{dX_{pt}}{dX_{DV}} \times\mathrm{vec}`.
         This is useful for forward AD mode.
 
         Parameters
@@ -720,7 +720,10 @@ class DVGeometryCST(BaseDVGeometry):
         nDV : int
             Total number of design variables
         """
-        return len(self.DVs)
+        nDV = 0
+        for DV in self.DVs.values():
+            nDV += DV.nVal
+        return nDV
 
     def printDesignVariables(self):
         """
