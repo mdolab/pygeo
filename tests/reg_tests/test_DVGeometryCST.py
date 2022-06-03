@@ -579,7 +579,7 @@ class TestErrorChecking(unittest.TestCase):
             self.DVGeo.addDV("eduardo", dvType="upper")
 
     def test_addDV_duplicate_n1(self):
-        self.DVGeo.addDV("silver baboon", dvType="n1", default=0.4)
+        self.DVGeo.addDV("silver baboon", dvType="n1", default=np.array([0.4]))
         with self.assertRaises(ValueError):
             self.DVGeo.addDV("panda express", dvType="n1_upper")
 
