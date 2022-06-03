@@ -31,10 +31,11 @@ except ModuleNotFoundError:
 # ==============================================================================
 # Extension modules
 # ==============================================================================
+from pygeo.parameterization.BaseDVGeo import BaseDVGeometry
 
 
-class DVGeometryCST:
-    """
+class DVGeometryCST(BaseDVGeometry):
+    r"""
     This class implements a 2D geometry parameterisation based on Brenda Kulfan's CST (Class-Shape Transformation) method.
     This class can work with 3D coordinates but will only change the point coordinates in one direction.
 
@@ -44,7 +45,7 @@ class DVGeometryCST:
 
     Where C is the class function:
 
-    :math:`C(x) = (x^N1 + (1 - x)^N2)`
+    :math:`C(x) = (x^{N1} + (1 - x)^{N2})`
 
     And S is the shape function, in this case a summation of Bernstein polynomials:
 
@@ -52,7 +53,7 @@ class DVGeometryCST:
 
     Here x is the normalized chordwise coordinate, ranging from 0 to 1 from front to the rear of the shape.
 
-    This class
+    This class works for extruded 2D airfoil geometries, but not 3D geometries that vary in the spanwise direction.
     """
 
     def __init__(self, datFile, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False):
