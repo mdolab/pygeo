@@ -353,7 +353,7 @@ class DVGeometryCST(BaseDVGeometry):
             lower=lower,
             upper=upper,
             scale=scale,
-            type=dvType
+            type=dvType,
         )
 
         return dvNum

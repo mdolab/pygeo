@@ -328,9 +328,9 @@ class vspDV(geoDV):
 
 
 class cstDV(geoDV):
-    def __init__(self, name, value, nVal, lower, upper, scale, type):
+    def __init__(self, name, value, nVal, lower, upper, scale, dvType):
         """
         Internal class for storing CST design variable information
         """
         super().__init__(name=name, value=value, nVal=nVal, lower=lower, upper=upper, scale=scale)
-        self.type = type
+        self.type = dvType
