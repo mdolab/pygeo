@@ -912,6 +912,7 @@ class DVGeometryCST(BaseDVGeometry):
         r"""Compute the derivatives of the height of a CST curve with respect to the shape function coefficients
 
         Given :math:`y = C(x) * sum [w_i * p_i(x)]`
+
         :math:`\frac{dy}{dw_i} = C(x) * p_i(x)`
 
         This function assumes x has been normalized to the range [0,1].
@@ -945,7 +946,8 @@ class DVGeometryCST(BaseDVGeometry):
         r"""Compute the drivatives of the height of a CST curve with respect to N1
 
         Given :math:`y = C(x, N1, N2) * S(x)`
-        :math:`\frac{dy}{dN1} = S(x) * \frac{dC}{dN1} = S(x) * C(x, N1, N2) * \ln{x}
+
+        :math:`\frac{dy}{dN1} = S(x) * \frac{dC}{dN1} = S(x) * C(x, N1, N2) * \ln{x}`
 
         This function assumes x has been normalised to the range [0,1].
 
@@ -978,6 +980,7 @@ class DVGeometryCST(BaseDVGeometry):
         r"""Compute the drivatives of the height of a CST curve with respect to N2
 
         Given :math:`y = C(x, N1, N2) * S(x)`
+
         :math:`\frac{dy}{dN2} = S(x) * \frac{dC}{dN2} = S(x) * C(x, N1, N2) * \ln(1-x)`
 
         This function assumes x has been normalised to the range [0,1].

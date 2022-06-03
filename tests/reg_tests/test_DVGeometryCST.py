@@ -462,9 +462,10 @@ class TestFunctionality(unittest.TestCase):
     """
     This class tests that some simple methods run without errors.
     """
+
     def test_plotCST(self):
         DVGeometryCST.plotCST(np.ones(4), np.ones(3))
-    
+
     def test_print(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
         self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
@@ -479,7 +480,7 @@ class TestFunctionality(unittest.TestCase):
         self.DVGeo.addDV("chord", dvType="chord")
 
         self.assertEqual(nUpper + nLower + nOther, self.DVGeo.getNDV())
-    
+
     def test_getValues(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
         self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
@@ -512,7 +513,7 @@ class TestFunctionality(unittest.TestCase):
 
         for dvName in DVs.keys():
             np.testing.assert_array_equal(DVs[dvName], valDVs[dvName])
-    
+
     def test_getVarNames(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
         self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
@@ -537,18 +538,22 @@ class TestErrorChecking(unittest.TestCase):
         self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
 
     def test_addPointSet_min_out_of_bounds(self):
-        points = np.array([
-            [0.5, 0.1, 4.],
-            [-0.5, 0.1, 4.],
-        ])
+        points = np.array(
+            [
+                [0.5, 0.1, 4.0],
+                [-0.5, 0.1, 4.0],
+            ]
+        )
         with self.assertRaises(ValueError):
             self.DVGeo.addPointSet(points, "bjork")
 
     def test_addPointSet_max_out_of_bounds(self):
-        points = np.array([
-            [0.5, 0.1, 4.],
-            [1.5, 0.1, 4.],
-        ])
+        points = np.array(
+            [
+                [0.5, 0.1, 4.0],
+                [1.5, 0.1, 4.0],
+            ]
+        )
         with self.assertRaises(ValueError):
             self.DVGeo.addPointSet(points, "jacobo")
 
@@ -589,19 +594,19 @@ class TestErrorChecking(unittest.TestCase):
         self.DVGeo.addDV("josh", dvType="upper", dvNum=4)
         with self.assertRaises(ValueError):
             self.DVGeo.addDV("josh", dvType="lower", dvNum=4)
-    
+
     def test_addDV_duplicate_invalid_default_type(self):
         with self.assertRaises(ValueError):
-            self.DVGeo.addDV("timo", dvType="chord", default=5.)
+            self.DVGeo.addDV("timo", dvType="chord", default=5.0)
 
     def test_addDV_duplicate_invalid_default_size(self):
         with self.assertRaises(ValueError):
-            self.DVGeo.addDV("brick", dvType="upper", dvNum=4, default=np.array([5., 1]))
+            self.DVGeo.addDV("brick", dvType="upper", dvNum=4, default=np.array([5.0, 1]))
 
     def test_setDesignVars_invalid_shape(self):
         self.DVGeo.addDV("mafa", dvType="upper", dvNum=5)
         with self.assertRaises(ValueError):
-            self.DVGeo.setDesignVars({"mafa": np.array([1., 3.])})
+            self.DVGeo.setDesignVars({"mafa": np.array([1.0, 3.0])})
 
 
 if __name__ == "__main__":
