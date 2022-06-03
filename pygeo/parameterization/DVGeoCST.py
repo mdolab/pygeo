@@ -943,7 +943,7 @@ class DVGeometryCST(BaseDVGeometry):
 
     @staticmethod
     def computeCSTdydN1(x, N1, N2, w, dtype=float):
-        r"""Compute the drivatives of the height of a CST curve with respect to N1
+        r"""Compute the derivatives of the height of a CST curve with respect to N1
 
         Given :math:`y = C(x, N1, N2) * S(x)`
 
@@ -977,7 +977,7 @@ class DVGeometryCST(BaseDVGeometry):
 
     @staticmethod
     def computeCSTdydN2(x, N1, N2, w, dtype=float):
-        r"""Compute the drivatives of the height of a CST curve with respect to N2
+        r"""Compute the derivatives of the height of a CST curve with respect to N2
 
         Given :math:`y = C(x, N1, N2) * S(x)`
 
