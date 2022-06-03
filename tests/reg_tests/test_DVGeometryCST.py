@@ -438,7 +438,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         DVs = self.DVGeo.getValues()
 
         # First compute the analytic ones with the built in function
-        sens = self.DVGeo.totalSensitivity(dIdXptVectorized, self.ptName)[self.dvName].astype(float)
+        sens = self.DVGeo.totalSensitivity(dIdXptVectorized, self.ptName, comm=self.comm)[self.dvName].astype(float)
 
         # Then check them against doing it with complex step
         valDV = DVs[self.dvName]
@@ -467,6 +467,19 @@ class TestFunctionality(unittest.TestCase):
         DVGeometryCST.plotCST(np.ones(4), np.ones(3))
 
     def test_print(self):
+        curDir = os.path.abspath(os.path.dirname(__file__))
+        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
+
+        nUpper = 5
+        nLower = 3
+        self.DVGeo.addDV("upper", dvType="upper", dvNum=nUpper)
+        self.DVGeo.addDV("lower", dvType="lower", dvNum=nLower)
+        self.DVGeo.addDV("n1", dvType="n1")
+        self.DVGeo.addDV("n2", dvType="n2")
+        self.DVGeo.addDV("chord", dvType="chord")
+        self.DVGeo.printDesignVariables()
+
+    def test_getNDV(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
         self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
 
@@ -566,7 +579,7 @@ class TestErrorChecking(unittest.TestCase):
             self.DVGeo.addDV("eduardo", dvType="upper")
 
     def test_addDV_duplicate_n1(self):
-        self.DVGeo.addDV("silver baboon", dvType="n1")
+        self.DVGeo.addDV("silver baboon", dvType="n1", default=0.4)
         with self.assertRaises(ValueError):
             self.DVGeo.addDV("panda express", dvType="n1_upper")
 
