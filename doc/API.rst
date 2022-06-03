@@ -12,6 +12,7 @@ This package consists of the following modules:
    DVGeometry
    DVGeometryMulti
    DVGeometryESP
+   DVGeometryVSP
    DVGeometryCST
    pyNetwork
    pyGeo
