@@ -54,29 +54,26 @@ class DVGeometryCST(BaseDVGeometry):
     Here x is the normalized chordwise coordinate, ranging from 0 to 1 from front to the rear of the shape.
 
     This class works for extruded 2D airfoil geometries, but not 3D geometries that vary in the spanwise direction.
+
+    Parameters
+    ----------
+    datFile : str
+        Filename of dat file that represents the initial airfoil. The coordinates in this file will be used to
+        determine the camber line, which is the dividing line to distinguish upper and lower surface points.
+    idxChord : int, optional
+        Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
+    idxVertical : int, optional
+        Index of the column in the point set to use as the vertical (y in CST) airfoil coordinates, by default 1
+    comm : MPI communicator, optional
+        Communicator for DVGeometryCST instance, by default MPI.COMM_WORLD
+    isComplex : bool, optional
+        Initialize variables to complex types where necessary, by default False
+    debug : bool, optional
+        Show plots when addPointSet is called to visually verify that it is correctly splitting
+        the upper and lower surfaces of the airfoil points, by default False
     """
 
     def __init__(self, datFile, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False):
-        """
-        Initialize DVGeometryCST.
-
-        Parameters
-        ----------
-        datFile : str
-            Filename of dat file that represents the initial airfoil. The coordinates in this file will be used to
-            determine the camber line, which is the dividing line to distinguish upper and lower surface points.
-        idxChord : int, optional
-            Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
-        idxVertical : int, optional
-            Index of the column in the point set to use as the vertical (y in CST) airfoil coordinates, by default 1
-        comm : MPI communicator, optional
-            Communicator for DVGeometryCST instance, by default MPI.COMM_WORLD
-        isComplex : bool, optional
-            Initialize variables to complex types where necessary, by default False
-        debug : bool, optional
-            Show plots when addPointSet is called to visually verify that it is correctly splitting
-            the upper and lower surfaces of the airfoil points, by default False
-        """
         super().__init__(datFile)
         self.xIdx = idxChord
         self.yIdx = idxVertical
@@ -163,10 +160,10 @@ class DVGeometryCST(BaseDVGeometry):
         The is the main way that geometry in the form of a coordinate list is given to DVGeometry
         to be manipulated.
         This assumes...
-            - Trailing edge is vertical or sharp and at maximum x (or idxChord) values
+            - Trailing edge is vertical or sharp and at maximum x values
             - The geometry is exclusively an extruded shape (no spanwise changes allowed)
-            - The airfoil's leading edge is on the left (min x or idxChord) and trailing edge is
-              on the right (max x or idxChord)
+            - The airfoil's leading edge is on the left (min x) and trailing edge is
+              on the right (max x)
             - The airfoil's leading edge is at y (or idxVertical) equals zero (within :math:`10^{-2}`)
 
         Parameters
@@ -545,7 +542,7 @@ class DVGeometryCST(BaseDVGeometry):
         return funcSens
 
     def totalSensitivityProd(self, vec, ptSetName, **kwargs):
-        """
+        r"""
         This function computes sensitivity information.
         Specifically, it computes the following:
         :math:`\frac{dX_{pt}}{dX_{DV}} \times\mathrm{vec}`
@@ -563,7 +560,8 @@ class DVGeometryCST(BaseDVGeometry):
 
         Returns
         -------
-        xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
+        xsdot : array (Nx3)
+            Array with derivative seeds of the surface nodes.
         """
         # Unpack some useful variables
         desVars = self._unpackDVs()
@@ -817,9 +815,31 @@ class DVGeometryCST(BaseDVGeometry):
     @staticmethod
     def computeCSTCoordinates(x, N1, N2, w, yte, dtype=float):
         """
-        Compute the vertical coordinates of a CST curve
+        Compute the vertical coordinates of a CST curve.
 
-        This function assumes x has been normalised to the range [0,1]
+        This function assumes x has been normalized to the range [0,1].
+
+        Parameters
+        ----------
+        x : ndarray (# pts,)
+            x coordinates at which to compute the CST curve height
+        N1 : float
+            First class shape parameter
+        N2 : float
+            Second class shape parameter
+        w : ndarray (# coeff,)
+            CST coefficient array
+        yte : float
+            y coordinate of the trailing edge (used to define trailing edge thickness).
+            Note that the trailing edge will be twice this thick, assuming the same ``yte``
+            value is used for both the upper and lower surfaces.
+        dtype : type, optional
+            Type for instantiated arrays, by default float
+
+        Returns
+        -------
+        ndarray (# pts,)
+            y coordinates of the CST curve
         """
         C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
         S = DVGeometryCST.computeShapeFunctions(x, w, dtype=dtype)
@@ -829,6 +849,22 @@ class DVGeometryCST(BaseDVGeometry):
     def computeClassShape(x, N1, N2, dtype=float):
         """
         Compute the class shape of a CST curve
+
+        Parameters
+        ----------
+        x : ndarray (# pts,)
+            x coordinates at which to compute the CST curve height
+        N1 : float
+            First class shape parameter
+        N2 : float
+            Second class shape parameter
+        dtype : type, optional
+            Type for instantiated arrays, by default float
+
+        Returns
+        -------
+        ndarray (# pts,)
+            y coordinates of the class shape
         """
         C = np.zeros_like(x, dtype=dtype)
 
@@ -843,7 +879,21 @@ class DVGeometryCST(BaseDVGeometry):
     def computeShapeFunctions(x, w, dtype=float):
         """Compute the Bernstein polynomial shape function of a CST curve
 
-        This function assumes x has been normalised to the range [0,1]
+        This function assumes x has been normalized to the range [0,1].
+
+        Parameters
+        ----------
+        x : ndarray (# pts,)
+            x coordinates at which to compute the CST curve height
+        w : ndarray (# coeff,)
+            CST coefficient array
+        dtype : type, optional
+            Type for instantiated arrays, by default float
+
+        Returns
+        -------
+        ndarray (# coeff, # pts)
+            Bernstein polynomials for each CST coefficient
         """
         numCoeffs = len(w)
         order = numCoeffs - 1
@@ -856,14 +906,32 @@ class DVGeometryCST(BaseDVGeometry):
 
     @staticmethod
     def computeCSTdydw(x, N1, N2, w, dtype=float):
-        """Compute the drivatives of the height of a CST curve with respect to the shape function coefficients
+        r"""Compute the derivatives of the height of a CST curve with respect to the shape function coefficients
 
-        Given y = C(x) * sum [w_i * p_i(x)]
-        dy/dw_i = C(x) * p_i(x)
+        Given :math:`y = C(x) * sum [w_i * p_i(x)]`
+        :math:`\frac{dy}{dw_i} = C(x) * p_i(x)`
 
-        This function assumes x has been normalised to the range [0,1]
+        This function assumes x has been normalized to the range [0,1].
 
-        Only the shape and data type of w are used, not the values
+        Only the shape of w is used, not the values.
+
+        Parameters
+        ----------
+        x : ndarray (# pts,)
+            x coordinates at which to compute the CST curve height
+        N1 : float
+            First class shape parameter
+        N2 : float
+            Second class shape parameter
+        w : ndarray (# coeff,)
+            CST coefficient array
+        dtype : type, optional
+            Type for instantiated arrays, by default float
+
+        Returns
+        -------
+        ndarray (# coeff, # pts)
+            Derivatives of the y coordinates with respect to the CST coefficients
         """
         C = DVGeometryCST.computeClassShape(x, N1, N2, dtype=dtype)
         S = DVGeometryCST.computeShapeFunctions(x, np.ones_like(w), dtype=dtype)
@@ -871,12 +939,30 @@ class DVGeometryCST(BaseDVGeometry):
 
     @staticmethod
     def computeCSTdydN1(x, N1, N2, w, dtype=float):
-        """Compute the drivatives of the height of a CST curve with respect to N1
+        r"""Compute the drivatives of the height of a CST curve with respect to N1
 
-        Given y = C(x, N1, N2) * S(x)
-        dy/dN1 = S(x) * dC/dN1 = S(x) * C(x, N1, N2) * ln(x)
+        Given :math:`y = C(x, N1, N2) * S(x)`
+        :math:`\frac{dy}{dN1} = S(x) * \frac{dC}{dN1} = S(x) * C(x, N1, N2) * \ln{x}
 
-        This function assumes x has been normalised to the range [0,1]
+        This function assumes x has been normalised to the range [0,1].
+
+        Parameters
+        ----------
+        x : ndarray (# pts,)
+            x coordinates at which to compute the CST curve height
+        N1 : float
+            First class shape parameter
+        N2 : float
+            Second class shape parameter
+        w : ndarray (# coeff,)
+            CST coefficient array
+        dtype : type, optional
+            Type for instantiated arrays, by default float
+
+        Returns
+        -------
+        ndarray (# pts,)
+            Derivative of the y coordinates with respect to the first class shape parameter
         """
         C = DVGeometryCST.computeClassShape(x[x != 0.0], N1, N2, dtype=dtype)
         S = DVGeometryCST.computeShapeFunctions(x[x != 0.0], w, dtype=dtype)
@@ -886,12 +972,30 @@ class DVGeometryCST(BaseDVGeometry):
 
     @staticmethod
     def computeCSTdydN2(x, N1, N2, w, dtype=float):
-        """Compute the drivatives of the height of a CST curve with respect to N2
+        r"""Compute the drivatives of the height of a CST curve with respect to N2
 
-        Given y = C(x, N1, N2) * S(x)
-        dy/dN2 = S(x) * dC/dN2 = S(x) * C(x, N1, N2) * ln(1-x)
+        Given :math:`y = C(x, N1, N2) * S(x)`
+        :math:`\frac{dy}{dN2} = S(x) * \frac{dC}{dN2} = S(x) * C(x, N1, N2) * \ln(1-x)`
 
-        This function assumes x has been normalised to the range [0,1]
+        This function assumes x has been normalised to the range [0,1].
+
+        Parameters
+        ----------
+        x : ndarray (# pts,)
+            x coordinates at which to compute the CST curve height
+        N1 : float
+            First class shape parameter
+        N2 : float
+            Second class shape parameter
+        w : ndarray (# coeff,)
+            CST coefficient array
+        dtype : type, optional
+            Type for instantiated arrays, by default float
+
+        Returns
+        -------
+        ndarray (# pts,)
+            Derivative of the y coordinates with respect to the second class shape parameter
         """
         C = DVGeometryCST.computeClassShape(x[x != 1.0], N1, N2, dtype=dtype)
         S = DVGeometryCST.computeShapeFunctions(x[x != 1.0], w, dtype=dtype)
