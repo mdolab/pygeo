@@ -9,7 +9,6 @@ DVGeo: CST Parameterisation
 # ==============================================================================
 # Standard Python modules
 # ==============================================================================
-from collections import OrderedDict
 
 # ==============================================================================
 # External Python modules
@@ -32,6 +31,7 @@ except ModuleNotFoundError:
 # Extension modules
 # ==============================================================================
 from pygeo.parameterization.BaseDVGeo import BaseDVGeometry
+from pygeo.parameterization.designVars import cstDV
 
 
 class DVGeometryCST(BaseDVGeometry):
@@ -77,9 +77,7 @@ class DVGeometryCST(BaseDVGeometry):
             Show plots when addPointSet is called to visually verify that it is correctly splitting
             the upper and lower surfaces of the airfoil points, by default False
         """
-        self.points = OrderedDict()  # For each point set, it contains a dictionary with the coordinates,
-        # indices of upper, lower, and trailing edge points, and the minimum and maximum chordwise coordinates
-        self.updated = {}
+        super().__init__(datFile)
         self.xIdx = idxChord
         self.yIdx = idxVertical
         self.comm = comm
@@ -95,13 +93,6 @@ class DVGeometryCST(BaseDVGeometry):
             raise ImportError("matplotlib.pyplot could not be imported and is required for DVGeoCST debug mode")
 
         # Store the DVs and flags to determine if the limited options have already been specified
-        # Each DV in the DVs dictionary (with the key as the DV name) contains
-        #   "type": the DV's type among "upper", "lower", "n1", "n2", "n1_upper",
-        #           "n1_lower", "n2_upper", "n2_lower", and "chord"
-        #   "value": the DV's value, initialized to zero(s)
-        #   "lower": lower bound
-        #   "upper": upper bound
-        #   "scale": variable scaling for optimizer
         self.DVs = {}
         self.DVExists = {
             "upper": False,
@@ -176,7 +167,7 @@ class DVGeometryCST(BaseDVGeometry):
             - The geometry is exclusively an extruded shape (no spanwise changes allowed)
             - The airfoil's leading edge is on the left (min x or idxChord) and trailing edge is
               on the right (max x or idxChord)
-            - The airfoil's leading edge is at y (or idxVertical) equals zero (within 1e-2)
+            - The airfoil's leading edge is at y (or idxVertical) equals zero (within :math:`10^{-2}`)
 
         Parameters
         ----------
@@ -243,20 +234,20 @@ class DVGeometryCST(BaseDVGeometry):
             A unique name to be given to this design variable group
         dvType : str
             Define the type of CST design variable being added. Either the upper/lower surface class shape
-            parameter DV can be defined (e.g., `"N1_upper"`), or the DV for both the upper and lower surfaces' class shape
-            parameter can be defined (e.g., `"N1"`), but not both. The options (not case sensitive) are
-                `"upper"`: upper surface CST coefficients (specify `dvNum` to define how many)
-                `"lower"`: lower surface CST coefficients (specify `dvNum` to define how many)
-                `"N1"`: first class shape parameter for both upper and lower surfaces (adds a single DV)
-                `"N2"`: second class shape parameter for both upper and lower surfaces (adds a single DV)
-                `"N1_upper"`: first class shape parameters for upper surface (adds a single DV)
-                `"N1_lower"`: first class shape parameters for lower surface (adds a single DV)
-                `"N2_upper"`: second class shape parameters for upper surface (adds a single DV)
-                `"N2_lower"`: second class shape parameters for lower surface (adds a single DV)
-                `"chord"`: chord length in whatever units the point set length is defined and scaled
-                           to keep the leading edge at the same position (adds a single DV)
+            parameter DV can be defined (e.g., ``"N1_upper"``), or the DV for both the upper and lower surfaces' class shape
+            parameter can be defined (e.g., ``"N1"``), but not both. The options (not case sensitive) are
+                - ``"upper"``: upper surface CST coefficients (specify ``dvNum`` to define how many)
+                - ``"lower"``: lower surface CST coefficients (specify ``dvNum`` to define how many)
+                - ``"N1"``: first class shape parameter for both upper and lower surfaces (adds a single DV)
+                - ``"N2"``: second class shape parameter for both upper and lower surfaces (adds a single DV)
+                - ``"N1_upper"``: first class shape parameters for upper surface (adds a single DV)
+                - ``"N1_lower"``: first class shape parameters for lower surface (adds a single DV)
+                - ``"N2_upper"``: second class shape parameters for upper surface (adds a single DV)
+                - ``"N2_lower"``: second class shape parameters for lower surface (adds a single DV)
+                - ``"chord"``: chord length in whatever units the point set length is defined and scaled
+                  to keep the leading edge at the same position (adds a single DV)
         dvNum : int
-            If dvType is `"upper"` or `"lower"`, use `dvNum` to specify the number of
+            If dvType is ``"upper"`` or ``"lower"``, use ``dvNum`` to specify the number of
             CST parameters to use. This must be given by the user for upper and lower DVs.
         lower : float or ndarray, optional
             The upper bound for the variable(s). This will be applied to
@@ -290,7 +281,7 @@ class DVGeometryCST(BaseDVGeometry):
         ]:
             raise ValueError(
                 'dvType must be one of "upper", "lower", "N1", "N2", "N1_upper", "N1_lower", '
-                + f'"N2_upper", "N2_lower", or "chord" not {dvType}'
+                + f'"N2_upper", "N2_lower", or "chord", not {dvType}'
             )
         dvType = dvType.lower()
 
@@ -355,13 +346,15 @@ class DVGeometryCST(BaseDVGeometry):
                 self.defaultDV[f"{dvType}_upper"] = default.astype(self.dtype)
 
         # Add the DV to the internally-stored list
-        self.DVs[dvName] = {
-            "type": dvType,
-            "value": default.astype(self.dtype),
-            "lower": lower,
-            "upper": upper,
-            "scale": scale,
-        }
+        self.DVs[dvName] = cstDV(
+            name=dvName,
+            value=default.astype(self.dtype),
+            nVal=dvNum,
+            lower=lower,
+            upper=upper,
+            scale=scale,
+            type=dvType
+        )
 
         return dvNum
 
@@ -377,12 +370,12 @@ class DVGeometryCST(BaseDVGeometry):
         """
         for dvName, dvVal in dvDict.items():
             if dvName in self.DVs:
-                if dvVal.shape != self.DVs[dvName]["value"].shape:
+                if dvVal.shape != self.DVs[dvName].value.shape:
                     raise ValueError(
                         f'Input shape of {dvVal.shape} for the DV named "{dvName}" does '
-                        + f"not match the DV's shape of {self.DVs[dvName]['value'].shape}"
+                        + f"not match the DV's shape of {self.DVs[dvName].value.shape}"
                     )
-                self.DVs[dvName]["value"] = dvVal.astype(self.dtype)
+                self.DVs[dvName].value = dvVal.astype(self.dtype)
 
         # Flag all the pointSets as not being up to date
         for pointSet in self.updated:
@@ -401,29 +394,9 @@ class DVGeometryCST(BaseDVGeometry):
         # Format the dictonary into the desired shape
         DVs = {}
         for dvName in self.DVs.keys():
-            DVs[dvName] = self.DVs[dvName]["value"]
+            DVs[dvName] = self.DVs[dvName].value
 
         return DVs
-
-    def pointSetUpToDate(self, ptSetName):
-        """
-        This is used externally to query if the object needs to update
-        its pointset or not. Essentially what happens, is when
-        update() is called with a point set, it the self.updated dict
-        entry for pointSet is flagged as true. Here we just return
-        that flag. When design variables are set, we then reset all
-        the flags to False since, when DVs are set, nothing (in
-        general) will up to date anymore.
-
-        Parameters
-        ----------
-        ptSetName : str
-            The name of the pointset to check.
-        """
-        if ptSetName in self.updated:
-            return self.updated[ptSetName]
-        else:
-            return True
 
     def getVarNames(self, **kwargs):
         """
@@ -459,7 +432,7 @@ class DVGeometryCST(BaseDVGeometry):
             The dictionary containing the derivatives, suitable for pyOptSparse
         """
         # Unpack some useful variables
-        desVars = self._unpackDVs(ptSetName)
+        desVars = self._unpackDVs()
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
         xMax = self.points[ptSetName]["xMax"]
         xMin = self.points[ptSetName]["xMin"]
@@ -475,7 +448,7 @@ class DVGeometryCST(BaseDVGeometry):
             dIdpt = np.moveaxis(dIdpt, 0, -1)
 
         for dvName, DV in self.DVs.items():
-            dvType = DV["type"]
+            dvType = DV.type
 
             if dvType == "upper":
                 dydUpperCST = self.computeCSTdydw(
@@ -593,7 +566,7 @@ class DVGeometryCST(BaseDVGeometry):
         xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
         """
         # Unpack some useful variables
-        desVars = self._unpackDVs(ptSetName)
+        desVars = self._unpackDVs()
         ptsX = self.points[ptSetName]["points"][:, self.xIdx]
         xMax = self.points[ptSetName]["xMax"]
         xMin = self.points[ptSetName]["xMin"]
@@ -606,7 +579,7 @@ class DVGeometryCST(BaseDVGeometry):
         xsdot = np.zeros_like(self.points[ptSetName]["points"], dtype=self.dtype)
 
         for dvName, dvSeed in vec.items():
-            dvType = self.DVs[dvName]["type"]
+            dvType = self.DVs[dvName].type
 
             if dvType == "upper":
                 dydUpperCST = self.computeCSTdydw(
@@ -670,15 +643,15 @@ class DVGeometryCST(BaseDVGeometry):
             Optimization problem definition to which variables are added
         """
         # Add design variables to the problem
-        for dvName, DV in self.DVs.items():
+        for DV in self.DVs.values():
             optProb.addVarGroup(
-                dvName,
-                DV["value"].size,
+                DV.name,
+                DV.nVal,
                 "c",
-                value=DV["value"],
-                lower=DV["lower"],
-                upper=DV["upper"],
-                scale=DV["scale"],
+                value=DV.value,
+                lower=DV.lower,
+                upper=DV.upper,
+                scale=DV.scale,
             )
 
     def update(self, ptSetName, **kwargs):
@@ -700,7 +673,7 @@ class DVGeometryCST(BaseDVGeometry):
         points : ndarray (N x 3)
             Updated point set coordinates.
         """
-        desVars = self._unpackDVs(ptSetName)
+        desVars = self._unpackDVs()
 
         # Unpack the points to make variable names more accessible
         idxUpper = self.points[ptSetName]["upper"]
@@ -757,22 +730,16 @@ class DVGeometryCST(BaseDVGeometry):
         """
         print("\nDVGeometryCST design variables")
         print("==============================")
-        for dvName, DV in self.DVs.items():
-            print(f"{dvName} ({DV['type']} type): {DV['value']}")
+        for DV in self.DVs.values():
+            print(f"{DV.name} ({DV.type} type): {DV.value}")
         print("")
 
-    def _unpackDVs(self, ptSetName):
+    def _unpackDVs(self):
         """
         Return the parameters needed for the airfoil shape calculation
         based on the DVs and default values. This requires a few extra
         checks to handle the multiple ways of parameterizing the class
         shape variables.
-
-        Parameters
-        ----------
-        ptSetName : str
-            Name of point-set to return. This must match ones of the
-            given in an :func:`addPointSet()` call.
 
         Returns
         -------
@@ -796,11 +763,11 @@ class DVGeometryCST(BaseDVGeometry):
         desVars["chord"] = self.defaultDV["chord"].copy()
 
         for DV in self.DVs.values():
-            if DV["type"] in ["n1", "n2"]:
-                desVars[f"{DV['type']}_upper"] = DV["value"]
-                desVars[f"{DV['type']}_lower"] = DV["value"]
+            if DV.type in ["n1", "n2"]:
+                desVars[f"{DV.type}_upper"] = DV.value
+                desVars[f"{DV.type}_lower"] = DV.value
             else:
-                desVars[DV["type"]] = DV["value"]
+                desVars[DV.type] = DV.value
 
         return desVars
 
