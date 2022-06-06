@@ -10,16 +10,20 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../"))
 sys.path.insert(0, os.path.abspath("../../"))
-sys.path.insert(0, os.path.abspath('./_exts'))
+sys.path.insert(0, os.path.abspath("./_exts"))
 
 # -- Project information -----------------------------------------------------
-project = u"pyGeo"
+project = "pyGeo"
 
 # -- General configuration -----------------------------------------------------
 # Built-in Sphinx extensions are already contained in the imported variable
 # here we add external extensions, which must also be added to requirements.txt
 # so that RTD can import and use them
-extensions.extend(["numpydoc","embed_code"])
+extensions.extend(
+    [
+        "sphinx_mdolab_theme.ext.embed_code",
+    ]
+)
 
 # mock import for autodoc
 autodoc_mock_imports = ["numpy", "mpi4py", "scipy", "pyspline"]
