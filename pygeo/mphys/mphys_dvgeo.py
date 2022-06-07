@@ -15,7 +15,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         self.options.declare("ffd_file", default=None)
         self.options.declare("vsp_file", default=None)
-        self.options.declare("vsp_options", default=None)
+        self.options.declare("vsp_options", default={})
 
     def setup(self):
 
