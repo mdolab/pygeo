@@ -264,3 +264,12 @@ def chord(val, geo):
 
     for i in range(1, nRefAxPts):
         geo.scale_x[axis_key].coef[i] = val[i - fix_root_sect]
+
+def span(val, geo):
+    axis_key = list(geo.axis.keys())[0]
+    C = geo.extractCoef(axis_key)
+    
+    for i in range(1, nRefAxPts):
+        C[i, 2] *= val
+    
+    geo.restoreCoef(C, axis_key)
