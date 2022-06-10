@@ -995,7 +995,7 @@ class RegTestPyGeo(unittest.TestCase):
         """
         DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
 
-        nRefAxPts = DVGeo.addRefAxis("RefAx", xFraction=0.5, alignIndex="k", rotType=0, rot0ang=-90)
+        DVGeo.addRefAxis("RefAx", xFraction=0.5, alignIndex="k", rotType=0, rot0ang=-90)
         DVGeo.addGlobalDV(dvName="span", value=0.5, func=commonUtils.span, lower=0.1, upper=10, scale=1)
 
         points = np.zeros([2, 3])
