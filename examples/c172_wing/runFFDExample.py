@@ -14,14 +14,16 @@ def create_fresh_dvgeo():
     # initialize the DVGeometry object with the FFD file
     DVGeo = DVGeometry(FFDfile)
 
-    stlmesh = mesh.Mesh.from_file('baseline_wing.stl')
+    stlmesh = mesh.Mesh.from_file("baseline_wing.stl")
     # create a pointset. pointsets are of shape npts by 3 (the second dim is xyz coordinate)
     # already have the wing mesh as a triangulated surface (stl file)
     # each vertex set is its own pointset, so we actually add three pointsets
-    DVGeo.addPointSet(stlmesh.v0, 'mesh_v0')
-    DVGeo.addPointSet(stlmesh.v1, 'mesh_v1')
-    DVGeo.addPointSet(stlmesh.v2, 'mesh_v2')
+    DVGeo.addPointSet(stlmesh.v0, "mesh_v0")
+    DVGeo.addPointSet(stlmesh.v1, "mesh_v1")
+    DVGeo.addPointSet(stlmesh.v2, "mesh_v2")
     return DVGeo, stlmesh
+
+
 # EXCERPT 1 #
 
 
@@ -34,30 +36,30 @@ DVGeo.addGeoDVLocal("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
 # Perturb some local variables and observe the effect on the surface
 dvdict = DVGeo.getValues()
-dvdict['shape'][DVGeo.getLocalIndex(0)[:, 1, 5]] += 0.15
-dvdict['shape'][DVGeo.getLocalIndex(0)[3, 1, 1]] += 0.15
+dvdict["shape"][DVGeo.getLocalIndex(0)[:, 1, 5]] += 0.15
+dvdict["shape"][DVGeo.getLocalIndex(0)[3, 1, 1]] += 0.15
 DVGeo.setDesignVars(dvdict)
 
 # write the perturbed wing surface and ffd to output files
-stlmesh.vectors[:, 0, :] = DVGeo.update('mesh_v0')
-stlmesh.vectors[:, 1, :] = DVGeo.update('mesh_v1')
-stlmesh.vectors[:, 2, :] = DVGeo.update('mesh_v2')
-stlmesh.save('local_wing.stl')
-DVGeo.writeTecplot('local_ffd.dat')
+stlmesh.vectors[:, 0, :] = DVGeo.update("mesh_v0")
+stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
+stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
+stlmesh.save("local_wing.stl")
+DVGeo.writeTecplot("local_ffd.dat")
 # EXCERPT 2 #
 
 # EXCERPT 4 #
 DVGeo, stlmesh = create_fresh_dvgeo()
 # add a reference axis named 'c4' to the FFD volume
 # it will go in the spanwise (k) direction and be located at the quarter chord line
-nrefaxpts = DVGeo.addRefAxis('c4', xFraction=0.25, alignIndex='k')
+nrefaxpts = DVGeo.addRefAxis("c4", xFraction=0.25, alignIndex="k")
 nspanwise = 8
 # note that the number of reference axis points is the same as the number
 # of FFD nodes in the alignIndex direction
-print('Num ref axis pts: ', str(nrefaxpts), ' Num spanwise FFD: ', str(nspanwise))
+print("Num ref axis pts: ", str(nrefaxpts), " Num spanwise FFD: ", str(nspanwise))
 
 # can write the ref axis geometry to a Tecplot file for visualization
-DVGeo.writeRefAxes('local')
+DVGeo.writeRefAxes("local")
 # EXCERPT 4 #
 
 # EXCERPT 5 #
@@ -71,13 +73,12 @@ DVGeo.writeRefAxes('local')
 
 def twist(val, geo):
     for i in range(nrefaxpts):
-        geo.rot_z['c4'].coef[i] = val[i]
+        geo.rot_z["c4"].coef[i] = val[i]
 
 
 # now create global design variables using the callback functions
 # we just defined
-DVGeo.addGeoDVGlobal('twist', func=twist, value=np.zeros(nrefaxpts),
-                     lower=-10, upper=10, scale=0.05)
+DVGeo.addGeoDVGlobal("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
 # EXCERPT 5 #
 
 # EXCERPT 6 #
@@ -88,15 +89,13 @@ DVGeo.addGeoDVGlobal('twist', func=twist, value=np.zeros(nrefaxpts),
 
 def sweep(val, geo):
     # the extractCoef method gets the unperturbed ref axis control points
-    C = geo.extractCoef('c4')
+    C = geo.extractCoef("c4")
     C_orig = C.copy()
     # we will sweep the wing about the first point in the ref axis
     sweep_ref_pt = C_orig[0, :]
 
     theta = -val[0] * np.pi / 180
-    rot_mtx = np.array([[np.cos(theta), 0., -np.sin(theta)],
-                        [0., 1., 0.],
-                        [np.sin(theta), 0., np.cos(theta)]])
+    rot_mtx = np.array([[np.cos(theta), 0.0, -np.sin(theta)], [0.0, 1.0, 0.0], [np.sin(theta), 0.0, np.cos(theta)]])
 
     # modify the control points of the ref axis
     # by applying a rotation about the first point in the x-z plane
@@ -106,40 +105,39 @@ def sweep(val, geo):
         # need to now rotate this by the sweep angle and add back the wing root loc
         C[i, :] = sweep_ref_pt + rot_mtx @ vec
     # use the restoreCoef method to put the control points back in the right place
-    geo.restoreCoef(C, 'c4')
+    geo.restoreCoef(C, "c4")
 
 
-DVGeo.addGeoDVGlobal('sweep', func=sweep, value=0.,
-                     lower=0, upper=45, scale=0.05)
+DVGeo.addGeoDVGlobal("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
 # EXCERPT 6 #
 
 # EXCERPT 7 #
 # set a twist distribution from -10 to +20 degrees along the span
 dvdict = DVGeo.getValues()
-dvdict['twist'] = np.linspace(-10., 20., nrefaxpts)
+dvdict["twist"] = np.linspace(-10.0, 20.0, nrefaxpts)
 DVGeo.setDesignVars(dvdict)
 # write out the twisted wing and FFD
-stlmesh.vectors[:, 0, :] = DVGeo.update('mesh_v0')
-stlmesh.vectors[:, 1, :] = DVGeo.update('mesh_v1')
-stlmesh.vectors[:, 2, :] = DVGeo.update('mesh_v2')
-stlmesh.save('twist_wing.stl')
-DVGeo.writeTecplot('twist_ffd.dat')
+stlmesh.vectors[:, 0, :] = DVGeo.update("mesh_v0")
+stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
+stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
+stlmesh.save("twist_wing.stl")
+DVGeo.writeTecplot("twist_ffd.dat")
 # EXCERPT 7 #
 
 # EXCERPT 8 #
 # now add some sweep and change the twist a bit
 dvdict = DVGeo.getValues()
-dvdict['sweep'] = 30.
-dvdict['twist'] = np.linspace(0., 20., nrefaxpts)
+dvdict["sweep"] = 30.0
+dvdict["twist"] = np.linspace(0.0, 20.0, nrefaxpts)
 DVGeo.setDesignVars(dvdict)
 
 # write out the swept / twisted wing and FFD
-stlmesh.vectors[:, 0, :] = DVGeo.update('mesh_v0')
-stlmesh.vectors[:, 1, :] = DVGeo.update('mesh_v1')
-stlmesh.vectors[:, 2, :] = DVGeo.update('mesh_v2')
-stlmesh.save('sweep_wing.stl')
-DVGeo.writeTecplot('sweep_ffd.dat')
-DVGeo.writeRefAxes('sweep')
+stlmesh.vectors[:, 0, :] = DVGeo.update("mesh_v0")
+stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
+stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
+stlmesh.save("sweep_wing.stl")
+DVGeo.writeTecplot("sweep_ffd.dat")
+DVGeo.writeRefAxes("sweep")
 # EXCERPT 8 #
 
 # EXCERPT 9 #
@@ -150,38 +148,37 @@ DVGeo.writeRefAxes('sweep')
 
 def chord(val, geo):
     for i in range(nrefaxpts):
-        geo.scale_x['c4'].coef[i] = val[i]
+        geo.scale_x["c4"].coef[i] = val[i]
+
+
 # EXCERPT 9 #
 
 
 # EXCERPT 10 #
 # set up a new DVGeo with all three global design vars plus local thickness
 DVGeo, stlmesh = create_fresh_dvgeo()
-nrefaxpts = DVGeo.addRefAxis('c4', xFraction=0.25, alignIndex='k')
-DVGeo.addGeoDVGlobal('twist', func=twist, value=np.zeros(nrefaxpts),
-                     lower=-10, upper=10, scale=0.05)
-DVGeo.addGeoDVGlobal('chord', func=chord, value=np.ones(nrefaxpts),
-                     lower=0.01, upper=2.0, scale=0.05)
-DVGeo.addGeoDVGlobal('sweep', func=sweep, value=0.,
-                     lower=0, upper=45, scale=0.05)
-DVGeo.addGeoDVLocal('thickness', axis='y', lower=-0.5, upper=0.5)
+nrefaxpts = DVGeo.addRefAxis("c4", xFraction=0.25, alignIndex="k")
+DVGeo.addGeoDVGlobal("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
+DVGeo.addGeoDVGlobal("chord", func=chord, value=np.ones(nrefaxpts), lower=0.01, upper=2.0, scale=0.05)
+DVGeo.addGeoDVGlobal("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
+DVGeo.addGeoDVLocal("thickness", axis="y", lower=-0.5, upper=0.5)
 
 # change everything and the kitchen sink
 dvdict = DVGeo.getValues()
-dvdict['twist'] = np.linspace(0., 20., nrefaxpts)
+dvdict["twist"] = np.linspace(0.0, 20.0, nrefaxpts)
 # scale_x should be set to 1 at baseline, unlike the others which perturb about 0
 # the following will produce a longer wing root and shorter wing tip
-dvdict['chord'] = np.linspace(1.2, 0.2, nrefaxpts)
+dvdict["chord"] = np.linspace(1.2, 0.2, nrefaxpts)
 # randomly perturbing the local variables should make a cool wavy effect
-dvdict['thickness'] = np.random.uniform(-0.1, 0.1, 160)
-dvdict['sweep'] = 30.
+dvdict["thickness"] = np.random.uniform(-0.1, 0.1, 160)
+dvdict["sweep"] = 30.0
 DVGeo.setDesignVars(dvdict)
 
 # write out to data files for visualization
-stlmesh.vectors[:, 0, :] = DVGeo.update('mesh_v0')
-stlmesh.vectors[:, 1, :] = DVGeo.update('mesh_v1')
-stlmesh.vectors[:, 2, :] = DVGeo.update('mesh_v2')
-stlmesh.save('all_wing.stl')
-DVGeo.writeTecplot('all_ffd.dat')
-DVGeo.writeRefAxes('all')
+stlmesh.vectors[:, 0, :] = DVGeo.update("mesh_v0")
+stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
+stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
+stlmesh.save("all_wing.stl")
+DVGeo.writeTecplot("all_ffd.dat")
+DVGeo.writeRefAxes("all")
 # EXCERPT 10 #

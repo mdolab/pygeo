@@ -31,8 +31,8 @@ DVGeo = DVGeometry(FFDfile)
 
 # EXCERPT 3 #
 # add the cylinder pointset to the FFD under the name 'cylinder'
-DVGeo.addPointSet(Xpt.copy(), 'cylinder')
-DVGeo.writePointSet('cylinder', 'pointset')
+DVGeo.addPointSet(Xpt.copy(), "cylinder")
+DVGeo.writePointSet("cylinder", "pointset")
 # EXCERPT 3 #
 
 # EXCERPT 4 #
@@ -57,13 +57,17 @@ FFD = DVGeo.FFD.coef
 # Let's extract a ring of the front-face control points in contiguous order.
 # We'll add these as a pointset as well so we can visualize them.
 # (Don't worry too much about the details)
-FFDptset = np.concatenate([FFD[DVGeo.getLocalIndex(0)[:, 0, 0]],
-                          FFD[DVGeo.getLocalIndex(0)[::-1, 1, 0]],
-                          FFD[DVGeo.getLocalIndex(0)[0, 0, 0]].reshape((1, 3))]).reshape(21, 3)
+FFDptset = np.concatenate(
+    [
+        FFD[DVGeo.getLocalIndex(0)[:, 0, 0]],
+        FFD[DVGeo.getLocalIndex(0)[::-1, 1, 0]],
+        FFD[DVGeo.getLocalIndex(0)[0, 0, 0]].reshape((1, 3)),
+    ]
+).reshape(21, 3)
 
 # Add these control points to the FFD volume. This is only for visualization purposes in this demo.
 # Under normal circumstances you don't need to worry about adding the FFD points as a point set
-DVGeo.addPointSet(FFDptset, 'ffd')
+DVGeo.addPointSet(FFDptset, "ffd")
 # EXCERPT 5 #
 
 # EXCERPT 6 #
@@ -75,7 +79,7 @@ lower_rear_idx = DVGeo.getLocalIndex(0)[:, 0, 1]
 upper_front_idx = DVGeo.getLocalIndex(0)[:, 1, 0]
 upper_rear_idx = DVGeo.getLocalIndex(0)[:, 1, 1]
 
-currentDV = DVGeo.getValues()['shape']
+currentDV = DVGeo.getValues()["shape"]
 newDV = currentDV.copy()
 
 # add a constant offset (upward) to the lower points, plus a linear ramp and a trigonometric local change
@@ -95,10 +99,10 @@ for idx in [upper_front_idx, upper_rear_idx]:
 
 # we've created an array with design variable perturbations. Now set the FFD control points with them
 # and update the point sets so we can see how they changed
-DVGeo.setDesignVars({'shape': newDV.copy()})
+DVGeo.setDesignVars({"shape": newDV.copy()})
 
-Xmod = DVGeo.update('cylinder')
-FFDmod = DVGeo.update('ffd')
+Xmod = DVGeo.update("cylinder")
+FFDmod = DVGeo.update("ffd")
 # EXCERPT 6 #
 
 # EXCERPT 7 #
@@ -110,20 +114,24 @@ Xmodplt = Xmod[:, :2]
 
 # plot the new and deformed pointsets and control points
 plt.figure()
-plt.title('Applying FFD deformations to a cylinder')
+plt.title("Applying FFD deformations to a cylinder")
 
-plt.plot(Xptplt[:, 0], Xptplt[:, 1], color='#293bff')
-plt.plot(FFDplt[:, 0], FFDplt[:, 1], color='#d6daff', marker='o')
+plt.plot(Xptplt[:, 0], Xptplt[:, 1], color="#293bff")
+plt.plot(FFDplt[:, 0], FFDplt[:, 1], color="#d6daff", marker="o")
 
-plt.plot(Xmodplt[:, 0], Xmodplt[:, 1], color='#ff0000')
-plt.plot(FFDmodplt[:, 0], FFDmodplt[:, 1], color='#ffabab', marker='o')
+plt.plot(Xmodplt[:, 0], Xmodplt[:, 1], color="#ff0000")
+plt.plot(FFDmodplt[:, 0], FFDmodplt[:, 1], color="#ffabab", marker="o")
 
-plt.xlabel('x')
-plt.ylabel('y')
+plt.xlabel("x")
+plt.ylabel("y")
 # plt.xlim([-0.7,1.2])
-plt.axis('equal')
-legend = plt.legend(['original shape', 'original FFD ctl pts', 'deformed shape', 'deformed FFD ctl pts'], loc='lower right', framealpha=0.0)
-legend.get_frame().set_facecolor('none')
+plt.axis("equal")
+legend = plt.legend(
+    ["original shape", "original FFD ctl pts", "deformed shape", "deformed FFD ctl pts"],
+    loc="lower right",
+    framealpha=0.0,
+)
+legend.get_frame().set_facecolor("none")
 plt.tight_layout()
-plt.savefig('deformed_cylinder.png')
+plt.savefig("deformed_cylinder.png")
 # EXCERPT 7 #

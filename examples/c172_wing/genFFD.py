@@ -15,7 +15,7 @@ toverc = np.ones(8) * 0.16
 chords = np.concatenate([chord1, chord2])
 xle = np.concatenate([xoff1, xoff2])
 xte = xle + chords
-yl = - toverc * chords / 3
+yl = -toverc * chords / 3
 yu = 2 * toverc * chords / 3
 z = np.concatenate([zspan1, zspan2])
 
