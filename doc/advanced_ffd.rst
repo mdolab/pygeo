@@ -43,9 +43,9 @@ We can see that the FFD volume closely approximates the wing in the top view.
 Starting in the tutorial script ``examples/c172_wing/c172.py``, first we create a ``DVGeometry`` object using the FFD file. 
 Then we add the wing point set.
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:1
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :end-before: # rst add local DV
+
 
 -----------------------------
 Adding local design variables
@@ -54,9 +54,10 @@ Adding local design variables
 As in the "Getting Started" tutorial, we will first add local shape control by enabling perturbations of the individual control points in the thickness direction.
 In the following example, we perturb a single point in the inner portion of the wing, and then the entire upper surface at an outboard station.
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:2
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst add local DV
+    :end-before: # rst ref axis
+
 
 This local perturbation produces the obvious deformation in the following rendering:
 
@@ -94,9 +95,9 @@ The reference axis will then be located at the given location between the front 
 The following excerpt illustrates how to create a reference axis for this Cessna 172 example.
 The axis is named ``c4`` because it represents the quarter-chord line (the most useful reference point for aerodynamic analysis and design).
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:4
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst ref axis
+    :end-before: # rst twist
 
 The resulting reference axis is shown in blue in this rendering:
 
@@ -125,15 +126,16 @@ The two arguments to the callback are ``val`` (the design variable value, which 
 Once we have a defined callback function, we can add use the ``addGeoDVGlobal`` method to create it as a design variable, as illustrated in the code snippet below.
 The optimizer can now apply a twist distribution to the wing.
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:5
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst twist
+    :end-before: # rst sweep
+
 
 The global design variable can be perturbed just like a local design variable, as illustrated in this snippet:
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:7
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst sweep
+    :end-before: # rst set DV
 
 Applying this twist results in the geometry pictured below. 
 Note that the location of the reference axis (and any points located close to the reference axis) are not affected by the rotation.
@@ -158,9 +160,9 @@ There are a few new methods to learn.
 To sweep the wing, we apply a rotation in the x-z axis about the innermost axis point.
 The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on the manipulated points.
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:6
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst set DV
+    :end-before: # rst set DV 2
 
 There is a subtle implementation detail to know.
 Whenever the ``setDesignVars`` method is called, the reference axis gets reset back to its original values.
@@ -171,9 +173,9 @@ They will be called in the order that they are added.
 Let's apply a 30 degree sweep as well as a linear 20 degree twist.
 We can see how to do so in the snippet below.
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:8
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst set DV 2
+    :end-before: # rst set DV 3
 
 The results of the sweep are dramatic, as seen in the rendering.
 
@@ -201,17 +203,16 @@ Each of these can be implemented through a combination of transformations and ax
 Let's say that we want to change the chord distribution of the wing in addition to the sweep.
 We have to begin by writing a callback function, as follows:
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:9
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst set DV 3
+    :end-before: # rst set DV 4
 
 We implement the chord distribution using the ``scale_x`` transformation which stretches points about the reference axis in the x direction.
 Now we need to create a global design variable and perturb the variable to produce the desired effect.
 Let's also introduce a random perturbation to the local design variables in order to see the composited effect of sweep, twist, chord, and local deformation.
 
-.. embed-code::
-    ../examples/c172_wing/runFFDExample.py:EXCERPT:10
-    :layout: code
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst set DV 4
 
 The combination of multiple global and local design variables produces the wild shape in the rendering below. 
 Obviously this is not a suitable optimized aircraft design.

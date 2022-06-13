@@ -1,4 +1,3 @@
-# EXCERPT 1 #
 from pygeo import DVGeometry
 import numpy as np
 from stl import mesh
@@ -24,10 +23,7 @@ def create_fresh_dvgeo():
     return DVGeo, stlmesh
 
 
-# EXCERPT 1 #
-
-
-# EXCERPT 2 #
+# rst add local DV
 # Now that we have pointsets added, we should parameterize the geometry.
 # Adding local geometric design to make local modifications to FFD box
 # This option will perturb all the control points but only the y (up-down) direction
@@ -46,9 +42,8 @@ stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
 stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
 stlmesh.save("local_wing.stl")
 DVGeo.writeTecplot("local_ffd.dat")
-# EXCERPT 2 #
 
-# EXCERPT 4 #
+# rst ref axis
 DVGeo, stlmesh = create_fresh_dvgeo()
 # add a reference axis named 'c4' to the FFD volume
 # it will go in the spanwise (k) direction and be located at the quarter chord line
@@ -60,9 +55,8 @@ print("Num ref axis pts: ", str(nrefaxpts), " Num spanwise FFD: ", str(nspanwise
 
 # can write the ref axis geometry to a Tecplot file for visualization
 DVGeo.writeRefAxes("local")
-# EXCERPT 4 #
 
-# EXCERPT 5 #
+# rst twist
 # global design variable functions are callbacks that take two inputs:
 # a design variable value from the optimizer, and
 # the DVGeometry object itself
@@ -79,9 +73,8 @@ def twist(val, geo):
 # now create global design variables using the callback functions
 # we just defined
 DVGeo.addGeoDVGlobal("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
-# EXCERPT 5 #
 
-# EXCERPT 6 #
+# rst sweep
 # sweeping back the wing requires modifying the actual
 # location of the reference axis, not just defining rotations or stretching
 # about the axis
@@ -109,9 +102,8 @@ def sweep(val, geo):
 
 
 DVGeo.addGeoDVGlobal("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
-# EXCERPT 6 #
 
-# EXCERPT 7 #
+# rst set DV
 # set a twist distribution from -10 to +20 degrees along the span
 dvdict = DVGeo.getValues()
 dvdict["twist"] = np.linspace(-10.0, 20.0, nrefaxpts)
@@ -122,9 +114,8 @@ stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
 stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
 stlmesh.save("twist_wing.stl")
 DVGeo.writeTecplot("twist_ffd.dat")
-# EXCERPT 7 #
 
-# EXCERPT 8 #
+# rst set DV 2
 # now add some sweep and change the twist a bit
 dvdict = DVGeo.getValues()
 dvdict["sweep"] = 30.0
@@ -138,9 +129,8 @@ stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
 stlmesh.save("sweep_wing.stl")
 DVGeo.writeTecplot("sweep_ffd.dat")
 DVGeo.writeRefAxes("sweep")
-# EXCERPT 8 #
 
-# EXCERPT 9 #
+# rst set DV 3
 # we can change the chord distribution by using the
 # scale_x attribute which stretches/shrinks the pointset
 # about the ref axis in the x direction
@@ -151,10 +141,7 @@ def chord(val, geo):
         geo.scale_x["c4"].coef[i] = val[i]
 
 
-# EXCERPT 9 #
-
-
-# EXCERPT 10 #
+# rst set DV 4
 # set up a new DVGeo with all three global design vars plus local thickness
 DVGeo, stlmesh = create_fresh_dvgeo()
 nrefaxpts = DVGeo.addRefAxis("c4", xFraction=0.25, alignIndex="k")
@@ -181,4 +168,3 @@ stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
 stlmesh.save("all_wing.stl")
 DVGeo.writeTecplot("all_ffd.dat")
 DVGeo.writeRefAxes("all")
-# EXCERPT 10 #
