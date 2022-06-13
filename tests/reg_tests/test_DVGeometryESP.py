@@ -3,6 +3,7 @@ import os
 import numpy as np
 from stl import mesh
 from baseclasses import BaseRegTest
+from baseclasses.utils import Error
 from parameterized import parameterized_class
 import time
 
@@ -14,8 +15,7 @@ except ImportError:
 if MPI:
     try:
         import pyOCSM
-        from pygeo.DVGeometryESP import DVGeometryESP
-        from pygeo.DVGeometryESP import Error
+        from pygeo import DVGeometryESP
     except ImportError:
         pyOCSM = None
 
@@ -38,7 +38,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
     def setup_cubemodel(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeo = DVGeometryESP(csmFile)
         self.assertIsNotNone(DVGeo)
 
@@ -56,7 +56,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, 8)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
@@ -119,7 +119,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
     def test_load_a_model(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeometryESP(csmFile)
 
     def test_save_cadfile(self):
@@ -157,7 +157,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
     def test_add_desvars(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeo = DVGeometryESP(csmFile)
         self.assertIsNotNone(DVGeo)
 
@@ -266,7 +266,7 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 
     def setup_cubemodel(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeo = DVGeometryESP(csmFile)
         self.assertIsNotNone(DVGeo)
 
@@ -294,7 +294,7 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, 8)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
@@ -360,12 +360,12 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 
     def test_load_a_model(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeometryESP(csmFile)
 
     def test_add_desvars(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeo = DVGeometryESP(csmFile)
         self.assertIsNotNone(DVGeo)
 
@@ -465,7 +465,7 @@ class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
 
     def setup_cubemodel(self):
         # load the box model and build the box model
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/box.csm")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
         DVGeo = DVGeometryESP(csmFile)
         self.assertIsNotNone(DVGeo)
 
@@ -495,7 +495,7 @@ class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, 8)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
@@ -630,12 +630,12 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
     def setup_airfoilmodel(self, kulfan=False, projtol=0.01):
         # load the csm file and pointset file
         if kulfan:
-            csmFile = os.path.join(self.input_path, "inputFiles/esp/naca0012_kulfan.csm")
+            csmFile = os.path.join(self.input_path, "../input_files/esp/naca0012_kulfan.csm")
             max_dist_tol = 2
         else:
-            csmFile = os.path.join(self.input_path, "inputFiles/esp/naca0012.csm")
+            csmFile = os.path.join(self.input_path, "../input_files/esp/naca0012.csm")
             max_dist_tol = 3
-        stlFile = os.path.join(self.input_path, "inputFiles/esp/naca0012_esp.stl")
+        stlFile = os.path.join(self.input_path, "../input_files/esp/naca0012_esp.stl")
 
         DVGeo = DVGeometryESP(csmFile, projTol=projtol)
         self.assertIsNotNone(DVGeo)
@@ -655,7 +655,7 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
         self.assertAlmostEqual(distglobal, 0.0, max_dist_tol)
 
         # evaluate the points and check that they match
-        DVGeo._updateESPModel()
+        DVGeo._updateModel()
         DVGeo._updateProjectedPts()
         self.assertTrue(DVGeo.pointSetUpToDate)
         updated_dist_max = np.max(np.sqrt(np.sum((p0 - DVGeo.pointSets["airfoil_p0"].proj_pts) ** 2, axis=1)))
@@ -680,8 +680,8 @@ class TestPyGeoESP_NACAFoil(unittest.TestCase):
 
     def test_point_mismatch(self):
         # load the wrong pointset on purpose
-        csmFile = os.path.join(self.input_path, "inputFiles/esp/naca0010.csm")
-        stlFile = os.path.join(self.input_path, "inputFiles/esp/naca0012_esp.stl")
+        csmFile = os.path.join(self.input_path, "../input_files/esp/naca0010.csm")
+        stlFile = os.path.join(self.input_path, "../input_files/esp/naca0012_esp.stl")
 
         DVGeo = DVGeometryESP(csmFile)
         self.assertIsNotNone(DVGeo)

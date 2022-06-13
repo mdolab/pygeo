@@ -2,4 +2,10 @@
 set -e
 ./input_files/get-input-files.sh
 
-testflo -v . -n 1
+# all tests should pass on private
+if [[ $IMAGE == "private" ]] && [[ $OS == "ubuntu" ]]; then
+    EXTRA_FLAGS='--disallow_skipped'
+fi
+
+cd tests
+testflo -v -n 1 --coverage --coverpkg pygeo $EXTRA_FLAGS

@@ -3,8 +3,8 @@
 # ======================================================================
 import os
 import numpy as np
-from pyspline import pySpline
-from .geo_utils import CurveTopology
+from pyspline.utils import openTecplot, writeTecplot1D, closeTecplot, line
+from .topology import CurveTopology
 
 
 class pyNetwork:
@@ -72,21 +72,21 @@ class pyNetwork:
             Flag to write a separate node label file with the node indices
         """
 
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
         if curves:
             for icurve in range(self.nCurve):
                 self.curves[icurve].computeData()
-                pySpline.writeTecplot1D(f, "interpolated", self.curves[icurve].data)
+                writeTecplot1D(f, "interpolated", self.curves[icurve].data)
         if coef:
             for icurve in range(self.nCurve):
-                pySpline.writeTecplot1D(f, "coef", self.curves[icurve].coef)
+                writeTecplot1D(f, "coef", self.curves[icurve].coef)
         if orig:
             for icurve in range(self.nCurve):
-                pySpline.writeTecplot1D(f, "coef", self.curves[icurve].X)
+                writeTecplot1D(f, "coef", self.curves[icurve].X)
 
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)
-        fileBaseName, fileExtension = os.path.splitext(fileName)
+        fileBaseName, _ = os.path.splitext(fileName)
 
         if curveLabels:
             # Split the filename off
@@ -139,7 +139,7 @@ class pyNetwork:
                 f2.write("%s" % (textString))
             f2.close()
 
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
 
     def _updateCurveCoef(self):
         """update the coefficents on the pyNetwork update"""
@@ -216,7 +216,7 @@ class pyNetwork:
             cases but can cause unexpected behavior sometimes which can be fixed
             by increasing the default.
         kwargs : dict
-            Keyword arguments passed to pySpline.Curve.projectCurve() function
+            Keyword arguments passed to Curve.projectCurve() function
 
         Returns
         -------
@@ -246,7 +246,7 @@ class pyNetwork:
         for i in range(len(curves)):
             icurve = curves[i]
             for j in range(N):
-                ray = pySpline.line(
+                ray = line(
                     points[j] - axis * raySize * np.linalg.norm(D0[j]),
                     points[j] + axis * raySize * np.linalg.norm(D0[j]),
                 )
@@ -265,7 +265,7 @@ class pyNetwork:
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = np.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm(D[i, 0])
             s[i] = S[i, 0]
             curveID[i] = curves[0]
             for j in range(len(curves)):
@@ -276,7 +276,7 @@ class pyNetwork:
 
         return curveID, s
 
-    def projectPoints(self, points, curves=None, *args, **kwargs):
+    def projectPoints(self, points, *args, curves=None, **kwargs):
         """Project one or more points onto the nearest curve. This
         algorihm isn't exactly efficient: We simply project the nodes
         on each of the curves and take the lowest one.
@@ -289,7 +289,7 @@ class pyNetwork:
             An optional list of curve indices to you. If not given, all
             curve objects are used.
         kwargs : dict
-            Keyword arguments passed to pySpline.curve.projectPoint() function
+            Keyword arguments passed to curve.projectPoint() function
 
         Returns
         -------
@@ -315,7 +315,7 @@ class pyNetwork:
 
         # Now post-process to get the lowest one
         for i in range(N):
-            d0 = np.linalg.norm((D[i, 0]))
+            d0 = np.linalg.norm(D[i, 0])
             s[i] = S[i, 0]
             curveID[i] = curves[0]
             for j in range(len(curves)):

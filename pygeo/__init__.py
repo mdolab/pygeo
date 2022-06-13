@@ -1,14 +1,21 @@
-__version__ = "1.5.0"
+__version__ = "1.11.2"
 
-from . import geo_utils
 from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
 from .pyBlock import pyBlock
-from .DVConstraints import DVConstraints
-from .DVGeometry import DVGeometry
-from .DVGeometryAxi import DVGeometryAxi
+from .constraints import DVConstraints
+from .parameterization import DVGeometry
+from .parameterization import DVGeometryAxi
 
 try:
-    from .DVGeometryVSP import DVGeometryVSP
+    from .parameterization import DVGeometryVSP
+except ImportError:
+    pass
+try:
+    from .parameterization import DVGeometryESP
+except ImportError:
+    pass
+try:
+    from .parameterization import DVGeometryMulti
 except ImportError:
     pass

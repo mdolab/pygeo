@@ -1,9 +1,10 @@
 import os
+import shutil
 import unittest
 import numpy as np
 from baseclasses import BaseRegTest
 import commonUtils
-from pygeo import geo_utils, DVGeometry, DVConstraints
+from pygeo import DVGeometry, DVConstraints
 from stl import mesh
 
 
@@ -29,7 +30,7 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 1: Basic FFD, global DVs")
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler)
 
@@ -46,11 +47,11 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler)
 
@@ -67,9 +68,9 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create global DVs on the child
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             DVGeo.addChild(DVGeoChild)
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler)
@@ -87,14 +88,14 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             # create global DVs on the child
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             DVGeo.addChild(DVGeoChild)
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler)
@@ -112,16 +113,16 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
             # create global DVs on the child
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -140,13 +141,13 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -165,9 +166,9 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -185,9 +186,9 @@ class RegTestPyGeo(unittest.TestCase):
             handler.root_print("Test 8: Basic + Nested FFD, local DVs only on child")
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -206,11 +207,11 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -229,14 +230,14 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -252,14 +253,14 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path, rotType=0)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -275,14 +276,14 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path, rotType=7)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-            DVGeoChild.addGeoDVGlobal("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -301,16 +302,16 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             # create global DVs on the child
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -328,16 +329,16 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path, rotType=0)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             # create global DVs on the child
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -355,16 +356,16 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path, rotType=7)
 
             # create global DVs on the parent
-            DVGeo.addGeoDVGlobal("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", -1.0, commonUtils.mainAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             # create global DVs on the child
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -387,7 +388,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             # create global DVs on the parent
             axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
-            DVGeo.addGeoDVGlobal("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
 
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
@@ -414,11 +415,11 @@ class RegTestPyGeo(unittest.TestCase):
 
             # create global DVs on the parent
             axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
-            DVGeo.addGeoDVGlobal("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
 
@@ -446,10 +447,10 @@ class RegTestPyGeo(unittest.TestCase):
 
             # create global DVs on the parent
             axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
-            DVGeo.addGeoDVGlobal("mainX", axisX, commonUtils.mainAxisPointsD8, lower=0.0, upper=35.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPointsD8, lower=0.0, upper=35.0, scale=1.0)
             # create global DVs on the child
             childAxisX = [32.4, 34]
-            DVGeoChild.addGeoDVGlobal(
+            DVGeoChild.addGlobalDV(
                 "nestedX", childAxisX, commonUtils.childAxisPointsD8, lower=0.0, upper=35.0, scale=1.0
             )
             DVGeo.addChild(DVGeoChild)
@@ -479,17 +480,15 @@ class RegTestPyGeo(unittest.TestCase):
 
             # create global DVs on the parent
             axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
-            DVGeo.addGeoDVGlobal("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             # create global DVs on the child
             childAxisX = [32.4, 34]
-            DVGeoChild.addGeoDVGlobal(
-                "nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0
-            )
+            DVGeoChild.addGlobalDV("nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0)
             DVGeo.addChild(DVGeoChild)
 
             commonUtils.testSensitivitiesD8(DVGeo, refDeriv, handler)
@@ -517,19 +516,17 @@ class RegTestPyGeo(unittest.TestCase):
 
             # create global DVs on the parent
             axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
-            DVGeo.addGeoDVGlobal("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
             # create global DVs on the child
             childAxisX = [32.4, 34]
-            DVGeoChild.addGeoDVGlobal(
-                "nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0
-            )
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -557,13 +554,13 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeoD8(self.base_path, refDeriv)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -591,14 +588,12 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeoD8(self.base_path, refDeriv)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             childAxisX = [32.4, 34]
-            DVGeoChild.addGeoDVGlobal(
-                "nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0
-            )
+            DVGeoChild.addGlobalDV("nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -626,17 +621,15 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVGeoChild = commonUtils.setupDVGeoD8(self.base_path, refDeriv)
 
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             childAxisX = [32.4, 34]
-            DVGeoChild.addGeoDVGlobal(
-                "nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0
-            )
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addGlobalDV("nestedX", childAxisX, commonUtils.childAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -665,16 +658,16 @@ class RegTestPyGeo(unittest.TestCase):
 
             # create global DVs on the parent
             axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
-            DVGeo.addGeoDVGlobal("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
             # create local DVs on the parent
-            DVGeo.addGeoDVLocal("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
-            DVGeo.addGeoDVLocal("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
-            DVGeo.addGeoDVLocal("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
             # create global DVs on the child
-            DVGeoChild.addGeoDVLocal("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
-            DVGeoChild.addGeoDVLocal("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
+            DVGeoChild.addLocalDV("childxdir", lower=-1.1, upper=1.1, axis="x", scale=1.0)
+            DVGeoChild.addLocalDV("childydir", lower=-1.1, upper=1.1, axis="y", scale=1.0)
+            DVGeoChild.addLocalDV("childzdir", lower=-1.1, upper=1.1, axis="z", scale=1.0)
 
             DVGeo.addChild(DVGeoChild)
 
@@ -703,11 +696,11 @@ class RegTestPyGeo(unittest.TestCase):
             # Test with a single point along the 45 ` degree theta direction
             DVGeo = commonUtils.setupDVGeoAxi(self.base_path)
 
-            DVGeo.addGeoDVGlobal("mainAxis", np.zeros(1), commonUtils.mainAxisPointAxi)
+            DVGeo.addGlobalDV("mainAxis", np.zeros(1), commonUtils.mainAxisPointAxi)
 
-            DVGeo.addGeoDVLocal("x_axis", lower=-2, upper=2, axis="x")
-            DVGeo.addGeoDVLocal("z_axis", lower=-2, upper=2, axis="z")
-            DVGeo.addGeoDVLocal("y_axis", lower=-2, upper=2, axis="y")
+            DVGeo.addLocalDV("x_axis", lower=-2, upper=2, axis="x")
+            DVGeo.addLocalDV("z_axis", lower=-2, upper=2, axis="z")
+            DVGeo.addLocalDV("y_axis", lower=-2, upper=2, axis="y")
 
             ptName = "point"
             s_pts = np.array(
@@ -738,44 +731,6 @@ class RegTestPyGeo(unittest.TestCase):
                 dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
                 handler.root_add_dict("dIdx", dIdx, rtol=1e-7, atol=1e-7)
 
-    def train_22(self, train=True, refDeriv=True):
-        self.test_22(train=train, refDeriv=refDeriv)
-
-    def test_22(self, train=False, refDeriv=False):
-        """
-        Test 22
-        """
-        refFile = os.path.join(self.base_path, "ref/test_DVGeometry_22.ref")
-        with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test FFD writing function")
-
-            # Write duplicate of outerbox FFD
-            axes = ["i", "k", "j"]
-            slices = np.array(
-                [
-                    # Slice 1
-                    [[[-1, -1, -1], [-1, 1, -1]], [[-1, -1, 1], [-1, 1, 1]]],
-                    # Slice 2
-                    [[[1, -1, -1], [1, 1, -1]], [[1, -1, 1], [1, 1, 1]]],
-                    # Slice 3
-                    [[[2, -1, -1], [2, 1, -1]], [[2, -1, 1], [2, 1, 1]]],
-                ]
-            )
-
-            N0 = [2, 2]
-            N1 = [2, 2]
-            N2 = [2, 2]
-
-            copyName = os.path.join(self.base_path, "../inputFiles/test1.xyz")
-            geo_utils.write_wing_FFD_file(copyName, slices, N0, N1, N2, axes=axes)
-
-            # Load original and duplicate
-            origFFD = DVGeometry(os.path.join(self.base_path, "../inputFiles/outerBoxFFD.xyz"))
-            copyFFD = DVGeometry(copyName)
-            norm_diff = np.linalg.norm(origFFD.FFD.coef - copyFFD.FFD.coef)
-            handler.par_add_norm("norm", norm_diff, rtol=1e-7, atol=1e-7)
-            os.remove(copyName)
-
     def test_spanwise_dvs(self, train=False, refDeriv=False):
         """
         Test spanwise_dvs
@@ -784,8 +739,8 @@ class RegTestPyGeo(unittest.TestCase):
         # with BaseRegTest(refFile, train=train) as handler:
         #     handler.root_print("Test spanwise local variables writing function")
 
-        meshfile = os.path.join(self.base_path, "../inputFiles/c172.stl")
-        ffdfile = os.path.join(self.base_path, "../inputFiles/c172.xyz")
+        meshfile = os.path.join(self.base_path, "../../input_files/c172.stl")
+        ffdfile = os.path.join(self.base_path, "../../input_files/c172.xyz")
         testmesh = mesh.Mesh.from_file(meshfile)
         # test mesh dim 0 is triangle index
         # dim 1 is each vertex of the triangle
@@ -793,7 +748,7 @@ class RegTestPyGeo(unittest.TestCase):
 
         # create a DVGeo object with a few local thickness variables
         DVGeo = DVGeometry(ffdfile)
-        DVGeo.addGeoDVSpanwiseLocal("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
+        DVGeo.addSpanwiseLocalDV("shape", "i", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
         # create a DVConstraints object for the wing
         DVCon = DVConstraints()
@@ -839,7 +794,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVGeometry_23.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test generalized axis node location section in plane")
-            DVGeo = DVGeometry(os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz"))
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
             xfraction = 0.3
             yfraction = 0.6
             rotType = 0
@@ -866,7 +821,7 @@ class RegTestPyGeo(unittest.TestCase):
         refFile = os.path.join(self.base_path, "ref/test_DVGeometry_24.ref")
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test twist and scaling for FFDs non-aligned to main system of reference")
-            DVGeo = DVGeometry(os.path.join(self.base_path, "../inputFiles/2x1x8_rectangle.xyz"))
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
             rotType = 0
             xfraction = 0.5
             nRefAxPts = DVGeo.addRefAxis("RefAx", xFraction=xfraction, alignIndex="k", rotType=rotType, rot0ang=-90)
@@ -874,13 +829,11 @@ class RegTestPyGeo(unittest.TestCase):
             fix_root_sect = 1
             nTwist = nRefAxPts - fix_root_sect
 
-            DVGeo.addGeoDVGlobal(
-                dvName="twist", value=[0] * nTwist, func=commonUtils.twist, lower=-90, upper=90, scale=1
-            )
-            DVGeo.addGeoDVGlobal(
+            DVGeo.addGlobalDV(dvName="twist", value=[0] * nTwist, func=commonUtils.twist, lower=-90, upper=90, scale=1)
+            DVGeo.addGlobalDV(
                 dvName="thickness", value=[1.0] * nTwist, func=commonUtils.thickness, lower=0.7, upper=5.0, scale=1
             )
-            DVGeo.addGeoDVGlobal(
+            DVGeo.addGlobalDV(
                 dvName="chord", value=[1.0] * nTwist, func=commonUtils.chord, lower=0.7, upper=5.0, scale=1
             )
 
@@ -909,6 +862,131 @@ class RegTestPyGeo(unittest.TestCase):
             FFD_coords = DVGeo.FFD.coef.copy()
 
             handler.root_add_val("Updated FFD coordinates", FFD_coords, rtol=1e-12, atol=1e-12)
+
+    def test_demoDesignVars(self):
+        DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+        DVGeo.addChild(DVGeoChild)
+
+        # Add DVs to the child
+        globalVarName = "nestedX"
+        localVarName = "childXDir"
+        DVGeoChild.addGlobalDV(globalVarName, -0.5, commonUtils.childAxisPoints, lower=-1.0, upper=0.0, scale=1.0)
+        DVGeoChild.addLocalDV(localVarName, lower=-1.1, upper=1.1, axis="x", scale=1.0)
+
+        # Add a simple point set
+        ptName = "point"
+        pts = np.array(
+            [
+                [0, 0.5, 0.5],
+            ],
+            dtype="float",
+        )
+        DVGeo.addPointSet(points=pts, ptName=ptName)
+
+        # Demo DVs with just the FFD
+        DVGeo.demoDesignVars(self.base_path)
+
+        # Files that we expect to be output based on the DVs added
+        refNames = sorted(
+            [
+                f"{localVarName}_000_iter_000",
+                f"{localVarName}_000_iter_001",
+                f"{localVarName}_001_iter_000",
+                f"{localVarName}_001_iter_001",
+                f"{localVarName}_002_iter_000",
+                f"{localVarName}_002_iter_001",
+                f"{localVarName}_003_iter_000",
+                f"{localVarName}_003_iter_001",
+                f"{localVarName}_004_iter_000",
+                f"{localVarName}_004_iter_001",
+                f"{localVarName}_005_iter_000",
+                f"{localVarName}_005_iter_001",
+                f"{localVarName}_006_iter_000",
+                f"{localVarName}_006_iter_001",
+                f"{localVarName}_007_iter_000",
+                f"{localVarName}_007_iter_001",
+                f"{globalVarName}_000_iter_000",
+                f"{globalVarName}_000_iter_001",
+            ]
+        )
+        ffdRef = [name + ".dat" for name in refNames]
+        pointSetRef = [name + f"_{ptName}.dat" for name in refNames]
+
+        # Set paths
+        ffdPath = os.path.join(self.base_path, "ffd")
+        pointSetPath = os.path.join(self.base_path, "pointset")
+        surfPath = os.path.join(self.base_path, "surf")
+
+        # Check that the generated FFD files match the expected result
+        ffdFiles = sorted(os.listdir(ffdPath))
+        self.assertEqual(ffdFiles, ffdRef)
+
+        # Check that there are no other directories created
+        with self.assertRaises(FileNotFoundError):
+            os.listdir(pointSetPath)
+            os.listdir(surfPath)
+
+        # Delete FFD files
+        shutil.rmtree(ffdPath)
+
+        # Demo DVs with a point set
+        DVGeo.demoDesignVars(self.base_path, pointSet=ptName)
+
+        # Check that the FFD and point set files match the expected result
+        ffdFiles = sorted(os.listdir(ffdPath))
+        pointSetFiles = sorted(os.listdir(pointSetPath))
+        self.assertEqual(ffdFiles, ffdRef)
+        self.assertEqual(pointSetFiles, pointSetRef)
+
+        # Delete FFD and point set files
+        shutil.rmtree(ffdPath)
+        shutil.rmtree(pointSetPath)
+
+    def test_writeRefAxes(self):
+        DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+        DVGeo.addChild(DVGeoChild)
+
+        # Add a simple point set
+        ptName = "point"
+        pts = np.array(
+            [
+                [0, 0.5, 0.5],
+            ],
+            dtype="float",
+        )
+        DVGeo.addPointSet(points=pts, ptName=ptName)
+
+        # Write out the axes
+        axesPath = os.path.join(self.base_path, "axis")
+        DVGeo.writeRefAxes(axesPath)
+
+        # Check that files were written
+        self.assertTrue(os.path.isfile(axesPath + "_parent.dat"))
+        self.assertTrue(os.path.isfile(axesPath + "_child000.dat"))
+
+        # Delete axis files
+        os.remove(axesPath + "_parent.dat")
+        os.remove(axesPath + "_child000.dat")
+
+    def train_ffdSplineOrder(self, train=True, refDeriv=True):
+        self.test_ffdSplineOrder(train=train, refDeriv=refDeriv)
+
+    def test_ffdSplineOrder(self, train=False, refDeriv=False):
+        """
+        Test custom FFD spline order
+        """
+        refFile = os.path.join(self.base_path, "ref/test_ffd_spline_order.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test custom FFD spline order")
+            ffdfile = os.path.join(self.base_path, "../../input_files/deform_geometry_ffd.xyz")
+            DVGeo = DVGeometry(ffdfile, kmax=6)
+
+            # create local DVs
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+            DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+            DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=3)
 
 
 if __name__ == "__main__":

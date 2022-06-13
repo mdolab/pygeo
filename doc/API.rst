@@ -10,6 +10,8 @@ This package consists of the following modules:
 
    DVConstraints
    DVGeometry
+   DVGeometryMulti
    pyNetwork
    pyGeo
    pyBlock
+   geo_utils

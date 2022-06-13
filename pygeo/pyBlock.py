@@ -6,29 +6,11 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
-from pyspline import pySpline
-from .geo_utils import readNValues, BlockTopology, blendKnotVectors
-
-
-class Error(Exception):
-    """
-    Format the error message in a box to make it clear this
-    was a explicitly raised exception.
-    """
-
-    def __init__(self, message):
-        msg = "\n+" + "-" * 78 + "+" + "\n" + "| pyBlock Error: "
-        i = 16
-        for word in message.split():
-            if len(word) + i + 1 > 78:  # Finish line and start new one
-                msg += " " * (78 - i) + "|\n| " + word + " "
-                i = 1 + len(word) + 1
-            else:
-                msg += word + " "
-                i += len(word) + 1
-        msg += " " * (78 - i) + "|\n" + "+" + "-" * 78 + "+" + "\n"
-        print(msg)
-        Exception.__init__(self)
+from pyspline import Volume
+from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
+from .geo_utils import readNValues, blendKnotVectors
+from .topology import BlockTopology
+from baseclasses.utils import Error
 
 
 class pyBlock:
@@ -54,9 +36,18 @@ class pyBlock:
        the plot 3d file explicitly become the control points and
        uniform (and symmetric) knot vectors are assumed
        everywhere. This ensures a seamless FFD.
+
+    symPlane : {"x", "y", or "z"}
+        if a coordinate direciton is provided, the code will duplicate
+        the FFD in the mirroring direction.
+
+    kmax : int
+        maximum order of the splines used for the underlying formulation.
+        Default is a 4th order spline in each direction if the dimensions
+        allow.
     """
 
-    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
 
         self.initType = initType
         self.FFD = False
@@ -64,24 +55,21 @@ class pyBlock:
         self.vols = []  # The list of volumes (pySpline volume)
         self.nVol = None  # The total number of volumessurfaces
         self.coef = None  # The global (reduced) set of control pts
-        self.embededVolumes = {}
+        self.embeddedVolumes = {}
         self.symmPlane = symmPlane
 
         if initType == "plot3d":
-            self._readPlot3D(fileName, FFD=FFD, **kwargs)
+            self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
         elif initType == "create":
             pass
         else:
-            raise Error(
-                'initType must be one of "plot3d" or "create". \
-            ("create" is only for expert debugging)'
-            )
+            raise Error("initType must be one of 'plot3d' or 'create'. ('create' is only for expert debugging)")
 
     # ----------------------------------------------------------------------
     #                     Initialization Types
     # ----------------------------------------------------------------------
 
-    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001):
+    def _readPlot3D(self, fileName, order="f", FFD=False, symmTol=0.001, kmax=4):
         """Load a plot3D file and create the splines to go with each
         patch. See the pyBlock() docstring for more information.
 
@@ -93,7 +81,7 @@ class pyBlock:
         """
 
         binary = False  # Binary read no longer supported.
-        f = open(fileName, "r")
+        f = open(fileName)
         nVol = readNValues(f, 1, "int", False)[0]
         sizes = readNValues(f, nVol * 3, "int", False).reshape((nVol, 3))
         blocks = []
@@ -127,7 +115,7 @@ class pyBlock:
             #             self.coords[:, j, k, idim] = self.coords[::-1, j, k, idim]
 
         def symmZero(axis, coords, tol):
-            """ set all coords within a certain tolerance of the symm plan to be exactly 0"""
+            """set all coords within a certain tolerance of the symm plan to be exactly 0"""
 
             if axis.lower() == "x":
                 index = 0
@@ -180,16 +168,16 @@ class pyBlock:
                 return knots
 
             for ivol in range(nVol):
-                ku = min(4, sizes[ivol, 0])
-                kv = min(4, sizes[ivol, 1])
-                kw = min(4, sizes[ivol, 2])
+                ku = min(kmax, sizes[ivol, 0])
+                kv = min(kmax, sizes[ivol, 1])
+                kw = min(kmax, sizes[ivol, 2])
 
                 # A uniform knot vector is ok and we won't have to
                 # propagate the vectors since they are by
                 # construction symmetric
 
                 self.vols.append(
-                    pySpline.Volume(
+                    Volume(
                         ku=ku,
                         kv=kv,
                         kw=kw,
@@ -235,9 +223,7 @@ class pyBlock:
             # Note This doesn't actually fit the volumes...just produces
             # the parametrization and knot vectors
             for ivol in range(nVol):
-                self.vols.append(
-                    pySpline.Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False)
-                )
+                self.vols.append(Volume(X=blocks[ivol], ku=4, kv=4, kw=4, nCtlu=4, nCtlv=4, nCtlw=4, recompute=False))
             self.nVol = len(self.vols)
         # end if (FFD Check)
 
@@ -340,7 +326,7 @@ class pyBlock:
         if fileName is not None and os.path.isfile(fileName):
             print(" ")
             print("Reading Connectivity File: %s" % (fileName))
-            self.topo = BlockTopology(file=fileName)
+            self.topo = BlockTopology(fileName=fileName)
             self._propagateKnotVectors()
         else:
             print(" ")
@@ -390,7 +376,7 @@ class pyBlock:
         self.topo.printConnectivity()
 
     def _propagateKnotVectors(self):
-        """ Propagate the knot vectors to make consistent"""
+        """Propagate the knot vectors to make consistent"""
 
         nDG = -1
         ncoef = []
@@ -524,19 +510,19 @@ class pyBlock:
         """
 
         # Open File and output header
-        f = pySpline.openTecplot(fileName, 3)
+        f = openTecplot(fileName, 3)
 
         if vols:
             for ivol in range(self.nVol):
                 self.vols[ivol].computeData()
-                pySpline.writeTecplot3D(f, "interpolated", self.vols[ivol].data)
+                writeTecplot3D(f, "interpolated", self.vols[ivol].data)
         if orig:
             for ivol in range(self.nVol):
-                pySpline.writeTecplot3D(f, "orig_data", self.vols[ivol].X)
+                writeTecplot3D(f, "orig_data", self.vols[ivol].X)
 
         if coef:
             for ivol in range(self.nVol):
-                pySpline.writeTecplot3D(f, "control_pts", self.vols[ivol].coef)
+                writeTecplot3D(f, "control_pts", self.vols[ivol].coef)
 
         # ---------------------------------------------
         #    Write out labels:
@@ -544,7 +530,7 @@ class pyBlock:
         if volLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".vol_labels.dat"
             f2 = open(labelFilename, "w")
             for ivol in range(self.nVol):
@@ -563,7 +549,7 @@ class pyBlock:
         if edgeLabels:
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".edge_labels.dat"
             f2 = open(labelFilename, "w")
             for ivol in range(self.nVol):
@@ -590,7 +576,7 @@ class pyBlock:
 
             # Split the filename off
             dirName, fileName = os.path.split(fileName)
-            fileBaseName, fileExtension = os.path.splitext(fileName)
+            fileBaseName, _ = os.path.splitext(fileName)
             labelFilename = dirName + "./" + fileBaseName + ".node_labels.dat"
             f2 = open(labelFilename, "w")
             for i in range(nNodes):
@@ -603,7 +589,7 @@ class pyBlock:
                 f2.write("%s" % (textString))
             f2.close()
 
-        pySpline.closeTecplot(f)
+        closeTecplot(f)
 
     def writePlot3d(self, fileName):
         """Write the grid to a plot3d file. This isn't efficient as it
@@ -703,11 +689,11 @@ class pyBlock:
         """
 
         # Extract values to make the code a little easier to read:
-        volID = self.embededVolumes[ptSetName].volID
-        u = self.embededVolumes[ptSetName].u
-        v = self.embededVolumes[ptSetName].v
-        w = self.embededVolumes[ptSetName].w
-        N = self.embededVolumes[ptSetName].N
+        volID = self.embeddedVolumes[ptSetName].volID
+        u = self.embeddedVolumes[ptSetName].u
+        v = self.embeddedVolumes[ptSetName].v
+        w = self.embeddedVolumes[ptSetName].w
+        N = self.embeddedVolumes[ptSetName].N
 
         # Get the maximum k (ku or kv for each volume)
         kmax = 2
@@ -726,8 +712,8 @@ class pyBlock:
             )
 
             rowPtr.append(rowPtr[-1] + kinc)
-            if self.embededVolumes[ptSetName].mask is not None:
-                if i not in self.embededVolumes[ptSetName].mask:
+            if self.embeddedVolumes[ptSetName].mask is not None:
+                if i not in self.embeddedVolumes[ptSetName].mask:
                     # Kill the values we just added
                     vals[rowPtr[-2] : rowPtr[-1]] = 0.0
 
@@ -736,7 +722,7 @@ class pyBlock:
         colInd = colInd[: rowPtr[-1]]
         # Now make a sparse matrix iff we actually have coordinates
         if N > 0:
-            self.embededVolumes[ptSetName].dPtdCoef = sparse.csr_matrix(
+            self.embeddedVolumes[ptSetName].dPtdCoef = sparse.csr_matrix(
                 (vals, colInd, rowPtr), shape=[N, len(self.coef)]
             )
 
@@ -756,20 +742,20 @@ class pyBlock:
             only the points corresponding to the indices in mask will be
             non-zero in the array.
         """
-        u = self.embededVolumes[ptSetName].u
-        v = self.embededVolumes[ptSetName].v
-        w = self.embededVolumes[ptSetName].w
-        N = self.embededVolumes[ptSetName].N
-        mask = self.embededVolumes[ptSetName].mask
+        u = self.embeddedVolumes[ptSetName].u
+        v = self.embeddedVolumes[ptSetName].v
+        w = self.embeddedVolumes[ptSetName].w
+        N = self.embeddedVolumes[ptSetName].N
+        mask = self.embeddedVolumes[ptSetName].mask
         coordinates = np.zeros((N, 3))
 
         # This evaluation is fast enough we don't really care about
         # only looping explictly over the mask values
-        for iVol in self.embededVolumes[ptSetName].indices:
-            indices = self.embededVolumes[ptSetName].indices[iVol]
-            u = self.embededVolumes[ptSetName].u[indices]
-            v = self.embededVolumes[ptSetName].v[indices]
-            w = self.embededVolumes[ptSetName].w[indices]
+        for iVol in self.embeddedVolumes[ptSetName].indices:
+            indices = self.embeddedVolumes[ptSetName].indices[iVol]
+            u = self.embeddedVolumes[ptSetName].u[indices]
+            v = self.embeddedVolumes[ptSetName].v[indices]
+            w = self.embeddedVolumes[ptSetName].w[indices]
             coords = self.vols[iVol](u, v, w)
             coordinates[indices, :] = coords
 
@@ -786,7 +772,7 @@ class pyBlock:
     #             Embedded Geometry Functions
     # ----------------------------------------------------------------------
 
-    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, faceFreeze=None, eps=1e-12, **kwargs):
+    def attachPoints(self, coordinates, ptSetName, interiorOnly=False, embTol=1e-10, nIter=100, eps=1e-12):
         """Embed a set of coordinates into the volumes. This is the
         main high level function that is used by DVGeometry when
         pyBlock is used as an FFD.
@@ -799,44 +785,39 @@ class pyBlock:
             The name given to this set of coordinates.
         interiorOnly : bool
             Project only points that lie fully inside the volume
-        faceFreeze :
-            A dictionary of lists of strings specifying which faces should be
-            'frozen'. Each dictionary represents one block in the FFD.
-            This is only used with child FFD's in DVGeometry.
-            For example if faceFreeze =['0':['iLow'],'1':[]], then the
-            plane of control points corresponding to i=0, and i=1, in block '0'
-            will not be able to move in DVGeometry.
+        embTol : float
+            Tolerance on the distance between projected and closest point.
+            Determines if a point is embedded or not in the FFD volume if interiorOnly is True.
         eps : float
             Physical tolerance to which to converge Newton search
-        kwargs : dict
-            kwargs pass through to the actual projectPoints() function
+        nIter : int
+            Maximum number of Newton iterations to perform. The default of 100 should be sufficient for points
+            that **actually** lie inside the volume, except for pathological or degenerate FFD volumes.
+
         """
 
         # Project Points, if some were actually passed in:
         if coordinates is not None:
-            if not interiorOnly:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=True, eps=eps, **kwargs)
-                self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w)
-            else:
-                volID, u, v, w, D = self.projectPoints(coordinates, checkErrors=False, eps=eps, **kwargs)
+            checkErrors = not interiorOnly
+            mask = None
+            volID, u, v, w, D = self.projectPoints(coordinates, checkErrors, embTol, eps, nIter)
 
+            if interiorOnly:
+                # Create the mask before creating the embedded volume
                 mask = []
                 for i in range(len(D)):
                     Dnrm = np.linalg.norm(D[i])
-                    if Dnrm < 50 * eps:  # Sufficiently inside
+                    if Dnrm < embTol:  # Sufficiently inside
                         mask.append(i)
 
-                # Now that we have the mask we can create the embedded volume
-                self.embededVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
+            self.embeddedVolumes[ptSetName] = EmbeddedVolume(volID, u, v, w, mask)
         # end if (Coordinate not none check)
-
-        return
 
     # ----------------------------------------------------------------------
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, eps=1e-12, checkErrors=True, nIter=100):
+    def projectPoints(self, x0, checkErrors, embTol, eps, nIter):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
@@ -853,16 +834,13 @@ class pyBlock:
         ----------
         x0 : array of points (Nx3 array)
             The list or array of points to use
-        eps : float
-            Physical tolerance to which to converge Newton search
         checkErrors : bool
             Flag to print out the error is points have not been projected
-            to tolerance eps.
-        nIter : int
-            Maximum number of Newton iterations to perform. The
-            default of 100 should be sufficient for points that
-            **actually** lie inside the volume, except for
-            pathological or degenerate FFD volumes
+            to the tolerance defined by embTol.
+
+        See Also
+        --------
+        attachPoints : description of the other parameters
         """
 
         # Make sure we are dealing with a 2D "Nx3" list of points
@@ -899,7 +877,7 @@ class pyBlock:
 
                 # Now, if D0 is close enough to our tolerance, we can
                 # exit the loop since we know we won't do any better
-                if D0Norm < eps * 50:
+                if D0Norm < embTol:
                     break
             # end for (volume loop)
 
@@ -922,8 +900,8 @@ class pyBlock:
                 if nrm > DMax:
                     DMax = nrm
 
-                DRms += nrm ** 2
-                if nrm > eps * 50:
+                DRms += nrm**2
+                if nrm > embTol:
                     counter += 1
                     badPts.append([x0[i], D[i]])
 
@@ -935,9 +913,8 @@ class pyBlock:
             # Check to see if we have bad projections and print a warning:
             if counter > 0:
                 print(
-                    " -> Warning: %d point(s) not projected to tolerance: \
-                %g\n.  Max Error: %12.6g ; RMS Error: %12.6g"
-                    % (counter, eps, DMax, DRms)
+                    " -> Warning: %d point(s) not projected to tolerance: %g. " % (counter, eps)
+                    + "Max Error: %12.6g ; RMS Error: %12.6g" % (DMax, DRms)
                 )
                 print("List of Points is: (pt, delta):")
                 for i in range(len(badPts)):
@@ -976,7 +953,7 @@ class pyBlock:
         return Xmin, Xmax
 
 
-class EmbeddedVolume(object):
+class EmbeddedVolume:
     """A Container class for a set of embedded volume points
 
     Parameters
