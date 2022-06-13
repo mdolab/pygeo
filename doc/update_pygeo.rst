@@ -11,7 +11,7 @@ This can be done using pyGeo and deforming an object before writing it out in IG
 This tutorial reviews the process of generating a pyGeo object that is deformed using an FFD in DVGeometry.
 This functionality can be used to generate either an IGES file or Tecplot .plt file to be used after the optimization.
 
-The geometry used for this example is the same as the one used in the `MACH-Aero tutorial <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/index.html>`_ and is shown below.
+The geometry used for this example is the same as the one used in the :doc:`MACH-Aero tutorial <mach-aero:index>` and is shown below.
 
 .. figure:: images/wing.png
     :scale: 30
@@ -31,7 +31,7 @@ Each of these options are used for this example in the runScript, as explained b
 
 Lifting Surface
 ---------------
-The lifting surface type is generated as is done in the `MACH-Aero tutorial geometry generation <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/aero_pygeo.html>`_.
+The lifting surface type is generated as is done in the :doc:`MACH-Aero tutorial geometry generation <mach-aero:machAeroTutorials/aero_pygeo>`.
 The airfoil sections are defined by text files and matched to spanwise sections, as defined by the ``x``, ``y``, and ``z`` coordinates.
 The airfoil rotations and chords are defined for each section, and pyGeo is called with the provided parameters.
 
@@ -80,10 +80,10 @@ If these functions are not run, the surfaces on the geometry may deform differen
 DVGeometry Setup
 ================
 To show how this feature works, we deform an FFD to twist the wing geometry.
-The FFD file is generated the same way as the `MACH-Aero tutorial FFD generation <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/machAeroTutorials/opt_ffd.html>`_ and is done using the script ``./ffd/simple_ffd.py``.
+The FFD file is generated the same way as the :doc:`MACH-Aero tutorial FFD generation <mach-aero:machAeroTutorials/opt_ffd>`.
 Once the FFD is loaded into DVGeometry, we can add a reference axis about which we will deform the geometry.
 Similarly, we can define the twist variable function which will twist the wing about the reference axis.
-For this case, we will twist the root of the wing five degrees by retreiving the dictionary of design variables, updating the appropriate twist variable, and resetting the design variable dictionary.
+For this case, we will twist the root of the wing five degrees by retrieving the dictionary of design variables, updating the appropriate twist variable, and resetting the design variable dictionary.
 
 .. literalinclude:: ../examples/deform_geometry/runScript.py
     :start-after: # rst DVGeometry

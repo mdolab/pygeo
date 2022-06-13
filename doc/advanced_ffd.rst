@@ -253,6 +253,6 @@ The FFD method can seem complicated, especially when multiple global design vari
 However, it is very general and has great performance, making it a good choice for general-purpose shape optimization problems.
 
 In this tutorial, you've learned how to set up global variables and make the most of FFD geometry.
-You now know enough to fully understand and extend more complex, FFD-based, shape optimization problems, such as the `MACH-Aero tutorial <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/>`_.
+You now know enough to fully understand and extend more complex, FFD-based, shape optimization problems, such as those covered in :doc:`MACH-Aero tutorial <mach-aero:index>`.
 
 The scripts excerpted for this tutorial are located at ``pygeo/examples/c172_wing/runFFDExample.py`` and ``genFFD.py``.

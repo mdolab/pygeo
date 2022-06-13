@@ -53,7 +53,7 @@ The image below shows the cylinder we made embedded in a cube-shaped FFD volume.
    :width: 450
    :align: center
 
-``pyGeo`` expects the FFD volume to defined in the Plot3D file format. 
+``pyGeo`` expects the FFD volume to defined in the Plot3D file format.
 Points must be defined in a complete, ordered 3D grid.
 The structured grid axes are typically referred to as i, j, and k axes, since they do not necessarily align with the x, y, and z spatial axes.
 Each dimension must be of length at least 2.
@@ -153,7 +153,7 @@ Summary
 -------
 
 In this tutorial, you've learned the basics of ``pyGeo``'s FFD geometry parameterization capabilities.
-You now know enough to set up a basic shape optimization, such as the `MACH-Aero tutorial <https://mdolab-mach-aero.readthedocs-hosted.com/en/latest/>`_.
+You now know enough to set up a basic shape optimization, such as the :doc:`MACH-Aero tutorial <mach-aero:index>`.
 More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as EngineeringSketchPad or OpenVSP).
 
 The scripts excerpted for this tutorial are located at ``pygeo/examples/ffd_cylinder/runFFDExample.py`` and ``genFFD.py``.
