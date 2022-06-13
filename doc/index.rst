@@ -70,11 +70,6 @@ This package consists of the following modules:
 
    getting_started
    advanced_ffd
-   DVConstraints
-   DVGeometry
-   pyNetwork
-   pyGeo
-   pyBlock
    install
    tutorial
    API
