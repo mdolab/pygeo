@@ -30,9 +30,8 @@ The image below shows a simple pointset on the edge of the cylinder, along with 
 
 This pointset was generated using the following code snippet:
 
-.. embed-code::
-    ../examples/ffd_cylinder/runFFDExample.py:EXCERPT:1
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
+    :end-before: # rst create DVGeo
 
 ----------------------
 Creating an FFD volume
@@ -67,15 +66,13 @@ The following script creates the DVGeometry object and generates the pictured cu
 Depending on the user's skill it may be possible to create FFD volumes which conform more closely to the pointset.
 All other things being equal, a fairly tight-fitting FFD volume is better, but there can be quite a bit of margin and optimization will still work.
 
-.. embed-code::
-    ../examples/ffd_cylinder/genFFD.py
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/genFFD.py
 
 Once we have an FFD volume file, we can finally create the actual ``DVGeometry`` object that will handle everything.
 
-.. embed-code::
-    ../examples/ffd_cylinder/runFFDExample.py:EXCERPT:2
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
+    :start-after: # rst create DVGeo
+    :end-before: # rst add pointset
 
 -----------------
 Adding point sets
@@ -86,9 +83,9 @@ This is easily accomplished using the ``DVGeometry.addPointSet`` method.
 Note that each point set gets a name.
 Point sets (whether baseline or deformed) can be written out as a Tecplot file at any time using the ``DVGeometry.writePointSet`` method.
 
-.. embed-code::
-    ../examples/ffd_cylinder/runFFDExample.py:EXCERPT:3
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
+    :start-after: # rst add pointset
+    :end-before: # rst add shape DV
 
 ------------------------------------------
 Parameterizing using local shape variables
@@ -100,9 +97,9 @@ We do this by adding design variables.
 
 We can add a variable which allows for deforming the cylinder in the y direction as follows:
 
-.. embed-code::
-    ../examples/ffd_cylinder/runFFDExample.py:EXCERPT:4
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
+    :start-after: # rst add shape DV
+    :end-before: # rst getLocalIndex
 
 Local design variables represent *perturbations* to the FFD control points in the specified direction, in absolute units.
 For example, setting the array of local design variables to all zeros would produce the baseline FFD shape.
@@ -117,9 +114,9 @@ If you need to access a particular control point, you can obtain its index in th
 
 The following example illustrates the use of the ``getLocalIndex`` method in order to pull one slice of FFD control point coordinates (at k=0, a.k.a z=0) in contiguous order.
 
-.. embed-code::
-    ../examples/ffd_cylinder/runFFDExample.py:EXCERPT:5
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
+    :start-after: # rst getLocalIndex
+    :end-before: # rst perturb geometry
 
 ---------------------------------
 Perturbing local design variables
@@ -147,9 +144,9 @@ Optimizers don't really care whether the points are in contiguous order, but as 
 Also note that the dimension of the local design variable is :math:`N_{\text{points}}`, not :math:`N_{\text{points}} \times 3`.
 This is because when we defined the design variable, we chose the y axis only as the perturbation direction.
 
-.. embed-code::
-    ../examples/ffd_cylinder/runFFDExample.py:EXCERPT:6
-    :layout: code
+.. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
+    :start-after: # rst perturb geometry
+    :end-before: # rst plot
 
 -------
 Summary

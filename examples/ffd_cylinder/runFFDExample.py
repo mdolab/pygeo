@@ -1,4 +1,3 @@
-# EXCERPT 1 #
 from pygeo import DVGeometry
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,9 +14,8 @@ Xpt[:100, 2] = 0.0
 Xpt[100:, 0] = 0.5 * np.cos(t) + 0.5
 Xpt[100:, 1] = 0.5 * np.sin(t)
 Xpt[100:, 2] = 1.0
-# EXCERPT 1 #
 
-# EXCERPT 2 #
+# rst create DVGeo
 # The Plot3D file ffdbox.xyz contains the coordinates of the free-form deformation (FFD)volume
 # we will be using for this problem. It's a cube with sides of length 1 centered on (0, 0,0.5).
 # The "i" direction of the cube consists of 10 points along the x axis
@@ -27,23 +25,20 @@ FFDfile = "ffdbox.xyz"
 
 # initialize the DVGeometry object with the FFD file
 DVGeo = DVGeometry(FFDfile)
-# EXCERPT 2 #
 
-# EXCERPT 3 #
+# rst add pointset
 # add the cylinder pointset to the FFD under the name 'cylinder'
 DVGeo.addPointSet(Xpt.copy(), "cylinder")
 DVGeo.writePointSet("cylinder", "pointset")
-# EXCERPT 3 #
 
-# EXCERPT 4 #
+# rst add shape DV
 # Now that we have pointsets added, we should parameterize the geometry.
 
 # Adding local geometric design to make local modifications to FFD box
 # This option will perturb all the control points but only the y (up-down) direction
 DVGeo.addGeoDVLocal("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
-# EXCERPT 4 #
 
-# EXCERPT 5 #
+# rst getLocalIndex
 # The control points of the FFD are the same as the coordinates of the points in the input file
 # but they will be in a jumbled order because of the internal spline representation of the volume.
 # Let's put them in a sensible order for plotting.
@@ -68,9 +63,8 @@ FFDptset = np.concatenate(
 # Add these control points to the FFD volume. This is only for visualization purposes in this demo.
 # Under normal circumstances you don't need to worry about adding the FFD points as a point set
 DVGeo.addPointSet(FFDptset, "ffd")
-# EXCERPT 5 #
 
-# EXCERPT 6 #
+# rst perturb geometry
 # Now let's deform the geometry.
 # We want to set the front and rear control points the same so we preserve symmetry along the z axis
 # and we ues the getLocalIndex function to accomplish this
@@ -103,9 +97,8 @@ DVGeo.setDesignVars({"shape": newDV.copy()})
 
 Xmod = DVGeo.update("cylinder")
 FFDmod = DVGeo.update("ffd")
-# EXCERPT 6 #
 
-# EXCERPT 7 #
+# rst plot
 # cast the 3D pointsets to 2D for plotting (ignoring depth)
 FFDplt = FFDptset[:, :2]
 FFDmodplt = FFDmod[:, :2]
@@ -134,4 +127,3 @@ legend = plt.legend(
 legend.get_frame().set_facecolor("none")
 plt.tight_layout()
 plt.savefig("deformed_cylinder.png")
-# EXCERPT 7 #
