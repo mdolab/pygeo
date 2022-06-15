@@ -33,7 +33,8 @@ Using our knowledge of the wing dimensions, it's easy to create a closely-confor
 The example script is located at ``examples/c172_wing/genFFD.py``.
 
 The rendering below shows the FFD volume and the point set for the wing.
-Note that unlike the cylinder example in the previous tutorial, there are now two dimensions of control points (in the streamwise and spanwise directions).
+Note that unlike the cylinder example in the previous tutorial, there are now two dimensions in control points are free to move (in the streamwise and spanwise directions).
+While three dimensions are always present, we can enforce symmetry to reduce our problem's dimensions. 
 We can see that the FFD volume closely approximates the wing in the top view.
 
 .. image:: ../examples/c172_wing/images/baseline_3d.png
@@ -136,8 +137,8 @@ The optimizer can now apply a twist distribution to the wing.
 The global design variable can be perturbed just like a local design variable, as illustrated in this snippet:
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
-    :start-after: # rst sweep
-    :end-before: # rst set DV
+    :start-after: # rst set DV
+    :end-before: # rst set DV 2
 
 Applying this twist results in the geometry pictured below. 
 Note that the location of the reference axis (and any points located close to the reference axis) are not affected by the rotation.
@@ -166,11 +167,12 @@ The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on 
     :start-after: # rst set DV
     :end-before: # rst set DV 2
 
-There is a subtle implementation detail to know.
-Whenever the ``setDesignVars`` method is called, the reference axis gets reset back to its original values.
-Therefore, there's no risk that perturbations in one optimizer iteration will stay around for the next.
-However, if multiple global DV callback functions manipulate the ref axis control points, only the first one will see "unperturbed" points.
-They will be called in the order that they are added.
+.. note::
+    There is a subtle implementation detail to know.
+    Whenever the ``setDesignVars`` method is called, the reference axis gets reset back to its original values.
+    Therefore, there's no risk that perturbations in one optimizer iteration will stay around for the next.
+    However, if multiple global DV callback functions manipulate the ref axis control points, only the first one will see "unperturbed" points.
+    They will be called in the order that they are added.
 
 Let's apply a 30 degree sweep as well as a linear 20 degree twist.
 We can see how to do so in the snippet below.
@@ -228,7 +230,7 @@ When multiple global variables are composited, the order of operations matters s
 By default, the order of operations is as follows.
 
 
-There are two one-time setup steps at the beginning:
+There are two one-time setup steps at the beginning that happen "under the hood":
 
 - A reference axis is created using ``addRefAxis``.
 - The pointsets *and* FFD control points are projected onto the axis. The projected point on the axis (in parametric coordinates) is forever linked to the corresponding point set point or FFD control point.
@@ -243,8 +245,8 @@ Finally, during the ``update`` method:
 - New reference axis projection points are computed based on the changes to the reference axis control points done by the callback functions.
 - Rotations are applied to the point sets and FFD control points using the reference axis projections as the pivot point.
 - Depending on the choice of ``rotType`` when ``addRefAxis`` is invoked, the ``rot_x``, ``rot_y``, and ``rot_z`` transformations may be applied in arbitrary order. The default is z, x, y.
-- ``scale_x``, ``scale_y``, and ``scale_z`` are applied based on the vector from each point to its ref axis projection. Points on the ref axis will not change at all under either rotation or scale.
-- A separate ``scale`` parameter is applied which stretches all points isotropically based on their distance and direction from the ref axis projected point.
+- ``scale_x``, ``scale_y``, and ``scale_z`` are applied based on the vector from each point to its reference axis projection. Points on the reference axis will not change at all under either rotation or scale.
+- A separate ``scale`` parameter is applied which stretches all points isotropically based on their distance and direction from the reference axis projected point.
 - Last of all, local FFD perturbations are applied. For ``addGeoDVLocal``, the perturbations are applied in the cartesian frame. For ``addGeoDVSectionLocal`` the perturbations are applied relative to the untwisted FFD section cuts.
 
 -------
@@ -255,6 +257,6 @@ The FFD method can seem complicated, especially when multiple global design vari
 However, it is very general and has great performance, making it a good choice for general-purpose shape optimization problems.
 
 In this tutorial, you've learned how to set up global variables and make the most of FFD geometry.
-You now know enough to fully understand and extend more complex, FFD-based, shape optimization problems, such as those covered in :doc:`MACH-Aero tutorial <mach-aero:index>`.
+You now know enough to fully understand and extend more complex, FFD-based, shape optimization problems, such as those covered in the :doc:`MACH-Aero tutorial <mach-aero:index>`.
 
 The scripts excerpted for this tutorial are located at ``pygeo/examples/c172_wing/runFFDExample.py`` and ``genFFD.py``.

@@ -9,15 +9,17 @@ pyGeo
 
 ``pyGeo`` is a package for generating and manipulating geometry, particularly for applications involving shape optimization.
 
-.. image:: images/DPW4_FFD-27745.gif
+.. figure:: images/DPW4_FFD-27745.gif
    :width: 600
+   :align: center
 
+   Manipulation of individual control points on an FFD volume of an airplane
 
 ==========
 Background
 ==========
 
-*Shape optimization* is a field of engineering which uses applied mathematics and computer simulation to find the best possible shape for an object, such as an aircraft or ship.
+*Shape optimization* is a field of engineering which uses applied mathematics and computer simulation to find the best possible shape for an object, such as an aircraft or a ship.
 In order to do this, optimization software needs to perturb a baseline geometry into a new shape at each iteration.
 Users define *design variables* which map numeric inputs from the optimizer to changes in the geometry.
 
@@ -48,25 +50,13 @@ The package consists of the following high-level modules:
 - **DVConstraints** allows users to constrain important geometric parameters during optimization (such as thicknesses and volumes)
 - **pyGeo** generates spline surfaces, either from geometry files, or *ab initio* wing surfaces.
 
-============
-Installation
-============
-
-Installation first requires a working copy of the ``pyspline`` package, which requires a Fortran compiler and is available on `GitHub <https://github.com/mdolab/pyspline/>`_.
-
-To install ``pyGeo``, first clone the `repo <https://github.com/mdolab/pygeo/>`_, then go into the root directory and type::
-
-   pip install .
-
-For stability we recommend cloning or checking out a tagged release.
-
 
 This package consists of the following modules:
 
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    install
    tutorial

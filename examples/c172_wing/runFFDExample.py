@@ -48,10 +48,9 @@ DVGeo, stlmesh = create_fresh_dvgeo()
 # add a reference axis named 'c4' to the FFD volume
 # it will go in the spanwise (k) direction and be located at the quarter chord line
 nrefaxpts = DVGeo.addRefAxis("c4", xFraction=0.25, alignIndex="k")
-nspanwise = 8
 # note that the number of reference axis points is the same as the number
 # of FFD nodes in the alignIndex direction
-print("Num ref axis pts: ", str(nrefaxpts), " Num spanwise FFD: ", str(nspanwise))
+print("Num ref axis pts: ", str(nrefaxpts), " Num spanwise FFD: 8")
 
 # can write the ref axis geometry to a Tecplot file for visualization
 DVGeo.writeRefAxes("local")
