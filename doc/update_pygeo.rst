@@ -82,7 +82,7 @@ DVGeometry Setup
 To show how this feature works, we deform an FFD to twist the wing geometry.
 The FFD file is generated the same way as the :doc:`MACH-Aero tutorial FFD generation <mach-aero:machAeroTutorials/opt_ffd>`.
 Once the FFD is loaded into DVGeometry, we can add a reference axis about which we will deform the geometry.
-Similarly, we can define the twist variable function which will twist the wing about the reference axis.
+Similarly, we can define the twist variable function, which will twist the wing about the reference axis.
 For this case, we will twist the root of the wing five degrees by retrieving the dictionary of design variables, updating the appropriate twist variable, and resetting the design variable dictionary.
 
 .. literalinclude:: ../examples/deform_geometry/runScript.py
@@ -104,14 +104,14 @@ Included in this function call are ``nRefU`` and ``nRefV``, which are refinement
 The default values are 0, which represent no refinement of the input geometry object.
 These refinement parameters add knot points on the B-spline surfaces to ensure that the deformation of the geometry more closely matches the deformed wing used during the optimization.
 The refinement values can be provided as either integers, as is the case in this example, or as lists whose lengths match the number of surfaces in the geometry.
-Increasing the refinement will help create a closer match between the generated fiile and the mesh used during the optimization, but will increase the file size.
+Increasing the refinement will help create a closer match between the generated fiile and the mesh used during the optimization but will increase the file size.
 
 .. warning::
     Once the deformed geometry file is generated, check it against the deformed mesh from the optimization to ensure that they match.
     If there is a large difference between the two geometries, increase the refinement points and consider providing a more refined input file.
 
     Additionally, it is possible that refinement points are skipped if they conflict with points that already exist in the geometry file.
-    In unique cases you may find your output geometry may have fewer refinement points than expected.
+    In unique cases, you may find your output geometry may have fewer refinement points than expected.
 
 Result
 ======
@@ -134,5 +134,5 @@ This example can be run by calling ``runScript.py`` with the desired input file 
 
     $ python runScript.py iges
 
-The script will output a ``wingNew.plt`` file which can be viewed in Tecplot.
-To generate an IGES file, edit the calls to ``updatePyGeo()`` to request IGES instead of tecplot.
+The script will output a ``wingNew.plt`` file, which can be viewed in Tecplot.
+To generate an IGES file, edit the calls to ``updatePyGeo()`` to request IGES instead of Tecplot.
