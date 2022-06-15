@@ -132,7 +132,7 @@ You can now hopefully appreciate the physical analogy of the control points as p
    :align: center
 
 The code snippet below illustrates a few key methods of the public API.
-``DVGeometry.getValues`` returns the current design variable values as a dictionary where the keys are the DV names.
+``DVGeometry.getValues`` returns the current design variable values as an itemized list where the keys are the DV names.
 ``DVGeometry.setDesignVars`` sets the design variables to new values using an input dictionary.
 ``DVGeometry.update`` recalculates the pointset locations given potentially updated design variable values.
 The updated pointset is returned from the method, though pointsets can also be accessed as attributes of ``DVGeometry`` as required.
