@@ -68,8 +68,6 @@ This package consists of the following modules:
 .. toctree::
    :maxdepth: 1
 
-   getting_started
-   advanced_ffd
    install
    tutorial
    API
