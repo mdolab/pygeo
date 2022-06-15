@@ -64,6 +64,7 @@ Airfoil design problems may have just two points in the spanwise direction (as p
 
 The following script creates the DVGeometry object and generates the pictured cube-shaped FFD volume.
 Depending on the user's skill it may be possible to create FFD volumes which conform more closely to the pointset.
+For a simple wing FFD, :func:`pygeo.geo_utils.ffd_generation.createFittedWingFFD` can be used to generate an FFD volume that is closely fitted to a given wing geometry.
 All other things being equal, a fairly tight-fitting FFD volume is better, but there can be quite a bit of margin and optimization will still work.
 
 .. literalinclude:: ../examples/ffd_cylinder/genFFD.py
