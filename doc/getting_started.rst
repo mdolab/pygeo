@@ -106,7 +106,7 @@ For example, setting the array of local design variables to all zeros would prod
 Setting one entry in the array to ``0.5`` would pull a single control point upward by 0.5 units, which stretches the pointset locally near that control point.
 
 Generally, local design variables are defined in only one direction, the one requiring the finest local control.
-Gross changes to the geometry in other axes can be handled well using global design variables, to be addressed later.
+Gross changes to the geometry in other axes can be handled well using global design variables, to be addressed later in :ref:`this section <global_vars>`.
 
 It's important to understand a little about how the design variables are stored internally.
 For implementation reasons, the raw array of control points is not in contiguous order.
@@ -136,7 +136,7 @@ The code snippet below illustrates a few key methods of the public API.
 ``DVGeometry.update`` recalculates the pointset locations given potentially updated design variable values.
 The updated pointset is returned from the method, though pointsets can also be accessed as attributes of ``DVGeometry`` as required.
 
-Note that we're using the ``getLocalIndex`` method again to perturb the design variables symmetrically; that is, if we perturb a control point at k/z = 0, we also perturb it by the same amount at k/z=1.
+Note that we're using the ``getLocalIndex`` method again to perturb the design variables symmetrically; that is, if we perturb a control point at :math:`k/z = 0`, we also perturb it by the same amount at :math:`k/z=1`.
 Otherwise, the cylinder would become skewed front-to-back.
 We're also using ``getLocalIndex`` to perturb the top and bottom points differently, and in order.
 Optimizers don't really care whether the points are in contiguous order, but as a human it's much easier to comprehend when addressed this way.
@@ -154,6 +154,8 @@ Summary
 
 In this tutorial, you've learned the basics of ``pyGeo``'s FFD geometry parameterization capabilities.
 You now know enough to set up a basic shape optimization, such as the :doc:`MACH-Aero tutorial <mach-aero:index>`.
-More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as EngineeringSketchPad or OpenVSP).
+More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as EngineeringSketchPad or OpenVSP). 
+
+.. TODO link to these once they're in 
 
 The scripts excerpted for this tutorial are located at ``pygeo/examples/ffd_cylinder/runFFDExample.py`` and ``genFFD.py``.

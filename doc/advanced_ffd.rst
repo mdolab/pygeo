@@ -66,9 +66,11 @@ This local perturbation produces the obvious deformation in the following render
    :align: center
 
 
-------------------------
-Reference axes explained
-------------------------
+.. _global_vars:
+
+-----------------------------------
+Reference axes and global variables
+-----------------------------------
 
 Local control points are useful, but we often also want to see the effect of gross changes to the geometric design.
 For example, we may want to twist a propeller blade, or lengthen a car's wheelbase.
@@ -123,7 +125,7 @@ Indices of the ``rot_z`` control points correspond to the same location as the r
 Other transformations include ``rot_x``, ``rot_y``, ``scale_x``, and so on.
 
 The two arguments to the callback are ``val`` (the design variable value, which can be a scalar or an array), and ``geo`` which is always an instance of ``DVGeometry``.
-Once we have a defined callback function, we can add use the ``addGeoDVGlobal`` method to create it as a design variable, as illustrated in the code snippet below.
+Once we have a defined callback function, we can use the ``addGeoDVGlobal`` method to create it as a design variable, as illustrated in the code snippet below.
 The optimizer can now apply a twist distribution to the wing.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
@@ -183,7 +185,7 @@ The results of the sweep are dramatic, as seen in the rendering.
    :width: 600
    :align: center
 
-This example illustrates an important detail; namley, that the local control points do not rotate in the x-z plane as the wing is swept back.
+This example illustrates an important detail; namely, that the local control points do not rotate in the x-z plane as the wing is swept back.
 This is because of the way the reference axis is implemented.
 Every local control point (the red dots) is *projected* onto the reference axis when the axis is created.
 In this case, by default, the points were projected along the x axis. 
@@ -228,8 +230,8 @@ By default, the order of operations is as follows.
 
 There are two one-time setup steps at the beginning:
 
-- A reference axis is created using ``addRefAxis``
-- The pointsets *and* FFD control points are projected onto the axis. The projected point on the axis (in parametric coordinates) is forever linked to the corresponding point set point or FFD control point
+- A reference axis is created using ``addRefAxis``.
+- The pointsets *and* FFD control points are projected onto the axis. The projected point on the axis (in parametric coordinates) is forever linked to the corresponding point set point or FFD control point.
 
 During each call to ``setDesignVars``:
 
@@ -238,8 +240,8 @@ During each call to ``setDesignVars``:
 
 Finally, during the ``update`` method:
 
-- New ref axis projection points are computed based on the changes to the ref axis control points done by the callback functions
-- Rotations are applied to the point sets and FFD control points using the ref axis projections as the pivot point
+- New reference axis projection points are computed based on the changes to the reference axis control points done by the callback functions.
+- Rotations are applied to the point sets and FFD control points using the reference axis projections as the pivot point.
 - Depending on the choice of ``rotType`` when ``addRefAxis`` is invoked, the ``rot_x``, ``rot_y``, and ``rot_z`` transformations may be applied in arbitrary order. The default is z, x, y.
 - ``scale_x``, ``scale_y``, and ``scale_z`` are applied based on the vector from each point to its ref axis projection. Points on the ref axis will not change at all under either rotation or scale.
 - A separate ``scale`` parameter is applied which stretches all points isotropically based on their distance and direction from the ref axis projected point.
