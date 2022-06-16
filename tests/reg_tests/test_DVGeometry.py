@@ -1017,7 +1017,39 @@ class RegTestPyGeo(unittest.TestCase):
         dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
 
         np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
+    
+    def test_spanDV_child(self, train=False):
+        """
+        Test span DV with child
+        """
+        DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+        
+        # add design variables
+        DVGeoChild.addGlobalDV(dvName="span", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+        DVGeo.addChild(DVGeoChild)
+        
+        points = np.zeros([2, 3])
+        points[0, :] = [0.25, 0, 0]
+        points[1, :] = [-0.25, 0, 0]
+        ptName = "testPoints"
+        DVGeo.addPointSet(points, ptName)
+        
+        nPt = points.size
+        dIdx_FD = commonUtils.totalSensitivityFD(DVGeo, nPt, ptName)
 
+        dIdPt = np.zeros([nPt, 2, 3])
+        dIdPt[0, 0, 0] = 1.0
+        dIdPt[1, 0, 1] = 1.0
+        dIdPt[2, 0, 2] = 1.0
+        dIdPt[3, 1, 0] = 1.0
+        dIdPt[4, 1, 1] = 1.0
+        dIdPt[5, 1, 2] = 1.0
+        dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
+        
+        np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
+
+        # test the sensitivity of the child
+        # commonUtils.testSensitivities(DVGeo, refDeriv, handler)
 
 if __name__ == "__main__":
     unittest.main()

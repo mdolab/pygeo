@@ -127,11 +127,8 @@ def totalSensitivityFD(DVGeo, nPt, ptName, step=1e-1):
         nDV = len(baseVar)
         dIdxFD[key] = np.zeros([nPt, nDV])
         for i in range(nDV):
-            # print('perturbing',key)
             xDV[key][i] = baseVar[i] + step
-            # print('setting design vars')
             DVGeo.setDesignVars(xDV)
-            # print('calling top level update')
             newPoints = DVGeo.update(ptName)
 
             deriv = (newPoints - refPoints) / step
@@ -269,8 +266,15 @@ def chord(val, geo):
 def span(val, geo):
     axis_key = list(geo.axis.keys())[0]
     C = geo.extractCoef(axis_key)
-
-    for i in range(1, nRefAxPts):
+    for i in range(1, C.shape[0]):
         C[i, 2] *= val
+
+    geo.restoreCoef(C, axis_key)
+
+def spanX(val, geo):
+    axis_key = list(geo.axis.keys())[0]
+    C = geo.extractCoef(axis_key)
+    for i in range(1, C.shape[0]):
+        C[i, 0] *= val
 
     geo.restoreCoef(C, axis_key)
