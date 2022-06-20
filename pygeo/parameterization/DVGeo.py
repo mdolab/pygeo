@@ -3721,8 +3721,12 @@ class DVGeometry(BaseDVGeometry):
 
             # We need to save the reference state so that we can always start
             # from the same place when calling _update_deriv
-            refFFDCoef = copy.copy(self.FFD.coef)
-            refCoef = copy.copy(self.coef)
+            if not self.isChild:
+                refFFDCoef = copy.copy(self.origFFDCoef.astype("D"))
+                refCoef = copy.copy(self.coef0.astype("D"))
+            else:
+                refFFDCoef = copy.copy(self.FFD.coef)
+                refCoef = copy.copy(self.coef)
 
             iDV = self.nDVG_count
             for key in self.DV_listGlobal:
