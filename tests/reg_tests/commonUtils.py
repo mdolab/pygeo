@@ -271,6 +271,7 @@ def span(val, geo):
 
     geo.restoreCoef(C, axis_key)
 
+
 def spanX(val, geo):
     axis_key = list(geo.axis.keys())[0]
     C = geo.extractCoef(axis_key)
