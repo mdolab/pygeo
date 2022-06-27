@@ -6,7 +6,7 @@ Advanced FFD Geometry
 
 In the previous tutorial, we learned the basics of the free-form deformation (FFD) method of geometric parameterization.
 However, we limited the parameterization to perturbing the individual control points.
-In many applications, we will need to also allow for gross changes to the geometry, such as making an object longer, wider, or curved.
+In many applications, we will need to also allow for large-scale changes to the geometry, such as making an object longer, wider, or curved.
 
 The purpose of this tutorial is to introduce *global* design variables in the ``DVGeometry`` FFD implementation.
 During this tutorial, we will use the Cessna 172 airplane wing as our example geometry.
@@ -25,10 +25,10 @@ Generating baseline geometry and FFD volume
 
 We use the spline surfacing tool in `pyGeo` to generate the Cessna wing geometry from a list of airfoil sections and coordinates.
 A full description of the surfacing script is beyond the scope of this tutorial, but the script itself can be found at ``examples/c172_wing/c172.py``.
-Using the ``pyiges`` package, one of the IGES CAD files can be converted to a triangulated (.stl) format in order to turn the wing into a point set.
+Using the ``pyiges`` package, one of the IGES CAD files can be converted to a triangulated (.stl) format in order to turn the wing into a pointset.
 
 Next, we need to create an FFD volume that encloses the wing. 
-We want to approximate the wing pretty closely without any of the wing intersecting the box.
+We want to approximate the wing closely without any of the wing intersecting the box.
 Using our knowledge of the wing dimensions, it's easy to create a closely-conforming FFD.
 The example script is located at ``examples/c172_wing/genFFD.py``.
 
@@ -40,8 +40,8 @@ We can see that the FFD volume closely approximates the wing in the top view.
    :width: 450
    :align: center
 
-Starting in the tutorial script ``examples/c172_wing/c172.py``, first we create a ``DVGeometry`` object using the FFD file. 
-Then we add the wing point set.
+Starting in the tutorial script ``examples/c172_wing/c172.py``, we first create a ``DVGeometry`` object using the FFD file.
+Then, we add the wing pointset.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
     :end-before: # rst add local DV
@@ -72,9 +72,9 @@ This local perturbation produces the obvious deformation in the following render
 Reference axes and global variables
 -----------------------------------
 
-Local control points are useful, but we often also want to see the effect of gross changes to the geometric design.
+Local control points are useful, but we often also want to see the effect of large-scale changes to the geometric design.
 For example, we may want to twist a propeller blade, or lengthen a car's wheelbase.
-In order to do this we need to alter many local control points at once using a mathematical transformation.
+To do this, we need to alter many local control points at once using a mathematical transformation.
 We call this a *global design variable*.
 
 Global design variables commonly include the following mathematical transformations:
@@ -85,12 +85,12 @@ Global design variables commonly include the following mathematical transformati
 
 Rotating a point requires knowing an axis of rotation. 
 Scaling a point requires a reference point.
-We can define these for the entire point set by defining one or more *reference axes*.
+We can define these for the entire pointset by defining one or more *reference axes*.
 A reference axis is defined as a line or curve within the FFD volume.
 
 You can add a reference axis to your FFD volume by using the ``addRefAxis`` method of ``DVGeometry``.
 There are two ways to define an axis.
-The first is to define the axis explicitly by providing ``pySpline`` curve (using the ``curve`` keyword argument).
+The first is to define the axis explicitly by providing a ``pySpline`` curve (using the ``curve`` keyword argument).
 The second (and more commonly-used) method is to specify the *direction* of the reference axis in terms of the FFD dimensions (i, j, or k), along with an ``xFraction``.
 The reference axis will then be located at the given location between the front and back of the volume.
 
@@ -116,10 +116,9 @@ Now that we have a reference axis, we can alter the geometry globally by either:
 - applying transformations about the reference axis (scaling or rotation), or
 - moving the control points of the reference axis (translation)
 
-
-Let's start with applying a transformation - applying a twist to the wing.
-We need to define a function which takes in a design variable value and performs a transformation along the reference axis.
-The ``DVGeometry`` object has an attribute called ``rot_z`` which applies a rotation about the z axis, and we can define a callback function to access it.
+Let's start with applying a transformation, namely a twist to the wing.
+We need to define a function that takes in a design variable value and performs a transformation along the reference axis.
+The ``DVGeometry`` object has an attribute called ``rot_z`` which applies a rotation about the z-axis, and we can define a callback function to access it.
 It is stored as a one-dimensional spline, and it has the same number of control points as the reference axis.
 Indices of the ``rot_z`` control points correspond to the same location as the reference axis at that index.
 Other transformations include ``rot_x``, ``rot_y``, ``scale_x``, and so on.
@@ -140,7 +139,7 @@ The global design variable can be perturbed just like a local design variable, a
     :end-before: # rst set DV 2
 
 Applying this twist results in the geometry pictured below. 
-Note that the location of the reference axis (and any points located close to the reference axis) are not affected by the rotation.
+The location of the reference axis (and any points located close to the reference axis) is not affected by the rotation.
 This is a general principle of applying transformations: *the reference axis location remains invariant under the transformation*.
 
 .. image:: ../examples/c172_wing/images/twist_3d.png
@@ -152,13 +151,13 @@ Manipulating the reference axis
 -------------------------------
 
 The second way to alter global geometry is by manipulating the reference axis itself.
-Recall that the reference axis is a curve or spline with a number of control points.
-We can move these control points to produce global mesh motion just like perturbing local conrol points produces local motion.
+Recall that the reference axis is a spline with a number of control points.
+We can move these control points to produce global mesh motion just like perturbing local control points produces local motion.
 
-We'll demonstrate manipulating the reference axis by creating a sweep design variable.
-First we need to define a callback function that takes in the design variable values and manipulates the axis, as shown in the snippet below.
+We will demonstrate manipulating the reference axis by creating a sweep design variable.
+First, we need to define a callback function that takes in the design variable values and manipulates the axis, as shown in the snippet below.
 There are a few new methods to learn.
-``DVGeometry.extractCoef('c4')`` gets the array of control point values (in order) from the ``c4`` ref axis.
+``DVGeometry.extractCoef('c4')`` gets the array of control point values (in order) from the ``c4`` reference axis.
 To sweep the wing, we apply a rotation in the x-z axis about the innermost axis point.
 The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on the manipulated points.
 
@@ -168,9 +167,9 @@ The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on 
 
 .. note::
     There is a subtle implementation detail to know.
-    Whenever the ``setDesignVars`` method is called, the reference axis gets reset back to its original values.
+    Whenever the ``setDesignVars`` method is called, the reference axis is reset back to its original values.
     Therefore, there's no risk that perturbations in one optimizer iteration will stay around for the next.
-    However, if multiple global DV callback functions manipulate the ref axis control points, only the first one will see "unperturbed" points.
+    However, if multiple global DV callback functions manipulate the reference axis control points, only the first one will see "unperturbed" points.
     They will be called in the order that they are added.
 
 Let's apply a 30 degree sweep as well as a linear 20 degree twist.
@@ -212,7 +211,7 @@ We have to begin by writing a callback function, as follows:
 
 We implement the chord distribution using the ``scale_x`` transformation which stretches points about the reference axis in the x direction.
 Now we need to create a global design variable and perturb the variable to produce the desired effect.
-Let's also introduce a random perturbation to the local design variables in order to see the composited effect of sweep, twist, chord, and local deformation.
+Let's also introduce a random perturbation to the local design variables to see the combined effect of sweep, twist, chord, and local deformation.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
     :start-after: # rst set DV 4
@@ -225,14 +224,13 @@ However, the optimizer is free to use all of these degrees of freedom to eventua
    :width: 600
    :align: center
 
-When multiple global variables are composited, the order of operations matters significantly.
+The order of operations is important when multiple global variables are used.
 By default, the order of operations is as follows.
-
 
 There are two one-time setup steps at the beginning that happen "under the hood":
 
 - A reference axis is created using ``addRefAxis``.
-- The pointsets *and* FFD control points are projected onto the axis. The projected point on the axis (in parametric coordinates) is forever linked to the corresponding point set point or FFD control point.
+- The pointsets *and* FFD control points are projected onto the axis. The projected point on the axis (in parametric coordinates) is forever linked to the corresponding pointset point or FFD control point.
 
 During each call to ``setDesignVars``:
 
@@ -242,11 +240,11 @@ During each call to ``setDesignVars``:
 Finally, during the ``update`` method:
 
 - New reference axis projection points are computed based on the changes to the reference axis control points done by the callback functions.
-- Rotations are applied to the point sets and FFD control points using the reference axis projections as the pivot point.
+- Rotations are applied to the pointsets and FFD control points using the reference axis projections as the pivot point.
 - Depending on the choice of ``rotType`` when ``addRefAxis`` is invoked, the ``rot_x``, ``rot_y``, and ``rot_z`` transformations may be applied in arbitrary order. The default is z, x, y.
 - ``scale_x``, ``scale_y``, and ``scale_z`` are applied based on the vector from each point to its reference axis projection. Points on the reference axis will not change at all under either rotation or scale.
 - A separate ``scale`` parameter is applied which stretches all points isotropically based on their distance and direction from the reference axis projected point.
-- Last of all, local FFD perturbations are applied. For ``addGeoDVLocal``, the perturbations are applied in the cartesian frame. For ``addGeoDVSectionLocal`` the perturbations are applied relative to the untwisted FFD section cuts.
+- Lastly, local FFD perturbations are applied. For ``addGeoDVLocal``, the perturbations are applied in the Cartesian frame. For ``addGeoDVSectionLocal`` the perturbations are applied relative to the untwisted FFD section cuts.
 
 -------
 Summary
@@ -255,7 +253,7 @@ Summary
 The FFD method can seem complicated, especially when multiple global design variables are involved.
 However, it is very general and has great performance, making it a good choice for general-purpose shape optimization problems.
 
-In this tutorial, you've learned how to set up global variables and make the most of FFD geometry.
+In this tutorial, you learned how to set up global variables and make the most of FFD geometry.
 You now know enough to fully understand and extend more complex, FFD-based, shape optimization problems, such as those covered in the :doc:`MACH-Aero tutorial <mach-aero:index>`.
 
 The scripts excerpted for this tutorial are located at ``pygeo/examples/c172_wing/runFFDExample.py`` and ``genFFD.py``.
