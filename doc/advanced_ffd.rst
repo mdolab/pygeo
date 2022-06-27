@@ -33,8 +33,7 @@ Using our knowledge of the wing dimensions, it's easy to create a closely-confor
 The example script is located at ``examples/c172_wing/genFFD.py``.
 
 The rendering below shows the FFD volume and the point set for the wing.
-Note that unlike the cylinder example in the previous tutorial, there are now two dimensions in control points are free to move (in the streamwise and spanwise directions).
-While three dimensions are always present, we can enforce symmetry to reduce our problem's dimensions. 
+Note that unlike the cylinder example in the previous tutorial, there are now two dimensions which control points are free to move (in the streamwise and spanwise directions).
 We can see that the FFD volume closely approximates the wing in the top view.
 
 .. image:: ../examples/c172_wing/images/baseline_3d.png
@@ -164,8 +163,8 @@ To sweep the wing, we apply a rotation in the x-z axis about the innermost axis 
 The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on the manipulated points.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
-    :start-after: # rst set DV
-    :end-before: # rst set DV 2
+    :start-after: # rst sweep
+    :end-before: # rst set DV
 
 .. note::
     There is a subtle implementation detail to know.
