@@ -7,8 +7,8 @@ Getting Started
 This page is intended to introduce enough theory and practical advice for a user to set up a simple shape optimization using DVGeometry.
 
 Let's say we want to do a structural shape optimization where we want to minimize the weight of a cylindrical pressure vessel.
-First, we'll need to set up a geometric parameterization.
-Next, we need to generate a pointset representing the cylinder.
+First, we need to generate a pointset representing the cylinder.
+Next, we'll need to set up a geometric parameterization.
 Finally, we can perturb the geometry like an optimizer would and see the effect on the baseline cylinder shape.
 
 ----------------------------
@@ -45,11 +45,12 @@ The FFD volume can be of arbitrary shape, but they tend to be rectangular or pri
 Next, a pointset is *embedded* in the FFD volume.
 Finally, the control points defining the FFD volume can be moved in space.
 
-As the control points move, they stretch and twist the FFD volume as if it was a block of Jello.
+As the control points move, they stretch and twist the FFD volume as if it was a block of Jell-O.
 The points embedded in the volume will also strech and move in a consistent way.
-The image below shows the cylinder we made embedded in a cube-shaped FFD volume. The FFD control points are depicted with the blue dots.
+The image below shows the cylinder we made embedded in a cube-shaped FFD volume. 
+The FFD control points are depicted with the large red dots and the embedded pointset the small blue dots.
 
-.. image:: ../examples/ffd_cylinder/images/cylinder_ffd_3d.png
+.. image:: ../examples/ffd_cylinder/images/cyl_embedded_undeformed.png
    :width: 450
    :align: center
 
@@ -127,10 +128,6 @@ Now that we have an FFD volume, an embedded pointset, and a set of design variab
 The following example perturbs the local design variables and illustrates how the cylinder deforms along with the control points.
 You can now hopefully appreciate the physical analogy of the control points as pulling on a block of Jello.
 
-.. image:: ../examples/ffd_cylinder/images/deformed_cylinder.png
-   :width: 600
-   :align: center
-
 The code snippet below illustrates a few key methods of the public API.
 ``DVGeometry.getValues`` returns the current design variable values as an itemized list where the keys are the DV names.
 ``DVGeometry.setDesignVars`` sets the design variables to new values using an input dictionary.
@@ -149,13 +146,26 @@ This is because when we defined the design variable, we chose the y axis only as
     :start-after: # rst perturb geometry
     :end-before: # rst plot
 
+We can now see the deformed equivalent of our earlier graphic. 
+The pointset (small blue triangles) embedded in the FFD volume (control points as large red triangles) in their deformed states can be see below.
+
+.. image:: ../examples/ffd_cylinder/images/cyl_embedded_deformed.png
+   :width: 450
+   :align: center
+
+We can also compare the locations of the original and deformed FFD control points as well as the resulting shapes. 
+
+.. image:: ../examples/ffd_cylinder/images/deformed_cylinder.png
+   :width: 600
+   :align: center
+
 -------
 Summary
 -------
 
 In this tutorial, you've learned the basics of ``pyGeo``'s FFD geometry parameterization capabilities.
 You now know enough to set up a basic shape optimization, such as the :doc:`MACH-Aero tutorial <mach-aero:index>`.
-More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as EngineeringSketchPad or OpenVSP). 
+More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as Engineering Sketch Pad or OpenVSP). 
 
 .. TODO link to these once they're in 
 
