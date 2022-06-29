@@ -37,7 +37,7 @@ This pointset was generated using the following code snippet:
 Creating an FFD volume
 ----------------------
 
-We will use the free-form deformation (FFD) approach to parameterize the geometry by creating a ``pygeo.DVGeometry`` object.
+We will use the free-form deformation (FFD) approach to parameterize the geometry by creating a :class:`.DVGeometry` object.
 
 The FFD method details are fully described in `the paper <http://doi.org/10.2514/6.2010-9231>`_, but for now it suffices to understand FFD qualitatively.
 First, the user creates an FFD *volume*, defined by a structured grid of *control points*.
@@ -66,12 +66,12 @@ Airfoil design problems may have just two points in the spanwise direction (as p
 
 The following script creates the DVGeometry object and generates the pictured cube-shaped FFD volume.
 Depending on the user's skill it may be possible to create FFD volumes which conform more closely to the pointset.
-For a simple wing FFD, :func:`pygeo.geo_utils.ffd_generation.createFittedWingFFD` can be used to generate an FFD volume that is closely fitted to a given wing geometry.
+For a simple wing FFD, :meth:`pygeo.geo_utils.ffd_generation.createFittedWingFFD` can be used to generate an FFD volume that is closely fitted to a given wing geometry.
 All other things being equal, a fairly tight-fitting FFD volume is better, but there can be quite a bit of margin and optimization will still work.
 
 .. literalinclude:: ../examples/ffd_cylinder/genFFD.py
 
-Once we have an FFD volume file, we can finally create the actual ``DVGeometry`` object that will handle everything.
+Once we have an FFD volume file, we can finally create the actual :class:`.DVGeometry` object that will handle everything.
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst create DVGeo
@@ -82,9 +82,9 @@ Adding pointsets
 -----------------
 
 In order to retrieve parameterized pointsets later on, the baseline pointset must first be embedded in the FFD.
-This is easily accomplished using the ``DVGeometry.addPointSet`` method.
+This is easily accomplished using the :meth:`.DVGeometry.addPointSet` method.
 Note that each pointset gets a name.
-Pointsets (whether baseline or deformed) can be written out as a Tecplot file at any time using the ``DVGeometry.writePointSet`` method.
+Pointsets (whether baseline or deformed) can be written out as a Tecplot file at any time using the :meth:`.DVGeometry.writePointSet` method.
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst add pointset
@@ -113,9 +113,9 @@ Large-scale changes to the geometry in other axes can be handled well using glob
 
 It is important to understand a little about how the design variables are stored internally.
 For implementation reasons, the raw array of control points is not in contiguous order.
-If you need to access a particular control point, you can obtain its index in the design variable array by invoking the ``DVGeometry.getLocalIndex`` method, which returns a tensor of indices addressible in the same i, j, k layout as the FFD file you created.
+If you need to access a particular control point, you can obtain its index in the design variable array by invoking the :meth:`.DVGeometry.getLocalIndex` method, which returns a tensor of indices addressible in the same i, j, k layout as the FFD file you created.
 
-The following example illustrates the use of the ``getLocalIndex`` method in order to pull one slice of FFD control point coordinates (at k=0, a.k.a z=0) in contiguous order.
+The following example illustrates the use of the :meth:`.DVGeometry.getLocalIndex` method in order to pull one slice of FFD control point coordinates (at k=0, a.k.a z=0) in contiguous order.
 We can also print out the indices and coordinates of the FFD control points, which can be helpful for debugging. 
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
@@ -132,17 +132,17 @@ You can now hopefully appreciate the physical analogy of the control points as p
 
 The code snippet below illustrates a few key methods of the public API.
 
-* ``DVGeometry.getValues`` returns the current design variable values as a dictionary where the keys are the DV names.
-* ``DVGeometry.setDesignVars`` sets the design variables to new values using an input dictionary.
-* ``DVGeometry.update`` recalculates the pointset locations given potentially updated design variable values.
+* :meth:`.DVGeometry.getValues` returns the current design variable values as a dictionary where the keys are the DV names.
+* :meth:`.DVGeometry.setDesignVars` sets the design variables to new values using an input dictionary.
+* :meth:`.DVGeometry.update` recalculates the pointset locations given potentially updated design variable values.
 
 The updated pointset is returned from the method.
-Pointsets can also be accessed as attributes of ``DVGeometry`` as required.
+Pointsets can also be accessed as attributes of :class:`.DVGeometry` as required.
 
-Note that we are using the ``getLocalIndex`` method again to perturb the design variables symmetrically.
+Note that we are using the :meth:`.DVGeometry.getLocalIndex` method again to perturb the design variables symmetrically.
 If we perturb a control point at :math:`k/z = 0`, we also perturb it by the same amount at :math:`k/z=1`.
 Otherwise, the cylinder would become skewed front-to-back.
-We are also using ``getLocalIndex`` to perturb the top and bottom points differently, and in order.
+We are also using :meth:`.DVGeometry.getLocalIndex` to perturb the top and bottom points differently, and in order.
 Optimizers do not really care whether the points are in contiguous order, but as a human it is much easier to comprehend when addressed this way.
 
 Also note that the dimension of the local design variable is :math:`N_{\text{points}}`, not :math:`N_{\text{points}} \times 3`.

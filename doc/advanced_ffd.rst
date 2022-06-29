@@ -8,7 +8,7 @@ In the previous tutorial, we learned the basics of the free-form deformation (FF
 However, we limited the parameterization to perturbing the individual control points.
 In many applications, we will need to also allow for large-scale changes to the geometry, such as making an object longer, wider, or curved.
 
-The purpose of this tutorial is to introduce *global* design variables in the ``DVGeometry`` FFD implementation.
+The purpose of this tutorial is to introduce *global* design variables in the :class:`.DVGeometry` FFD implementation.
 During this tutorial, we will use the Cessna 172 airplane wing as our example geometry.
 
 
@@ -40,7 +40,7 @@ We can see that the FFD volume closely approximates the wing in the top view.
    :width: 450
    :align: center
 
-Starting in the tutorial script ``examples/c172_wing/c172.py``, we first create a ``DVGeometry`` object using the FFD file.
+Starting in the tutorial script ``examples/c172_wing/c172.py``, we first create a :class:`.DVGeometry` object using the FFD file.
 Then, we add the wing pointset.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
@@ -88,9 +88,9 @@ Scaling a point requires a reference point.
 We can define these for the entire pointset by defining one or more *reference axes*.
 A reference axis is defined as a line or curve within the FFD volume.
 
-You can add a reference axis to your FFD volume by using the ``addRefAxis`` method of ``DVGeometry``.
+You can add a reference axis to your FFD volume by using the :meth:`.DVGeometry.addRefAxis` method.
 There are two ways to define an axis.
-The first is to define the axis explicitly by providing a ``pySpline`` curve (using the ``curve`` keyword argument).
+The first is to define the axis explicitly by providing a :doc:`pySpline <pyspline:index>` curve (using the ``curve`` keyword argument).
 The second (and more commonly-used) method is to specify the *direction* of the reference axis in terms of the FFD dimensions (i, j, or k), along with an ``xFraction``.
 The reference axis will then be located at the given location between the front and back of the volume.
 
@@ -118,14 +118,14 @@ Now that we have a reference axis, we can alter the geometry globally by either:
 
 Let's start with applying a transformation, namely a twist to the wing.
 We need to define a function that takes in a design variable value and performs a transformation along the reference axis.
-The ``DVGeometry`` object has an attribute called ``rot_z`` which applies a rotation about the z-axis, and we can define a callback function to access it.
+The :class:`.DVGeometry` object has an attribute called ``rot_z`` which applies a rotation about the z-axis, and we can define a callback function to access it.
 It is stored as a one-dimensional spline, and it has the same number of control points as the reference axis.
 Indices of the ``rot_z`` control points correspond to the same location as the reference axis at that index.
 Other transformations include ``rot_x``, ``rot_y``, ``scale_x``, and so on.
 This only works "in plane", i.e. ``scale_`` cannot move the control section and any scaling operation perpendicular to its plane will be ineffective.
 
-The two arguments to the callback are ``val`` (the design variable value, which can be a scalar or an array), and ``geo`` which is always an instance of ``DVGeometry``.
-Once we have a defined callback function, we can use the ``addGeoDVGlobal`` method to create it as a design variable, as illustrated in the code snippet below.
+The two arguments to the callback are ``val`` (the design variable value, which can be a scalar or an array), and ``geo`` which is always an instance of :class:`.DVGeometry`.
+Once we have a defined callback function, we can use the :meth:`.DVGeometry.addGlobalDV` method to create it as a design variable, as illustrated in the code snippet below.
 The parameters ``lower``, ``upper``, and ``scale`` are used in the optimization process
 (more detail can be found in the :doc:`MACH-Aero tutorial <mach-aero:index>` but is not necessary to understand this tutorial).
 The optimizer can now apply a twist distribution to the wing.
@@ -160,9 +160,9 @@ We can move these control points to produce global mesh motion just like perturb
 We will demonstrate manipulating the reference axis by creating a sweep design variable.
 First, we need to define a callback function that takes in the design variable values and manipulates the axis, as shown in the snippet below.
 There are a few new methods to learn.
-``DVGeometry.extractCoef('c4')`` gets the array of control point values (in order) from the ``c4`` reference axis.
+:meth:`.DVGeometry.extractCoef` gets the array of control point values (in order) from the ``c4`` reference axis.
 To sweep the wing, we apply a rotation in the x-z axis about the innermost axis point.
-The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on the manipulated points.
+The :meth:`.DVGeometry.restoreCoef` method sets the new axis position based on the manipulated points.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
     :start-after: # rst sweep
@@ -170,7 +170,7 @@ The ``DVGeometry.restoreCoef('c4')`` method sets the new axis position based on 
 
 .. note::
     There is a subtle implementation detail to know.
-    Whenever the ``setDesignVars`` method is called, the reference axis is reset back to its original values.
+    Whenever the :meth:`.DVGeometry.setDesignVars` method is called, the reference axis is reset back to its original values.
     Therefore, there's no risk that perturbations in one optimizer iteration will stay around for the next.
     However, if multiple global DV callback functions manipulate the reference axis control points, only the first one will see "unperturbed" points.
     They will be called in the order that they are added.
@@ -232,22 +232,22 @@ By default, the order of operations is as follows.
 
 There are two one-time setup steps at the beginning that happen "under the hood":
 
-- A reference axis is created using ``addRefAxis``.
+- A reference axis is created using :meth:`.DVGeometry.addRefAxis`.
 - The pointsets *and* FFD control points are projected onto the axis. The projected point on the axis (in parametric coordinates) is forever linked to the corresponding pointset point or FFD control point.
 
-During each call to ``setDesignVars``:
+During each call to :meth:`.DVGeometry.setDesignVars`:
 
-- The reference axis control points retrieved with ``extractCoef`` are reset to the baseline values (**one time!** not after each callback)
-- Callback functions are invoked in the order they are added using ``addGeoDVGlobal``. The results are saved but not yet *applied*.
+- The reference axis control points retrieved with :meth:`.DVGeometry.extractCoef` are reset to the baseline values (**one time!** not after each callback)
+- Callback functions are invoked in the order they are added using :meth:`.DVGeometry.addGlobalDV`. The results are saved but not yet *applied*.
 
-Finally, during the ``update`` method:
+Finally, during the :meth:`.DVGeometry.update` method:
 
 - New reference axis projection points are computed based on the changes to the reference axis control points done by the callback functions.
 - Rotations are applied to the pointsets and FFD control points using the reference axis projections as the pivot point.
 - Depending on the choice of ``rotType`` when ``addRefAxis`` is invoked, the ``rot_x``, ``rot_y``, and ``rot_z`` transformations may be applied in arbitrary order. The default is z, x, y.
 - ``scale_x``, ``scale_y``, and ``scale_z`` are applied based on the vector from each point to its reference axis projection. Points on the reference axis will not change at all under either rotation or scale.
 - A separate ``scale`` parameter is applied which stretches all points isotropically based on their distance and direction from the reference axis projected point.
-- Lastly, local FFD perturbations are applied. For ``addGeoDVLocal``, the perturbations are applied in the Cartesian frame. For ``addGeoDVSectionLocal`` the perturbations are applied relative to the untwisted FFD section cuts.
+- Lastly, local FFD perturbations are applied. For :meth:`.DVGeometry.addLocalDV`, the perturbations are applied in the Cartesian frame. For :meth:`.DVGeometry.addLocalSectionDV` the perturbations are applied relative to the untwisted FFD section cuts.
 
 -------
 Summary
