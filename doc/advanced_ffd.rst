@@ -122,9 +122,12 @@ The ``DVGeometry`` object has an attribute called ``rot_z`` which applies a rota
 It is stored as a one-dimensional spline, and it has the same number of control points as the reference axis.
 Indices of the ``rot_z`` control points correspond to the same location as the reference axis at that index.
 Other transformations include ``rot_x``, ``rot_y``, ``scale_x``, and so on.
+This only works "in plane", i.e. ``scale_`` cannot move the control section and any scaling operation perpendicular to its plane will be ineffective.
 
 The two arguments to the callback are ``val`` (the design variable value, which can be a scalar or an array), and ``geo`` which is always an instance of ``DVGeometry``.
 Once we have a defined callback function, we can use the ``addGeoDVGlobal`` method to create it as a design variable, as illustrated in the code snippet below.
+The parameters ``lower``, ``upper``, and ``scale`` are used in the optimization process
+(more detail can be found in the :doc:`MACH-Aero tutorial <mach-aero:index>` but is not necessary to understand this tutorial).
 The optimizer can now apply a twist distribution to the wing.
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py

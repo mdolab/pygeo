@@ -117,6 +117,8 @@ If you need to access a particular control point, you can obtain its index in th
 
 The following example illustrates the use of the ``getLocalIndex`` method in order to pull one slice of FFD control point coordinates (at k=0, a.k.a z=0) in contiguous order.
 
+Here the pointset ``FFDptset`` is only added to use in visualization later and is not necessary for the functioning of the example. 
+
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst getLocalIndex
     :end-before: # rst perturb geometry
@@ -130,9 +132,11 @@ The following example perturbs the local design variables and illustrates how th
 You can now hopefully appreciate the physical analogy of the control points as pulling on a block of jelly.
 
 The code snippet below illustrates a few key methods of the public API.
-``DVGeometry.getValues`` returns the current design variable values as a dictionary where the keys are the DV names.
-``DVGeometry.setDesignVars`` sets the design variables to new values using an input dictionary.
-``DVGeometry.update`` recalculates the pointset locations given potentially updated design variable values.
+
+* ``DVGeometry.getValues`` returns the current design variable values as a dictionary where the keys are the DV names.
+* ``DVGeometry.setDesignVars`` sets the design variables to new values using an input dictionary.
+* ``DVGeometry.update`` recalculates the pointset locations given potentially updated design variable values.
+
 The updated pointset is returned from the method.
 Pointsets can also be accessed as attributes of ``DVGeometry`` as required.
 
@@ -144,6 +148,8 @@ Optimizers do not really care whether the points are in contiguous order, but as
 
 Also note that the dimension of the local design variable is :math:`N_{\text{points}}`, not :math:`N_{\text{points}} \times 3`.
 This is because when we defined the design variable, we chose the y-axis only as the perturbation direction.
+
+Using the pointset ``FFDptset``, which here is only for visualization and informational purposes, we can also view the indices of the FFD control points.
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst perturb geometry
