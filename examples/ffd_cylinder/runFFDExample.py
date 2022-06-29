@@ -36,7 +36,7 @@ DVGeo.writePointSet("cylinder", "pointset")
 
 # Adding local geometric design to make local modifications to FFD box
 # This option will perturb all the control points but only the y (up-down) direction
-DVGeo.addGeoDVLocal("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
+DVGeo.addLocalDV("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
 # rst getLocalIndex
 # The control points of the FFD are the same as the coordinates of the points in the input file
@@ -61,8 +61,17 @@ FFDptset = np.concatenate(
 ).reshape(21, 3)
 
 # Add these control points to the FFD volume. This is only for visualization purposes in this demo.
-# Under normal circumstances you don't need to worry about adding the FFD points as a point set
+# Under normal circumstances you don't need to worry about adding the FFD points as a pointset
 DVGeo.addPointSet(FFDptset, "ffd")
+
+# Print the indices and coordinates of the FFD points for informational purposes
+print("FFD Indices:")
+print(DVGeo.getLocalIndex(0)[:, 0, 0])
+print("FFD Coordinates:")
+print(FFD[DVGeo.getLocalIndex(0)[:, 0, 0]])
+
+# Create tecplot output that contains the FFD control points, embedded volume, and pointset
+DVGeo.writeTecplot(fileName="undeformed_embedded.dat", solutionTime=1)
 
 # rst perturb geometry
 # Now let's deform the geometry.
@@ -97,6 +106,9 @@ DVGeo.setDesignVars({"shape": newDV.copy()})
 
 Xmod = DVGeo.update("cylinder")
 FFDmod = DVGeo.update("ffd")
+
+# Create tecplot output that contains the FFD control points, embedded volume, and pointset
+DVGeo.writeTecplot(fileName="deformed_embedded.dat", solutionTime=1)
 
 # rst plot
 # cast the 3D pointsets to 2D for plotting (ignoring depth)

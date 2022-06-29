@@ -116,8 +116,7 @@ For implementation reasons, the raw array of control points is not in contiguous
 If you need to access a particular control point, you can obtain its index in the design variable array by invoking the ``DVGeometry.getLocalIndex`` method, which returns a tensor of indices addressible in the same i, j, k layout as the FFD file you created.
 
 The following example illustrates the use of the ``getLocalIndex`` method in order to pull one slice of FFD control point coordinates (at k=0, a.k.a z=0) in contiguous order.
-
-Here the pointset ``FFDptset`` is only added to use in visualization later and is not necessary for the functioning of the example. 
+We can also print out the indices and coordinates of the FFD control points, which can be helpful for debugging. 
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst getLocalIndex
@@ -148,8 +147,6 @@ Optimizers do not really care whether the points are in contiguous order, but as
 
 Also note that the dimension of the local design variable is :math:`N_{\text{points}}`, not :math:`N_{\text{points}} \times 3`.
 This is because when we defined the design variable, we chose the y-axis only as the perturbation direction.
-
-Using the pointset ``FFDptset``, which here is only for visualization and informational purposes, we can also view the indices of the FFD control points.
 
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst perturb geometry
