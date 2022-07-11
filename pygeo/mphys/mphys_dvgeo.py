@@ -119,13 +119,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=len(value))
 
         # call the dvgeo object and add this dv
-        if childIdx == None:
+        if childIdx is None:
             self.DVGeo.addGeoDVGlobal(dvName, value, func)
         else:
             self.children[childIdx].addGeoDVGlobal(dvName, value, func)
 
     def nom_addGeoDVLocal(self, dvName, axis="y", pointSelect=None, childIdx=None):
-        if childIdx == None:
+        if childIdx is None:
             nVal = self.DVGeo.addGeoDVLocal(dvName, axis=axis, pointSelect=pointSelect)
         else:
             nVal = self.children[childIdx].addGeoDVLocal(dvName, axis=axis, pointSelect=pointSelect)
@@ -211,7 +211,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # we just pass this through
-        if childIdx == None:
+        if childIdx is None:
             return self.DVGeo.addRefAxis(**kwargs)
         else:
             return self.children[childIdx].addRefAxis(**kwargs)
