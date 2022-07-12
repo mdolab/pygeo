@@ -55,6 +55,12 @@ class DVGeometryCST(BaseDVGeometry):
 
     This class works for extruded 2D airfoil geometries, but not 3D geometries that vary in the spanwise direction.
 
+    Assumptions about the point sets being added:
+        - Trailing edge is vertical or sharp and at maximum x values
+        - The geometry is exclusively an extruded shape (no spanwise changes allowed)
+        - The airfoil's leading edge is on the left (min x) and trailing edge is on the right (max x)
+        - The airfoil's leading edge is at y (or idxVertical) equals zero (within :math:`10^{-2}`)
+
     Parameters
     ----------
     datFile : str
@@ -136,7 +142,8 @@ class DVGeometryCST(BaseDVGeometry):
         self.yLowerTE = np.min(self.foilCoords[idxTE, self.yIdx])
         self.thicknessTE = self.yUpperTE - self.yLowerTE
 
-        # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet)
+        # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet).
+        # preFoil defines the leading edge as the point furthest from the trailing edge
         self.foil = Airfoil(coords)
         self.upperSpline, self.lowerSpline = self.foil.splitAirfoil()
 
@@ -154,26 +161,23 @@ class DVGeometryCST(BaseDVGeometry):
                 dtype=self.dtype,
             )
 
-    def addPointSet(self, points, ptName, **kwargs):
+    def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
         Add a set of coordinates to DVGeometry
         The is the main way that geometry in the form of a coordinate list is given to DVGeometry
         to be manipulated.
-        This assumes...
-            - Trailing edge is vertical or sharp and at maximum x values
-            - The geometry is exclusively an extruded shape (no spanwise changes allowed)
-            - The airfoil's leading edge is on the left (min x) and trailing edge is
-              on the right (max x)
-            - The airfoil's leading edge is at y (or idxVertical) equals zero (within :math:`10^{-2}`)
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These coordinates *should* all project into the interior of the geometry.
+            The coordinates to embed.
         ptName : str
             A user supplied name to associate with the set of coordinates.
             This name will need to be provided when updating the coordinates or when
             getting the derivatives of the coordinates.
+        boundTol : float, optional
+            Small absolute deviation by which the airfoil coordinates can exceed the initial
+            minimum and maximum x coordinates, by default 1e-10.
         kwargs
             Any other parameters are ignored.
         """
@@ -181,7 +185,7 @@ class DVGeometryCST(BaseDVGeometry):
         points = points.astype(self.dtype)
 
         # Check that all points are within the airfoil x bounds
-        if np.any(points[:, self.xIdx] < self.xMin) or np.any(points[:, self.xIdx] > self.xMax):
+        if np.any(points[:, self.xIdx] < self.xMin - boundTol) or np.any(points[:, self.xIdx] > self.xMax + boundTol):
             raise ValueError(
                 f'Points in the point set "{ptName}" have x coordinates outside'
                 + f"the min and max x values in the initial dat file ({self.xMin} and {self.xMax})"
