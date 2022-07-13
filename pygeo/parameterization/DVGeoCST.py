@@ -66,6 +66,11 @@ class DVGeometryCST(BaseDVGeometry):
     datFile : str
         Filename of dat file that represents the initial airfoil. The coordinates in this file will be used to
         determine the camber line, which is the dividing line to distinguish upper and lower surface points.
+    numCST : int or list of two ints
+        Number of CST parameters to use for the initial fit and the DVs (if DVs with type ``"upper"`` or ``"lower"``
+        are added). If ``numCST`` is an int, the value will be used for both upper and lower. If it is a two-item list,
+        the first value defines the number of upper CST coefficients and the second is the number of lower coefficients,
+        by default 8.
     idxChord : int, optional
         Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
     idxVertical : int, optional
@@ -79,7 +84,7 @@ class DVGeometryCST(BaseDVGeometry):
         the upper and lower surfaces of the airfoil points, by default False
     """
 
-    def __init__(self, datFile, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False):
+    def __init__(self, datFile, numCST=8, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False):
         super().__init__(datFile)
         self.xIdx = idxChord
         self.yIdx = idxVertical
@@ -94,6 +99,20 @@ class DVGeometryCST(BaseDVGeometry):
         self.debug = debug
         if debug and not pltImport:
             raise ImportError("matplotlib.pyplot could not be imported and is required for DVGeoCST debug mode")
+        
+        # Error check the numCST input
+        if isinstance(numCST, int):
+            self.nCSTUpper = numCST
+            self.nCSTLower = numCST
+        else:
+            if isinstance(numCST, list):
+                if len(numCST) != 2 or not isinstance(numCST[0], int) or not isinstance(numCST[1], int):
+                    raise ValueError(f"numCST input of {numCST} is incorrect; must be int or list of two ints")
+                else:
+                    self.nCSTUpper = numCST[0]
+                    self.nCSTLower = numCST[1]
+            else:
+                raise ValueError(f"numCST input of type {type(numCST)} is incorrect; must be int or list of two ints")
 
         # Store the DVs and flags to determine if the limited options have already been specified
         self.DVs = {}
@@ -109,8 +128,8 @@ class DVGeometryCST(BaseDVGeometry):
 
         # Default DVs to be copied for each point set
         self.defaultDV = {
-            "upper": 0.1 * np.ones(8, dtype=self.dtype),
-            "lower": -0.1 * np.ones(8, dtype=self.dtype),
+            "upper": 0.1 * np.ones(self.nCSTUpper, dtype=self.dtype),
+            "lower": -0.1 * np.ones(self.nCSTLower, dtype=self.dtype),
             "n1_upper": np.array([0.5], dtype=self.dtype),
             "n2_upper": np.array([1.0], dtype=self.dtype),
             "n1_lower": np.array([0.5], dtype=self.dtype),
@@ -225,9 +244,11 @@ class DVGeometryCST(BaseDVGeometry):
             plt.show()
             plt.close(fig)
 
-    def addDV(self, dvName, dvType, dvNum=None, lower=None, upper=None, scale=1.0, default=None):
+    def addDV(self, dvName, dvType, lower=None, upper=None, scale=1.0, default=None):
         """
-        Add design variables to the DVGeometryCST object.
+        Add design variables to the DVGeometryCST object. For upper and lower CST coefficient DVs,
+        the number of design variables is defined using the ``numCST`` parameter in DVGeoCST's
+        init function.
 
         Parameters
         ----------
@@ -247,9 +268,6 @@ class DVGeometryCST(BaseDVGeometry):
                 - ``"N2_lower"``: second class shape parameters for lower surface (adds a single DV)
                 - ``"chord"``: chord length in whatever units the point set length is defined and scaled
                   to keep the leading edge at the same position (adds a single DV)
-        dvNum : int
-            If dvType is ``"upper"`` or ``"lower"``, use ``dvNum`` to specify the number of
-            CST parameters to use. This must be given by the user for upper and lower DVs.
         lower : float or ndarray, optional
             The upper bound for the variable(s). This will be applied to
             all shape variables
@@ -286,9 +304,10 @@ class DVGeometryCST(BaseDVGeometry):
             )
         dvType = dvType.lower()
 
-        if dvType in ["upper", "lower"]:
-            if dvNum is None:
-                raise ValueError('dvNum must be specified if dvType is "upper" or "lower"')
+        if dvType == "upper":
+            dvNum = self.nCSTUpper
+        elif dvType == "lower":
+            dvNum = self.nCSTLower
         else:
             dvNum = 1
 
@@ -319,17 +338,6 @@ class DVGeometryCST(BaseDVGeometry):
 
         # Set the default value
         if default is None:
-            # If the number of CST parameters for the upper or lower surface is different than the
-            # existing default, refit the airfoil with the new number of CST coefficients
-            if dvType in ["upper", "lower"] and self.defaultDV[dvType].size != dvNum:
-                self.defaultDV[dvType] = self.computeCSTfromCoords(
-                    self.foilCoords[self.idxFoil[dvType], self.xIdx],
-                    self.foilCoords[self.idxFoil[dvType], self.yIdx],
-                    dvNum,
-                    N1=self.defaultDV[f"n1_{dvType}"],
-                    N2=self.defaultDV[f"n2_{dvType}"],
-                    dtype=self.dtype,
-                )
             default = self.defaultDV[dvType]
         else:
             if not isinstance(default, np.ndarray):

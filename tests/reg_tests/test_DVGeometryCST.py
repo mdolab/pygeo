@@ -334,7 +334,11 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         self.datFile = os.path.join(self.curDir, "naca2412.dat")
         self.rng = np.random.default_rng(1)
         self.comm = MPI.COMM_WORLD
-        self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm, isComplex=True)
+        if self.dvName in ["upper", "lower"]:
+            numCST = self.dvNum
+        else:
+            numCST = 4
+        self.DVGeo = DVGeometryCST(self.datFile, comm=self.comm, isComplex=True, numCST=numCST)
 
         # Read in airfoil coordinates (use NACA 2412)
         coords = readCoordFile(self.datFile)
@@ -354,7 +358,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         """
         Test DVGeo.totalSensitivityProd for all design variables
         """
-        self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
+        self.DVGeo.addDV(self.dvName, dvType=self.dvName)
         self.DVGeo.addPointSet(self.coords, self.ptName)
 
         # Set DV to random values
@@ -385,7 +389,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         """
         Test DVGeo.totalSensitivity for all design variables with dIdXpt of all ones
         """
-        self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
+        self.DVGeo.addDV(self.dvName, dvType=self.dvName)
         self.DVGeo.addPointSet(self.coords, self.ptName)
 
         # Set DV to random values
@@ -422,7 +426,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         Test DVGeo.totalSensitivity for all design variables with dIdXpt containing
         three different Npts x 3 arrays (another possible input)
         """
-        self.DVGeo.addDV(self.dvName, dvType=self.dvName, dvNum=self.dvNum)
+        self.DVGeo.addDV(self.dvName, dvType=self.dvName)
         self.DVGeo.addPointSet(self.coords, self.ptName)
 
         # Set DV to random values
@@ -468,12 +472,12 @@ class TestFunctionality(unittest.TestCase):
 
     def test_print(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
-
         nUpper = 5
         nLower = 3
-        self.DVGeo.addDV("upper", dvType="upper", dvNum=nUpper)
-        self.DVGeo.addDV("lower", dvType="lower", dvNum=nLower)
+        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=[nUpper, nLower])
+
+        self.DVGeo.addDV("upper", dvType="upper")
+        self.DVGeo.addDV("lower", dvType="lower")
         self.DVGeo.addDV("n1", dvType="n1")
         self.DVGeo.addDV("n2", dvType="n2")
         self.DVGeo.addDV("chord", dvType="chord")
@@ -481,13 +485,13 @@ class TestFunctionality(unittest.TestCase):
 
     def test_getNDV(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
-
         nUpper = 5
         nLower = 3
         nOther = 3  # N1, N2, and chord
-        self.DVGeo.addDV("upper", dvType="upper", dvNum=nUpper)
-        self.DVGeo.addDV("lower", dvType="lower", dvNum=nLower)
+        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=[nUpper, nLower])
+
+        self.DVGeo.addDV("upper", dvType="upper")
+        self.DVGeo.addDV("lower", dvType="lower")
         self.DVGeo.addDV("n1", dvType="n1")
         self.DVGeo.addDV("n2", dvType="n2")
         self.DVGeo.addDV("chord", dvType="chord")
@@ -496,10 +500,9 @@ class TestFunctionality(unittest.TestCase):
 
     def test_getValues(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
-
         nUpper = 5
         nLower = 3
+        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=[nUpper, nLower])
 
         upper = np.full((nUpper,), 0.3)
         lower = 0.1 * np.ones(nLower)
@@ -507,8 +510,8 @@ class TestFunctionality(unittest.TestCase):
         N2_lower = np.array([1.2])
         chord = np.array([0.5])
 
-        self.DVGeo.addDV("upper", dvType="upper", default=upper, dvNum=nUpper)
-        self.DVGeo.addDV("lower", dvType="lower", dvNum=nLower)
+        self.DVGeo.addDV("upper", dvType="upper", default=upper)
+        self.DVGeo.addDV("lower", dvType="lower")
         self.DVGeo.addDV("n1", dvType="n1")
         self.DVGeo.addDV("n2_lower", dvType="n2_lower")
         self.DVGeo.addDV("chord", dvType="chord")
@@ -533,8 +536,8 @@ class TestFunctionality(unittest.TestCase):
 
         dvNames = ["amy", "joesph", "maryann", "tobysue", "sir blue bus"]
 
-        self.DVGeo.addDV(dvNames[0], dvType="upper", dvNum=4)
-        self.DVGeo.addDV(dvNames[1], dvType="lower", dvNum=4)
+        self.DVGeo.addDV(dvNames[0], dvType="upper")
+        self.DVGeo.addDV(dvNames[1], dvType="lower")
         self.DVGeo.addDV(dvNames[2], dvType="n1")
         self.DVGeo.addDV(dvNames[3], dvType="n2_lower")
         self.DVGeo.addDV(dvNames[4], dvType="chord")
@@ -548,7 +551,7 @@ class TestFunctionality(unittest.TestCase):
 class TestErrorChecking(unittest.TestCase):
     def setUp(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
-        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"))
+        self.DVGeo = DVGeometryCST(os.path.join(curDir, "naca2412.dat"), numCST=4)
 
     def test_addPointSet_min_out_of_bounds(self):
         points = np.array(
@@ -574,10 +577,6 @@ class TestErrorChecking(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.DVGeo.addDV("samantha", dvType="this is an invalid type")
 
-    def test_addDV_missing_dvNum(self):
-        with self.assertRaises(ValueError):
-            self.DVGeo.addDV("eduardo", dvType="upper")
-
     def test_addDV_duplicate_n1(self):
         self.DVGeo.addDV("silver baboon", dvType="n1", default=np.array([0.4]))
         with self.assertRaises(ValueError):
@@ -599,14 +598,14 @@ class TestErrorChecking(unittest.TestCase):
             self.DVGeo.addDV("hannah", dvType="n2")
 
     def test_addDV_duplicate_same_type(self):
-        self.DVGeo.addDV("ali", dvType="upper", dvNum=4)
+        self.DVGeo.addDV("ali", dvType="upper")
         with self.assertRaises(ValueError):
-            self.DVGeo.addDV("anil", dvType="upper", dvNum=4)
+            self.DVGeo.addDV("anil", dvType="upper")
 
     def test_addDV_duplicate_same_name(self):
-        self.DVGeo.addDV("josh", dvType="upper", dvNum=4)
+        self.DVGeo.addDV("josh", dvType="upper")
         with self.assertRaises(ValueError):
-            self.DVGeo.addDV("josh", dvType="lower", dvNum=4)
+            self.DVGeo.addDV("josh", dvType="lower")
 
     def test_addDV_duplicate_invalid_default_type(self):
         with self.assertRaises(ValueError):
@@ -614,10 +613,10 @@ class TestErrorChecking(unittest.TestCase):
 
     def test_addDV_duplicate_invalid_default_size(self):
         with self.assertRaises(ValueError):
-            self.DVGeo.addDV("brick", dvType="upper", dvNum=4, default=np.array([5.0, 1]))
+            self.DVGeo.addDV("brick", dvType="upper", default=np.array([5.0, 1]))
 
     def test_setDesignVars_invalid_shape(self):
-        self.DVGeo.addDV("mafa", dvType="upper", dvNum=5)
+        self.DVGeo.addDV("mafa", dvType="upper")
         with self.assertRaises(ValueError):
             self.DVGeo.setDesignVars({"mafa": np.array([1.0, 3.0])})
 
