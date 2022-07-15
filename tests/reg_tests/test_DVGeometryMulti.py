@@ -100,7 +100,6 @@ class TestDVGeoMulti(unittest.TestCase):
 
             # Set up a twist variable
             def twist(val, geo):
-                nonlocal nRefAxPts
                 for i in range(1, nRefAxPts):
                     geo.rot_z["box"].coef[i] = val[i - 1]
 
