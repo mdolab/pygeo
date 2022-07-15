@@ -219,7 +219,8 @@ class DVGeometryCST(BaseDVGeometry):
         self.idxFoil["upper"], self.idxFoil["lower"] = self._splitUpperLower(self.foilCoords)
         chord = self.xMax - self.xMin
         self.defaultDV["chord"][0] = chord
-        print(f"######## Fitting CST coefficients to coordinates in {datFile} ########")
+        if self.comm.rank == 0:
+            print(f"######## Fitting CST coefficients to coordinates in {datFile} ########")
         for dvType in ["upper", "lower"]:
             self.defaultDV[dvType] = self.computeCSTfromCoords(
                 self.foilCoords[self.idxFoil[dvType], self.xIdx],
@@ -243,9 +244,10 @@ class DVGeometryCST(BaseDVGeometry):
             )
             L2norm = np.sqrt(1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2))
 
-            print(f"{dvType.capitalize()} surface")
-            print(f"    L2 norm of coordinates in dat file versus fit coordinates: {L2norm}")
-            print(f"    Fit CST coefficients: {self.defaultDV[dvType]}")
+            if self.comm.rank == 0:
+                print(f"{dvType.capitalize()} surface")
+                print(f"    L2 norm of coordinates in dat file versus fit coordinates: {L2norm}")
+                print(f"    Fit CST coefficients: {self.defaultDV[dvType]}")
 
     def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
@@ -311,7 +313,7 @@ class DVGeometryCST(BaseDVGeometry):
             plt.show()
             plt.close(fig)
 
-    def addDV(self, dvName, dvType, lower=None, upper=None, scale=1.0, default=None):
+    def addDV(self, dvName, dvType, lowerBound=None, upperBound=None, scale=1.0, default=None):
         """
         Add design variables to the DVGeometryCST object. For upper and lower CST coefficient DVs,
         the number of design variables is defined using the ``numCST`` parameter in DVGeoCST's
@@ -335,10 +337,10 @@ class DVGeometryCST(BaseDVGeometry):
                 - ``"N2_lower"``: second class shape parameters for lower surface (adds a single DV)
                 - ``"chord"``: chord length in whatever units the point set length is defined and scaled
                   to keep the leading edge at the same position (adds a single DV)
-        lower : float or ndarray, optional
-            The upper bound for the variable(s). This will be applied to
+        lowerBound : float or ndarray, optional
+            The lower bound for the variable(s). This will be applied to
             all shape variables
-        upper : float or ndarray, optional
+        upperBound : float or ndarray, optional
             The upper bound for the variable(s). This will be applied to
             all shape variables
         scale : float, optional
@@ -426,8 +428,8 @@ class DVGeometryCST(BaseDVGeometry):
             name=dvName,
             value=default.astype(self.dtype),
             nVal=dvNum,
-            lower=lower,
-            upper=upper,
+            lower=lowerBound,
+            upper=upperBound,
             scale=scale,
             dvType=dvType,
         )
@@ -808,11 +810,12 @@ class DVGeometryCST(BaseDVGeometry):
         """
         Print a formatted list of design variables to the screen
         """
-        print("\nDVGeometryCST design variables")
-        print("==============================")
-        for DV in self.DVs.values():
-            print(f"{DV.name} ({DV.type} type): {DV.value}")
-        print("")
+        if self.comm.rank == 0:
+            print("\nDVGeometryCST design variables")
+            print("==============================")
+            for DV in self.DVs.values():
+                print(f"{DV.name} ({DV.type} type): {DV.value}")
+            print("")
 
     def _unpackDVs(self):
         """
