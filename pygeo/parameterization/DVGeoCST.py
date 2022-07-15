@@ -88,7 +88,15 @@ class DVGeometryCST(BaseDVGeometry):
     """
 
     def __init__(
-        self, datFile, numCST=8, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False, tolTE=60.
+        self,
+        datFile,
+        numCST=8,
+        idxChord=0,
+        idxVertical=1,
+        comm=MPI.COMM_WORLD,
+        isComplex=False,
+        debug=False,
+        tolTE=60.0,
     ):
         super().__init__(datFile)
         self.xIdx = idxChord
@@ -243,7 +251,9 @@ class DVGeometryCST(BaseDVGeometry):
                     yTE,
                     dtype=self.dtype,
                 )
-                L2norm = np.sqrt(1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2))
+                L2norm = np.sqrt(
+                    1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2)
+                )
 
                 print(f"{dvType.capitalize()} surface")
                 print(f"    L2 norm of coordinates in dat file versus fit coordinates: {L2norm}")
