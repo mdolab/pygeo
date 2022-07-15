@@ -82,9 +82,16 @@ class DVGeometryCST(BaseDVGeometry):
     debug : bool, optional
         Show plots when addPointSet is called to visually verify that it is correctly splitting
         the upper and lower surfaces of the airfoil points, by default False
+    tolTE : float, optional
+        Tolerance used to detect trailing edge corners on the airfoil. A point is considered a corner if
+        the magnitude of the dot product of the (normalized) vectors tangent to the edges before and
+        after the point is less than this tolerance. A tolerance approaching zero means the edges must be
+        perpendicular to each other. By default 0.5 (corresponds to an angle difference of 60 deg).
     """
 
-    def __init__(self, datFile, numCST=8, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False):
+    def __init__(
+        self, datFile, numCST=8, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False, tolTE=0.5
+    ):
         super().__init__(datFile)
         self.xIdx = idxChord
         self.yIdx = idxVertical
@@ -99,7 +106,7 @@ class DVGeometryCST(BaseDVGeometry):
         self.debug = debug
         if debug and not pltImport:
             raise ImportError("matplotlib.pyplot could not be imported and is required for DVGeoCST debug mode")
-        
+
         # Error check the numCST input
         if isinstance(numCST, int):
             self.nCSTUpper = numCST
@@ -155,11 +162,53 @@ class DVGeometryCST(BaseDVGeometry):
         if abs(yLE) > 1e-2:
             raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {yLE}")
 
-        # Determine the trailing edge thickness
-        idxTE = np.where(self.foilCoords[:, self.xIdx] == self.xMax)[0]
-        self.yUpperTE = np.max(self.foilCoords[idxTE, self.yIdx])
-        self.yLowerTE = np.min(self.foilCoords[idxTE, self.yIdx])
-        self.thicknessTE = self.yUpperTE - self.yLowerTE
+        # Determine if the dat file is closed (first and last points are the same); remove the duplicate point if so
+        distance = np.linalg.norm(self.foilCoords[0, :] - self.foilCoords[-1, :])
+        distTol = 1e-12
+        if distance < distTol:
+            self.foilCoords = self.foilCoords[:-1, :]
+
+        # Traverse the airfoil surface to find the corner(s) defining the trailing edge (ignore anything in the front
+        # half, chordwise, of the airfoil)
+        cornerIdx = []
+        for idx in range(self.foilCoords.shape[0]):
+            pt = self.foilCoords[idx, :]
+            # Ignore if closer to the leading edge
+            if pt[self.xIdx] - self.xMin < self.xMax - pt[self.xIdx]:
+                continue
+            edgePrev = pt - self.foilCoords[idx - 1, :]
+            edgePrev /= np.linalg.norm(edgePrev)
+            edgeNext = self.foilCoords[(idx + 1) % self.foilCoords.shape[0], :] - pt
+            edgeNext /= np.linalg.norm(edgeNext)
+            if np.dot(edgePrev, edgeNext) < tolTE:
+                cornerIdx.append(idx)
+        if len(cornerIdx) > 2:
+            raise RuntimeError(
+                "More than two corners in the airfoil identified when looking for the "
+                + "trailing edge. If the actual airfoil geometry in the dat file has more "
+                + "than two corners it is not supported. If not, try reducing the tolTE input."
+            )
+        elif len(cornerIdx) == 0:
+            raise RuntimeError(
+                "Zero corners in the airfoil identified when looking for the "
+                + "trailing edge. If the actual airfoil geometry in the dat file has zero corners "
+                + "(is a circle??) it is not supported. If not, try increasing the tolTE input."
+            )
+
+        # Airfoil is sharp if only one corner is detected
+        self.sharp = len(cornerIdx) == 1
+
+        # Save the upper and lower trailing edge coordinates if it is not sharp
+        if self.sharp:
+            self.thicknessTE = np.array([0.0])
+        else:
+            if self.foilCoords[cornerIdx[0], self.yIdx] > self.foilCoords[cornerIdx[1], self.yIdx]:
+                self.coordUpperTE = self.foilCoords[cornerIdx[0]]
+                self.coordLowerTE = self.foilCoords[cornerIdx[1]]
+            else:
+                self.coordUpperTE = self.foilCoords[cornerIdx[1]]
+                self.coordLowerTE = self.foilCoords[cornerIdx[0]]
+            self.thicknessTE = self.coordUpperTE[self.yIdx] - self.coordLowerTE[self.yIdx]
 
         # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet).
         # preFoil defines the leading edge as the point furthest from the trailing edge
@@ -179,6 +228,7 @@ class DVGeometryCST(BaseDVGeometry):
                 N2=self.defaultDV[f"n2_{dvType}"],
                 dtype=self.dtype,
             )
+            # TODO: print metric representing goodness of fit (and maybe the coefficients too)
 
     def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
@@ -803,27 +853,29 @@ class DVGeometryCST(BaseDVGeometry):
         ndarray (1D)
             Indices of lower surface points (correspond to rows in points)
         """
-        # Determine which surface each point is on based on which spline it is closer to
+        # Determine which surface (either upper, lower, or trailing edge) each point is
+        # on based on which spline it is closest to
+        # Upper
         _, upperDist = self.upperSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
-        _, lowerDist = self.lowerSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
         upperDist = np.linalg.norm(upperDist, axis=1)
+        # Lower
+        _, lowerDist = self.lowerSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
         lowerDist = np.linalg.norm(lowerDist, axis=1)
+        # Trailing edge
+        teDist = np.full_like(upperDist, np.inf)
+        if not self.sharp:
+            x0 = points[:, self.xIdx]
+            y0 = points[:, self.yIdx]
+            x1 = self.coordLowerTE[self.xIdx]
+            y1 = self.coordLowerTE[self.yIdx]
+            x2 = self.coordUpperTE[self.xIdx]
+            y2 = self.coordUpperTE[self.yIdx]
+            teDist = np.abs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1)) / np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-        upperBool = upperDist < lowerDist
-        lowerBool = np.logical_not(upperBool)
-
-        # Find any trailing edge points that are not on the upper or lower
-        # surface (on the surface of the blunt trailing edge)
-        isTE = points[:, self.xIdx] == self.xMax
-        tol = 1e-13
-        isNotUpperSurface = points[:, self.yIdx] < self.yUpperTE - tol
-        isNotLowerSurface = points[:, self.yIdx] > self.yLowerTE + tol
-        isNotSurface = np.logical_and(isNotLowerSurface, isNotUpperSurface)
-        idxTE = np.where(np.logical_and(isTE, isNotSurface))[0]
-
-        # Remove points on the blunt trailing edge
-        upperBool[idxTE] = False
-        lowerBool[idxTE] = False
+        # Determine if each point is on the upper surface if it's closer to the upper spline than
+        # either the lower spline or the trailing edge line (and do the same for the lower surface)
+        upperBool = np.logical_and(upperDist <= lowerDist, upperDist <= teDist)
+        lowerBool = np.logical_and(lowerDist < upperDist, lowerDist <= teDist)
 
         return np.where(upperBool)[0], np.where(lowerBool)[0]
 
