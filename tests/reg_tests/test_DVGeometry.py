@@ -988,6 +988,66 @@ class RegTestPyGeo(unittest.TestCase):
 
             commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=3)
 
+    def test_spanDV(self, train=False):
+        """
+        Test span DV
+        If the design FFD coef are not reset between updating the points and the derivative routines this will fail.
+        """
+        DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
+
+        DVGeo.addRefAxis("RefAx", xFraction=0.5, alignIndex="k", rotType=0, rot0ang=-90)
+        DVGeo.addGlobalDV(dvName="span", value=0.5, func=commonUtils.span, lower=0.1, upper=10, scale=1)
+
+        points = np.zeros([2, 3])
+        points[0, :] = [0.25, 0.4, 4]
+        points[1, :] = [-0.8, 0.2, 7]
+        ptName = "testPoints"
+        DVGeo.addPointSet(points, ptName)
+
+        nPt = points.size
+        dIdx_FD = commonUtils.totalSensitivityFD(DVGeo, nPt, ptName)
+
+        dIdPt = np.zeros([nPt, 2, 3])
+        dIdPt[0, 0, 0] = 1.0
+        dIdPt[1, 0, 1] = 1.0
+        dIdPt[2, 0, 2] = 1.0
+        dIdPt[3, 1, 0] = 1.0
+        dIdPt[4, 1, 1] = 1.0
+        dIdPt[5, 1, 2] = 1.0
+        dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
+
+        np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
+
+    def test_spanDV_child(self, train=False):
+        """
+        Test span DV with child
+        """
+        DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)
+
+        # add design variables
+        DVGeoChild.addGlobalDV(dvName="span", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+        DVGeo.addChild(DVGeoChild)
+
+        points = np.zeros([2, 3])
+        points[0, :] = [0.25, 0, 0]
+        points[1, :] = [-0.25, 0, 0]
+        ptName = "testPoints"
+        DVGeo.addPointSet(points, ptName)
+
+        nPt = points.size
+        dIdx_FD = commonUtils.totalSensitivityFD(DVGeo, nPt, ptName)
+
+        dIdPt = np.zeros([nPt, 2, 3])
+        dIdPt[0, 0, 0] = 1.0
+        dIdPt[1, 0, 1] = 1.0
+        dIdPt[2, 0, 2] = 1.0
+        dIdPt[3, 1, 0] = 1.0
+        dIdPt[4, 1, 1] = 1.0
+        dIdPt[5, 1, 2] = 1.0
+        dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
+
+        np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
+
 
 if __name__ == "__main__":
     unittest.main()
