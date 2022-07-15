@@ -268,6 +268,10 @@ class DVGeometryCST(BaseDVGeometry):
         The is the main way that geometry in the form of a coordinate list is given to DVGeometry
         to be manipulated.
 
+        .. note::
+            Even if ``isComplex=True``, the imaginary portion of coordinates passed in here
+            is ignored when determining if a given point is on the upper or lower surface.
+
         Parameters
         ----------
         points : array, size (N,3)
@@ -923,11 +927,11 @@ class DVGeometryCST(BaseDVGeometry):
         """
         # Determine which surface (either upper, lower, or trailing edge) each point is
         # on based on which spline it is closest to
-        # Upper
-        _, upperDist = self.upperSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
+        # Upper (if it's complex, ignore the imaginary part since the spline doesn't handle that)
+        _, upperDist = self.upperSpline.projectPoint(np.real(points[:, [self.xIdx, self.yIdx]]))
         upperDist = np.linalg.norm(upperDist, axis=1)
         # Lower
-        _, lowerDist = self.lowerSpline.projectPoint(points[:, [self.xIdx, self.yIdx]])
+        _, lowerDist = self.lowerSpline.projectPoint(np.real(points[:, [self.xIdx, self.yIdx]]))
         lowerDist = np.linalg.norm(lowerDist, axis=1)
         # Trailing edge
         teDist = np.full_like(upperDist, np.inf)

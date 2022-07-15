@@ -493,7 +493,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         for i in range(self.dvNum):
             vec = np.zeros(self.dvNum)
             vec[i] = 1
-            sensProd.append(self.DVGeo.totalSensitivityProd({self.dvName: vec}, self.ptName).astype(float))
+            sensProd.append(np.real(self.DVGeo.totalSensitivityProd({self.dvName: vec}, self.ptName)))
 
         # Then check them against doing it with complex step
         valDV = DVs[self.dvName]
@@ -524,7 +524,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         DVs = self.DVGeo.getValues()
 
         # First compute the analytic ones with the built in function
-        sens = self.DVGeo.totalSensitivity(dIdXpt, self.ptName)[self.dvName].astype(float)
+        sens = np.real(self.DVGeo.totalSensitivity(dIdXpt, self.ptName)[self.dvName])
 
         # Then check them against doing it with complex step
         valDV = DVs[self.dvName]
@@ -563,7 +563,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         DVs = self.DVGeo.getValues()
 
         # First compute the analytic ones with the built in function
-        sens = self.DVGeo.totalSensitivity(dIdXptVectorized, self.ptName, comm=self.comm)[self.dvName].astype(float)
+        sens = np.real(self.DVGeo.totalSensitivity(dIdXptVectorized, self.ptName, comm=self.comm)[self.dvName])
 
         # Then check them against doing it with complex step
         valDV = DVs[self.dvName]
