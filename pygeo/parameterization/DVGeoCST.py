@@ -53,13 +53,13 @@ class DVGeometryCST(BaseDVGeometry):
 
     Here x is the normalized chordwise coordinate, ranging from 0 to 1 from front to the rear of the shape.
 
-    This class works for extruded 2D airfoil geometries, but not 3D geometries that vary in the spanwise direction.
-
     Assumptions about the point sets being added:
-        - Trailing edge is vertical or sharp and at maximum x values
-        - The geometry is exclusively an extruded shape (no spanwise changes allowed)
-        - The airfoil's leading edge is on the left (min x) and trailing edge is on the right (max x)
-        - The airfoil's leading edge is at y (or idxVertical) equals zero (within :math:`10^{-2}`)
+
+        - Dat file is ordered continuously around the airfoil and the beginning and end of
+          the list is the trailing edge (no jumping around, but CW vs. CCW does not matter)
+        - Geometry is exclusively an extruded shape (no spanwise changes allowed)
+        - Airfoil's leading edge is on the left (min x) and trailing edge is on the right (max x)
+        - Airfoil is not rotated (trailing edge and leading edge are close to y equals zero)
 
     Parameters
     ----------
@@ -218,7 +218,9 @@ class DVGeometryCST(BaseDVGeometry):
         # Fit CST parameters to the airfoil's upper and lower surface
         self.idxFoil = {}
         self.idxFoil["upper"], self.idxFoil["lower"] = self._splitUpperLower(self.foilCoords)
-        self.defaultDV["chord"][0] = self.xMax - self.xMin
+        chord = self.xMax - self.xMin
+        self.defaultDV["chord"][0] = chord
+        print(f"######## Fitting CST coefficients to coordinates in {datFile} ########")
         for dvType in ["upper", "lower"]:
             self.defaultDV[dvType] = self.computeCSTfromCoords(
                 self.foilCoords[self.idxFoil[dvType], self.xIdx],
@@ -228,7 +230,23 @@ class DVGeometryCST(BaseDVGeometry):
                 N2=self.defaultDV[f"n2_{dvType}"],
                 dtype=self.dtype,
             )
-            # TODO: print metric representing goodness of fit (and maybe the coefficients too)
+
+            # Compute the quality of the fit by computing an L2 norm of the fit vs. the actual coordinates
+            xPts = self.foilCoords[self.idxFoil[dvType], self.xIdx]
+            yTE = self.thicknessTE / 2 if dvType == "upper" else -self.thicknessTE / 2
+            ptsFit = chord * self.computeCSTCoordinates(
+                xPts / chord,
+                self.defaultDV["n1_lower"],
+                self.defaultDV["n2_lower"],
+                self.defaultDV[dvType],
+                yTE,
+                dtype=self.dtype,
+            )
+            L2norm = np.sqrt(1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2))
+
+            print(f"{dvType.capitalize()} surface")
+            print(f"    L2 norm of coordinates in dat file versus fit coordinates: {L2norm}")
+            print(f"    Fit CST coefficients: {self.defaultDV[dvType]}")
 
     def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
