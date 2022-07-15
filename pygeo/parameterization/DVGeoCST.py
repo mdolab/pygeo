@@ -260,7 +260,7 @@ class DVGeometryCST(BaseDVGeometry):
                 print(f"    Fit CST coefficients: {self.defaultDV[dvType]}")
 
             # Broadcast the fit DV to the rest of the procs
-            self.comm.Bcast(self.defaultDV[dvType])
+            self.comm.Bcast([self.defaultDV[dvType], self.dtypeMPI])
 
     def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
@@ -304,27 +304,62 @@ class DVGeometryCST(BaseDVGeometry):
 
         # If debug mode is on, plot the upper and lower surface points
         if self.debug:
-            fig = plt.figure()
-            plt.scatter(
-                self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["upper"]],
-                self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["upper"]],
-                c="b",
-            )
-            plt.scatter(
-                self.points[ptName]["points"][:, self.xIdx][self.points[ptName]["lower"]],
-                self.points[ptName]["points"][:, self.yIdx][self.points[ptName]["lower"]],
-                c="r",
-            )
-            plt.scatter(
-                self.points[ptName]["points"][:, self.xIdx],
-                self.points[ptName]["points"][:, self.yIdx],
-                s=3,
-                c="k",
-                zorder=3,
-            )
-            plt.legend(["Upper", "Lower"])
-            plt.show()
-            plt.close(fig)
+            # Gather all the plotting data on the root proc
+            dataGlob = {}
+            for name in ["points", "upper", "lower"]:
+                # First, determine the sizes and displacements of the arrays from each proc for gather
+                vecFlatLoc = self.points[ptName][name].flatten()
+                if name in ["upper", "lower"]:
+                    vecFlatLoc = vecFlatLoc.astype("intc")
+                numLoc = vecFlatLoc.size
+                sizes = np.array(self.comm.allgather(numLoc), dtype="intc")
+                disp = np.array([np.sum(sizes[:i]) for i in range(self.comm.size)], dtype="intc")
+                if name == "points":
+                    dispPoints = disp.copy()
+                numGlob = np.sum(sizes)
+
+                # Send coordinates to root proc
+                dtype = "intc"
+                dtypeMPI = MPI.INT
+                if name == "points":
+                    dtype = self.dtype
+                    dtypeMPI = self.dtypeMPI
+                dataGlob[name] = np.zeros(numGlob, dtype=dtype)  # recv buffer
+                
+                # Shift the data by the displacement if it is local index data
+                if name in ["upper", "lower"]:
+                    vecFlatLoc += dispPoints[self.comm.rank] // 3
+
+                # Finally, collect the data on the root proc
+                self.comm.Gatherv([vecFlatLoc, numLoc], [dataGlob[name], sizes, disp, dtypeMPI])
+
+            if self.comm.rank == 0:
+                # Reshape the flatted coordinates
+                coords = dataGlob["points"].reshape((dataGlob["points"].size // 3, 3))
+
+                fig = plt.figure()
+                plt.scatter(
+                    coords[:, self.xIdx][dataGlob["upper"]],
+                    coords[:, self.yIdx][dataGlob["upper"]],
+                    c="b",
+                )
+                plt.scatter(
+                    coords[:, self.xIdx][dataGlob["lower"]],
+                    coords[:, self.yIdx][dataGlob["lower"]],
+                    c="r",
+                )
+                plt.scatter(
+                    coords[:, self.xIdx],
+                    coords[:, self.yIdx],
+                    s=3,
+                    c="k",
+                    zorder=3,
+                )
+                plt.legend(["Upper", "Lower"])
+                plt.show()
+                plt.close(fig)
+
+            self.comm.Barrier()
 
     def addDV(self, dvName, dvType, lowerBound=None, upperBound=None, scale=1.0, default=None):
         """
