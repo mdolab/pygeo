@@ -83,14 +83,12 @@ class DVGeometryCST(BaseDVGeometry):
         Show plots when addPointSet is called to visually verify that it is correctly splitting
         the upper and lower surfaces of the airfoil points, by default False
     tolTE : float, optional
-        Tolerance used to detect trailing edge corners on the airfoil. A point is considered a corner if
-        the magnitude of the dot product of the (normalized) vectors tangent to the edges before and
-        after the point is less than this tolerance. A tolerance approaching zero means the edges must be
-        perpendicular to each other. By default 0.5 (corresponds to an angle difference of 60 deg).
+        Tolerance used to detect trailing edge corners on the airfoil. The value represents the angle difference
+        in degrees between adjacent edges of the airfoil, by default 60 deg.
     """
 
     def __init__(
-        self, datFile, numCST=8, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False, tolTE=0.5
+        self, datFile, numCST=8, idxChord=0, idxVertical=1, comm=MPI.COMM_WORLD, isComplex=False, debug=False, tolTE=60.
     ):
         super().__init__(datFile)
         self.xIdx = idxChord
@@ -170,6 +168,7 @@ class DVGeometryCST(BaseDVGeometry):
 
         # Traverse the airfoil surface to find the corner(s) defining the trailing edge (ignore anything in the front
         # half, chordwise, of the airfoil)
+        cosTolTE = np.cos(np.deg2rad(tolTE))
         cornerIdx = []
         for idx in range(self.foilCoords.shape[0]):
             pt = self.foilCoords[idx, :]
@@ -180,7 +179,7 @@ class DVGeometryCST(BaseDVGeometry):
             edgePrev /= np.linalg.norm(edgePrev)
             edgeNext = self.foilCoords[(idx + 1) % self.foilCoords.shape[0], :] - pt
             edgeNext /= np.linalg.norm(edgeNext)
-            if np.dot(edgePrev, edgeNext) < tolTE:
+            if np.dot(edgePrev, edgeNext) < cosTolTE:
                 cornerIdx.append(idx)
         if len(cornerIdx) > 2:
             raise RuntimeError(
