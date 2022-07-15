@@ -329,7 +329,7 @@ class DVGeometryCST(BaseDVGeometry):
                     dtype = self.dtype
                     dtypeMPI = self.dtypeMPI
                 dataGlob[name] = np.zeros(numGlob, dtype=dtype)  # recv buffer
-                
+
                 # Shift the data by the displacement if it is local index data
                 if name in ["upper", "lower"]:
                     vecFlatLoc += dispPoints[self.comm.rank] // 3
