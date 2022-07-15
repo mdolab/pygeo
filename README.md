@@ -11,7 +11,6 @@ It provides a free form deformation (FFD) based geometry manipulation object, an
 ## Documentation
 
 Please see the [documentation](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/) for installation details and API documentation.
-This link requires credentials currently only available to MDO Lab members.
 
 To locally build the documentation, enter the `doc` folder and enter `make html` in terminal.
 You can then view the built documentation in the `_build` folder.

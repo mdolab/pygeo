@@ -11,6 +11,9 @@ This package consists of the following modules:
    DVConstraints
    DVGeometry
    DVGeometryMulti
+   DVGeometryESP
+   DVGeometryVSP
+   DVGeometryCST
    pyNetwork
    pyGeo
    pyBlock
