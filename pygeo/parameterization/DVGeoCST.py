@@ -222,32 +222,35 @@ class DVGeometryCST(BaseDVGeometry):
         if self.comm.rank == 0:
             print(f"######## Fitting CST coefficients to coordinates in {datFile} ########")
         for dvType in ["upper", "lower"]:
-            self.defaultDV[dvType] = self.computeCSTfromCoords(
-                self.foilCoords[self.idxFoil[dvType], self.xIdx],
-                self.foilCoords[self.idxFoil[dvType], self.yIdx],
-                self.defaultDV[dvType].size,
-                N1=self.defaultDV[f"n1_{dvType}"],
-                N2=self.defaultDV[f"n2_{dvType}"],
-                dtype=self.dtype,
-            )
-
-            # Compute the quality of the fit by computing an L2 norm of the fit vs. the actual coordinates
-            xPts = self.foilCoords[self.idxFoil[dvType], self.xIdx]
-            yTE = self.thicknessTE / 2 if dvType == "upper" else -self.thicknessTE / 2
-            ptsFit = chord * self.computeCSTCoordinates(
-                xPts / chord,
-                self.defaultDV["n1_lower"],
-                self.defaultDV["n2_lower"],
-                self.defaultDV[dvType],
-                yTE,
-                dtype=self.dtype,
-            )
-            L2norm = np.sqrt(1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2))
-
             if self.comm.rank == 0:
+                self.defaultDV[dvType] = self.computeCSTfromCoords(
+                    self.foilCoords[self.idxFoil[dvType], self.xIdx],
+                    self.foilCoords[self.idxFoil[dvType], self.yIdx],
+                    self.defaultDV[dvType].size,
+                    N1=self.defaultDV[f"n1_{dvType}"],
+                    N2=self.defaultDV[f"n2_{dvType}"],
+                    dtype=self.dtype,
+                )
+
+                # Compute the quality of the fit by computing an L2 norm of the fit vs. the actual coordinates
+                xPts = self.foilCoords[self.idxFoil[dvType], self.xIdx]
+                yTE = self.thicknessTE / 2 if dvType == "upper" else -self.thicknessTE / 2
+                ptsFit = chord * self.computeCSTCoordinates(
+                    xPts / chord,
+                    self.defaultDV["n1_lower"],
+                    self.defaultDV["n2_lower"],
+                    self.defaultDV[dvType],
+                    yTE,
+                    dtype=self.dtype,
+                )
+                L2norm = np.sqrt(1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2))
+
                 print(f"{dvType.capitalize()} surface")
                 print(f"    L2 norm of coordinates in dat file versus fit coordinates: {L2norm}")
                 print(f"    Fit CST coefficients: {self.defaultDV[dvType]}")
+
+            # Broadcast the fit DV to the rest of the procs
+            self.comm.Bcast(self.defaultDV[dvType])
 
     def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
