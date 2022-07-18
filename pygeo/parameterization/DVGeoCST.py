@@ -264,7 +264,7 @@ class DVGeometryCST(BaseDVGeometry):
 
     def addPointSet(self, points, ptName, boundTol=1e-10, **kwargs):
         """
-        Add a set of coordinates to DVGeometry
+        Add a set of coordinates to DVGeometry.
         The is the main way that geometry in the form of a coordinate list is given to DVGeometry
         to be manipulated.
 
@@ -379,6 +379,7 @@ class DVGeometryCST(BaseDVGeometry):
             Define the type of CST design variable being added. Either the upper/lower surface class shape
             parameter DV can be defined (e.g., ``"N1_upper"``), or the DV for both the upper and lower surfaces' class shape
             parameter can be defined (e.g., ``"N1"``), but not both. The options (not case sensitive) are
+
                 - ``"upper"``: upper surface CST coefficients (specify ``dvNum`` to define how many)
                 - ``"lower"``: lower surface CST coefficients (specify ``dvNum`` to define how many)
                 - ``"N1"``: first class shape parameter for both upper and lower surfaces (adds a single DV)

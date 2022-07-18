@@ -371,7 +371,7 @@ class DVGeometryVSP(DVGeoSketch):
         Return the number of DVs
 
         Returns
-        _______
+        -------
         len(self.DVs) : int
             number of design variables
         """
@@ -662,7 +662,7 @@ class DVGeometryVSP(DVGeoSketch):
         Take the current set of design variables and create a .des file
 
         Parameters
-        __________
+        ----------
         fileName : str
             name of the output .des file
         """
@@ -678,7 +678,7 @@ class DVGeometryVSP(DVGeoSketch):
         Write the current design to Plot3D file
 
         Parameters
-        __________
+        ----------
         fileName : str
             name of the output Plot3D file
         exportSet : int

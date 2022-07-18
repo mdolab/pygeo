@@ -699,7 +699,7 @@ class DVGeometryESP(DVGeoSketch):
         Return the number of DVs
 
         Returns
-        _______
+        -------
         len(self.DVs) : int
             number of design variables
         """
