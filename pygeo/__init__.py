@@ -1,4 +1,4 @@
-__version__ = "1.11.2"
+__version__ = "1.12.0"
 
 from .pyNetwork import pyNetwork
 from .pyGeo import pyGeo
@@ -6,6 +6,7 @@ from .pyBlock import pyBlock
 from .constraints import DVConstraints
 from .parameterization import DVGeometry
 from .parameterization import DVGeometryAxi
+from .parameterization import DVGeometryCST
 
 try:
     from .parameterization import DVGeometryVSP

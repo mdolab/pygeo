@@ -99,7 +99,7 @@ class TestDVGeoMulti(unittest.TestCase):
             nTwist = nRefAxPts - 1
 
             # Set up a twist variable
-            def twist(val, geo):
+            def twist(val, geo, nRefAxPts=nRefAxPts):
                 for i in range(1, nRefAxPts):
                     geo.rot_z["box"].coef[i] = val[i - 1]
 
