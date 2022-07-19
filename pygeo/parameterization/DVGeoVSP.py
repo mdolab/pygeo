@@ -23,8 +23,9 @@ except ImportError:
 try:
     openvsp.CompPntRST
 except AttributeError:
-    raise ImportError("Out of date version of OpenVSP detected."
-                      "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP")
+    raise ImportError(
+        "Out of date version of OpenVSP detected." "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
+    )
 
 
 class DVGeometryVSP(DVGeoSketch):
