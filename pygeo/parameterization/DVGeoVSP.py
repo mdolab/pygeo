@@ -19,6 +19,13 @@ except ImportError:
     except ImportError:
         raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
 
+# make sure volume projection api is available
+try:
+    openvsp.CompPntRST
+except AttributeError:
+    raise ImportError("Out of date version of OpenVSP detected."
+                      "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP")
+
 
 class DVGeometryVSP(DVGeoSketch):
     """A class for manipulating VSP geometry
@@ -30,11 +37,10 @@ class DVGeometryVSP(DVGeoSketch):
 
     There are several import limitations:
 
-    1. Since VSP is surface based only, it cannot be used to
-    parameterize a geometry that doesn't lie on the surface. This
-    means it cannot be used for structural analysis. It is generally
-    possible use most of the constraints DVConstraints since most of
-    those points lie on the surface.
+    1. Since VSP is volume-based, it cannot be used to
+    parameterize a geometry that doesn't lie within a vsp body.
+    It is generally possible use most of the constraints DVConstraints
+    since most of those points lie on the surface.
 
     2. It cannot handle *moving* intersection. A geometry with static
     intersections is fine as long as the intersection doesn't move
@@ -221,7 +227,7 @@ class DVGeometryVSP(DVGeoSketch):
             # set the coordinates of the point object
             pnt.set_xyz(points[i, 0] * self.meshScale, points[i, 1] * self.meshScale, points[i, 2] * self.meshScale)
 
-            # first, we call the fast projection code with the initial guess
+            # first, we call the fast projection code with the initial guess to find the nearest point on the surface
 
             # this is the global index of the first node of the projected element
             nodeInd = self.conn[faceID[i], 0]
@@ -241,13 +247,16 @@ class DVGeometryVSP(DVGeoSketch):
             ug = uv[i, 0] * du + self.uv[gind][0][ii]
             vg = uv[i, 1] * dv + self.uv[gind][1][jj]
 
-            # project the point
+            # We now convert the surface parameteric variables (u,v) to their equivalent volume parameterization (r,s,t)
+            # this will serve as our initial guess for the volume projection procedure
             rg = ug
             if vg < 0.5:
                 sg = vg
             else:
                 sg = 1.0 - vg
+            # tg = 0.5 places the point in the middle of the upper and lower surfaces for the volume
             tg = 0.5
+            # Now, find the closest volume projection
             d, r[i], s[i], t[i] = openvsp.FindRSTGuess(gid, 0, pnt, rg, sg, tg)
             geom[i] = gind
 
@@ -678,7 +687,7 @@ class DVGeometryVSP(DVGeoSketch):
         f.write("%d\n" % len(self.DVs))
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}:{DV.value:20.15g}\n")
+            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}:{float(DV.value):20.15g}\n")
         f.close()
 
     def writePlot3D(self, fileName, exportSet=0):
