@@ -172,6 +172,9 @@ class DVGeometry(BaseDVGeometry):
         self.JT = {}
         self.nPts = {}
 
+        # dictionary to save any coordinate transformations we are given
+        self.coord_xfer = {}
+
         # Derivatives of Xref and Coef provided by the parent to the
         # children
         self.dXrefdXdvg = None
@@ -627,7 +630,7 @@ class DVGeometry(BaseDVGeometry):
 
         return nAxis
 
-    def addPointSet(self, points, ptName, origConfig=True, **kwargs):
+    def addPointSet(self, points, ptName, origConfig=True, coord_xfer=None, **kwargs):
         """
         Add a set of coordinates to DVGeometry
 
@@ -661,6 +664,16 @@ class DVGeometry(BaseDVGeometry):
         self.nPts[ptName] = None
 
         points = np.array(points).real.astype("d")
+
+        # save the coordinate transformation info
+        if coord_xfer is not None:
+            self.coord_xfer[ptName] = coord_xfer
+
+            # also apply the first rotation while adding this ptset
+            # any child FFDs will just work with the rotated points in the geo reference frame
+            # so we don't need to propagate this function below
+            points = self.coord_xfer[ptName](points, dir="bwd")
+
         self.points[ptName] = points
 
         # Ensure we project into the undeformed geometry
@@ -1873,6 +1886,10 @@ class DVGeometry(BaseDVGeometry):
         if self.isChild and childDelta:
             return Xfinal - Xstart
         else:
+            # we only check if we need to apply the reverse coordinate transformation
+            # if this is the last pygeo in the chain
+            if ptSetName in self.coord_xfer:
+                Xfinal = self.coord_xfer[ptSetName](Xfinal, dir="fwd")
             return Xfinal
 
     def applyToChild(self, iChild):
@@ -2108,6 +2125,14 @@ class DVGeometry(BaseDVGeometry):
             dIdpt = np.array([dIdpt])
         N = dIdpt.shape[0]
 
+        # apply the coordinate transformation on dIdpt if this pointset has it.
+        if ptSetName in self.coord_xfer:
+            # loop over functions
+            for ifunc in range(N):
+                # its important to remember that dIdpt are vector-like values,
+                # so we don't apply the transformations and only the rotations!
+                dIdpt[ifunc] = self.coord_xfer[ptSetName](dIdpt[ifunc], dir="bwd", apply_displacement=False)
+
         # generate the total Jacobian self.JT
         self.computeTotalJacobian(ptSetName, config=config)
 
@@ -2208,6 +2233,12 @@ class DVGeometry(BaseDVGeometry):
         else:
             xsdot = self.JT[ptSetName].T.dot(newvec)
             xsdot.reshape(len(xsdot) // 3, 3)
+
+            # check if we have a coordinate transformation on this ptset
+            if ptSetName in self.coord_xfer:
+                # this is a vector-like quantity so we dont displace and just rotate
+                xsdot = self.coord_xfer[ptSetName](xsdot, dir="fwd", apply_displacements=False)
+
             # Maybe this should be:
             # xsdot = xsdot.reshape(len(xsdot)//3, 3)
 
@@ -2263,6 +2294,12 @@ class DVGeometry(BaseDVGeometry):
         if self.JT[ptSetName] is None:
             xsdot = np.zeros((0, 3))
         else:
+
+            # check if we have a coordinate transformation on this ptset
+            if ptSetName in self.coord_xfer:
+                # this is a vector-like quantity so we dont displace and just rotate
+                vec = self.coord_xfer[ptSetName](vec, dir="bwd", apply_displacements=False)
+
             xsdot = self.JT[ptSetName].dot(np.ravel(vec))
 
         # Pack result into dictionary
