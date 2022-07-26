@@ -739,10 +739,6 @@ class DVGeometry(BaseDVGeometry):
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
 
-    def addGeoDVGlobal(self, *args, **kwargs):
-        warnings.warn("addGeoDVGlobal will be deprecated, use addGlobalDV instead")
-        return self.addGlobalDV(*args, **kwargs)
-
     def addLocalDV(
         self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
     ):
@@ -839,10 +835,6 @@ class DVGeometry(BaseDVGeometry):
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper, scale, axis, ind, self.masks, config)
 
         return self.DV_listLocal[dvName].nVal
-
-    def addGeoDVLocal(self, *args, **kwargs):
-        warnings.warn("addGeoDVLocal will be deprecated, use addLocalDV instead")
-        return self.addLocalDV(*args, **kwargs)
 
     def addSpanwiseLocalDV(
         self,
@@ -1014,10 +1006,6 @@ class DVGeometry(BaseDVGeometry):
         )
 
         return self.DV_listSpanwiseLocal[dvName].nVal
-
-    def addGeoDVSpanwiseLocal(self, *args, **kwargs):
-        warnings.warn("addGeoDVSpanwiseLocal will be deprecated, use addSpanwiseLocalDV instead")
-        return self.addSpanwiseLocalDV(*args, **kwargs)
 
     def addLocalSectionDV(
         self,
@@ -1281,10 +1269,6 @@ class DVGeometry(BaseDVGeometry):
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
         self.useComposite = True
-
-    def addGeoDVSectionLocal(self, *args, **kwargs):
-        warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
-        return self.addLocalSectionDV(*args, **kwargs)
 
     def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8):
         """
