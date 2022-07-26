@@ -114,21 +114,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_addGeoDVGlobal(self, dvName, value, func, childIdx=None):
+    def nom_addGlobalDV(self, dvName, value, func, childIdx=None):
         # define the input
         self.add_input(dvName, distributed=False, shape=len(value))
 
         # call the dvgeo object and add this dv
         if childIdx is None:
-            self.DVGeo.addGeoDVGlobal(dvName, value, func)
+            self.DVGeo.addGlobalDV(dvName, value, func)
         else:
-            self.children[childIdx].addGeoDVGlobal(dvName, value, func)
+            self.children[childIdx].addGlobalDV(dvName, value, func)
 
-    def nom_addGeoDVLocal(self, dvName, axis="y", pointSelect=None, childIdx=None):
+    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None):
         if childIdx is None:
-            nVal = self.DVGeo.addGeoDVLocal(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         else:
-            nVal = self.children[childIdx].addGeoDVLocal(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = self.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 

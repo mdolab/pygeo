@@ -99,13 +99,8 @@ class TestDVGeoMulti(unittest.TestCase):
             nTwist = nRefAxPts - 1
 
             # Set up a twist variable
-<<<<<<< HEAD
-            def twist(val, geo):
-                for i in range(1, nRefAxPts):  # noqa: B023
-=======
             def twist(val, geo, nRefAxPts=nRefAxPts):
                 for i in range(1, nRefAxPts):
->>>>>>> main
                     geo.rot_z["box"].coef[i] = val[i - 1]
 
             DVGeoDict[comp].addGlobalDV(dvName=f"{comp}_twist", value=[0] * nTwist, func=twist)
