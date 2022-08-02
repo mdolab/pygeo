@@ -1,6 +1,6 @@
 """
 ==============================================================================
-DVGeoCST: Test suite for the DVGeoCST module.
+DVGeometryCST: Test suite for the DVGeometryCST module.
 ==============================================================================
 """
 
@@ -15,13 +15,15 @@ from parameterized import parameterized_class
 # External Python modules
 # ==============================================================================
 import numpy as np
-from prefoil.utils import readCoordFile
 from mpi4py import MPI
 
-# ==============================================================================
-# Extension modules
-# ==============================================================================
-from pygeo import DVGeometryCST
+# Try importing prefoil and DVGeometryCST
+prefoilImported = True
+try:
+    from prefoil.utils import readCoordFile
+    from pygeo import DVGeometryCST
+except ImportError:
+    prefoilImported = False
 
 # LEUpper is true if the leading edge (minimum x) point is considered to be on the upper surface
 airfoils = [
@@ -44,6 +46,7 @@ DVs = [
 ]
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 @parameterized_class(airfoils)
 class DVGeometryCSTUnitTest(unittest.TestCase):
 
@@ -159,6 +162,7 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=atol, rtol=rtol)
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetSerial(unittest.TestCase):
     # Test in serial
@@ -254,6 +258,7 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 @parameterized_class(airfoils)
 class DVGeometryCSTPointSetParallel(unittest.TestCase):
     # Test in parallel
@@ -382,6 +387,7 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 class DVGeometryCSTSharpOrClosed(unittest.TestCase):
     # Test in serial
     N_PROCS = 1
@@ -445,6 +451,7 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
         self.assertFalse(DVGeo.sharp)
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 @parameterized_class(DVs)
 class DVGeometryCSTSensitivity(unittest.TestCase):
     # Test in serial
@@ -583,6 +590,7 @@ class DVGeometryCSTSensitivity(unittest.TestCase):
         np.testing.assert_allclose(sens, sensCS, atol=self.sensTol, rtol=self.sensTol)
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 class TestFunctionality(unittest.TestCase):
     """
     This class tests that some simple methods run without errors.
@@ -669,6 +677,7 @@ class TestFunctionality(unittest.TestCase):
             self.assertTrue(name in dvNames)
 
 
+@unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 class TestErrorChecking(unittest.TestCase):
     def setUp(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
