@@ -682,9 +682,10 @@ class DVGeometry(BaseDVGeometry):
 
         # We must finalize the Child here since we need the ref axis
         # coefficients
-        childDVGeo._finalizeAxis()
-        self.FFD.attachPoints(childDVGeo.refAxis.coef, "child%d_axis" % (iChild))
-        self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
+        if len(childDVGeo.axis) > 0:
+            childDVGeo._finalizeAxis()
+            self.FFD.attachPoints(childDVGeo.refAxis.coef, "child%d_axis" % (iChild))
+            self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
 
         # Add the child to the parent and return
         self.children.append(childDVGeo)
@@ -1671,6 +1672,15 @@ class DVGeometry(BaseDVGeometry):
         self.curPtSet = ptSetName
         # We've postponed things as long as we can...do the finalization.
         self._finalize()
+
+        for iChild in range(len(self.children)):
+            if len(self.children[iChild].axis) > 0:
+                self.children[iChild]._finalizeAxis()
+                refaxis_ptSetName = "child%d_axis" % (iChild)
+                if refaxis_ptSetName not in self.FFD.embeddedVolumes:
+                    print("adding refaxis_ptSetName", refaxis_ptSetName)
+                    self.FFD.attachPoints(self.children[iChild].refAxis.coef, refaxis_ptSetName)
+                    self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
 
         # Make sure coefficients are complex
         self._complexifyCoef()
