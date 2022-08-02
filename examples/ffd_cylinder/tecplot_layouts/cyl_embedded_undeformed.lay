@@ -486,6 +486,7 @@ $!FieldMap  [2]
     }
   Scatter
     {
+    Show = No
     SymbolShape
       {
       GeomShape = Circle
@@ -557,7 +558,7 @@ $!FieldMap  [3]
     }
   Surfaces
     {
-    SurfacesToPlot = None
+    SurfacesToPlot = KPlanes
     IRange
       {
       Max = 1
@@ -739,6 +740,21 @@ $!SliceAttributes  1
     I = 1
     J = 1
     K = 1
+    }
+  StartPosition
+    {
+    X = 0.0491
+    Y = -0.468
+    Z = 0.05
+    }
+  EndPosition
+    {
+    X = 0.9509
+    Y = 0.468
+    Z = 0.95
+    I = 2
+    J = 2
+    K = 2
     }
   EdgeLayer
     {

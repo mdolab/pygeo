@@ -49,7 +49,12 @@ Finally, the control points defining the FFD volume can be moved in space.
 As the control points move, they stretch and twist the FFD volume as if it were a block of jelly.
 The points embedded in the volume move in a consistent way.
 The image below shows the cylinder we made embedded in a cube-shaped FFD volume. 
-The FFD control points are depicted with the large red dots and the embedded pointset with smaller blue dots.
+The FFD control points are depicted with the large red dots and the embedding volume is the blue shaded region.
+
+.. note::
+    The FFD embedding volume is not necessarily coincident with the grid defined by the control points. 
+    For example, they are coincident here (both are the region shaded in blue) but will diverge after the :ref:`deformation later <deform>`.
+    The embedded volume and FFD control points can be viewed in Tecplot using the output from :meth:`.DVGeometry.writeTecplot()`.
 
 .. image:: ../examples/ffd_cylinder/images/cyl_embedded_undeformed.png
    :width: 450
@@ -152,8 +157,10 @@ This is because when we defined the design variable, we chose the y-axis only as
     :start-after: # rst perturb geometry
     :end-before: # rst plot
 
-We can now see the deformed equivalent of our earlier graphic. 
-The pointset (small blue triangles) embedded in the FFD volume (control points as large red triangles) in their deformed states can be see below.
+.. _deform:
+
+We can now see the deformed state of the FFD control points and embedding volume. 
+Now, unlike before, the FFD embedding volume (blue lines and shaded area) is not coincident with the grid defined by the FFD control points (red circles and lines).
 
 .. image:: ../examples/ffd_cylinder/images/cyl_embedded_deformed.png
    :width: 450

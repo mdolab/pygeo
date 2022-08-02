@@ -432,7 +432,8 @@ $!FieldMap  [1]
     }
   Shade
     {
-    Color = Custom2
+    Show = No
+    Color = Blue
     }
   EdgeLayer
     {
@@ -455,7 +456,8 @@ $!FieldMap  [1]
   Effects
     {
     LightingEffect = Gouraud
-    SurfaceTranslucency = 90
+    SurfaceTranslucency = 60
+    UseTranslucency = No
     }
 $!FieldMap  [2]
   Mesh
@@ -474,6 +476,7 @@ $!FieldMap  [2]
     }
   Scatter
     {
+    Show = No
     SymbolShape
       {
       GeomShape = RTri
@@ -484,7 +487,7 @@ $!FieldMap  [2]
     }
   Shade
     {
-    Color = Custom2
+    Color = Blue
     }
   EdgeLayer
     {
@@ -849,6 +852,7 @@ $!FieldLayers
   ShowMesh = No
   ShowScatter = Yes
   ShowShade = Yes
+  UseTranslucency = Yes
 $!StreamtraceLayers 
   Show = No
 $!FrameControl ActivateByNumber

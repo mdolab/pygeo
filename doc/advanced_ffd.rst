@@ -33,7 +33,7 @@ Using our knowledge of the wing dimensions, it's easy to create a closely-confor
 The example script is located at ``examples/c172_wing/genFFD.py``.
 
 The rendering below shows the FFD volume and the point set for the wing.
-Note that unlike the cylinder example in the previous tutorial, there are now two dimensions in which control points are free to move (in the streamwise and spanwise directions).
+Note that the FFD control points are not constrained in the spanwise direction like they were in the cylinder example.
 We can see that the FFD volume closely approximates the wing in the top view.
 
 .. image:: ../examples/c172_wing/images/baseline_3d.png
@@ -196,6 +196,7 @@ Once the points are projected, they become rigidly linked to the projected point
 Even if the reference axis is rotated, the rigid links do *not* rotate.
 However, the links do translate along with their reference point.
 Only the ``scale_`` and ``rot_`` operators change the rigid links.
+:meth:`.DVGeometry.writeLinks` can be used to write out these links, which can then be viewed in Tecplot. 
 
 --------------------------------
 Multiple global design variables
