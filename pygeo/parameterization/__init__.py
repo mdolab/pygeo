@@ -1,7 +1,10 @@
 from .DVGeo import DVGeometry
 from .DVGeoAxi import DVGeometryAxi
-from .DVGeoCST import DVGeometryCST
 
+try:
+    from .DVGeoCST import DVGeometryCST
+except ImportError:
+    pass
 try:
     from .DVGeoVSP import DVGeometryVSP
 except ImportError:
