@@ -16,8 +16,12 @@ DVGeo: CST Parameterisation
 import numpy as np
 from mpi4py import MPI
 from scipy.special import factorial
-from prefoil.utils import readCoordFile
-from prefoil.airfoil import Airfoil
+
+try:
+    from prefoil.utils import readCoordFile
+    from prefoil.airfoil import Airfoil
+except ImportError:
+    raise ImportError("preFoil is required to use DVGeometryCST")
 
 try:
     import matplotlib.pyplot as plt

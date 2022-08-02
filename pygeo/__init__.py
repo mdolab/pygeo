@@ -6,8 +6,11 @@ from .pyBlock import pyBlock
 from .constraints import DVConstraints
 from .parameterization import DVGeometry
 from .parameterization import DVGeometryAxi
-from .parameterization import DVGeometryCST
 
+try:
+    from .parameterization import DVGeometryCST
+except ImportError:
+    pass
 try:
     from .parameterization import DVGeometryVSP
 except ImportError:
