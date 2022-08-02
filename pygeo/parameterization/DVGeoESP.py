@@ -626,7 +626,7 @@ class DVGeometryESP(DVGeoSketch):
         Parameters
         ----------
         filename : string
-            _description_
+            Name of CAD file including valid file extension.
         """
         valid_filetypes = ["brep", "bstl", "egads", "egg", "iges", "igs", "sens", "step", "stl", "stp", "tess", "grid"]
         file_extension = filename.split(".")[-1]
@@ -872,14 +872,16 @@ class DVGeometryESP(DVGeoSketch):
         desmptr_name : str
             Name of the ESP design parameter.
         name : str or None
-            Human-readable name for this design variable (default same as despmtr).
+            Human-readable name for this design variable (default same as``despmtr``).
         value : float or None
             The design variable. If this value is not supplied (None), then
             the current value in the ESP model will be queried and used.
         lower : float or None
-            Lower bound for the design variable. Use None for no lower bound.
+            Lower bound for the design variable.
+            Use None for no lower bound.
         upper : float or None
-            Upper bound for the design variable. Use None for no upper bound.
+            Upper bound for the design variable.
+            Use None for no upper bound.
         scale : float
             Scale factor sent to pyOptSparse and used in optimization.
         rows : list or None
@@ -889,7 +891,8 @@ class DVGeometryESP(DVGeoSketch):
             Design variable col index(indices) to use.
             Default None uses all cols.
         dh : float
-            Finite difference step size. Default 0.001.
+            Finite difference step size.
+            Default 0.001.
         """
         # if name is none, use the desptmr name instead
         if name is not None:
@@ -1004,24 +1007,6 @@ class DVGeometryESP(DVGeoSketch):
     def _csmToFlat(self, value, rows, cols, numRow, numCol):
         """
         Gets a slice of a flat array based on listed row and col indices
-
-        Parameters
-        ----------
-        value : _type_
-            _description_
-        rows : _type_
-            _description_
-        cols : _type_
-            _description_
-        numRow : _type_
-            _description_
-        numCol : _type_
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
         """
         if numRow == 1 and numCol == 1:
             # early exit for scalars
@@ -1138,40 +1123,6 @@ class DVGeometryESP(DVGeoSketch):
             return True
 
     def _evaluatePoints(self, u, v, t, uvlimits0, tlimits0, bodyID, faceID, edgeID, nPts):
-        """
-        TODO
-
-        Parameters
-        ----------
-        u : _type_
-            _description_
-        v : _type_
-            _description_
-        t : _type_
-            _description_
-        uvlimits0 : _type_
-            _description_
-        tlimits0 : _type_
-            _description_
-        bodyID : _type_
-            _description_
-        faceID : _type_
-            _description_
-        edgeID : _type_
-            _description_
-        nPts : _type_
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
-
-        Raises
-        ------
-        ValueError
-            _description_
-        """
         points = np.zeros((nPts, 3))
         for ptidx in range(nPts):
             # check if on an edge or surface
@@ -1226,33 +1177,6 @@ class DVGeometryESP(DVGeoSketch):
             pointSet.proj_pts = proj_pts
 
     def _allgatherCoordinates(self, ul, vl, tl, faceIDl, bodyIDl, edgeIDl, uvlimitsl, tlimitsl):
-        """
-        TODO
-
-        Parameters
-        ----------
-        ul : _type_
-            _description_
-        vl : _type_
-            _description_
-        tl : _type_
-            _description_
-        faceIDl : _type_
-            _description_
-        bodyIDl : _type_
-            _description_
-        edgeIDl : _type_
-            _description_
-        uvlimitsl : _type_
-            _description_
-        tlimitsl : _type_
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
         # create the arrays to receive the global info
         # now figure out which proc has how many points.
         sizes = np.array(self.comm.allgather(len(ul)), dtype="intc")
