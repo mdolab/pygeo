@@ -46,54 +46,50 @@ def stdout_redirected(flag, to=os.devnull):
 
 class DVGeometryESP(DVGeoSketch):
     """
-    A class for manipulating Engineering Sketchpad (ESP) geometry
-    The purpose of the DVGeometryESP class is to provide translation
-    of the ESP geometry engine to externally supplied surfaces. This
-    allows the use of ESP design parameters to control the MACH
-    framework.
-    There are several import limitations:
-    1. Since ESP is surface based only, it cannot be used to
-    parameterize a geometry that doesn't lie on the surface.
-    Structural members need to be directly modeled in ESP as surfaces.
-    2. It cannot handle *moving* intersection. A geometry with static
-    intersections is fine as long as the intersection doesn't move
-    3. It does not support complex numbers for the complex-step
-    method.
-    4. It does not support separate configurations.
+    A class for manipulating Engineering Sketch Pad (ESP) geometry.
+    The purpose of the DVGeometryESP class is to provide translation of the ESP geometry engine to externally supplied surfaces.
+    This allows the use of ESP design parameters to control the MACH framework.
+
+    There are several important limitations:
+
+    #. Since ESP is surface based only, it cannot be used to parameterize a geometry that doesn't lie on the surface. Structural members need to be directly modeled in ESP as surfaces.
+    #. It cannot handle *moving* intersection. A geometry with static intersections is fine as long as the intersection doesn't move.
+    #. It does not support complex numbers for the complex-step method.
+    #. It does not support separate configurations.
 
     Parameters
     ----------
     fileName : str
        filename of .csm file containing the parameterized CAD
     comm : MPI Intra Comm
-       Comm on which to build operate the object. This is used to
-       perform embarrassingly parallel finite differencing. Defaults to
-       MPI.COMM_WORLD.
+       Comm on which to build operate the object.
+       This is used to perform embarrassingly parallel finite differencing.
+       Defaults to MPI.COMM_WORLD.
     scale : float
-       A global scale factor from the ESP geometry to incoming (CFD) mesh
-       geometry. For example, if the ESP model is in inches, and the CFD
-       in meters, scale=0.0254.
+       A global scale factor from the ESP geometry to incoming (CFD) mesh geometry.
+       For example, if the ESP model is in inches, and the CFD in meters, scale=0.0254.
     bodies : list of strings
        A list of the names of the ESP bodies to consider.
-       They need to be on the top of the ESP body stack (i.e., visible
-       in the ESP user interface when all the branches are built)
+       They need to be on the top of the ESP body stack (i.e., visible in the ESP user interface when all the branches are built)
     projTol : float
-        The maximum allowable error between point sets and the projected points
-        If exceeded, returns an error during addPointSet.
-        Default 0.01
+        The maximum allowable error between point sets and the projected points.
+        If exceeded, returns an error during :func:`addPointSet()`.
+        Default 0.01.
     maxproc : int
         Maximum number of processors to use in the finite difference.
-        Default no limit
+        Default no limit.
     suppress_stdout : bool
-        Suppress console output from ESP. Default False
+        Suppress console output from ESP.
+        Default False.
     exclude_edge_projections : bool
-        Disallow projections to edges in the ESP topology (only allow surfaces)
-        This can sometimes fix weird mesh deformation issues near the mesh boundaries
-        Default False
+        Disallow projections to edges in the ESP topology (only allow surfaces).
+        This can sometimes fix weird mesh deformation issues near the mesh boundaries.
+        Default False.
 
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows:
+
       >>> from pygeo import *
       >>> DVGeo = DVGeometryESP("wing.csm", MPI_COMM_WORLD)
       >>> # Add a set of coordinates Xpt into the object
@@ -228,33 +224,24 @@ class DVGeometryESP(DVGeoSketch):
 
     def addPointSet(self, points, ptName, distributed=True, cache_projections=False, **kwargs):
         """
-        Add a set of coordinates to DVGeometry
-        The is the main way that geometry, in the form of a coordinate
-        list is given to DVGeometry to be manipulated.
+        Add a set of coordinates to DVGeometryESP.
+        The is the main way that geometry, in the form of a coordinate list, is given to DVGeometry to be manipulated.
 
         Parameters
         ----------
         points : array, size (N,3)
-            The coordinates to embed. These coordinates *should* all
-            project into the interior of the FFD volume.
+            The coordinates to embed.
+            These coordinates *should* all project into the interior of the ESP model volume.
         ptName : str
-            A user supplied name to associate with the set of
-            coordinates. This name will need to be provided when
-            updating the coordinates or when getting the derivatives
-            of the coordinates.
+            A user supplied name to associate with the set of coordinates.
+            This name will need to be provided when updating the coordinates or when getting the derivatives of the coordinates.
         distributed : bool
-            Whether the pointset is distributed (different each proc)
-            or non-distributed (duplicated and identical each proc)
-            Should be set to false for duplicated pointsets to avoid
-            very poor parallel scaling in the derivatives routine.
+            Whether the pointset is distributed (different each proc) or non-distributed (duplicated and identical each proc).
+            Should be set to false for duplicated pointsets to avoid very poor parallel scaling in the derivatives routine.
         cache_projections : None or str
-            The user can optionally cache the point set projections
-            to save initialization time. If a filename is provided,
-            the cached u v t coordinates will be saved in numpy compressed
-            format ('.npz' extension should be used).
-            The points will be validated to ensure that the projections
-            remain within tolerance of the model and if not, the projections
-            will be recreated.
+            The user can optionally cache the point set projections to save initialization time.
+            If a filename is provided, the cached ``u, v, t`` coordinates will be saved in numpy compressed format ('.npz' extension should be used).
+            The points will be validated to ensure that the projections remain within tolerance of the model and if not, the projections will be recreated.
         """
 
         # save this name so that we can zero out the jacobians properly
@@ -599,9 +586,9 @@ class DVGeometryESP(DVGeoSketch):
         Parameters
         ----------
         dvDict : dict
-            Dictionary of design variables. The keys of the dictionary
-            must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            Dictionary of design variables.
+            The keys of the dictionary must correspond to the design variable names.
+            Any additional keys in the dfvdictionary are simply ignored.
         """
 
         # Just dump in the values
@@ -618,8 +605,7 @@ class DVGeometryESP(DVGeoSketch):
         # update the projected coordinates
         self._updateProjectedPts()
 
-        # We will also compute the jacobian so it is also up to date,
-        # provided we are asked for it
+        # We will also compute the jacobian so it is also up to date, provided we are asked for it
         if updateJacobian:
             self._computeSurfJacobian()
 
@@ -634,6 +620,14 @@ class DVGeometryESP(DVGeoSketch):
         return built_successfully
 
     def writeCADFile(self, filename):
+        """
+        Write out the ESP model to a CAD format supported by ESP
+
+        Parameters
+        ----------
+        filename : string
+            _description_
+        """
         valid_filetypes = ["brep", "bstl", "egads", "egg", "iges", "igs", "sens", "step", "stl", "stp", "tess", "grid"]
         file_extension = filename.split(".")[-1]
         if file_extension.lower() not in valid_filetypes:
@@ -653,15 +647,14 @@ class DVGeometryESP(DVGeoSketch):
 
     def update(self, ptSetName, config=None):
         """
-        This is the main routine for returning coordinates that have been
-        updated by design variables. Multiple configs are not
-        supported.
+        This is the main routine for returning coordinates that have been updated by design variables.
+        Multiple configs are not supported.
 
         Parameters
         ----------
         ptSetName : str
-            Name of point-set to return. This must match ones of the
-            given in an :func:`addPointSet()` call.
+            Name of pointset to return.
+            This must match ones of the given in an :func:`addPointSet()` call.
         """
 
         # this returns the current projection point coordinates
@@ -688,48 +681,54 @@ class DVGeometryESP(DVGeoSketch):
         return newPts
 
     def writeCSMFile(self, fileName):
+        """
+        Writes the current state of design variables in the ESP model to a CSM file.
+
+        Parameters
+        ----------
+        fileName : string
+            Name of CSM file to write ESP model to.
+        """
+
         valid_filetypes = ["csm"]
         if fileName.split(".")[-1] not in valid_filetypes:
             raise OSError('Must use ".csm" file extension')
+
         if self.comm.rank == 0:
             self.espModel.Save(fileName)
 
     def getNDV(self):
         """
-        Return the number of DVs
+        Return the number of DVs.
 
         Returns
         -------
-        len(self.DVs) : int
-            number of design variables
+        len(self.globalDVList) : int
+            Number of design variables.
         """
         return len(self.globalDVList)
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
         This function computes sensitivity information.
-        Specificly, it computes the following:
-        :math:`\frac{dI}{d_{pt}}\frac{dX_{pt}}{dX_{DV}}`
+        Specifically, it computes the following: :math:`\frac{dI}{d_{pt}}\frac{dX_{pt}}{dX_{DV}}`
 
         Parameters
         ----------
         dIdpt : array of size (Npt, 3) or (N, Npt, 3)
-            This is the total derivative of the objective or function
-            of interest with respect to the coordinates in
-            'ptSetName'. This can be a single array of size (Npt, 3)
-            **or** a group of N vectors of size (Npt, 3, N). If you
-            have many to do, it is faster to do many at once.
+            This is the total derivative of the objective or function of interest with respect to the coordinates in ``ptSetName``.
+            This can be a single array of size (Npt, 3) **or** a group of N vectors of size (Npt, 3, N).
+            If you have many to do, it is faster to do many at once.
         ptSetName : str
-            The name of set of points we are dealing with
+            The name of set of points we are dealing with.
         comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
+            The communicator to use to reduce the final derivative.
+            If comm is None, no reduction takes place.
 
         Returns
         -------
         dIdxDict : dic
-            The dictionary containing the derivatives, suitable for
-            pyOptSparse
+            The dictionary containing the derivatives, suitable for pyOptSparse.
         """
 
         # We may not have set the variables so the surf jac might not be computed.
@@ -796,22 +795,22 @@ class DVGeometryESP(DVGeoSketch):
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
         r"""
         This function computes sensitivity information.
-        Specificly, it computes the following:
-        :math:`\frac{dX_{pt}}{dX_{DV}} \vec'`
+        Specifically, it computes the following: :math:`\frac{dX_{pt}}{dX_{DV}} \vec'`
 
         Parameters
         ----------
-        vec : dictionary whose keys are the design variable names, and whose
-              values are the derivative seeds of the corresponding design variable.
+        vec : dictionary
+            Keys are the design variable names and values are the derivative seeds of the corresponding design variable.
         ptSetName : str
-            The name of set of points we are dealing with
+            The name of set of points we are dealing with.
         comm : MPI.IntraComm
-            The communicator to use to reduce the final derivative. If
-            comm is None, no reduction takes place.
+            The communicator to use to reduce the final derivative.
+            If comm is None, no reduction takes place.
 
         Returns
         -------
-        xsdot : array (Nx3) -> Array with derivative seeds of the surface nodes.
+        xsdot : array (Nx3)
+            Array with derivative seeds of the surface nodes.
         """
 
         # We may not have set the variables so the surf jac might not be computed.
@@ -850,45 +849,47 @@ class DVGeometryESP(DVGeoSketch):
     ):
         """
         Add an ESP design parameter to the DVGeo problem definition.
-        The name of the parameter must match a despmtr in the .csm file
-        of the CAD model.
+        The name of the parameter must match a ``despmtr`` in the CSM file of the CAD model.
 
         Array-valued desmptrs can be handled in one of four ways:
-        - rows=None, cols=None (default): treats the entire array as a flat vector
-        - rows=[1, 2, 3], cols=None: pick specific rows (all cols included)
-        - rows=[1, 2, 3], cols=[2, 4]: pick specific rows and columns
-        - rows=[1], cols=[2]: pick a specific value
-        THE INDICES ARE 1-indexing (per the OpenCSM standard)!! Not 0-indexing.
 
-        The design variable vector passed to pyOptSparse will be in row-major order:
-        in other words, the vector will look like:
+        * rows=None, cols=None (default): treats the entire array as a flat vector
+        * rows=[1, 2, 3], cols=None: pick specific rows (all cols included)
+        * rows=[1, 2, 3], cols=[2, 4]: pick specific rows and columns
+        * rows=[1], cols=[2]: pick a specific value
+
+        .. note::
+            THE INDICES ARE 1-indexed (per the OpenCSM standard)!! Not 0-indexed.
+
+        The design variable vector passed to pyOptSparse will be in row-major order.
+        In other words, the vector will look like:
         [a(1, 1), a(1, 2), a(1, 3), a(2, 1), a(2, 2), a(2, 3), a(3, 1), ....]
 
-        The value, upper, and lower bounds must all be of length len(rows)*len(cols)
+        The value, upper, and lower bounds must all be of length len(rows)*len(cols).
 
         Parameters
         ----------
         desmptr_name : str
-            Name of the ESP design parameter
+            Name of the ESP design parameter.
         name : str or None
-            Human-readable name for this design variable (default same as despmtr)
+            Human-readable name for this design variable (default same as despmtr).
         value : float or None
             The design variable. If this value is not supplied (None), then
-            the current value in the ESP model will be queried and used
+            the current value in the ESP model will be queried and used.
         lower : float or None
-            Lower bound for the design variable. Use None for no lower bound
+            Lower bound for the design variable. Use None for no lower bound.
         upper : float or None
-            Upper bound for the design variable. Use None for no upper bound
+            Upper bound for the design variable. Use None for no upper bound.
         scale : float
-            Scale factor sent to pyOptSparse and used in optimization
+            Scale factor sent to pyOptSparse and used in optimization.
         rows : list or None
             Design variable row index(indices) to use.
-            Default None uses all rows
+            Default None uses all rows.
         cols : list or None
             Design variable col index(indices) to use.
-            Default None uses all cols
+            Default None uses all cols.
         dh : float
-            Finite difference step size (default 0.001)
+            Finite difference step size. Default 0.001.
         """
         # if name is none, use the desptmr name instead
         if name is not None:
@@ -979,8 +980,7 @@ class DVGeometryESP(DVGeoSketch):
 
     def _getUVLimits(self, ibody, seltype, iselect):
         """
-        Get the limits of the parametric coords
-        on an edge or face
+        Get the limits of the parametric coords on an edge or face.
 
         Inputs
         ------
@@ -991,18 +991,37 @@ class DVGeometryESP(DVGeoSketch):
         iselect : int
             Index of edge or face
 
-        Outputs
+        Returns
         -------
         uvlimits : list
             ulower, uupper, vlower, vupper or tlower, tupper
         """
         this_ego = self.espModel.GetEgo(ibody, seltype, iselect)
         _, _, _, uvlimits, _, _ = this_ego.getTopology()
+
         return uvlimits
 
     def _csmToFlat(self, value, rows, cols, numRow, numCol):
         """
         Gets a slice of a flat array based on listed row and col indices
+
+        Parameters
+        ----------
+        value : _type_
+            _description_
+        rows : _type_
+            _description_
+        cols : _type_
+            _description_
+        numRow : _type_
+            _description_
+        numCol : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
         """
         if numRow == 1 and numCol == 1:
             # early exit for scalars
@@ -1022,8 +1041,24 @@ class DVGeometryESP(DVGeoSketch):
         return valOut
 
     def _validateRowCol(self, rows, cols, numRow, numCol, dvName):
-        # check that all rows, cols specified are within desmptr bounds
-        # check for duplicate rows, cols
+        """
+        Check that all rows, cols specified are within desmptr bounds and check for duplicate rows, cols.
+
+        Parameters
+        ----------
+        rows : list or None
+            Design variable row index(indices) to use.
+            Default None uses all rows.
+        cols : list or None
+            Design variable col index(indices) to use.
+            Default None uses all cols.
+        numRow : int
+            Number of rows associated with the design parameter in the .csm file.
+        numCol : int
+            Number of cols associated with the design parameter int he .csm file.
+        dvName : string
+            Human-readable name for this design variable (likely the same as the name in the .csm).
+        """
         if rows is not None:
             rowArr = np.array(rows)
             if np.max(rowArr) > numRow:
@@ -1078,11 +1113,9 @@ class DVGeometryESP(DVGeoSketch):
 
     def _updateModel(self):
         """
-        Sets design parameters in ESP to the correct value
-        then rebuilds the model.
+        Sets design parameters in ESP to the correct value then rebuilds the model.
         """
         # for each design variable in the dictionary:
-
         # loop through rows and cols setting design paramter values
         for dvName in self.DVs:
             dv = self.DVs[dvName]
@@ -1093,10 +1126,10 @@ class DVGeometryESP(DVGeoSketch):
                 espRowIdx = dv.rows[rowIdx]
                 espColIdx = dv.cols[colIdx]
                 self.espModel.SetValuD(espParamIdx, irow=espRowIdx, icol=espColIdx, value=dv.value[localIdx])
+
         # finally, rebuild
         outtuple = self.espModel.Build(0, 0)
-        # check that the number of branches built successfully
-        # matches the number when the model was first built on __init__
+        # check that the number of branches built successfully matches the number when the model was first built on __init__
         # otherwise, there was an EGADS/CSM build failure at this design point
         if outtuple[0] != self.num_branches_baseline:
             return False
@@ -1105,6 +1138,40 @@ class DVGeometryESP(DVGeoSketch):
             return True
 
     def _evaluatePoints(self, u, v, t, uvlimits0, tlimits0, bodyID, faceID, edgeID, nPts):
+        """
+        TODO
+
+        Parameters
+        ----------
+        u : _type_
+            _description_
+        v : _type_
+            _description_
+        t : _type_
+            _description_
+        uvlimits0 : _type_
+            _description_
+        tlimits0 : _type_
+            _description_
+        bodyID : _type_
+            _description_
+        faceID : _type_
+            _description_
+        edgeID : _type_
+            _description_
+        nPts : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        ValueError
+            _description_
+        """
         points = np.zeros((nPts, 3))
         for ptidx in range(nPts):
             # check if on an edge or surface
@@ -1140,9 +1207,9 @@ class DVGeometryESP(DVGeoSketch):
         return points
 
     def _updateProjectedPts(self):
-        # for each pointset
-        # run getxyz and obtain new projected_pts
-        # update the proj_pts
+        """
+        For each pointset, run _evaluatePoints to obtain new projected_pts and then update the proj_pts
+        """
         for pointSetName in self.pointSets:
             pointSet = self.pointSets[pointSetName]
             proj_pts = self._evaluatePoints(
@@ -1159,6 +1226,33 @@ class DVGeometryESP(DVGeoSketch):
             pointSet.proj_pts = proj_pts
 
     def _allgatherCoordinates(self, ul, vl, tl, faceIDl, bodyIDl, edgeIDl, uvlimitsl, tlimitsl):
+        """
+        TODO
+
+        Parameters
+        ----------
+        ul : _type_
+            _description_
+        vl : _type_
+            _description_
+        tl : _type_
+            _description_
+        faceIDl : _type_
+            _description_
+        bodyIDl : _type_
+            _description_
+        edgeIDl : _type_
+            _description_
+        uvlimitsl : _type_
+            _description_
+        tlimitsl : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
         # create the arrays to receive the global info
         # now figure out which proc has how many points.
         sizes = np.array(self.comm.allgather(len(ul)), dtype="intc")
@@ -1207,10 +1301,9 @@ class DVGeometryESP(DVGeoSketch):
 
     def _computeSurfJacobian(self, fd=True):
         """
-        This routine comptues the jacobian of the ESP surface with respect
-        to the design variables. Since our point sets are rigidly linked to
-        the ESP projection points, this is all we need to calculate. The input
-        pointSets is a list or dictionary of pointSets to calculate the jacobian for.
+        This routine comptues the jacobian of the ESP surface with respect to the design variables.
+        Since our point sets are rigidly linked to the ESP projection points, this is all we need to calculate.
+        The input pointSets is a list or dictionary of pointSets to calculate the jacobian for.
         """
 
         # timing stuff:
@@ -1429,8 +1522,11 @@ class DVGeometryESP(DVGeoSketch):
 
 
 class ESPParameter:
+    """
+    Internal class for storing metadata about the ESP model.
+    """
+
     def __init__(self, pmtrName, pmtrIndex, numRow, numCol, baseValue):
-        """Internal class for storing metadata about the ESP model"""
         self.pmtrName = pmtrName
         self.pmtrIndex = pmtrIndex
         self.numRow = numRow
@@ -1439,6 +1535,10 @@ class ESPParameter:
 
 
 class PointSet:
+    """
+    Internal class for storing information about the pointset and associated projections.
+    """
+
     def __init__(self, points, proj_pts, bodyID, faceID, edgeID, uv, t, uvlimits, tlimits, distributed):
         self.points = points
         self.proj_pts = proj_pts
