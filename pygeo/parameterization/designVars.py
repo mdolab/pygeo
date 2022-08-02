@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from pygeo.geo_utils import convertTo1D
+from ..geo_utils import convertTo1D
 
 
 class geoDV:
