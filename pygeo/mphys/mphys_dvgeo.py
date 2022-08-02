@@ -15,7 +15,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         self.options.declare("ffd_file", default=None)
         self.options.declare("vsp_file", default=None)
-        self.options.declare("vsp_options", default={})
+        self.options.declare("vsp_options", default=None)
 
     def setup(self):
 
@@ -27,7 +27,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if self.options["vsp_file"] is not None:
             # we are doing a VSP based DVGeo
             vsp_file = self.options["vsp_file"]
-            vsp_options = self.options["vsp_options"]
+            if self.options["vsp_options"] is None:
+                vsp_options = {}
+            else:
+                vsp_options = self.options["vsp_options"]
             self.DVGeo = DVGeometryVSP(vsp_file, comm=self.comm, **vsp_options)
 
         self.DVCon = DVConstraints()
