@@ -34,8 +34,8 @@ except ModuleNotFoundError:
 # ==============================================================================
 # Extension modules
 # ==============================================================================
-from pygeo.parameterization.BaseDVGeo import BaseDVGeometry
-from pygeo.parameterization.designVars import cstDV
+from .BaseDVGeo import BaseDVGeometry
+from .designVars import cstDV
 
 
 class DVGeometryCST(BaseDVGeometry):
