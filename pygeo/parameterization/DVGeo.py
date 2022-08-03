@@ -1675,7 +1675,7 @@ class DVGeometry(BaseDVGeometry):
 
         for iChild in range(len(self.children)):
             if len(self.children[iChild].axis) > 0:
-                self.children[iChild]._finalizeAxis()
+                self.children[iChild]._finalize()
                 refaxis_ptSetName = "child%d_axis" % (iChild)
                 if refaxis_ptSetName not in self.FFD.embeddedVolumes:
                     print("adding refaxis_ptSetName", refaxis_ptSetName)
