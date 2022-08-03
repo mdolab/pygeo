@@ -28,7 +28,7 @@ def create_fresh_dvgeo():
 # Adding local geometric design to make local modifications to FFD box
 # This option will perturb all the control points but only the y (up-down) direction
 DVGeo, stlmesh = create_fresh_dvgeo()
-DVGeo.addGeoDVLocal("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
+DVGeo.addLocalDV("shape", lower=-0.5, upper=0.5, axis="y", scale=1.0)
 
 # Perturb some local variables and observe the effect on the surface
 dvdict = DVGeo.getValues()
@@ -71,7 +71,7 @@ def twist(val, geo):
 
 # now create global design variables using the callback functions
 # we just defined
-DVGeo.addGeoDVGlobal("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
+DVGeo.addGlobalDV("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
 
 # rst sweep
 # sweeping back the wing requires modifying the actual
@@ -100,7 +100,7 @@ def sweep(val, geo):
     geo.restoreCoef(C, "c4")
 
 
-DVGeo.addGeoDVGlobal("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
+DVGeo.addGlobalDV("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
 
 # rst set DV
 # set a twist distribution from -10 to +20 degrees along the span
@@ -144,10 +144,10 @@ def chord(val, geo):
 # set up a new DVGeo with all three global design vars plus local thickness
 DVGeo, stlmesh = create_fresh_dvgeo()
 nrefaxpts = DVGeo.addRefAxis("c4", xFraction=0.25, alignIndex="k")
-DVGeo.addGeoDVGlobal("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
-DVGeo.addGeoDVGlobal("chord", func=chord, value=np.ones(nrefaxpts), lower=0.01, upper=2.0, scale=0.05)
-DVGeo.addGeoDVGlobal("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
-DVGeo.addGeoDVLocal("thickness", axis="y", lower=-0.5, upper=0.5)
+DVGeo.addGlobalDV("twist", func=twist, value=np.zeros(nrefaxpts), lower=-10, upper=10, scale=0.05)
+DVGeo.addGlobalDV("chord", func=chord, value=np.ones(nrefaxpts), lower=0.01, upper=2.0, scale=0.05)
+DVGeo.addGlobalDV("sweep", func=sweep, value=0.0, lower=0, upper=45, scale=0.05)
+DVGeo.addLocalDV("thickness", axis="y", lower=-0.5, upper=0.5)
 
 # change everything and the kitchen sink
 dvdict = DVGeo.getValues()
