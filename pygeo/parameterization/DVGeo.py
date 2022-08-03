@@ -287,7 +287,20 @@ class DVGeometry(BaseDVGeometry):
             Supply exactly the desired reference axis
 
         xFraction : float
-            Specify the stream-wise extent
+            Specify the parametric stream-wise (axis: 0) location of the reference axis node relative to
+            front and rear control points location. Constant for every spanwise section.
+            
+        yFraction : float
+            Specify the parametric location of the reference axis node along axis: 1 relative to
+            top and bottom control points location. Constant for every spanwise section.
+            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane 
+            and the option will not have any effect.
+            
+        zFraction : float
+            Specify the parametric location of the reference axis node along axis: 2 relative to
+            top and bottom control points location. Constant for every spanwise section.
+            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+            and the option will not have any effect.
 
         volumes : list or array or integers
             List of the volume indices, in 0-based ordering that this
