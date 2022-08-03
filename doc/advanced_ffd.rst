@@ -91,8 +91,9 @@ A reference axis is defined as a line or curve within the FFD volume.
 You can add a reference axis to your FFD volume by using the :meth:`.DVGeometry.addRefAxis` method.
 There are two ways to define an axis.
 The first is to define the axis explicitly by providing a :doc:`pySpline <pyspline:index>` curve (using the ``curve`` keyword argument).
-The second (and more commonly-used) method is to specify the *direction* of the reference axis in terms of the FFD dimensions (i, j, or k), along with an ``xFraction``.
-The reference axis will then be located at the given location between the front and back of the volume.
+This is the recommended approach for non-conventional FFD boxes (e.g. body-fitted sections).
+The second (and more commonly-used) method is to specify the *direction* of the reference axis in terms of the FFD dimensions (i, j, or k), along with arguments (``xFraction``, ``yFraction``, ``zFraction``) that specify the relative location of the reference axis with respect to the maximum and minimum FFD coordinates at every spanwise section along the desired dimension x, y, or z.
+Note that by default the reference axis node coordinates are defined using the mean of the sectional FFD points coordinates, and that the reference axis node cannot be moved outside the section plane.
 
 The following excerpt illustrates how to create a reference axis for this Cessna 172 example.
 The axis is named ``c4`` because it represents the quarter-chord line (the most useful reference point for aerodynamic analysis and design).
