@@ -3,9 +3,11 @@
 Tutorials
 =========
 
-In this section there is a collection of example use-cases for pyGeo.
+In this section, there is a collection of example use cases for pyGeo.
 
 .. toctree::
     :maxdepth: 1
 
+    getting_started
+    advanced_ffd
     update_pygeo

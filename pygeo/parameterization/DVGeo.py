@@ -67,11 +67,11 @@ class DVGeometry(BaseDVGeometry):
 
     name : str
         This is prepended to every DV name for ensuring design variables names are
-        unique to pyOptsparse. Only useful when using multiple DVGeos with
-        TriangulatedSurfaceConstraint()
+        unique to pyOptSparse. Only useful when using multiple DVGeos with
+        :meth:`.addTriangulatedSurfaceConstraint()`
 
     kmax : int
-        maximum order of the splines used for the underlying formulation.
+        Maximum order of the splines used for the underlying formulation.
         Default is a 4th order spline in each direction if the dimensions
         allow.
 
@@ -287,7 +287,20 @@ class DVGeometry(BaseDVGeometry):
             Supply exactly the desired reference axis
 
         xFraction : float
-            Specify the stream-wise extent
+            Specify the parametric stream-wise (axis: 0) location of the reference axis node relative to
+            front and rear control points location. Constant for every spanwise section.
+
+        yFraction : float
+            Specify the parametric location of the reference axis node along axis: 1 relative to
+            top and bottom control points location. Constant for every spanwise section.
+            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+            and the option will not have any effect.
+
+        zFraction : float
+            Specify the parametric location of the reference axis node along axis: 2 relative to
+            top and bottom control points location. Constant for every spanwise section.
+            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+            and the option will not have any effect.
 
         volumes : list or array or integers
             List of the volume indices, in 0-based ordering that this
@@ -656,7 +669,7 @@ class DVGeometry(BaseDVGeometry):
         DVGeometry which may have its own global and/or local design
         variables. Coordinates do **not** need to be added to the
         children. The parent object will take care of that in a call
-        to addPointSet().
+        to :func:`addPointSet()`.
 
         See https://github.com/mdolab/pygeo/issues/7 for a description of an
         issue with Child FFDs that you should be aware of if you are combining
@@ -709,8 +722,8 @@ class DVGeometry(BaseDVGeometry):
         lower : float, or iterable list of floats
             The lower bound(s) for the variable(s). A single variable
             is permissable even if an array is given for value. However,
-            if an array is given for 'lower', it must be the same length
-            as 'value'
+            if an array is given for ``lower``, it must be the same length
+            as ``value``
 
         func : python function
             The python function handle that will be used to apply the
@@ -718,7 +731,7 @@ class DVGeometry(BaseDVGeometry):
 
         upper : float, or iterable list of floats
             The upper bound(s) for the variable(s). Same restrictions as
-            'lower'
+            ``lower``
 
         scale : float, or iterable list of floats
             The scaling of the variables. A good approximate scale to
@@ -767,7 +780,7 @@ class DVGeometry(BaseDVGeometry):
         axis : str. Default is `y`
             The coordinate directions to move. Permissible values are `x`,
             `y` and `z`. If more than one direction is required, use multiple
-            calls to addLocalDV with different axis values.
+            calls to :func:`addLocalDV` with different axis values.
 
         volList : list
             Use the control points on the volume indices given in volList.
