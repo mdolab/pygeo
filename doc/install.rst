@@ -3,7 +3,9 @@
 Installation
 ============
 
-To install, first clone the repo, then go into the root directory and type::
+Installation requires a working copy of the ``pyspline`` package, which requires a Fortran compiler and is available on `GitHub <https://github.com/mdolab/pyspline/>`_.
+
+To install ``pyGeo``, first clone the `repo <https://github.com/mdolab/pygeo/>`_, then go into the root directory and type::
 
    pip install .
 
