@@ -2,7 +2,5 @@
 
 DVGeometryESP
 -------------
-.. currentmodule:: pygeo
-
-.. autoclass:: DVGeometryESP
+.. autoclass:: pygeo.parameterization.DVGeoESP.DVGeometryESP
     :members: 
