@@ -62,10 +62,12 @@ plt.show()
 plt.close(fig)
 
 # rst Perturb one (beg)
-DVGeo.setDesignVars({
-    "upper_shape": np.array([0.3, 0.7, -0.1, 0.6]),
-    "lower_shape": np.array([-0.1, 0.1, 0.1, -0.3]),
-})
+DVGeo.setDesignVars(
+    {
+        "upper_shape": np.array([0.3, 0.7, -0.1, 0.6]),
+        "lower_shape": np.array([-0.1, 0.1, 0.1, -0.3]),
+    }
+)
 points = DVGeo.update(ptName)
 # rst Perturb one (end)
 
@@ -75,11 +77,13 @@ plt.show()
 plt.close(fig)
 
 # rst Perturb two (beg)
-DVGeo.setDesignVars({
-    "class_shape_n1": np.array([0.6]),
-    "class_shape_n2": np.array([0.8]),
-    "chord": np.array([2.0]),
-})
+DVGeo.setDesignVars(
+    {
+        "class_shape_n1": np.array([0.6]),
+        "class_shape_n2": np.array([0.8]),
+        "chord": np.array([2.0]),
+    }
+)
 points = DVGeo.update(ptName)
 # rst Perturb two (end)
 
