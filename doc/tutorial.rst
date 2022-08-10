@@ -11,3 +11,4 @@ In this section, there is a collection of example use cases for pyGeo.
     getting_started
     advanced_ffd
     update_pygeo
+    cst_tutorial
