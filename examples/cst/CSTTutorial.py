@@ -27,7 +27,7 @@ curDir = os.path.dirname(__file__)  # directory of this script
 airfoilFile = os.path.join(curDir, "naca2412.dat")
 nCoeff = 4  # number of CST coefficients on each surface
 
-DVGeo = DVGeometryCST(airfoilFile, numCST=nCoeff, debug=True)
+DVGeo = DVGeometryCST(airfoilFile, numCST=nCoeff)
 # rst Init (end)
 
 # rst DV (beg)
