@@ -250,12 +250,25 @@ class DVGeometryVSP(DVGeoSketch):
 
             # We now convert the surface parameteric variables (u,v) to their equivalent volume parameterization (r,s,t)
             # this will serve as our initial guess for the volume projection procedure
+            # In general, the conversion between the surface parametric coordinates (u, v)
+            # and the first two volume parameteric coordinate (r, s)
+            # are given by the equations below:
+            #   u = r
+            #   v_low = s
+            #   v_upper = 1 - s
+            # The 3rd parameteric coordinate interpolates between the the upper and lower surfaces
+            #   X(r,s,t) = t * X_upper(r, s) + (1 - t) * X_lower(r, s)
             rg = ug
             if vg < 0.5:
+                # This point is on the lower surface
                 sg = vg
             else:
+                # This point is on the upper surface
                 sg = 1.0 - vg
-            # tg = 0.5 places the point in the middle of the upper and lower surfaces for the volume
+            # tg = 0.5 places the initial guess in the middle of the upper and lower surfaces for the volume
+            # Note: If the point we're looking for actually lies on the surface openvsp's
+            # projection algorithm (FindRSTGuess) will still quickly locate it, since our volume interpolation
+            # is linear through the depth (i.e. in t)
             tg = 0.5
             # Now, find the closest volume projection
             d, r[i], s[i], t[i] = openvsp.FindRSTGuess(gid, 0, pnt, rg, sg, tg)
