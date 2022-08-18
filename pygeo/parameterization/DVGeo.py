@@ -1693,7 +1693,7 @@ class DVGeometry(BaseDVGeometry):
         if not self.isChild:
             self.FFD.coef = self.origFFDCoef.copy()
             self._setInitialValues()
-            
+
             for iChild in range(len(self.children)):
                 if len(self.children[iChild].axis) > 0:
                     self.children[iChild]._finalize()
