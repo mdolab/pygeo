@@ -1686,15 +1686,6 @@ class DVGeometry(BaseDVGeometry):
         # We've postponed things as long as we can...do the finalization.
         self._finalize()
 
-        for iChild in range(len(self.children)):
-            if len(self.children[iChild].axis) > 0:
-                self.children[iChild]._finalize()
-                refaxis_ptSetName = "child%d_axis" % (iChild)
-                if refaxis_ptSetName not in self.FFD.embeddedVolumes:
-                    print("adding refaxis_ptSetName", refaxis_ptSetName)
-                    self.FFD.attachPoints(self.children[iChild].refAxis.coef, refaxis_ptSetName)
-                    self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
-
         # Make sure coefficients are complex
         self._complexifyCoef()
 
@@ -1702,6 +1693,15 @@ class DVGeometry(BaseDVGeometry):
         if not self.isChild:
             self.FFD.coef = self.origFFDCoef.copy()
             self._setInitialValues()
+            
+            for iChild in range(len(self.children)):
+                if len(self.children[iChild].axis) > 0:
+                    self.children[iChild]._finalize()
+                    refaxis_ptSetName = "child%d_axis" % (iChild)
+                    if refaxis_ptSetName not in self.FFD.embeddedVolumes:
+                        print("adding refaxis_ptSetName", refaxis_ptSetName)
+                        self.FFD.attachPoints(self.children[iChild].refAxis.coef, refaxis_ptSetName)
+                        self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
         else:
             # Update all coef
             self.FFD._updateVolumeCoef()
