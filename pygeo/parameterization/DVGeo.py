@@ -1706,8 +1706,10 @@ class DVGeometry(BaseDVGeometry):
                 if len(self.children[iChild].axis) > 0:
                     refaxis_ptSetName = "child%d_axis" % (iChild)
                     if refaxis_ptSetName not in self.FFD.embeddedVolumes:
-                        raise Error(f"refaxis {refaxis_ptSetName} cannot be added to child FFD after child is appended to parent")
-                        
+                        raise Error(
+                            f"refaxis {refaxis_ptSetName} cannot be added to child FFD after child is appended to parent"
+                        )
+
             # Update all coef
             self.FFD._updateVolumeCoef()
 
