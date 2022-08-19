@@ -14,7 +14,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
 
         self.options.declare("ffd_file", default=None)
-        self.options.declare("child_ffd_file", default=None)
         self.options.declare("vsp_file", default=None)
         self.options.declare("vsp_options", default=None)
 
@@ -25,15 +24,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             # we are doing an FFD-based DVGeo
             ffd_file = self.options["ffd_file"]
             self.DVGeo = DVGeometry(ffd_file)
-            self.children = []
-            if self.options["child_ffd_file"] is not None:
-                if isinstance(self.options["child_ffd_file"], str):
-                    self.children.append(DVGeometry(self.options["child_ffd_file"], child=True))
-                elif isinstance(self.options["child_ffd_file"], list):
-                    for i in range(len(self.options["child_ffd_file"])):
-                        self.children.append(DVGeometry(self.options["child_ffd_file"][i], child=True))
-                else:
-                    raise TypeError("Child FFD definition type not recognized. Must be a string or a list of strings.")
 
         if self.options["vsp_file"] is not None:
             # we are doing a VSP based DVGeo
@@ -76,15 +66,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    def nom_add_children(self):
-        for i in range(len(self.children)):
-            # Embed points from parent if not already done
-            for pointSet in self.DVGeo.points:
-                if pointSet not in self.children[i].points:
-                    self.children[i].addPointSet(self.DVGeo.points[pointSet], pointSet)
+    def nom_add_children(self, ffd_file):
+        # Add child FFD
+        child_ffd = DVGeometry(ffd_file, child=True)
+        self.DVGeo.addChild(child_ffd)
 
-            # Add child
-            self.DVGeo.addChild(self.children[i])
+        # Embed points from parent if not already done
+        for pointSet in self.DVGeo.points:
+            if pointSet not in self.DVGeo.children[-1].points:
+                self.DVGeo.children[-1].addPointSet(self.DVGeo.points[pointSet], pointSet)
+
 
     def nom_add_discipline_coords(self, discipline, points=None):
         # TODO remove one of these methods to keep only one method to add pointsets
@@ -105,6 +96,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
+        for i in range(len(self.DVGeo.children)):
+            # Embed points from parent if not already done
+            for pointSet in self.DVGeo.points:
+                if pointSet not in self.DVGeo.children[i].points:
+                    self.DVGeo.children[i].addPointSet(self.DVGeo.points[pointSet], pointSet)
+
         if add_output:
             # add an output to the om component
             self.add_output(ptName, distributed=True, val=points.flatten())
@@ -122,13 +119,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if childIdx is None:
             self.DVGeo.addGlobalDV(dvName, value, func)
         else:
-            self.children[childIdx].addGlobalDV(dvName, value, func)
+            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
     def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None):
         if childIdx is None:
             nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         else:
-            nVal = self.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = self.DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
@@ -214,7 +211,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if childIdx is None:
             return self.DVGeo.addRefAxis(**kwargs)
         else:
-            return self.children[childIdx].addRefAxis(**kwargs)
+            return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
 
     def nom_setConstraintSurface(self, surface):
         # constraint needs a triangulated reference surface at initialization
