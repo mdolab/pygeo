@@ -1,8 +1,8 @@
 import openmdao.api as om
-from pygeo import DVGeometry, DVConstraints
+from .. import DVGeometry, DVConstraints
 
 try:
-    from pygeo import DVGeometryVSP
+    from .. import DVGeometryVSP
 except ImportError:
     # not everyone might have openvsp installed, and thats okay
     pass

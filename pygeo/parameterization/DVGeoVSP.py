@@ -21,32 +21,18 @@ except ImportError:
 
 
 class DVGeometryVSP(DVGeoSketch):
-    """A class for manipulating VSP geometry
+    """
+    A class for manipulating OpenVSP geometry.
+    The purpose of the DVGeometryVSP class is to provide translation of the VSP geometry engine to externally supplied surfaces.
+    This allows the use of VSP design variables to control the MACH framework.
 
-    The purpose of the DVGeometryVSP class is to provide translation
-    of the VSP geometry engine to externally supplied surfaces. This
-    allows the use of VSP design variables to control the MACH
-    framework.
+    There are several important limitations:
 
-    There are several import limitations:
-
-    1. Since VSP is surface based only, it cannot be used to
-    parameterize a geometry that doesn't lie on the surface. This
-    means it cannot be used for structural analysis. It is generally
-    possible use most of the constraints DVConstraints since most of
-    those points lie on the surface.
-
-    2. It cannot handle *moving* intersection. A geometry with static
-    intersections is fine as long as the intersection doesn't move
-
-    3. It does not support complex numbers for the complex-step
-    method.
-
-    4. It does not support separate configurations.
-
-    5. Because OpenVSP does not provide sensitivities, this class
-    uses parallel finite differencing to obtain the required Jacobian
-    matrices.
+    #. Since VSP is surface based only, it cannot be used to parameterize a geometry that doesn't lie on the surface. This means it cannot be used for structural analysis. It is generally possible use most of the constraints in DVConstraints since most of those points lie on the surface.
+    #. It cannot handle *moving* intersections. A geometry with static intersections is fine as long as the intersection doesn't move
+    #. It does not support complex numbers for the complex-step method.
+    #. It does not support separate configurations.
+    #. Because OpenVSP does not provide sensitivities, this class uses parallel finite differencing to obtain the required Jacobian matrices.
 
     Parameters
     ----------
@@ -371,7 +357,7 @@ class DVGeometryVSP(DVGeoSketch):
         Return the number of DVs
 
         Returns
-        _______
+        -------
         len(self.DVs) : int
             number of design variables
         """
@@ -662,7 +648,7 @@ class DVGeometryVSP(DVGeoSketch):
         Take the current set of design variables and create a .des file
 
         Parameters
-        __________
+        ----------
         fileName : str
             name of the output .des file
         """
@@ -678,7 +664,7 @@ class DVGeometryVSP(DVGeoSketch):
         Write the current design to Plot3D file
 
         Parameters
-        __________
+        ----------
         fileName : str
             name of the output Plot3D file
         exportSet : int
@@ -713,7 +699,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     def _updateModel(self):
         """
-        Set each of the DVs. We have the parmID stored so its easy.
+        Set each of the DVs. We have the parmID stored so it's easy.
         """
 
         for dvName in self.DVs:
@@ -738,7 +724,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     def _updateProjectedPts(self):
         """
-        internally updates the coordinates of the projected points
+        Internally updates the coordinates of the projected points.
         """
 
         for ptSetName in self.pointSets:
@@ -769,9 +755,9 @@ class DVGeometryVSP(DVGeoSketch):
 
     def _getBBox(self, comp):
         """
-        this function computes the bounding box of the component. We add some buffer on each
+        This function computes the bounding box of the component. We add some buffer on each
         direction because we will use this bbox to determine which components to project points
-        while adding point sets
+        while adding point sets.
         """
 
         # initialize the array
@@ -810,7 +796,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     def _getuv(self):
         """
-        creates a uniform array of u-v combinations so that we can build a quad mesh ourselves
+        Creates a uniform array of u-v combinations so that we can build a quad mesh ourselves.
         """
 
         # we need to sample the geometry, just do uniformly now
