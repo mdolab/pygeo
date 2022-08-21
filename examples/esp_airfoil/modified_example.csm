@@ -1,0 +1,17 @@
+# modified.csm written by ocsmSave (v1.20)
+
+# Constant, Design, and Output Parameters:
+despmtr   camber_dv       0.09000
+despmtr   maxloc_dv       0.80000
+despmtr   thickness_dv       0.20000
+
+# Global Attributes:
+
+# Branches:
+udprim    naca   camber   camber_dv   maxloc   maxloc_dv   thickness   thickness_dv
+translate 0   0   -0.2
+udprim    naca   camber   camber_dv   maxloc   maxloc_dv   thickness   thickness_dv
+translate 0   0   1.2
+blend     0   0   0   0   0
+
+end

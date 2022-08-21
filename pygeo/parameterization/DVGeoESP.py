@@ -594,7 +594,7 @@ class DVGeometryESP(DVGeoSketch):
         # Just dump in the values
         for key in dvDict:
             if key in self.DVs:
-                self.DVs[key].value = dvDict[key].copy()
+                self.DVs[key].value = np.atleast_1d(dvDict[key]).astype("D")
 
         # we need to update the design variables in the ESP model and rebuild
         built_successfully = self._updateModel()

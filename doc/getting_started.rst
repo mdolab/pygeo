@@ -15,6 +15,8 @@ Finally, we can perturb the geometry like an optimizer would and see the effect 
 Generating baseline geometry
 ----------------------------
 
+.. _pointsets:
+
 *Pointsets* are collections of three-dimensional points corresponding to some geometric object.
 Pointsets may represent lines, curves, triangulated meshes, quadrilateral structured meshes, or any other geometric discretization.
 The ``pyGeo`` package manages all geometric parameterization in terms of pointsets.
@@ -94,6 +96,8 @@ Pointsets (whether baseline or deformed) can be written out as a Tecplot file at
 .. literalinclude:: ../examples/ffd_cylinder/runFFDExample.py
     :start-after: # rst add pointset
     :end-before: # rst add shape DV
+
+.. _local_vars:
 
 ------------------------------------------
 Parameterizing using local shape variables
@@ -178,7 +182,7 @@ Summary
 
 In this tutorial, you learned the basics of ``pyGeo``'s FFD geometry parameterization capabilities.
 You now know enough to set up a basic shape optimization, such as the :doc:`MACH-Aero tutorial <mach-aero:index>`.
-More advanced topics include global design variables, applying spatial constraints, and alternative parameterization options (such as Engineering Sketch Pad or OpenVSP). 
+More advanced topics include :ref:`global design variables <advancedffd>`, applying spatial constraints, and alternative parameterization options (such as :ref:`ESP <esp_airfoil>` or OpenVSP). 
 
 .. TODO link to these once they're in 
 
