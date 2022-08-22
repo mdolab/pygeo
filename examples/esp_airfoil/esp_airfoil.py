@@ -1,7 +1,6 @@
 # ======================================================================
 #         Import modules
 # ======================================================================
-import numpy as np
 from pygeo import DVGeometryESP
 from stl import mesh
 
