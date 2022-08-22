@@ -2,7 +2,7 @@
 #         Imports
 # ======================================================================
 import numpy as np
-from pygeo.geo_utils import convertTo1D
+from ..geo_utils import convertTo1D
 
 
 class geoDV:
@@ -10,6 +10,7 @@ class geoDV:
         self.name = name
         self.value = value
         self.nVal = nVal
+        self.lower = self.upper = self.scale = None
 
         if lower is not None:
             self.lower = convertTo1D(lower, self.nVal)
@@ -63,14 +64,14 @@ class geoDVLocal(geoDV):
         """
 
         coefList = []
-        # create a new coefficent list that excludes any values that are masked
+        # create a new coefficient list that excludes any values that are masked
         for i in range(len(coefListIn)):
             if not mask[coefListIn[i]]:
                 coefList.append(coefListIn[i])
 
         N = len(axis)
         nVal = len(coefList) * N
-        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal * N, lower=lower, upper=lower, scale=scale)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
 
         self.config = config
         self.coefList = np.zeros((self.nVal, 2), "intc")
@@ -155,7 +156,7 @@ class geoDVSpanwiseLocal(geoDV):
                 self.dv_to_coefs.append(loc_dv_to_coefs)
 
         nVal = len(self.dv_to_coefs)
-        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=lower, scale=scale)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
 
         if "x" == axis.lower():
             self.axis = 0
@@ -229,12 +230,6 @@ class geoDVSectionLocal(geoDV):
         super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=None, upper=None, scale=scale)
 
         self.config = config
-        if lower is not None:
-            self.lower = convertTo1D(lower, self.nVal)
-        if upper is not None:
-            self.upper = convertTo1D(upper, self.nVal)
-        if scale is not None:
-            self.scale = convertTo1D(scale, self.nVal)
 
         self.sectionTransform = sectionTransform
         self.sectionLink = sectionLink
@@ -330,3 +325,12 @@ class vspDV(geoDV):
         self.group = group
         self.parm = parm
         self.dh = dh
+
+
+class cstDV(geoDV):
+    def __init__(self, name, value, nVal, lower, upper, scale, dvType):
+        """
+        Internal class for storing CST design variable information
+        """
+        super().__init__(name=name, value=value, nVal=nVal, lower=lower, upper=upper, scale=scale)
+        self.type = dvType

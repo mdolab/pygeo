@@ -2,7 +2,5 @@
 
 pyGeo
 -----
-.. currentmodule:: pygeo
-
-.. autoclass:: pyGeo
+.. autoclass:: pygeo.pyGeo.pyGeo
     :members: 
