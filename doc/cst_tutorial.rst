@@ -40,8 +40,8 @@ It identifies the trailing edge to figure out whether it has a sharp or blunt tr
 It then fits a spline to the upper and lower surfaces that is used to determine which points in a point set are on the upper surface and which are on the lower.
 Finally, it computes the CST coefficients that achieve the best fit of the input airfoil (assuming the class shape parameters are 0.5 and 1.0).
 
-DVGeometryCST assumes that the first index in each point coordinate is the chordwise coordinate and the second is the vertical.
-If this is not the case, the indices can be set here with the ``idxChord`` and ``idxVertical`` optional arguments.
+DVGeometryCST assumes that the first index in each point coordinate (a.k.a the :math:`x` coordinate) is the chordwise coordinate and the second (a.k.a the :math:`y` coordinate) is the vertical.
+If your geometry is oriented differently, the indices can be set here with the ``idxChord`` and ``idxVertical`` optional arguments.
 
 ------------------------
 Setting design variables
