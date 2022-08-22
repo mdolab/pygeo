@@ -96,7 +96,7 @@ Now that our pointset, our ESP model, and our design variables are all tied toge
 The code snippet below illustrates a few key methods of the public API.
 Note that these are similar to the :class:`.DVGeometry` methods used in the FFD case, with the addition of a method to write our new ESP model.
 
-* :meth:`.DVGeometryESP.writeCSMFile` writes a new ESP model with the updated design variable values.
+* :meth:`writeCSMFile <.DVGeometryESP.writeCSMFile>` writes a new ESP model with the updated design variable values.
 
 .. literalinclude:: ../examples/esp_airfoil/esp_airfoil.py
     :start-after: # rst perturb DV start
