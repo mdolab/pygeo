@@ -695,9 +695,10 @@ class DVGeometry(BaseDVGeometry):
 
         # We must finalize the Child here since we need the ref axis
         # coefficients
-        childDVGeo._finalizeAxis()
-        self.FFD.attachPoints(childDVGeo.refAxis.coef, "child%d_axis" % (iChild))
-        self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
+        if len(childDVGeo.axis) > 0:
+            childDVGeo._finalizeAxis()
+            self.FFD.attachPoints(childDVGeo.refAxis.coef, "child%d_axis" % (iChild))
+            self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
 
         # Add the child to the parent and return
         self.children.append(childDVGeo)
@@ -1692,7 +1693,23 @@ class DVGeometry(BaseDVGeometry):
         if not self.isChild:
             self.FFD.coef = self.origFFDCoef.copy()
             self._setInitialValues()
+
+            for iChild in range(len(self.children)):
+                if len(self.children[iChild].axis) > 0:
+                    self.children[iChild]._finalize()
+                    refaxis_ptSetName = "child%d_axis" % (iChild)
+                    if refaxis_ptSetName not in self.FFD.embeddedVolumes:
+                        self.FFD.attachPoints(self.children[iChild].refAxis.coef, refaxis_ptSetName)
+                        self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
         else:
+            for iChild in range(len(self.children)):
+                if len(self.children[iChild].axis) > 0:
+                    refaxis_ptSetName = "child%d_axis" % (iChild)
+                    if refaxis_ptSetName not in self.FFD.embeddedVolumes:
+                        raise Error(
+                            f"refaxis {refaxis_ptSetName} cannot be added to child FFD after child is appended to parent"
+                        )
+
             # Update all coef
             self.FFD._updateVolumeCoef()
 

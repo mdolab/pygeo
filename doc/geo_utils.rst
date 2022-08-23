@@ -1,7 +1,5 @@
 geo_utils
 ---------
-.. currentmodule:: pygeo
-
 File IO
 ~~~~~~~
 .. automodule:: pygeo.geo_utils.file_io

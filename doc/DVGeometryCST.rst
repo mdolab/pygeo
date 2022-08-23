@@ -2,7 +2,6 @@
 
 DVGeometryCST
 -------------
-.. currentmodule:: pygeo
 
-.. autoclass:: DVGeometryCST
+.. autoclass:: pygeo.parameterization.DVGeoCST.DVGeometryCST
     :members: 

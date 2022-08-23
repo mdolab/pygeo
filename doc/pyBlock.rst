@@ -2,7 +2,5 @@
 
 pyBlock
 ---------
-.. currentmodule:: pygeo
-
-.. autoclass:: pyBlock
+.. autoclass:: pygeo.pyBlock.pyBlock
     :members: 
