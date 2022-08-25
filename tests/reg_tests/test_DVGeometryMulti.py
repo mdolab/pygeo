@@ -164,8 +164,14 @@ class TestDVGeoMulti(unittest.TestCase):
 
                 DVGeoDict[comp].addGlobalDV(dvName=f"{comp}_twist", value=[0] * nTwist, func=twist)
 
+            # Set the correct dtype for the point set
+            if DVGeo == DVGeo_complex:
+                pts_dtype = pts.astype(complex)
+            else:
+                pts_dtype = pts
+
             # Add the point set
-            DVGeo.addPointSet(pts, ptSetName, comm=comm, applyIC=True)
+            DVGeo.addPointSet(pts_dtype, ptSetName, comm=comm, applyIC=True)
 
             # Apply twist to the two intersecting boxes
             dvDict = DVGeo.getValues()
