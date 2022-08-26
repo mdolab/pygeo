@@ -65,7 +65,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    def nom_add_children(self, ffd_file):
+    def nom_addChild(self, ffd_file):
         # Add child FFD
         child_ffd = DVGeometry(ffd_file, child=True)
         self.DVGeo.addChild(child_ffd)
