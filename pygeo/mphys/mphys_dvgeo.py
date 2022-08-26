@@ -24,7 +24,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             # we are doing an FFD-based DVGeo
             ffd_file = self.options["ffd_file"]
             self.DVGeo = DVGeometry(ffd_file)
-
         if self.options["vsp_file"] is not None:
             # we are doing a VSP based DVGeo
             vsp_file = self.options["vsp_file"]
@@ -75,7 +74,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for pointSet in self.DVGeo.points:
             if pointSet not in self.DVGeo.children[-1].points:
                 self.DVGeo.children[-1].addPointSet(self.DVGeo.points[pointSet], pointSet)
-
 
     def nom_add_discipline_coords(self, discipline, points=None):
         # TODO remove one of these methods to keep only one method to add pointsets
