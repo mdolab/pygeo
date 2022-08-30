@@ -27,6 +27,7 @@ setup(
     extras_require={
         "testing": ["numpy-stl", "parameterized", "testflo"],
         "mphys": ["openmdao"],
+        "openvsp": ["openvsp>=3.28"],
     },
     classifiers=["Operating System :: OS Independent", "Programming Language :: Python"],
 )

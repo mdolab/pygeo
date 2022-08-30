@@ -27,7 +27,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if self.options["vsp_file"] is not None:
             # we are doing a VSP based DVGeo
             vsp_file = self.options["vsp_file"]
-            vsp_options = self.options["vsp_options"]
+            if self.options["vsp_options"] is None:
+                vsp_options = {}
+            else:
+                vsp_options = self.options["vsp_options"]
             self.DVGeo = DVGeometryVSP(vsp_file, comm=self.comm, **vsp_options)
 
         self.DVCon = DVConstraints()
@@ -65,6 +68,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
+    def nom_addChild(self, ffd_file):
+        # Add child FFD
+        child_ffd = DVGeometry(ffd_file, child=True)
+        self.DVGeo.addChild(child_ffd)
+
+        # Embed points from parent if not already done
+        for pointSet in self.DVGeo.points:
+            if pointSet not in self.DVGeo.children[-1].points:
+                self.DVGeo.children[-1].addPointSet(self.DVGeo.points[pointSet], pointSet)
+
     def nom_add_discipline_coords(self, discipline, points=None):
         # TODO remove one of these methods to keep only one method to add pointsets
 
@@ -84,6 +97,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
+        for i in range(len(self.DVGeo.children)):
+            # Embed points from parent if not already done
+            for pointSet in self.DVGeo.points:
+                if pointSet not in self.DVGeo.children[i].points:
+                    self.DVGeo.children[i].addPointSet(self.DVGeo.points[pointSet], pointSet)
+
         if add_output:
             # add an output to the om component
             self.add_output(ptName, distributed=True, val=points.flatten())
@@ -93,15 +112,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_addGeoDVGlobal(self, dvName, value, func):
+    def nom_addGlobalDV(self, dvName, value, func, childIdx=None):
         # define the input
         self.add_input(dvName, distributed=False, shape=len(value))
 
         # call the dvgeo object and add this dv
-        self.DVGeo.addGeoDVGlobal(dvName, value, func)
+        if childIdx is None:
+            self.DVGeo.addGlobalDV(dvName, value, func)
+        else:
+            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
-    def nom_addGeoDVLocal(self, dvName, axis="y", pointSelect=None):
-        nVal = self.DVGeo.addGeoDVLocal(dvName, axis=axis, pointSelect=pointSelect)
+    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None):
+        if childIdx is None:
+            nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+        else:
+            nVal = self.DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
@@ -143,8 +168,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
 
-    def nom_add_LETEConstraint(self, name, volID, faceID, topID=None):
-        self.DVCon.addLeTeConstraints(volID, faceID, name=name, topID=topID)
+    def nom_add_LETEConstraint(self, name, volID, faceID, topID=None, childIdx=None):
+        self.DVCon.addLeTeConstraints(volID, faceID, name=name, topID=topID, childIdx=childIdx)
         # how many are there?
         conobj = self.DVCon.linearCon[name]
         nCon = len(conobj.indSetA)
@@ -171,9 +196,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
 
-    def nom_addLinearConstraintsShape(self, name, indSetA, indSetB, factorA, factorB):
+    def nom_addLinearConstraintsShape(self, name, indSetA, indSetB, factorA, factorB, childIdx=None):
         self.DVCon.addLinearConstraintsShape(
-            indSetA=indSetA, indSetB=indSetB, factorA=factorA, factorB=factorB, name=name
+            indSetA=indSetA, indSetB=indSetB, factorA=factorA, factorB=factorB, name=name, childIdx=childIdx
         )
         lSize = len(indSetA)
         comm = self.comm
@@ -182,9 +207,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
 
-    def nom_addRefAxis(self, **kwargs):
+    def nom_addRefAxis(self, childIdx=None, **kwargs):
         # we just pass this through
-        return self.DVGeo.addRefAxis(**kwargs)
+        if childIdx is None:
+            return self.DVGeo.addRefAxis(**kwargs)
+        else:
+            return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
 
     def nom_setConstraintSurface(self, surface):
         # constraint needs a triangulated reference surface at initialization
