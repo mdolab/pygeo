@@ -24,4 +24,4 @@ pyGeo and ESP
 -------------
 The simplest way to install ESP so that it works with pyGeo is to use the Docker image mentioned above, which will have pyGeo and ESP both installed. 
 The ESP GUI can then be installed on your local machine for Mac, Windows, and Linux following the instructions in their README to view ESP models.
-Our currently supported version is 1.20, which can be installed from the `archive <https://acdl.mit.edu/ESP/archive/>`. 
+Our currently supported version is 1.20, which can be installed from the `archive page <https://acdl.mit.edu/ESP/archive/>`_. 

@@ -10,9 +10,11 @@ This page is intended to build on the previously presented pyGeo information to 
 For information on how to install ESP and its dependencies for use in pyGeo, see the :ref:`installation page<install>`. 
 
 The FFD approach is sometimes preferred because it is easy to set up and has a lot of freedom in how the design variables can change the geometry.
-Unfortunately, the FFD control points are the primary representation of the geometry, and in some cases it is preferred to have both an input geometry and an output geometry in more traditional formats, like CAD models.
-A CAD model can be used to represent the geometry in a single consistent format throughout the optimization, making it easier to use the result. 
-
+Unfortunately, the FFD control points are the only representations of the geometry other than the mesh, which can make it hard to take an optimized result and use it.
+To avoid this, a CAD model can be used to parameterize the geometry instead of an FFD. 
+This allows a single consistent format to represent the geometry throughout the optimization. 
+The CAD model is used as an input, changed throughout the optimization, and then can be used as an output.  
+This parameterization can take additional effort to set up but is sometimes preferred as it produces an output in a more traditional format useful in some applications. 
 
 .. note:: 
     This tutorial is intended to only be a simple demonstration of how to use ESP with pyGeo. 
