@@ -6,6 +6,7 @@ import numpy as np
 from mpi4py import MPI
 from baseclasses.utils import Error
 from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
+from pysurf import intersectionAPI_cs, curveSearchAPI_cs, utilitiesAPI_cs, adtAPI_cs
 
 
 class DVGeometryMulti:
@@ -24,9 +25,12 @@ class DVGeometryMulti:
     debug : bool, optional
         Flag to generate output useful for debugging the intersection setup.
 
+    isComplex : bool, optional
+        Flag to use complex variables for complex step verification.
+
     """
 
-    def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False):
+    def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False, isComplex=False):
 
         self.compNames = []
         self.comps = OrderedDict()
@@ -37,6 +41,15 @@ class DVGeometryMulti:
         self.intersectComps = []
         self.checkDVs = checkDVs
         self.debug = debug
+        self.complex = isComplex
+
+        # Set real or complex Fortran API
+        if isComplex:
+            self.dtype = complex
+            self.adtAPI = adtAPI_cs.adtapi
+        else:
+            self.dtype = float
+            self.adtAPI = adtAPI.adtapi
 
     def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox={}):
         """
@@ -210,6 +223,7 @@ class DVGeometryMulti:
                 excludeSurfaces,
                 remeshBwd,
                 self.debug,
+                self.dtype,
             )
         )
 
@@ -267,13 +281,13 @@ class DVGeometryMulti:
                 # Compute set of nodal normals by taking the average normal of all
                 # elements surrounding the node. This allows the meshing algorithms,
                 # for instance, to march in an average direction near kinks.
-                nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(
+                nodal_normals = self.adtAPI.adtcomputenodalnormals(
                     self.comps[comp].nodes.T, self.comps[comp].triConnStack.T, quadConn.T
                 )
                 self.comps[comp].nodal_normals = nodal_normals.T
 
                 # Create new tree (the tree itself is stored in Fortran level)
-                adtAPI.adtapi.adtbuildsurfaceadt(
+                self.adtAPI.adtbuildsurfaceadt(
                     self.comps[comp].nodes.T,
                     self.comps[comp].triConnStack.T,
                     quadConn.T,
@@ -343,12 +357,12 @@ class DVGeometryMulti:
                         if self.comps[comp].triMesh:
                             # Initialize reference values (see explanation above)
                             numPts = 1
-                            dist2 = np.ones(numPts) * 1e10
-                            xyzProj = np.zeros((numPts, 3))
-                            normProjNotNorm = np.zeros((numPts, 3))
+                            dist2 = np.ones(numPts, dtype=self.dtype) * 1e10
+                            xyzProj = np.zeros((numPts, 3), dtype=self.dtype)
+                            normProjNotNorm = np.zeros((numPts, 3), dtype=self.dtype)
 
                             # Call projection function
-                            _, _, _, _ = adtAPI.adtapi.adtmindistancesearch(
+                            _, _, _, _ = self.adtAPI.adtmindistancesearch(
                                 points[i].T, comp, dist2, xyzProj.T, self.comps[comp].nodal_normals.T, normProjNotNorm.T
                             )
 
@@ -395,7 +409,7 @@ class DVGeometryMulti:
         # finally, we can deallocate the ADTs
         for comp in compNames:
             if self.comps[comp].triMesh:
-                adtAPI.adtapi.adtdeallocateadts(comp)
+                self.adtAPI.adtdeallocateadts(comp)
 
         # mark this pointset as up to date
         self.updated[ptName] = False
@@ -472,7 +486,7 @@ class DVGeometryMulti:
         """
 
         # get the new points
-        newPts = np.zeros((self.points[ptSetName].nPts, 3))
+        newPts = np.zeros((self.points[ptSetName].nPts, 3), dtype=self.dtype)
 
         # we first need to update all points with their respective DVGeo objects
         for comp in self.compNames:
@@ -777,6 +791,9 @@ class DVGeometryMulti:
             nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
             print("Finished reading the cgns file")
 
+            # Convert the nodes to complex if necessary
+            nodes = nodes.astype(self.dtype)
+
             triConn = {}
             triConnStack = np.zeros((0, 3), dtype=np.int8)
             barsConn = {}
@@ -906,6 +923,7 @@ class CompIntersection:
         excludeSurfaces,
         remeshBwd,
         debug,
+        dtype,
     ):
         """
         Class to store information required for an intersection.
@@ -928,6 +946,21 @@ class CompIntersection:
 
         # Flag for debug ouput
         self.debug = debug
+
+        # Set real or complex Fortran APIs
+        self.dtype = dtype
+        if dtype == float:
+            self.adtAPI = adtAPI.adtapi
+            self.curveSearchAPI = curveSearchAPI.curvesearchapi
+            self.intersectionAPI = intersectionAPI.intersectionapi
+            self.utilitiesAPI = utilitiesAPI.utilitiesapi
+            self.mpi_type = MPI.DOUBLE
+        elif dtype == complex:
+            self.adtAPI = adtAPI_cs.adtapi
+            self.curveSearchAPI = curveSearchAPI_cs.curvesearchapi
+            self.intersectionAPI = intersectionAPI_cs.intersectionapi
+            self.utilitiesAPI = utilitiesAPI_cs.utilitiesapi
+            self.mpi_type = MPI.C_DOUBLE_COMPLEX
 
         # tolerance used for each curve when mapping nodes to curves
         self.curveEpsDict = {}
@@ -1093,9 +1126,9 @@ class CompIntersection:
         nPoints = len(pts)
 
         # Initialize references if user provided none
-        dist2 = np.ones(nPoints) * 1e10
-        xyzProj = np.zeros((nPoints, 3))
-        tanProj = np.zeros((nPoints, 3))
+        dist2 = np.ones(nPoints, dtype=self.dtype) * 1e10
+        xyzProj = np.zeros((nPoints, 3), dtype=self.dtype)
+        tanProj = np.zeros((nPoints, 3), dtype=self.dtype)
         elemIDs = np.zeros((nPoints), dtype="int32")
 
         # Only call the Fortran code if we have at least one point
@@ -1106,7 +1139,7 @@ class CompIntersection:
             elemIDs[:] = (
                 elemIDs + 1
             )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
-            curveSearchAPI.curvesearchapi.mindistancecurve(
+            self.curveSearchAPI.mindistancecurve(
                 pts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
             )
 
@@ -1244,9 +1277,9 @@ class CompIntersection:
                 nPoints = len(ptsToCurves)
 
                 # Initialize references if user provided none
-                dist2 = np.ones(nPoints) * 1e10
-                xyzProj = np.zeros((nPoints, 3))
-                tanProj = np.zeros((nPoints, 3))
+                dist2 = np.ones(nPoints, dtype=self.dtype) * 1e10
+                xyzProj = np.zeros((nPoints, 3), dtype=self.dtype)
+                tanProj = np.zeros((nPoints, 3), dtype=self.dtype)
                 elemIDs = np.zeros((nPoints), dtype="int32")
 
                 # Only call the Fortran code if we have at least one point
@@ -1256,7 +1289,7 @@ class CompIntersection:
                     # Remember to use [:] to don't lose the pointer (elemIDs is an input/output variable)
                     elemIDs[:] = elemIDs + 1
                     # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                    curveSearchAPI.curvesearchapi.mindistancecurve(
+                    self.curveSearchAPI.mindistancecurve(
                         ptsToCurves.T, self.seam0.T, self.seamConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                     )
 
@@ -1441,7 +1474,7 @@ class CompIntersection:
             den = np.sum(eval1)
 
             # do each direction separately
-            interp = np.zeros(3)
+            interp = np.zeros(3, dtype=self.dtype)
             for iDim in range(3):
                 # numerator gets two integrals with the delta components
                 num = np.sum((dr1[:, iDim] - dr0[:, iDim]) * eval2 + dr0[:, iDim] * eval1)
@@ -1601,18 +1634,18 @@ class CompIntersection:
         # also get the initial coordinates of these points. We use this during warping
         # intersection curve will be on both components
         if flagA:
-            deltaA = np.zeros((nptsg, 3))
+            deltaA = np.zeros((nptsg, 3), dtype=self.dtype)
             curvePtCoordsA = self.curvePtCoords[ptSetName]["intersection"].copy()
         else:
-            deltaA = np.zeros((0, 3))
-            curvePtCoordsA = np.zeros((0, 3))
+            deltaA = np.zeros((0, 3), dtype=self.dtype)
+            curvePtCoordsA = np.zeros((0, 3), dtype=self.dtype)
 
         if flagB:
-            deltaB = np.zeros((nptsg, 3))
+            deltaB = np.zeros((nptsg, 3), dtype=self.dtype)
             curvePtCoordsB = self.curvePtCoords[ptSetName]["intersection"].copy()
         else:
-            deltaB = np.zeros((0, 3))
-            curvePtCoordsB = np.zeros((0, 3))
+            deltaB = np.zeros((0, 3), dtype=self.dtype)
+            curvePtCoordsB = np.zeros((0, 3), dtype=self.dtype)
 
         # loop over the feature curves that we need to project
         for curveName in self.featureCurveNames:
@@ -1641,9 +1674,9 @@ class CompIntersection:
                 print(f"[{self.comm.rank}] curveName: {curveName}, nPoints on the fwd pass: {nPoints}")
 
             # Initialize references if user provided none
-            dist2 = np.ones(nPoints) * 1e10
-            xyzProj = np.zeros((nPoints, 3))
-            tanProj = np.zeros((nPoints, 3))
+            dist2 = np.ones(nPoints, dtype=self.dtype) * 1e10
+            xyzProj = np.zeros((nPoints, 3), dtype=self.dtype)
+            tanProj = np.zeros((nPoints, 3), dtype=self.dtype)
             elemIDs = np.zeros((nPoints), dtype="int32")
 
             # only call the Fortran code if we have at least one point
@@ -1654,7 +1687,7 @@ class CompIntersection:
                 elemIDs[:] = (
                     elemIDs + 1
                 )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                curveMask = self.curveSearchAPI.mindistancecurve(
                     ptsOnCurve.T, self.seam.T, curveConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                 )
 
@@ -1700,8 +1733,9 @@ class CompIntersection:
 
                 # recvbuf
                 nptsg = self.nCurvePts[ptSetName][curveName]
-                deltaGlobal = np.zeros(nptsg * 3)
-                recvbuf = [deltaGlobal, sizes * 3, disp * 3, MPI.DOUBLE]
+                deltaGlobal = np.zeros(nptsg * 3, dtype=self.dtype)
+
+                recvbuf = [deltaGlobal, sizes * 3, disp * 3, self.mpi_type]
 
                 # do an allgatherv
                 comm.Allgatherv(sendbuf, recvbuf)
@@ -2055,7 +2089,7 @@ class CompIntersection:
                     xyzProjb += dIdpt[k, idx]
 
                     # Call Fortran code (This will accumulate seeds in xyzb and self.coorb)
-                    xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
+                    xyzb_new, coorb_new = self.curveSearchAPI.mindistancecurve_b(
                         xyz.T,
                         coor.T,
                         barsConn.T + 1,
@@ -2110,8 +2144,9 @@ class CompIntersection:
             sendbuf = [ptsLocal, len(indices) * 3]
 
             # recvbuf
-            ptsGlobal = np.zeros(3 * nptsg)
-            recvbuf = [ptsGlobal, sizes * 3, disp * 3, MPI.DOUBLE]
+            ptsGlobal = np.zeros(3 * nptsg, dtype=self.dtype)
+
+            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpi_type]
 
             # do an allgatherv
             comm.Allgatherv(sendbuf, recvbuf)
@@ -2155,7 +2190,7 @@ class CompIntersection:
             LdefoDist3 = LdefoDist**3
             Wi = LdefoDist3
             den = np.sum(Wi)
-            interp = np.zeros(3)
+            interp = np.zeros(3, dtype=self.dtype)
             for iDim in range(3):
                 interp[iDim] = np.sum(Wi * delta[:, iDim]) / den
 
@@ -2218,25 +2253,25 @@ class CompIntersection:
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
         # for instance, to march in an average direction near kinks.
-        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, triConn.T, quadConn.T)
+        nodal_normals = self.adtAPI.adtcomputenodalnormals(comp.nodes.T, triConn.T, quadConn.T)
         comp.nodal_normals = nodal_normals.T
 
         # Create new tree (the tree itself is stored in Fortran level)
-        adtAPI.adtapi.adtbuildsurfaceadt(
+        self.adtAPI.adtbuildsurfaceadt(
             comp.nodes.T, triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), adtID
         )
 
         # project
         numPts = pts.shape[0]
-        dist2 = np.ones(numPts) * 1e10
-        xyzProj = np.zeros((numPts, 3))
-        normProjNotNorm = np.zeros((numPts, 3))
+        dist2 = np.ones(numPts, dtype=self.dtype) * 1e10
+        xyzProj = np.zeros((numPts, 3), dtype=self.dtype)
+        normProjNotNorm = np.zeros((numPts, 3), dtype=self.dtype)
 
         if self.debug:
             print(f"[{self.comm.rank}] Projecting to component {comp.name}, pts.shape = {pts.shape}")
 
         # Call projection function
-        procID, elementType, elementID, uvw = adtAPI.adtapi.adtmindistancesearch(
+        procID, elementType, elementID, uvw = self.adtAPI.adtmindistancesearch(
             pts.T, adtID, dist2, xyzProj.T, comp.nodal_normals.T, normProjNotNorm.T
         )
 
@@ -2248,7 +2283,7 @@ class CompIntersection:
         normProj = tsurf_tools.normalize(normProjNotNorm)
 
         # deallocate ADT
-        adtAPI.adtapi.adtdeallocateadts(adtID)
+        self.adtAPI.adtdeallocateadts(adtID)
 
         # save the data
         projDict["procID"] = procID.copy()
@@ -2290,11 +2325,11 @@ class CompIntersection:
         # Compute set of nodal normals by taking the average normal of all
         # elements surrounding the node. This allows the meshing algorithms,
         # for instance, to march in an average direction near kinks.
-        nodal_normals = adtAPI.adtapi.adtcomputenodalnormals(comp.nodes.T, triConn.T, quadConn.T)
+        nodal_normals = self.adtAPI.adtcomputenodalnormals(comp.nodes.T, triConn.T, quadConn.T)
         comp.nodal_normals = nodal_normals.T
 
         # Create new tree (the tree itself is stored in Fortran level)
-        adtAPI.adtapi.adtbuildsurfaceadt(
+        self.adtAPI.adtbuildsurfaceadt(
             comp.nodes.T, triConn.T, quadConn.T, BBox.T, useBBox, MPI.COMM_SELF.py2f(), adtID
         )
 
@@ -2330,7 +2365,7 @@ class CompIntersection:
             # I could not change this because the original ADT code already used "coor" to denote nodes that should be
             # projected.
 
-            xyzb, coorb, nodal_normalsb = adtAPI.adtapi.adtmindistancesearch_b(
+            xyzb, coorb, nodal_normalsb = self.adtAPI.adtmindistancesearch_b(
                 xyz.T,
                 adtID,
                 procID,
@@ -2355,7 +2390,7 @@ class CompIntersection:
             dIdptComp[i] = coorb
 
         # Now we are done with the ADT
-        adtAPI.adtapi.adtdeallocateadts(adtID)
+        self.adtAPI.adtdeallocateadts(adtID)
 
         # Call the total sensitivity of the component's DVGeo
         compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh")
@@ -2387,7 +2422,7 @@ class CompIntersection:
         dummyConn = np.zeros((0, 4))
 
         # compute the intersection curve, in the first step we just get the array sizes to hide allocatable arrays from python
-        arraySizes = intersectionAPI.intersectionapi.computeintersection(
+        arraySizes = self.intersectionAPI.computeintersection(
             self.compA.nodes.T,
             self.compA.triConnStack.T,
             dummyConn.T,
@@ -2402,7 +2437,7 @@ class CompIntersection:
         if np.max(arraySizes[1:]) > 0:
 
             # Second Fortran call to retrieve data from the CGNS file.
-            intersectionArrays = intersectionAPI.intersectionapi.retrievedata(*arraySizes)
+            intersectionArrays = self.intersectionAPI.retrievedata(*arraySizes)
 
             # We need to do actual copies, otherwise data will be overwritten if we compute another intersection.
             # We subtract one to make indices consistent with the Python 0-based indices.
@@ -2423,7 +2458,7 @@ class CompIntersection:
             raise Error(f"The components {self.compA.name} and {self.compB.name} do not intersect.")
 
         # Release memory used by Fortran
-        intersectionAPI.intersectionapi.releasememory()
+        self.intersectionAPI.releasememory()
 
         # Sort the output
         newConn, newMap = tsurf_tools.FEsort(barsConn.tolist())
@@ -2447,7 +2482,7 @@ class CompIntersection:
 
             # the user did specify which direction to pick
             else:
-                int_centers = np.zeros(len(newConn))
+                int_centers = np.zeros(len(newConn), dtype=self.dtype)
                 # we will figure out the locations of these points and pick the one closer to the user picked direction
                 for i in range(len(newConn)):
                     # get all the points
@@ -2497,9 +2532,9 @@ class CompIntersection:
                 nPoints = len(intNodesOrd)
 
                 # Initialize references
-                dist2 = np.ones(nPoints) * 1e10
-                xyzProj = np.zeros((nPoints, 3))
-                tanProj = np.zeros((nPoints, 3))
+                dist2 = np.ones(nPoints, dtype=self.dtype) * 1e10
+                xyzProj = np.zeros((nPoints, 3), dtype=self.dtype)
+                tanProj = np.zeros((nPoints, 3), dtype=self.dtype)
                 elemIDs = np.zeros((nPoints), dtype="int32")
 
                 # then find the closest point to the curve
@@ -2513,7 +2548,7 @@ class CompIntersection:
                     elemIDs[:] = (
                         elemIDs + 1
                     )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                    curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                    curveMask = self.curveSearchAPI.mindistancecurve(
                         intNodesOrd.T, self.compB.nodes.T, curveConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                     )
 
@@ -2592,7 +2627,7 @@ class CompIntersection:
 
         # now loop over the curves between the feature nodes. We will remesh them separately to retain resolution between curve features, and just append the results since the features are already ordered
         curInd = 0
-        seam = np.zeros((0, 3))
+        seam = np.zeros((0, 3), dtype=self.dtype)
         finalConn = np.zeros((0, 2), dtype="int32")
         for i in range(nFeature):
             # just use the same number of points *2 for now
@@ -2607,7 +2642,7 @@ class CompIntersection:
 
             # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
             # Call Fortran code. Remember to adjust transposes and indices
-            newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
+            newCoor, newBarsConn = self.utilitiesAPI.remesh(
                 nNewNodes, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
             )
             newCoor = newCoor.T
@@ -2650,7 +2685,7 @@ class CompIntersection:
                 self.nNodeFeature = {}
                 self.distFeature = {}
 
-            remeshedCurves = np.zeros((0, 3))
+            remeshedCurves = np.zeros((0, 3), dtype=self.dtype)
             remeshedCurveConn = np.zeros((0, 2), dtype="int32")
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
@@ -2707,9 +2742,9 @@ class CompIntersection:
                         nPoints = len(curvePts)
 
                         # Initialize references if user provided none
-                        dist2 = np.ones(nPoints) * 1e10
-                        xyzProj = np.zeros((nPoints, 3))
-                        tanProj = np.zeros((nPoints, 3))
+                        dist2 = np.ones(nPoints, dtype=self.dtype) * 1e10
+                        xyzProj = np.zeros((nPoints, 3), dtype=self.dtype)
+                        tanProj = np.zeros((nPoints, 3), dtype=self.dtype)
                         elemIDs = np.zeros((nPoints), dtype="int32")
 
                         # then find the closest point to the curve
@@ -2722,7 +2757,7 @@ class CompIntersection:
                             elemIDs[:] = (
                                 elemIDs + 1
                             )  # (we need to do this separetely because Fortran will actively change elemIDs contents.
-                            curveMask = curveSearchAPI.curvesearchapi.mindistancecurve(
+                            curveMask = self.curveSearchAPI.mindistancecurve(
                                 curvePts.T, self.nodes0.T, self.conn0.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                             )
 
@@ -2764,7 +2799,7 @@ class CompIntersection:
 
                 # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
+                newCoor, newBarsConn = self.utilitiesAPI.remesh(
                     nNewNodes, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                 )
                 newCoor = newCoor.T
@@ -2793,7 +2828,7 @@ class CompIntersection:
 
                     # now re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                     # Call Fortran code. Remember to adjust transposes and indices
-                    newCoor, newBarsConn = utilitiesAPI.utilitiesapi.remesh(
+                    newCoor, newBarsConn = self.utilitiesAPI.remesh(
                         nNewNodesReverse, coor.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                     )
                     newCoor = newCoor.T
@@ -2930,7 +2965,7 @@ class CompIntersection:
                 # loop over functions
                 for ii in range(N):
                     # Call Fortran code. Remember to adjust transposes and indices
-                    _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(
+                    _, _, cbi = self.utilitiesAPI.remesh_b(
                         nNewNodes - 1,
                         coor.T,
                         newCoorb[ii].T,
@@ -2961,7 +2996,7 @@ class CompIntersection:
                         # loop over functions
                         for ii in range(N):
                             # Call Fortran code. Remember to adjust transposes and indices
-                            _, _, cbi = utilitiesAPI.utilitiesapi.remesh_b(
+                            _, _, cbi = self.utilitiesAPI.remesh_b(
                                 nNewNodes - 1,
                                 coor.T,
                                 newCoorb[ii].T,
@@ -3005,7 +3040,7 @@ class CompIntersection:
                         # the only nonzero seed is indexed by argmin dist2
                         xyzProjb[np.argmin(dist2)] = projb[ii].copy()
 
-                        xyzb_new, coorb_new = curveSearchAPI.curvesearchapi.mindistancecurve_b(
+                        xyzb_new, coorb_new = self.curveSearchAPI.mindistancecurve_b(
                             intNodesOrd.T,
                             self.compB.nodes.T,
                             barsConn.T + 1,
@@ -3056,7 +3091,7 @@ class CompIntersection:
                 newCoorb = intBar[ii, curSeed : curSeed + nNewNodes, :]
                 # re-sample the curve (try linear for now), to get N number of nodes on it spaced linearly
                 # Call Fortran code. Remember to adjust transposes and indices
-                newCoor, newBarsConn, cb = utilitiesAPI.utilitiesapi.remesh_b(
+                newCoor, newBarsConn, cb = self.utilitiesAPI.remesh_b(
                     nNewElems, coor.T, newCoorb.T, barsConn.T + 1, method, spacing, initialSpacing, finalSpacing
                 )
                 intNodesb[ii] += cb.T
@@ -3079,7 +3114,7 @@ class CompIntersection:
 
         # do the reverse intersection computation to get the seeds of coordinates
         for ii in range(N):
-            cAb, cBb = intersectionAPI.intersectionapi.computeintersection_b(
+            cAb, cBb = self.intersectionAPI.computeintersection_b(
                 self.compA.nodes.T,
                 self.compA.triConnStack.T,
                 dummyConn.T,
