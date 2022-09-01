@@ -107,7 +107,7 @@ class DVGeoSketch(BaseDVGeometry):
         --------
         optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
-        if not pyOptSparse or not self.useCompostiveDVs:
+        if  not self.useCompostiveDVs:
             names = list(self.DVs.keys())
         else:
             names = [self.compositeDVs.name]
