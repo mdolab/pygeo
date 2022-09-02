@@ -6,8 +6,16 @@ try:
 except ImportError:
     # not everyone might have openvsp installed, and thats okay
     pass
+
+try:
+    from .. import DVGeometryESP
+except ImportError:
+    # not everyone might have esp installed, and thats okay
+    pass
+
 from mpi4py import MPI
 import numpy as np
+import os
 
 # class that actually calls the dvgeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
@@ -15,15 +23,20 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         self.options.declare("ffd_file", default=None)
         self.options.declare("vsp_file", default=None)
+        self.options.declare("esp_file", default=None)
         self.options.declare("vsp_options", default=None)
+        self.options.declare("esp_options", default=None)
 
     def setup(self):
+        self.geo_type = None
 
         # create the DVGeo object that does the computations
         if self.options["ffd_file"] is not None:
             # we are doing an FFD-based DVGeo
             ffd_file = self.options["ffd_file"]
             self.DVGeo = DVGeometry(ffd_file)
+            self.geo_type = "ffd"
+        
         if self.options["vsp_file"] is not None:
             # we are doing a VSP based DVGeo
             vsp_file = self.options["vsp_file"]
@@ -32,13 +45,24 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             else:
                 vsp_options = self.options["vsp_options"]
             self.DVGeo = DVGeometryVSP(vsp_file, comm=self.comm, **vsp_options)
+            self.geo_type = "vsp"
+
+        if self.options["esp_file"] is not None:
+            # we are doing an ESP based DVGeo
+            esp_file = self.options["esp_file"]
+            if self.options["esp_options"] is None:
+                esp_options = {}
+            else:
+                esp_options = self.options["esp_options"]
+            self.DVGeo = DVGeometryESP(esp_file, comm=self.comm, **esp_options)
+            self.geo_type = "esp"
 
         self.DVCon = DVConstraints()
         self.DVCon.setDVGeo(self.DVGeo)
         self.omPtSetList = []
 
     def compute(self, inputs, outputs):
-        # check for inputs thathave been added but the points have not been added to dvgeo
+        # check for inputs that have been added but the points have not been added to dvgeo
         for var in inputs.keys():
             # check that the input name matches the convention for points
             if var[:2] == "x_":
@@ -67,6 +91,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # we ran a compute so the inputs changed. update the dvcon jac
         # next time the jacvec product routine is called
         self.update_jac = True
+
+        if self.geo_type == "esp":
+            self.DVGeo.writeCSMFile(os.path.join(os.getcwd(), "/current.csm"))
 
     def nom_addChild(self, ffd_file):
         # Add child FFD
@@ -97,11 +124,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
-        for i in range(len(self.DVGeo.children)):
-            # Embed points from parent if not already done
-            for pointSet in self.DVGeo.points:
-                if pointSet not in self.DVGeo.children[i].points:
-                    self.DVGeo.children[i].addPointSet(self.DVGeo.points[pointSet], pointSet)
+        if self.geo_type == "ffd":
+            for i in range(len(self.DVGeo.children)):
+                # Embed points from parent if not already done
+                for pointSet in self.DVGeo.points:
+                    if pointSet not in self.DVGeo.children[i].points:
+                        self.DVGeo.children[i].addPointSet(self.DVGeo.points[pointSet], pointSet)
 
         if add_output:
             # add an output to the om component
@@ -143,6 +171,17 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add the input with the correct value, VSP DVs always have a size of 1
         self.add_input(dvName, distributed=False, shape=1, val=val)
+
+    def nom_addESPVariable(self, desmptr_name, **kwargs):
+
+        # actually add the DV to ESP
+        self.DVGeo.addVariable(desmptr_name, **kwargs)
+
+        # get the value
+        val = self.DVGeo.DVs[desmptr_name].value.copy()
+
+        # add the input with the correct value, VSP DVs always have a size of 1
+        self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
     def nom_addThicknessConstraints2D(self, name, leList, teList, nSpan=10, nChord=10):
         self.DVCon.addThicknessConstraints2D(leList, teList, nSpan, nChord, lower=1.0, name=name)
