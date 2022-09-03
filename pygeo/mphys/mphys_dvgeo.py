@@ -92,9 +92,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-        if self.geo_type == "esp":
-            self.DVGeo.writeCSMFile(os.path.join(os.getcwd(), "/current.csm"))
-
     def nom_addChild(self, ffd_file):
         # Add child FFD
         child_ffd = DVGeometry(ffd_file, child=True)
