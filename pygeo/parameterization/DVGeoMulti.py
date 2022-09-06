@@ -76,7 +76,7 @@ class DVGeometryMulti:
             If any of these are not provided, the FFD bound is used.
 
         pointSetKwargs : dict, optional
-            Keyword arguments to be passed to the DVGeo addPointSet call for the triangulated mesh.
+            Keyword arguments to be passed to the component addPointSet call for the triangulated mesh.
 
         """
 
