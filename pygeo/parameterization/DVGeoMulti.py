@@ -51,7 +51,7 @@ class DVGeometryMulti:
             self.dtype = float
             self.adtAPI = adtAPI.adtapi
 
-    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox=None):
+    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox=None, pointSetKwargs=None):
         """
         Method to add components to the DVGeometryMulti object.
 
@@ -75,11 +75,16 @@ class DVGeometryMulti:
             The keys can include ``xmin``, ``xmax``, ``ymin``, ``ymax``, ``zmin``, ``zmax``.
             If any of these are not provided, the FFD bound is used.
 
+        pointSetKwargs : dict, optional
+            Keyword arguments to be passed to the DVGeo addPointSet call for the triangulated mesh.
+
         """
 
-        # Assign mutable default
+        # Assign mutable defaults
         if bbox is None:
             bbox = {}
+        if pointSetKwargs is None:
+            pointSetKwargs = {}
 
         if triMesh is not None:
             # We also need to read the triMesh and save the points
@@ -89,7 +94,7 @@ class DVGeometryMulti:
             nodes *= scale
 
             # add these points to the corresponding dvgeo
-            DVGeo.addPointSet(nodes, "triMesh")
+            DVGeo.addPointSet(nodes, "triMesh", **pointSetKwargs)
         else:
             # the user has not provided a triangulated surface mesh for this file
             nodes = None
