@@ -15,7 +15,6 @@ except ImportError:
 
 from mpi4py import MPI
 import numpy as np
-import os
 
 # class that actually calls the dvgeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
