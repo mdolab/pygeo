@@ -417,7 +417,7 @@ class DVGeometryMulti:
         # using the mapping array, add the pointsets to respective DVGeo objects
         for comp in self.compNames:
             compMap = self.points[ptName].compMap[comp]
-            self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
+            self.comps[comp].DVGeo.addPointSet(points[compMap], ptName, **kwargs)
 
         # check if this pointset will get the IC treatment
         if applyIC:
