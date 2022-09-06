@@ -51,7 +51,7 @@ class DVGeometryMulti:
             self.dtype = float
             self.adtAPI = adtAPI.adtapi
 
-    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox={}):
+    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox=None):
         """
         Method to add components to the DVGeometryMulti object.
 
@@ -76,6 +76,10 @@ class DVGeometryMulti:
             If any of these are not provided, the FFD bound is used.
 
         """
+
+        # Assign mutable default
+        if bbox is None:
+            bbox = {}
 
         if triMesh is not None:
             # We also need to read the triMesh and save the points
@@ -125,15 +129,15 @@ class DVGeometryMulti:
         compB,
         dStarA=0.2,
         dStarB=0.2,
-        featureCurves=[],
+        featureCurves=None,
         distTol=1e-14,
         project=False,
         marchDir=1,
         includeCurves=False,
         intDir=None,
-        curveEpsDict={},
-        trackSurfaces={},
-        excludeSurfaces={},
+        curveEpsDict=None,
+        trackSurfaces=None,
+        excludeSurfaces=None,
         remeshBwd=True,
     ):
         """
@@ -203,6 +207,16 @@ class DVGeometryMulti:
             which is specified by the march direction.
 
         """
+
+        # Assign mutable defaults
+        if featureCurves is None:
+            featureCurves = []
+        if curveEpsDict is None:
+            curveEpsDict = {}
+        if trackSurfaces is None:
+            trackSurfaces = {}
+        if excludeSurfaces is None:
+            excludeSurfaces = {}
 
         # just initialize the intersection object
         self.intersectComps.append(
