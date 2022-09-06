@@ -36,9 +36,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             ffd_file = self.options["ffd_file"]
             self.DVGeo = DVGeometry(ffd_file)
             self.geo_type = "ffd"
-        
+
         if self.options["vsp_file"] is not None:
-            # we are doing a VSP based DVGeo
+            # we are doing a VSP-based DVGeo
             vsp_file = self.options["vsp_file"]
             if self.options["vsp_options"] is None:
                 vsp_options = {}
@@ -48,7 +48,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.geo_type = "vsp"
 
         if self.options["esp_file"] is not None:
-            # we are doing an ESP based DVGeo
+            # we are doing an ESP-based DVGeo
             esp_file = self.options["esp_file"]
             if self.options["esp_options"] is None:
                 esp_options = {}
@@ -93,6 +93,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.update_jac = True
 
     def nom_addChild(self, ffd_file):
+        # can only add a child to a FFD DVGeo
+        if self.geo_type != "ffd":
+            raise RuntimeError(
+                f"Only FFD-based DVGeo objects can have children added to them, not type:{self.geo_type}"
+            )
+
         # Add child FFD
         child_ffd = DVGeometry(ffd_file, child=True)
         self.DVGeo.addChild(child_ffd)
@@ -138,6 +144,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.nom_addPointSet(v, k)
 
     def nom_addGlobalDV(self, dvName, value, func, childIdx=None):
+        # global DVs are only added to FFD-based DVGeo objects
+        if self.geo_type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.geo_type}")
+
         # define the input
         self.add_input(dvName, distributed=False, shape=len(value))
 
@@ -148,6 +158,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
     def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None):
+        # local DVs are only added to FFD-based DVGeo objects
+        if self.geo_type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+
         if childIdx is None:
             nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         else:
@@ -156,6 +170,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         return nVal
 
     def nom_addVSPVariable(self, component, group, parm, **kwargs):
+        # VSP DVs are only added to VSP-based DVGeo objects
+        if self.geo_type != "vsp":
+            raise RuntimeError(f"Only VSP-based DVGeo objects can use local DVs, not type:{self.geo_type}")
 
         # actually add the DV to VSP
         self.DVGeo.addVariable(component, group, parm, **kwargs)
@@ -170,6 +187,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=1, val=val)
 
     def nom_addESPVariable(self, desmptr_name, **kwargs):
+        # ESP DVs are only added to VSP-based DVGeo objects
+        if self.geo_type != "esp":
+            raise RuntimeError(f"Only ESP-based DVGeo objects can use local DVs, not type:{self.geo_type}")
 
         # actually add the DV to ESP
         self.DVGeo.addVariable(desmptr_name, **kwargs)
@@ -244,6 +264,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_output(name, distributed=True, shape=0)
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
+        # references axes are only needed in FFD-based DVGeo objects
+        if self.geo_type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
+
         # we just pass this through
         if childIdx is None:
             return self.DVGeo.addRefAxis(**kwargs)
