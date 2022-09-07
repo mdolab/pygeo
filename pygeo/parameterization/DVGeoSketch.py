@@ -132,7 +132,7 @@ class DVGeoSketch(BaseDVGeometry):
         """
         # add the linear DV constraints that replace the existing bounds!
         if self.useCompostiveDVs:
-            dv = self.compositeDVs
+            dv = self.DVComposite
             optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
             lb = {}
             ub = {}
@@ -158,10 +158,10 @@ class DVGeoSketch(BaseDVGeometry):
                 wrt=self.DVComposite.name,
                 jac={self.DVComposite.name: self.DVComposite.u},
             )
-            return
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+        else:
+            for dvName in self.DVs:
+                dv = self.DVs[dvName]
+                optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
     def writePointSet(self, name, fileName):
         """

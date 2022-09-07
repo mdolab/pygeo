@@ -78,6 +78,7 @@ class DVGeometryVSP(DVGeoSketch):
 
         t1 = time.time()
         # read the model
+        print(fileName)
         openvsp.ReadVSPFile(fileName)
         t2 = time.time()
         if self.comm.rank == 0:
