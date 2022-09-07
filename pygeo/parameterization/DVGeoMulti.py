@@ -51,7 +51,7 @@ class DVGeometryMulti:
             self.dtype = float
             self.adtAPI = adtAPI.adtapi
 
-    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox={}):
+    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox=None, pointSetKwargs=None):
         """
         Method to add components to the DVGeometryMulti object.
 
@@ -75,7 +75,16 @@ class DVGeometryMulti:
             The keys can include ``xmin``, ``xmax``, ``ymin``, ``ymax``, ``zmin``, ``zmax``.
             If any of these are not provided, the FFD bound is used.
 
+        pointSetKwargs : dict, optional
+            Keyword arguments to be passed to the component addPointSet call for the triangulated mesh.
+
         """
+
+        # Assign mutable defaults
+        if bbox is None:
+            bbox = {}
+        if pointSetKwargs is None:
+            pointSetKwargs = {}
 
         if triMesh is not None:
             # We also need to read the triMesh and save the points
@@ -85,7 +94,7 @@ class DVGeometryMulti:
             nodes *= scale
 
             # add these points to the corresponding dvgeo
-            DVGeo.addPointSet(nodes, "triMesh")
+            DVGeo.addPointSet(nodes, "triMesh", **pointSetKwargs)
         else:
             # the user has not provided a triangulated surface mesh for this file
             nodes = None
@@ -125,15 +134,15 @@ class DVGeometryMulti:
         compB,
         dStarA=0.2,
         dStarB=0.2,
-        featureCurves=[],
+        featureCurves=None,
         distTol=1e-14,
         project=False,
         marchDir=1,
         includeCurves=False,
         intDir=None,
-        curveEpsDict={},
-        trackSurfaces={},
-        excludeSurfaces={},
+        curveEpsDict=None,
+        trackSurfaces=None,
+        excludeSurfaces=None,
         remeshBwd=True,
     ):
         """
@@ -203,6 +212,16 @@ class DVGeometryMulti:
             which is specified by the march direction.
 
         """
+
+        # Assign mutable defaults
+        if featureCurves is None:
+            featureCurves = []
+        if curveEpsDict is None:
+            curveEpsDict = {}
+        if trackSurfaces is None:
+            trackSurfaces = {}
+        if excludeSurfaces is None:
+            excludeSurfaces = {}
 
         # just initialize the intersection object
         self.intersectComps.append(
@@ -398,7 +417,7 @@ class DVGeometryMulti:
         # using the mapping array, add the pointsets to respective DVGeo objects
         for comp in self.compNames:
             compMap = self.points[ptName].compMap[comp]
-            self.comps[comp].DVGeo.addPointSet(points[compMap], ptName)
+            self.comps[comp].DVGeo.addPointSet(points[compMap], ptName, **kwargs)
 
         # check if this pointset will get the IC treatment
         if applyIC:
