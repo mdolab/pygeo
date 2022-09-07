@@ -121,7 +121,7 @@ class DVGeoSketch(BaseDVGeometry):
         """
         for dvName in self.DVs:
             dv = self.DVs[dvName]
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(dvName, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
     def writePointSet(self, name, fileName):
         """
