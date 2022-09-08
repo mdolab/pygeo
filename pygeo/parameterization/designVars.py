@@ -227,7 +227,7 @@ class geoDVSectionLocal(geoDV):
                 self.coefList.append(coefListIn[i])
 
         nVal = len(self.coefList)
-        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=None, upper=None, scale=scale)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
 
         self.config = config
 
