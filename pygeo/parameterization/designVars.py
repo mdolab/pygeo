@@ -315,11 +315,11 @@ class espDV(geoDV):
 
 
 class vspDV(geoDV):
-    def __init__(self, parmID, component, group, parm, value, lower, upper, scale, dh):
+    def __init__(self,dvName, parmID, component, group, parm, value, lower, upper, scale, dh):
         """
         Internal class for storing VSP design variable information
         """
-        super().__init__(name=None, value=np.atleast_1d(np.array(value)), nVal=1, lower=lower, upper=upper, scale=scale)
+        super().__init__(name=dvName, value=np.atleast_1d(np.array(value)), nVal=1, lower=lower, upper=upper, scale=scale)
         self.parmID = parmID
         self.component = component
         self.group = group
