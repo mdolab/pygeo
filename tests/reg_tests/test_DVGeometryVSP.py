@@ -109,7 +109,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
             # add this point set since our points EXACTLY lie on the sphere, we should get 0 distance in the
             # projections to machine precision
             dMax_global = DVGeo.addPointSet(pointSet2, "generated_points")
-            handler.assert_allclose(dMax_global, 0.0, name="pointset1_projection_tol", rtol=1e0, atol=1e-15)
+            handler.assert_allclose(dMax_global, 0.0, name="pointset1_projection_tol", rtol=1e0, atol=1e-10)
 
             # lets get the gradients wrt design variables. For this we can define our dummy jacobian for dIdpt
             # that is an (N, nPts, 3) array. We will just monitor how each component in each point changes so
@@ -146,7 +146,7 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
                         # print('Error for dv %s on the %d th coordinate of point at (%1.1f, %1.1f, %1.1f) is = %1.16f'%(dv, k+1, point[0],point[1],point[2], error ))
                         maxError = max(error, maxError)
-            handler.assert_allclose(maxError, 0.0, "sphere_derivs", rtol=1e0, atol=1e-14)
+            handler.assert_allclose(maxError, 0.0, "sphere_derivs", rtol=1e0, atol=1e-10)
 
     def train_2(self, train=True, refDeriv=True):
         self.test_2(train=train, refDeriv=refDeriv)
