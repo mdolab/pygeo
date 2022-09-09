@@ -204,11 +204,7 @@ class DVGeometryVSP(DVGeoSketch):
             gid = self.allComps[gind]  # ID
 
             # set the coordinates of the point object
-            pnt.set_xyz(
-                points[i, 0] * self.meshScale,
-                points[i, 1] * self.meshScale,
-                points[i, 2] * self.meshScale,
-            )
+            pnt.set_xyz(points[i, 0] * self.meshScale, points[i, 1] * self.meshScale, points[i, 2] * self.meshScale)
 
             # first, we call the fast projection code with the initial guess
 
@@ -276,17 +272,8 @@ class DVGeometryVSP(DVGeoSketch):
         t2 = time.time()
 
         if self.comm.rank == 0 or self.comm is None:
-            print(
-                "DVGeometryVSP note:\nAdding pointset",
-                ptName,
-                "took",
-                t2 - t1,
-                "seconds.",
-            )
-            print(
-                "Maximum distance between the added points and the VSP geometry is",
-                dMax_global,
-            )
+            print("DVGeometryVSP note:\nAdding pointset", ptName, "took", t2 - t1, "seconds.")
+            print("Maximum distance between the added points and the VSP geometry is", dMax_global)
 
         # Create the little class with the data
         self.pointSets[ptName] = PointSet(points, pts, geom, u, v)
@@ -588,16 +575,7 @@ class DVGeometryVSP(DVGeoSketch):
         return dIdxDict
 
     def addVariable(
-        self,
-        component,
-        group,
-        parm,
-        value=None,
-        lower=None,
-        upper=None,
-        scale=1.0,
-        scaledStep=True,
-        dh=1e-6,
+        self, component, group, parm, value=None, lower=None, upper=None, scale=1.0, scaledStep=True, dh=1e-6
     ):
         """
         Add a design variable definition.
