@@ -630,7 +630,7 @@ class DVGeometryVSP(DVGeoSketch):
                     "Specify an explicit dh with scaledStep=False"
                 )
 
-        self.DVs[dvName] = vspDV(parm_id,dvName, component, group, parm, value, lower, upper, scale, dh)
+        self.DVs[dvName] = vspDV(parm_id, dvName, component, group, parm, value, lower, upper, scale, dh)
 
     def printDesignVariables(self):
         """
