@@ -581,7 +581,7 @@ class DVGeometryVSP(DVGeoSketch):
             array = []
             for _key, val in dIdxDict.items():
                 array.append(val)
-            array = np.hstack(array)
+            array = np.column_stack(array)
             dIdxDict = {self.DVComposite.name: array}
         
         return dIdxDict
