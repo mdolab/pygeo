@@ -573,7 +573,7 @@ class DVGeometryVSP(DVGeoSketch):
             if out1D:
                 dIdxDict[key] = np.ravel(dIdx[:, i : i + 1])
             else:
-                dIdxDict[key] = np.array(dIdx[:, i]).T
+                dIdxDict[key] = np.array(dIdx[:, i : i + 1])
             i += 1
 
         # replace other names with user
