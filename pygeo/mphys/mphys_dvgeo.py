@@ -21,41 +21,31 @@ import os
 class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
 
-        self.options.declare("ffd_file", default=None)
-        self.options.declare("vsp_file", default=None)
-        self.options.declare("esp_file", default=None)
-        self.options.declare("vsp_options", default=None)
-        self.options.declare("esp_options", default=None)
+        self.options.declare("geo_file", default=None)
+        self.options.declare("geo_type", default=None)
+        self.options.declare("geo_options", default=None)
 
     def setup(self):
-        self.geo_type = None
-
         # create the DVGeo object that does the computations
-        if self.options["ffd_file"] is not None:
+        if self.options["geo_type"] == "ffd":
             # we are doing an FFD-based DVGeo
-            ffd_file = self.options["ffd_file"]
-            self.DVGeo = DVGeometry(ffd_file)
-            self.geo_type = "ffd"
+            self.DVGeo = DVGeometry(self.options["geo_file"])
 
-        if self.options["vsp_file"] is not None:
+        elif self.options["geo_type"] == "vsp":
             # we are doing a VSP-based DVGeo
-            vsp_file = self.options["vsp_file"]
-            if self.options["vsp_options"] is None:
+            if self.options["geo_options"] is None:
                 vsp_options = {}
             else:
-                vsp_options = self.options["vsp_options"]
-            self.DVGeo = DVGeometryVSP(vsp_file, comm=self.comm, **vsp_options)
-            self.geo_type = "vsp"
+                vsp_options = self.options["geo_options"]
+            self.DVGeo = DVGeometryVSP(self.options["geo_file"], comm=self.comm, **vsp_options)
 
-        if self.options["esp_file"] is not None:
+        elif self.options["geo_type"] == "esp":
             # we are doing an ESP-based DVGeo
-            esp_file = self.options["esp_file"]
             if self.options["esp_options"] is None:
                 esp_options = {}
             else:
-                esp_options = self.options["esp_options"]
-            self.DVGeo = DVGeometryESP(esp_file, comm=self.comm, **esp_options)
-            self.geo_type = "esp"
+                esp_options = self.options["geo_options"]
+            self.DVGeo = DVGeometryESP(self.options["geo_file"], comm=self.comm, **esp_options)
 
         self.DVCon = DVConstraints()
         self.DVCon.setDVGeo(self.DVGeo)
