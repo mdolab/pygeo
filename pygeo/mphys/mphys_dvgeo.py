@@ -36,16 +36,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 vsp_options = {}
             else:
                 vsp_options = self.options["geo_options"]
+
             self.DVGeo = DVGeometryVSP(self.options["geo_file"], comm=self.comm, **vsp_options)
 
         elif self.options["geo_type"] == "esp":
             # we are doing an ESP-based DVGeo
-            if self.options["esp_options"] is None:
+            if self.options["geo_options"] is None:
                 esp_options = {}
             else:
                 esp_options = self.options["geo_options"]
+
             self.DVGeo = DVGeometryESP(self.options["geo_file"], comm=self.comm, **esp_options)
 
+        self.geo_type = self.options["geo_type"]
         self.DVCon = DVConstraints()
         self.DVCon.setDVGeo(self.DVGeo)
         self.omPtSetList = []
