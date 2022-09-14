@@ -25,12 +25,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.options.declare("geo_options", default=None)
 
     def setup(self):
+        self.geo_type = self.options["geo_type"]
+
         # create the DVGeo object that does the computations
-        if self.options["geo_type"] == "ffd":
+        if self.geo_type == "ffd":
             # we are doing an FFD-based DVGeo
             self.DVGeo = DVGeometry(self.options["geo_file"])
 
-        elif self.options["geo_type"] == "vsp":
+        elif self.geo_type == "vsp":
             # we are doing a VSP-based DVGeo
             if self.options["geo_options"] is None:
                 vsp_options = {}
@@ -39,7 +41,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             self.DVGeo = DVGeometryVSP(self.options["geo_file"], comm=self.comm, **vsp_options)
 
-        elif self.options["geo_type"] == "esp":
+        elif self.geo_type == "esp":
             # we are doing an ESP-based DVGeo
             if self.options["geo_options"] is None:
                 esp_options = {}
@@ -48,7 +50,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             self.DVGeo = DVGeometryESP(self.options["geo_file"], comm=self.comm, **esp_options)
 
-        self.geo_type = self.options["geo_type"]
         self.DVCon = DVConstraints()
         self.DVCon.setDVGeo(self.DVGeo)
         self.omPtSetList = []
@@ -164,7 +165,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def nom_addVSPVariable(self, component, group, parm, **kwargs):
         # VSP DVs are only added to VSP-based DVGeo objects
         if self.geo_type != "vsp":
-            raise RuntimeError(f"Only VSP-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{self.geo_type}")
 
         # actually add the DV to VSP
         self.DVGeo.addVariable(component, group, parm, **kwargs)
@@ -181,7 +182,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def nom_addESPVariable(self, desmptr_name, **kwargs):
         # ESP DVs are only added to VSP-based DVGeo objects
         if self.geo_type != "esp":
-            raise RuntimeError(f"Only ESP-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{self.geo_type}")
 
         # actually add the DV to ESP
         self.DVGeo.addVariable(desmptr_name, **kwargs)
