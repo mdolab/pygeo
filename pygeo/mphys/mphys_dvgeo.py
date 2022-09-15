@@ -20,35 +20,40 @@ import numpy as np
 class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
 
-        self.options.declare("geo_file", default=None)
-        self.options.declare("geo_type", default=None)
-        self.options.declare("geo_options", default=None)
+        self.options.declare("file", default=None)
+        self.options.declare("type", default=None)
+        self.options.declare("options", default=None)
 
     def setup(self):
-        self.geo_type = self.options["geo_type"]
+        self.type = self.options["type"]
 
         # create the DVGeo object that does the computations
-        if self.geo_type == "ffd":
+        if self.type == "ffd":
             # we are doing an FFD-based DVGeo
-            self.DVGeo = DVGeometry(self.options["geo_file"])
+            if self.options["options"] is None:
+                ffd_options = {}
+            else:
+                ffd_options = self.options["options"]
 
-        elif self.geo_type == "vsp":
+            self.DVGeo = DVGeometry(self.options["file"], comm=self.comm, **ffd_options)
+
+        elif self.type == "vsp":
             # we are doing a VSP-based DVGeo
-            if self.options["geo_options"] is None:
+            if self.options["options"] is None:
                 vsp_options = {}
             else:
-                vsp_options = self.options["geo_options"]
+                vsp_options = self.options["options"]
 
-            self.DVGeo = DVGeometryVSP(self.options["geo_file"], comm=self.comm, **vsp_options)
+            self.DVGeo = DVGeometryVSP(self.options["file"], comm=self.comm, **vsp_options)
 
-        elif self.geo_type == "esp":
+        elif self.type == "esp":
             # we are doing an ESP-based DVGeo
-            if self.options["geo_options"] is None:
+            if self.options["options"] is None:
                 esp_options = {}
             else:
-                esp_options = self.options["geo_options"]
+                esp_options = self.options["options"]
 
-            self.DVGeo = DVGeometryESP(self.options["geo_file"], comm=self.comm, **esp_options)
+            self.DVGeo = DVGeometryESP(self.options["file"], comm=self.comm, **esp_options)
 
         self.DVCon = DVConstraints()
         self.DVCon.setDVGeo(self.DVGeo)
@@ -87,10 +92,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addChild(self, ffd_file):
         # can only add a child to a FFD DVGeo
-        if self.geo_type != "ffd":
-            raise RuntimeError(
-                f"Only FFD-based DVGeo objects can have children added to them, not type:{self.geo_type}"
-            )
+        if self.type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can have children added to them, not type:{self.type}")
 
         # Add child FFD
         child_ffd = DVGeometry(ffd_file, child=True)
@@ -120,7 +123,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
-        if self.geo_type == "ffd":
+        if self.type == "ffd":
             for i in range(len(self.DVGeo.children)):
                 # Embed points from parent if not already done
                 for pointSet in self.DVGeo.points:
@@ -138,8 +141,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addGlobalDV(self, dvName, value, func, childIdx=None):
         # global DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.geo_type}")
+        if self.type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.type}")
 
         # define the input
         self.add_input(dvName, distributed=False, shape=len(value))
@@ -152,8 +155,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None):
         # local DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+        if self.type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.type}")
 
         if childIdx is None:
             nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
@@ -164,8 +167,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addVSPVariable(self, component, group, parm, **kwargs):
         # VSP DVs are only added to VSP-based DVGeo objects
-        if self.geo_type != "vsp":
-            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{self.geo_type}")
+        if self.type != "vsp":
+            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{self.type}")
 
         # actually add the DV to VSP
         self.DVGeo.addVariable(component, group, parm, **kwargs)
@@ -181,8 +184,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addESPVariable(self, desmptr_name, **kwargs):
         # ESP DVs are only added to VSP-based DVGeo objects
-        if self.geo_type != "esp":
-            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{self.geo_type}")
+        if self.type != "esp":
+            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{self.type}")
 
         # actually add the DV to ESP
         self.DVGeo.addVariable(desmptr_name, **kwargs)
@@ -258,8 +261,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
+        if self.type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.type}")
 
         # we just pass this through
         if childIdx is None:
