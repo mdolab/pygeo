@@ -418,20 +418,12 @@ class DVGeometry(BaseDVGeometry):
                 for volume in volumes:
                     volumesSymm.append(volume + self.FFD.nVol / 2)
 
-                # TODO AY: the lines below tried to do a deep copy of the symmetry curve but it did not work, so I disabled this and am re-initializing the curve using the spline order and the X array. this is still probably not the best and most general way of doing it. The ideal way would be to fully figure out why the deepcopy and reverse approach does not work and fix it directly.
-                # curveSymm = copy.deepcopy(curve)
-                # curveSymm.reverse()
-                # for _coef in curveSymm.coef:
-                # curveSymm.coef[:, index] = -curveSymm.coef[:, index]
-                # curveSymm.recompute(nIter=1)
-
-                # do a full re-initialization using the X array and spline order
+                # We want to create a curve that is symmetric of the current one
                 symm_curve_X = curve.X.copy()
 
                 # flip the coefs
                 symm_curve_X[:, index] = -symm_curve_X[:, index]
-                symm_curve_k = curve.k
-                curveSymm = Curve(k=symm_curve_k, X=symm_curve_X)
+                curveSymm = Curve(k=curve.k, X=symm_curve_X)
 
                 self.axis[name] = {
                     "curve": curve,
@@ -611,14 +603,17 @@ class DVGeometry(BaseDVGeometry):
             indSetA, indSetB = self.getSymmetricCoefList(getSymmPlane=True)
 
             # loop over the inds_to_ignore list and find the corresponding symmetries
-            # TODO this can be improved.
             ignoreIndSymm = []
             for ind in ignoreInd:
                 try:
                     tmp = indSetA.index(ind)
                 except ValueError:
                     raise Error(
-                        f"""the index {ind} is not in indSetA. This is likely due to a weird issue caused by the point reduction routines during initialization. reduce the offset of the FFD control points from the symmetry plane to avoid it. the max deviation from the symmetry plane needs to be less than around 1e-5 if rest of the default tolerances in pygeo is used."""
+                        f"""The index {ind} is not in indSetA. This is likely due to a weird
+                        issue caused by the point reduction routines during initialization.
+                        Reduce the offset of the FFD control points from the symmetry plane
+                        to avoid it. The max deviation from the symmetry plane needs to be
+                        less than around 1e-5 if rest of the default tolerances in pygeo is used."""
                     )
                 ind_mirror = indSetB[tmp]
                 ignoreIndSymm.append(ind_mirror)
