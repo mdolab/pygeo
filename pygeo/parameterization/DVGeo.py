@@ -647,6 +647,65 @@ class DVGeometry(BaseDVGeometry):
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
             exactly what they are doing.
+        coord_xfer : function
+            A callback function that performs a coordinate transformation
+            between the DVGeo reference frame and any other reference
+            frame. The DVGeo object uses this routine to apply the coordinate
+            transformation in "forward" and "reverse" directions to go between
+            the two reference frames. Derivatives are also adjusted since they
+            are vectors coming into DVGeo (in the reverse AD mode)
+            and need to be rotated. We have a callback function here that lets
+            the user to do whatever they want with the coordinate transformation.
+            The function must have the first positional argument as the array that is
+            (npt, 3) and the two optional arguments that must be available are "dir"
+            ("fwd" or "bwd") and "apply_displacements" (True or False). This function
+            can then be passed to DVGeo through something like ADflow, where the
+            set DVGeo call can be modified as:
+            CFDSolver.setDVGeo(DVGeo, pointSetKwargs={"coord_xfer": coord_xfer})
+
+            An example function is as follows:
+
+            def coord_xfer(coords, dir="fwd", appy_displacements=True, **kwargs):
+                # given the (npt by 3) array "coords" apply the coordinate transformation.
+                # The "fwd" direction implies we go from DVGeo reference frame to the
+                # application, e.g. CFD, the "bwd" direction is the opposite;
+                # goes from the CFD reference frame back to the DVGeo reference frame.
+                # the apply_displacements flag needs to be correctly implemented
+                # by the user; the derivatives are also passed through this routine
+                # and they only need to be rotated when going between reference frames,
+                # and they should NOT be displaced. Example transfer: The CFD mesh
+                # is rotated about the x-axis by 90 degrees with the right hand rule
+                # and moved 0.5 units below (in z) the DVGeo reference.
+                # Note that the order of these operations is important.
+
+                # a different rotation matrix can be created during the creation of
+                # this function. This is a simple rotation about x-axis.
+                # Multiple rotation matrices can be used; the user is completely free
+                # with whatever transformations they want to apply here.
+                rot_matrix = np.array([
+                    [1, 0, 0],
+                    [0, 0, -1],
+                    [0, 1, 0],
+                ])
+
+                if dir == "fwd":
+                    # apply the rotation first
+                    coords_new = np.dot(coords, rot_mat)
+
+                    # then the translation
+                    if appy_displacements:
+                        coords_new[:, 2] -= 0.5
+                elif dir == "bwd":
+                    # apply the operations in reverse
+                    coords_new = coords.copy()
+                    if appy_displacements:
+                        coords_new[:, 2] += 0.5
+
+                    # and the rotation. note the rotation matrix is transposed
+                    # for switching the direction of rotation
+                    coords_new = np.dot(coords, rot_mat.T)
+
+                return coords_new
 
         """
 
@@ -664,10 +723,11 @@ class DVGeometry(BaseDVGeometry):
         if coord_xfer is not None:
             self.coord_xfer[ptName] = coord_xfer
 
-            # also apply the first rotation while adding this ptset
-            # any child FFDs will just work with the rotated points in the geo reference frame
-            # so we don't need to propagate this function below
-            points = self.coord_xfer[ptName](points, dir="bwd")
+            # Also apply the first coordinate transformation while adding this ptset.
+            # The child FFDs only interact with their parent FFD, and therefore,
+            # do not need to access the coordinate transformation routine; i.e.
+            # all transformations are applied once during the highest level DVGeo object.
+            points = self.coord_xfer[ptName](points, dir="bwd", apply_displacement=True)
 
         self.points[ptName] = points
 
@@ -1350,10 +1410,11 @@ class DVGeometry(BaseDVGeometry):
               merged by the network/connectivity anyway
         getSymmPlane : bool
               If this flag is set to True, we also return the points on the symmetry plane
-              for all volumes. e.g. a reduced point on the symmetry plane with the same indices on both volumes will show up as the same value in both arrays. This is useful when determining
-              the indices to ignore when adding pointsets. The default behavior will not include
-              the points exactly on the symmetry plane. this is more useful for adding them as
-              linear constraints
+              for all volumes. e.g. a reduced point on the symmetry plane with the same
+              indices on both volumes will show up as the same value in both arrays. This
+              is useful when determining the indices to ignore when adding pointsets. The
+              default behavior will not include the points exactly on the symmetry plane.
+              this is more useful for adding them as linear constraints
 
         Returns
         -------
@@ -1884,7 +1945,7 @@ class DVGeometry(BaseDVGeometry):
             # we only check if we need to apply the reverse coordinate transformation
             # if this is the last pygeo in the chain
             if ptSetName in self.coord_xfer:
-                Xfinal = self.coord_xfer[ptSetName](Xfinal, dir="fwd")
+                Xfinal = self.coord_xfer[ptSetName](Xfinal, dir="fwd", apply_displacement=True)
             return Xfinal
 
     def applyToChild(self, iChild):
