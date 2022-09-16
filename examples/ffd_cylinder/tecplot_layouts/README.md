@@ -1,0 +1,2 @@
+These Tecplot layouts were used to generate the visualizations in the documentation.
+Copy them into the parent folder containing "runFFDExample.py" and run that script, which will generate the required geometry files.

@@ -67,11 +67,11 @@ class DVGeometry(BaseDVGeometry):
 
     name : str
         This is prepended to every DV name for ensuring design variables names are
-        unique to pyOptsparse. Only useful when using multiple DVGeos with
-        TriangulatedSurfaceConstraint()
+        unique to pyOptSparse. Only useful when using multiple DVGeos with
+        :meth:`.addTriangulatedSurfaceConstraint()`
 
     kmax : int
-        maximum order of the splines used for the underlying formulation.
+        Maximum order of the splines used for the underlying formulation.
         Default is a 4th order spline in each direction if the dimensions
         allow.
 
@@ -290,7 +290,20 @@ class DVGeometry(BaseDVGeometry):
             Supply exactly the desired reference axis
 
         xFraction : float
-            Specify the stream-wise extent
+            Specify the parametric stream-wise (axis: 0) location of the reference axis node relative to
+            front and rear control points location. Constant for every spanwise section.
+
+        yFraction : float
+            Specify the parametric location of the reference axis node along axis: 1 relative to
+            top and bottom control points location. Constant for every spanwise section.
+            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+            and the option will not have any effect.
+
+        zFraction : float
+            Specify the parametric location of the reference axis node along axis: 2 relative to
+            top and bottom control points location. Constant for every spanwise section.
+            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+            and the option will not have any effect.
 
         volumes : list or array or integers
             List of the volume indices, in 0-based ordering that this
@@ -762,7 +775,7 @@ class DVGeometry(BaseDVGeometry):
         DVGeometry which may have its own global and/or local design
         variables. Coordinates do **not** need to be added to the
         children. The parent object will take care of that in a call
-        to addPointSet().
+        to :func:`addPointSet()`.
 
         See https://github.com/mdolab/pygeo/issues/7 for a description of an
         issue with Child FFDs that you should be aware of if you are combining
@@ -788,9 +801,10 @@ class DVGeometry(BaseDVGeometry):
 
         # We must finalize the Child here since we need the ref axis
         # coefficients
-        childDVGeo._finalizeAxis()
-        self.FFD.attachPoints(childDVGeo.refAxis.coef, "child%d_axis" % (iChild))
-        self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
+        if len(childDVGeo.axis) > 0:
+            childDVGeo._finalizeAxis()
+            self.FFD.attachPoints(childDVGeo.refAxis.coef, "child%d_axis" % (iChild))
+            self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
 
         # Add the child to the parent and return
         self.children.append(childDVGeo)
@@ -815,8 +829,8 @@ class DVGeometry(BaseDVGeometry):
         lower : float, or iterable list of floats
             The lower bound(s) for the variable(s). A single variable
             is permissable even if an array is given for value. However,
-            if an array is given for 'lower', it must be the same length
-            as 'value'
+            if an array is given for ``lower``, it must be the same length
+            as ``value``
 
         func : python function
             The python function handle that will be used to apply the
@@ -824,7 +838,7 @@ class DVGeometry(BaseDVGeometry):
 
         upper : float, or iterable list of floats
             The upper bound(s) for the variable(s). Same restrictions as
-            'lower'
+            ``lower``
 
         scale : float, or iterable list of floats
             The scaling of the variables. A good approximate scale to
@@ -844,10 +858,6 @@ class DVGeometry(BaseDVGeometry):
         if isinstance(config, str):
             config = [config]
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
-
-    def addGeoDVGlobal(self, *args, **kwargs):
-        warnings.warn("addGeoDVGlobal will be deprecated, use addGlobalDV instead")
-        return self.addGlobalDV(*args, **kwargs)
 
     def addLocalDV(
         self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
@@ -877,7 +887,7 @@ class DVGeometry(BaseDVGeometry):
         axis : str. Default is `y`
             The coordinate directions to move. Permissible values are `x`,
             `y` and `z`. If more than one direction is required, use multiple
-            calls to addLocalDV with different axis values.
+            calls to :func:`addLocalDV` with different axis values.
 
         volList : list
             Use the control points on the volume indices given in volList.
@@ -945,10 +955,6 @@ class DVGeometry(BaseDVGeometry):
         self.DV_listLocal[dvName] = geoDVLocal(dvName, lower, upper, scale, axis, ind, self.masks, config)
 
         return self.DV_listLocal[dvName].nVal
-
-    def addGeoDVLocal(self, *args, **kwargs):
-        warnings.warn("addGeoDVLocal will be deprecated, use addLocalDV instead")
-        return self.addLocalDV(*args, **kwargs)
 
     def addSpanwiseLocalDV(
         self,
@@ -1120,10 +1126,6 @@ class DVGeometry(BaseDVGeometry):
         )
 
         return self.DV_listSpanwiseLocal[dvName].nVal
-
-    def addGeoDVSpanwiseLocal(self, *args, **kwargs):
-        warnings.warn("addGeoDVSpanwiseLocal will be deprecated, use addSpanwiseLocalDV instead")
-        return self.addSpanwiseLocalDV(*args, **kwargs)
 
     def addLocalSectionDV(
         self,
@@ -1387,10 +1389,6 @@ class DVGeometry(BaseDVGeometry):
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
         self.useComposite = True
-
-    def addGeoDVSectionLocal(self, *args, **kwargs):
-        warnings.warn("addGeoDVSectionLocal will be deprecated, use addLocalSectionDV instead")
-        return self.addLocalSectionDV(*args, **kwargs)
 
     def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8, getSymmPlane=False):
         """
@@ -1825,7 +1823,23 @@ class DVGeometry(BaseDVGeometry):
         if not self.isChild:
             self.FFD.coef = self.origFFDCoef.copy()
             self._setInitialValues()
+
+            for iChild in range(len(self.children)):
+                if len(self.children[iChild].axis) > 0:
+                    self.children[iChild]._finalize()
+                    refaxis_ptSetName = "child%d_axis" % (iChild)
+                    if refaxis_ptSetName not in self.FFD.embeddedVolumes:
+                        self.FFD.attachPoints(self.children[iChild].refAxis.coef, refaxis_ptSetName)
+                        self.FFD.calcdPtdCoef("child%d_axis" % (iChild))
         else:
+            for iChild in range(len(self.children)):
+                if len(self.children[iChild].axis) > 0:
+                    refaxis_ptSetName = "child%d_axis" % (iChild)
+                    if refaxis_ptSetName not in self.FFD.embeddedVolumes:
+                        raise Error(
+                            f"refaxis {refaxis_ptSetName} cannot be added to child FFD after child is appended to parent"
+                        )
+
             # Update all coef
             self.FFD._updateVolumeCoef()
 
@@ -3875,8 +3889,12 @@ class DVGeometry(BaseDVGeometry):
 
             # We need to save the reference state so that we can always start
             # from the same place when calling _update_deriv
-            refFFDCoef = copy.copy(self.FFD.coef)
-            refCoef = copy.copy(self.coef)
+            if not self.isChild:
+                refFFDCoef = copy.copy(self.origFFDCoef.astype("D"))
+                refCoef = copy.copy(self.coef0.astype("D"))
+            else:
+                refFFDCoef = copy.copy(self.FFD.coef)
+                refCoef = copy.copy(self.coef)
 
             iDV = self.nDVG_count
             for key in self.DV_listGlobal:

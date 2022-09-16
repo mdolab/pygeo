@@ -3,17 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-=====
+.. _pygeo_index:
+
+======
 pyGeo
-=====
-``pyGeo`` is a repository that contains several modules for working with
-geometry components and manipulating geometry components.
+======
 
-
+pyGeo is a geometry manipulation framework for multidisciplinary design optimization.
 
 .. toctree::
    :maxdepth: 2
 
+   introduction
    install
    tutorial
    API

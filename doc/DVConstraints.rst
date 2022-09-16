@@ -2,7 +2,6 @@
 
 DVConstraints
 -------------
-.. currentmodule:: pygeo
 
-.. autoclass:: DVConstraints
+.. autoclass:: pygeo.constraints.DVCon.DVConstraints
     :members: 
