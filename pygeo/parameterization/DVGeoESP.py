@@ -245,6 +245,7 @@ class DVGeometryESP(DVGeoSketch):
         """
 
         # save this name so that we can zero out the jacobians properly
+        self.ptSetNames.append(ptName)
         self.points[ptName] = True  # ADFlow checks self.points to see if something is added or not
         points = np.array(points).real.astype("d")
 
