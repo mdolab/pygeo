@@ -31,9 +31,9 @@ DVGeo.addVariable("thickness_dv")
 # rst perturb DV start
 # Perturb some local variables and observe the effect on the surface
 dvdict = DVGeo.getValues()
-dvdict["camber_dv"] = [0.09]
-dvdict["maxloc_dv"] = [0.8]
-dvdict["thickness_dv"] = [0.2]
+dvdict["camber_dv"] = 0.09
+dvdict["maxloc_dv"] = 0.8
+dvdict["thickness_dv"] = 0.2
 DVGeo.setDesignVars(dvdict)
 
 # write out the new ESP model
