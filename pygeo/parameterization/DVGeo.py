@@ -678,10 +678,10 @@ class DVGeometry(BaseDVGeometry):
 
             An example function is as follows:
 
-            def coord_xfer(coords, dir="fwd", apply_displacement=True, **kwargs):
+            def coord_xfer(coords, mode="fwd", apply_displacement=True, **kwargs):
                 # given the (npt by 3) array "coords" apply the coordinate transformation.
-                # The "fwd" direction implies we go from DVGeo reference frame to the
-                # application, e.g. CFD, the "bwd" direction is the opposite;
+                # The "fwd" mode implies we go from DVGeo reference frame to the
+                # application, e.g. CFD, the "bwd" mode is the opposite;
                 # goes from the CFD reference frame back to the DVGeo reference frame.
                 # the apply_displacement flag needs to be correctly implemented
                 # by the user; the derivatives are also passed through this routine
@@ -701,14 +701,14 @@ class DVGeometry(BaseDVGeometry):
                     [0, 1, 0],
                 ])
 
-                if dir == "fwd":
+                if mode == "fwd":
                     # apply the rotation first
                     coords_new = np.dot(coords, rot_mat)
 
                     # then the translation
                     if apply_displacement:
                         coords_new[:, 2] -= 5
-                elif dir == "bwd":
+                elif mode == "bwd":
                     # apply the operations in reverse
                     coords_new = coords.copy()
                     if apply_displacement:
@@ -740,7 +740,7 @@ class DVGeometry(BaseDVGeometry):
             # The child FFDs only interact with their parent FFD, and therefore,
             # do not need to access the coordinate transformation routine; i.e.
             # all transformations are applied once during the highest level DVGeo object.
-            points = self.coord_xfer[ptName](points, dir="bwd", apply_displacement=True)
+            points = self.coord_xfer[ptName](points, mode="bwd", apply_displacement=True)
 
         self.points[ptName] = points
 
@@ -1959,7 +1959,7 @@ class DVGeometry(BaseDVGeometry):
             # we only check if we need to apply the reverse coordinate transformation
             # if this is the last pygeo in the chain
             if ptSetName in self.coord_xfer:
-                Xfinal = self.coord_xfer[ptSetName](Xfinal, dir="fwd", apply_displacement=True)
+                Xfinal = self.coord_xfer[ptSetName](Xfinal, mode="fwd", apply_displacement=True)
             return Xfinal
 
     def applyToChild(self, iChild):
@@ -2201,7 +2201,7 @@ class DVGeometry(BaseDVGeometry):
             for ifunc in range(N):
                 # its important to remember that dIdpt are vector-like values,
                 # so we don't apply the transformations and only the rotations!
-                dIdpt[ifunc] = self.coord_xfer[ptSetName](dIdpt[ifunc], dir="bwd", apply_displacement=False)
+                dIdpt[ifunc] = self.coord_xfer[ptSetName](dIdpt[ifunc], mode="bwd", apply_displacement=False)
 
         # generate the total Jacobian self.JT
         self.computeTotalJacobian(ptSetName, config=config)
@@ -2307,7 +2307,7 @@ class DVGeometry(BaseDVGeometry):
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coord_xfer:
                 # this is a vector-like quantity so we dont displace and just rotate
-                xsdot = self.coord_xfer[ptSetName](xsdot, dir="fwd", apply_displacement=False)
+                xsdot = self.coord_xfer[ptSetName](xsdot, mode="fwd", apply_displacement=False)
 
             # Maybe this should be:
             # xsdot = xsdot.reshape(len(xsdot)//3, 3)
@@ -2368,7 +2368,7 @@ class DVGeometry(BaseDVGeometry):
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coord_xfer:
                 # this is a vector-like quantity so we dont displace and just rotate
-                vec = self.coord_xfer[ptSetName](vec, dir="bwd", apply_displacement=False)
+                vec = self.coord_xfer[ptSetName](vec, mode="bwd", apply_displacement=False)
 
             xsdot = self.JT[ptSetName].dot(np.ravel(vec))
 

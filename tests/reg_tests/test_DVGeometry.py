@@ -1073,21 +1073,23 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
         DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-        def coord_xfer(coords, dir="fwd", apply_displacement=True):
-            rot_mat = np.array([
-                [1, 0, 0],
-                [0, 0, -1],
-                [0, 1, 0],
-            ])
+        def coord_xfer(coords, mode="fwd", apply_displacement=True):
+            rot_mat = np.array(
+                [
+                    [1, 0, 0],
+                    [0, 0, -1],
+                    [0, 1, 0],
+                ]
+            )
 
-            if dir == "fwd":
+            if mode == "fwd":
                 # apply the rotation first
                 coords_new = np.dot(coords, rot_mat)
 
                 # then the translation
                 if apply_displacement:
                     coords_new[:, 2] -= 5.0
-            elif dir == "bwd":
+            elif mode == "bwd":
                 # apply the operations in reverse
                 coords_new = coords.copy()
                 if apply_displacement:
@@ -1099,12 +1101,14 @@ class RegTestPyGeo(unittest.TestCase):
 
             return coords_new
 
-        test_points = np.array([
-            # this point is normally outside the FFD volume,
-            # but after the coordinate transfer,
-            # it should be inside the FFD
-            [0.5, 0.5, -4.5],
-        ])
+        test_points = np.array(
+            [
+                # this point is normally outside the FFD volume,
+                # but after the coordinate transfer,
+                # it should be inside the FFD
+                [0.5, 0.5, -4.5],
+            ]
+        )
 
         DVGeo.addPointSet(test_points, "test", coord_xfer=coord_xfer)
 
