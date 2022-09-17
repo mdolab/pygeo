@@ -671,31 +671,31 @@ class DVGeometry(BaseDVGeometry):
             the user to do whatever they want with the coordinate transformation.
             The function must have the first positional argument as the array that is
             (npt, 3) and the two optional arguments that must be available are "dir"
-            ("fwd" or "bwd") and "apply_displacements" (True or False). This function
+            ("fwd" or "bwd") and "apply_displacement" (True or False). This function
             can then be passed to DVGeo through something like ADflow, where the
             set DVGeo call can be modified as:
             CFDSolver.setDVGeo(DVGeo, pointSetKwargs={"coord_xfer": coord_xfer})
 
             An example function is as follows:
 
-            def coord_xfer(coords, dir="fwd", appy_displacements=True, **kwargs):
+            def coord_xfer(coords, dir="fwd", apply_displacement=True, **kwargs):
                 # given the (npt by 3) array "coords" apply the coordinate transformation.
                 # The "fwd" direction implies we go from DVGeo reference frame to the
                 # application, e.g. CFD, the "bwd" direction is the opposite;
                 # goes from the CFD reference frame back to the DVGeo reference frame.
-                # the apply_displacements flag needs to be correctly implemented
+                # the apply_displacement flag needs to be correctly implemented
                 # by the user; the derivatives are also passed through this routine
                 # and they only need to be rotated when going between reference frames,
                 # and they should NOT be displaced. Example transfer: The CFD mesh
                 # is rotated about the x-axis by 90 degrees with the right hand rule
-                # and moved 0.5 units below (in z) the DVGeo reference.
+                # and moved 5 units below (in z) the DVGeo reference.
                 # Note that the order of these operations is important.
 
                 # a different rotation matrix can be created during the creation of
                 # this function. This is a simple rotation about x-axis.
                 # Multiple rotation matrices can be used; the user is completely free
                 # with whatever transformations they want to apply here.
-                rot_matrix = np.array([
+                rot_mat = np.array([
                     [1, 0, 0],
                     [0, 0, -1],
                     [0, 1, 0],
@@ -706,17 +706,17 @@ class DVGeometry(BaseDVGeometry):
                     coords_new = np.dot(coords, rot_mat)
 
                     # then the translation
-                    if appy_displacements:
-                        coords_new[:, 2] -= 0.5
+                    if apply_displacement:
+                        coords_new[:, 2] -= 5
                 elif dir == "bwd":
                     # apply the operations in reverse
                     coords_new = coords.copy()
-                    if appy_displacements:
-                        coords_new[:, 2] += 0.5
+                    if apply_displacement:
+                        coords_new[:, 2] += 5
 
                     # and the rotation. note the rotation matrix is transposed
                     # for switching the direction of rotation
-                    coords_new = np.dot(coords, rot_mat.T)
+                    coords_new = np.dot(coords_new, rot_mat.T)
 
                 return coords_new
 
@@ -2307,7 +2307,7 @@ class DVGeometry(BaseDVGeometry):
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coord_xfer:
                 # this is a vector-like quantity so we dont displace and just rotate
-                xsdot = self.coord_xfer[ptSetName](xsdot, dir="fwd", apply_displacements=False)
+                xsdot = self.coord_xfer[ptSetName](xsdot, dir="fwd", apply_displacement=False)
 
             # Maybe this should be:
             # xsdot = xsdot.reshape(len(xsdot)//3, 3)
@@ -2368,7 +2368,7 @@ class DVGeometry(BaseDVGeometry):
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coord_xfer:
                 # this is a vector-like quantity so we dont displace and just rotate
-                vec = self.coord_xfer[ptSetName](vec, dir="bwd", apply_displacements=False)
+                vec = self.coord_xfer[ptSetName](vec, dir="bwd", apply_displacement=False)
 
             xsdot = self.JT[ptSetName].dot(np.ravel(vec))
 

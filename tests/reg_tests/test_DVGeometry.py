@@ -1048,6 +1048,104 @@ class RegTestPyGeo(unittest.TestCase):
 
         np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
 
+    # TODO test does not work properly yet
+    # def test_embedding_solver(self):
+    #     DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/skewed_ffd.xyz"))
+
+    #     # none of these fail yet...
+    #     test_points = np.array([
+    #         [0.1, 0.5, 0.2],  # to test the skew area for the line search
+    #         [1.59601839358312336, 0.57348230074042339, 0.481440903006767895],
+    #         [0.53, 3.57, 1e-4],  # to test the thin area for the tolerances
+    #         [0.668259240532462995, 3.8, 1.1e-6],
+    #         [1.0000, 3.8, 1e-6],
+    #     ])
+
+    #     DVGeo.addPointSet(test_points, "test", nIter=50)
+
+    #     DVGeo.writeTecplot("./skewed_ffd_output.dat")
+
+    def test_coord_xfer(self):
+        DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
+
+        # create local DVs
+        DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+        DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+        DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+
+        def coord_xfer(coords, dir="fwd", apply_displacement=True):
+            rot_mat = np.array([
+                [1, 0, 0],
+                [0, 0, -1],
+                [0, 1, 0],
+            ])
+
+            if dir == "fwd":
+                # apply the rotation first
+                coords_new = np.dot(coords, rot_mat)
+
+                # then the translation
+                if apply_displacement:
+                    coords_new[:, 2] -= 5.0
+            elif dir == "bwd":
+                # apply the operations in reverse
+                coords_new = coords.copy()
+                if apply_displacement:
+                    coords_new[:, 2] += 5.0
+
+                # and the rotation. note the rotation matrix is transposed
+                # for switching the direction of rotation
+                coords_new = np.dot(coords_new, rot_mat.T)
+
+            return coords_new
+
+        test_points = np.array([
+            # this point is normally outside the FFD volume,
+            # but after the coordinate transfer,
+            # it should be inside the FFD
+            [0.5, 0.5, -4.5],
+        ])
+
+        DVGeo.addPointSet(test_points, "test", coord_xfer=coord_xfer)
+
+        # check if we can query the same point back
+        pts_new = DVGeo.update("test")
+
+        np.testing.assert_allclose(test_points, pts_new, atol=1e-15)
+
+        # check derivatives
+        nPt = test_points.size
+        dIdx_FD = commonUtils.totalSensitivityFD(DVGeo, nPt, "test")
+
+        dIdPt = np.zeros([3, 1, 3])
+        dIdPt[0, 0, 0] = 1.0
+        dIdPt[1, 0, 1] = 1.0
+        dIdPt[2, 0, 2] = 1.0
+        dIdx = DVGeo.totalSensitivity(dIdPt, "test")
+
+        np.testing.assert_allclose(dIdx["xdir"], dIdx_FD["xdir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["ydir"], dIdx_FD["ydir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["zdir"], dIdx_FD["zdir"], atol=1e-15)
+
+        # also test the fwd AD
+        dIdxFwd = {
+            "xdir": np.zeros((3, 12)),
+            "zdir": np.zeros((3, 12)),
+            "ydir": np.zeros((3, 12)),
+        }
+        # need to do it one DV at a time
+        for ii in range(12):
+            seed = np.zeros(12)
+            seed[ii] = 1.0
+
+            dIdxFwd["xdir"][:, ii] = DVGeo.totalSensitivityProd({"xdir": seed}, "test")
+            dIdxFwd["ydir"][:, ii] = DVGeo.totalSensitivityProd({"ydir": seed}, "test")
+            dIdxFwd["zdir"][:, ii] = DVGeo.totalSensitivityProd({"zdir": seed}, "test")
+
+        np.testing.assert_allclose(dIdx["xdir"], dIdxFwd["xdir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["ydir"], dIdxFwd["ydir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["zdir"], dIdxFwd["zdir"], atol=1e-15)
+
 
 if __name__ == "__main__":
     unittest.main()
