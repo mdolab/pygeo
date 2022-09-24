@@ -1048,22 +1048,40 @@ class RegTestPyGeo(unittest.TestCase):
 
         np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
 
-    # TODO test does not work properly yet
-    # def test_embedding_solver(self):
-    #     DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/skewed_ffd.xyz"))
+    def test_embedding_solver(self):
+        DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/fuselage_ffd_severe.xyz"))
 
-    #     # none of these fail yet...
-    #     test_points = np.array([
-    #         [0.1, 0.5, 0.2],  # to test the skew area for the line search
-    #         [1.59601839358312336, 0.57348230074042339, 0.481440903006767895],
-    #         [0.53, 3.57, 1e-4],  # to test the thin area for the tolerances
-    #         [0.668259240532462995, 3.8, 1.1e-6],
-    #         [1.0000, 3.8, 1e-6],
-    #     ])
+        # none of these fail yet...
+        test_points = [
+            # Points that work with the linesearch fix on the pyspline projection code
+            [0.49886, 0.31924, 0.037167],
+            [0.49845, 0.32658, 0.039511],
+            [0.76509, 0.29709, 0.037575],
+            # [0.5, 20, 0.03],
+            # Points that always fail, even after the fix.
+            # The FFD here is ridiculously difficult to embed,
+            # but leaving these here because they are a great test of robustness.
+            # [0.76474, 0.30461, 0.039028],
+            # [0.49988, 0.29506, 0.031219],
+            # [0.49943, 0.30642, 0.03374],
+            # [0.49792, 0.33461, 0.042548],
+            # [0.49466, 0.35848, 0.06916],
+            # [0.49419, 0.34003, 0.092855],
+            # [0.49432, 0.33345, 0.09765],
+            # [0.49461, 0.31777, 0.10775],
+            # [0.49465, 0.31347, 0.11029],
+            # [0.62736, 0.31001, 0.037233],
+            # [0.76401, 0.32044, 0.042354],
+            # [0.49322, 0.25633, 0.13751],
+            # [0.49358, 0.26432, 0.13435],
+        ]
 
-    #     DVGeo.addPointSet(test_points, "test", nIter=50)
+        DVGeo.addPointSet(test_points, "test", nIter=50)
 
-    #     DVGeo.writeTecplot("./skewed_ffd_output.dat")
+        # we evaluate the points. if the embedding fails, the points will not be identical
+        new_points = DVGeo.update("test")
+
+        np.testing.assert_allclose(test_points, new_points, atol=1e-15)
 
     def test_coord_xfer(self):
         DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
