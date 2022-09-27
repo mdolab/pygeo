@@ -1053,14 +1053,16 @@ class RegTestPyGeo(unittest.TestCase):
 
         # none of these fail yet...
         test_points = [
-            # Points that work with the linesearch fix on the pyspline projection code
+            # Points that work with the linesearch fix on the pyspline projection code.
+            # These points work with a reasonable iteration count (we have 50 for now).
             [0.49886, 0.31924, 0.037167],
             [0.49845, 0.32658, 0.039511],
             [0.76509, 0.29709, 0.037575],
-            # [0.5, 20, 0.03],
-            # Points that always fail, even after the fix.
-            # The FFD here is ridiculously difficult to embed,
-            # but leaving these here because they are a great test of robustness.
+            # The list of points below are much more problematic. The new fix can handle
+            # some of them but they require a very large iteration count. The FFD here
+            # is ridiculously difficult to embed, but leaving these points here because
+            # they are a great test of robustness if someone wants to improve the solver.
+            # even more down the line.
             # [0.76474, 0.30461, 0.039028],
             # [0.49988, 0.29506, 0.031219],
             # [0.49943, 0.30642, 0.03374],

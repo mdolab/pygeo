@@ -678,47 +678,50 @@ class DVGeometry(BaseDVGeometry):
 
             An example function is as follows:
 
-            def coord_xfer(coords, mode="fwd", apply_displacement=True, **kwargs):
-                # given the (npt by 3) array "coords" apply the coordinate transformation.
-                # The "fwd" mode implies we go from DVGeo reference frame to the
-                # application, e.g. CFD, the "bwd" mode is the opposite;
-                # goes from the CFD reference frame back to the DVGeo reference frame.
-                # the apply_displacement flag needs to be correctly implemented
-                # by the user; the derivatives are also passed through this routine
-                # and they only need to be rotated when going between reference frames,
-                # and they should NOT be displaced. Example transfer: The CFD mesh
-                # is rotated about the x-axis by 90 degrees with the right hand rule
-                # and moved 5 units below (in z) the DVGeo reference.
-                # Note that the order of these operations is important.
+            .. highlight:: python
+            .. code-block:: python
 
-                # a different rotation matrix can be created during the creation of
-                # this function. This is a simple rotation about x-axis.
-                # Multiple rotation matrices can be used; the user is completely free
-                # with whatever transformations they want to apply here.
-                rot_mat = np.array([
-                    [1, 0, 0],
-                    [0, 0, -1],
-                    [0, 1, 0],
-                ])
+                def coord_xfer(coords, mode="fwd", apply_displacement=True, **kwargs):
+                    # given the (npt by 3) array "coords" apply the coordinate transformation.
+                    # The "fwd" mode implies we go from DVGeo reference frame to the
+                    # application, e.g. CFD, the "bwd" mode is the opposite;
+                    # goes from the CFD reference frame back to the DVGeo reference frame.
+                    # the apply_displacement flag needs to be correctly implemented
+                    # by the user; the derivatives are also passed through this routine
+                    # and they only need to be rotated when going between reference frames,
+                    # and they should NOT be displaced. Example transfer: The CFD mesh
+                    # is rotated about the x-axis by 90 degrees with the right hand rule
+                    # and moved 5 units below (in z) the DVGeo reference.
+                    # Note that the order of these operations is important.
 
-                if mode == "fwd":
-                    # apply the rotation first
-                    coords_new = np.dot(coords, rot_mat)
+                    # a different rotation matrix can be created during the creation of
+                    # this function. This is a simple rotation about x-axis.
+                    # Multiple rotation matrices can be used; the user is completely free
+                    # with whatever transformations they want to apply here.
+                    rot_mat = np.array([
+                        [1, 0, 0],
+                        [0, 0, -1],
+                        [0, 1, 0],
+                    ])
 
-                    # then the translation
-                    if apply_displacement:
-                        coords_new[:, 2] -= 5
-                elif mode == "bwd":
-                    # apply the operations in reverse
-                    coords_new = coords.copy()
-                    if apply_displacement:
-                        coords_new[:, 2] += 5
+                    if mode == "fwd":
+                        # apply the rotation first
+                        coords_new = np.dot(coords, rot_mat)
 
-                    # and the rotation. note the rotation matrix is transposed
-                    # for switching the direction of rotation
-                    coords_new = np.dot(coords_new, rot_mat.T)
+                        # then the translation
+                        if apply_displacement:
+                            coords_new[:, 2] -= 5
+                    elif mode == "bwd":
+                        # apply the operations in reverse
+                        coords_new = coords.copy()
+                        if apply_displacement:
+                            coords_new[:, 2] += 5
 
-                return coords_new
+                        # and the rotation. note the rotation matrix is transposed
+                        # for switching the direction of rotation
+                        coords_new = np.dot(coords_new, rot_mat.T)
+
+                    return coords_new
 
         """
 
