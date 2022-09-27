@@ -670,7 +670,7 @@ class DVGeometry(BaseDVGeometry):
             and need to be rotated. We have a callback function here that lets
             the user to do whatever they want with the coordinate transformation.
             The function must have the first positional argument as the array that is
-            (npt, 3) and the two optional arguments that must be available are "dir"
+            (npt, 3) and the two optional arguments that must be available are "mode"
             ("fwd" or "bwd") and "apply_displacement" (True or False). This function
             can then be passed to DVGeo through something like ADflow, where the
             set DVGeo call can be modified as:
