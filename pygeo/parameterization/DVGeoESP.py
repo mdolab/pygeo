@@ -11,7 +11,7 @@ from pyOCSM import ocsm
 from contextlib import contextmanager
 from baseclasses.utils import Error
 from .DVGeoSketch import DVGeoSketch
-from .designVars import espDV
+from .designVars import espDV, geoDVComposite
 
 
 @contextmanager
@@ -122,6 +122,7 @@ class DVGeometryESP(DVGeoSketch):
 
         # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
         self.globalDVList = []
+        self.useComposite = False
 
         self.suppress_stdout = suppress_stdout
         self.exclude_edge_projections = exclude_edge_projections
@@ -590,7 +591,9 @@ class DVGeometryESP(DVGeoSketch):
             The keys of the dictionary must correspond to the design variable names.
             Any additional keys in the dfvdictionary are simply ignored.
         """
-
+        if self.useComposite:
+            dvDict = self.mapXDictToDVGeo(dvDict)
+        print(dvDict)
         # Just dump in the values
         for key in dvDict:
             if key in self.DVs:
@@ -708,6 +711,54 @@ class DVGeometryESP(DVGeoSketch):
         """
         return len(self.globalDVList)
 
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, s=None, comm=None):
+        """
+        Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
+        at the moment.
+        Parameters
+        ----------
+        dvName : str
+            The name of the composite DVs
+        ptSetName : str, optional
+            If the matrices need to be computed, then a point set must be specified, by default None
+        u : ndarray, optional
+            The u matrix used for the composite DV, by default None
+        scale : float or ndarray, optional
+            The scaling applied to this DV, by default None
+        """
+        NDV = self.getNDV()
+
+        if u is not None:
+            # we are after a square matrix
+            if u.shape != (NDV, NDV):
+                raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+            if scale is None:
+                raise ValueError("If u is provided, then scale must also be provided.")
+            s = s
+        else:
+            if ptSetName is None:
+                raise ValueError("If u and s need to be computed, you must specify the ptSetName")
+            if not self.updatedJac[ptSetName]:
+                self._computeSurfJacobian()
+
+            J_full = self.pointSets[ptSetName].jac
+
+            u, s, _ = np.linalg.svd(J_full.T, full_matrices=False)
+
+            scale = np.sqrt(s)
+            # normalize the scaling
+            scale = scale * (NDV / np.sum(scale))
+
+        # map the initial design variable values
+        # we do this manually instead of calling self.mapVecToComp
+        # because self.DVComposite.u isn't available yet
+        values = u.T @ self.convertDictToSensitivity(self.getValues())
+
+        self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
+
+        self.useComposite = True
+        # super().__init__(useCompostiveDVs=self.useComposite, compositeDVs=self.DVComposite)
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
         This function computes sensitivity information.
@@ -781,14 +832,19 @@ class DVGeometryESP(DVGeoSketch):
         else:
             dIdx = dIdx_local
 
-        # Now convert to dict:
-        dIdxDict = {}
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            jac_start = dv.globalStartInd
-            jac_end = jac_start + dv.nVal
-            # dIdxDict[dvName] = np.array([dIdx[:, i]]).T
-            dIdxDict[dvName] = dIdx[:, jac_start:jac_end]
+        if self.useComposite:
+            dIdx = self.mapSensToComp(dIdx)
+            dIdxDict = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
+
+        else:
+            # Now convert to dict:
+            dIdxDict = {}
+            for dvName in self.DVs:
+                dv = self.DVs[dvName]
+                jac_start = dv.globalStartInd
+                jac_end = jac_start + dv.nVal
+                # dIdxDict[dvName] = np.array([dIdx[:, i]]).T
+                dIdxDict[dvName] = dIdx[:, jac_start:jac_end]
 
         return dIdxDict
 

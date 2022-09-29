@@ -1239,7 +1239,7 @@ class DVGeometry(BaseDVGeometry):
 
         return self.DV_listSectionLocal[dvName].nVal
 
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, s=None, scale=None):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -1268,13 +1268,14 @@ class DVGeometry(BaseDVGeometry):
         else:
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
+            print(ptSetName)
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
-            u, s, _ = np.linalg.svd(J_full)
+            u, s, _ = np.linalg.svd(J_full, full_matrices=False)
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
-
+        print("addc1")
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet

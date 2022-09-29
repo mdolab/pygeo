@@ -10,6 +10,7 @@ from .DVGeoSketch import DVGeoSketch
 from pyspline.utils import searchQuads
 from .designVars import vspDV, geoDVComposite
 import copy
+
 # openvsp python interface
 try:
     import openvsp
@@ -368,61 +369,7 @@ class DVGeometryVSP(DVGeoSketch):
         """
         return len(self.DVs)
 
-    def mapXDictToDVGeo(self, inDict):
-        """
-        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
-        without modifying them
-        Parameters
-        ----------
-        inDict : dict
-            The dictionary of DVs to be mapped
-        Returns
-        -------
-        dict
-            The mapped DVs in the same dictionary format
-        """
-        # first make a copy so we don't modify in place
-
-        inDict = copy.deepcopy(inDict)
-        for key in inDict:
-            if key==self.DVComposite.name:
-                userVec = inDict[key]
-        # userVec = inDict[self.DVComposite.name]
-        outVec = self.mapVecToDVGeo(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
-        # now merge inDict and outDict
-        for key in inDict:
-            outDict[key] = inDict[key]
-        return outDict
-
-    def convertDictToSensitivity(self, dIdxDict):
-        """
-        This function performs the reverse operation of
-        convertSensitivityToDict(); it transforms the dictionary back
-        into an array. This function is important for the matrix-free
-        interface.
-        Parameters
-        ----------
-        dIdxDict : dictionary
-           Dictionary of information keyed by this object's
-           design variables
-        Returns
-        -------
-        dIdx : array
-           Flattened array of length getNDV().
-        """
-        DVCount = self.getNDV()
-
-        dIdx = np.zeros(DVCount, dtype = "d" )
-        i = 0
-        for key in self.DVs:
-            dv = self.DVs[key]
-            dIdx[i : i + dv.nVal] = dIdxDict[key]
-            i += dv.nVal
-
-        return dIdx
-
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None,s=None,comm=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, s=None, comm=None):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -468,123 +415,7 @@ class DVGeometryVSP(DVGeoSketch):
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
 
         self.useComposite = True
-        self.useCompostiveDVs = True
-        self.compositeDVs = self.DVComposite
         # super().__init__(useCompostiveDVs=self.useComposite, compositeDVs=self.DVComposite)
-
-    def mapXDictToComp(self, inDict):
-        """
-        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
-        Parameters
-        ----------
-        inDict : dict
-            The DVs to be mapped
-        Returns
-        -------
-        dict
-            The mapped DVs
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = self.convertDictToSensitivity(inDict)
-        outVec = self.mapVecToComp(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
-        return outDict
-
-
-    def mapVecToDVGeo(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u @ inVec
-        return outVec.flatten()
-
-    def mapVecToComp(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u.transpose() @ inVec
-        return outVec.flatten()
-
-    def mapSensToComp(self, inVec):
-        """
-        Maps the sensitivity matrix to the composite design space
-        Parameters
-        ----------
-        inVec : ndarray
-            The sensitivities to be mapped
-        Returns
-        -------
-        ndarray
-            The mapped sensitivity matrix
-        """
-        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
-        return outVec
-
-
-    def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
-        """
-        This function takes the result of totalSensitivity and
-        converts it to a dict for use in pyOptSparse
-        Parameters
-        ----------
-        dIdx : array
-           Flattened array of length getNDV(). Generally it comes from
-           a call to totalSensitivity()
-        out1D : boolean
-            If true, creates a 1D array in the dictionary instead of 2D.
-            This function is used in the matrix-vector product calculation.
-        useCompositeNames : boolean
-            Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
-            If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
-            If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
-        Returns
-        -------
-        dIdxDict : dictionary
-           Dictionary of the same information keyed by this object's
-           design variables
-        """
-
-        # compute the various DV offsets
-        # DVCountGlobal= self._getDVOffsets()
-
-        i = 0
-        dIdxDict = {}
-        for key in self.DVs:
-            dv = self.DVs[key]
-            if out1D:
-                dIdxDict[key] = np.ravel(dIdx[:, i : i + 1])
-            else:
-                dIdxDict[key] = np.array(dIdx[:, i : i + 1])
-            i += 1
-
-        # replace other names with user
-        if useCompositeNames and self.useComposite:
-            array = []
-            for _key, val in dIdxDict.items():
-                array.append(val)
-            array = np.column_stack(array)
-            dIdxDict = {self.DVComposite.name: array}
-        
-        return dIdxDict
 
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         r"""
