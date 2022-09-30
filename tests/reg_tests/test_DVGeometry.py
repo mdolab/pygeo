@@ -1051,7 +1051,6 @@ class RegTestPyGeo(unittest.TestCase):
     def test_embedding_solver(self):
         DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/fuselage_ffd_severe.xyz"))
 
-        # none of these fail yet...
         test_points = [
             # Points that work with the linesearch fix on the pyspline projection code.
             # These points work with a reasonable iteration count (we have 50 for now).

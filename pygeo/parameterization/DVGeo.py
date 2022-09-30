@@ -130,7 +130,7 @@ class DVGeometry(BaseDVGeometry):
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", *args, fileName=fileName, FFD=True, kmax=kmax, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None
@@ -670,7 +670,7 @@ class DVGeometry(BaseDVGeometry):
             and need to be rotated. We have a callback function here that lets
             the user to do whatever they want with the coordinate transformation.
             The function must have the first positional argument as the array that is
-            (npt, 3) and the two optional arguments that must be available are "mode"
+            (npt, 3) and the two keyword arguments that must be available are "mode"
             ("fwd" or "bwd") and "apply_displacement" (True or False). This function
             can then be passed to DVGeo through something like ADflow, where the
             set DVGeo call can be modified as:
@@ -678,7 +678,6 @@ class DVGeometry(BaseDVGeometry):
 
             An example function is as follows:
 
-            .. highlight:: python
             .. code-block:: python
 
                 def coord_xfer(coords, mode="fwd", apply_displacement=True, **kwargs):
@@ -689,7 +688,12 @@ class DVGeometry(BaseDVGeometry):
                     # the apply_displacement flag needs to be correctly implemented
                     # by the user; the derivatives are also passed through this routine
                     # and they only need to be rotated when going between reference frames,
-                    # and they should NOT be displaced. Example transfer: The CFD mesh
+                    # and they should NOT be displaced.
+
+                    # In summary, all the displacements MUST be within the if apply_displacement == True
+                    # checks, otherwise the derivatives will be wrong.
+
+                    #  Example transfer: The CFD mesh
                     # is rotated about the x-axis by 90 degrees with the right hand rule
                     # and moved 5 units below (in z) the DVGeo reference.
                     # Note that the order of these operations is important.
@@ -1959,7 +1963,8 @@ class DVGeometry(BaseDVGeometry):
         if self.isChild and childDelta:
             return Xfinal - Xstart
         else:
-            # we only check if we need to apply the reverse coordinate transformation
+            # we only check if we need to apply the coordinate transformation
+            # and move the pointset to the reference frame of the application,
             # if this is the last pygeo in the chain
             if ptSetName in self.coord_xfer:
                 Xfinal = self.coord_xfer[ptSetName](Xfinal, mode="fwd", apply_displacement=True)
@@ -2309,7 +2314,8 @@ class DVGeometry(BaseDVGeometry):
 
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coord_xfer:
-                # this is a vector-like quantity so we dont displace and just rotate
+                # its important to remember that dIdpt are vector-like values,
+                # so we don't apply the transformations and only the rotations!
                 xsdot = self.coord_xfer[ptSetName](xsdot, mode="fwd", apply_displacement=False)
 
             # Maybe this should be:
@@ -2370,7 +2376,8 @@ class DVGeometry(BaseDVGeometry):
 
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coord_xfer:
-                # this is a vector-like quantity so we dont displace and just rotate
+                # its important to remember that dIdpt are vector-like values,
+                # so we don't apply the transformations and only the rotations!
                 vec = self.coord_xfer[ptSetName](vec, mode="bwd", apply_displacement=False)
 
             xsdot = self.JT[ptSetName].dot(np.ravel(vec))
