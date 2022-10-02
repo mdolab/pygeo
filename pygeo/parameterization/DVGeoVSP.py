@@ -501,7 +501,8 @@ class DVGeometryVSP(DVGeoSketch):
             dIdxDict = {}
             i = 0
             for dvName in self.DVs:
-                dIdxDict[dvName] = np.column_stack(dIdx[:, i].T)
+                arr = np.array(dIdx[:, i]).T
+                dIdxDict[dvName] = arr.reshape(dIdx.shape[1], 1)
                 i += 1
 
         # Now convert to dict:
