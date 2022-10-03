@@ -130,7 +130,7 @@ class DVGeometry(BaseDVGeometry):
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, *args, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None

@@ -35,7 +35,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             else:
                 ffd_options = self.options["options"]
 
-            self.DVGeo = DVGeometry(self.options["file"], comm=self.comm, **ffd_options)
+            self.DVGeo = DVGeometry(self.options["file"], **ffd_options)
 
         elif self.geo_type == "vsp":
             # we are doing a VSP-based DVGeo
