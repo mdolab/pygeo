@@ -91,7 +91,6 @@ class DVGeometry(BaseDVGeometry):
       >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
       >>> # Now add local (shape) variables
       >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
-      >>>
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
@@ -1428,10 +1427,6 @@ class DVGeometry(BaseDVGeometry):
 
         indSetB : list of ints
                   Other half of the coefs to be constrained
-
-        Examples
-        --------
-
         """
 
         if self.FFD.symmPlane is None:

@@ -3066,8 +3066,8 @@ class DVConstraints:
 
         Examples
         --------
-        # define a 2 point poly-line along the wing spanwise direction (z)
-        # and project to the design surface along y
+        >>> # define a 2 point poly-line along the wing spanwise direction (z)
+        >>> # and project to the design surface along y
         >>> start = [0, 0, 0]
         >>> end = [0, 0, 1]
         >>> nPts = 10

@@ -571,7 +571,7 @@ class DVGeometryMulti:
 
         Examples
         --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        >>> optProb.addCon(.....wrt=DVGeo.getVarNames())
 
         """
         dvNames = []
