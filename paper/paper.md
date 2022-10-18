@@ -29,9 +29,39 @@ Geometry handling has been
 
 # Features
 ## FFD
-## OpenVSP
-## Engineering Sketch Pad
+
+
+## Parametric Geometry Tools
+
+The flexibility and ease of setup of the FFD method make it preferable for some applications.
+In other applications, however, it can be beneficial to have the geometry defined in a more commonly accepted engineering format, such as a computer-aided design (CAD) model or other parametric definition of the geometry.
+CAD is the industry standard, so if manufacturing of a design is desired then a CAD model defining it is required. 
+If the geometry is designed parametrically, the relationships between design variables and geometry is defined in the model itself.
+In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
+In a parametric modelling tool, the user would create a box by defining its initial length, width, and height.
+For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables.
+
+### Engineering Sketch Pad
+
+The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
+ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
+These geometries can then be used in external analysis tools. 
+pyGeo contains the module DVGeoESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
+
+
+### OpenVSP
+
+OpenVSP [@Hahn2010a] is a tool for creating 3D parametric geometries. 
+Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
+These geometries can then be used in external analysis tools. 
+The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
+
+
+
+
 ## Class Shape Transformation
+
+The class shape transformation [@Kulfan2008] is a widely used airfoil parameterization. 
 
 <!-- Integration with OM and MACH -->
 
