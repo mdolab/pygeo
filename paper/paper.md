@@ -39,7 +39,20 @@ The parameterizations and constraints are also differentiated to enable the use 
 
 ## Integrations
 <!-- Integration with OM and MACH -->
-## FFD
+
+## Geometry Generation
+
+## Free-form deformation
+The free-form deformation (FFD) method [Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
+In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
+By introducing different densities of control points, a high degree of geometry control can be obtained.
+
+Compared to other parameterizations, the FFD method has several key advantages.
+Since the entire geometry is embedded, there is no need to start with or reverse-engineer a parametric geometry representation as commonly done with B-spline-based methods, where a least-squares fit is needed to generate a B-spline surface representation.
+Rather than parameterizing the geometry directly, the geometric _deformation_ is parameterized instead.
+This decoupling of geometry definition from geometric deformation allows for control and refinement of the deformation independently of the original geometry.
+When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
+As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries.
 
 
 ## Parametric Geometry Tools
