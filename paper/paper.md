@@ -26,7 +26,7 @@ bibliography: paper.bib
 
 # Summary
 In the field of aerodynamic shape optimization, the geometry of an object is often modified by an optimization algorithm in order to improve its performance.
-A common example is the shape optimization of an aircraft wing, where the aerodynamic drag is minimized by adjusting the external shape of the wing.
+A common example is the shape optimization of an aircraft wing, where the aerodynamic drag computed via computational fluid dynamics (CFD) and minimized by adjusting the external shape of the wing.
 In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry takes on an even greater significance in ensuring that multiple disciplines have a consistent and unified geometry representation.
 
@@ -52,7 +52,7 @@ pyGeo's modules are used to send design variables and constraints to pyOptSparse
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
 
-### Free-form deformation
+### Free-form Deformation
 
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
 In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
@@ -79,7 +79,7 @@ For either case, the length, width, and height (or a subset) can be controlled i
 
 #### Engineering Sketch Pad
 
-The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
+Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
 ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
 These geometries can then be used in external analysis tools. 
 pyGeo contains the module DVGeoESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
@@ -112,11 +112,23 @@ Area and volume constraints constrain the geometry from deviating from the initi
 
 <!-- Triangulated surface constraint -->
 
-## Geometric utilities
+## Geometric Utilities
+
+# Parallelism
+
+# Gradient Computation
 
 # Statement of Need
+Very few open-source packages exist with comparable functionalities.
+To the best knowledge of the authors, the only other optimization framework that contains geometry parameterization is SU2 [@Economon2016a].
+It supports both Hicks--Henne bump functions and FFD parameterizations.
+However, it is integrated directly into the CFD solver SU2, and therefore cannot be used with other solvers.
 
+It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
+However, several capabilities will be missing.
+Those include geometric constraints, parallel computation, and gradient computation.
 
+pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
 DVGeoESP was used to parameterize hydrogen tanks within an aerostructural optimization [@Brelje2021a].
 DVGeoVSP was used to parameterize a podded electric turbofan [@Yildirim2021c].
 # Acknowledgements
