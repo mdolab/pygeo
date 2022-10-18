@@ -117,6 +117,8 @@ Area and volume constraints constrain the geometry from deviating from the initi
 # Statement of Need
 
 
+DVGeoESP was used to parameterize hydrogen tanks within an aerostructural optimization [@Brelje2021a].
+DVGeoVSP was used to parameterize a podded electric turbofan [@Yildirim2021c].
 # Acknowledgements
 
 
