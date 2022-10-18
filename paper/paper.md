@@ -34,8 +34,8 @@ pyGeo is a geometry package for aerodynamic and multidisciplinary design optimiz
 It provides some basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and some utility functions for geometry manipulation.
 The parameterizations and constraints are also differentiated to enable the use of gradient-based optimizers.
 
-
-# Integrations
+# Features
+## Integrations
 
 pyGeo was originally developed to use FFDs in MACH [@Kenway2010b].
 
@@ -45,16 +45,16 @@ Through MPhys, a wrapper for MACH, pyGeo's features can also be used within anot
 The package pyOptSparse [@Wu2020a] is used to interface with the optimizer directly. 
 pyGeo's modules are used to send design variables and constraints to pyOptSparse rather than the user handling these interactions.
 
-# Geometry Generation
+## Geometry Generation
 
-# Geometry Parameterization
+## Geometry Parameterization
 
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
 
-## Free-form deformation
+### Free-form deformation
 
-The free-form deformation (FFD) method [Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
+The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
 In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
 By introducing different densities of control points, a high degree of geometry control can be obtained.
 
@@ -66,7 +66,7 @@ When working with multiple geometries, for example an optimization involving an 
 As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries.
 
 
-## Parametric Geometry Tools
+### Parametric Geometry Tools
 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
 In other applications, however, it can be beneficial to have the geometry defined in a more commonly accepted engineering format, such as a computer-aided design (CAD) model or other parametric definition of the geometry.
@@ -77,7 +77,7 @@ In an FFD model of a box, for example, the FFD points could represent the four c
 In a parametric modelling tool, the user would create a box by defining its initial length, width, and height.
 For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables.
 
-### Engineering Sketch Pad
+#### Engineering Sketch Pad
 
 The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
 ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
@@ -85,7 +85,7 @@ These geometries can then be used in external analysis tools.
 pyGeo contains the module DVGeoESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
 
 
-### OpenVSP
+#### OpenVSP
 
 OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries. 
 Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
@@ -93,14 +93,14 @@ These geometries can then be used in external analysis tools.
 The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
 
 
-## Class Shape Transformation
+### Class Shape Transformation
 
 The class shape transformation [@Kulfan2008] is a widely used airfoil parameterization. 
 pyGeo contains a module, DVGeoCST, that can be used for airfoil optimization. 
 This module contains analytic derivatives for each design variable available in CST optimization. 
 Unlike other DVGeo modules, this one can only be used for 2D problems, such as airfoil optimization. 
 
-## Constraints
+### Constraints
 
 pyGeo also includes geometric constraints through the DVCon module. 
 Constraints are all differentiated in order to use within gradient-based optimization. 
@@ -112,6 +112,7 @@ In each case the dimension of the geometry is constrained from deviating from th
 For example, a common constraint is to prevent the internal volume of a wing from falling below some set threshold.
 
 <!-- Triangulated surface constraint -->
+## Geometric utilities
 
 # Statement of Need
 
