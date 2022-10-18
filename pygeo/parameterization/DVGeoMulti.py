@@ -746,11 +746,11 @@ class DVGeometryMulti:
             Flag specifying whether local variables are to be added
 
         ignoreVars : list of strings
-            List of design variables the user DOESN'T want to use
+            List of design variables the user doesn't want to use
             as optimization variables.
 
         freezeVars : list of string
-            List of design variables the user WANTS to add as optimization
+            List of design variables the user wants to add as optimization
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.

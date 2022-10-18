@@ -78,7 +78,7 @@ class DVGeometry(BaseDVGeometry):
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
-      >>> from pygeo import *
+      >>> from pygeo import DVGeometry
       >>> DVGeo = DVGeometry('FFD_file.fmt')
       >>> # Embed a set of coordinates Xpt into the object
       >>> DVGeo.addPointSet(Xpt, 'myPoints')
@@ -295,14 +295,18 @@ class DVGeometry(BaseDVGeometry):
         yFraction : float
             Specify the parametric location of the reference axis node along axis: 1 relative to
             top and bottom control points location. Constant for every spanwise section.
-            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
-            and the option will not have any effect.
+
+            .. note::
+                if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+                and the option will not have any effect.
 
         zFraction : float
             Specify the parametric location of the reference axis node along axis: 2 relative to
             top and bottom control points location. Constant for every spanwise section.
-            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
-            and the option will not have any effect.
+
+            .. note::
+                if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+                and the option will not have any effect.
 
         volumes : list or array or integers
             List of the volume indices, in 0-based ordering that this
@@ -2658,11 +2662,11 @@ class DVGeometry(BaseDVGeometry):
             Flag specifying whether spanwiselocal variables are to be added
 
         ignoreVars : list of strings
-            List of design variables the user DOESN'T want to use
+            List of design variables the user doesn't want to use
             as optimization variables.
 
         freezeVars : list of string
-            List of design variables the user WANTS to add as optimization
+            List of design variables the user wants to add as optimization
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
@@ -4543,7 +4547,7 @@ class DVGeometry(BaseDVGeometry):
         `k`
             along span
 
-        If we choose `sectionIndex='k'`, this function will compute a frame which
+        If we choose ``sectionIndex='k'``, this function will compute a frame which
         has two axes aligned with the k-planes of the FFD volume. This is useful
         because in some cases (as with a winglet), we want to perturb sectional
         control points within the section plane instead of in the global

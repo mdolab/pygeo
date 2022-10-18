@@ -859,7 +859,8 @@ class DVGeometryESP(DVGeoSketch):
         * rows=[1], cols=[2]: pick a specific value
 
         .. note::
-            THE INDICES ARE 1-indexed (per the OpenCSM standard)!! Not 0-indexed.
+            The indices are 1-indexed (per the OpenCSM standard)!!
+            They are not 0-indexed.
 
         The design variable vector passed to pyOptSparse will be in row-major order.
         In other words, the vector will look like:
