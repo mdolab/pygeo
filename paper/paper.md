@@ -30,6 +30,10 @@ A common example is the shape optimization of an aircraft wing, where the aerody
 In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry takes on an even greater significance in ensuring that multiple disciplines have a consistent and unified geometry representation.
 
+pyGeo is a geometry package for aerodynamic and multidisciplinary design optimization.
+It provides some basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and some utility functions for geometry manipulation.
+The parameterizations and constraints are also differentiated to enable the use of gradient-based optimizers.
+
 # Features
 ## FFD
 
@@ -64,9 +68,6 @@ The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH 
 
 ## Class Shape Transformation
 =======
-pyGeo is a geometry package for aerodynamic and multidisciplinary design optimization.
-It provides some basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and some utility functions for geometry manipulation.
-The parameterizations and constraints are also differentiated to enable the use of gradient-based optimizers.
 
 
 The class shape transformation [@Kulfan2008] is a widely used airfoil parameterization. 
