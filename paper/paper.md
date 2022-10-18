@@ -106,10 +106,9 @@ pyGeo also includes geometric constraints through the DVCon module.
 Constraints are all differentiated in order to use within gradient-based optimization. 
 DVCon creates constraint objects which are passed to pyOptSparse. 
 
-The main type of geometric constraint in DVCon is a dimensional constraint. 
-In 1D this is thickness, for 2D area, and for 3D volume.
-In each case the dimension of the geometry is constrained from deviating from the initial value by some amount set by the user. 
-For example, a common constraint is to prevent the internal volume of a wing from falling below some set threshold.
+Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints. 
+2D thickness constraints control the thicknesses between two surfaces in a plane. 
+Area and volume constraints constrain the geometry from deviating from the initial design by some relative or absolute measure.
 
 <!-- Triangulated surface constraint -->
 ## Geometric utilities
