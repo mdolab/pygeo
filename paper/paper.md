@@ -34,11 +34,26 @@ pyGeo is a geometry package for aerodynamic and multidisciplinary design optimiz
 It provides some basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and some utility functions for geometry manipulation.
 The parameterizations and constraints are also differentiated to enable the use of gradient-based optimizers.
 
-# Features
+
+# Integrations
+
+pyGeo was originally developed to use FFDs in MACH [@Kenway2010b].
 
 
-## Integrations
-<!-- Integration with OM and MACH -->
+pyGeo can be used as the basis for the geometry within the MDO framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c].
+Through MPhys, a wrapper for MACH, pyGeo's features can also be used within another MDO framework, OpenMDAO [@Gray2019a].
+
+The package pyOptSparse [@Wu2020a] is used to interface with the optimizer directly. 
+pyGeo's modules are used to send design variables and constraints to pyOptSparse rather than the user handling these interactions.
+
+# Geometry Generation
+
+
+# Geometry Parameterization
+
+pyGeo handles geometry manipulation through DVGeo objects. 
+There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
+
 ## FFD
 
 
@@ -47,6 +62,7 @@ The parameterizations and constraints are also differentiated to enable the use 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
 In other applications, however, it can be beneficial to have the geometry defined in a more commonly accepted engineering format, such as a computer-aided design (CAD) model or other parametric definition of the geometry.
 CAD is the industry standard, so if manufacturing of a design is desired then a CAD model defining it is required. 
+
 If the geometry is designed parametrically, the relationships between design variables and geometry is defined in the model itself.
 In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
 In a parametric modelling tool, the user would create a box by defining its initial length, width, and height.
@@ -68,8 +84,6 @@ These geometries can then be used in external analysis tools.
 The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
 
 
-
-
 ## Class Shape Transformation
 
 
@@ -78,11 +92,16 @@ The class shape transformation [@Kulfan2008] is a widely used airfoil parameteri
 
 ## Constraints
 
-# One Dimension
+pyGeo also includes geometric constraints through the DVCon module. 
+Constraints are all differentiated in order to use within gradient-based optimization. 
+DVCon creates constraint objects which are passed to pyOptSparse. 
 
-# Two Dimensions
+The main type of geometric constraint in DVCon is a dimensional constraint. 
+In 1D this is thickness, for 2D area, and for 3D volume.
+In each case the dimension of the geometry is constrained from deviating from the initial value by some amount set by the user. 
+For example, a common constraint is to prevent the internal volume of a wing from falling below some set threshold.
 
-# Three Dimensions
+<!-- Triangulated surface constraint -->
 
 # Statement of Need
 
