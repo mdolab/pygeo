@@ -39,7 +39,6 @@ The parameterizations and constraints are also differentiated to enable the use 
 
 pyGeo was originally developed to use FFDs in MACH [@Kenway2010b].
 
-
 pyGeo can be used as the basis for the geometry within the MDO framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c].
 Through MPhys, a wrapper for MACH, pyGeo's features can also be used within another MDO framework, OpenMDAO [@Gray2019a].
 
@@ -48,13 +47,21 @@ pyGeo's modules are used to send design variables and constraints to pyOptSparse
 
 # Geometry Generation
 
-
 # Geometry Parameterization
 
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
+## Free-form deformation
+The free-form deformation (FFD) method [Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
+In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
+By introducing different densities of control points, a high degree of geometry control can be obtained.
 
-## FFD
+Compared to other parameterizations, the FFD method has several key advantages.
+Since the entire geometry is embedded, there is no need to start with or reverse-engineer a parametric geometry representation as commonly done with B-spline-based methods, where a least-squares fit is needed to generate a B-spline surface representation.
+Rather than parameterizing the geometry directly, the geometric _deformation_ is parameterized instead.
+This decoupling of geometry definition from geometric deformation allows for control and refinement of the deformation independently of the original geometry.
+When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
+As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries.
 
 
 ## Parametric Geometry Tools
