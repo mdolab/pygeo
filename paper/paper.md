@@ -51,7 +51,9 @@ pyGeo's modules are used to send design variables and constraints to pyOptSparse
 
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
+
 ## Free-form deformation
+
 The free-form deformation (FFD) method [Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
 In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
 By introducing different densities of control points, a high degree of geometry control can be obtained.
