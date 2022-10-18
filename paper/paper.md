@@ -24,6 +24,12 @@ date: October 18, 2022
 bibliography: paper.bib
 ---
 
+<!-- 
+TODOS
+- add pictures
+- rename some functions
+-->
+
 # Summary
 In the field of aerodynamic shape optimization, the geometry of an object is often modified by an optimization algorithm in order to improve its performance.
 A common example is the shape optimization of an aircraft wing, where the aerodynamic drag computed via computational fluid dynamics (CFD) and minimized by adjusting the external shape of the wing.
@@ -46,14 +52,20 @@ The package pyOptSparse [@Wu2020a] is used to interface with the optimizer direc
 pyGeo's modules are used to send design variables and constraints to pyOptSparse rather than the user handling these interactions.
 
 ## Geometry Generation
-
+<!-- include sample wing picture -->
 ## Geometry Parameterization
 
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
 
 ### Free-form Deformation
-
+<!--
+TODO:
+- talk less about FFDs and more about capabilities
+- child FFD
+- ref axis and complex geometric operations
+- show a picture
+-->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
 In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
 By introducing different densities of control points, a high degree of geometry control can be obtained.
