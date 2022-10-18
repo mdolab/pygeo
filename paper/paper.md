@@ -35,6 +35,10 @@ It provides some basic geometry generation capabilities, several methods for geo
 The parameterizations and constraints are also differentiated to enable the use of gradient-based optimizers.
 
 # Features
+
+
+## Integrations
+<!-- Integration with OM and MACH -->
 ## FFD
 
 
@@ -58,7 +62,7 @@ pyGeo contains the module DVGeoESP which translates an ESP model into a form usa
 
 ### OpenVSP
 
-OpenVSP [@Hahn2010a] is a tool for creating 3D parametric geometries. 
+OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries. 
 Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
 These geometries can then be used in external analysis tools. 
 The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
@@ -67,12 +71,18 @@ The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH 
 
 
 ## Class Shape Transformation
-=======
+
 
 
 The class shape transformation [@Kulfan2008] is a widely used airfoil parameterization. 
 
-<!-- Integration with OM and MACH -->
+## Constraints
+
+# One Dimension
+
+# Two Dimensions
+
+# Three Dimensions
 
 # Statement of Need
 
