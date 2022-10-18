@@ -95,9 +95,10 @@ The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH 
 
 ## Class Shape Transformation
 
-
-
 The class shape transformation [@Kulfan2008] is a widely used airfoil parameterization. 
+pyGeo contains a module, DVGeoCST, that can be used for airfoil optimization. 
+This module contains analytic derivatives for each design variable available in CST optimization. 
+Unlike other DVGeo modules, this one can only be used for 2D problems, such as airfoil optimization. 
 
 ## Constraints
 
