@@ -24,12 +24,6 @@ date: October 18, 2022
 bibliography: paper.bib
 ---
 
-<!-- 
-TODOS
-- add pictures
-- rename some functions
--->
-
 # Summary
 In the field of aerodynamic shape optimization, the geometry of an object is often modified by an optimization algorithm in order to improve its performance.
 A common example is the shape optimization of an aircraft wing, where the aerodynamic drag computed via computational fluid dynamics (CFD) and minimized by adjusting the external shape of the wing.
@@ -141,16 +135,31 @@ Area and volume constraints constrain the geometry from deviating from the initi
 
 <!-- Triangulated surface constraint -->
 
-## Geometric Utilities
-
 # Parallelism
+pyGeo can optionally work under distributed memory parallelism under MPI, which can be helpful when interfacing with CFD applications.
+For example, the computational mesh may be partitioned and distributed among many processors, and each processor may be aware of only its portion of the mesh.
+pyGeo can handle such scenarios seamlessly, by independently manipulating the geometry on each processor, and aggregating the constraints across all processors when communicating with the optimizer.
 
-# Gradient Computation
+# Derivative Computation
+In addition to geometry manipulation and constraints, pyGeo is able to compute derivatives of those operations.
+For the geometric deformation, pyGeo can compute the Jacobian
+\begin{equation*}
+\frac{\mathrm{d}X_s}{\mathrm{d}x}
+\end{equation*}
+where $X_s$ is the vector of surface mesh coordinates, and $x$ the vector of geometric design variables.
+
+Similarly for the constraints, the Jacobian
+\begin{equation*}
+\frac{\mathrm{d}g}{\mathrm{d}x}
+\end{equation*}
+can be computed, where $g$ is the vector of geometric constraints.
+
+For the FFD parameterization, these are computed via the complex-step method [@Martins2003a].
 
 # Statement of Need
 Very few open-source packages exist with comparable functionalities.
 To the best knowledge of the authors, the only other optimization framework that contains geometry parameterization is SU2 [@Economon2016a].
-It supports both Hicks--Henne bump functions and FFD parameterizations.
+It supports Hicks--Henne bump functions for airfoil optimizations and the FFD method for three-dimensional cases.
 However, it is integrated directly into the CFD solver SU2, and therefore cannot be used with other solvers.
 
 It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
