@@ -56,7 +56,7 @@ pyGeo has a solver-independent interface that allows for a direct comparison of 
 
 ## Geometry Generation
 <!-- include sample wing picture -->
-## Geometry Parameterization
+## Geometry Parameterization with DVGeo
 
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
@@ -80,7 +80,6 @@ This decoupling of geometry definition from geometric deformation allows for con
 When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
 As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries.
 
-
 ### Parametric Geometry Tools
 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
@@ -92,6 +91,10 @@ In an FFD model of a box, for example, the FFD points could represent the four c
 In a parametric modelling tool, the user would create a box by defining its initial length, width, and height.
 For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables.
 
+pyGeo interfaces with ESP and OpenVSP in similar ways.
+In both cases, an instance of the model is read in by a DVGeo object and its points are associated with coordinates in a mesh from a solver in the MACH framework using the DVGeo object. 
+The design variables built into the model are also read into the DVGeo object. 
+
 #### Engineering Sketch Pad
 
 Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
@@ -99,14 +102,12 @@ ESP can be used to create general CAD models for applications ranging from conce
 These geometries can then be used in external analysis tools. 
 pyGeo contains the module DVGeoESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
 
-
 #### OpenVSP
 
 OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries. 
 Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
 These geometries can then be used in external analysis tools. 
 The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
-
 
 ### Class Shape Transformation
 
@@ -143,7 +144,6 @@ It is worth noting here that both OpenVSP and ESP can be used directly in optimi
 However, these direct uses have a few gaps in capabilities needed for high-fidelity MDO. 
 pyGeo enables high-fidelity MDO with these tools through parallelism, efficient gradients, and geometric constraints, all while keeping the original tool in the optimization loop.
 It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to. 
-
 
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
 DVGeoESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
