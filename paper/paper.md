@@ -51,6 +51,9 @@ Through MPhys, a wrapper for MACH, pyGeo's features can also be used within anot
 The package pyOptSparse [@Wu2020a] is used to interface with the optimizer directly. 
 pyGeo's modules are used to send design variables and constraints to pyOptSparse rather than the user handling these interactions.
 
+
+pyGeo has a solver-independent interface that allows for a direct comparison of two different solvers with the same parameterization [@Adler2022c]
+
 ## Geometry Generation
 <!-- include sample wing picture -->
 ## Geometry Parameterization
@@ -140,12 +143,16 @@ It supports both Hicks--Henne bump functions and FFD parameterizations.
 However, it is integrated directly into the CFD solver SU2, and therefore cannot be used with other solvers.
 
 It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
-However, several capabilities will be missing.
-Those include geometric constraints, parallel computation, and gradient computation.
+However, these direct uses have a few gaps in capabilities needed for high-fidelity MDO. 
+pyGeo enables high-fidelity MDO with these tools through parallelism, efficient gradients, and geometric constraints, all while keeping the original tool in the optimization loop.
+It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to. 
+
 
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
-DVGeoESP was used to parameterize hydrogen tanks within an aerostructural optimization [@Brelje2021a].
-DVGeoVSP was used to parameterize a podded electric turbofan [@Yildirim2021c].
+DVGeoESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
+DVGeoVSP was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
+DVGeoCST was used to compare methods for airfoil optimization [@Adler2022c].
+
 # Acknowledgements
 
 
