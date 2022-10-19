@@ -14,6 +14,5 @@ This package consists of the following modules:
    DVGeometryESP
    DVGeometryVSP
    DVGeometryCST
-   pyNetwork
    pyGeo
    geo_utils
