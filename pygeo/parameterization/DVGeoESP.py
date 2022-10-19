@@ -90,11 +90,10 @@ class DVGeometryESP(DVGeoSketch):
     --------
     The general sequence of operations for using DVGeometry is as follows:
 
-      >>> from pygeo import *
+      >>> from pygeo import DVGeometryESP
       >>> DVGeo = DVGeometryESP("wing.csm", MPI_COMM_WORLD)
       >>> # Add a set of coordinates Xpt into the object
       >>> DVGeo.addPointSet(Xpt, 'myPoints')
-      >>>
     """
 
     def __init__(
@@ -860,7 +859,8 @@ class DVGeometryESP(DVGeoSketch):
         * rows=[1], cols=[2]: pick a specific value
 
         .. note::
-            THE INDICES ARE 1-indexed (per the OpenCSM standard)!! Not 0-indexed.
+            The indices are 1-indexed (per the OpenCSM standard)!!
+            They are not 0-indexed.
 
         The design variable vector passed to pyOptSparse will be in row-major order.
         In other words, the vector will look like:
