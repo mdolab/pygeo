@@ -85,6 +85,12 @@ As both surfaces would be manipulated by the same volume, coincident surfaces re
 
 In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes and multiple FFD volumes.
 
+The basic FFD implementation lacks flexibility when the geometry has intersecting components.
+In such cases, pyGeo can parameterize each component using FFDs and ensure a watertight surface representation at the component intersections using an inverse-distance surface deformation method [@Yildirim2021b].
+This method relies on the open source pySurf package [@Secco2018b] to compute intersections between components, perform projections, and remesh curves.
+\autoref{fig:ffd_multi} shows an example of a component-based FFD setup for a supersonic transport aircraft.
+
+![Example of FFD parameterization with intersecting components [@Seraj2022a] \label{fig:ffd_multi}](ffd_multi.png)
 
 ### Parametric Geometry Tools
 
@@ -172,6 +178,7 @@ pyGeo has been used extensively in aerodynamic and aerostructural optimizations 
 DVGeoESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
 DVGeoVSP was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
 DVGeoCST was used to compare methods for airfoil optimization [@Adler2022c].
+DVGeoMulti has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 
 # Acknowledgements
 
