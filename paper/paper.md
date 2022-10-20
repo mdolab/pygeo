@@ -160,7 +160,7 @@ Similarly for the constraints, the Jacobian
 \end{equation*}
 can be computed, where $g$ is the vector of geometric constraints.
 
-For the FFD parameterization, these are computed via the complex-step method [@Martins2003a].
+For the FFD parameterization, these derivatives are computed using a combination of analytic methods and the complex-step method [@Martins2003a].
 
 # Statement of Need
 Very few open-source packages exist with comparable functionalities.
