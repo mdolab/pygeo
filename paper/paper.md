@@ -64,9 +64,9 @@ There are different types of DVGeo objects for different methods of geometry par
 <!--
 TODO:
 - talk less about FFDs and more about capabilities
-- child FFD
-- multi FFD
 - ref axis and complex geometric operations for a wing
+- [x] child FFD
+- [x] multi FFD
 - show pictures
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
@@ -91,7 +91,17 @@ As both surfaces would be manipulated by the same volume, coincident surfaces re
 In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "children FFD") and multiple FFD volumes.
 
 #### Children FFD
-<!--MM: will work on this soon, not sold on the subsection titles I made, pls provide input-->
+<!--MM: not sold on the subsection titles I made, pls provide input-->
+FFD objects can be organized in a hierarchical structure within pyGeo.
+Dependent, "children" FFD blocks can be embedded in the main, "parent" FFD object to enable more detailed local modifications of a sub-set of the reference surface points.
+The user can define local and global variables on both objects independently.
+pyGeo will first propagate the parent node deformations to both the surface and the children control points, then finally propagate the deformations of the children control points to their embedded point subset. <!--MM: I would like to double check this sentence with Anil-->
+One of the advantages of using this approach is that every FFD block has its own independent reference axis to be used for global design variables such as rotations and scaling
+This facilitates, for example, the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
+Figure \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of an hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the children FFDs with a quarter-chord reference axis.
+
+![Example of parametrization through parent-children FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
+
 
 #### Multi-FFD 
 
