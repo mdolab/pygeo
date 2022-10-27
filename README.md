@@ -5,7 +5,7 @@
 
 pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization (MDO).
 It can be used for MDO within the [MACH framework](https://github.com/mdolab/MACH-Aero) and within [OpenMDAO](https://github.com/OpenMDAO/OpenMDAO) through [Mphys](https://github.com/OpenMDAO/mphys).
-Its parameterization options include a free form deformation (FFD) implementation, an interface to NASA's [OpenVSP](https://openvsp.org/) parametric geometry tool, and an interface to the CAD package [ESP] (https://acdl.mit.edu/ESP/),
+Its parameterization options include a free form deformation (FFD) implementation, an interface to NASA's [OpenVSP](https://openvsp.org/) parametric geometry tool, and an interface to the CAD package [ESP](https://acdl.mit.edu/ESP/),
 It also includes geometric constraints and utility functions for geometry manipulation.
 
 ![](doc/images/DPW4_FFD-27745.gif)
