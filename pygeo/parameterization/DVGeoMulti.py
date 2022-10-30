@@ -1515,39 +1515,6 @@ class CompIntersection:
 
         return delta
 
-    def update_d(self, ptSetName, dPt, dSeam):
-
-        """forward mode differentiated version of the update routine.
-        Note that dPt and dSeam are both one dimensional arrays
-        """
-        pts = self.points[ptSetName][0]
-        indices = self.points[ptSetName][1]
-        factors = self.points[ptSetName][2]
-
-        # we need to reshape the arrays for simpler code
-        dSeam = dSeam.reshape((len(self.seam0), 3))
-
-        for i in range(len(factors)):
-            # j is the index of the point in the full set we are
-            # working with.
-            j = indices[i]
-
-            # Do it vectorized
-            rr = pts[j] - self.seam0
-            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-            LdefoDist3 = LdefoDist**3
-            Wi = LdefoDist3
-            den = np.sum(Wi)
-            interp_d = np.zeros(3)
-            for iDim in range(3):
-                interp_d[iDim] = np.sum(Wi * dSeam[:, iDim]) / den
-
-                # Now the delta is replaced by 1-factor times the weighted
-                # interp of the seam * factor of the original:
-                dPt[j * 3 + iDim] = factors[i] * dPt[j * 3 + iDim] + (1 - factors[i]) * interp_d[iDim]
-
-        return
-
     def sens(self, dIdPt, ptSetName, comm):
         # Return the reverse accumulation of dIdpt on the seam
         # nodes. Also modifies the dIdp array accordingly.
