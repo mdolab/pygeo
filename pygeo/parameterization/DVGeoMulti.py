@@ -1532,8 +1532,23 @@ class CompIntersection:
         # bar connectivity for the remeshed elements
         conn = self.seamConn
 
-        # define an epsilon to avoid dividing by zero later on
+        # Define an epsilon to avoid dividing by zero later on
         eps = 1e-50
+
+        # Get the two end points for the line elements
+        r0 = coor[conn[:, 0]]
+        r1 = coor[conn[:, 1]]
+
+        # Compute the lengths of each element in each coordinate direction
+        length_x = r1[:, 0] - r0[:, 0]
+        length_y = r1[:, 1] - r0[:, 1]
+        length_z = r1[:, 2] - r0[:, 2]
+
+        # Compute the 'a' coefficient
+        a = (length_x) ** 2 + (length_y) ** 2 + (length_z) ** 2
+
+        # Compute the total length of each element
+        length = np.sqrt(a)
 
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
@@ -1543,50 +1558,48 @@ class CompIntersection:
         if self.projectFlag:
             seamBar += self.seamBarProj[ptSetName]
 
-        for k in range(dIdPt.shape[0]):
-            for i in range(len(factors)):
+        for i in range(len(factors)):
 
-                # j is the index of the point in the full set we are working with.
-                j = indices[i]
+            # j is the index of the point in the full set we are working with.
+            j = indices[i]
 
-                # coordinates of the original point
-                rp = pts[j]
+            # coordinates of the original point
+            rp = pts[j]
+
+            # Compute the distances from the point being updated to the first end point of each element
+            dist_x = r0[:, 0] - rp[0]
+            dist_y = r0[:, 1] - rp[1]
+            dist_z = r0[:, 2] - rp[2]
+
+            # Compute b and c coefficients
+            b = 2 * (length_x * dist_x + length_y * dist_y + length_z * dist_z)
+            c = dist_x**2 + dist_y**2 + dist_z**2
+
+            # Compute some reccurring terms
+            disc = b * b - 4 * a * c
+            sabc = np.sqrt(np.maximum(a + b + c, 0.0))
+            sc = np.sqrt(c)
+
+            # Compute denominators for the integral evaluations
+            den1 = disc * sabc - eps
+            den2 = disc * sc - eps
+
+            # integral evaluations
+            eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length
+            eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * length
+
+            # denominator only gets one integral
+            den = np.sum(eval1)
+
+            evalDiff = eval1 - eval2
+
+            for k in range(dIdPt.shape[0]):
 
                 # This is the local seed (well the 3 seeds for the point)
                 localVal = dIdPt[k, j, :] * (1 - factors[i])
 
                 # Scale the dIdpt by the factor..dIdpt is input/output
                 dIdPt[k, j, :] *= factors[i]
-
-                # get the two end points for the line elements
-                r0 = coor[conn[:, 0]]
-                r1 = coor[conn[:, 1]]
-                # compute a, b, and c coefficients
-                a = (r1[:, 0] - r0[:, 0]) ** 2 + (r1[:, 1] - r0[:, 1]) ** 2 + (r1[:, 2] - r0[:, 2]) ** 2
-                b = 2 * (
-                    (r1[:, 0] - r0[:, 0]) * (r0[:, 0] - rp[0])
-                    + (r1[:, 1] - r0[:, 1]) * (r0[:, 1] - rp[1])
-                    + (r1[:, 2] - r0[:, 2]) * (r0[:, 2] - rp[2])
-                )
-                c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
-                # distances for each element
-                dists = np.sqrt(np.maximum(a, 0.0))
-
-                # compute some re-occurring terms
-                det = b * b - 4 * a * c
-                sabc = np.sqrt(np.maximum(a + b + c, 0.0))
-                sc = np.sqrt(np.maximum(c, 0.0))
-                # denominators on the integral evaluations
-                den1 = det * sabc - eps
-                den2 = det * sc - eps
-                # integral evaluations
-                eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * dists
-                eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
-
-                # denominator only gets one integral
-                den = np.sum(eval1)
-
-                evalDiff = eval1 - eval2
 
                 # do each direction separately
                 for iDim in range(3):
