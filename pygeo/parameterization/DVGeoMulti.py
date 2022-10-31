@@ -144,6 +144,7 @@ class DVGeometryMulti:
         trackSurfaces=None,
         excludeSurfaces=None,
         remeshBwd=True,
+        anisotropy=[1.0, 1.0, 1.0],
     ):
         """
         Method that defines intersections between components.
@@ -211,6 +212,12 @@ class DVGeometryMulti:
             Flag to specify whether to remesh feature curves on the side opposite that
             which is specified by the march direction.
 
+        anisotropy : list of float, optional
+            List with three entries specifying scaling factors in the [x, y, z] directions.
+            The factors multiply the distances in each direction computed for curve-based deformation.
+            Smaller factors in a certain direction will amplify the effect of the parts of the curve
+            that lie in that direction from the points being warped.
+
         """
 
         # Assign mutable defaults
@@ -241,6 +248,7 @@ class DVGeometryMulti:
                 trackSurfaces,
                 excludeSurfaces,
                 remeshBwd,
+                anisotropy,
                 self.debug,
                 self.dtype,
             )
@@ -941,6 +949,7 @@ class CompIntersection:
         trackSurfaces,
         excludeSurfaces,
         remeshBwd,
+        anisotropy,
         debug,
         dtype,
     ):
@@ -1022,7 +1031,6 @@ class CompIntersection:
 
         self.dStarA = dStarA
         self.dStarB = dStarB
-        # self.halfdStar = self.dStar/2.0
         self.points = OrderedDict()
 
         # Make surface names lowercase
@@ -1035,6 +1043,9 @@ class CompIntersection:
             if k.lower() in self.trackSurfaces:
                 raise Error(f"Surface {k} cannot be in both trackSurfaces and excludeSurfaces.")
             self.excludeSurfaces[k.lower()] = v
+
+        # Save anisotropy list
+        self.anisotropy = anisotropy
 
         # process the feature curves
 
@@ -1468,9 +1479,10 @@ class CompIntersection:
             # Run vectorized weighted interpolation
 
             # Compute the distances from the point being updated to the first end point of each element
-            dist_x = r0[:, 0] - rp[0]
-            dist_y = r0[:, 1] - rp[1]
-            dist_z = r0[:, 2] - rp[2]
+            # The distances are scaled by the user-specified anisotropy in each direction
+            dist_x = (r0[:, 0] - rp[0]) * self.anisotropy[0]
+            dist_y = (r0[:, 1] - rp[1]) * self.anisotropy[1]
+            dist_z = (r0[:, 2] - rp[2]) * self.anisotropy[2]
 
             # Compute b and c coefficients
             b = 2 * (length_x * dist_x + length_y * dist_y + length_z * dist_z)
@@ -1567,9 +1579,10 @@ class CompIntersection:
             rp = pts[j]
 
             # Compute the distances from the point being updated to the first end point of each element
-            dist_x = r0[:, 0] - rp[0]
-            dist_y = r0[:, 1] - rp[1]
-            dist_z = r0[:, 2] - rp[2]
+            # The distances are scaled by the user-specified anisotropy in each direction
+            dist_x = (r0[:, 0] - rp[0]) * self.anisotropy[0]
+            dist_y = (r0[:, 1] - rp[1]) * self.anisotropy[1]
+            dist_z = (r0[:, 2] - rp[2]) * self.anisotropy[2]
 
             # Compute b and c coefficients
             b = 2 * (length_x * dist_x + length_y * dist_y + length_z * dist_z)
