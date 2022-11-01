@@ -36,5 +36,10 @@ G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approac
 ```
 
 ## License
+pyGeo is licensed under the Apache License, Version 2.0 (the "License"). See `LICENSE` for the full license.
 
-Copyright 2022 MDO Lab. See the LICENSE file for details.
+## Copyright
+Copyright (c) 2012 University of Toronto
+Copyright (c) 2014 University of Michigan
+Additional copyright (c) 2014 Gaetan K. W. Kenway, Charles A. Mader, and Joaquim R. R. A. Martins
+All rights reserved.
