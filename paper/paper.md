@@ -24,32 +24,29 @@ date: October 18, 2022
 bibliography: paper.bib
 ---
 
-<!-- 
-TODOS
-- add pictures
-- rename some functions
--->
-
 # Summary
 In the field of aerodynamic shape optimization, the geometry of an object is often modified by an optimization algorithm in order to improve its performance.
 A common example is the shape optimization of an aircraft wing, where the aerodynamic drag computed via computational fluid dynamics (CFD) and minimized by adjusting the external shape of the wing.
 In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry takes on an even greater significance in ensuring that multiple disciplines have a consistent and unified geometry representation.
 
-pyGeo is a geometry package for aerodynamic and multidisciplinary design optimization.
+pyGeo is a geometry package for three-dimensional shape manipulation, tailored for aerodynamic and multidisciplinary design optimization purposes.
 It provides some basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and some utility functions for geometry manipulation.
-The parameterizations and constraints are also differentiated to enable the use of gradient-based optimizers.
+The code provides derivatives for all parameterization methods and constraint functions, enabling the use of gradient-based optimizers.
+<!--MM: I am team parameTRIzation-->
 
 # Features
 ## Integrations
 
-pyGeo was originally developed to use FFDs in MACH [@Kenway2010b].
+pyGeo was originally developed to implement and use Free-Form Deformation (FFD) to manipulate 3D geometries in a CFD-based optimization context[@Kenway2010b]. <!--MM: I would add a reference to the FFD section below-->
 
-pyGeo can be used as the basis for the geometry within the MDO framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c].
+pyGeo can be used as the basis for the geometry within the framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c], which specializes in high-fidelity aerostructural optimization.
 Through MPhys, a wrapper for MACH, pyGeo's features can also be used within another MDO framework, OpenMDAO [@Gray2019a].
+<!--MM: what do you mean by "basis for the geometry"? you mean geometry generation or just the module? I would rephrase a bit if the latter, something along the lines of "pyGeo is the goemtry manipulation engine within ..."-->
+<!--MM: About the second sentence, I might rephrase "pyGeo, together with the other MACH core modules, are integrated in MPhys, an more general use OpenMDAO-based [@Gray2019a] MDO tool"-->
 
-The package pyOptSparse [@Wu2020a] is used to interface with the optimizer directly. 
-pyGeo's modules are used to send design variables and constraints to pyOptSparse rather than the user handling these interactions.
+Both frameworks mentioned above use pyOptSparse [@Wu2020a] to interface with the optimization algorithm. 
+pyGeo has dedicated modules to send design variables and constraints to pyOptSparse directly rather than having the user handling these interactions.
 
 
 pyGeo has a solver-independent interface that allows for a direct comparison of two different solvers with the same parameterization [@Adler2022c]
@@ -61,24 +58,59 @@ pyGeo has a solver-independent interface that allows for a direct comparison of 
 pyGeo handles geometry manipulation through DVGeo objects. 
 There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
 
+<!-- MM: Should we include a list of modules/classes here for easier reference later on?-->
+
 ### Free-form Deformation
 <!--
 TODO:
 - talk less about FFDs and more about capabilities
-- child FFD
-- ref axis and complex geometric operations
-- show a picture
+- ref axis and complex geometric operations for a wing
+- [x] child FFD
+- [x] multi FFD
+- show pictures
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
-In this approach, the entire geometry is embedded in a flexible jelly-like block, and manipulated together with the control points of the block.
-By introducing different densities of control points, a high degree of geometry control can be obtained.
+In this approach, the entire reference geometry is embedded in a flexible jelly-like block, and manipulated through the displacement of a set of control points located on the surface of the block.
+A high degree of geometry control can be realized by the user by selecting different control point densities and locations.
 
-Compared to other parameterizations, the FFD method has several key advantages.
+In general, individual control points can be moved to obtain local shape modifications.
+However, in practice it is more common to define geometric operations involving a collection of FFD nodal movements.
+For example, twist can be defined as rotations about a reference axis which runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
+\autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
+Parameterizations based on the singular value decomposition is also possible [@Wu2022b].
+
+<!-- Compared to other parameterizations, the FFD method has several key advantages.
 Since the entire geometry is embedded, there is no need to start with or reverse-engineer a parametric geometry representation as commonly done with B-spline-based methods, where a least-squares fit is needed to generate a B-spline surface representation.
 Rather than parameterizing the geometry directly, the geometric _deformation_ is parameterized instead.
 This decoupling of geometry definition from geometric deformation allows for control and refinement of the deformation independently of the original geometry.
 When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
-As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries.
+As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries. -->
+
+![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_designvars.png)
+
+In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "children FFD") and multiple FFD volumes.
+
+#### Children FFD
+<!--MM: not sold on the subsection titles I made, pls provide input-->
+FFD objects can be organized in a hierarchical structure within pyGeo.
+Dependent, "children" FFD blocks can be embedded in the main, "parent" FFD object to enable more detailed local modifications of a sub-set of the reference surface points.
+The user can define local and global variables on both objects independently.
+pyGeo will first propagate the parent node deformations to both the surface and the children control points, then finally propagate the deformations of the children control points to their embedded point subset. <!--MM: I would like to double check this sentence with Anil-->
+One of the advantages of using this approach is that every FFD block has its own independent reference axis to be used for global design variables such as rotations and scaling
+This facilitates, for example, the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
+Figure \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of an hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the children FFDs with a quarter-chord reference axis.
+
+![Example of parametrization through parent-children FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
+
+
+#### Multi-FFD 
+
+The basic FFD implementation lacks flexibility when the geometry has intersecting components.
+In such cases, pyGeo can parameterize each component using FFDs and ensure a watertight surface representation at the component intersections using an inverse-distance surface deformation method [@Yildirim2021b].
+This method relies on the open source pySurf package [@Secco2018b] to compute intersections between components, perform projections, and remesh curves.
+\autoref{fig:ffd_multi} shows an example of a component-based FFD setup for a supersonic transport aircraft.
+
+![Example of FFD parameterization with intersecting components [@Seraj2022a] \label{fig:ffd_multi}](ffd_multi.png)
 
 ### Parametric Geometry Tools
 
@@ -131,16 +163,31 @@ Area and volume constraints constrain the geometry from deviating from the initi
 
 <!-- Triangulated surface constraint -->
 
-## Geometric Utilities
-
 # Parallelism
+pyGeo can optionally work under distributed memory parallelism under MPI, which can be helpful when interfacing with CFD applications.
+For example, the computational mesh may be partitioned and distributed among many processors, and each processor may be aware of only its portion of the mesh.
+pyGeo can handle such scenarios seamlessly, by independently manipulating the geometry on each processor, and aggregating the constraints across all processors when communicating with the optimizer.
 
-# Gradient Computation
+# Derivative Computation
+In addition to geometry manipulation and constraints, pyGeo is able to compute derivatives of those operations.
+For the geometric deformation, pyGeo can compute the Jacobian
+\begin{equation*}
+\frac{\mathrm{d}X_s}{\mathrm{d}x}
+\end{equation*}
+where $X_s$ is the vector of surface mesh coordinates, and $x$ the vector of geometric design variables.
+
+Similarly for the constraints, the Jacobian
+\begin{equation*}
+\frac{\mathrm{d}g}{\mathrm{d}x}
+\end{equation*}
+can be computed, where $g$ is the vector of geometric constraints.
+
+For the FFD parameterization, these derivatives are computed using a combination of analytic methods and the complex-step method [@Martins2003a].
 
 # Statement of Need
 Very few open-source packages exist with comparable functionalities.
 To the best knowledge of the authors, the only other optimization framework that contains geometry parameterization is SU2 [@Economon2016a].
-It supports both Hicks--Henne bump functions and FFD parameterizations.
+It supports Hicks--Henne bump functions for airfoil optimizations and the FFD method for three-dimensional cases.
 However, it is integrated directly into the CFD solver SU2, and therefore cannot be used with other solvers.
 
 It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
@@ -152,6 +199,7 @@ pyGeo has been used extensively in aerodynamic and aerostructural optimizations 
 DVGeoESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
 DVGeoVSP was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
 DVGeoCST was used to compare methods for airfoil optimization [@Adler2022c].
+DVGeoMulti has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 
 # Acknowledgements
 
