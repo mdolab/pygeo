@@ -38,16 +38,17 @@ The code provides derivatives for all parameterization methods and constraint fu
 # Features
 ## Integrations
 
-pyGeo was originally developed to implement and use Free-Form Deformation (FFD) to manipulate 3D geometries in a CFD-based optimization context[@Kenway2010b]. <!--MM: I would add a reference to the FFD section below-->
+pyGeo was originally developed to implement and use Free-Form Deformation (FFD) to manipulate 3D geometries in a CFD-based optimization context[@Kenway2010b]. 
+More details on this implementation as well as recent extensions are summarized in the section "Free-form Deformation". 
 
-pyGeo can be used as the basis for the geometry within the framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c], which specializes in high-fidelity aerostructural optimization.
-Through MPhys, a wrapper for MACH, pyGeo's features can also be used within another MDO framework, OpenMDAO [@Gray2019a].
-<!--MM: what do you mean by "basis for the geometry"? you mean geometry generation or just the module? I would rephrase a bit if the latter, something along the lines of "pyGeo is the goemtry manipulation engine within ..."-->
-<!--MM: About the second sentence, I might rephrase "pyGeo, together with the other MACH core modules, are integrated in MPhys, an more general use OpenMDAO-based [@Gray2019a] MDO tool"-->
+pyGeo is the geometry manipulation engine within the framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c], which specializes in high-fidelity aerostructural optimization.
+pyGeo, together with the other MACH core modules, are integrated in MPhys[^1], a more general-use MDO tool based in OpenMDAO [@Gray2019a].
+
+[^1]: https://github.com/OpenMDAO/mphys   
+
 
 Both frameworks mentioned above use pyOptSparse [@Wu2020a] to interface with the optimization algorithm. 
 pyGeo has dedicated modules to send design variables and constraints to pyOptSparse directly rather than having the user handling these interactions.
-
 
 pyGeo has a solver-independent interface that allows for a direct comparison of two different solvers with the same parameterization [@Adler2022c]
 
@@ -67,7 +68,10 @@ TODO:
 - ref axis and complex geometric operations for a wing
 - [x] child FFD
 - [x] multi FFD
-- show pictures
+- [] redo planform DV picture to be less pixelated
+- [] ESP pic
+- [] VSP pic
+- [] other pic?
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
 In this approach, the entire reference geometry is embedded in a flexible jelly-like block, and manipulated through the displacement of a set of control points located on the surface of the block.
@@ -96,9 +100,9 @@ FFD objects can be organized in a hierarchical structure within pyGeo.
 Dependent, "children" FFD blocks can be embedded in the main, "parent" FFD object to enable more detailed local modifications of a sub-set of the reference surface points.
 The user can define local and global variables on both objects independently.
 pyGeo will first propagate the parent node deformations to both the surface and the children control points, then finally propagate the deformations of the children control points to their embedded point subset. <!--MM: I would like to double check this sentence with Anil-->
-One of the advantages of using this approach is that every FFD block has its own independent reference axis to be used for global design variables such as rotations and scaling
+One of the advantages of using this approach is that every FFD block has its own independent reference axis to be used for global design variables such as rotations and scaling.
 This facilitates, for example, the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
-Figure \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of an hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the children FFDs with a quarter-chord reference axis.
+Figure \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of a hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the children FFDs with a quarter-chord reference axis.
 
 ![Example of parametrization through parent-children FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
 
