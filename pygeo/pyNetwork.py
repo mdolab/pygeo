@@ -3,6 +3,7 @@
 # ======================================================================
 import os
 import numpy as np
+from pyspline import Surface
 from pyspline.utils import openTecplot, writeTecplot1D, closeTecplot, line
 from .topology import CurveTopology
 
@@ -223,7 +224,7 @@ class pyNetwork:
         curveID : int
             The index of the curve with the closest distance
         s : float or array
-            The curve parameter on self.curves[curveID] that is cloested
+            The curve parameter on self.curves[curveID] that is closest
             to the point(s).
         """
 
@@ -296,7 +297,7 @@ class pyNetwork:
         curveID : int
             The index of the curve with the closest distance
         s : float or array
-            The curve parameter on self.curves[curveID] that is cloested
+            The curve parameter on self.curves[curveID] that is closest
             to the point(s).
         """
 
@@ -309,6 +310,117 @@ class pyNetwork:
         for i in range(len(curves)):
             icurve = curves[i]
             S[:, i], D[:, i, :] = self.curves[icurve].projectPoint(points, *args, **kwargs)
+
+        s = np.zeros(N)
+        curveID = np.zeros(N, "intc")
+
+        # Now post-process to get the lowest one
+        for i in range(N):
+            d0 = np.linalg.norm(D[i, 0])
+            s[i] = S[i, 0]
+            curveID[i] = curves[0]
+            for j in range(len(curves)):
+                if np.linalg.norm(D[i, j]) < d0:
+                    d0 = np.linalg.norm(D[i, j])
+                    s[i] = S[i, j]
+                    curveID[i] = curves[j]
+
+        return curveID, s
+
+    def intersectPlanes(self, points, axis, curves=None, raySize=1.5, **kwargs):
+        """Find the intersection of the curves with the plane defined by the points and
+        the normal vector. The ray size is used to define the extent of the plane
+        about the points. The closest intersection to the original point is taken.
+        The plane normal is determined by the "axis" parameter, that must be a string
+        of length 2
+
+        Parameters
+        ----------
+        points : array
+            A single point (array length 3) or a set of points (N,3) array
+        axis : str of length 2
+            coordinates that define a plane, possible options include xy yz xz.
+            the order of the characters dont matter
+        curves : list
+            An optional list of curve indices to you. If not given, all
+            curve objects are used.
+        raySize : float
+            To define the plane, we use the point coordinates and the normal direction.
+            The plane is extended by raySize in all directions.
+        kwargs : dict
+            Keyword arguments passed to Surface.projectCurve() function
+
+        Returns
+        -------
+        curveID : int
+            The index of the curve with the closest distance
+        s : float or array
+            The curve parameter on self.curves[curveID] that is closest
+            to the point(s).
+        """
+
+        # we need to figure out the normal vector for the plane
+        if "x" not in axis:
+            # y-z plane, normal is in x dir.
+            dir1 = np.array([0.0, 1.0, 0.0]) * raySize
+            dir2 = np.array([0.0, 0.0, 1.0]) * raySize
+        elif "y" not in axis:
+            # x-z plane
+            dir1 = np.array([1.0, 0.0, 0.0]) * raySize
+            dir2 = np.array([0.0, 0.0, 1.0]) * raySize
+        elif "z" not in axis:
+            # x-z plane
+            dir1 = np.array([1.0, 0.0, 0.0]) * raySize
+            dir2 = np.array([0.0, 1.0, 0.0]) * raySize
+
+        if curves is None:
+            curves = np.arange(self.nCurve)
+
+        N = len(points)
+        S = np.zeros((N, len(curves)))
+        D = np.zeros((N, len(curves), 3))
+
+        for i in range(len(curves)):
+            icurve = curves[i]
+            for j in range(N):
+
+                # we need to initialize a pySurface object for this point
+                # the point is perturbed in dir 1 and dir2 to get 4 corners of the plane
+                point = points[j]
+
+                coef = np.zeros((2, 2, 3))
+                # indexing:
+                # 3 ------ 2
+                # |        |
+                # |   pt   |
+                # |        |
+                # 0 ------ 1
+                # ^ dir2
+                # |
+                # |
+                #  ---> dir 1
+                coef[0, 0] = point - dir1 - dir2
+                coef[1, 0] = point + dir1 - dir2
+                coef[1, 1] = point + dir1 + dir2
+                coef[0, 1] = point - dir1 + dir2
+
+                ku = 2
+                kv = 2
+                tu = np.array([0.0, 0.0, 1.0, 1.0])
+                tv = np.array([0.0, 0.0, 1.0, 1.0])
+
+                surf = Surface(ku=ku, kv=kv, tu=tu, tv=tv, coef=coef)
+
+                # now we project the current curve to this plane
+                u, v, S[j, i], D[j, i, :] = surf.projectCurve(self.curves[icurve], **kwargs)
+
+                if u == 0.0 or u == 1.0 or v == 0.0 or v == 1.0:
+                    print(
+                        "Warning: The link for attached point {:d} was drawn"
+                        "from the curve to the end of the plane,"
+                        "indicating that the plane might not have been large"
+                        "enough to intersect the nearest curve.".format(j)
+                    )
 
         s = np.zeros(N)
         curveID = np.zeros(N, "intc")
