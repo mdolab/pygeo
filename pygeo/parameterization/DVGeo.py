@@ -394,15 +394,6 @@ class DVGeometry(BaseDVGeometry):
         # We don't do any of the final processing here; we simply
         # record the information the user has supplied into a
         # dictionary structure.
-        if axis is None:
-            pass
-        elif axis.lower() == "x":
-            axis = np.array([1, 0, 0], "d")
-        elif axis.lower() == "y":
-            axis = np.array([0, 1, 0], "d")
-        elif axis.lower() == "z":
-            axis = np.array([0, 0, 1], "d")
-
         if curve is not None:
             # Explicit curve has been supplied:
             if self.FFD.symmPlane is None:
@@ -2792,10 +2783,16 @@ class DVGeometry(BaseDVGeometry):
 
         gFileName = fileName + "_parent.dat"
         if not len(self.axis) == 0:
+            # TODO check this and fix properly
+            # self._unComplexifyCoef()
+            # self.refAxis._updateCurveCoef()
             self.refAxis.writeTecplot(gFileName, orig=True, curves=True, coef=True)
         # Write children axes:
         for iChild in range(len(self.children)):
             cFileName = fileName + f"_child{iChild:03d}.dat"
+            # TODO check this and fix properly
+            # self.children[iChild]._unComplexifyCoef()
+            # self.children[iChild].refAxis._updateCurveCoef()
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
 
     def writeLinks(self, fileName):
@@ -2811,8 +2808,9 @@ class DVGeometry(BaseDVGeometry):
         f.write("ZONE NODES=%d ELEMENTS=%d ZONETYPE=FELINESEG\n" % (self.nPtAttach * 2, self.nPtAttach))
         f.write("DATAPACKING=POINT\n")
         for ipt in range(self.nPtAttach):
-            pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
-            pt2 = self.links_x[ipt] + pt1
+            # TODO check this and fix properly
+            pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt]).real.astype("d")
+            pt2 = (self.links_x[ipt] + pt1).real.astype("d")
 
             f.write(f"{pt1[0]:.12g} {pt1[1]:.12g} {pt1[2]:.12g}\n")
             f.write(f"{pt2[0]:.12g} {pt2[1]:.12g} {pt2[2]:.12g}\n")
@@ -3197,9 +3195,26 @@ class DVGeometry(BaseDVGeometry):
             if self.axis[key]["axis"] is None:
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
-                tmpIDs, tmpS0 = self.refAxis.projectRays(
-                    curPts, self.axis[key]["axis"], curves=[curveID], raySize=self.axis[key]["raySize"]
-                )
+
+                if len(self.axis[key]["axis"]) == 1:
+                    # the axis can be a string of length one, then we do a ray
+                    if self.axis[key]["axis"].lower() == "x":
+                        axis = np.array([1, 0, 0], "d")
+                    elif self.axis[key]["axis"].lower() == "y":
+                        axis = np.array([0, 1, 0], "d")
+                    elif self.axis[key]["axis"].lower() == "z":
+                        axis = np.array([0, 0, 1], "d")
+                    tmpIDs, tmpS0 = self.refAxis.projectRays(
+                        curPts, axis, curves=[curveID], raySize=self.axis[key]["raySize"]
+                    )
+
+                elif len(self.axis[key]["axis"]) == 2:
+                    # we want to intersect a plane that crosses the cur pts
+                    # the orientation of the plane is determined in pynetwork from the axis
+                    # location is taken from the coordinates of "curPts"
+                    tmpIDs, tmpS0 = self.refAxis.intersectPlanes(
+                        curPts, self.axis[key]["axis"], curves=[curveID], raySize=self.axis[key]["raySize"]
+                    )
 
             curveIDs.extend(tmpIDs)
             s.extend(tmpS0)
