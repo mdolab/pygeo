@@ -214,9 +214,11 @@ class DVGeometryMulti:
 
         anisotropy : list of float, optional
             List with three entries specifying scaling factors in the [x, y, z] directions.
-            The factors multiply the distances in each direction computed for curve-based deformation.
+            The factors multiply the [x, y, z] distances used in the curve-based deformation.
             Smaller factors in a certain direction will amplify the effect of the parts of the curve
             that lie in that direction from the points being warped.
+            This tends to increase the mesh quality in one direction at the expense of other directions.
+            This can be useful when the initial intersection curve is skewed.
 
         """
 
