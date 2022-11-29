@@ -148,6 +148,7 @@ class TestDVGeoMulti(unittest.TestCase):
                 curveEpsDict=curveEpsDict,
                 trackSurfaces=trackSurfaces,
                 excludeSurfaces=excludeSurfaces,
+                anisotropy=[1.0, 1.0, 0.8],
             )
 
             # Add a few design variables
