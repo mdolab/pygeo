@@ -56,7 +56,7 @@ class pyNetwork:
     #               Curve Writing Output Functions
     # ----------------------------------------------------------------------
 
-    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, curveLabels=False, nodeLabels=False):
+    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, curveLabels=False, nodeLabels=False, current=False):
         """Write the pyNetwork Object to Tecplot .dat file
 
         Parameters
@@ -83,7 +83,13 @@ class pyNetwork:
                 writeTecplot1D(f, "coef", self.curves[icurve].coef)
         if orig:
             for icurve in range(self.nCurve):
-                writeTecplot1D(f, "coef", self.curves[icurve].X)
+                writeTecplot1D(f, "orig_data", self.curves[icurve].X)
+        if current:
+            # evaluate the curve with the current coefs and write
+            for icurve in range(self.nCurve):
+                current_line = self.curves[icurve](np.linspace(0, 1, 201))
+                writeTecplot1D(f, "current_interp", current_line)
+
 
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)
@@ -338,8 +344,10 @@ class pyNetwork:
         ----------
         points : array
             A single point (array length 3) or a set of points (N,3) array
-        axis : str of length 2
-            coordinates that define a plane, possible options include xy yz xz.
+            that lies on the plane. If multiple points are provided, one plane
+            is defined with each point.
+        axis : array of size 3
+            normal of the plane,
             the order of the characters dont matter
         curves : list
             An optional list of curve indices to you. If not given, all
@@ -359,19 +367,33 @@ class pyNetwork:
             to the point(s).
         """
 
-        # we need to figure out the normal vector for the plane
-        if "x" not in axis:
-            # y-z plane, normal is in x dir.
-            dir1 = np.array([0.0, 1.0, 0.0]) * raySize
-            dir2 = np.array([0.0, 0.0, 1.0]) * raySize
-        elif "y" not in axis:
-            # x-z plane
-            dir1 = np.array([1.0, 0.0, 0.0]) * raySize
-            dir2 = np.array([0.0, 0.0, 1.0]) * raySize
-        elif "z" not in axis:
-            # x-z plane
-            dir1 = np.array([1.0, 0.0, 0.0]) * raySize
-            dir2 = np.array([0.0, 1.0, 0.0]) * raySize
+        # given the normal vector in the axis parameter, we need to find two directions
+        # that lie on the plane.
+
+        # normalize axis
+        axis /= np.linalg.norm(axis)
+
+        # we now need to pick one direction that is not aligned with axis.
+        # To do this, pick the smallest absolute component of the axis parameter.
+        # we start with a unit vector in this direction, which is almost guaranteed
+        # to be not perfectly aligned with the axis vector.
+        dir1_ind = np.argmin(np.abs(axis))
+        dir1 = np.zeros(3)
+        dir1[dir1_ind] = 1.0
+
+        # then we find the orthogonal component of dir1 to axis. this is the final dir1
+        dir1 -= axis * axis.dot(dir1)
+        dir1 /= np.linalg.norm(dir1)
+
+        # get the third vector with a cross product
+        dir2 = np.cross(axis, dir1)
+        dir2 /= np.linalg.norm(dir2)
+
+        # finally, we want to scale dir1 and dir2 by ray size. This controls
+        # the size of the plane we create. Needs to be big enough to intersect
+        # the curve.
+        dir1 *= raySize
+        dir2 *= raySize
 
         if curves is None:
             curves = np.arange(self.nCurve)
