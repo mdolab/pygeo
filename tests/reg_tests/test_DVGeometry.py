@@ -1185,7 +1185,6 @@ class RegTestPyGeo(unittest.TestCase):
             yfraction = 0.5
             rotType = 0
             axis = np.array([0.0, 1.0, 1.0])
-            # axis=[0, 1, 1]
 
             DVGeo.addRefAxis("RefAxis", axis=axis, xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType)
             DVGeo._finalize()
