@@ -455,10 +455,6 @@ class DVGeometry(BaseDVGeometry):
                 symm_curve_X[:, index] = -symm_curve_X[:, index]
                 curveSymm = Curve(k=curve.k, X=symm_curve_X)
 
-                # flip the "axis" parameter
-                axisSymm = axis.copy()
-                axisSymm[index] *= -1
-
                 self.axis[name] = {
                     "curve": curve,
                     "volumes": volumes,
@@ -471,7 +467,7 @@ class DVGeometry(BaseDVGeometry):
                     "curve": curveSymm,
                     "volumes": volumesSymm,
                     "rotType": rotType,
-                    "axis": axisSymm,
+                    "axis": axis,
                     "rot0ang": rot0ang,
                     "rot0axis": rot0axis,
                 }
@@ -2810,16 +2806,10 @@ class DVGeometry(BaseDVGeometry):
 
         gFileName = fileName + "_parent.dat"
         if not len(self.axis) == 0:
-            # TODO check this and fix properly
-            # self._unComplexifyCoef()
-            # self.refAxis._updateCurveCoef()
             self.refAxis.writeTecplot(gFileName, orig=True, curves=True, coef=True)
         # Write children axes:
         for iChild in range(len(self.children)):
             cFileName = fileName + f"_child{iChild:03d}.dat"
-            # TODO check this and fix properly
-            # self.children[iChild]._unComplexifyCoef()
-            # self.children[iChild].refAxis._updateCurveCoef()
             self.children[iChild].refAxis.writeTecplot(cFileName, orig=True, curves=True, coef=True)
 
     def writeLinks(self, fileName):
@@ -2835,9 +2825,8 @@ class DVGeometry(BaseDVGeometry):
         f.write("ZONE NODES=%d ELEMENTS=%d ZONETYPE=FELINESEG\n" % (self.nPtAttach * 2, self.nPtAttach))
         f.write("DATAPACKING=POINT\n")
         for ipt in range(self.nPtAttach):
-            # TODO check this and fix properly
-            pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt]).real.astype("d")
-            pt2 = (self.links_x[ipt] + pt1).real.astype("d")
+            pt1 = self.refAxis.curves[self.curveIDs[ipt]](self.links_s[ipt])
+            pt2 = self.links_x[ipt] + pt1
 
             f.write(f"{pt1[0]:.12g} {pt1[1]:.12g} {pt1[2]:.12g}\n")
             f.write(f"{pt2[0]:.12g} {pt2[1]:.12g} {pt2[2]:.12g}\n")
@@ -3243,7 +3232,7 @@ class DVGeometry(BaseDVGeometry):
                     )
                 else:
                     raise Error(
-                        "The 'axis' parameter when adding the reference axis must be a single character"
+                        "The 'axis' parameter when adding the reference axis must be a single character "
                         "specifying the direction ('x', 'y', or 'z') or a numpy array of size 3 that "
                         "defines the normal of the plane which will be used for reference axis projections."
                     )

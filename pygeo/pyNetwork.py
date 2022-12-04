@@ -56,17 +56,24 @@ class pyNetwork:
     #               Curve Writing Output Functions
     # ----------------------------------------------------------------------
 
-    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, curveLabels=False, nodeLabels=False, current=False):
+    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, current=False, curveLabels=False, nodeLabels=False):
         """Write the pyNetwork Object to Tecplot .dat file
 
         Parameters
         ----------
         fileName : str
             File name for tecplot file. Should have .dat extension
+        orig : bool
+            Flag to determine if we will write the original X data used to
+            create this object
         curves : bool
             Flag to write discrete approximation of the actual curve
         coef : bool
             Flag to write b-spline coefficients
+        current : bool
+            Flag to determine if the current line is evaluated and added
+            to the file. This is useful for higher order curves (k>2) where
+            the coef array does not directly represent the curve.
         curveLabels : bool
             Flag to write a separate label file with the curve indices
         nodeLabels : bool
@@ -337,8 +344,7 @@ class pyNetwork:
         """Find the intersection of the curves with the plane defined by the points and
         the normal vector. The ray size is used to define the extent of the plane
         about the points. The closest intersection to the original point is taken.
-        The plane normal is determined by the "axis" parameter, that must be a string
-        of length 2
+        The plane normal is determined by the "axis" parameter
 
         Parameters
         ----------
@@ -347,10 +353,9 @@ class pyNetwork:
             that lies on the plane. If multiple points are provided, one plane
             is defined with each point.
         axis : array of size 3
-            normal of the plane,
-            the order of the characters dont matter
+            Normal of the plane.
         curves : list
-            An optional list of curve indices to you. If not given, all
+            An optional list of curve indices to use. If not given, all
             curve objects are used.
         raySize : float
             To define the plane, we use the point coordinates and the normal direction.
@@ -438,9 +443,9 @@ class pyNetwork:
 
                 if u == 0.0 or u == 1.0 or v == 0.0 or v == 1.0:
                     print(
-                        "Warning: The link for attached point {:d} was drawn"
-                        "from the curve to the end of the plane,"
-                        "indicating that the plane might not have been large"
+                        "Warning: The link for attached point {:d} was drawn "
+                        "from the curve to the end of the plane, "
+                        "indicating that the plane might not have been large "
                         "enough to intersect the nearest curve.".format(j)
                     )
 
