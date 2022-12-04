@@ -56,7 +56,9 @@ class pyNetwork:
     #               Curve Writing Output Functions
     # ----------------------------------------------------------------------
 
-    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, current=False, curveLabels=False, nodeLabels=False):
+    def writeTecplot(
+        self, fileName, orig=False, curves=True, coef=True, current=False, curveLabels=False, nodeLabels=False
+    ):
         """Write the pyNetwork Object to Tecplot .dat file
 
         Parameters
@@ -96,7 +98,6 @@ class pyNetwork:
             for icurve in range(self.nCurve):
                 current_line = self.curves[icurve](np.linspace(0, 1, 201))
                 writeTecplot1D(f, "current_interp", current_line)
-
 
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)

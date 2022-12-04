@@ -1186,7 +1186,9 @@ class RegTestPyGeo(unittest.TestCase):
             rotType = 0
             axis = np.array([0.0, 1.0, 1.0])
 
-            DVGeo.addRefAxis("RefAxis", axis=axis, xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType)
+            DVGeo.addRefAxis(
+                "RefAxis", axis=axis, xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType
+            )
             DVGeo._finalize()
 
             handler.root_add_val("links_x", DVGeo.links_x, rtol=1e-12, atol=1e-12)
