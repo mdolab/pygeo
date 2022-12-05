@@ -3213,7 +3213,8 @@ class DVGeometry(BaseDVGeometry):
             else:
 
                 if isinstance(self.axis[key]["axis"], str) and len(self.axis[key]["axis"]) == 1:
-                    # the axis can be a string of length one, then we do a ray
+                    # The axis can be a string of length one.
+                    # If so, we follow the ray projection approach.
                     if self.axis[key]["axis"].lower() == "x":
                         axis = np.array([1, 0, 0], "d")
                     elif self.axis[key]["axis"].lower() == "y":
