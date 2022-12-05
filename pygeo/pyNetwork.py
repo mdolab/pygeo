@@ -3,6 +3,7 @@
 # ======================================================================
 import os
 import numpy as np
+from pyspline import Surface
 from pyspline.utils import openTecplot, writeTecplot1D, closeTecplot, line
 from .topology import CurveTopology
 
@@ -55,17 +56,26 @@ class pyNetwork:
     #               Curve Writing Output Functions
     # ----------------------------------------------------------------------
 
-    def writeTecplot(self, fileName, orig=False, curves=True, coef=True, curveLabels=False, nodeLabels=False):
+    def writeTecplot(
+        self, fileName, orig=False, curves=True, coef=True, current=False, curveLabels=False, nodeLabels=False
+    ):
         """Write the pyNetwork Object to Tecplot .dat file
 
         Parameters
         ----------
         fileName : str
             File name for tecplot file. Should have .dat extension
+        orig : bool
+            Flag to determine if we will write the original X data used to
+            create this object
         curves : bool
             Flag to write discrete approximation of the actual curve
         coef : bool
             Flag to write b-spline coefficients
+        current : bool
+            Flag to determine if the current line is evaluated and added
+            to the file. This is useful for higher order curves (k>2) where
+            the coef array does not directly represent the curve.
         curveLabels : bool
             Flag to write a separate label file with the curve indices
         nodeLabels : bool
@@ -82,7 +92,12 @@ class pyNetwork:
                 writeTecplot1D(f, "coef", self.curves[icurve].coef)
         if orig:
             for icurve in range(self.nCurve):
-                writeTecplot1D(f, "coef", self.curves[icurve].X)
+                writeTecplot1D(f, "orig_data", self.curves[icurve].X)
+        if current:
+            # evaluate the curve with the current coefs and write
+            for icurve in range(self.nCurve):
+                current_line = self.curves[icurve](np.linspace(0, 1, 201))
+                writeTecplot1D(f, "current_interp", current_line)
 
         #    Write out The Curve and Node Labels
         dirName, fileName = os.path.split(fileName)
@@ -223,7 +238,7 @@ class pyNetwork:
         curveID : int
             The index of the curve with the closest distance
         s : float or array
-            The curve parameter on self.curves[curveID] that is cloested
+            The curve parameter on self.curves[curveID] that is closest
             to the point(s).
         """
 
@@ -296,7 +311,7 @@ class pyNetwork:
         curveID : int
             The index of the curve with the closest distance
         s : float or array
-            The curve parameter on self.curves[curveID] that is cloested
+            The curve parameter on self.curves[curveID] that is closest
             to the point(s).
         """
 
@@ -309,6 +324,131 @@ class pyNetwork:
         for i in range(len(curves)):
             icurve = curves[i]
             S[:, i], D[:, i, :] = self.curves[icurve].projectPoint(points, *args, **kwargs)
+
+        s = np.zeros(N)
+        curveID = np.zeros(N, "intc")
+
+        # Now post-process to get the lowest one
+        for i in range(N):
+            d0 = np.linalg.norm(D[i, 0])
+            s[i] = S[i, 0]
+            curveID[i] = curves[0]
+            for j in range(len(curves)):
+                if np.linalg.norm(D[i, j]) < d0:
+                    d0 = np.linalg.norm(D[i, j])
+                    s[i] = S[i, j]
+                    curveID[i] = curves[j]
+
+        return curveID, s
+
+    def intersectPlanes(self, points, axis, curves=None, raySize=1.5, **kwargs):
+        """Find the intersection of the curves with the plane defined by the points and
+        the normal vector. The ray size is used to define the extent of the plane
+        about the points. The closest intersection to the original point is taken.
+        The plane normal is determined by the "axis" parameter
+
+        Parameters
+        ----------
+        points : array
+            A single point (array length 3) or a set of points (N,3) array
+            that lies on the plane. If multiple points are provided, one plane
+            is defined with each point.
+        axis : array of size 3
+            Normal of the plane.
+        curves : list
+            An optional list of curve indices to use. If not given, all
+            curve objects are used.
+        raySize : float
+            To define the plane, we use the point coordinates and the normal direction.
+            The plane is extended by raySize in all directions.
+        kwargs : dict
+            Keyword arguments passed to Surface.projectCurve() function
+
+        Returns
+        -------
+        curveID : int
+            The index of the curve with the closest distance
+        s : float or array
+            The curve parameter on self.curves[curveID] that is closest
+            to the point(s).
+        """
+
+        # given the normal vector in the axis parameter, we need to find two directions
+        # that lie on the plane.
+
+        # normalize axis
+        axis /= np.linalg.norm(axis)
+
+        # we now need to pick one direction that is not aligned with axis.
+        # To do this, pick the smallest absolute component of the axis parameter.
+        # we start with a unit vector in this direction, which is almost guaranteed
+        # to be not perfectly aligned with the axis vector.
+        dir1_ind = np.argmin(np.abs(axis))
+        dir1 = np.zeros(3)
+        dir1[dir1_ind] = 1.0
+
+        # then we find the orthogonal component of dir1 to axis. this is the final dir1
+        dir1 -= axis * axis.dot(dir1)
+        dir1 /= np.linalg.norm(dir1)
+
+        # get the third vector with a cross product
+        dir2 = np.cross(axis, dir1)
+        dir2 /= np.linalg.norm(dir2)
+
+        # finally, we want to scale dir1 and dir2 by ray size. This controls
+        # the size of the plane we create. Needs to be big enough to intersect
+        # the curve.
+        dir1 *= raySize
+        dir2 *= raySize
+
+        if curves is None:
+            curves = np.arange(self.nCurve)
+
+        N = len(points)
+        S = np.zeros((N, len(curves)))
+        D = np.zeros((N, len(curves), 3))
+
+        for i in range(len(curves)):
+            icurve = curves[i]
+            for j in range(N):
+
+                # we need to initialize a pySurface object for this point
+                # the point is perturbed in dir 1 and dir2 to get 4 corners of the plane
+                point = points[j]
+
+                coef = np.zeros((2, 2, 3))
+                # indexing:
+                # 3 ------ 2
+                # |        |
+                # |   pt   |
+                # |        |
+                # 0 ------ 1
+                # ^ dir2
+                # |
+                # |
+                #  ---> dir 1
+                coef[0, 0] = point - dir1 - dir2
+                coef[1, 0] = point + dir1 - dir2
+                coef[1, 1] = point + dir1 + dir2
+                coef[0, 1] = point - dir1 + dir2
+
+                ku = 2
+                kv = 2
+                tu = np.array([0.0, 0.0, 1.0, 1.0])
+                tv = np.array([0.0, 0.0, 1.0, 1.0])
+
+                surf = Surface(ku=ku, kv=kv, tu=tu, tv=tv, coef=coef)
+
+                # now we project the current curve to this plane
+                u, v, S[j, i], D[j, i, :] = surf.projectCurve(self.curves[icurve], **kwargs)
+
+                if u == 0.0 or u == 1.0 or v == 0.0 or v == 1.0:
+                    print(
+                        "Warning: The link for attached point {:d} was drawn "
+                        "from the curve to the end of the plane, "
+                        "indicating that the plane might not have been large "
+                        "enough to intersect the nearest curve.".format(j)
+                    )
 
         s = np.zeros(N)
         curveID = np.zeros(N, "intc")

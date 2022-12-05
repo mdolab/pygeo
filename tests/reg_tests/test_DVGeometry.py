@@ -1169,6 +1169,30 @@ class RegTestPyGeo(unittest.TestCase):
         np.testing.assert_allclose(dIdx["ydir"], dIdxFwd["ydir"], atol=1e-15)
         np.testing.assert_allclose(dIdx["zdir"], dIdxFwd["zdir"], atol=1e-15)
 
+    def train_custom_ray_projections(self, train=True):
+        self.test_custom_ray_projections(train=train)
+
+    def test_custom_ray_projections(self, train=False):
+        """
+        Custom Ray Projections Test
+        This test checks the custom ray projection code.
+        """
+        refFile = os.path.join(self.base_path, "ref/test_custom_ray_projections.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test generalized axis node location section in plane")
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
+            xfraction = 0.5
+            yfraction = 0.5
+            rotType = 0
+            axis = np.array([0.0, 1.0, 1.0])
+
+            DVGeo.addRefAxis(
+                "RefAxis", axis=axis, xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType
+            )
+            DVGeo._finalize()
+
+            handler.root_add_val("links_x", DVGeo.links_x, rtol=1e-12, atol=1e-12)
+
 
 if __name__ == "__main__":
     unittest.main()

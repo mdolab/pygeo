@@ -329,9 +329,32 @@ class DVGeometry(BaseDVGeometry):
             7. z-x-y + rot_theta
             8. z-x-y + rotation about section axis (to allow for winglet rotation)
 
-        axis: str
-            Axis along which to project points/control points onto the
-            ref axis. Default is `x` which will project rays.
+        axis: str or numpy array of size 3
+            This parameter controls how the links between the control points
+            and the reference axis are computed. If the value is set to
+            "x", "y", or "z", then the code will extend rays out from the
+            control points in the direction specified in the "axis" variable,
+            and it will compute the projection of the ray to the reference axis.
+            This returns a point on the reference axis, which is taken as the
+            other end of the link of the control point to the reference axis,
+            where the other point of the link is the control point itself.
+            This approach works well enough for most cases, but may not be
+            ideal when the reference axis sits at an angle (e.g. wing with
+            dihedral). For these cases, setting the axis value with an array
+            of size 3 is the better approach. When axis is set to an array of
+            size 3, the code creates a plane that goes through each control point
+            with the normal that is defined by the direction of the axis parameter.
+            Then the end of the links are computed by finding the intersection of this
+            plane with the reference axis. The benefit of this approach is that
+            all of the reference axis links will lie on the same plane if the original
+            FFD control points were planar on each section. E.g., a wing FFD might have
+            x chordwise, y spanwise out, and z up, but with a dihedral. The FFD
+            control points for each spanwise section can lie on the x-z plane.
+            In this case, we want the links to be in a constant-y plane. To achieve
+            this, we can set the axis variable to [0, 1, 0], which defines the normal
+            of the plane we want. If you want to modify this option and see its effects,
+            consider writing the links between control points and the referece axis using
+            the "writeLinks" method in this class.
 
         alignIndex: str
             FFD axis along which the reference axis will lie. Can be `i`, `j`,
@@ -394,15 +417,6 @@ class DVGeometry(BaseDVGeometry):
         # We don't do any of the final processing here; we simply
         # record the information the user has supplied into a
         # dictionary structure.
-        if axis is None:
-            pass
-        elif axis.lower() == "x":
-            axis = np.array([1, 0, 0], "d")
-        elif axis.lower() == "y":
-            axis = np.array([0, 1, 0], "d")
-        elif axis.lower() == "z":
-            axis = np.array([0, 0, 1], "d")
-
         if curve is not None:
             # Explicit curve has been supplied:
             if self.FFD.symmPlane is None:
@@ -3197,9 +3211,32 @@ class DVGeometry(BaseDVGeometry):
             if self.axis[key]["axis"] is None:
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
-                tmpIDs, tmpS0 = self.refAxis.projectRays(
-                    curPts, self.axis[key]["axis"], curves=[curveID], raySize=self.axis[key]["raySize"]
-                )
+
+                if isinstance(self.axis[key]["axis"], str) and len(self.axis[key]["axis"]) == 1:
+                    # The axis can be a string of length one.
+                    # If so, we follow the ray projection approach.
+                    if self.axis[key]["axis"].lower() == "x":
+                        axis = np.array([1, 0, 0], "d")
+                    elif self.axis[key]["axis"].lower() == "y":
+                        axis = np.array([0, 1, 0], "d")
+                    elif self.axis[key]["axis"].lower() == "z":
+                        axis = np.array([0, 0, 1], "d")
+                    tmpIDs, tmpS0 = self.refAxis.projectRays(
+                        curPts, axis, curves=[curveID], raySize=self.axis[key]["raySize"]
+                    )
+
+                elif isinstance(self.axis[key]["axis"], np.ndarray) and len(self.axis[key]["axis"]) == 3:
+                    # we want to intersect a plane that crosses the cur pts and the normal
+                    # defined by the "axis" parameter used when adding the ref axis.
+                    tmpIDs, tmpS0 = self.refAxis.intersectPlanes(
+                        curPts, self.axis[key]["axis"], curves=[curveID], raySize=self.axis[key]["raySize"]
+                    )
+                else:
+                    raise Error(
+                        "The 'axis' parameter when adding the reference axis must be a single character "
+                        "specifying the direction ('x', 'y', or 'z') or a numpy array of size 3 that "
+                        "defines the normal of the plane which will be used for reference axis projections."
+                    )
 
             curveIDs.extend(tmpIDs)
             s.extend(tmpS0)
