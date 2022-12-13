@@ -1092,7 +1092,7 @@ class RegTestPyGeo(unittest.TestCase):
         DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
         DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
 
-        def coord_xfer(coords, mode="fwd", apply_displacement=True):
+        def coordXfer(coords, mode="fwd", apply_displacement=True):
             rot_mat = np.array(
                 [
                     [1, 0, 0],
@@ -1129,7 +1129,7 @@ class RegTestPyGeo(unittest.TestCase):
             ]
         )
 
-        DVGeo.addPointSet(test_points, "test", coord_xfer=coord_xfer)
+        DVGeo.addPointSet(test_points, "test", coordXfer=coordXfer)
 
         # check if we can query the same point back
         pts_new = DVGeo.update("test")
