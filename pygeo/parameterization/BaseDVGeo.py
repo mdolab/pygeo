@@ -6,7 +6,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 """
 
 from abc import ABC, abstractmethod
-from typing import OrderedDict
+from collections import OrderedDict
 
 
 class BaseDVGeometry(ABC):
@@ -82,7 +82,7 @@ class BaseDVGeometry(ABC):
 
         Examples
         --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        >>> optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
         pass
 

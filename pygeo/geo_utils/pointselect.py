@@ -16,7 +16,7 @@ class PointSelect:
             - 'x': Define two corners (pt1=,pt2=) on a plane parallel to the x=0 plane
             - 'y': Define two corners (pt1=,pt2=) on a plane parallel to the y=0 plane
             - 'z': Define two corners (pt1=,pt2=) on a plane parallel to the z=0 plane
-            - 'quad': Define FOUR corners (pt1=,pt2=,pt3=,pt4=) in a COUNTER-CLOCKWISE orientation
+            - 'quad': Define four corners (pt1=,pt2=,pt3=,pt4=) in a counter-clockwise orientation
             - 'ijkBounds': Dictionary of int[3x2] defining upper and lower block indices to which we will apply the DVs.
               It should follow this format:
 

@@ -87,15 +87,6 @@ class GeometricConstraint(ABC):
                 self.name, self.nCon, lower=self.lower, upper=self.upper, scale=self.scale, wrt=wrt_names
             )
 
-    def addVariablesPyOpt(self, optProb):
-        """
-        Add the variables to pyOpt, if the flag is set
-        """
-        # if self.addToPyOpt:
-        #     optProb.addVarGroup(self.name, self.nCon, lower=self.lower,
-        #                         upper=self.upper, scale=self.scale,
-        #                         wrt=self.getVarNames())
-
     @abstractmethod
     def writeTecplot(self, handle):
         """

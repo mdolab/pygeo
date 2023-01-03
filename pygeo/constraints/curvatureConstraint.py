@@ -14,7 +14,9 @@ class CurvatureConstraint1D(GeometricConstraint):
     constraints. One of these objects is created each time a
     addCurvatureConstraints1D call is made.
     The user should not have to deal with this class directly.
-    NOTE: the output is actually the square of the curvature
+
+    ..note ::
+        the output is actually the square of the curvature
     """
 
     def __init__(
@@ -54,7 +56,8 @@ class CurvatureConstraint1D(GeometricConstraint):
         aggregated: KSC2   = log(sum(KSCoeff*C*C))/KSCoeff
         We also print out the max curvature for these samples points. You need to tweak the KSCoeff to make sure
         The max curvature should be slightly lower than the KS curvature.
-        NOTE: we always do a square of the curvatures to make sure they are positive
+
+        .. note:: we always do a square of the curvatures to make sure they are positive
         """
         # project the coordinates to the axis direction, coordsP is a scalar now
         coordsP = np.zeros(nPts)

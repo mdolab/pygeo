@@ -40,9 +40,9 @@ class Topology:
         nEnt : int
             The number of "entities" in the topology class. This may be curves, faces or volumes.
         mNodeEnt : int
-            The number of NODES per entity. For curves it's 2, for surfaces 4 and for volumes 8.
+            The number of nodes per entity. For curves it's 2, for surfaces 4 and for volumes 8.
         mEdgeEnt : int
-            The number of EDGES per entity. For curves it's 1, for surfaces, 4 and for volumes, 12.
+            The number of edges per entity. For curves it's 1, for surfaces, 4 and for volumes, 12.
         mFaceEnt : int
             The number of faces per entity. For curves its's 0, for surfaces, 1 and for volumes, 6.
         mVolEnt : int

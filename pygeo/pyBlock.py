@@ -37,7 +37,7 @@ class pyBlock:
        uniform (and symmetric) knot vectors are assumed
        everywhere. This ensures a seamless FFD.
 
-    symPlane : {"x", "y", or "z"}
+    symmPlane : {"x", "y", or "z"}
         if a coordinate direciton is provided, the code will duplicate
         the FFD in the mirroring direction.
 

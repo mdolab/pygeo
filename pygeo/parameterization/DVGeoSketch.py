@@ -99,7 +99,7 @@ class DVGeoSketch(BaseDVGeometry):
 
         Examples
         --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        >>> optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
         return list(self.DVs.keys())
 
