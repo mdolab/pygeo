@@ -3,8 +3,10 @@
 [![Documentation Status](https://readthedocs.com/projects/mdolab-pygeo/badge/?version=latest)](https://mdolab-pygeo.readthedocs-hosted.com/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/mdolab/pygeo/branch/main/graph/badge.svg?token=N2L58WGCDI)](https://codecov.io/gh/mdolab/pygeo)
 
-pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization.
-It provides a free form deformation (FFD) based geometry manipulation object, an interface to NASA's Vehicle Sketch Pad geometry engine, a simple geometric constraint formulation object, and some utility functions for geometry manipulation.
+pyGeo is an object oriented geometry manipulation framework for multidisciplinary design optimization (MDO).
+It can be used for MDO within the [MACH framework](https://github.com/mdolab/MACH-Aero) and within [OpenMDAO](https://github.com/OpenMDAO/OpenMDAO) through [Mphys](https://github.com/OpenMDAO/mphys).
+Its parameterization options include a free form deformation (FFD) implementation, an interface to NASA's [OpenVSP](https://openvsp.org/) parametric geometry tool, and an interface to the CAD package [ESP](https://acdl.mit.edu/ESP/).
+It also includes geometric constraints and utility functions for geometry manipulation.
 
 ![](doc/images/DPW4_FFD-27745.gif)
 
@@ -34,5 +36,10 @@ G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approac
 ```
 
 ## License
+pyGeo is licensed under the Apache License, Version 2.0 (the "License"). See `LICENSE` for the full license.
 
-Copyright 2019 MDO Lab. See the LICENSE file for details.
+## Copyright
+Copyright (c) 2012 University of Toronto
+Copyright (c) 2014 University of Michigan
+Additional copyright (c) 2014 Gaetan K. W. Kenway, Charles A. Mader, and Joaquim R. R. A. Martins
+All rights reserved.

@@ -82,7 +82,7 @@ class BaseDVGeometry(ABC):
 
         Examples
         --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        >>> optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
         pass
 

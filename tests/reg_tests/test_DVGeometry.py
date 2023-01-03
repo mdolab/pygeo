@@ -1048,6 +1048,151 @@ class RegTestPyGeo(unittest.TestCase):
 
         np.testing.assert_allclose(dIdx["span"], dIdx_FD["span"], atol=1e-15)
 
+    def test_embedding_solver(self):
+        DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/fuselage_ffd_severe.xyz"))
+
+        test_points = [
+            # Points that work with the linesearch fix on the pyspline projection code.
+            # These points work with a reasonable iteration count (we have 50 for now).
+            [0.49886, 0.31924, 0.037167],
+            [0.49845, 0.32658, 0.039511],
+            [0.76509, 0.29709, 0.037575],
+            # The list of points below are much more problematic. The new fix can handle
+            # some of them but they require a very large iteration count. The FFD here
+            # is ridiculously difficult to embed, but leaving these points here because
+            # they are a great test of robustness if someone wants to improve the solver.
+            # even more down the line.
+            # [0.76474, 0.30461, 0.039028],
+            # [0.49988, 0.29506, 0.031219],
+            # [0.49943, 0.30642, 0.03374],
+            # [0.49792, 0.33461, 0.042548],
+            # [0.49466, 0.35848, 0.06916],
+            # [0.49419, 0.34003, 0.092855],
+            # [0.49432, 0.33345, 0.09765],
+            # [0.49461, 0.31777, 0.10775],
+            # [0.49465, 0.31347, 0.11029],
+            # [0.62736, 0.31001, 0.037233],
+            # [0.76401, 0.32044, 0.042354],
+            # [0.49322, 0.25633, 0.13751],
+            # [0.49358, 0.26432, 0.13435],
+        ]
+
+        DVGeo.addPointSet(test_points, "test", nIter=50)
+
+        # we evaluate the points. if the embedding fails, the points will not be identical
+        new_points = DVGeo.update("test")
+
+        np.testing.assert_allclose(test_points, new_points, atol=1e-15)
+
+    def test_coord_xfer(self):
+        DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
+
+        # create local DVs
+        DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+        DVGeo.addLocalDV("ydir", lower=-1.0, upper=1.0, axis="y", scale=1.0)
+        DVGeo.addLocalDV("zdir", lower=-1.0, upper=1.0, axis="z", scale=1.0)
+
+        def coordXfer(coords, mode="fwd", applyDisplacement=True):
+            rot_mat = np.array(
+                [
+                    [1, 0, 0],
+                    [0, 0, -1],
+                    [0, 1, 0],
+                ]
+            )
+
+            if mode == "fwd":
+                # apply the rotation first
+                coords_new = np.dot(coords, rot_mat)
+
+                # then the translation
+                if applyDisplacement:
+                    coords_new[:, 2] -= 5.0
+            elif mode == "bwd":
+                # apply the operations in reverse
+                coords_new = coords.copy()
+                if applyDisplacement:
+                    coords_new[:, 2] += 5.0
+
+                # and the rotation. note the rotation matrix is transposed
+                # for switching the direction of rotation
+                coords_new = np.dot(coords_new, rot_mat.T)
+
+            return coords_new
+
+        test_points = np.array(
+            [
+                # this point is normally outside the FFD volume,
+                # but after the coordinate transfer,
+                # it should be inside the FFD
+                [0.5, 0.5, -4.5],
+            ]
+        )
+
+        DVGeo.addPointSet(test_points, "test", coordXfer=coordXfer)
+
+        # check if we can query the same point back
+        pts_new = DVGeo.update("test")
+
+        np.testing.assert_allclose(test_points, pts_new, atol=1e-15)
+
+        # check derivatives
+        nPt = test_points.size
+        dIdx_FD = commonUtils.totalSensitivityFD(DVGeo, nPt, "test")
+
+        dIdPt = np.zeros([3, 1, 3])
+        dIdPt[0, 0, 0] = 1.0
+        dIdPt[1, 0, 1] = 1.0
+        dIdPt[2, 0, 2] = 1.0
+        dIdx = DVGeo.totalSensitivity(dIdPt, "test")
+
+        np.testing.assert_allclose(dIdx["xdir"], dIdx_FD["xdir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["ydir"], dIdx_FD["ydir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["zdir"], dIdx_FD["zdir"], atol=1e-15)
+
+        # also test the fwd AD
+        dIdxFwd = {
+            "xdir": np.zeros((3, 12)),
+            "zdir": np.zeros((3, 12)),
+            "ydir": np.zeros((3, 12)),
+        }
+        # need to do it one DV at a time
+        for ii in range(12):
+            seed = np.zeros(12)
+            seed[ii] = 1.0
+
+            dIdxFwd["xdir"][:, ii] = DVGeo.totalSensitivityProd({"xdir": seed}, "test")
+            dIdxFwd["ydir"][:, ii] = DVGeo.totalSensitivityProd({"ydir": seed}, "test")
+            dIdxFwd["zdir"][:, ii] = DVGeo.totalSensitivityProd({"zdir": seed}, "test")
+
+        np.testing.assert_allclose(dIdx["xdir"], dIdxFwd["xdir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["ydir"], dIdxFwd["ydir"], atol=1e-15)
+        np.testing.assert_allclose(dIdx["zdir"], dIdxFwd["zdir"], atol=1e-15)
+
+    def train_custom_ray_projections(self, train=True):
+        self.test_custom_ray_projections(train=train)
+
+    def test_custom_ray_projections(self, train=False):
+        """
+        Custom Ray Projections Test
+        This test checks the custom ray projection code.
+        """
+        refFile = os.path.join(self.base_path, "ref/test_custom_ray_projections.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test generalized axis node location section in plane")
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
+            xfraction = 0.5
+            yfraction = 0.5
+            rotType = 0
+            axis = np.array([0.0, 1.0, 1.0])
+
+            DVGeo.addRefAxis(
+                "RefAxis", axis=axis, xFraction=xfraction, yFraction=yfraction, alignIndex="k", rotType=rotType
+            )
+            DVGeo._finalize()
+
+            handler.root_add_val("links_x", DVGeo.links_x, rtol=1e-12, atol=1e-12)
+
 
 if __name__ == "__main__":
     unittest.main()
