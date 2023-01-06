@@ -6,6 +6,8 @@ from baseclasses import BaseRegTest
 from baseclasses.utils import Error
 from parameterized import parameterized_class
 import time
+import copy
+from collections import OrderedDict
 
 try:
     from mpi4py import MPI
@@ -250,6 +252,136 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
         for ipt in range(npts):
             self.assertAlmostEqual(np.sum(np.abs(testjac[ipt, :, :] - analyticjac[ipt, :, :])), 0)
+
+    def test_composite(self, train=True):
+        """
+        Test 3: OpenVSP wing test with DVcomposite
+        """
+        # we skip parallel tests for now
+        if not train and self.N_PROCS > 1:
+            self.skipTest("Skipping the parallel test for now.")
+
+        refFile = os.path.join(self.input_path, "reg_tests/ref/test_DVGeometryESP_02.ref")
+
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
+        DVGeo = DVGeometryESP(csmFile)
+        self.assertIsNotNone(DVGeo)
+
+        # add variables with a mix of optional arguments
+        DVGeo.addVariable("cubex0", lower=np.array([-10.0]), upper=np.array([10.0]), scale=0.1, dh=0.0001)
+        self.assertEqual(DVGeo.getNDV(), 1)
+        DVGeo.addVariable("cubey0")
+        self.assertEqual(DVGeo.getNDV(), 2)
+        DVGeo.addVariable("cubez0", lower=np.array([-10.0]), upper=np.array([10.0]))
+        self.assertEqual(DVGeo.getNDV(), 3)
+
+        _, initpts = self.setup_cubemodel()
+        # DVGeo = DVGeometryESP(csmFile, projTol=0.01)
+        # self.assertIsNotNone(DVGeo)
+
+        # DVGeo.addVariable("cst_u", lower=np.zeros((13,)), upper=np.ones((13,)), scale=1, dh=0.0001)
+        # DVGeo.addVariable("cst_l", lower=-np.ones((13,)), upper=np.zeros((13,)), scale=1, dh=0.0001)
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("ESP NACA 0012 composite derivative test")
+            dh = 1e-6
+            # extract node coordinates and save them in a numpy array
+            npts = initpts.shape[0]
+            # coor = np.zeros((npts, 3))
+            # for i in range(npts):
+            #     coor[i, :] = (initpts[0][i][0], initpts[0][i][1], initpts[0][i][2])
+            coor = initpts
+            # Add this pointSet to DVGeo
+            DVGeo.addPointSet(coor, "test_points")
+            DVGeo.addCompositeDV("vspComp", "test_points")
+
+            # We will have nNodes*3 many functions of interest...
+            # dIdpt = np.random.rand(1, npts, 3)
+            dIdpt = np.zeros((npts * 3, npts, 3))
+
+            # set the seeds to one in the following fashion:
+            # first function of interest gets the first coordinate of the first point
+            # second func gets the second coord of first point etc....
+            for i in range(npts):
+                for j in range(3):
+                    dIdpt[i * 3 + j, i, j] = 1
+            # first get the dvgeo result
+            funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
+
+            # now perturb the design with finite differences and compute FD gradients
+            # DVs = DVGeo.getValues()
+            DVs = OrderedDict()
+
+            for dvName in DVGeo.DVs:
+                DVs[dvName] = DVGeo.DVs[dvName].value
+                # count = count +1
+
+            funcSensFD = {}
+
+            inDict = copy.deepcopy(DVs)
+            userVec = DVGeo.convertDictToSensitivity(inDict)
+            DVvalues = DVGeo.convertSensitivityToDict(userVec.reshape(1, -1), out1D=True, useCompositeNames=False)
+
+            # We flag the composite DVs to be false to not to make any changes on default mode.
+            DVGeo.useComposite = False
+
+            count = 0
+            for x in DVvalues:
+                # perturb the design
+                xRef = DVvalues[x].copy()
+                DVvalues[x] += dh
+
+                DVGeo.setDesignVars(DVvalues)
+
+                # get the new points
+                coorNew = DVGeo.update("test_points")
+
+                # calculate finite differences
+                funcSensFD[x] = (coorNew.flatten() - coor.flatten()) / dh
+
+                # set back the DV
+                DVvalues[x] = xRef.copy()
+                count = count + 1
+
+            DVGeo.useComposite = True
+            # now loop over the values and compare
+            # when this is run with multiple procs, VSP sometimes has a bug
+            # that leads to different procs having different spanwise
+            # u-v distributions. as a result, the final values can differ up to 1e-5 levels
+            # this issue does not come up if this tests is ran with a single proc
+            biggest_deriv = 1e-16
+
+            DVCount = DVGeo.getNDV()
+
+            funcSensFDMat = np.zeros((coorNew.size, DVCount), dtype="d")
+            i = 0
+
+            for key in DVGeo.DVs:
+                # dv = DVGeo.DVs[key]
+                funcSensFDMat[:, i] = funcSensFD[key].T
+                i += 1
+                # i =i +DVCount* coorNew.size
+
+            # Now we need to map our FD derivatives to composite
+            funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
+            funcSensFDDict = DVGeo.convertSensitivityToDict(funcSensFDMat, useCompositeNames=True)
+
+            # Now we check how much the derivatives deviates from each other
+            counter = 0
+            for x in [DVGeo.DVComposite.name]:
+                err = np.array(funcSens[x]) - np.array(funcSensFDDict[x])
+                maxderiv = np.max(np.abs(funcSens[x]))
+                normalizer = np.median(np.abs(funcSensFDDict[x]))
+                if np.abs(normalizer) < 1:
+                    normalizer = np.ones(1)
+                normalized_error = err / normalizer
+                if maxderiv > biggest_deriv:
+                    biggest_deriv = maxderiv
+                handler.assert_allclose(normalized_error, 0.0, name=f"{x}_grad_normalized_error", rtol=1e0, atol=5e-5)
+                counter = counter + 1
+
+            # make sure that at least one derivative is nonzero
+            self.assertGreater(biggest_deriv, 0.005)
 
 
 @unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
