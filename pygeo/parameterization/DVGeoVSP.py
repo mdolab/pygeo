@@ -86,7 +86,7 @@ class DVGeometryVSP(DVGeoSketch):
 
         t1 = time.time()
         # read the model
-        print(fileName)
+
         openvsp.ReadVSPFile(fileName)
         t2 = time.time()
         if self.comm.rank == 0:
@@ -400,7 +400,7 @@ class DVGeometryVSP(DVGeoSketch):
         """
         return len(self.DVs)
 
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, s=None, comm=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, comm=None):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -423,7 +423,7 @@ class DVGeometryVSP(DVGeoSketch):
                 raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
             if scale is None:
                 raise ValueError("If u is provided, then scale must also be provided.")
-            s = s
+            s = None
         else:
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")

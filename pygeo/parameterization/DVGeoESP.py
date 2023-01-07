@@ -593,7 +593,7 @@ class DVGeometryESP(DVGeoSketch):
         """
         if self.useComposite:
             dvDict = self.mapXDictToDVGeo(dvDict)
-        print(dvDict)
+
         # Just dump in the values
         for key in dvDict:
             if key in self.DVs:
@@ -711,7 +711,7 @@ class DVGeometryESP(DVGeoSketch):
         """
         return len(self.globalDVList)
 
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, s=None, comm=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, comm=None):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -734,7 +734,7 @@ class DVGeometryESP(DVGeoSketch):
                 raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
             if scale is None:
                 raise ValueError("If u is provided, then scale must also be provided.")
-            s = s
+            s = None
         else:
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")

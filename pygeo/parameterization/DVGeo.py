@@ -1370,7 +1370,7 @@ class DVGeometry(BaseDVGeometry):
 
         return self.DV_listSectionLocal[dvName].nVal
 
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, s=None, scale=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -1399,14 +1399,12 @@ class DVGeometry(BaseDVGeometry):
         else:
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
-            print(ptSetName)
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full, full_matrices=False)
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
-        print("addc1")
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
@@ -3680,105 +3678,6 @@ class DVGeometry(BaseDVGeometry):
                 self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.real.astype("d")
 
             self.coef = self.coef.real.astype("d")
-
-    def mapXDictToDVGeo(self, inDict):
-        """
-        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
-        without modifying them
-
-        Parameters
-        ----------
-        inDict : dict
-            The dictionary of DVs to be mapped
-
-        Returns
-        -------
-        dict
-            The mapped DVs in the same dictionary format
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = inDict.pop(self.DVComposite.name)
-        outVec = self.mapVecToDVGeo(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
-        # now merge inDict and outDict
-        for key in inDict:
-            outDict[key] = inDict[key]
-        return outDict
-
-    def mapXDictToComp(self, inDict):
-        """
-        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
-
-        Parameters
-        ----------
-        inDict : dict
-            The DVs to be mapped
-
-        Returns
-        -------
-        dict
-            The mapped DVs
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = self.convertDictToSensitivity(inDict)
-        outVec = self.mapVecToComp(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
-        return outDict
-
-    def mapVecToDVGeo(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u @ inVec
-        return outVec.flatten()
-
-    def mapVecToComp(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u.T @ inVec
-        return outVec.flatten()
-
-    def mapSensToComp(self, inVec):
-        """
-        Maps the sensitivity matrix to the composite design space
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The sensitivities to be mapped
-
-        Returns
-        -------
-        ndarray
-            The mapped sensitivity matrix
-        """
-        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
-        return outVec
 
     def computeTotalJacobianFD(self, ptSetName, config=None):
         """This function takes the total derivative of an objective,
