@@ -15,6 +15,7 @@ import numpy as np
 import copy
 from mpi4py import MPI
 from .BaseDVGeo import BaseDVGeometry
+from .designVars import geoDVComposite
 from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D
 
 
@@ -76,6 +77,54 @@ class DVGeoSketch(BaseDVGeometry):
 
         # Initial list of DVs
         self.DVs = OrderedDict()
+
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, comm=None):
+        """
+        Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
+        at the moment.
+        Parameters
+        ----------
+        dvName : str
+            The name of the composite DVs
+        ptSetName : str, optional
+            If the matrices need to be computed, then a point set must be specified, by default None
+        u : ndarray, optional
+            The u matrix used for the composite DV, by default None
+        scale : float or ndarray, optional
+            The scaling applied to this DV, by default None
+        """
+        NDV = self.getNDV()
+
+        if u is not None:
+            # we are after a square matrix
+            if u.shape != (NDV, NDV):
+                raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+            if scale is None:
+                raise ValueError("If u is provided, then scale must also be provided.")
+            s = None
+        else:
+            if ptSetName is None:
+                raise ValueError("If u and s need to be computed, you must specify the ptSetName")
+            if not self.updatedJac[ptSetName]:
+                self._computeSurfJacobian()
+
+            J_full = self.pointSets[ptSetName].jac
+
+            u, s, _ = np.linalg.svd(J_full.T, full_matrices=False)
+
+            scale = np.sqrt(s)
+            # normalize the scaling
+            scale = scale * (NDV / np.sum(scale))
+
+        # map the initial design variable values
+        # we do this manually instead of calling self.mapVecToComp
+        # because self.DVComposite.u isn't available yet
+        values = u.T @ self.convertDictToSensitivity(self.getValues())
+
+        self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
+
+        self.useComposite = True
+        # super().__init__(useCompostiveDVs=self.useComposite, compositeDVs=self.DVComposite)
 
     def getValues(self):
         """
