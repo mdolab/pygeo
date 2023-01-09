@@ -78,7 +78,7 @@ class DVGeometry(BaseDVGeometry):
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
-      >>> from pygeo import *
+      >>> from pygeo import DVGeometry
       >>> DVGeo = DVGeometry('FFD_file.fmt')
       >>> # Embed a set of coordinates Xpt into the object
       >>> DVGeo.addPointSet(Xpt, 'myPoints')
@@ -91,7 +91,6 @@ class DVGeometry(BaseDVGeometry):
       >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
       >>> # Now add local (shape) variables
       >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
-      >>>
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
@@ -173,7 +172,7 @@ class DVGeometry(BaseDVGeometry):
         self.nPts = {}
 
         # dictionary to save any coordinate transformations we are given
-        self.coord_xfer = {}
+        self.coordXfer = {}
 
         # Derivatives of Xref and Coef provided by the parent to the
         # children
@@ -296,14 +295,18 @@ class DVGeometry(BaseDVGeometry):
         yFraction : float
             Specify the parametric location of the reference axis node along axis: 1 relative to
             top and bottom control points location. Constant for every spanwise section.
-            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
-            and the option will not have any effect.
+
+            .. note::
+                if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+                and the option will not have any effect.
 
         zFraction : float
             Specify the parametric location of the reference axis node along axis: 2 relative to
             top and bottom control points location. Constant for every spanwise section.
-            NOTE: if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
-            and the option will not have any effect.
+
+            .. note::
+                if this is the spanwise axis of the FFD box, the refAxis node will remain in-plane
+                and the option will not have any effect.
 
         volumes : list or array or integers
             List of the volume indices, in 0-based ordering that this
@@ -326,9 +329,32 @@ class DVGeometry(BaseDVGeometry):
             7. z-x-y + rot_theta
             8. z-x-y + rotation about section axis (to allow for winglet rotation)
 
-        axis: str
-            Axis along which to project points/control points onto the
-            ref axis. Default is `x` which will project rays.
+        axis: str or numpy array of size 3
+            This parameter controls how the links between the control points
+            and the reference axis are computed. If the value is set to
+            "x", "y", or "z", then the code will extend rays out from the
+            control points in the direction specified in the "axis" variable,
+            and it will compute the projection of the ray to the reference axis.
+            This returns a point on the reference axis, which is taken as the
+            other end of the link of the control point to the reference axis,
+            where the other point of the link is the control point itself.
+            This approach works well enough for most cases, but may not be
+            ideal when the reference axis sits at an angle (e.g. wing with
+            dihedral). For these cases, setting the axis value with an array
+            of size 3 is the better approach. When axis is set to an array of
+            size 3, the code creates a plane that goes through each control point
+            with the normal that is defined by the direction of the axis parameter.
+            Then the end of the links are computed by finding the intersection of this
+            plane with the reference axis. The benefit of this approach is that
+            all of the reference axis links will lie on the same plane if the original
+            FFD control points were planar on each section. E.g., a wing FFD might have
+            x chordwise, y spanwise out, and z up, but with a dihedral. The FFD
+            control points for each spanwise section can lie on the x-z plane.
+            In this case, we want the links to be in a constant-y plane. To achieve
+            this, we can set the axis variable to [0, 1, 0], which defines the normal
+            of the plane we want. If you want to modify this option and see its effects,
+            consider writing the links between control points and the referece axis using
+            the "writeLinks" method in this class.
 
         alignIndex: str
             FFD axis along which the reference axis will lie. Can be `i`, `j`,
@@ -391,15 +417,6 @@ class DVGeometry(BaseDVGeometry):
         # We don't do any of the final processing here; we simply
         # record the information the user has supplied into a
         # dictionary structure.
-        if axis is None:
-            pass
-        elif axis.lower() == "x":
-            axis = np.array([1, 0, 0], "d")
-        elif axis.lower() == "y":
-            axis = np.array([0, 1, 0], "d")
-        elif axis.lower() == "z":
-            axis = np.array([0, 0, 1], "d")
-
         if curve is not None:
             # Explicit curve has been supplied:
             if self.FFD.symmPlane is None:
@@ -638,7 +655,7 @@ class DVGeometry(BaseDVGeometry):
 
         return nAxis
 
-    def addPointSet(self, points, ptName, origConfig=True, coord_xfer=None, **kwargs):
+    def addPointSet(self, points, ptName, origConfig=True, coordXfer=None, **kwargs):
         """
         Add a set of coordinates to DVGeometry
 
@@ -660,7 +677,7 @@ class DVGeometry(BaseDVGeometry):
             undeformed or deformed configuration. This should almost
             always be True except in circumstances when the user knows
             exactly what they are doing.
-        coord_xfer : function
+        coordXfer : function
             A callback function that performs a coordinate transformation
             between the DVGeo reference frame and any other reference
             frame. The DVGeo object uses this routine to apply the coordinate
@@ -671,26 +688,26 @@ class DVGeometry(BaseDVGeometry):
             the user to do whatever they want with the coordinate transformation.
             The function must have the first positional argument as the array that is
             (npt, 3) and the two keyword arguments that must be available are "mode"
-            ("fwd" or "bwd") and "apply_displacement" (True or False). This function
+            ("fwd" or "bwd") and "applyDisplacement" (True or False). This function
             can then be passed to DVGeo through something like ADflow, where the
             set DVGeo call can be modified as:
-            CFDSolver.setDVGeo(DVGeo, pointSetKwargs={"coord_xfer": coord_xfer})
+            CFDSolver.setDVGeo(DVGeo, pointSetKwargs={"coordXfer": coordXfer})
 
             An example function is as follows:
 
             .. code-block:: python
 
-                def coord_xfer(coords, mode="fwd", apply_displacement=True, **kwargs):
+                def coordXfer(coords, mode="fwd", applyDisplacement=True, **kwargs):
                     # given the (npt by 3) array "coords" apply the coordinate transformation.
                     # The "fwd" mode implies we go from DVGeo reference frame to the
                     # application, e.g. CFD, the "bwd" mode is the opposite;
                     # goes from the CFD reference frame back to the DVGeo reference frame.
-                    # the apply_displacement flag needs to be correctly implemented
+                    # the applyDisplacement flag needs to be correctly implemented
                     # by the user; the derivatives are also passed through this routine
                     # and they only need to be rotated when going between reference frames,
                     # and they should NOT be displaced.
 
-                    # In summary, all the displacements MUST be within the if apply_displacement == True
+                    # In summary, all the displacements MUST be within the if applyDisplacement == True
                     # checks, otherwise the derivatives will be wrong.
 
                     #  Example transfer: The CFD mesh
@@ -713,12 +730,12 @@ class DVGeometry(BaseDVGeometry):
                         coords_new = np.dot(coords, rot_mat)
 
                         # then the translation
-                        if apply_displacement:
+                        if applyDisplacement:
                             coords_new[:, 2] -= 5
                     elif mode == "bwd":
                         # apply the operations in reverse
                         coords_new = coords.copy()
-                        if apply_displacement:
+                        if applyDisplacement:
                             coords_new[:, 2] += 5
 
                         # and the rotation. note the rotation matrix is transposed
@@ -740,14 +757,14 @@ class DVGeometry(BaseDVGeometry):
         points = np.array(points).real.astype("d")
 
         # save the coordinate transformation info
-        if coord_xfer is not None:
-            self.coord_xfer[ptName] = coord_xfer
+        if coordXfer is not None:
+            self.coordXfer[ptName] = coordXfer
 
             # Also apply the first coordinate transformation while adding this ptset.
             # The child FFDs only interact with their parent FFD, and therefore,
             # do not need to access the coordinate transformation routine; i.e.
             # all transformations are applied once during the highest level DVGeo object.
-            points = self.coord_xfer[ptName](points, mode="bwd", apply_displacement=True)
+            points = self.coordXfer[ptName](points, mode="bwd", applyDisplacement=True)
 
         self.points[ptName] = points
 
@@ -1428,10 +1445,6 @@ class DVGeometry(BaseDVGeometry):
 
         indSetB : list of ints
                   Other half of the coefs to be constrained
-
-        Examples
-        --------
-
         """
 
         if self.FFD.symmPlane is None:
@@ -1966,8 +1979,8 @@ class DVGeometry(BaseDVGeometry):
             # we only check if we need to apply the coordinate transformation
             # and move the pointset to the reference frame of the application,
             # if this is the last pygeo in the chain
-            if ptSetName in self.coord_xfer:
-                Xfinal = self.coord_xfer[ptSetName](Xfinal, mode="fwd", apply_displacement=True)
+            if ptSetName in self.coordXfer:
+                Xfinal = self.coordXfer[ptSetName](Xfinal, mode="fwd", applyDisplacement=True)
             return Xfinal
 
     def applyToChild(self, iChild):
@@ -2204,12 +2217,12 @@ class DVGeometry(BaseDVGeometry):
         N = dIdpt.shape[0]
 
         # apply the coordinate transformation on dIdpt if this pointset has it.
-        if ptSetName in self.coord_xfer:
+        if ptSetName in self.coordXfer:
             # loop over functions
             for ifunc in range(N):
                 # its important to remember that dIdpt are vector-like values,
                 # so we don't apply the transformations and only the rotations!
-                dIdpt[ifunc] = self.coord_xfer[ptSetName](dIdpt[ifunc], mode="bwd", apply_displacement=False)
+                dIdpt[ifunc] = self.coordXfer[ptSetName](dIdpt[ifunc], mode="bwd", applyDisplacement=False)
 
         # generate the total Jacobian self.JT
         self.computeTotalJacobian(ptSetName, config=config)
@@ -2313,10 +2326,10 @@ class DVGeometry(BaseDVGeometry):
             xsdot.reshape(len(xsdot) // 3, 3)
 
             # check if we have a coordinate transformation on this ptset
-            if ptSetName in self.coord_xfer:
+            if ptSetName in self.coordXfer:
                 # its important to remember that dIdpt are vector-like values,
                 # so we don't apply the transformations and only the rotations!
-                xsdot = self.coord_xfer[ptSetName](xsdot, mode="fwd", apply_displacement=False)
+                xsdot = self.coordXfer[ptSetName](xsdot, mode="fwd", applyDisplacement=False)
 
             # Maybe this should be:
             # xsdot = xsdot.reshape(len(xsdot)//3, 3)
@@ -2375,10 +2388,10 @@ class DVGeometry(BaseDVGeometry):
         else:
 
             # check if we have a coordinate transformation on this ptset
-            if ptSetName in self.coord_xfer:
+            if ptSetName in self.coordXfer:
                 # its important to remember that dIdpt are vector-like values,
                 # so we don't apply the transformations and only the rotations!
-                vec = self.coord_xfer[ptSetName](vec, mode="bwd", apply_displacement=False)
+                vec = self.coordXfer[ptSetName](vec, mode="bwd", applyDisplacement=False)
 
             xsdot = self.JT[ptSetName].dot(np.ravel(vec))
 
@@ -2663,11 +2676,11 @@ class DVGeometry(BaseDVGeometry):
             Flag specifying whether spanwiselocal variables are to be added
 
         ignoreVars : list of strings
-            List of design variables the user DOESN'T want to use
+            List of design variables the user doesn't want to use
             as optimization variables.
 
         freezeVars : list of string
-            List of design variables the user WANTS to add as optimization
+            List of design variables the user wants to add as optimization
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
@@ -3198,9 +3211,32 @@ class DVGeometry(BaseDVGeometry):
             if self.axis[key]["axis"] is None:
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
-                tmpIDs, tmpS0 = self.refAxis.projectRays(
-                    curPts, self.axis[key]["axis"], curves=[curveID], raySize=self.axis[key]["raySize"]
-                )
+
+                if isinstance(self.axis[key]["axis"], str) and len(self.axis[key]["axis"]) == 1:
+                    # The axis can be a string of length one.
+                    # If so, we follow the ray projection approach.
+                    if self.axis[key]["axis"].lower() == "x":
+                        axis = np.array([1, 0, 0], "d")
+                    elif self.axis[key]["axis"].lower() == "y":
+                        axis = np.array([0, 1, 0], "d")
+                    elif self.axis[key]["axis"].lower() == "z":
+                        axis = np.array([0, 0, 1], "d")
+                    tmpIDs, tmpS0 = self.refAxis.projectRays(
+                        curPts, axis, curves=[curveID], raySize=self.axis[key]["raySize"]
+                    )
+
+                elif isinstance(self.axis[key]["axis"], np.ndarray) and len(self.axis[key]["axis"]) == 3:
+                    # we want to intersect a plane that crosses the cur pts and the normal
+                    # defined by the "axis" parameter used when adding the ref axis.
+                    tmpIDs, tmpS0 = self.refAxis.intersectPlanes(
+                        curPts, self.axis[key]["axis"], curves=[curveID], raySize=self.axis[key]["raySize"]
+                    )
+                else:
+                    raise Error(
+                        "The 'axis' parameter when adding the reference axis must be a single character "
+                        "specifying the direction ('x', 'y', or 'z') or a numpy array of size 3 that "
+                        "defines the normal of the plane which will be used for reference axis projections."
+                    )
 
             curveIDs.extend(tmpIDs)
             s.extend(tmpS0)
@@ -4548,7 +4584,7 @@ class DVGeometry(BaseDVGeometry):
         `k`
             along span
 
-        If we choose `sectionIndex='k'`, this function will compute a frame which
+        If we choose ``sectionIndex='k'``, this function will compute a frame which
         has two axes aligned with the k-planes of the FFD volume. This is useful
         because in some cases (as with a winglet), we want to perturb sectional
         control points within the section plane instead of in the global

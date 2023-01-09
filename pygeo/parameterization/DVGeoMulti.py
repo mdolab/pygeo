@@ -144,6 +144,7 @@ class DVGeometryMulti:
         trackSurfaces=None,
         excludeSurfaces=None,
         remeshBwd=True,
+        anisotropy=[1.0, 1.0, 1.0],
     ):
         """
         Method that defines intersections between components.
@@ -211,6 +212,14 @@ class DVGeometryMulti:
             Flag to specify whether to remesh feature curves on the side opposite that
             which is specified by the march direction.
 
+        anisotropy : list of float, optional
+            List with three entries specifying scaling factors in the [x, y, z] directions.
+            The factors multiply the [x, y, z] distances used in the curve-based deformation.
+            Smaller factors in a certain direction will amplify the effect of the parts of the curve
+            that lie in that direction from the points being warped.
+            This tends to increase the mesh quality in one direction at the expense of other directions.
+            This can be useful when the initial intersection curve is skewed.
+
         """
 
         # Assign mutable defaults
@@ -241,6 +250,7 @@ class DVGeometryMulti:
                 trackSurfaces,
                 excludeSurfaces,
                 remeshBwd,
+                anisotropy,
                 self.debug,
                 self.dtype,
             )
@@ -571,7 +581,7 @@ class DVGeometryMulti:
 
         Examples
         --------
-        optProb.addCon(.....wrt=DVGeo.getVarNames())
+        >>> optProb.addCon(.....wrt=DVGeo.getVarNames())
 
         """
         dvNames = []
@@ -746,11 +756,11 @@ class DVGeometryMulti:
             Flag specifying whether local variables are to be added
 
         ignoreVars : list of strings
-            List of design variables the user DOESN'T want to use
+            List of design variables the user doesn't want to use
             as optimization variables.
 
         freezeVars : list of string
-            List of design variables the user WANTS to add as optimization
+            List of design variables the user wants to add as optimization
             variables, but to have the lower and upper bounds set at the current
             variable. This effectively eliminates the variable, but it the variable
             is still part of the optimization.
@@ -941,6 +951,7 @@ class CompIntersection:
         trackSurfaces,
         excludeSurfaces,
         remeshBwd,
+        anisotropy,
         debug,
         dtype,
     ):
@@ -1022,7 +1033,6 @@ class CompIntersection:
 
         self.dStarA = dStarA
         self.dStarB = dStarB
-        # self.halfdStar = self.dStar/2.0
         self.points = OrderedDict()
 
         # Make surface names lowercase
@@ -1035,6 +1045,9 @@ class CompIntersection:
             if k.lower() in self.trackSurfaces:
                 raise Error(f"Surface {k} cannot be in both trackSurfaces and excludeSurfaces.")
             self.excludeSurfaces[k.lower()] = v
+
+        # Save anisotropy list
+        self.anisotropy = anisotropy
 
         # process the feature curves
 
@@ -1435,8 +1448,27 @@ class CompIntersection:
                 print("The intersection topology has changed. The intersection will not be updated.")
             return delta
 
-        # define an epsilon to avoid dividing by zero later on
+        # Define an epsilon to avoid dividing by zero later on
         eps = 1e-50
+
+        # Get the two end points for the line elements
+        r0 = coor[conn[:, 0]]
+        r1 = coor[conn[:, 1]]
+
+        # Get the deltas for two end points
+        dr0 = dr[conn[:, 0]]
+        dr1 = dr[conn[:, 1]]
+
+        # Compute the lengths of each element in each coordinate direction
+        length_x = r1[:, 0] - r0[:, 0]
+        length_y = r1[:, 1] - r0[:, 1]
+        length_z = r1[:, 2] - r0[:, 2]
+
+        # Compute the 'a' coefficient
+        a = (length_x) ** 2 + (length_y) ** 2 + (length_z) ** 2
+
+        # Compute the total length of each element
+        length = np.sqrt(a)
 
         # loop over the points that get affected
         for i in range(len(factors)):
@@ -1448,46 +1480,37 @@ class CompIntersection:
 
             # Run vectorized weighted interpolation
 
-            # get the two end points for the line elements
-            r0 = coor[conn[:, 0]]
-            r1 = coor[conn[:, 1]]
+            # Compute the distances from the point being updated to the first end point of each element
+            # The distances are scaled by the user-specified anisotropy in each direction
+            dist_x = (r0[:, 0] - rp[0]) * self.anisotropy[0]
+            dist_y = (r0[:, 1] - rp[1]) * self.anisotropy[1]
+            dist_z = (r0[:, 2] - rp[2]) * self.anisotropy[2]
 
-            # get the deltas for two end points
-            dr0 = dr[conn[:, 0]]
-            dr1 = dr[conn[:, 1]]
+            # Compute b and c coefficients
+            b = 2 * (length_x * dist_x + length_y * dist_y + length_z * dist_z)
+            c = dist_x**2 + dist_y**2 + dist_z**2
 
-            # compute a, b, and c coefficients
-            a = (r1[:, 0] - r0[:, 0]) ** 2 + (r1[:, 1] - r0[:, 1]) ** 2 + (r1[:, 2] - r0[:, 2]) ** 2
-            b = 2 * (
-                (r1[:, 0] - r0[:, 0]) * (r0[:, 0] - rp[0])
-                + (r1[:, 1] - r0[:, 1]) * (r0[:, 1] - rp[1])
-                + (r1[:, 2] - r0[:, 2]) * (r0[:, 2] - rp[2])
-            )
-            c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
+            # Compute some recurring terms
 
-            # distances for each element
-            dists = np.sqrt(np.maximum(a, 0.0))
+            # The discriminant can be zero or negative, but it CANNOT be positive
+            # This is because the quadratic that defines the distance from the line cannot have two roots
+            # If the point is on the line, the quadratic will have a single root
+            disc = b * b - 4 * a * c
 
-            # compute some re-occurring terms
-            # the determinant can be zero or negative, but it CANNOT be positive
-            # this is because the quadratic that defines the distance from the line cannot have two roots.
-            # if the point is on the line, the quadratic will have a single root...
-            det = b * b - 4 * a * c
-            # these might be negative 1e-20sth so clip them...
-            # these will be strictly zero or greater than zero.
-            # Numerically, they cannot be negative bec. we are working with real numbers
+            # Clip a + b + c might because it might be negative 1e-20 or so
+            # Analytically, it cannot be negative
             sabc = np.sqrt(np.maximum(a + b + c, 0.0))
-            sc = np.sqrt(np.maximum(c, 0.0))
+            sc = np.sqrt(c)
 
-            # denominators on the integral evaluations
-            # add an epsilon so that these terms never become zero
-            # det <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0
-            den1 = det * sabc - eps
-            den2 = det * sc - eps
+            # Compute denominators for the integral evaluations
+            # Add an epsilon so that these terms never become zero
+            # disc <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0
+            den1 = disc * sabc - eps
+            den2 = disc * sc - eps
 
             # integral evaluations
-            eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * dists
-            eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
+            eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length
+            eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * length
 
             # denominator only gets one integral
             den = np.sum(eval1)
@@ -1506,39 +1529,6 @@ class CompIntersection:
 
         return delta
 
-    def update_d(self, ptSetName, dPt, dSeam):
-
-        """forward mode differentiated version of the update routine.
-        Note that dPt and dSeam are both one dimensional arrays
-        """
-        pts = self.points[ptSetName][0]
-        indices = self.points[ptSetName][1]
-        factors = self.points[ptSetName][2]
-
-        # we need to reshape the arrays for simpler code
-        dSeam = dSeam.reshape((len(self.seam0), 3))
-
-        for i in range(len(factors)):
-            # j is the index of the point in the full set we are
-            # working with.
-            j = indices[i]
-
-            # Do it vectorized
-            rr = pts[j] - self.seam0
-            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-            LdefoDist3 = LdefoDist**3
-            Wi = LdefoDist3
-            den = np.sum(Wi)
-            interp_d = np.zeros(3)
-            for iDim in range(3):
-                interp_d[iDim] = np.sum(Wi * dSeam[:, iDim]) / den
-
-                # Now the delta is replaced by 1-factor times the weighted
-                # interp of the seam * factor of the original:
-                dPt[j * 3 + iDim] = factors[i] * dPt[j * 3 + iDim] + (1 - factors[i]) * interp_d[iDim]
-
-        return
-
     def sens(self, dIdPt, ptSetName, comm):
         # Return the reverse accumulation of dIdpt on the seam
         # nodes. Also modifies the dIdp array accordingly.
@@ -1556,8 +1546,23 @@ class CompIntersection:
         # bar connectivity for the remeshed elements
         conn = self.seamConn
 
-        # define an epsilon to avoid dividing by zero later on
+        # Define an epsilon to avoid dividing by zero later on
         eps = 1e-50
+
+        # Get the two end points for the line elements
+        r0 = coor[conn[:, 0]]
+        r1 = coor[conn[:, 1]]
+
+        # Compute the lengths of each element in each coordinate direction
+        length_x = r1[:, 0] - r0[:, 0]
+        length_y = r1[:, 1] - r0[:, 1]
+        length_z = r1[:, 2] - r0[:, 2]
+
+        # Compute the 'a' coefficient
+        a = (length_x) ** 2 + (length_y) ** 2 + (length_z) ** 2
+
+        # Compute the total length of each element
+        length = np.sqrt(a)
 
         # if we are handling more than one function,
         # seamBar will contain the seeds for each function separately
@@ -1567,50 +1572,49 @@ class CompIntersection:
         if self.projectFlag:
             seamBar += self.seamBarProj[ptSetName]
 
-        for k in range(dIdPt.shape[0]):
-            for i in range(len(factors)):
+        for i in range(len(factors)):
 
-                # j is the index of the point in the full set we are working with.
-                j = indices[i]
+            # j is the index of the point in the full set we are working with.
+            j = indices[i]
 
-                # coordinates of the original point
-                rp = pts[j]
+            # coordinates of the original point
+            rp = pts[j]
+
+            # Compute the distances from the point being updated to the first end point of each element
+            # The distances are scaled by the user-specified anisotropy in each direction
+            dist_x = (r0[:, 0] - rp[0]) * self.anisotropy[0]
+            dist_y = (r0[:, 1] - rp[1]) * self.anisotropy[1]
+            dist_z = (r0[:, 2] - rp[2]) * self.anisotropy[2]
+
+            # Compute b and c coefficients
+            b = 2 * (length_x * dist_x + length_y * dist_y + length_z * dist_z)
+            c = dist_x**2 + dist_y**2 + dist_z**2
+
+            # Compute some reccurring terms
+            disc = b * b - 4 * a * c
+            sabc = np.sqrt(np.maximum(a + b + c, 0.0))
+            sc = np.sqrt(c)
+
+            # Compute denominators for the integral evaluations
+            den1 = disc * sabc - eps
+            den2 = disc * sc - eps
+
+            # integral evaluations
+            eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length
+            eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * length
+
+            # denominator only gets one integral
+            den = np.sum(eval1)
+
+            evalDiff = eval1 - eval2
+
+            for k in range(dIdPt.shape[0]):
 
                 # This is the local seed (well the 3 seeds for the point)
                 localVal = dIdPt[k, j, :] * (1 - factors[i])
 
                 # Scale the dIdpt by the factor..dIdpt is input/output
                 dIdPt[k, j, :] *= factors[i]
-
-                # get the two end points for the line elements
-                r0 = coor[conn[:, 0]]
-                r1 = coor[conn[:, 1]]
-                # compute a, b, and c coefficients
-                a = (r1[:, 0] - r0[:, 0]) ** 2 + (r1[:, 1] - r0[:, 1]) ** 2 + (r1[:, 2] - r0[:, 2]) ** 2
-                b = 2 * (
-                    (r1[:, 0] - r0[:, 0]) * (r0[:, 0] - rp[0])
-                    + (r1[:, 1] - r0[:, 1]) * (r0[:, 1] - rp[1])
-                    + (r1[:, 2] - r0[:, 2]) * (r0[:, 2] - rp[2])
-                )
-                c = (r0[:, 0] - rp[0]) ** 2 + (r0[:, 1] - rp[1]) ** 2 + (r0[:, 2] - rp[2]) ** 2
-                # distances for each element
-                dists = np.sqrt(np.maximum(a, 0.0))
-
-                # compute some re-occurring terms
-                det = b * b - 4 * a * c
-                sabc = np.sqrt(np.maximum(a + b + c, 0.0))
-                sc = np.sqrt(np.maximum(c, 0.0))
-                # denominators on the integral evaluations
-                den1 = det * sabc - eps
-                den2 = det * sc - eps
-                # integral evaluations
-                eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * dists
-                eval2 = ((2 * b + 4 * c) / den1 - 4 * c / den2) * dists
-
-                # denominator only gets one integral
-                den = np.sum(eval1)
-
-                evalDiff = eval1 - eval2
 
                 # do each direction separately
                 for iDim in range(3):
