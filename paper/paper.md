@@ -4,17 +4,29 @@ tags:
   - geometry
   - Python
 authors:
-#   - name: Neil Wu
-#     orcid: 0000-0001-8856-9661
-#     affiliation: 1
-#   - name: Hannah Hajdik
-#     affiliation: 1
-#   - name: Ben Brelje
-#     affiliation: 1
-#   - name: Gaetan Kenway
-#     affiliation: 1
-#   - name: Charles A. Mader
-#     affiliation: 1
+  - name: Hannah Hajdik
+    affiliation: 1
+  - name: Anil Yildirim
+  - affiliation: 1
+  - name: Neil Wu
+    orcid: 0000-0001-8856-9661
+    affiliation: 1
+  - name: Ben Brelje
+    affiliation: 1
+  - name: Sabet Seraj
+    affiliation: 1
+  - name: Marco Mangano
+    affiliation: 1
+  - name: Josh Anibal
+    affiliation: 1
+  - name: Eirikur Jonsson
+    affiliation: 1
+  - name: Eytan Adler
+    affiliation: 1
+  - name: Charles A. Mader
+    affiliation: 1
+  - name: Gaetan Kenway
+    affiliation: 1
   - name: Joaquim R. R. A. Martins
     affiliation: 1
 affiliations:
@@ -38,16 +50,16 @@ The code provides derivatives for all parameterization methods and constraint fu
 # Features
 ## Integrations
 
-pyGeo was originally developed to implement and use Free-Form Deformation (FFD) to manipulate 3D geometries in a CFD-based optimization context[@Kenway2010b]. 
-More details on this implementation as well as recent extensions are summarized in the section "Free-form Deformation". 
+pyGeo was originally developed to implement and use Free-Form Deformation (FFD) to manipulate 3D geometries in a CFD-based optimization context[@Kenway2010b].
+More details on this implementation as well as recent extensions are summarized in the section "Free-form Deformation".
 
 pyGeo is the geometry manipulation engine within the framework MDO of Aircraft Configurations at High Fidelity (MACH) [@Kenway2014a], [@Kenway2014c], which specializes in high-fidelity aerostructural optimization.
 pyGeo, together with the other MACH core modules, are integrated in MPhys[^1], a more general-use MDO tool based in OpenMDAO [@Gray2019a].
 
-[^1]: https://github.com/OpenMDAO/mphys   
+[^1]: https://github.com/OpenMDAO/mphys
 
 
-Both frameworks mentioned above use pyOptSparse [@Wu2020a] to interface with the optimization algorithm. 
+Both frameworks mentioned above use pyOptSparse [@Wu2020a] to interface with the optimization algorithm.
 pyGeo has dedicated modules to send design variables and constraints to pyOptSparse directly rather than having the user handling these interactions.
 
 pyGeo's interface for both design variables and constraints is independent of which discipline solvers are accessing the geometry.
@@ -93,7 +105,25 @@ This decoupling of geometry definition from geometric deformation allows for con
 When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
 As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries. -->
 
-![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_designvars.png)
+<!-- ![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_designvars.png) -->
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{0.32\textwidth}
+    \includegraphics[width=\textwidth]{Twist.png}
+    \caption{Twist}
+  \end{subfigure}
+  \begin{subfigure}{0.32\textwidth}
+    \includegraphics[width=\textwidth]{Dihedral.png}
+    \caption{Dihedral}
+  \end{subfigure}
+  \begin{subfigure}{0.32\textwidth}
+    \includegraphics[width=\textwidth]{Taper.png}
+    \caption{Taper}
+  \end{subfigure}
+  \label{fig:FFD_DV}
+  \caption{Examples of common planform design variables.}
+\end{figure}
 
 In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "child FFDs") and multiple FFD volumes.
 
@@ -111,7 +141,7 @@ This facilitates, for example, the definition of independent leading and trailin
 ![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
 
 
-#### Multi-FFD 
+#### Multi-FFD
 
 The basic FFD implementation lacks flexibility when the geometry has intersecting components.
 In such cases, pyGeo can parameterize each component using FFDs and ensure a watertight surface representation at the component intersections using an inverse-distance surface deformation method [@Yildirim2021b].
@@ -124,7 +154,7 @@ This method relies on the open source pySurf package [@Secco2018b] to compute in
 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
 In other applications, however, it can be beneficial to have the geometry defined in a more commonly accepted engineering format, such as a computer-aided design (CAD) model or other parametric definition of the geometry.
-CAD is the industry standard, so if manufacturing of a design is desired then a CAD model defining it is required. 
+CAD is the industry standard, so if manufacturing of a design is desired then a CAD model defining it is required.
 
 If the geometry is designed parametrically, the relationships between design variables and geometry is defined in the model itself.
 In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
@@ -133,24 +163,24 @@ For either case, the length, width, and height (or a subset) can be controlled i
 
 pyGeo interfaces with ESP and OpenVSP in similar ways.
 In both cases, an instance of the model is read in by a pyGeo and its points are associated with coordinates in a mesh from a solver in the MACH framework.
-The design variables built into the ESP or OpenVSP model are also read into pyGeo. 
+The design variables built into the ESP or OpenVSP model are also read into pyGeo.
 
 #### Engineering Sketch Pad
 
-The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
+The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries.
 ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
-These geometries can then be used in external analysis tools. 
-pyGeo contains an interface to ESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
-The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) which were packaged within an aircraft wing as part of an aerostructural optimization. 
+These geometries can then be used in external analysis tools.
+pyGeo contains an interface to ESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization.
+The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) which were packaged within an aircraft wing as part of an aerostructural optimization.
 
 ![Example of ESP models used through pyGeo from [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
 
 #### OpenVSP
 
-OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries. 
-Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
-These geometries can then be used in external analysis tools. 
-The pyGeo's interface to OpenVSP translates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
+OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries.
+Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications.
+These geometries can then be used in external analysis tools.
+The pyGeo's interface to OpenVSP translates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization.
 This was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
 
 ![Example of a VSP model used through VSP's pyGeo interface from [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.jpg)
@@ -158,21 +188,21 @@ This was used to parameterize the full aircraft configuration (\autoref{fig:vsp_
 ### Class Shape Transformation
 
 The class shape transformation (CST) methodology [@Kulfan2008] is a popular airfoil parameterization.
-It generates a shape by using Bernstein polynomials to scale a class function, which is most often a base airfoil shape. 
-The class function is modified with two parameters, and the number of Bernstein polynomials is adjustable. 
-pyGeo contains a module that implements this airfoil parameterization. 
-The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length. 
-It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization. 
-pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization. 
+It generates a shape by using Bernstein polynomials to scale a class function, which is most often a base airfoil shape.
+The class function is modified with two parameters, and the number of Bernstein polynomials is adjustable.
+pyGeo contains a module that implements this airfoil parameterization.
+The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
+It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization.
+pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization.
 
 ## Constraints
 
-pyGeo also includes geometric constraints through the DVCon module. 
-Constraints are all differentiated in order to use within gradient-based optimization. 
-DVCon creates constraint objects which are passed to pyOptSparse. 
+pyGeo also includes geometric constraints through the DVCon module.
+Constraints are all differentiated in order to use within gradient-based optimization.
+DVCon creates constraint objects which are passed to pyOptSparse.
 
-Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints. 
-2D thickness constraints control the thicknesses between two surfaces in a plane. 
+Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints.
+2D thickness constraints control the thicknesses between two surfaces in a plane.
 Area and volume constraints constrain the geometry from deviating from the initial design by some relative or absolute measure.
 
 <!-- list out more constraints -->
@@ -206,9 +236,9 @@ It supports Hicks--Henne bump functions for airfoil optimizations and the FFD me
 However, it is integrated directly into the CFD solver SU2, and therefore cannot be used with other solvers.
 
 It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
-However, these direct uses have a few gaps in capabilities needed for high-fidelity MDO. 
+However, these direct uses have a few gaps in capabilities needed for high-fidelity MDO.
 pyGeo enables high-fidelity MDO with these tools through parallelism, efficient gradients, and geometric constraints, all while keeping the original tool in the optimization loop.
-It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to. 
+It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to.
 
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
 Its different parametrization options have all been necessary for different optimization problems depending on the geometry involved.
