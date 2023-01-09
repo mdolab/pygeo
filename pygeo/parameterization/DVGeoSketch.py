@@ -124,7 +124,6 @@ class DVGeoSketch(BaseDVGeometry):
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
 
         self.useComposite = True
-        # super().__init__(useCompostiveDVs=self.useComposite, compositeDVs=self.DVComposite)
 
     def getValues(self):
         """
