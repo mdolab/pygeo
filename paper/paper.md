@@ -54,10 +54,11 @@ pyGeo has a solver-independent interface that allows for a direct comparison of 
 
 ## Geometry Generation
 <!-- include sample wing picture -->
-## Geometry Parameterization with DVGeo
+## Geometry Parameterization with pyGeo
 
-pyGeo handles geometry manipulation through DVGeo objects. 
-There are different types of DVGeo objects for different methods of geometry parameterization, but all use the same interface and create design variables which are passed to the rest of the framework for optimization. 
+pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
+Because each of these use a common interface for interacting with the rest of the MACH framework, any parameterization can be used in place of another within an optimization setup.
+Which parameterization is used depends on the experience of the user, the details of the geometry involved, and whether the user needs the final design in a specific format.
 
 <!-- MM: Should we include a list of modules/classes here for easier reference later on?-->
 
@@ -128,32 +129,32 @@ In a parametric modelling tool, the user would create a box by defining its init
 For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables.
 
 pyGeo interfaces with ESP and OpenVSP in similar ways.
-In both cases, an instance of the model is read in by a DVGeo object and its points are associated with coordinates in a mesh from a solver in the MACH framework using the DVGeo object. 
-The design variables built into the model are also read into the DVGeo object. 
+In both cases, an instance of the model is read in by a pyGeo and its points are associated with coordinates in a mesh from a solver in the MACH framework.
+The design variables built into the ESP or OpenVSP model are also read into pyGeo. 
 
 #### Engineering Sketch Pad
 
 Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
 ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
 These geometries can then be used in external analysis tools. 
-pyGeo contains the module DVGeoESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
+pyGeo contains an interface to ESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
 
 #### OpenVSP
 
 OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries. 
 Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
 These geometries can then be used in external analysis tools. 
-The DVGeoVSP module in pyGeo tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
+The pyGeo's interface to OpenVSP tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
 
 ### Class Shape Transformation
 
 The class shape transformation (CST) methodology [@Kulfan2008] is a popular airfoil parameterization.
 It generates a shape by using Bernstein polynomials to scale a class function, which is most often a base airfoil shape. 
 The class function is modified with two parameters, and the number of Bernstein polynomials is adjustable. 
-pyGeo contains a module, DVGeoCST, that implements this airfoil parameterization. 
+pyGeo contains a module that implements this airfoil parameterization. 
 The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length. 
 It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization. 
-DVGeoCST can be used only for 2D problems, such as airfoil optimization. 
+pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization. 
 
 ### Constraints
 
@@ -200,10 +201,11 @@ pyGeo enables high-fidelity MDO with these tools through parallelism, efficient 
 It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to. 
 
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
-DVGeoESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
-DVGeoVSP was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
-DVGeoCST was used to compare methods for airfoil optimization [@Adler2022c].
-DVGeoMulti has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
+Its different parametrization options have all been necessary for different optimization problems depending on the geometry involved.
+The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
+pyGeo's OpenVSP interface was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
+The implementation of CST airfoil parameterization was used to compare methods for airfoil optimization [@Adler2022c].
+The method for using multiple FFD volumes has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 
 # Acknowledgements
 
