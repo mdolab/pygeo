@@ -186,51 +186,6 @@ class BaseDVGeometry(ABC):
         """
         pass
 
-    @abstractmethod
-    def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
-        """
-        This function takes the result of totalSensitivity and
-        converts it to a dict for use in pyOptSparse
-        Parameters
-        ----------
-        dIdx : array
-           Flattened array of length getNDV(). Generally it comes from
-           a call to totalSensitivity()
-        out1D : boolean
-            If true, creates a 1D array in the dictionary instead of 2D.
-            This function is used in the matrix-vector product calculation.
-        useCompositeNames : boolean
-            Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
-            If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
-            If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
-        Returns
-        -------
-        dIdxDict : dictionary
-           Dictionary of the same information keyed by this object's
-           design variables
-        """
-        pass
-
-    @abstractmethod
-    def convertDictToSensitivity(self, dIdxDict):
-        """
-        This function performs the reverse operation of
-        convertSensitivityToDict(); it transforms the dictionary back
-        into an array. This function is important for the matrix-free
-        interface.
-        Parameters
-        ----------
-        dIdxDict : dictionary
-           Dictionary of information keyed by this object's
-           design variables
-        Returns
-        -------
-        dIdx : array
-           Flattened array of length getNDV().
-        """
-
-        pass
-
     def mapXDictToDVGeo(self, inDict):
         """
         Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
