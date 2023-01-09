@@ -34,6 +34,7 @@ affiliations:
    index: 1
 date: October 18, 2022
 bibliography: paper.bib
+header-includes: \usepackage{subcaption}
 ---
 
 # Summary
@@ -93,10 +94,13 @@ In this approach, the entire reference geometry is embedded in a flexible jelly-
 A high degree of geometry control can be realized by the user by selecting different control point densities and locations.
 
 In general, individual control points can be moved to obtain local shape modifications.
+In pyGeo these are referred to as local design variables because a single control point is affected.
 However, in practice it is more common to define geometric operations involving a collection of FFD nodal movements.
+In pyGeo these are referred to as global design variables because the control points in the entire FFD can be affected.
 For example, twist can be defined as rotations about a reference axis which runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
 Parameterizations based on the singular value decomposition is also possible [@Wu2022b].
+<!-- talk about ref axis more? -->
 
 <!-- Compared to other parameterizations, the FFD method has several key advantages.
 Since the entire geometry is embedded, there is no need to start with or reverse-engineer a parametric geometry representation as commonly done with B-spline-based methods, where a least-squares fit is needed to generate a B-spline surface representation.
@@ -193,7 +197,9 @@ The class function is modified with two parameters, and the number of Bernstein 
 pyGeo contains a module that implements this airfoil parameterization.
 The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
 It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization.
-pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization.
+pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization (\autoref{fig:cst_example}).
+
+![Airfoil defined by 3 CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf)
 
 ## Constraints
 
