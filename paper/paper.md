@@ -50,8 +50,9 @@ pyGeo, together with the other MACH core modules, are integrated in MPhys[^1], a
 Both frameworks mentioned above use pyOptSparse [@Wu2020a] to interface with the optimization algorithm. 
 pyGeo has dedicated modules to send design variables and constraints to pyOptSparse directly rather than having the user handling these interactions.
 
-<!-- clarify solver-independent -->
-pyGeo has a solver-independent interface that allows for a direct comparison of two different solvers with the same parameterization [@Adler2022c]
+pyGeo's interface for both design variables and constraints is independent of which discipline solvers are accessing the geometry.
+This means that pyGeo geometries can interact with different types of solvers, such as structures and aerodynamics, in the same way.
+This also allows for a direct comparison of the behavior or performance of two different solvers within the same discipline by using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
 
 ## Geometry Generation
 <!-- include sample wing picture -->
@@ -71,8 +72,8 @@ TODO:
 - [x] child FFD
 - [x] multi FFD
 - [] redo planform DV picture to be less pixelated
-- [] ESP pic
-- [] VSP pic
+- [x] ESP pic
+- [x] VSP pic
 - [] other pic?
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
