@@ -50,6 +50,7 @@ pyGeo, together with the other MACH core modules, are integrated in MPhys[^1], a
 Both frameworks mentioned above use pyOptSparse [@Wu2020a] to interface with the optimization algorithm. 
 pyGeo has dedicated modules to send design variables and constraints to pyOptSparse directly rather than having the user handling these interactions.
 
+<!-- clarify solver-independent -->
 pyGeo has a solver-independent interface that allows for a direct comparison of two different solvers with the same parameterization [@Adler2022c]
 
 ## Geometry Generation
@@ -93,19 +94,20 @@ As both surfaces would be manipulated by the same volume, coincident surfaces re
 
 ![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_designvars.png)
 
-In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "children FFD") and multiple FFD volumes.
+In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "child FFDs") and multiple FFD volumes.
 
-#### Children FFD
+#### Child FFD
+<!-- HMH: changing to child FFD - plural child FFDs -->
 <!--MM: not sold on the subsection titles I made, pls provide input-->
 FFD objects can be organized in a hierarchical structure within pyGeo.
-Dependent, "children" FFD blocks can be embedded in the main, "parent" FFD object to enable more detailed local modifications of a sub-set of the reference surface points.
-The user can define local and global variables on both objects independently.
-pyGeo will first propagate the parent node deformations to both the surface and the children control points, then finally propagate the deformations of the children control points to their embedded point subset. <!--MM: I would like to double check this sentence with Anil-->
+Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD object to enable more detailed local modifications of a sub-set of the reference surface points.
+The user can define local and global variables on both objects independently. <!--  HMH: do we explain the difference between local and global variables somewhere?-->
+pyGeo will first propagate the parent node deformations to both the surface and the child control points, then finally propagate the deformations of the child control points to their embedded point subset. <!--MM: I would like to double check this sentence with Anil-->
 One of the advantages of using this approach is that every FFD block has its own independent reference axis to be used for global design variables such as rotations and scaling.
 This facilitates, for example, the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
-Figure \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of a hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the children FFDs with a quarter-chord reference axis.
+\autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of a hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the child FFDs with a quarter-chord reference axis.
 
-![Example of parametrization through parent-children FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
+![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
 
 
 #### Multi-FFD 
@@ -134,17 +136,23 @@ The design variables built into the ESP or OpenVSP model are also read into pyGe
 
 #### Engineering Sketch Pad
 
-Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
+The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries. 
 ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
 These geometries can then be used in external analysis tools. 
 pyGeo contains an interface to ESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization. 
+The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) which were packaged within an aircraft wing as part of an aerostructural optimization. 
+
+![Example of ESP models used through pyGeo from [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
 
 #### OpenVSP
 
 OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries. 
 Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications. 
 These geometries can then be used in external analysis tools. 
-The pyGeo's interface to OpenVSP tranlates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
+The pyGeo's interface to OpenVSP translates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization. 
+This was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
+
+![Example of a VSP model used through VSP's pyGeo interface from [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.jpg)
 
 ### Class Shape Transformation
 
@@ -156,7 +164,7 @@ The implementation supports design variables for the Bernstein polynomial weight
 It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization. 
 pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization. 
 
-### Constraints
+## Constraints
 
 pyGeo also includes geometric constraints through the DVCon module. 
 Constraints are all differentiated in order to use within gradient-based optimization. 
@@ -166,6 +174,7 @@ Some commonly used geometric constraints in shape optimization are thickness, ar
 2D thickness constraints control the thicknesses between two surfaces in a plane. 
 Area and volume constraints constrain the geometry from deviating from the initial design by some relative or absolute measure.
 
+<!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
 
 # Parallelism
