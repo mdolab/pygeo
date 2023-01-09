@@ -4,17 +4,29 @@ tags:
   - geometry
   - Python
 authors:
-#   - name: Neil Wu
-#     orcid: 0000-0001-8856-9661
-#     affiliation: 1
-#   - name: Hannah Hajdik
-#     affiliation: 1
-#   - name: Ben Brelje
-#     affiliation: 1
-#   - name: Gaetan Kenway
-#     affiliation: 1
-#   - name: Charles A. Mader
-#     affiliation: 1
+  - name: Hannah Hajdik
+    affiliation: 1
+  - name: Anil Yildirim
+  - affiliation: 1
+  - name: Neil Wu
+    orcid: 0000-0001-8856-9661
+    affiliation: 1
+  - name: Ben Brelje
+    affiliation: 1
+  - name: Sabet Seraj
+    affiliation: 1
+  - name: Marco Mangano
+    affiliation: 1
+  - name: Josh Anibal
+    affiliation: 1
+  - name: Eirikur Jonsson
+    affiliation: 1
+  - name: Eytan Adler
+    affiliation: 1
+  - name: Charles A. Mader
+    affiliation: 1
+  - name: Gaetan Kenway
+    affiliation: 1
   - name: Joaquim R. R. A. Martins
     affiliation: 1
 affiliations:
