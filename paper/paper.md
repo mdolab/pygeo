@@ -72,7 +72,8 @@ This also allows for a direct comparison of the behavior or performance of two d
 
 pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools.
 One method of geometry generation in pyGeo is generating a lifting surface from a user-specified cross-section, which is most commonly used to create a wing from an airfoil (\autoref{fig:geo_gen}).
-These features rely on the open source pySpline[^2] module, which handles the more intensive b-spline computations with Fortran.
+In particular, rounded or pinched wingtip geometries can be generated easily.
+These features rely on the open-source package pySpline[^2], which handles the underlying B-spline implementation.
 
 ![Example of a wing generated with pyGeo and the airfoil used for its cross-section.\label{fig:geo_gen}](geo_gen.pdf)
 
@@ -149,7 +150,7 @@ This method relies on the open source pySurf package [@Secco2018b] to compute in
 ### Parametric Geometry Tools
 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
-In other applications, however, it can be beneficial to have the geometry defined in a more commonly accepted engineering format, such as a computer-aided design (CAD) model or other parametric definition of the geometry.
+In other applications, however, it can be beneficial to have the geometry defined in a more commonly accepted engineering format, such as a CAD model or other parametric definition of the geometry.
 CAD is the industry standard, so if manufacturing of a design is desired then a CAD model defining it is required.
 
 If the geometry is designed parametrically, the relationships between design variables and geometry is defined in the model itself.
