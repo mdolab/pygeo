@@ -407,7 +407,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
             funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
 
             # now perturb the design with finite differences and compute FD gradients
-            # DVs = DVGeo.getValues()
             DVs = OrderedDict()
 
             for dvName in DVGeo.DVs:
@@ -458,7 +457,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 # dv = DVGeo.DVs[key]
                 funcSensFDMat[:, i] = funcSensFD[key].T
                 i += 1
-                # i =i +DVCount* coorNew.size
 
             # Now we need to map our FD derivatives to composite
             funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
@@ -480,6 +478,9 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
+
+            Composite_FFD = DVGeo.getValues()
+            handler.root_add_val("Composite DVs :", Composite_FFD["vspComp"], rtol=1e-12, atol=1e-12)
 
 
 if __name__ == "__main__":

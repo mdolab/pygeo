@@ -253,7 +253,10 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         for ipt in range(npts):
             self.assertAlmostEqual(np.sum(np.abs(testjac[ipt, :, :] - analyticjac[ipt, :, :])), 0)
 
-    def test_composite(self, train=True):
+    def train_composite(self, train=True):
+        self.test_composite(train=train)
+
+    def test_composite(self, train=False):
         """
         Test 3: OpenVSP wing test with DVcomposite
         """
@@ -276,20 +279,13 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         self.assertEqual(DVGeo.getNDV(), 3)
 
         _, initpts = self.setup_cubemodel()
-        # DVGeo = DVGeometryESP(csmFile, projTol=0.01)
-        # self.assertIsNotNone(DVGeo)
-
-        # DVGeo.addVariable("cst_u", lower=np.zeros((13,)), upper=np.ones((13,)), scale=1, dh=0.0001)
-        # DVGeo.addVariable("cst_l", lower=-np.ones((13,)), upper=np.zeros((13,)), scale=1, dh=0.0001)
 
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("ESP NACA 0012 composite derivative test")
             dh = 1e-6
             # extract node coordinates and save them in a numpy array
             npts = initpts.shape[0]
-            # coor = np.zeros((npts, 3))
-            # for i in range(npts):
-            #     coor[i, :] = (initpts[0][i][0], initpts[0][i][1], initpts[0][i][2])
+
             coor = initpts
             # Add this pointSet to DVGeo
             DVGeo.addPointSet(coor, "test_points")
@@ -357,10 +353,8 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             i = 0
 
             for key in DVGeo.DVs:
-                # dv = DVGeo.DVs[key]
                 funcSensFDMat[:, i] = funcSensFD[key].T
                 i += 1
-                # i =i +DVCount* coorNew.size
 
             # Now we need to map our FD derivatives to composite
             funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
@@ -382,6 +376,9 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
+
+            Composite_FFD = DVGeo.getValues()
+            handler.root_add_val("Composite DVs :", Composite_FFD["vspComp"], rtol=1e-12, atol=1e-12)
 
 
 @unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")

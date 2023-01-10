@@ -865,7 +865,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             handler.root_add_val("Updated FFD coordinates", FFD_coords, rtol=1e-12, atol=1e-12)
 
-    def train__25_composite(self, train=True, refDeriv=True):
+    def train_25_composite(self, train=True, refDeriv=True):
         self.test_25_composite(train=train, refDeriv=refDeriv)
 
     def test_25_composite(self, train=False, refDeriv=False):
@@ -897,8 +897,6 @@ class RegTestPyGeo(unittest.TestCase):
                 delta = (tail - nose) / nPoints
                 points[i, :] = [nose + i * delta, 1.0, 0.5]
 
-            # print('points',points)
-
             # add points to the geometry object
             ptName = "test_points"
             DVGeo.addPointSet(points, ptName)
@@ -916,9 +914,10 @@ class RegTestPyGeo(unittest.TestCase):
             for i in range(nPoints):
                 for j in range(3):
                     dIdpt[i * 3 + j, i, j] = 1
+
             # first get the dvgeo result
             funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
-            # funcSens = commonUtils.totalSensitivityFD(DVGeo, nPoints * 3, ptName, step=dh)
+
             # now perturb the design with finite differences and compute FD gradients
             DVGeo.useComposite = False
             DVGeo_DV = DVGeo.getValues()
@@ -926,7 +925,6 @@ class RegTestPyGeo(unittest.TestCase):
 
             for dvName in DVGeo_DV:
                 DVs[dvName] = DVGeo_DV[dvName]
-                # count = count +1
 
             funcSensFD = {}
 
@@ -953,25 +951,23 @@ class RegTestPyGeo(unittest.TestCase):
                 # set back the DV
                 DVvalues[x] = xRef.copy()
                 count = count + 1
-            # funcSensFD = commonUtils.totalSensitivityCS(DVGeo, nPoints * 3, ptName)
+            funcSensFD = commonUtils.totalSensitivityFD(DVGeo, nPoints * 3, ptName, step=1e-6)
+
             DVGeo.useComposite = True
-            # now loop over the values and compare
-            # when this is run with multiple procs, VSP sometimes has a bug
-            # that leads to different procs having different spanwise
-            # u-v distributions. as a result, the final values can differ up to 1e-5 levels
-            # this issue does not come up if this tests is ran with a single proc
+
             biggest_deriv = 1e-16
 
             DVCount = DVGeo.getNDV()
 
             funcSensFDMat = np.zeros((coorNew.size, DVCount), dtype="d")
+
             i = 0
 
             for key in DVGeo_DV:
+                nVal = len(DVGeo_DV[key])
                 # dv = DVGeo.DVs[key]
-                funcSensFDMat[:, i] = funcSensFD[key].T
+                funcSensFDMat[:, i : i + nVal] = funcSensFD[key]
                 i += 1
-                # i =i +DVCount* coorNew.size
 
             # Now we need to map our FD derivatives to composite
             funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
