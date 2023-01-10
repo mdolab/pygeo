@@ -69,11 +69,11 @@ This also allows for a direct comparison of the behavior or performance of two d
 
 ## Geometry Generation
 
-pyGeo can create simple geometries for lifting surfaces from a user-specified cross-section.
-This is most commonly used to generate a wing from an airfoil (\autoref{fig:geo_gen}).
+pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools.
+One method of geometry generation in pyGeo is generating a lifting surface from a user-specified cross-section, which is most commonly used to create a wing from an airfoil (\autoref{fig:geo_gen}).
 These features rely on the open source pySpline[^2] module, which handles the more intensive b-spline computations with Fortran.
 
-![Example of a wing generated with pyGeo and the airfoil used for its cross section.\label{fig:geo_gen}](geo_gen.pdf)
+![Example of a wing generated with pyGeo and the airfoil used for its cross-section.\label{fig:geo_gen}](geo_gen.pdf)
 
 [^2]: https://github.com/mdolab/pyspline
 
@@ -94,7 +94,7 @@ TODO:
 - ref axis and complex geometric operations for a wing
 - [x] child FFD
 - [x] multi FFD
-- [] redo planform DV picture to be less pixelated
+- [x] redo planform DV picture to be less pixelated
 - [x] ESP pic
 - [x] VSP pic
 - [] other pic?
