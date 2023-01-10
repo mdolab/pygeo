@@ -292,7 +292,6 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             DVGeo.addCompositeDV("vspComp", "test_points")
 
             # We will have nNodes*3 many functions of interest...
-            # dIdpt = np.random.rand(1, npts, 3)
             dIdpt = np.zeros((npts * 3, npts, 3))
 
             # set the seeds to one in the following fashion:
@@ -305,12 +304,10 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
 
             # now perturb the design with finite differences and compute FD gradients
-            # DVs = DVGeo.getValues()
             DVs = OrderedDict()
 
             for dvName in DVGeo.DVs:
                 DVs[dvName] = DVGeo.DVs[dvName].value
-                # count = count +1
 
             funcSensFD = {}
 

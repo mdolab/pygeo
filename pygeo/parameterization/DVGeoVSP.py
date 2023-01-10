@@ -477,7 +477,6 @@ class DVGeometryVSP(DVGeoSketch):
         if self.useComposite:
             dIdx = self.mapSensToComp(dIdx)
             dIdxDict = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
-            # dIdx = dIdx.T
 
         else:
             # Now convert to dict:

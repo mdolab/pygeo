@@ -965,7 +965,6 @@ class RegTestPyGeo(unittest.TestCase):
 
             for key in DVGeo_DV:
                 nVal = len(DVGeo_DV[key])
-                # dv = DVGeo.DVs[key]
                 funcSensFDMat[:, i : i + nVal] = funcSensFD[key]
                 i += 1
 

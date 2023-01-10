@@ -313,7 +313,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
             u = np.linspace(0, 1, nu + 1)
             v = np.linspace(0, 1, nv + 1)
             uu, vv = np.meshgrid(u, v)
-            # print (uu.flatten(), vv.flatten())
             uv = np.array((uu.flatten(), vv.flatten()))
             return uv
 
@@ -411,7 +410,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
             for dvName in DVGeo.DVs:
                 DVs[dvName] = DVGeo.DVs[dvName].value
-                # count = count +1
 
             funcSensFD = {}
 
