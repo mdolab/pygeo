@@ -109,7 +109,7 @@ This decoupling of geometry definition from geometric deformation allows for con
 When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
 As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries. -->
 
-![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdfs)
+![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdf)
 
 <!-- \begin{figure}
   \centering
