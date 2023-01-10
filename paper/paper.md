@@ -68,7 +68,17 @@ This means that pyGeo geometries can interact with different types of solvers, s
 This also allows for a direct comparison of the behavior or performance of two different solvers within the same discipline by using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
 
 ## Geometry Generation
+
+pyGeo can create simple geometries for lifting surfaces from a user-specified cross-section.
+This is most commonly used to generate a wing from an airfoil (\autoref{fig:geo_gen}).
+These features rely on the open source pySpline[^2] module, which handles the more intensive b-spline computations with Fortran.
+
+![Example of a wing generated with pyGeo and the airfoil used for its cross section.\label{fig:geo_gen}](geo_gen.pdf)
+
+[^2]: https://github.com/mdolab/pyspline
+
 <!-- include sample wing picture -->
+
 ## Geometry Parameterization with pyGeo
 
 pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
@@ -109,27 +119,9 @@ This decoupling of geometry definition from geometric deformation allows for con
 When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
 As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries. -->
 
-![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdfs)
+![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdf)
 
-<!-- \begin{figure}
-  \centering
-  \begin{subfigure}{0.32\textwidth}
-    \includegraphics[width=\textwidth]{Twist.png}
-    \caption{Twist}
-  \end{subfigure}
-  \begin{subfigure}{0.32\textwidth}
-    \includegraphics[width=\textwidth]{Dihedral.png}
-    \caption{Dihedral}
-  \end{subfigure}
-  \begin{subfigure}{0.32\textwidth}
-    \includegraphics[width=\textwidth]{Taper.png}
-    \caption{Taper}
-  \end{subfigure}
-  \label{fig:FFD_DV}
-  \caption{Examples of common planform design variables.}
-\end{figure} -->
-
-In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "child FFDs") and multiple FFD volumes.
+In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "child" FFDs) and multiple FFD volumes.
 
 #### Child FFD
 <!-- HMH: changing to child FFD - plural child FFDs -->
@@ -143,7 +135,6 @@ This facilitates, for example, the definition of independent leading and trailin
 \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD is used for scaling the chord of a hydrofoil using a reference axis at the leading-edge, while twist and sweep local variables are defined on the child FFDs with a quarter-chord reference axis.
 
 ![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
-
 
 #### Multi-FFD
 
@@ -255,5 +246,6 @@ The method for using multiple FFD volumes has been used to optimize a convention
 
 # Acknowledgements
 
+We acknowledge the numerous pyGeo users who have contributed their time to the code and its maintenance over the years.
 
 # References
