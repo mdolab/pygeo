@@ -770,7 +770,6 @@ class DVGeometryESP(DVGeoSketch):
         # # transpose dIdpt and vstack;
         # # Now vstack the result with seamBar as that is far as the
         # # forward FD jacobian went.
-        # tmp = np.vstack([dIdpt.T, dIdSeam.T])
         tmp = dIdpt.T
 
         # we also stack the pointset jacobian
@@ -795,7 +794,6 @@ class DVGeometryESP(DVGeoSketch):
                 dv = self.DVs[dvName]
                 jac_start = dv.globalStartInd
                 jac_end = jac_start + dv.nVal
-                # dIdxDict[dvName] = np.array([dIdx[:, i]]).T
                 dIdxDict[dvName] = dIdx[:, jac_start:jac_end]
 
         return dIdxDict

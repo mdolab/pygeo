@@ -265,9 +265,6 @@ class DVGeoSketch(BaseDVGeometry):
             lb = self.convertDictToSensitivity(lb)
             ub = self.convertDictToSensitivity(ub)
 
-            # self.DVComposite.lower=lb
-            # self.DVComposite.upper=ub
-
             optProb.addConGroup(
                 f"{self.DVComposite.name}_con",
                 self.getNDV(),

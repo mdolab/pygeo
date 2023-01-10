@@ -488,13 +488,6 @@ class DVGeometryVSP(DVGeoSketch):
                 dIdxDict[dvName] = arr.reshape(arr.shape[0], 1)
                 i += 1
 
-        # Now convert to dict:
-        # dIdxDict = {}
-        # i = 0
-        # for dvName in self.DVs:
-        #     dIdxDict[dvName] = np.array(dIdx[:, i]).T
-        #     i += 1
-
         return dIdxDict
 
     def totalSensitivityProd(self, vec, ptSetName, comm=None, config=None):
