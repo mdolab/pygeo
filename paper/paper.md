@@ -144,7 +144,7 @@ In such cases, pyGeo can parameterize each component using FFDs and ensure a wat
 This method relies on the open source pySurf package [@Secco2018b] to compute intersections between components, perform projections, and remesh curves.
 \autoref{fig:ffd_multi} shows an example of a component-based FFD setup for a supersonic transport aircraft.
 
-![Example of FFD parameterization with intersecting components [@Seraj2022a] \label{fig:ffd_multi}](ffd_multi.png)
+![Example of FFD parameterization with intersecting components [@Seraj2022a]. \label{fig:ffd_multi}](ffd_multi.png)
 
 ### Parametric Geometry Tools
 
@@ -169,7 +169,7 @@ These geometries can then be used in external analysis tools.
 pyGeo contains an interface to ESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization.
 The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) which were packaged within an aircraft wing as part of an aerostructural optimization.
 
-![Example of ESP models used through pyGeo from [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
+![Example of ESP models of hydrogen tanks used through pyGeo from [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
 
 #### OpenVSP
 
