@@ -99,7 +99,7 @@ However, in practice it is more common to define geometric operations involving 
 In pyGeo these are referred to as global design variables because the control points in the entire FFD can be affected.
 For example, twist can be defined as rotations about a reference axis which runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
-Parameterizations based on the singular value decomposition is also possible [@Wu2022b].
+Parameterizations based on the singular value decomposition are also possible [@Wu2022b].
 <!-- talk about ref axis more? -->
 
 <!-- Compared to other parameterizations, the FFD method has several key advantages.
@@ -109,9 +109,9 @@ This decoupling of geometry definition from geometric deformation allows for con
 When working with multiple geometries, for example an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
 As both surfaces would be manipulated by the same volume, coincident surfaces remain coincident after deformations and this approach ensures consistency between disparate geometries. -->
 
-<!-- ![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_designvars.png) -->
+![Examples of common planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdfs)
 
-\begin{figure}
+<!-- \begin{figure}
   \centering
   \begin{subfigure}{0.32\textwidth}
     \includegraphics[width=\textwidth]{Twist.png}
@@ -127,7 +127,7 @@ As both surfaces would be manipulated by the same volume, coincident surfaces re
   \end{subfigure}
   \label{fig:FFD_DV}
   \caption{Examples of common planform design variables.}
-\end{figure}
+\end{figure} -->
 
 In addition to the basic FFD implementation, pyGeo offers two additional features: nested FFD volumes (called "child FFDs") and multiple FFD volumes.
 
