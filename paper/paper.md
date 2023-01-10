@@ -5,6 +5,7 @@ tags:
   - Python
 authors:
   - name: Hannah Hajdik
+    orcid: 0000-0002-5103-7159
     affiliation: 1
   - name: Anil Yildirim
   - affiliation: 1
