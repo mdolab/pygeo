@@ -178,7 +178,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         val = self.DVGeo.getValues()
 
         # define the input
-        self.add_input(dvName, distributed=False, shape=self.DVGeo.getNDV(), val=val[dvName])
+        self.add_input(dvName, distributed=False, shape=self.DVGeo.getNDV(), val=val[dvName][0])
 
     def nom_addVSPVariable(self, component, group, parm, add_input=True, **kwargs):
         # VSP DVs are only added to VSP-based DVGeo objects

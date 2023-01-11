@@ -202,13 +202,13 @@ class BaseDVGeometry(ABC):
             The mapped DVs in the same dictionary format
         """
         # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = inDict.pop(self.DVComposite.name)
+        inDictBase = inDict
+        userVec = inDict[self.DVComposite.name]
         outVec = self.mapVecToDVGeo(userVec)
         outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
         # now merge inDict and outDict
         for key in inDict:
-            outDict[key] = inDict[key]
+            outDict[key] = inDictBase[key]
         return outDict
 
     def mapXDictToComp(self, inDict):
