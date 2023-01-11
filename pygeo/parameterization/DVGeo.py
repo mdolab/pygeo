@@ -2991,25 +2991,29 @@ class DVGeometry(BaseDVGeometry):
         ----------
         directory : str
             The directory where the files should be written.
-        includeLocal : boolean
+        includeLocal : boolean, optional
             False if you don't want to include the shape variables.
-        includeGlobal : boolean
+        includeGlobal : boolean, optional
             False if you don't want to include global variables.
-        pointSet : str
+        pointSet : str, optional
             Name of the point set to write out.
             If None, no point set output is generated.
-        CFDSolver : str
+        CFDSolver : str, optional
             An ADflow instance that will be used to write out deformed surface
-            meshes. In addition to having a DVGeo object, CFDSolver must have
-            an AeroProblem set, for example with ``CFDSolver.setAeroProblem(ap)``.
+            meshes. This instance must have as members:
+
+            1. This DVGeometry object (set using ``CFDSolver.setDVGeo``)
+            2. A mesh warping object from IDWarp (set using ``CFDSolver.setMesh``)
+            3. An AeroProblem (set using ``CFDSolver.setAeroProblem``)
+
             If CFDSolver is None, no surface mesh output is generated.
-        callBack : function
+        callBack : function, optional
             This allows the user to perform an additional task at each new design
             variable iteration. The callback function must take two inputs:
 
             1. the output directory name (str) and
             2. the iteration count (int).
-        freq : int
+        freq : int, optional
             Number of snapshots to take between the upper and lower bounds of
             a given variable. If greater than 2, will do a sinusoidal sweep.
         """
@@ -3103,7 +3107,7 @@ class DVGeometry(BaseDVGeometry):
                         # Iterate counter
                         count += 1
 
-        # Reset DV's to their original values
+        # Reset DVs to their original values
         self.setDesignVars(dvDict)
 
     # ----------------------------------------------------------------------
