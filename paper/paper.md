@@ -49,7 +49,7 @@ header-includes: \usepackage{subcaption}
 ---
 
 # Summary
-In the field of aerodynamic shape optimization, the geometry of an object is modified by an optimization algorithm in order to improve its performance.
+In the field of aerodynamic shape optimization, an optimization algorithm modifies the geometry of an object to improve its performance.
 A common shape optimization example is adjusting the external shape an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
 In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry takes on an even greater significance in ensuring that multiple disciplines have a consistent and unified geometry representation.
