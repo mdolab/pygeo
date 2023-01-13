@@ -175,12 +175,12 @@ An FFD block only defines the deformation, while parametric geometry tools direc
 In a parametric modeling tool, the user would create a box by defining its initial length, width, and height.
 For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables. -->
 
-<!-- [s] TODO SS-HMH: The transition here is a bit abrupt without any introduction to what ESP and OpenVSP are. -->
+<!-- [X] TODO SS-HMH: The transition here is a bit abrupt without any introduction to what ESP and OpenVSP are. -->
 pyGeo contains interfaces to two parametric geometry tools, the Engineering Sketch Pad (ESP) [@Haimes2013a] and OpenVSP [@McDonald2022a].
 ESP is a CAD software, while OpenVSP is a concpetual design tool.
 The two packages have different capabilities, but in both design variables directly define the geometry and the created geometry can be used in external analysis tools.
 
-<!-- [] TODO SS-HMH: There is enough repeated text between the ESP and OpenVSP sections that we might want to describe both under 'Parametric Geometry Tools' rather than have separate subsections. -->
+<!-- [X] TODO SS-HMH: There is enough repeated text between the ESP and OpenVSP sections that we might want to describe both under 'Parametric Geometry Tools' rather than have separate subsections. -->
 pyGeo interfaces with ESP and OpenVSP in similar ways.
 In both cases, an instance of the model is read into pyGeo and its points are associated with coordinates in a mesh from a solver in the MACH framework.
 The design variables built into the ESP or OpenVSP model by the designer are also read into pyGeo.
@@ -215,11 +215,13 @@ DVCon creates constraint objects which are passed to pyOptSparse.
 Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints.
 Thickness constraints control the distance between two points.
 <!-- [] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
+<!-- HMH: Neil suggested listing more of the constraints we use, I think we could also outline why they are useful but if we are short on words that could be tricky -->
 Area and volume constraints constrain the geometry from deviating from the initial design by some relative or absolute measure.
 
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
 <!-- [] TODO SS-: Add pictures of some of these constraints? -->
+<!-- HMH: I don't think we have any good diagrams for constraints but if we want some for key constraints I can make some -->
 
 # Parallelism
 pyGeo can optionally work under distributed memory parallelism with MPI, which can be helpful when interfacing with CFD applications.
@@ -257,6 +259,7 @@ It provides an interface to OpenVSP and ESP that allows for their use with solve
 
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
 <!-- [] TODO SS-: We should add a few citations for the basic FFD functionality. -->
+<!-- HMH: Any ideas on which would be representative? Neil suggested uCRM, maybe we want a wind turbine and/or hydrofoil paper as well for ~range~  -->
 Its different parametrization options have all been necessary for different optimization problems depending on the geometry involved.
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
