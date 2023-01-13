@@ -51,13 +51,13 @@ header-includes: \usepackage{subcaption}
 # Summary
 In the field of aerodynamic shape optimization, an object's geometry is modified by an optimization algorithm to improve its performance.
 A common shape optimization example is adjusting the external shape of an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
-In a multidisciplinary design optimization (MDO) context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
+Performing multidisciplinary design optimization (MDO) often provides additional benefit over optimizing only a single discipline.
+In an aerostructural design context, aerodynamics and structural mechanics are considered and optimized simultaneously.
 In such cases, the geometry must be represented consistently across multiple disciplines.
 
 pyGeo is a geometry package for three-dimensional shape manipulation, tailored for aerodynamic and multidisciplinary design optimization.
 It provides some basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and some utility functions for geometry manipulation.
 The code provides derivatives for all parameterization methods and constraint functions, enabling their use in gradient-based optimization.
-<!--MM: I am team parameTRIzation-->
 
 # Features
 
