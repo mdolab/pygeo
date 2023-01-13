@@ -50,7 +50,7 @@ header-includes: \usepackage{subcaption}
 
 # Summary
 In the field of aerodynamic shape optimization, an object's geometry is modified by an optimization algorithm to improve its performance.
-A common example is shape optimization of an aircraft wing, where the aerodynamic drag is computed using computational fluid dynamics (CFD) and minimized by adjusting the external shape of the wing.
+A common shape optimization example is adjusting the external shape of an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
 In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry must be represented consistently across multiple disciplines.
 
@@ -82,11 +82,11 @@ This also allows for a direct comparison of the behavior or performance of two d
 ## Geometry Generation
 
 pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools.
-One method of geometry generation in pyGeo is generating a lifting surface from a user-specified cross-section, which is most commonly used to create a wing from an airfoil (\autoref{fig:geo_gen}).
+One method of geometry generation in pyGeo is generating a surface by lofting between user-specified cross-sections, which is most commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}).
 In particular, rounded or pinched wingtip geometries can be generated easily.
 These features rely on the open-source package pySpline[^2], which handles the underlying B-spline implementation.
 
-![Example of a wing generated with pyGeo and the airfoil used for its cross-section.\label{fig:geo_gen}](geo_gen.pdf)
+![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf)
 
 [^2]: https://github.com/mdolab/pyspline
 
@@ -111,14 +111,17 @@ TODO:
 - [] other pic?
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
-In this approach, the geometry is embedded in a flexible jelly-like block, and manipulated through the displacement of a set of control points located on the surface of the block.
+In this approach, the entire reference geometry is embedded in a parameterized volume. 
+The set of control points that determine the shape of the volume can be displaced to change the location of the points inside. 
+<!--JLA: The control points do not have to be (and often are not) on the surface of the embedding volume -->
 A high degree of geometry control can be realized by the user by selecting different control point densities and locations.
 
 Individual control points can be moved to obtain local shape modifications.
 In pyGeo, these are referred to as local design variables because a single control point is affected.
 It is also common to define geometric operations involving a collection of control points.
 In pyGeo, these are referred to as global design variables because control points across the entire FFD block can be affected.
-For example, twist can be defined as rotations about a reference axis which runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
+For example, twist variables can be defined as rotations of the control points about a reference axis which runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
+
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
 Parameterizations based on the singular value decomposition are also possible [@Wu2022b].
 <!-- talk about ref axis more? -->
@@ -232,7 +235,7 @@ For example, the computational mesh may be partitioned and distributed among man
 pyGeo can handle such scenarios by independently manipulating the geometry on each processor and aggregating the constraints across all processors when communicating with the optimizer.
 
 # Derivative Computation
-In addition to geometry manipulation and constraints, pyGeo is able to compute derivatives of those operations.
+In addition to geometry manipulation and constraints, pyGeo is able to compute derivatives of these operations with respect to design variables.
 For the geometric deformation, pyGeo can compute the Jacobian
 \begin{equation*}
 \frac{\mathrm{d}X_s}{\mathrm{d}x}
@@ -252,10 +255,10 @@ For the FFD parameterization, these derivatives are computed using a combination
 Very few open-source packages exist with comparable functionalities.
 To the best knowledge of the authors, the only other optimization framework that contains geometry parameterization is SU2 [@Economon2016a].
 It supports Hicks--Henne bump functions for airfoil optimizations and the FFD method for three-dimensional cases.
-However, it is integrated directly into the CFD solver SU2, and therefore cannot be used with other solvers.
+However, it cannot be used with other solvers because it is directly integrated into the CFD solver SU2.
 
 It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
-However, these direct uses have a few gaps in capabilities needed for high-fidelity MDO.
+However, when used as stand-alone tools these parameterization methods lack capabilities needed for high-fidelity MDO.
 pyGeo enables high-fidelity MDO with these tools through parallelism, efficient gradients, and geometric constraints, all while keeping the original tool in the optimization loop.
 It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to.
 
