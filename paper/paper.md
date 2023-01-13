@@ -50,7 +50,7 @@ header-includes: \usepackage{subcaption}
 
 # Summary
 In the field of aerodynamic shape optimization, an optimization algorithm modifies the geometry of an object to improve its performance.
-A common shape optimization example is adjusting the external shape an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
+A common shape optimization example is adjusting the external shape of an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
 In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry takes on an even greater significance in ensuring that multiple disciplines have a consistent and unified geometry representation.
 
@@ -81,7 +81,7 @@ This also allows for a direct comparison of the behavior or performance of two d
 ## Geometry Generation
 
 pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools.
-One method of geometry generation in pyGeo is generating a surface by lofting between user-specified cross-section, which is most commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}).
+One method of geometry generation in pyGeo is generating a surface by lofting between user-specified cross-sections, which is most commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}).
 In particular, rounded or pinched wingtip geometries can be generated easily.
 These features rely on the open-source package pySpline[^2], which handles the underlying B-spline implementation.
 
@@ -232,7 +232,7 @@ For the geometric deformation, pyGeo can compute the Jacobian
 \end{equation*}
 where $X_s$ is the vector of surface mesh coordinates, and $x$ the vector of geometric design variables.
 
-Similarly, for the constraints, the Jacobian
+Similarly for the constraints, the Jacobian
 \begin{equation*}
 \frac{\mathrm{d}g}{\mathrm{d}x}
 \end{equation*}
