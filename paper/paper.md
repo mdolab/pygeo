@@ -51,7 +51,7 @@ header-includes: \usepackage{subcaption}
 # Summary
 In the field of aerodynamic shape optimization, an object's geometry is modified by an optimization algorithm to improve its performance.
 A common shape optimization example is adjusting the external shape of an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
-In a multidisciplinary design optimization context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
+In a multidisciplinary design optimization (MDO) context, aerodynamics and structural mechanics are considered and optimized simultaneously, which often provides additional benefit over optimizing only a single discipline.
 In such cases, the geometry must be represented consistently across multiple disciplines.
 
 pyGeo is a geometry package for three-dimensional shape manipulation, tailored for aerodynamic and multidisciplinary design optimization.
@@ -167,14 +167,16 @@ The flexibility and ease of setup of the FFD method make it preferable for some 
 In other applications, however, it can be beneficial to define the geometry in a more commonly accepted engineering format, such as a CAD model or other parametric definition.
 For example, a CAD model is usually required to manufacture a design.
 
-<!-- [] TODO SS-HMH: If we are looking to cut text, this paragraph could be a candidate. I think one line making the point that FFD defines the deformation, whereas CAD directly defines the geometry would be sufficient. -->
-<!-- [] TODO SS-HMH: 'designed parametrically or 'defined parametrically' ? -->
-If the geometry is designed parametrically, the relationships between design variables and geometry is defined in the model itself.
-In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
+<!-- [X] TODO SS-HMH: If we are looking to cut text, this paragraph could be a candidate. I think one line making the point that FFD defines the deformation, whereas CAD directly defines the geometry would be sufficient. -->
+<!-- [X] TODO SS-HMH: 'designed parametrically or 'defined parametrically' ? -->
+If the geometry is defined parametrically, the relationships between design variables and geometry is defined in the model itself.
+An FFD block only defines the deformation, while parametric geometry tools directly define the geometry.
+<!-- In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
 In a parametric modeling tool, the user would create a box by defining its initial length, width, and height.
-For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables.
+For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables. -->
 
-<!-- [] TODO SS-HMH: The transition here is a bit abrupt without any introduction to what ESP and OpenVSP are. -->
+<!-- [s] TODO SS-HMH: The transition here is a bit abrupt without any introduction to what ESP and OpenVSP are. -->
+pyGeo contains interfaces to two parametric geometry tools, ESP and OpenVSP, briefly described in the following sections.
 pyGeo interfaces with ESP and OpenVSP in similar ways.
 In both cases, an instance of the model is read into pyGeo and its points are associated with coordinates in a mesh from a solver in the MACH framework.
 The design variables built into the ESP or OpenVSP model are also read into pyGeo.
@@ -250,6 +252,7 @@ can be computed, where $g$ is the vector of geometric constraints.
 
 For the FFD parameterization, these derivatives are computed using a combination of analytic methods and the complex-step method [@Martins2003a].
 <!-- [] TODO SS-: Should we mention how derivatives for other methods are computed? -->
+<!-- HMH: my thought is no because then we'd have to mention finite differences but I'd rather leave FFD out than have that be the only one mentioned -->
 
 # Statement of Need
 Very few open-source packages exist with comparable functionalities.
@@ -265,7 +268,7 @@ It provides an interface to OpenVSP and ESP that allows for their use with solve
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
 <!-- [] TODO SS-: We should add a few citations for the basic FFD functionality. -->
 Its different parametrization options have all been necessary for different optimization problems depending on the geometry involved.
-The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packing optimization [@Brelje2021a].
+The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
 The implementation of CST airfoil parameterization was used to compare methods for airfoil optimization [@Adler2022c].
 The method for using multiple FFD volumes has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
