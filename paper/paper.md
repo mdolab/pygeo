@@ -176,29 +176,19 @@ In a parametric modeling tool, the user would create a box by defining its initi
 For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables. -->
 
 <!-- [s] TODO SS-HMH: The transition here is a bit abrupt without any introduction to what ESP and OpenVSP are. -->
-pyGeo contains interfaces to two parametric geometry tools, ESP and OpenVSP, briefly described in the following sections.
+pyGeo contains interfaces to two parametric geometry tools, the Engineering Sketch Pad (ESP) [@Haimes2013a] and OpenVSP [@McDonald2022a].
+ESP is a CAD software, while OpenVSP is a concpetual design tool.
+The two packages have different capabilities, but in both design variables directly define the geometry and the created geometry can be used in external analysis tools.
+
+<!-- [] TODO SS-HMH: There is enough repeated text between the ESP and OpenVSP sections that we might want to describe both under 'Parametric Geometry Tools' rather than have separate subsections. -->
 pyGeo interfaces with ESP and OpenVSP in similar ways.
 In both cases, an instance of the model is read into pyGeo and its points are associated with coordinates in a mesh from a solver in the MACH framework.
-The design variables built into the ESP or OpenVSP model are also read into pyGeo.
-
-#### Engineering Sketch Pad
-
-The Engineering Sketch Pad (ESP) [@Haimes2013a] is an open-source CAD software for creating parametric geometries.
-ESP can be used to create general CAD models for applications ranging from conceptual to detailed design.
-These geometries can then be used in external analysis tools.
-pyGeo contains an interface to ESP which translates an ESP model into a form usable for the MACH framework and updates it with the changes throughout the optimization.
+The design variables built into the ESP or OpenVSP model by the designer are also read into pyGeo.
+For both ESP and OpenVSP models, the pyGeo interface to the respective software stores the model in a form usable within the MACH framework and updates it as design variables are changed throughout the optimization.
 The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) that were packaged within an aircraft wing as part of an aerostructural optimization.
+pyGeo's OpenVSP interface was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
 
 ![Example of ESP models of hydrogen tanks used through pyGeo from [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
-
-#### OpenVSP
-
-OpenVSP [@McDonald2022a] is a tool for creating 3D parametric geometries.
-Typically used for conceptual design, OpenVSP can be used to create geometries commonly used in aircraft vehicle applications.
-<!-- [] TODO SS-HMH: There is enough repeated text between the ESP and OpenVSP sections that we might want to describe both under 'Parametric Geometry Tools' rather than have separate subsections. -->
-These geometries can then be used in external analysis tools.
-The pyGeo's interface to OpenVSP translates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization.
-This was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
 
 ![Example of a VSP model used through VSP's pyGeo interface from [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
 
