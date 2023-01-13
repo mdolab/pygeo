@@ -147,9 +147,7 @@ One of the advantages of using this approach is that each FFD block can have its
 This facilitates, for example, the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
 \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used for scaling the chord of a hydrofoil using a reference axis at the trailing-edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
 
-![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](Liao2021a_children.png)
-
-<!-- [] TODO SS-SS: For this and other figures taken from our lab's papers, we should try to use the original resolution image instead of taking the image from a paper that has probably been compressed by a journal. -->
+![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](ffd_child.png)
 
 #### Multi-component FFD
 
@@ -197,7 +195,7 @@ These geometries can then be used in external analysis tools.
 The pyGeo's interface to OpenVSP translates an OpenVSP model for use within the MACH framework and keeps it updated as the design variables are changed in the optimization.
 This was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
 
-![Example of a VSP model used through VSP's pyGeo interface from [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.jpg)
+![Example of a VSP model used through VSP's pyGeo interface from [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
 
 ### Class Shape Transformation
 
