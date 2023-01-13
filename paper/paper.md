@@ -221,7 +221,7 @@ Area and volume constraints constrain the geometry from deviating from the initi
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
 <!-- [] TODO SS-: Add pictures of some of these constraints? -->
-<!-- HMH: I don't think we have any good diagrams for constraints but if we want some for key constraints I can make some -->
+<!-- HMH: working on a figure for thickness and volume constrints -->
 
 # Parallelism
 pyGeo can optionally work under distributed memory parallelism with MPI, which can be helpful when interfacing with CFD applications.
