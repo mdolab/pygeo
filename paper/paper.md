@@ -245,6 +245,7 @@ can be computed, where $g$ is the vector of geometric constraints.
 For the FFD parameterization, these derivatives are computed using a combination of analytic methods and the complex-step method [@Martins2003a].
 <!-- [] TODO SS-: Should we mention how derivatives for other methods are computed? -->
 <!-- HMH: my thought is no because then we'd have to mention finite differences but I'd rather leave FFD out than have that be the only one mentioned -->
+<!-- MM: what's wrong with FD? we could just add ", while other methods rely on finite differences" to the sentence above and wrap it-->
 
 # Statement of Need
 Very few open-source packages exist with comparable functionalities.
@@ -253,13 +254,13 @@ It supports Hicks--Henne bump functions for airfoil optimizations and the FFD me
 However, it cannot be used with other solvers because it is directly integrated into the CFD solver SU2.
 
 It is worth noting here that both OpenVSP and ESP can be used directly in optimization without using pyGeo.
-However, when used as stand-alone tools these parameterization methods lack capabilities needed for high-fidelity MDO.
-pyGeo enables high-fidelity MDO with these tools through parallelism, efficient gradients, and geometric constraints, all while keeping the original tool in the optimization loop.
-It provides an interface to OpenVSP and ESP that allows for their use with solvers beyond those which they are natively tied to.
+However, when used as stand-alone tools these parameterization methods lack capabilities needed for high-fidelity MDO such as parallelism, efficient gradients, and geometric constraints. 
+pyGeo keeps the original tool in the optimization loop and extends its use with solvers beyond those which it is natively tied to.
 
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations within aerospace engineering and related fields.
 <!-- [] TODO SS-: We should add a few citations for the basic FFD functionality. -->
 <!-- HMH: Any ideas on which would be representative? Neil suggested uCRM, maybe we want a wind turbine and/or hydrofoil paper as well for ~range~  -->
+<!-- MM: we can re-use the citations above for non-aircraft examples. For aero stuff, one of the latest Nick Bons' paprs could also be a good fit-->
 Its different parametrization options have all been necessary for different optimization problems depending on the geometry involved.
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
