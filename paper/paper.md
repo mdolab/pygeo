@@ -160,13 +160,13 @@ This method relies on the open source pySurf package [@Secco2018b] to compute in
 ### Parametric Geometry Tools
 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
-In other applications, however, it can be beneficial to define the geometry in a more commonly accepted engineering format, such as a CAD model or other parametric definition.
+In other applications, however, it is beneficial to define the geometry in a more commonly accepted engineering format, such as a CAD model or other parametric definition.
 For example, a CAD model is usually required to manufacture a design.
 
 <!-- [X] TODO SS-HMH: If we are looking to cut text, this paragraph could be a candidate. I think one line making the point that FFD defines the deformation, whereas CAD directly defines the geometry would be sufficient. -->
 <!-- [X] TODO SS-HMH: 'designed parametrically or 'defined parametrically' ? -->
-If the geometry is defined parametrically, the relationships between design variables and geometry is defined in the model itself.
-An FFD block only defines the deformation, while parametric geometry tools directly define the geometry.
+If the geometry is defined parametrically, the relationships between design variables and geometry are defined in the model itself.
+An FFD block only handles deformations, while parametric geometry tools directly define the geometry.
 <!-- In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
 In a parametric modeling tool, the user would create a box by defining its initial length, width, and height.
 For either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables. -->
