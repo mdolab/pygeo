@@ -209,10 +209,14 @@ Constraints are all differentiated in order to use within gradient-based optimiz
 DVCon creates constraint objects which are passed to pyOptSparse.
 -->
 Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints.
-Thickness constraints control the distance between two points.
+The user can pass to pyGeo a grid of points and a normal direction to project these points on the reference surface geometry.
+Thickness constraints control the distance between two projected points to prevent excessive local deformations.
 <!-- [] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
 <!-- HMH: Neil suggested listing more of the constraints we use, I think we could also outline why they are useful but if we are short on words that could be tricky -->
-Area and volume constraints constrain the geometry from deviating from the initial design by some relative or absolute measure.
+<!-- MM: see my attempt in that direction here. -->
+Area and volume constraints conversely respectively control the 2D and 3D integrated values of this point set.
+<!-- MM: Maybe we can add two sentences here describing the different area constraints and how the volume is integrated, then link to picture-->
+All these features constrain the geometry from deviating from the initial design by some relative or absolute measure.
 
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
