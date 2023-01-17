@@ -166,7 +166,8 @@ This method relies on the open-source pySurf package [@Secco2018b] to compute in
 
 ![Example of FFD parameterization with intersecting components [@Seraj2022a]. \label{fig:ffd_multi}](ffd_multi.png)
 
-<!-- % [ ] TODO JM-: show the other side of the geometry for aesthetics, like Fig. 6? But without the FFD? -->
+<!-- % [x] TODO JM-: show the other side of the geometry for aesthetics, like Fig. 6? But without the FFD? -->
+<!-- SS: Done. -->
 
 ### Parametric Geometry Tools
 
