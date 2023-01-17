@@ -88,6 +88,7 @@ Rounded or pinched wingtip geometries can be generated quickly.
 The method relies on the open-source package pySpline[^2], which handles the underlying B-spline implementation.
 
 ![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf)
+
 <!-- % [ ] TODO JM-: In the 3D figure, highlight the airfoils used in the lofting in red? In the airfoil figure, eliminate blank space. Eliminate grid lines?  -->
 
 [^2]: https://github.com/mdolab/pyspline
@@ -153,6 +154,7 @@ This facilitates, for example, the definition of independent leading and trailin
 \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used to scale the chord of a hydrofoil using a reference axis at the trailing-edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
 
 ![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](ffd_child.png)
+
 <!-- [ ] TODO JM-: "blocks" of "volumes". Be consistent throughout and define clearly when first mentioned -->
 
 #### Multi-component FFD
@@ -163,6 +165,7 @@ This method relies on the open-source pySurf package [@Secco2018b] to compute in
 \autoref{fig:ffd_multi} shows an example of a component-based FFD setup for a supersonic transport aircraft.
 
 ![Example of FFD parameterization with intersecting components [@Seraj2022a]. \label{fig:ffd_multi}](ffd_multi.png)
+
 <!-- % [ ] TODO JM-: show the other side of the geometry for aesthetics, like Fig. 6? But without the FFD? -->
 
 ### Parametric Geometry Tools
