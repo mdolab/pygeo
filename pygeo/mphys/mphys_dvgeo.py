@@ -221,15 +221,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
-    def nom_addLinearConstraintForComposite(self, name):
-        self.DVCon.addLinearCompositeConstraint(name)
-        nval = self.DVGeo.getNDV()
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=np.ones((nval,)), shape=nval)
-        else:
-            self.add_output(name, distributed=True, shape=(0,))
-
     def nom_addThicknessConstraints2D(self, name, leList, teList, nSpan=10, nChord=10):
         self.DVCon.addThicknessConstraints2D(leList, teList, nSpan, nChord, lower=1.0, name=name)
         comm = self.comm
