@@ -71,8 +71,8 @@ pyGeo, together with the other core MACH modules, is integrated into MPhys[^1], 
 
 [^1]: https://github.com/OpenMDAO/mphys
 
-
-Both MPhys and OpenMDAO use pyOptSparse [@Wu2020a] to interface with optimization algorithms.
+Both MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization algorithms.
+<!-- HMH: I think <both frameworks> here referred to the frameworks pyGeo is directly integrated into -->
 pyGeo passes design variables and constraints to pyOptSparse directly, reducing user effort.
 
 pyGeo's interface for design variables and constraints is independent of which discipline solvers are accessing the geometry.
@@ -90,12 +90,15 @@ The method relies on the open-source package pySpline[^2], which handles the und
 ![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf)
 
 <!-- % [ ] TODO JM-: In the 3D figure, highlight the airfoils used in the lofting in red? In the airfoil figure, eliminate blank space. Eliminate grid lines?  -->
+<!-- HMH: I will redo the figure -->
 
 [^2]: https://github.com/mdolab/pyspline
 
 ## Geometry Parameterization with pyGeo
 
-pyGeo contains several options for parameterizing geometry: variations on the FFD method, external parametric modeling tools, and an analytic parameterization.
+
+pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
+<!-- HMH: I added <interfaces to> back in because while we directly include the FFD methods, we do not directly include VSP/ESP -->
 Because each of these parameterizations uses a common interface for interacting with the rest of the MACH framework, any parameterization can be used in place of another within an optimization setup.
 The choice of parameterization depends on the user's experience, the geometry details, and whether the user needs the final design in a specific format.
 
@@ -197,7 +200,7 @@ For ESP and OpenVSP models, the pyGeo interface to the respective software store
 The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) that were packaged within an aircraft wing as part of an aerostructural optimization.
 pyGeo's OpenVSP interface was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
 
-![Example of ESP models of hydrogen tanks used through pyGeo from [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
+![Example of ESP models of hydrogen tanks used through pyGeo [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
 
 ![Example of a VSP aircraft model used through VSP's pyGeo interface [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
 
@@ -245,7 +248,7 @@ For the geometric deformation, pyGeo can compute the Jacobian
 \end{equation*}
 where $X_s$ is the vector of surface mesh coordinates, and $x$ is the vector of geometric design variables.
 
-Similarly, pyGeo can compute the constraints Jacobian
+Similarly, pyGeo can compute the constraint Jacobian
 \begin{equation*}
 \frac{\mathrm{d}g}{\mathrm{d}x} ,
 \end{equation*}
