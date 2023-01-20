@@ -153,7 +153,7 @@ Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to
 <!--  HMH: do we explain the difference between local and global variables somewhere?-->
 pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. <!--MM: I would like to double check this sentence with Anil-->
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
-This has facilitated the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
+This has facilitated the definition of control surface deflections [@Lyu2014c; @Mangano2021a], wind turbine blade parametrization [@Madsen2019a; @Mangano2022a], and hydrofoil design [@Liao2021a].
 \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used to scale the chord of a hydrofoil using a reference axis at the trailing edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
 
 ![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](ffd_child.png)
@@ -289,6 +289,6 @@ The method for using multiple FFD volumes has been used to optimize a convention
 <!-- [] TODO JM-: Need to end with an overarching statement summarizing what is now possible with this -->
 
 # Acknowledgements
-
 We are grateful to the numerous pyGeo users who have contributed their time to the code and its maintenance over the years.
+
 # References
