@@ -211,8 +211,6 @@ It generates a shape using Bernstein polynomials to scale a class function, whic
 The class function is modified with two parameters, and the number of Bernstein polynomials is adjustable.
 pyGeo contains a module that implements this airfoil parameterization.
 The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
-<!-- SS: We don't mention derivatives for each method, so I'm commenting the following line out. -->
-<!-- It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization. -->
 pyGeo's CST implementation can only be used for 2D problems, such as airfoil optimization (\autoref{fig:cst_example}).
 
 ![Airfoil defined by three CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf)
@@ -259,8 +257,9 @@ Similarly, pyGeo can compute the constraint Jacobian
 where $g$ is the vector of geometric constraints.
 
 For the FFD parameterization, these derivatives are computed using a combination of analytic methods [@Martins2021] and the complex-step method [@Martins2003a].
-For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences. 
-<!-- [] TODO SS-: Should we mention how derivatives for other methods are computed? -->
+For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences.
+The CST derivatives are computed analytically.
+<!-- [x] TODO SS-: Should we mention how derivatives for other methods are computed? -->
 <!-- HMH: my thought is no because then we'd have to mention finite differences but I'd rather leave FFD out than have that be the only one mentioned -->
 <!-- MM: what's wrong with FD? we could just add ", while other methods rely on finite differences" to the sentence above and wrap it-->
 <!-- okay fine -->
