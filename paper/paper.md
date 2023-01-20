@@ -64,7 +64,7 @@ The code computes derivatives for all parameterization methods and constraint fu
 
 ## Integrations
 
-pyGeo is the geometry manipulation engine within the MDO of Aircraft Configurations at High Fidelity (MACH) framework [@Kenway2014a], [@Kenway2014c], which specializes in high-fidelity aerostructural optimization.
+pyGeo is the geometry manipulation engine within the MDO of Aircraft Configurations at High Fidelity (MACH) framework [@Kenway2014a; @Kenway2014c], which specializes in high-fidelity aerostructural optimization.
 pyGeo, together with the other core MACH modules, is integrated into MPhys[^1], a more general MDO framework for high-fidelity multiphysics problems built on the even more general OpenMDAO framework [@Gray2019a].
 
 [^1]: \url{https://github.com/OpenMDAO/mphys}
@@ -101,7 +101,7 @@ The method relies on the open-source package pySpline[^2], which handles the und
 
 pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
 <!-- HMH: I added <interfaces to> back in because while we directly include the FFD methods, we do not directly include VSP/ESP -->
-Because each of these parameterization methods use a common interface for interacting with the rest of the MACH framework, any parameterization can be used in place of another within an optimization setup.
+Because each parameterization method uses a common interface for interacting with the rest of the MACH framework, any parameterization can be used in place of another within an optimization setup.
 The choice of parameterization depends on the user's experience, the geometry details, and whether the user needs the final design in a specific format.
 
 <!-- MM: Should we include a list of modules/classes here for easier reference later on?-->
@@ -129,9 +129,10 @@ In pyGeo, these are referred to as _local_ design variables because a single con
 Conversely, it is also common to define geometric operations involving a collection of control points across the entire FFD block.
 These are referred to as _global_ design variables in pyGeo.
 For example, twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
-
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
-Parameterization based on singular value decomposition is also possible [@Wu2022b].
+
+Design variables formulated from groupings of FFD control points often exhibit ill conditioning. 
+To alleviate this, a parameterization based on singular value decomposition is also possible [@Wu2022b].
 <!-- talk about ref axis more? -->
 <!-- [ ] TODO AY-: I suggest moving the sentence on planform changes to be merged with the previous paragraph, and moving the SVD statement elsewhere. It does not flow well -->
 
@@ -214,7 +215,7 @@ It generates a shape using Bernstein polynomials to scale a class function, whic
 The class function is modified with two parameters, and the number of Bernstein polynomials is adjustable.
 pyGeo contains a module that implements this airfoil parameterization.
 The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
-pyGeo's CST implementation can only be used for 2D problems, such as airfoil optimization (\autoref{fig:cst_example}).
+pyGeo's CST implementation can be used only for 2D problems, such as airfoil optimization (\autoref{fig:cst_example}).
 
 ![Airfoil defined by three CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf)
 
@@ -285,8 +286,8 @@ pyGeo has been used extensively in aerodynamic and aerostructural optimizations 
 <!-- MM: we can re-use the citations above for non-aircraft examples. For aero stuff, one of the latest Nick Bons' paprs could also be a good fit-->
 Its different parameterization options have all been necessary for different optimization problems, depending on the geometry involved.
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
-pyGeo's OpenVSP interface was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
-<!-- [] TODO AY-: Citation Yildirim2022a was included above but not here. Should we add it? that starc-abl work is the biggest VSP based example we have. -->
+pyGeo's OpenVSP interface was used in aeropropulsive optimizations [@Yildirim2021c; @Yildirim2022a].
+<!-- [x] TODO AY-: Citation Yildirim2022a was included above but not here. Should we add it? that starc-abl work is the biggest VSP based example we have. -->
 The implementation of CST airfoil parameterization was used to compare methods for airfoil optimization [@Adler2022c].
 The method for using multiple FFD volumes has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 
@@ -295,7 +296,7 @@ The method for using multiple FFD volumes has been used to optimize a convention
 pyGeo is actively used, maintained, and developed by the MDO Lab[^3] at the University of Michigan.
 The geometry parameterization capabilities provided by pyGeo will be critical for development of environmentally sustainable aircraft through design optimization.
 
-<!-- [ ] TODO AY-: Please make sure I didnt mess up the footnote -->
+<!-- [x] TODO AY-: Please make sure I didnt mess up the footnote -->
 [^3]: \url{https://mdolab.engin.umich.edu}
 
 
