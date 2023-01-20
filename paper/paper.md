@@ -156,7 +156,7 @@ Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to
 <!--  HMH: do we explain the difference between local and global variables somewhere?-->
 pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. <!--MM: I would like to double check this sentence with Anil-->
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
-This has facilitated the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parameterization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
+This has facilitated the definition of control surface deflections [@Lyu2014c; @Mangano2021a], wind turbine blade parameterization [@Madsen2019a; @Mangano2022a], and hydrofoil design [@Liao2021a].
 \autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used to scale the chord of a hydrofoil using a reference axis at the trailing edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
 
 ![Example of parameterization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](ffd_child.png)
@@ -214,8 +214,6 @@ It generates a shape using Bernstein polynomials to scale a class function, whic
 The class function is modified with two parameters, and the number of Bernstein polynomials is adjustable.
 pyGeo contains a module that implements this airfoil parameterization.
 The implementation supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
-<!-- SS: We don't mention derivatives for each method, so I'm commenting the following line out. -->
-<!-- It includes methods to analytically compute derivatives of the airfoil's surface coordinates with respect to the design variables, which is useful for gradient-based optimization. -->
 pyGeo's CST implementation can only be used for 2D problems, such as airfoil optimization (\autoref{fig:cst_example}).
 
 ![Airfoil defined by three CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf)
@@ -262,8 +260,9 @@ Similarly, pyGeo can compute the constraint Jacobian
 where $g$ is the vector of geometric constraints.
 
 For the FFD parameterization, these derivatives are computed using a combination of analytic methods [@Martins2021] and the complex-step method [@Martins2003a].
-For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences. 
-<!-- [] TODO SS-: Should we mention how derivatives for other methods are computed? -->
+For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences.
+The CST derivatives are computed analytically.
+<!-- [x] TODO SS-: Should we mention how derivatives for other methods are computed? -->
 <!-- HMH: my thought is no because then we'd have to mention finite differences but I'd rather leave FFD out than have that be the only one mentioned -->
 <!-- MM: what's wrong with FD? we could just add ", while other methods rely on finite differences" to the sentence above and wrap it-->
 <!-- okay fine -->
@@ -301,6 +300,6 @@ The geometry parameterization capabilities provided by pyGeo will be critical fo
 
 
 # Acknowledgements
-
 We are grateful to the numerous pyGeo users who have contributed their time to the code and its maintenance over the years.
+
 # References
