@@ -51,7 +51,6 @@ header-includes: \usepackage{subcaption}
 # Summary
 In aerodynamic shape optimization, an optimization algorithm modifies a body's geometry to improve its performance.
 A common shape optimization example is adjusting the external shape of an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
-
 Multidisciplinary design optimization (MDO) couples multiple disciplines, such as aerodynamics and structural mechanics, to optimize them simultaneously, which is usually more advantageous than optimizing only a single discipline.
 In such cases, the geometry must be represented consistently across multiple disciplines.
 
@@ -85,7 +84,6 @@ This also allows direct comparison of the behavior or performance of two differe
 pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools.
 One method to generate a surface geometry in pyGeo lofts a series of user-specified cross-sections.
 This lofting is commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}).
-
 Rounded or pinched wingtip geometries can be generated quickly.
 The method relies on the open-source package pySpline[^2], which handles the underlying B-spline implementation.
 
@@ -119,7 +117,6 @@ TODO:
 - [] other pic?
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
-
 This approach embeds the entire reference geometry in a parameterized volume. 
 The set of control points that determine the shape of the volume are displaced to manipulate the points inside. 
 <!--JLA: The control points do not have to be (and often are not) on the surface of the embedding volume -->
@@ -152,7 +149,6 @@ In addition to the basic FFD implementation, pyGeo offers two additional feature
 <!--SS: Changed subsections from 'Child FFD' to 'Hierarchical FFD' and 'Multi-FFD' to 'Multi-component FFD'. Also using 'FFD blocks' instead of 'FFDs'. -->
 FFD objects can be organized in a hierarchical structure within pyGeo.
 Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to enable modifications on a subset of the full geometry.
-
 <!-- The user can define local and global variables on both objects independently.-->
 <!--  HMH: do we explain the difference between local and global variables somewhere?-->
 pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. <!--MM: I would like to double check this sentence with Anil-->
@@ -228,15 +224,15 @@ pyGeo also includes geometric constraints.
 Constraints are all differentiated in order to use within gradient-based optimization.
 DVCon creates constraint objects which are passed to pyOptSparse.
 -->
+To set up a constraint, pyGeo needs a grid of points and a normal direction in which to project these points onto the geometry.
 Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints.
-The user can pass to pyGeo a grid of points and a normal direction to project these points on the reference surface geometry.
-Thickness constraints control the distance between two projected points to prevent excessive local deformations.
+Thickness constraints control the distance between two points to prevent excessive local deformations.
 <!-- [] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
 <!-- HMH: Neil suggested listing more of the constraints we use, I think we could also outline why they are useful but if we are short on words that could be tricky -->
 <!-- MM: see my attempt in that direction here. -->
-Area and volume constraints conversely respectively control the 2D and 3D integrated values of this point set.
+Area and volume constraints control the 2D and 3D integrated values of this point set respectively.
 <!-- MM: Maybe we can add two sentences here describing the different area constraints and how the volume is integrated, then link to picture-->
-All these features constrain the geometry from deviating from the initial design by some relative or absolute measure.
+All three types constrain the geometry from deviating from the initial design by either a relative or absolute measure.
 
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
@@ -263,9 +259,11 @@ Similarly, pyGeo can compute the constraint Jacobian
 where $g$ is the vector of geometric constraints.
 
 For the FFD parameterization, these derivatives are computed using a combination of analytic methods [@Martins2021] and the complex-step method [@Martins2003a].
+For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences. 
 <!-- [] TODO SS-: Should we mention how derivatives for other methods are computed? -->
 <!-- HMH: my thought is no because then we'd have to mention finite differences but I'd rather leave FFD out than have that be the only one mentioned -->
 <!-- MM: what's wrong with FD? we could just add ", while other methods rely on finite differences" to the sentence above and wrap it-->
+<!-- okay fine -->
 
 # Statement of Need
 Few open-source packages exist with comparable functionalities.
