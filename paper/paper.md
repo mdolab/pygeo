@@ -67,7 +67,7 @@ The code computes derivatives for all parameterization methods and constraint fu
 pyGeo is the geometry manipulation engine within the MDO of Aircraft Configurations at High Fidelity (MACH) framework [@Kenway2014a], [@Kenway2014c], which specializes in high-fidelity aerostructural optimization.
 pyGeo, together with the other core MACH modules, is integrated into MPhys[^1], a more general MDO framework for high-fidelity multiphysics problems built on the even more general OpenMDAO framework [@Gray2019a].
 
-[^1]: https://github.com/OpenMDAO/mphys
+[^1]: \url{https://github.com/OpenMDAO/mphys}
 
 Both MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization algorithms.
 <!-- HMH: I think <both frameworks> here referred to the frameworks pyGeo is directly integrated into -->
@@ -94,7 +94,7 @@ The method relies on the open-source package pySpline[^2], which handles the und
 <!-- % [ ] TODO JM-: In the 3D figure, highlight the airfoils used in the lofting in red? In the airfoil figure, eliminate blank space. Eliminate grid lines?  -->
 <!-- HMH: I will redo the figure -->
 
-[^2]: https://github.com/mdolab/pyspline
+[^2]: \url{https://github.com/mdolab/pyspline}
 
 ## Geometry Parameterization with pyGeo
 
@@ -292,11 +292,11 @@ The method for using multiple FFD volumes has been used to optimize a convention
 
 <!-- [] TODO JM-: Need to end with an overarching statement summarizing what is now possible with this -->
 <!-- AY: I added the following statements. please check -->
-pyGeo is actively used, maintained, and developed by the MDO Lab[^1] at the University of Michigan.
+pyGeo is actively used, maintained, and developed by the MDO Lab[^3] at the University of Michigan.
 The geometry parameterization capabilities provided by pyGeo will be critical for development of environmentally sustainable aircraft through design optimization.
 
 <!-- [ ] TODO AY-: Please make sure I didnt mess up the footnote -->
-[^1]: https://mdolab.engin.umich.edu
+[^3]: \url{https://mdolab.engin.umich.edu}
 
 
 # Acknowledgements
