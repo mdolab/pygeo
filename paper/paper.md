@@ -118,14 +118,14 @@ TODO:
 -->
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches.
 This approach embeds the entire reference geometry in a parameterized volume. 
-The set of control points that determine the shape of the volume can be displaced to change the location of the points inside. 
+The set of control points that determine the shape of the volume are displaced to manipulate the points inside. 
 <!--JLA: The control points do not have to be (and often are not) on the surface of the embedding volume -->
-The user can realize a high degree of geometry control by selecting different control point densities and locations.
+The user can have a high degree of control over the geometry by selecting different control point densities and locations.
 
 Individual control points can be moved to obtain local shape modifications.
 In pyGeo, these are referred to as _local_ design variables because a single control point is affected.
-It is also common to define geometric operations involving a collection of control points.
-In pyGeo, these are referred to as _global_ design variables because control points across the entire FFD block can be affected.
+Conversely, it is also common to define geometric operations involving a collection of control points across the entire FFD block.
+These are referred to as _global_ design variables in pyGeo.
 For example, twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
 
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
@@ -153,8 +153,8 @@ Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to
 <!--  HMH: do we explain the difference between local and global variables somewhere?-->
 pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. <!--MM: I would like to double check this sentence with Anil-->
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
-This facilitates, for example, the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
-\autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used to scale the chord of a hydrofoil using a reference axis at the trailing-edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
+This has facilitated the definition of independent leading and trailing edge wing deformations [@Mangano2021a], wind turbine blade parametrization [@Mangano2022a],[@Madsen2019a], and hydrofoil design [@Liao2021a].
+\autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used to scale the chord of a hydrofoil using a reference axis at the trailing edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
 
 ![Example of parametrization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](ffd_child.png)
 
@@ -175,13 +175,13 @@ This method relies on the open-source pySurf package [@Secco2018b] to compute in
 ### Parametric Geometry Tools
 
 The flexibility and ease of setup of the FFD method make it preferable for some applications.
-In other applications, however, it can be beneficial to define the geometry in a more commonly accepted engineering format, such as a CAD model or other parametric definition.
+In other applications, however, it is beneficial to define the geometry in a more commonly accepted engineering format, such as a CAD model or other parametric definition.
 For example, a CAD model is usually required to manufacture a design.
 
 <!-- [X] TODO SS-HMH: If we are looking to cut text, this paragraph could be a candidate. I think one line making the point that FFD defines the deformation, whereas CAD directly defines the geometry would be sufficient. -->
 <!-- [X] TODO SS-HMH: 'designed parametrically or 'defined parametrically' ? -->
-If the geometry is defined parametrically, the relationships between design variables and geometry is defined in the model itself.
-An FFD block only defines the deformation, while parametric geometry tools directly define the geometry.
+If the geometry is defined parametrically, the relationships between design variables and geometry are defined in the model itself.
+An FFD block only handles deformations, while parametric geometry tools directly define the geometry.
 <!-- In an FFD model of a box, for example, the FFD points could represent the four corners of the box, but then the user would be required to define the planes in which points move to change the length, width, and height of the box.
 In a parametric modeling tool, the user would create a box by defining its initial length, width, and height.
 In either case, the length, width, and height (or a subset) can be controlled in the optimization process as design variables. -->
@@ -224,11 +224,15 @@ pyGeo also includes geometric constraints.
 Constraints are all differentiated in order to use within gradient-based optimization.
 DVCon creates constraint objects which are passed to pyOptSparse.
 -->
+To set up a constraint, pyGeo needs a grid of points and a normal direction in which to project these points onto the geometry.
 Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints.
-Thickness constraints control the distance between two points.
+Thickness constraints control the distance between two points to prevent excessive local deformations.
 <!-- [] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
 <!-- HMH: Neil suggested listing more of the constraints we use, I think we could also outline why they are useful but if we are short on words that could be tricky -->
-Area and volume constraints constrain the geometry from deviating from the initial design by some relative or absolute measure.
+<!-- MM: see my attempt in that direction here. -->
+Area and volume constraints control the 2D and 3D integrated values of this point set respectively.
+<!-- MM: Maybe we can add two sentences here describing the different area constraints and how the volume is integrated, then link to picture-->
+All three types constrain the geometry from deviating from the initial design by either a relative or absolute measure.
 
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
@@ -255,8 +259,11 @@ Similarly, pyGeo can compute the constraint Jacobian
 where $g$ is the vector of geometric constraints.
 
 For the FFD parameterization, these derivatives are computed using a combination of analytic methods [@Martins2021] and the complex-step method [@Martins2003a].
+For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences. 
 <!-- [] TODO SS-: Should we mention how derivatives for other methods are computed? -->
 <!-- HMH: my thought is no because then we'd have to mention finite differences but I'd rather leave FFD out than have that be the only one mentioned -->
+<!-- MM: what's wrong with FD? we could just add ", while other methods rely on finite differences" to the sentence above and wrap it-->
+<!-- okay fine -->
 
 # Statement of Need
 Few open-source packages exist with comparable functionalities.
@@ -264,14 +271,16 @@ To the authors' best knowledge, the only other optimization framework that conta
 It supports Hicks--Henne bump functions [@Hicks1978] for airfoil optimizations and the FFD method for three-dimensional cases.
 However, it cannot be used with other solvers because it is tightly integrated into the CFD solver.
 
-Both OpenVSP and ESP can be used directly in optimization without using pyGeo.
-However, when used as stand-alone tools these parameterization methods lack capabilities needed for high-fidelity MDO.
-pyGeo enables high-fidelity MDO with these tools through parallelism, efficient derivative computation, and geometric constraints while keeping the original tool in the optimization loop.
-It provides an interface to OpenVSP and ESP so they can be used with external solvers.
+
+Both OpenVSP and ESP can be used directly in optimization without using pyGeo, but these parameterization methods lack capabilities needed for high-fidelity MDO when used as stand-alone tools.
+pyGeo fills in these gaps through parallelism, efficient gradients, and geometric constraints.
+It keeps OpenVSP and ESP in the optimization loop and provides an interface to the tools so they can be used with external solvers.
 <!-- % [ ] TODO JM-: check "external" rephrasing above -->
+
 pyGeo has been used extensively in aerodynamic and aerostructural optimizations in aircraft, hydrofoil, and wind turbine applications.
 <!-- [] TODO SS-: We should add a few citations for the basic FFD functionality. -->
 <!-- HMH: Any ideas on which would be representative? Neil suggested uCRM, maybe we want a wind turbine and/or hydrofoil paper as well for ~range~  -->
+<!-- MM: we can re-use the citations above for non-aircraft examples. For aero stuff, one of the latest Nick Bons' paprs could also be a good fit-->
 Its different parametrization options have all been necessary for different optimization problems, depending on the geometry involved.
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in the aeropropulsive optimization of a podded electric turbofan [@Yildirim2021c].
