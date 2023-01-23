@@ -9,6 +9,7 @@ from baseclasses.utils import Error
 from .DVGeoSketch import DVGeoSketch
 from pyspline.utils import searchQuads
 from .designVars import vspDV
+import copy
 
 # openvsp python interface
 try:
@@ -85,6 +86,7 @@ class DVGeometryVSP(DVGeoSketch):
 
         t1 = time.time()
         # read the model
+
         openvsp.ReadVSPFile(fileName)
         t2 = time.time()
         if self.comm.rank == 0:
@@ -119,6 +121,8 @@ class DVGeometryVSP(DVGeoSketch):
         if comm.rank == 0:
             print("Building a quad mesh for fast projections.")
         self._getQuads()
+
+        self.useComposite = False
 
         if comm.rank == 0:
             t3 = time.time()
@@ -326,6 +330,8 @@ class DVGeometryVSP(DVGeoSketch):
             must correspond to the design variable names. Any
             additional keys in the dv-dictionary are simply ignored.
         """
+        if self.useComposite:
+            dvDict = self.mapXDictToDVGeo(dvDict)
 
         # Just dump in the values
         for key in dvDict:
@@ -468,12 +474,18 @@ class DVGeometryVSP(DVGeoSketch):
         else:
             dIdx = dIdx_local
 
-        # Now convert to dict:
-        dIdxDict = {}
-        i = 0
-        for dvName in self.DVs:
-            dIdxDict[dvName] = np.array(dIdx[:, i]).T
-            i += 1
+        if self.useComposite:
+            dIdx = self.mapSensToComp(dIdx)
+            dIdxDict = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
+
+        else:
+            # Now convert to dict:
+            dIdxDict = {}
+            i = 0
+            for dvName in self.DVs:
+                arr = np.array(dIdx[:, i]).T
+                dIdxDict[dvName] = arr.reshape(arr.shape[0], 1)
+                i += 1
 
         return dIdxDict
 

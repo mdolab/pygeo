@@ -121,6 +121,7 @@ class DVGeometryESP(DVGeoSketch):
 
         # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
         self.globalDVList = []
+        self.useComposite = False
 
         self.suppress_stdout = suppress_stdout
         self.exclude_edge_projections = exclude_edge_projections
@@ -590,6 +591,8 @@ class DVGeometryESP(DVGeoSketch):
             The keys of the dictionary must correspond to the design variable names.
             Any additional keys in the dfvdictionary are simply ignored.
         """
+        if self.useComposite:
+            dvDict = self.mapXDictToDVGeo(dvDict)
 
         # Just dump in the values
         for key in dvDict:
@@ -767,7 +770,6 @@ class DVGeometryESP(DVGeoSketch):
         # # transpose dIdpt and vstack;
         # # Now vstack the result with seamBar as that is far as the
         # # forward FD jacobian went.
-        # tmp = np.vstack([dIdpt.T, dIdSeam.T])
         tmp = dIdpt.T
 
         # we also stack the pointset jacobian
@@ -781,14 +783,18 @@ class DVGeometryESP(DVGeoSketch):
         else:
             dIdx = dIdx_local
 
-        # Now convert to dict:
-        dIdxDict = {}
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
-            jac_start = dv.globalStartInd
-            jac_end = jac_start + dv.nVal
-            # dIdxDict[dvName] = np.array([dIdx[:, i]]).T
-            dIdxDict[dvName] = dIdx[:, jac_start:jac_end]
+        if self.useComposite:
+            dIdx = self.mapSensToComp(dIdx)
+            dIdxDict = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
+
+        else:
+            # Now convert to dict:
+            dIdxDict = {}
+            for dvName in self.DVs:
+                dv = self.DVs[dvName]
+                jac_start = dv.globalStartInd
+                jac_end = jac_start + dv.nVal
+                dIdxDict[dvName] = dIdx[:, jac_start:jac_end]
 
         return dIdxDict
 
