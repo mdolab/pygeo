@@ -870,16 +870,13 @@ class RegTestPyGeo(unittest.TestCase):
 
     def test_25_composite(self, train=False, refDeriv=False):
         """
-        Test 3: OpenVSP wing test with DVcomposite
+        D8 test with DVComposite
         """
-        # we skip parallel tests for now
-        if not train and self.N_PROCS > 1:
-            self.skipTest("Skipping the parallel test for now.")
 
-        refFile = os.path.join(self.base_path, "ref/test_DVGeometry_25_.ref")
+        refFile = os.path.join(self.base_path, "ref/test_DVGeometry_25.ref")
 
         with BaseRegTest(refFile, train=train) as handler:
-            handler.root_print("Test 12: D8 FFD, global DVs")
+            handler.root_print("Test composite DVs")
             DVGeo, DVGeoChild = commonUtils.setupDVGeoD8(self.base_path, refDeriv)
 
             # create global DVs on the parent
@@ -902,7 +899,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo.addPointSet(points, ptName)
             dh = 1e-6
 
-            DVGeo.addCompositeDV("vspComp", "test_points")
+            DVGeo.addCompositeDV("ffdComp", "test_points")
 
             # We will have nNodes*3 many functions of interest...
             # dIdpt = np.random.rand(1, npts, 3)
@@ -989,7 +986,7 @@ class RegTestPyGeo(unittest.TestCase):
             # composite DV
             DVGeo.complex = False
             Composite_FFD = DVGeo.getValues()
-            handler.root_add_val("Composite DVs :", Composite_FFD["vspComp"], rtol=1e-12, atol=1e-12)
+            handler.root_add_val("Composite DVs :", Composite_FFD["ffdComp"], rtol=1e-12, atol=1e-12)
 
     def test_demoDesignVars(self):
         DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)

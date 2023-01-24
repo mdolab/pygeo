@@ -258,11 +258,8 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
     def test_composite(self, train=False):
         """
-        Test 3: OpenVSP wing test with DVcomposite
+        ESP wing test with DVComposite
         """
-        # we skip parallel tests for now
-        if not train and self.N_PROCS > 1:
-            self.skipTest("Skipping the parallel test for now.")
 
         refFile = os.path.join(self.input_path, "reg_tests/ref/test_DVGeometryESP_02.ref")
 
@@ -289,7 +286,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             coor = initpts
             # Add this pointSet to DVGeo
             DVGeo.addPointSet(coor, "test_points")
-            DVGeo.addCompositeDV("vspComp", "test_points")
+            DVGeo.addCompositeDV("espComp", "test_points")
 
             # We will have nNodes*3 many functions of interest...
             dIdpt = np.zeros((npts * 3, npts, 3))
@@ -375,7 +372,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             self.assertGreater(biggest_deriv, 0.005)
 
             Composite_FFD = DVGeo.getValues()
-            handler.root_add_val("Composite DVs :", Composite_FFD["vspComp"], rtol=1e-12, atol=1e-12)
+            handler.root_add_val("Composite DVs :", Composite_FFD["espComp"], rtol=1e-12, atol=1e-12)
 
 
 @unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")

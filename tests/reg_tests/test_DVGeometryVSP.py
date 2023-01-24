@@ -26,7 +26,7 @@ test_params = [
 
 @unittest.skipIf(missing_openvsp, "requires openvsp Python API")
 @parameterized_class(test_params)
-class RegTestPyGeoVSP(unittest.TestCase):
+class RegTestPyGeoVSPParallel(unittest.TestCase):
 
     # this will be tested in serial and parallel automatically
     N_PROCS = 1
@@ -150,6 +150,19 @@ class RegTestPyGeoVSP(unittest.TestCase):
                         maxError = max(error, maxError)
             handler.assert_allclose(maxError, 0.0, "sphere_derivs", rtol=1e0, atol=1e-10)
 
+
+@unittest.skipIf(missing_openvsp, "requires openvsp Python API")
+class RegTestPyGeoVSPSerial(unittest.TestCase):
+
+    # this will be tested in serial only
+    N_PROCS = 1
+
+    def setUp(self):
+        # Store the path where this current script lives
+        # This all paths in the script are relative to this path
+        # This is needed to support testflo running directories and files as inputs
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+
     def train_2(self, train=True, refDeriv=True):
         self.test_2(train=train, refDeriv=refDeriv)
 
@@ -157,9 +170,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
         """
         Test 2: OpenVSP wing test
         """
-        # we skip parallel tests for now
-        if not train and self.N_PROCS > 1:
-            self.skipTest("Skipping the parallel test for now.")
 
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
@@ -302,11 +312,8 @@ class RegTestPyGeoVSP(unittest.TestCase):
 
     def test_3(self, train=False, refDeriv=False):
         """
-        Test 3: OpenVSP wing test with DVcomposite
+        Test 3: OpenVSP wing test with DVComposite
         """
-        # we skip parallel tests for now
-        if not train and self.N_PROCS > 1:
-            self.skipTest("Skipping the parallel test for now.")
 
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
