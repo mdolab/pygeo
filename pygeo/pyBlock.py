@@ -784,7 +784,7 @@ class pyBlock:
         ptSetName : str
             The name given to this set of coordinates.
         interiorOnly : bool
-            Project only points that lie fully inside the volume
+            Only embed points that lie fully inside the volume
         embTol : float
             Tolerance on the distance between projected and closest point.
             Determines if a point is embedded or not in the FFD volume if interiorOnly is True.
@@ -798,9 +798,8 @@ class pyBlock:
 
         # Project Points, if some were actually passed in:
         if coordinates is not None:
-            checkErrors = not interiorOnly
             mask = None
-            volID, u, v, w, D = self.projectPoints(coordinates, checkErrors, embTol, eps, nIter)
+            volID, u, v, w, D = self.projectPoints(coordinates, interiorOnly, embTol, eps, nIter)
 
             if interiorOnly:
                 # Create the mask before creating the embedded volume
@@ -817,7 +816,7 @@ class pyBlock:
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, checkErrors, embTol, eps, nIter):
+    def projectPoints(self, x0, interiorOnly, embTol, eps, nIter):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
@@ -834,9 +833,6 @@ class pyBlock:
         ----------
         x0 : array of points (Nx3 array)
             The list or array of points to use
-        checkErrors : bool
-            Flag to print out the error is points have not been projected
-            to the tolerance defined by embTol.
 
         See Also
         --------
@@ -858,7 +854,7 @@ class pyBlock:
         v0 = 0.0
         w0 = 0.0
 
-        if not checkErrors:
+        if interiorOnly:
             # Get the corners of the bounding box for this FFD
             xMin, xMax = self.getBounds()
 
@@ -872,7 +868,7 @@ class pyBlock:
             # If it is outside the bounding box, we skip projecting this point to save time.
             # A point can be inside the bounding box but still outside the FFD volumes.
             # In this case, the point is identified as an exterior point by the projection, which is more costly.
-            if not checkErrors and (any(x0[i] < xMin) or any(x0[i] > xMax)):
+            if interiorOnly and (any(x0[i] < xMin) or any(x0[i] > xMax)):
                 continue
 
             for j in range(self.nVol):
@@ -903,10 +899,9 @@ class pyBlock:
             volList = np.hstack([iVol, volList[:j], volList[j + 1 :]])
         # end for (length of x0)
 
-        # If desired check the errors and print warnings:
-        if checkErrors:
-            # Loop back through the points and determine which ones are
-            # bad (> 50*eps) and print them to the screen:
+        # If we are interested in all points, we need to check whether they were all projected properly
+        if not interiorOnly:
+            # Loop back through the points and determine which ones are bad and print them to the screen
             counter = 0
             DMax = 0.0
             DRms = 0.0
