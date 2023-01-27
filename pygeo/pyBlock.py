@@ -6,6 +6,7 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
+from scipy.spatial import Delaunay
 from pyspline import Volume
 from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
 from .geo_utils import readNValues, blendKnotVectors
@@ -854,21 +855,22 @@ class pyBlock:
         v0 = 0.0
         w0 = 0.0
 
+        # If we are only interested in interior points, we skip projecting exterior points to save time.
+        # We identify exterior points by checking if they are outside the convex hull of the control points.
+        # A point can be inside the convex hull but still outside the FFD volume(s).
+        # In this case, the point is identified as an exterior point by the projection, which is more costly.
         if interiorOnly:
-            # Get the corners of the bounding box for this FFD
-            xMin, xMax = self.getBounds()
+            # Compute the Delaunay triangulation of all control points
+            triangulation = Delaunay(self.coef)
 
-            # Expand the bounds slightly in case a point lies on the boundary of the box
-            xMin -= embTol
-            xMax += embTol
+            # find_simplex returns -1 for points that are outside the Delaunay triangulation
+            # This is equivalent to points being outside the convex hull
+            isExterior = triangulation.find_simplex(x0) == -1
 
         for i in range(N):
 
-            # If we are only interested in interior points, we check if this point is outside the bounding box.
-            # If it is outside the bounding box, we skip projecting this point to save time.
-            # A point can be inside the bounding box but still outside the FFD volumes.
-            # In this case, the point is identified as an exterior point by the projection, which is more costly.
-            if interiorOnly and (any(x0[i] < xMin) or any(x0[i] > xMax)):
+            # Do not project this point if it is outside the convex hull and we are only interested in interior points
+            if interiorOnly and isExterior[i]:
                 continue
 
             for j in range(self.nVol):
