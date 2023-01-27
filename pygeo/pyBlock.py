@@ -858,7 +858,23 @@ class pyBlock:
         v0 = 0.0
         w0 = 0.0
 
+        if not checkErrors:
+            # Get the corners of the bounding box for this FFD
+            xMin, xMax = self.getBounds()
+
+            # Expand the bounds slightly in case a point lies on the boundary of the box
+            xMin -= embTol
+            xMax += embTol
+
         for i in range(N):
+
+            # If we are only interested in interior points, we check if this point is outside the bounding box.
+            # If it is outside the bounding box, we skip projecting this point to save time.
+            # A point can be inside the bounding box but still outside the FFD volumes.
+            # In this case, the point is identified as an exterior point by the projection, which is more costly.
+            if not checkErrors and (any(x0[i] < xMin) or any(x0[i] > xMax)):
+                continue
+
             for j in range(self.nVol):
                 iVol = volList[j]
                 u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter)
