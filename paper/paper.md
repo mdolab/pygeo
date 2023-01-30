@@ -81,8 +81,8 @@ This means that pyGeo geometries can interact with different types of solvers, s
 This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
 
 <!-- ## Geometry Generation -->
-<!-- [ ] TODO AY-: I suggest either completely removing this section, or moving it right at the end (maybe after the derivative computation section, i.e. after all geometry parameterization related sections). The main point of pygeo is the parameterization, and I think it may confuse people if we put the surface generation up first. -->
-<!-- [ ] TODO AY-: After going through the paper, I am leaning towards removing this section. The geometry generation was never a critical capability of pygeo, and with our recent efforts, I think that part of the code will soon be removed from the pyGeo repo. To keep things simple and to reduce the word count, I suggest removing this. We can modify pyGeo's readme to mirror that change as well. If you really want to keep it, see my comments above about where to put this section -->
+<!-- [x] TODO AY-: I suggest either completely removing this section, or moving it right at the end (maybe after the derivative computation section, i.e. after all geometry parameterization related sections). The main point of pygeo is the parameterization, and I think it may confuse people if we put the surface generation up first. -->
+<!-- [x] TODO AY-: After going through the paper, I am leaning towards removing this section. The geometry generation was never a critical capability of pygeo, and with our recent efforts, I think that part of the code will soon be removed from the pyGeo repo. To keep things simple and to reduce the word count, I suggest removing this. We can modify pyGeo's readme to mirror that change as well. If you really want to keep it, see my comments above about where to put this section -->
 <!-- commenting this out in case we want pieces for another section -->
 
 <!-- pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools. -->
@@ -93,7 +93,7 @@ This also allows direct comparison of the behavior or performance of two differe
 
 <!-- ![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf) -->
 
-<!-- % [ ] TODO JM-: In the 3D figure, highlight the airfoils used in the lofting in red? In the airfoil figure, eliminate blank space. Eliminate grid lines?  -->
+<!-- % [section removed] TODO JM-: In the 3D figure, highlight the airfoils used in the lofting in red? In the airfoil figure, eliminate blank space. Eliminate grid lines?  -->
 <!-- HMH: I will redo the figure -->
 
 <!-- [^2]: \url{https://github.com/mdolab/pyspline} -->
@@ -136,7 +136,7 @@ For example, twist variables can be defined as rotations of the control points a
 Design variables formulated from groupings of FFD control points often exhibit ill conditioning. 
 To alleviate this, a parameterization based on singular value decomposition is also possible [@Wu2022b].
 <!-- talk about ref axis more? -->
-<!-- [ ] TODO AY-: I suggest moving the sentence on planform changes to be merged with the previous paragraph, and moving the SVD statement elsewhere. It does not flow well -->
+<!-- [x] TODO AY-: I suggest moving the sentence on planform changes to be merged with the previous paragraph, and moving the SVD statement elsewhere. It does not flow well -->
 
 <!-- Compared to other parameterization methods, the FFD method has several key advantages.
 Since the entire geometry is embedded, there is no need to start with or reverse-engineer a parametric geometry representation as commonly done with B-spline-based methods, where a least-squares fit is needed to generate a B-spline surface representation.
@@ -229,7 +229,7 @@ Constraints are all differentiated in order to use within gradient-based optimiz
 DVCon creates constraint objects which are passed to pyOptSparse.
 -->
 To set up a constraint, pyGeo needs a grid of points and a normal direction in which to project these points onto the geometry.
-Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints.
+Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints (\autoref{fig:constraint}).
 Thickness constraints control the distance between two points to prevent excessive local deformations.
 <!-- [] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
 <!-- HMH: Neil suggested listing more of the constraints we use, I think we could also outline why they are useful but if we are short on words that could be tricky -->
@@ -238,9 +238,12 @@ Area and volume constraints control the 2D and 3D integrated values of this poin
 <!-- MM: Maybe we can add two sentences here describing the different area constraints and how the volume is integrated, then link to picture-->
 All three types constrain the geometry from deviating from the initial design by either a relative or absolute measure.
 
+
+![Thickness and volume constraints demonstrated on an airfoil. \label{fig:constraint}](constraint.pdf)
+
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
-<!-- [] TODO SS-: Add pictures of some of these constraints? -->
+<!-- [x] TODO SS-: Add pictures of some of these constraints? -->
 <!-- HMH: working on a figure for thickness and volume constrints -->
 
 # Parallelism
