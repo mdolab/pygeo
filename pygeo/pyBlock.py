@@ -6,7 +6,7 @@ import copy
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
-from scipy.spatial import Delaunay
+from scipy.spatial import ConvexHull
 from pyspline import Volume
 from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
 from .geo_utils import readNValues, blendKnotVectors
@@ -860,17 +860,24 @@ class pyBlock:
         # A point can be inside the convex hull but still outside the FFD volume(s).
         # In this case, the point is identified as an exterior point by the projection, which is more costly.
         if interiorOnly:
-            # Compute the Delaunay triangulation of all control points
-            triangulation = Delaunay(self.coef)
+            # Compute the convex hull of all control points
+            hull = ConvexHull(self.coef)
 
-            # find_simplex returns -1 for points that are outside the Delaunay triangulation
-            # This is equivalent to points being outside the convex hull
-            isExterior = triangulation.find_simplex(x0) == -1
+            # ConvexHull.equations describes the planes that define the faces of the convex hull
+            # Extract the normal vector and offset for each plane
+            hullNormals = hull.equations[:, :-1]
+            hullOffsets = hull.equations[:, -1]
+
+            # The normals point outside the convex hull, so a point is inside the convex hull if the distance in the
+            # normal direction from the point to every plane defining the convex hull is negative.
+            # This is computed in a vectorized manner below.
+            distanceToPlanes = np.dot(x0, hullNormals.T) + hullOffsets
+            isInsideHull = np.all(distanceToPlanes <= eps, axis=1)
 
         for i in range(N):
 
             # Do not project this point if it is outside the convex hull and we are only interested in interior points
-            if interiorOnly and isExterior[i]:
+            if interiorOnly and not isInsideHull[i]:
                 continue
 
             for j in range(self.nVol):
