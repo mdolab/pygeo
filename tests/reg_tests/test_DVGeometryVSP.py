@@ -1,4 +1,6 @@
 # Standard Python modules
+from collections import OrderedDict
+import copy
 import os
 import unittest
 
@@ -29,7 +31,7 @@ test_params = [
 
 @unittest.skipUnless(openvspInstalled, "requires openvsp Python API")
 @parameterized_class(test_params)
-class RegTestPyGeoVSP(unittest.TestCase):
+class RegTestPyGeoVSPParallel(unittest.TestCase):
 
     # this will be tested in serial and parallel automatically
     N_PROCS = 1
@@ -153,6 +155,19 @@ class RegTestPyGeoVSP(unittest.TestCase):
                         maxError = max(error, maxError)
             handler.assert_allclose(maxError, 0.0, "sphere_derivs", rtol=1e0, atol=1e-10)
 
+
+@unittest.skipUnless(openvspInstalled, "requires openvsp Python API")
+class RegTestPyGeoVSPSerial(unittest.TestCase):
+
+    # this will be tested in serial only
+    N_PROCS = 1
+
+    def setUp(self):
+        # Store the path where this current script lives
+        # This all paths in the script are relative to this path
+        # This is needed to support testflo running directories and files as inputs
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+
     def train_2(self, train=True, refDeriv=True):
         self.test_2(train=train, refDeriv=refDeriv)
 
@@ -160,9 +175,6 @@ class RegTestPyGeoVSP(unittest.TestCase):
         """
         Test 2: OpenVSP wing test
         """
-        # we skip parallel tests for now
-        if not train and self.N_PROCS > 1:
-            self.skipTest("Skipping the parallel test for now.")
 
         def sample_uv(nu, nv):
             # function to create sample uv from the surface and save these points.
@@ -297,6 +309,183 @@ class RegTestPyGeoVSP(unittest.TestCase):
                 if maxderiv > biggest_deriv:
                     biggest_deriv = maxderiv
                 handler.assert_allclose(normalized_error, 0.0, name=f"{x}_grad_normalized_error", rtol=1e0, atol=5e-5)
+            # make sure that at least one derivative is nonzero
+            self.assertGreater(biggest_deriv, 0.005)
+
+    def train_3(self, train=True, refDeriv=True):
+        self.test_3(train=train, refDeriv=refDeriv)
+
+    def test_3(self, train=False, refDeriv=False):
+        """
+        Test 3: OpenVSP wing test with DVComposite
+        """
+
+        def sample_uv(nu, nv):
+            # function to create sample uv from the surface and save these points.
+            u = np.linspace(0, 1, nu + 1)
+            v = np.linspace(0, 1, nv + 1)
+            uu, vv = np.meshgrid(u, v)
+            uv = np.array((uu.flatten(), vv.flatten()))
+            return uv
+
+        refFile = os.path.join(self.base_path, "ref/test_DVGeometryVSP_03.ref")
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test 3: OpenVSP NACA 0012 wing")
+            vspFile = os.path.join(self.base_path, "../../input_files/naca0012.vsp3")
+            DVGeo = DVGeometryVSP(vspFile)
+            dh = 1e-6
+
+            openvsp.ClearVSPModel()
+            openvsp.ReadVSPFile(vspFile)
+            geoms = openvsp.FindGeoms()
+
+            DVGeo = DVGeometryVSP(vspFile)
+            comp = "WingGeom"
+            # loop over sections
+            # normally, there are 9 sections so we should loop over range(9) for the full test
+            # to have it run faster, we just pick 2 sections
+            for i in [0, 5]:
+                # Twist
+                DVGeo.addVariable(
+                    comp, "XSec_%d" % i, "Twist", lower=-10.0, upper=10.0, scale=1e-2, scaledStep=False, dh=dh
+                )
+
+                # loop over coefs
+                # normally, there are 7 coeffs so we should loop over range(7) for the full test
+                # to have it run faster, we just pick 2 sections
+                for j in [0, 4]:
+                    # CST Airfoil shape variables
+                    group = "UpperCoeff_%d" % i
+                    var = "Au_%d" % j
+                    DVGeo.addVariable(comp, group, var, lower=-0.1, upper=0.5, scale=1e-3, scaledStep=False, dh=dh)
+                    group = "LowerCoeff_%d" % i
+                    var = "Al_%d" % j
+                    DVGeo.addVariable(comp, group, var, lower=-0.5, upper=0.1, scale=1e-3, scaledStep=False, dh=dh)
+
+            # now lets generate ourselves a quad mesh of these cubes.
+            uv_g = sample_uv(8, 8)
+
+            # total number of points
+            ntot = uv_g.shape[1]
+
+            # rank on this proc
+            rank = MPI.COMM_WORLD.rank
+
+            # first, equally divide
+            nuv = ntot // MPI.COMM_WORLD.size
+            # then, add the remainder
+            if rank < ntot % MPI.COMM_WORLD.size:
+                nuv += 1
+
+            # allocate the uv array on this proc
+            uv = np.zeros((2, nuv))
+
+            # print how mant points we have
+            MPI.COMM_WORLD.Barrier()
+
+            # loop over the points and save all that this proc owns
+            ii = 0
+            for i in range(ntot):
+                if i % MPI.COMM_WORLD.size == rank:
+                    uv[:, ii] = uv_g[:, i]
+                    ii += 1
+
+            # get the coordinates
+            nNodes = len(uv[0, :])
+            openvsp.CompVecPnt01(geoms[0], 0, uv[0, :], uv[1, :])
+
+            # extract node coordinates and save them in a numpy array
+            coor = np.zeros((nNodes, 3))
+            for i in range(nNodes):
+                pnt = openvsp.CompPnt01(geoms[0], 0, uv[0, i], uv[1, i])
+                coor[i, :] = (pnt.x(), pnt.y(), pnt.z())
+
+            # Add this pointSet to DVGeo
+            DVGeo.addPointSet(coor, "test_points")
+            DVGeo.addCompositeDV("vspComp", "test_points")
+            # We will have nNodes*3 many functions of interest...
+            dIdpt = np.zeros((nNodes * 3, nNodes, 3))
+
+            # set the seeds to one in the following fashion:
+            # first function of interest gets the first coordinate of the first point
+            # second func gets the second coord of first point etc....
+            for i in range(nNodes):
+                for j in range(3):
+                    dIdpt[i * 3 + j, i, j] = 1
+
+            # first get the dvgeo result
+            funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
+
+            # now perturb the design with finite differences and compute FD gradients
+            DVs = OrderedDict()
+
+            for dvName in DVGeo.DVs:
+                DVs[dvName] = DVGeo.DVs[dvName].value
+
+            funcSensFD = {}
+
+            inDict = copy.deepcopy(DVs)
+            userVec = DVGeo.convertDictToSensitivity(inDict)
+            DVvalues = DVGeo.convertSensitivityToDict(userVec.reshape(1, -1), out1D=True, useCompositeNames=False)
+
+            # We flag the composite DVs to be false to not to make any changes on default mode.
+            DVGeo.useComposite = False
+
+            count = 0
+            for x in DVvalues:
+                # perturb the design
+                xRef = DVvalues[x].copy()
+                DVvalues[x] += dh
+
+                DVGeo.setDesignVars(DVvalues)
+
+                # get the new points
+                coorNew = DVGeo.update("test_points")
+
+                # calculate finite differences
+                funcSensFD[x] = (coorNew.flatten() - coor.flatten()) / dh
+
+                # set back the DV
+                DVvalues[x] = xRef.copy()
+                count = count + 1
+
+            DVGeo.useComposite = True
+            # now loop over the values and compare
+            # when this is run with multiple procs, VSP sometimes has a bug
+            # that leads to different procs having different spanwise
+            # u-v distributions. as a result, the final values can differ up to 1e-5 levels
+            # this issue does not come up if this tests is ran with a single proc
+            biggest_deriv = 1e-16
+
+            DVCount = DVGeo.getNDV()
+
+            funcSensFDMat = np.zeros((coorNew.size, DVCount), dtype="d")
+            i = 0
+
+            for key in DVGeo.DVs:
+                # dv = DVGeo.DVs[key]
+                funcSensFDMat[:, i] = funcSensFD[key].T
+                i += 1
+
+            # Now we need to map our FD derivatives to composite
+            funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
+            funcSensFDDict = DVGeo.convertSensitivityToDict(funcSensFDMat, useCompositeNames=True)
+
+            # Now we check how much the derivatives deviates from each other
+            counter = 0
+            for x in [DVGeo.DVComposite.name]:
+                err = np.array(funcSens[x]) - np.array(funcSensFDDict[x])
+                maxderiv = np.max(np.abs(funcSens[x]))
+                normalizer = np.median(np.abs(funcSensFDDict[x]))
+                if np.abs(normalizer) < 1:
+                    normalizer = np.ones(1)
+                normalized_error = err / normalizer
+                if maxderiv > biggest_deriv:
+                    biggest_deriv = maxderiv
+                handler.assert_allclose(normalized_error, 0.0, name=f"{x}_grad_normalized_error", rtol=1e0, atol=5e-5)
+                counter = counter + 1
+
             # make sure that at least one derivative is nonzero
             self.assertGreater(biggest_deriv, 0.005)
 

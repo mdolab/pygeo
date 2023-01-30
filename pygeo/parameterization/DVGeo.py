@@ -1403,11 +1403,10 @@ class DVGeometry(BaseDVGeometry):
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
-            u, s, _ = np.linalg.svd(J_full)
+            u, s, _ = np.linalg.svd(J_full, full_matrices=False)
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
-
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
@@ -2994,25 +2993,29 @@ class DVGeometry(BaseDVGeometry):
         ----------
         directory : str
             The directory where the files should be written.
-        includeLocal : boolean
+        includeLocal : boolean, optional
             False if you don't want to include the shape variables.
-        includeGlobal : boolean
+        includeGlobal : boolean, optional
             False if you don't want to include global variables.
-        pointSet : str
+        pointSet : str, optional
             Name of the point set to write out.
             If None, no point set output is generated.
-        CFDSolver : str
+        CFDSolver : str, optional
             An ADflow instance that will be used to write out deformed surface
-            meshes. In addition to having a DVGeo object, CFDSolver must have
-            an AeroProblem set, for example with ``CFDSolver.setAeroProblem(ap)``.
+            meshes. This instance must have as members:
+
+            1. This DVGeometry object (set using ``CFDSolver.setDVGeo``)
+            2. A mesh warping object from IDWarp (set using ``CFDSolver.setMesh``)
+            3. An AeroProblem (set using ``CFDSolver.setAeroProblem``)
+
             If CFDSolver is None, no surface mesh output is generated.
-        callBack : function
+        callBack : function, optional
             This allows the user to perform an additional task at each new design
             variable iteration. The callback function must take two inputs:
 
             1. the output directory name (str) and
             2. the iteration count (int).
-        freq : int
+        freq : int, optional
             Number of snapshots to take between the upper and lower bounds of
             a given variable. If greater than 2, will do a sinusoidal sweep.
         """
@@ -3106,7 +3109,7 @@ class DVGeometry(BaseDVGeometry):
                         # Iterate counter
                         count += 1
 
-        # Reset DV's to their original values
+        # Reset DVs to their original values
         self.setDesignVars(dvDict)
 
     # ----------------------------------------------------------------------
@@ -3681,105 +3684,6 @@ class DVGeometry(BaseDVGeometry):
                 self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.real.astype("d")
 
             self.coef = self.coef.real.astype("d")
-
-    def mapXDictToDVGeo(self, inDict):
-        """
-        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
-        without modifying them
-
-        Parameters
-        ----------
-        inDict : dict
-            The dictionary of DVs to be mapped
-
-        Returns
-        -------
-        dict
-            The mapped DVs in the same dictionary format
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = inDict.pop(self.DVComposite.name)
-        outVec = self.mapVecToDVGeo(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
-        # now merge inDict and outDict
-        for key in inDict:
-            outDict[key] = inDict[key]
-        return outDict
-
-    def mapXDictToComp(self, inDict):
-        """
-        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
-
-        Parameters
-        ----------
-        inDict : dict
-            The DVs to be mapped
-
-        Returns
-        -------
-        dict
-            The mapped DVs
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = self.convertDictToSensitivity(inDict)
-        outVec = self.mapVecToComp(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
-        return outDict
-
-    def mapVecToDVGeo(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u @ inVec
-        return outVec.flatten()
-
-    def mapVecToComp(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u.T @ inVec
-        return outVec.flatten()
-
-    def mapSensToComp(self, inVec):
-        """
-        Maps the sensitivity matrix to the composite design space
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The sensitivities to be mapped
-
-        Returns
-        -------
-        ndarray
-            The mapped sensitivity matrix
-        """
-        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
-        return outVec
 
     def computeTotalJacobianFD(self, ptSetName, config=None):
         """This function takes the total derivative of an objective,

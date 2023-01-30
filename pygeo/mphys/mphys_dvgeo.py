@@ -132,13 +132,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_addGlobalDV(self, dvName, value, func, childIdx=None):
+    def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False):
         # global DVs are only added to FFD-based DVGeo objects
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.geo_type}")
 
         # define the input
-        self.add_input(dvName, distributed=False, shape=len(value))
+        # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
+        # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
+        if not isComposite:
+            self.add_input(dvName, distributed=False, shape=len(value))
 
         # call the dvgeo object and add this dv
         if childIdx is None:
@@ -146,7 +149,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
-    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None):
+    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False):
         # local DVs are only added to FFD-based DVGeo objects
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
@@ -155,10 +158,23 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         else:
             nVal = self.DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
-        self.add_input(dvName, distributed=False, shape=nVal)
+
+        # define the input
+        # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
+        # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
+        if not isComposite:
+            self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addVSPVariable(self, component, group, parm, **kwargs):
+    def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, **kwargs):
+        # call the dvgeo object and add this dv
+        self.DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
+        val = self.DVGeo.getValues()
+
+        # define the input
+        self.add_input(dvName, distributed=False, shape=self.DVGeo.getNDV(), val=val[dvName][0])
+
+    def nom_addVSPVariable(self, component, group, parm, isComposite=False, **kwargs):
         # VSP DVs are only added to VSP-based DVGeo objects
         if self.geo_type != "vsp":
             raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{self.geo_type}")
@@ -172,10 +188,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # get the value
         val = self.DVGeo.DVs[dvName].value.copy()
 
-        # add the input with the correct value, VSP DVs always have a size of 1
-        self.add_input(dvName, distributed=False, shape=1, val=val)
+        # define the input
+        # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
+        # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
+        if not isComposite:
+            self.add_input(dvName, distributed=False, shape=1, val=val)
 
-    def nom_addESPVariable(self, desmptr_name, **kwargs):
+    def nom_addESPVariable(self, desmptr_name, isComposite=False, **kwargs):
         # ESP DVs are only added to VSP-based DVGeo objects
         if self.geo_type != "esp":
             raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{self.geo_type}")
@@ -187,7 +206,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         val = self.DVGeo.DVs[desmptr_name].value.copy()
 
         # add the input with the correct value, VSP DVs always have a size of 1
-        self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
+        # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
+        # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
+        if not isComposite:
+            self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
     def nom_addThicknessConstraints2D(self, name, leList, teList, nSpan=10, nChord=10):
         self.DVCon.addThicknessConstraints2D(leList, teList, nSpan, nChord, lower=1.0, name=name)

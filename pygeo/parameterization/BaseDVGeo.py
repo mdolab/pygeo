@@ -8,6 +8,7 @@ Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc)
 # Standard Python modules
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+import copy
 
 
 class BaseDVGeometry(ABC):
@@ -185,3 +186,94 @@ class BaseDVGeometry(ABC):
             Name of point-set to return. This must match ones of the given in an :func:`addPointSet()` call.
         """
         pass
+
+    def mapXDictToDVGeo(self, inDict):
+        """
+        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
+        without modifying them
+
+        Parameters
+        ----------
+        inDict : dict
+            The dictionary of DVs to be mapped
+
+        Returns
+        -------
+        dict
+            The mapped DVs in the same dictionary format
+        """
+        # first make a copy so we don't modify in place
+        inDictBase = inDict
+        userVec = inDict[self.DVComposite.name]
+        outVec = self.mapVecToDVGeo(userVec)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
+        # now merge inDict and outDict
+        for key in inDict:
+            outDict[key] = inDictBase[key]
+        return outDict
+
+    def mapXDictToComp(self, inDict):
+        """
+        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
+        Parameters
+        ----------
+        inDict : dict
+            The DVs to be mapped
+        Returns
+        -------
+        dict
+            The mapped DVs
+        """
+        # first make a copy so we don't modify in place
+        inDict = copy.deepcopy(inDict)
+        userVec = self.convertDictToSensitivity(inDict)
+        outVec = self.mapVecToComp(userVec)
+        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
+        return outDict
+
+    def mapVecToDVGeo(self, inVec):
+        """
+        This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
+        Parameters
+        ----------
+        inVec : ndarray
+            The DVs in a single 1D array
+        Returns
+        -------
+        ndarray
+            The mapped DVs in a single 1D array
+        """
+        inVec = inVec.reshape(self.getNDV(), -1)
+        outVec = self.DVComposite.u @ inVec
+        return outVec.flatten()
+
+    def mapVecToComp(self, inVec):
+        """
+        This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
+        Parameters
+        ----------
+        inVec : ndarray
+            The DVs in a single 1D array
+        Returns
+        -------
+        ndarray
+            The mapped DVs in a single 1D array
+        """
+        inVec = inVec.reshape(self.getNDV(), -1)
+        outVec = self.DVComposite.u.transpose() @ inVec
+        return outVec.flatten()
+
+    def mapSensToComp(self, inVec):
+        """
+        Maps the sensitivity matrix to the composite design space
+        Parameters
+        ----------
+        inVec : ndarray
+            The sensitivities to be mapped
+        Returns
+        -------
+        ndarray
+            The mapped sensitivity matrix
+        """
+        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
+        return outVec
