@@ -1,3 +1,4 @@
+# External modules
 import numpy as np
 
 
@@ -221,6 +222,7 @@ def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord
     """
 
     # Import inside this function to avoid circular imports
+    # First party modules
     from pygeo import DVConstraints
 
     # Set the triangulated surface in DVCon

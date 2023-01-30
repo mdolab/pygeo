@@ -6,34 +6,29 @@ DVGeo: CST Parameterisation
 @Description : A DVGeo implementation based on the Class-Shape Transformation method
 """
 
-# ==============================================================================
-# Standard Python modules
-# ==============================================================================
-
-# ==============================================================================
-# External Python modules
-# ==============================================================================
-import numpy as np
+# External modules
 from mpi4py import MPI
+import numpy as np
 from scipy.special import factorial
 
 try:
-    from prefoil.utils import readCoordFile
+    # External modules
     from prefoil.airfoil import Airfoil
+    from prefoil.utils import readCoordFile
+
+    prefoilInstalled = True
 except ImportError:
-    raise ImportError("preFoil is required to use DVGeometryCST")
+    prefoilInstalled = False
 
 try:
+    # External modules
     import matplotlib.pyplot as plt
 
     pltImport = True
 except ModuleNotFoundError:
     pltImport = False
 
-
-# ==============================================================================
-# Extension modules
-# ==============================================================================
+# Local modules
 from .BaseDVGeo import BaseDVGeometry
 from .designVars import cstDV
 
@@ -102,6 +97,10 @@ class DVGeometryCST(BaseDVGeometry):
         debug=False,
         tolTE=60.0,
     ):
+        # Check if preFoil is installed before initializing.
+        if not prefoilInstalled:
+            raise ImportError("preFoil is not installed and is required to use DVGeometryCST.")
+
         super().__init__(datFile)
         self.xIdx = idxChord
         self.yIdx = idxVertical

@@ -1,3 +1,4 @@
+# Local modules
 from .norm import eDist
 from .rotation import orientArray
 

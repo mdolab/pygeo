@@ -1,6 +1,9 @@
-from pygeo import DVGeometry
+# External modules
 import numpy as np
 from stl import mesh
+
+# First party modules
+from pygeo import DVGeometry
 
 
 def create_fresh_dvgeo():

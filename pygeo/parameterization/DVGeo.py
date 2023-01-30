@@ -1,20 +1,22 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import copy
+# Standard Python modules
 from collections import OrderedDict
-import numpy as np
-from scipy import sparse
-from scipy.spatial import cKDTree
-from mpi4py import MPI
-from pyspline import Curve
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
-from .. import pyNetwork, pyBlock, geo_utils
+import copy
 import os
 import warnings
+
+# External modules
 from baseclasses.utils import Error
-from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
+from mpi4py import MPI
+import numpy as np
+from pyspline import Curve
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D, writeTecplot3D
+from scipy import sparse
+from scipy.spatial import cKDTree
+
+# Local modules
+from .. import geo_utils, pyBlock, pyNetwork
 from .BaseDVGeo import BaseDVGeometry
+from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal
 
 
 class DVGeometry(BaseDVGeometry):

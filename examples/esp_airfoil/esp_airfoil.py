@@ -1,8 +1,8 @@
-# ======================================================================
-#         Import modules
-# ======================================================================
-from pygeo import DVGeometryESP
+# External modules
 from stl import mesh
+
+# First party modules
+from pygeo import DVGeometryESP
 
 # rst create dvgeo start
 # initialize the DVGeometry object with the csm file

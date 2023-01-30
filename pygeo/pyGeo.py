@@ -1,16 +1,18 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import os
+# Standard Python modules
 import copy
+import os
+
+# External modules
+from baseclasses.utils import Error
 import numpy as np
+from pyspline import Curve, Surface
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot2D
 from scipy import sparse
 from scipy.sparse.linalg.dsolve import factorized
-from pyspline import Curve, Surface
-from pyspline.utils import openTecplot, writeTecplot2D, closeTecplot
+
+# Local modules
 from . import geo_utils
 from .topology import SurfaceTopology
-from baseclasses.utils import Error
 
 
 class pyGeo:
@@ -1131,6 +1133,7 @@ class pyGeo:
             File name of tin file. Should have .tin extension.
         """
         f = open(fileName, "w")
+        # Standard Python modules
         import datetime
 
         # Write the required header info here:

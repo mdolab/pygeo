@@ -1,19 +1,24 @@
-import numpy as np
+# Standard Python modules
 import sys
-from .geo_utils.norm import eDist
+
+# External modules
+import numpy as np
+
+# Local modules
+from .geo_utils.index_position import indexPosition1D, indexPosition2D, indexPosition3D
 from .geo_utils.node_edge_face import (
     Edge,
-    setNodeValue,
-    setEdgeValue,
-    setFaceValue,
     EdgeCmpObject,
+    FaceCmpObject,
     nodesFromEdge,
     nodesFromFace,
-    FaceCmpObject,
+    setEdgeValue,
+    setFaceValue,
+    setNodeValue,
 )
+from .geo_utils.norm import eDist
 from .geo_utils.orientation import edgeOrientation, faceOrientation
-from .geo_utils.remove_duplicates import unique, uniqueIndex, pointReduce
-from .geo_utils.index_position import indexPosition1D, indexPosition2D, indexPosition3D
+from .geo_utils.remove_duplicates import pointReduce, unique, uniqueIndex
 
 # --------------------------------------------------------------
 #                Topology classes

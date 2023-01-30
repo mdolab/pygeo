@@ -1,18 +1,23 @@
+# Standard Python modules
 import os
 import unittest
-import numpy as np
+
+# External modules
 from baseclasses import BaseRegTest
-from parameterized import parameterized_class
 from mpi4py import MPI
+import numpy as np
+from parameterized import parameterized_class
 
 try:
+    # External modules
     import openvsp
 
-    missing_openvsp = False
+    openvspInstalled = True
 except ImportError:
-    missing_openvsp = True
+    openvspInstalled = False
 
-if not missing_openvsp:
+if openvspInstalled:
+    # First party modules
     from pygeo import DVGeometryVSP
 
 test_params = [
@@ -22,7 +27,7 @@ test_params = [
 ]
 
 
-@unittest.skipIf(missing_openvsp, "requires openvsp Python API")
+@unittest.skipUnless(openvspInstalled, "requires openvsp Python API")
 @parameterized_class(test_params)
 class RegTestPyGeoVSP(unittest.TestCase):
 

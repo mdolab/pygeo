@@ -6,14 +6,16 @@ Enables the use of ESP (Engineering Sketch Pad) and OpenVSP (Open Vehicle Sketch
 
 """
 
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 from abc import abstractmethod
 from collections import OrderedDict
+
+# External modules
 from mpi4py import MPI
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
+
+# Local modules
 from .BaseDVGeo import BaseDVGeometry
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D
 
 
 class DVGeoSketch(BaseDVGeometry):

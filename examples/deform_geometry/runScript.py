@@ -2,9 +2,14 @@
 This script demonstrates the deformation of a geometry object using FFD and
 the process for exporting the geometry as a tecplot or IGES file.
 """
-from pygeo import pyGeo, DVGeometry
-import numpy as np
+# Standard Python modules
 import argparse
+
+# External modules
+import numpy as np
+
+# First party modules
+from pygeo import DVGeometry, pyGeo
 
 input_files = "../../input_files/"
 

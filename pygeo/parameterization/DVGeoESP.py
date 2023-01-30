@@ -1,17 +1,26 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
+from collections import OrderedDict
+from contextlib import contextmanager
 import os
 import sys
 import time
-import numpy as np
-from collections import OrderedDict
-from mpi4py import MPI
-from pyOCSM import ocsm
-from contextlib import contextmanager
+
+# External modules
 from baseclasses.utils import Error
+from mpi4py import MPI
+import numpy as np
+
+# Local modules
 from .DVGeoSketch import DVGeoSketch
 from .designVars import espDV
+
+try:
+    # External modules
+    from pyOCSM import ocsm
+
+    ocsmImported = True
+except ImportError:
+    ocsmImported = False
 
 
 @contextmanager
@@ -110,6 +119,8 @@ class DVGeometryESP(DVGeoSketch):
         ulimits=None,
         vlimits=None,
     ):
+        if not ocsmImported:
+            raise ImportError("OCSM and pyOCSM must be installed to use DVGeometryESP.")
         if comm.rank == 0:
             print("Initializing DVGeometryESP")
             t0 = time.time()

@@ -1,5 +1,10 @@
-import numpy as np
+# Standard Python modules
 import functools
+
+# External modules
+import numpy as np
+
+# Local modules
 from .misc import hangle, isLeft
 
 # --------------------------------------------------------------

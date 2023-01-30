@@ -1,7 +1,12 @@
+# Standard Python modules
+from collections import OrderedDict
 import warnings
+
+# External modules
 import numpy as np
 from scipy import sparse
-from collections import OrderedDict
+
+# Local modules
 from .DVGeo import DVGeometry
 
 AXES_2_IDX = {"x": 0, "y": 1, "z": 2}

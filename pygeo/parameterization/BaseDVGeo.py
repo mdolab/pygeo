@@ -5,6 +5,7 @@ Holds a basic version of a DVGeo geometry object
 Enables the use of different geometry parameterizations (FFD, OpenVSP, ESP, etc) with the MACH-Aero framework
 """
 
+# Standard Python modules
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 
