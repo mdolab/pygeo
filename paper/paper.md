@@ -80,21 +80,23 @@ pyGeo's interface for design variables and constraints is independent of which d
 This means that pyGeo geometries can interact with different types of solvers, such as structures and aerodynamics, in the same way.
 This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
 
-## Geometry Generation
+<!-- ## Geometry Generation -->
 <!-- [ ] TODO AY-: I suggest either completely removing this section, or moving it right at the end (maybe after the derivative computation section, i.e. after all geometry parameterization related sections). The main point of pygeo is the parameterization, and I think it may confuse people if we put the surface generation up first. -->
 <!-- [ ] TODO AY-: After going through the paper, I am leaning towards removing this section. The geometry generation was never a critical capability of pygeo, and with our recent efforts, I think that part of the code will soon be removed from the pyGeo repo. To keep things simple and to reduce the word count, I suggest removing this. We can modify pyGeo's readme to mirror that change as well. If you really want to keep it, see my comments above about where to put this section -->
-pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools.
-One method to generate a surface geometry in pyGeo lofts a series of user-specified cross-sections.
-This lofting is commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}).
-Rounded or pinched wingtip geometries can be generated quickly.
-The method relies on the open-source package pySpline[^2], which handles the underlying B-spline implementation.
+<!-- commenting this out in case we want pieces for another section -->
 
-![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf)
+<!-- pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools. -->
+<!-- One method to generate a surface geometry in pyGeo lofts a series of user-specified cross-sections. -->
+<!-- This lofting is commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}). -->
+<!-- Rounded or pinched wingtip geometries can be generated quickly. -->
+<!-- The method relies on the open-source package pySpline[^2], which handles the underlying B-spline implementation. -->
+
+<!-- ![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf) -->
 
 <!-- % [ ] TODO JM-: In the 3D figure, highlight the airfoils used in the lofting in red? In the airfoil figure, eliminate blank space. Eliminate grid lines?  -->
 <!-- HMH: I will redo the figure -->
 
-[^2]: \url{https://github.com/mdolab/pyspline}
+<!-- [^2]: \url{https://github.com/mdolab/pyspline} -->
 
 ## Geometry Parameterization with pyGeo
 
@@ -293,11 +295,11 @@ The method for using multiple FFD volumes has been used to optimize a convention
 
 <!-- [] TODO JM-: Need to end with an overarching statement summarizing what is now possible with this -->
 <!-- AY: I added the following statements. please check -->
-pyGeo is actively used, maintained, and developed by the MDO Lab[^3] at the University of Michigan.
+pyGeo is actively used, maintained, and developed by the MDO Lab[^2] at the University of Michigan.
 The geometry parameterization capabilities provided by pyGeo will be critical for development of environmentally sustainable aircraft through design optimization.
 
 <!-- [x] TODO AY-: Please make sure I didnt mess up the footnote -->
-[^3]: \url{https://mdolab.engin.umich.edu}
+[^2]: \url{https://mdolab.engin.umich.edu}
 
 
 # Acknowledgements
