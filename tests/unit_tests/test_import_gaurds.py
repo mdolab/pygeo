@@ -15,9 +15,10 @@ def ignore_warnings(test_func):
 
 
 class TestImportGaurds(unittest.TestCase):
+    N_PROCS = 1
+
     @ignore_warnings
     def test__DVGeometryVSP_import_openvsp(self):
-
         with patch.dict(sys.modules, {"openvsp": None}):
             # First party modules
             from pygeo import DVGeometryVSP
