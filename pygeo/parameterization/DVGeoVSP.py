@@ -11,7 +11,6 @@ from pyspline.utils import searchQuads
 # Local modules
 from .DVGeoSketch import DVGeoSketch
 from .designVars import vspDV
-import copy
 
 # openvsp python interface
 try:
@@ -26,11 +25,13 @@ except ImportError:
 
         vspInstalled = True
     except ImportError:
+        openvsp = None
         vspInstalled = False
 
 # make sure volume projection api is available
 try:
     openvsp.CompPntRST
+
     vspOutOfDate = False
 except AttributeError:
     vspOutOfDate = True
