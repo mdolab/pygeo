@@ -1,31 +1,42 @@
-import unittest
+# Standard Python modules
+from collections import OrderedDict
+import copy
 import os
-import numpy as np
-from stl import mesh
+import time
+import unittest
+
+# External modules
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
+import numpy as np
 from parameterized import parameterized_class
-import time
-import copy
-from collections import OrderedDict
+from stl import mesh
 
 try:
+    # External modules
     from mpi4py import MPI
-except ImportError:
-    MPI = None
 
-if MPI:
+    mpiInstalled = True
+except ImportError:
+    mpiInstalled = False
+
+if mpiInstalled:
     try:
-        import pyOCSM
+        # External modules
+        import pyOCSM  # noqa
+
+        # First party modules
         from pygeo import DVGeometryESP
+
+        ocsmInstalled = True
     except ImportError:
-        pyOCSM = None
+        ocsmInstalled = False
 
 
 test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 @parameterized_class(test_params)
 class TestPyGeoESP_BasicCube(unittest.TestCase):
 
@@ -375,7 +386,7 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
             handler.root_add_val("Composite DVs :", Composite_FFD["espComp"], rtol=1e-12, atol=1e-12)
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 
     N_PROCS = 3
@@ -574,7 +585,7 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
             self.assertAlmostEqual(np.sum(np.abs(testjac[ipt, :, :] - analyticjac[ipt, :, :])), 0)
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
 
     N_PROCS = 4
@@ -736,7 +747,7 @@ class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
                 self.assertAlmostEqual(np.sum(np.abs(DVGeo.DVs[key].value - dvdict_cache[key].value)), 0.0)
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 @parameterized_class(test_params)
 class TestPyGeoESP_NACAFoil(unittest.TestCase):
 

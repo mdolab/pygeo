@@ -1,23 +1,33 @@
+# Standard Python modules
 import os
 import unittest
-import numpy as np
-from mpi4py import MPI
+
+# External modules
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
+from mpi4py import MPI
+import numpy as np
+
+# First party modules
 from pygeo import DVGeometry
 
 try:
-    from pygeo import DVGeometryMulti
+    # External modules
+    import pysurf  # noqa: F401
 
-    missing_pysurf = False
+    pysurfInstalled = True
 except ImportError:
-    missing_pysurf = True
+    pysurfInstalled = False
+
+if pysurfInstalled:
+    # First party modules
+    from pygeo import DVGeometryMulti
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 inputDir = os.path.join(baseDir, "../../input_files")
 
 
-@unittest.skipIf(missing_pysurf, "requires pySurf")
+@unittest.skipUnless(pysurfInstalled, "requires pySurf")
 class TestDVGeoMulti(unittest.TestCase):
 
     N_PROCS = 1

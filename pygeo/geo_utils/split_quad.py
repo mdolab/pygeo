@@ -1,6 +1,9 @@
+# External modules
 import numpy as np
-from .norm import eDist, euclideanNorm
 from pyspline.utils import tfi2d
+
+# Local modules
+from .norm import eDist, euclideanNorm
 
 
 def splitQuad(e0, e1, e2, e3, alpha, beta, NO):

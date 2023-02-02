@@ -1,10 +1,10 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-import numpy as np
+
+# External modules
 from baseclasses.utils import Error
+import numpy as np
 
 
 class GeometricConstraint(ABC):

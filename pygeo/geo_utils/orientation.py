@@ -1,5 +1,10 @@
-import numpy as np
+# Standard Python modules
 import sys
+
+# External modules
+import numpy as np
+
+# Local modules
 from .norm import eDist
 
 # --------------------------------------------------------------

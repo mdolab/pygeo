@@ -1,9 +1,13 @@
-# Imports
-import numpy as np
-from pygeo import pyGeo
-import unittest
+# Standard Python modules
 import os
+import unittest
+
+# External modules
 from baseclasses import BaseRegTest
+import numpy as np
+
+# First party modules
+from pygeo import pyGeo
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 

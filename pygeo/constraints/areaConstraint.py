@@ -1,13 +1,14 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import numpy as np
-from .. import geo_utils
+# External modules
 from mpi4py import MPI
-from .baseConstraint import GeometricConstraint
+import numpy as np
+
+# Local modules
+from .. import geo_utils
 from ..geo_utils.polygon import areaTri
+from .baseConstraint import GeometricConstraint
 
 try:
+    # External modules
     from geograd import geograd_parallel  # noqa
 except ImportError:
     geograd_parallel = None
