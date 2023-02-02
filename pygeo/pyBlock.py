@@ -858,7 +858,7 @@ class pyBlock:
         # If we are only interested in interior points, we skip projecting exterior points to save time.
         # We identify exterior points by checking if they are outside the convex hull of the control points.
         # A point can be inside the convex hull but still outside the FFD volume(s).
-        # In this case, the point is identified as an exterior point by the projection, which is more costly.
+        # In this case, we rely on the more costly projection approach to identify the exterior points.
         if interiorOnly:
             # Compute the convex hull of all control points
             hull = ConvexHull(self.coef)
