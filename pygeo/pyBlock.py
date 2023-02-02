@@ -930,8 +930,7 @@ class pyBlock:
                         )
                     )
                 raise Error(
-                    "The FFD box does not completely fit the surface mesh. \
-                    Please regenerate the FFD points such that the whole surface mesh is embedded inside FFDs."
+                    "The FFD box does not completely fit the surface mesh. Please regenerate the FFD points such that the whole surface mesh is embedded inside FFDs."
                 )
 
         return volID, u, v, w, D
