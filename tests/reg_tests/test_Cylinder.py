@@ -1,8 +1,13 @@
+# Standard Python modules
 import os
 import unittest
-import numpy as np
+
+# External modules
 from baseclasses import BaseRegTest
-from pygeo import DVGeometry, DVConstraints, geo_utils
+import numpy as np
+
+# First party modules
+from pygeo import DVConstraints, DVGeometry, geo_utils
 
 
 class RegTestPyGeo(unittest.TestCase):

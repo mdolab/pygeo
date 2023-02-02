@@ -1,10 +1,12 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 import os
+
+# External modules
 import numpy as np
 from pyspline import Surface
-from pyspline.utils import openTecplot, writeTecplot1D, closeTecplot, line
+from pyspline.utils import closeTecplot, line, openTecplot, writeTecplot1D
+
+# Local modules
 from .topology import CurveTopology
 
 

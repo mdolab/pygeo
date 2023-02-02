@@ -1,16 +1,18 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import os
+# Standard Python modules
 import copy
+import os
+
+# External modules
+from baseclasses.utils import Error
 import numpy as np
+from pyspline import Volume
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot3D
 from scipy import sparse
 from scipy.sparse import linalg
-from pyspline import Volume
-from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
-from .geo_utils import readNValues, blendKnotVectors
+
+# Local modules
+from .geo_utils import blendKnotVectors, readNValues
 from .topology import BlockTopology
-from baseclasses.utils import Error
 
 
 class pyBlock:

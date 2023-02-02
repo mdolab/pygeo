@@ -1,3 +1,4 @@
+# External modules
 import numpy as np
 
 nstreamwise = 10

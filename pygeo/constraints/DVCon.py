@@ -1,24 +1,26 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import numpy as np
-from .. import geo_utils, pyGeo
-from pyspline import Curve
+# Standard Python modules
 from collections import OrderedDict
+
+# External modules
 from baseclasses.utils import Error
-from .baseConstraint import LinearConstraint, GlobalLinearConstraint
-from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
-from .radiusConstraint import RadiusConstraint
-from .locationConstraint import LocationConstraint
-from .areaConstraint import TriangulatedSurfaceConstraint, SurfaceAreaConstraint, ProjectedAreaConstraint
-from .volumeConstraint import VolumeConstraint, TriangulatedVolumeConstraint, CompositeVolumeConstraint
-from .colinearityConstraint import ColinearityConstraint
-from .gearPostConstraint import GearPostConstraint
-from .circularityConstraint import CircularityConstraint
-from .planarityConstraint import PlanarityConstraint
-from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
-from ..geo_utils.misc import convertTo2D
+import numpy as np
+from pyspline import Curve
+
+# Local modules
+from .. import geo_utils, pyGeo
 from ..geo_utils.file_io import readPlot3DSurfFile
+from ..geo_utils.misc import convertTo2D
+from .areaConstraint import ProjectedAreaConstraint, SurfaceAreaConstraint, TriangulatedSurfaceConstraint
+from .baseConstraint import GlobalLinearConstraint, LinearConstraint
+from .circularityConstraint import CircularityConstraint
+from .colinearityConstraint import ColinearityConstraint
+from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
+from .gearPostConstraint import GearPostConstraint
+from .locationConstraint import LocationConstraint
+from .planarityConstraint import PlanarityConstraint
+from .radiusConstraint import RadiusConstraint
+from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
+from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
 class DVConstraints:
@@ -401,6 +403,7 @@ class DVConstraints:
             Name of the DVGeo object to obtain the surface from (default is 'None')
         """
         try:
+            # External modules
             from stl import mesh
         except ImportError as e:
             raise ImportError("numpy-stl package must be installed") from e

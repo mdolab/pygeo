@@ -1,21 +1,11 @@
-import openmdao.api as om
-from .. import DVGeometry, DVConstraints
-from ..constraints.baseConstraint import LinearConstraint
-
-try:
-    from .. import DVGeometryVSP
-except ImportError:
-    # not everyone might have openvsp installed, and thats okay
-    pass
-
-try:
-    from .. import DVGeometryESP
-except ImportError:
-    # not everyone might have esp installed, and thats okay
-    pass
-
+# External modules
 from mpi4py import MPI
 import numpy as np
+import openmdao.api as om
+
+# Local modules
+from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
+
 
 # class that actually calls the dvgeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):

@@ -1,32 +1,40 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 from collections import OrderedDict
 import time
-import numpy as np
-from mpi4py import MPI
+
+# External modules
 from baseclasses.utils import Error
-from .DVGeoSketch import DVGeoSketch
+from mpi4py import MPI
+import numpy as np
 from pyspline.utils import searchQuads
+
+# Local modules
+from .DVGeoSketch import DVGeoSketch
 from .designVars import vspDV
-import copy
 
 # openvsp python interface
 try:
+    # External modules
     import openvsp
+
+    vspInstalled = True
 except ImportError:
     try:
+        # External modules
         import vsp as openvsp
+
+        vspInstalled = True
     except ImportError:
-        raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
+        openvsp = None
+        vspInstalled = False
 
 # make sure volume projection api is available
 try:
     openvsp.CompPntRST
+
+    vspOutOfDate = False
 except AttributeError:
-    raise ImportError(
-        "Out of date version of OpenVSP detected." "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
-    )
+    vspOutOfDate = True
 
 
 class DVGeometryVSP(DVGeoSketch):
@@ -73,6 +81,17 @@ class DVGeometryVSP(DVGeoSketch):
     """
 
     def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+        if not vspInstalled:
+            raise ImportError(
+                "The OpenVSP Python API is required in order to use DVGeometryVSP. "
+                + "Ensure OpenVSP is installed properly and can be found on your path."
+            )
+        elif vspOutOfDate:
+            raise AttributeError(
+                "Out of date version of OpenVSP detected. "
+                + "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
+            )
+
         if comm.rank == 0:
             print("Initializing DVGeometryVSP")
             t0 = time.time()

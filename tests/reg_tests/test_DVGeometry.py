@@ -1,13 +1,18 @@
+# Standard Python modules
+from collections import OrderedDict
+import copy
 import os
 import shutil
 import unittest
-import numpy as np
+
+# External modules
 from baseclasses import BaseRegTest
 import commonUtils
-from pygeo import DVGeometry, DVConstraints
+import numpy as np
 from stl import mesh
-import copy
-from collections import OrderedDict
+
+# First party modules
+from pygeo import DVConstraints, DVGeometry
 
 
 class RegTestPyGeo(unittest.TestCase):

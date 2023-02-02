@@ -1,7 +1,7 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# External modules
 import numpy as np
+
+# Local modules
 from ..geo_utils import convertTo1D
 
 

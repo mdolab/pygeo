@@ -1,12 +1,29 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 from collections import OrderedDict
-import numpy as np
-from mpi4py import MPI
+
+# External modules
 from baseclasses.utils import Error
-from pysurf import intersectionAPI, curveSearchAPI, utilitiesAPI, adtAPI, tsurf_tools, tecplot_interface
-from pysurf import intersectionAPI_cs, curveSearchAPI_cs, utilitiesAPI_cs, adtAPI_cs
+from mpi4py import MPI
+import numpy as np
+
+try:
+    # External modules
+    from pysurf import (
+        adtAPI,
+        adtAPI_cs,
+        curveSearchAPI,
+        curveSearchAPI_cs,
+        intersectionAPI,
+        intersectionAPI_cs,
+        tecplot_interface,
+        tsurf_tools,
+        utilitiesAPI,
+        utilitiesAPI_cs,
+    )
+
+    pysurfInstalled = True
+except ImportError:
+    pysurfInstalled = False
 
 
 class DVGeometryMulti:
@@ -31,6 +48,9 @@ class DVGeometryMulti:
     """
 
     def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False, isComplex=False):
+        # Check to make sure pySurf is installed before initializing
+        if not pysurfInstalled:
+            raise ImportError("pySurf is not installed and is required to use DVGeometryMulti.")
 
         self.compNames = []
         self.comps = OrderedDict()

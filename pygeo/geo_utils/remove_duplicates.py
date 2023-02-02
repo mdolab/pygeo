@@ -1,4 +1,7 @@
+# External modules
 import numpy as np
+
+# Local modules
 from .norm import eDist
 
 # --------------------------------------------------------------

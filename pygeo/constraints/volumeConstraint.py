@@ -1,14 +1,9 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# External modules
 import numpy as np
+
+# Local modules
+from ..geo_utils.polygon import volumeHex, volumeHex_b, volumeTriangulatedMesh, volumeTriangulatedMesh_b
 from .baseConstraint import GeometricConstraint
-from ..geo_utils.polygon import (
-    volumeHex,
-    volumeHex_b,
-    volumeTriangulatedMesh,
-    volumeTriangulatedMesh_b,
-)
 
 
 class VolumeConstraint(GeometricConstraint):

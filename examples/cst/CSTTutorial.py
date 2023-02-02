@@ -1,7 +1,13 @@
-from pygeo import DVGeometryCST
-import numpy as np
-import matplotlib.pyplot as plt
+# Standard Python modules
 import os
+
+# External modules
+import matplotlib.pyplot as plt
+import numpy as np
+
+# First party modules
+from pygeo import DVGeometryCST
+
 
 # rst Plot func (beg)
 def plot_points(points, filename=None):
