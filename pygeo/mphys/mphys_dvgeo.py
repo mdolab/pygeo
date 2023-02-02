@@ -1,6 +1,5 @@
 import openmdao.api as om
 from .. import DVGeometry, DVConstraints
-from ..constraints.baseConstraint import LinearConstraint
 
 try:
     from .. import DVGeometryVSP

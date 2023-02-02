@@ -12,7 +12,6 @@ Enables the use of ESP (Engineering Sketch Pad) and OpenVSP (Open Vehicle Sketch
 from abc import abstractmethod
 from collections import OrderedDict
 import numpy as np
-import copy
 from mpi4py import MPI
 from .BaseDVGeo import BaseDVGeometry
 from .designVars import geoDVComposite

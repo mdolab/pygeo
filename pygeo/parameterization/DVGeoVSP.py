@@ -9,7 +9,6 @@ from baseclasses.utils import Error
 from .DVGeoSketch import DVGeoSketch
 from pyspline.utils import searchQuads
 from .designVars import vspDV
-import copy
 
 # openvsp python interface
 try:
