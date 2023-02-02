@@ -83,12 +83,12 @@ class DVGeometryVSP(DVGeoSketch):
     def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
         if not vspInstalled:
             raise ImportError(
-                "The OpenVSP Python API is required in order to use DVGeometryVSP."
+                "The OpenVSP Python API is required in order to use DVGeometryVSP. "
                 + "Ensure OpenVSP is installed properly and can be found on your path."
             )
         elif vspOutOfDate:
             raise AttributeError(
-                "Out of date version of OpenVSP detected."
+                "Out of date version of OpenVSP detected. "
                 + "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
             )
 

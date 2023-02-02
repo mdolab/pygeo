@@ -12,12 +12,16 @@ import numpy as np
 from pygeo import DVGeometry
 
 try:
-    # First party modules
-    from pygeo import DVGeometryMulti
+    # External modules
+    import pysurf  # noqa: F401
 
     pysurfInstalled = True
 except ImportError:
     pysurfInstalled = False
+
+if pysurfInstalled:
+    # First party modules
+    from pygeo import DVGeometryMulti
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
 inputDir = os.path.join(baseDir, "../../input_files")

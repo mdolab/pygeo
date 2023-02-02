@@ -14,28 +14,26 @@ def ignore_warnings(test_func):
     return do_test
 
 
-class TestImportGaurds(unittest.TestCase):
+class TestImportGuards(unittest.TestCase):
     N_PROCS = 1
 
     @ignore_warnings
-    def test__DVGeometryVSP_import_openvsp(self):
+    def test_DVGeometryVSP_import_openvsp(self):
         with patch.dict(sys.modules, {"openvsp": None}):
             # First party modules
             from pygeo import DVGeometryVSP
 
             with self.assertRaises(ImportError) as context:
-                # First party modules
-
                 DVGeometryVSP("wing.vsp3")
 
             self.assertEqual(
                 str(context.exception),
-                "The OpenVSP Python API is required in order to use DVGeometryVSP."
+                "The OpenVSP Python API is required in order to use DVGeometryVSP. "
                 + "Ensure OpenVSP is installed properly and can be found on your path.",
             )
 
     @ignore_warnings
-    def test__DVGeometryVSP_openvsp_out_of_date(self):
+    def test_DVGeometryVSP_openvsp_out_of_date(self):
         class DummyOpenVSPModule:
             def __init__(self):
                 pass
@@ -50,7 +48,7 @@ class TestImportGaurds(unittest.TestCase):
 
             self.assertEqual(
                 str(context.exception),
-                "Out of date version of OpenVSP detected."
+                "Out of date version of OpenVSP detected. "
                 + "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP",
             )
 
@@ -61,8 +59,6 @@ class TestImportGaurds(unittest.TestCase):
             from pygeo import DVGeometryMulti
 
             with self.assertRaises(ImportError) as context:
-                # First party modules
-
                 DVGeometryMulti()
 
             self.assertEqual(str(context.exception), "pySurf is not installed and is required to use DVGeometryMulti.")
@@ -74,8 +70,6 @@ class TestImportGaurds(unittest.TestCase):
             from pygeo import DVGeometryCST
 
             with self.assertRaises(ImportError) as context:
-                # First party modules
-
                 DVGeometryCST("test.dat")
 
             self.assertEqual(str(context.exception), "preFoil is not installed and is required to use DVGeometryCST.")
@@ -87,8 +81,6 @@ class TestImportGaurds(unittest.TestCase):
             from pygeo import DVGeometryESP
 
             with self.assertRaises(ImportError) as context:
-                # First party modules
-
                 DVGeometryESP("test.csm")
 
             self.assertEqual(str(context.exception), "OCSM and pyOCSM must be installed to use DVGeometryESP.")

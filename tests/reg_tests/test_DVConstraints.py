@@ -20,12 +20,16 @@ except ImportError:
     geogradInstalled = False
 
 try:
-    # First party modules
-    from pygeo import DVGeometryMulti
+    # External modules
+    import pysurf  # noqa: F401
 
     pysurfInstalled = True
 except ImportError:
     pysurfInstalled = False
+
+if pysurfInstalled:
+    # First party modules
+    from pygeo import DVGeometryMulti
 
 
 def evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-2):
@@ -126,8 +130,7 @@ test_params = [
     },
 ]
 
-# Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
-@unittest.skipUnless(pysurfInstalled, "Multi-component tests require pySurf")
+
 @parameterized_class(test_params)
 class RegTestPyGeo(unittest.TestCase):
 
@@ -138,6 +141,10 @@ class RegTestPyGeo(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+
+        # Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
+        if self.multi and not pysurfInstalled:
+            self.skipTest("requires pySurf")
 
     def generate_dvgeo_dvcon(self, geometry, addToDVGeo=False, intersected=False):
         """
