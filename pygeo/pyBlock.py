@@ -871,6 +871,7 @@ class pyBlock:
             # The normals point outside the convex hull, so a point is inside the convex hull if the distance in the
             # normal direction from the point to every plane defining the convex hull is negative.
             # This is computed in a vectorized manner below.
+            # The offset is negative in the normal direction, so we add the offset instead of subtracting.
             distanceToPlanes = np.dot(x0, hullNormals.T) + hullOffsets
             isInsideHull = np.all(distanceToPlanes <= eps, axis=1)
 
