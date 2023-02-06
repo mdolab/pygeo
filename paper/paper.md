@@ -49,14 +49,15 @@ header-includes: \usepackage{subcaption}
 ---
 
 # Summary
-In aerodynamic shape optimization, an optimization algorithm modifies a body's geometry to improve its performance.
-A common shape optimization example is adjusting the external shape of an aircraft wing to minimize the aerodynamic drag computed via computational fluid dynamics (CFD).
+In shape optimization, an algorithm modifies a body's geometry to improve its performance.
+A common shape optimization example is adjusting the shape of an aircraft wing to minimize aerodynamic drag computed via computational fluid dynamics (CFD).
 Multidisciplinary design optimization (MDO) couples multiple disciplines, such as aerodynamics and structural mechanics, to optimize them simultaneously, which is usually more advantageous than optimizing only a single discipline.
 In such cases, the geometry must be represented consistently across multiple disciplines.
 
+<!--BB: Removed reference here to geometry generation per aY comment below -->
 pyGeo is a geometry package for three-dimensional shape manipulation tailored for aerodynamic and multidisciplinary design optimization.
-It provides basic geometry generation capabilities, several methods for geometry parameterization, numerous geometric constraints, and utility functions for geometry manipulation.
-The code computes derivatives for all parameterization methods and constraint functions, enabling gradient-based optimization.
+It provides several methods for geometry parameterization, geometric constraints, and utility functions for geometry manipulation.
+pyGeo computes derivatives for all parameterization methods and constraints, enabling gradient-based optimization.
 <!--MM: I am team parameTRIzation-->
 <!--AY: I have more commonly used and seen "parameterization" so I changed the remaining instances of parametrization to parameterization-->
 
@@ -65,18 +66,20 @@ The code computes derivatives for all parameterization methods and constraint fu
 ## Integrations
 
 pyGeo is the geometry manipulation engine within the MDO of Aircraft Configurations at High Fidelity (MACH) framework [@Kenway2014a; @Kenway2014c], which specializes in high-fidelity aerostructural optimization.
-pyGeo, together with the other core MACH modules, is integrated into MPhys[^1], a more general MDO framework for high-fidelity multiphysics problems built on the even more general OpenMDAO framework [@Gray2019a].
+pyGeo is also integrated into MPhys[^1], a more general framework for high-fidelity multiphysics problems built with OpenMDAO[@Gray2019a].
 
 [^1]: \url{https://github.com/OpenMDAO/mphys}
 
 Both MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization algorithms.
 <!-- HMH: I think <both frameworks> here referred to the frameworks pyGeo is directly integrated into -->
-pyGeo passes design variables and constraints to pyOptSparse directly, reducing user effort.
+<!-- pyGeo passes design variables and constraints to pyOptSparse directly, reducing user effort. -->
 
-pyGeo was originally developed to implement and use free-form deformation (FFD) to manipulate 3D geometries in CFD-based optimization [@Kenway2010b].
-The "Free-form Deformation" section describes this implementation and recent extensions in more detail. 
+<!--BB: I think this section is unnecessary and not really related to the topic of integrations -->
+<!--
+pyGeo was originally developed to use free-form deformation (FFD) for manipulating 3D geometries in CFD-based optimization [@Kenway2010b].
+The "Free-form Deformation" section describes this implementation and recent extensions in more detail. -->
 
-pyGeo's interface for design variables and constraints is independent of which discipline solvers are accessing the geometry.
+pyGeo's interface for design variables and constraints is independent of which solvers are accessing the geometry.
 This means that pyGeo geometries can interact with different types of solvers, such as structures and aerodynamics, in the same way.
 This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
 
@@ -103,7 +106,8 @@ This also allows direct comparison of the behavior or performance of two differe
 
 pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
 <!-- HMH: I added <interfaces to> back in because while we directly include the FFD methods, we do not directly include VSP/ESP -->
-Because each parameterization method uses a common interface for interacting with the rest of the MACH framework, any parameterization can be used in place of another within an optimization setup.
+<!-- BB: strictly speaking you can't use the ESP/VSP parameterizations as a drop-in replacement for FFD on structural problems so I added the qualifier "surface" parameterization -->
+Because each parameterization method uses a common interface for interacting with the rest of the MACH framework, any surface parameterization can be used in place of another within an optimization setup.
 The choice of parameterization depends on the user's experience, the geometry details, and whether the user needs the final design in a specific format.
 
 <!-- MM: Should we include a list of modules/classes here for easier reference later on?-->
@@ -130,7 +134,7 @@ Individual control points can be moved to obtain local shape modifications.
 In pyGeo, these are referred to as _local_ design variables because a single control point is affected.
 Conversely, it is also common to define geometric operations involving a collection of control points across the entire FFD block.
 These are referred to as _global_ design variables in pyGeo.
-For example, twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
+For example, wing twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
 
 Design variables formulated from groupings of FFD control points often exhibit ill conditioning. 
@@ -228,18 +232,24 @@ pyGeo also includes geometric constraints.
 Constraints are all differentiated in order to use within gradient-based optimization.
 DVCon creates constraint objects which are passed to pyOptSparse.
 -->
-To set up a constraint, pyGeo needs a grid of points and a normal direction in which to project these points onto the geometry.
-Some commonly used geometric constraints in shape optimization are thickness, area, and volume constraints (\autoref{fig:constraint}).
-Thickness constraints control the distance between two points to prevent excessive local deformations.
-<!-- [] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
+The most commonly used class of geometry constraints in pyGeo involves tracking one or more linear dimensions on the optimized object's surface.
+These constraints are created by specifying a single point, a line, or an array of points, along with a normal direction, then computing two line-surface intersection points.
+Some commonly used geometric constraints in shape optimization, such as thickness, area, and volume constraints (\autoref{fig:constraint}) can be computed using variations on this approach, which is computationally cheap and robust [@Brelje2020a].
+
+![Thickness and volume constraints demonstrated on an wing section. \label{fig:constraint}](constraints_3d.pdf)
+
+<!--Thickness constraints control the distance between two points to prevent excessive local deformations.-->
+<!-- [x] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
 <!-- HMH: Neil suggested listing more of the constraints we use, I think we could also outline why they are useful but if we are short on words that could be tricky -->
 <!-- MM: see my attempt in that direction here. -->
-Area and volume constraints control the 2D and 3D integrated values of this point set respectively.
+<!--Area and volume constraints control the 2D and 3D integrated values of this point set respectively.-->
 <!-- MM: Maybe we can add two sentences here describing the different area constraints and how the volume is integrated, then link to picture-->
-All three types constrain the geometry from deviating from the initial design by either a relative or absolute measure.
+<!--All three types constrain the geometry from deviating from the initial design by either a relative or absolute measure.-->
 
+![Triangulated surface constraint used to optimize an aeroshell around a complex geometry \label{fig:trisurf}](human-opt.png)
 
-![Thickness and volume constraints demonstrated on an airfoil. \label{fig:constraint}](constraint.pdf)
+If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described in [@Brelje2020a] and illustrated in \autoref{fig:trisurf}.
+
 
 <!-- list out more constraints -->
 <!-- Triangulated surface constraint -->
@@ -298,8 +308,9 @@ The method for using multiple FFD volumes has been used to optimize a convention
 
 <!-- [] TODO JM-: Need to end with an overarching statement summarizing what is now possible with this -->
 <!-- AY: I added the following statements. please check -->
-pyGeo is actively used, maintained, and developed by the MDO Lab[^2] at the University of Michigan.
-The geometry parameterization capabilities provided by pyGeo will be critical for development of environmentally sustainable aircraft through design optimization.
+<!-- BB: I added the following statements. please check -->
+pyGeo is maintained, and developed by the MDO Lab[^2] at the University of Michigan and is actively used for MDO applications in both research and industry.
+The geometry parameterization capabilities provided by pyGeo have enabled the development of environmentally sustainable aircraft through design optimization.
 
 <!-- [x] TODO AY-: Please make sure I didnt mess up the footnote -->
 [^2]: \url{https://mdolab.engin.umich.edu}
