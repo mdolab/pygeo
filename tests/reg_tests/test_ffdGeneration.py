@@ -14,11 +14,9 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestFFDGeneration(unittest.TestCase):
-
     N_PROCS = 1
 
     def test_box_ffd(self, train=False, refDeriv=False):
-
         # Write duplicate of outerBoxFFD
         axes = ["i", "k", "j"]
         slices = np.array(
@@ -48,7 +46,6 @@ class TestFFDGeneration(unittest.TestCase):
         os.remove(copyName)
 
     def test_c172_fitted(self):
-
         # Scale all dimensions from millimeters to meters so that the tolerances match a regular use case
         leList = np.array([[0.0, 0.0, 0.1], [10.0, 0.0, 2500.0], [160.0, 0.0, 5280.0]]) * 1e-3
         teList = np.array([[1600.0, 0.0, 0.1], [1650.0, 0.0, 2500.0], [1320.0, 0.0, 5280.0]]) * 1e-3

@@ -32,7 +32,6 @@ test_params = [
 @unittest.skipUnless(openvspInstalled, "requires openvsp Python API")
 @parameterized_class(test_params)
 class RegTestPyGeoVSPParallel(unittest.TestCase):
-
     # this will be tested in serial and parallel automatically
     N_PROCS = 1
 
@@ -158,7 +157,6 @@ class RegTestPyGeoVSPParallel(unittest.TestCase):
 
 @unittest.skipUnless(openvspInstalled, "requires openvsp Python API")
 class RegTestPyGeoVSPSerial(unittest.TestCase):
-
     # this will be tested in serial only
     N_PROCS = 1
 

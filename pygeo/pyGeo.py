@@ -598,7 +598,6 @@ class pyGeo:
         print("Computing Tip surfaces ...")
         # # Add on additional surfaces if required for a rounded pinch tip
         if tip == "rounded":
-
             # Generate the midpoint of the coefficients
             midPts = np.zeros([ncoef, 3])
             upVec = np.zeros([ncoef, 3])
@@ -975,7 +974,6 @@ class pyGeo:
         edgeLabels=False,
         nodeLabels=False,
     ):
-
         """Write the pyGeo Object to Tecplot dat file
 
         Parameters

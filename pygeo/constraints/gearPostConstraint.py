@@ -46,7 +46,6 @@ class GearPostConstraint(GeometricConstraint):
         self.D0 = np.linalg.norm(self.coords[0] - self.coords[1])
 
     def evalFunctions(self, funcs, config):
-
         # Update the gear post locations
         self.coords = self.DVGeo.update(self.name, config=config)
 
@@ -79,7 +78,6 @@ class GearPostConstraint(GeometricConstraint):
         """
         nDV = self.DVGeo.getNDV()
         if nDV > 0:
-
             wfuncs = {}
             self.wimpress.evalFunctions(wfuncs)
 

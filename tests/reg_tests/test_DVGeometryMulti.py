@@ -29,11 +29,9 @@ inputDir = os.path.join(baseDir, "../../input_files")
 
 @unittest.skipUnless(pysurfInstalled, "requires pySurf")
 class TestDVGeoMulti(unittest.TestCase):
-
     N_PROCS = 1
 
     def test_boxes(self, train=False):
-
         # box1 and box2 intersect
         # box3 does not intersect anything
         comps = ["box1", "box2", "box3"]
@@ -145,7 +143,6 @@ class TestDVGeoMulti(unittest.TestCase):
 
         # Set up the complex and real DVGeoMulti objects
         for DVGeo in [DVGeo_complex, DVGeo_real]:
-
             # Add the intersection between box1 and box2
             DVGeo.addIntersection(
                 "box1",
@@ -225,12 +222,10 @@ class TestDVGeoMulti(unittest.TestCase):
         stepSize_CS = 1e-200
 
         for x in dvDict_real:
-
             nx = len(dvDict_real[x])
             funcSensFD[x] = np.zeros((nx, nNodes * 3))
             funcSensCS[x] = np.zeros((nx, nNodes * 3))
             for i in range(nx):
-
                 xRef_real = dvDict_real[x][i].copy()
                 xRef_complex = dvDict_complex[x][i].copy()
 

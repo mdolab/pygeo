@@ -205,7 +205,6 @@ class DVGeometryAxi(DVGeometry):
     """
 
     def __init__(self, fileName, center, collapse_into, *args, isComplex=False, child=False, **kwargs):
-
         self.axiTransforms = OrderedDict()  # TODO: Why is this ordered?
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
@@ -247,7 +246,6 @@ class DVGeometryAxi(DVGeometry):
         super().addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
 
     def update(self, ptSetName, childDelta=True, config=None):
-
         new_c_pts = super().update(ptSetName, childDelta, config)
 
         xform = self.axiTransforms[ptSetName]

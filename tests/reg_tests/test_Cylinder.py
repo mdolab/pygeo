@@ -11,7 +11,6 @@ from pygeo import DVConstraints, DVGeometry, geo_utils
 
 
 class RegTestPyGeo(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):

@@ -1110,7 +1110,6 @@ class DVGeometry(BaseDVGeometry):
 
         volDVMap = []
         for ivol in volList:
-
             spanIdx = ijk_2_idx[spanIndex[ivol]]
             lIndex = self.FFD.topo.lIndex[ivol]
 
@@ -2387,7 +2386,6 @@ class DVGeometry(BaseDVGeometry):
         if self.JT[ptSetName] is None:
             xsdot = np.zeros((0, 3))
         else:
-
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coordXfer:
                 # its important to remember that dIdpt are vector-like values,
@@ -2521,7 +2519,6 @@ class DVGeometry(BaseDVGeometry):
 
             # Add in child portion
             for iChild in range(len(self.children)):
-
                 # Reset control points on child for child link derivatives
                 self.applyToChild(iChild)
                 self.children[iChild].computeTotalJacobian(ptSetName, config=config)
@@ -2898,6 +2895,7 @@ class DVGeometry(BaseDVGeometry):
             If scalar, it is applied across each surface. If list, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
+
         # Function to check if value matches a knot point
         # (set to 1e-12 to match pySpline mult. tolerance)
         def check_mult(val, knots):
@@ -3216,7 +3214,6 @@ class DVGeometry(BaseDVGeometry):
             if self.axis[key]["axis"] is None:
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
-
                 if isinstance(self.axis[key]["axis"], str) and len(self.axis[key]["axis"]) == 1:
                     # The axis can be a string of length one.
                     # If so, we follow the ray projection approach.
@@ -3479,13 +3476,11 @@ class DVGeometry(BaseDVGeometry):
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count, self.nDVSW_count
 
     def _update_deriv(self, iDV=0, oneoverh=1.0 / 1e-40, config=None, localDV=False):
-
         """Copy of update function for derivative calc"""
         new_pts = np.zeros((self.nPtAttach, 3), "D")
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
-
             # Recompute changes due to global dvs at current point + h
             self.updateCalculations(new_pts, isComplex=True, config=config)
 
@@ -3505,7 +3500,6 @@ class DVGeometry(BaseDVGeometry):
 
             # set the forward effect of the global design vars in each child
             for iChild in range(len(self.children)):
-
                 # get the derivative of the child axis and control points wrt the parent
                 # control points
                 dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
@@ -3543,7 +3537,6 @@ class DVGeometry(BaseDVGeometry):
         return new_pts
 
     def _update_deriv_cs(self, ptSetName, config=None):
-
         """
         A version of the update_deriv function specifically for use
         in the computeTotalJacobianCS function."""
@@ -3577,7 +3570,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
-
             # Compute changes due to global design vars
             self.updateCalculations(new_pts, isComplex=True, config=config)
 
@@ -3857,7 +3849,6 @@ class DVGeometry(BaseDVGeometry):
                 ):
                     nVal = self.DV_listGlobal[key].nVal
                     for j in range(nVal):
-
                         refVal = self.DV_listGlobal[key].value[j]
 
                         self.DV_listGlobal[key].value[j] += h
@@ -4025,7 +4016,6 @@ class DVGeometry(BaseDVGeometry):
                         # Jacobian[rows, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         Jacobian[coef * 3 : (coef + 1) * 3, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         for iChild in range(len(self.children)):
-
                             dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
                             dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
@@ -4089,7 +4079,6 @@ class DVGeometry(BaseDVGeometry):
                     or config is None
                     or any(c0 == config for c0 in self.DV_listLocal[key].config)
                 ):
-
                     self.DV_listLocal[key](self.FFD.coef, config)
 
                     nVal = self.DV_listLocal[key].nVal
@@ -4327,7 +4316,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listGlobal:
             for j in range(self.DV_listGlobal[key].nVal):
-
                 print("========================================")
                 print("      GlobalVar(%s), Value(%d)" % (key, j))
                 print("========================================")
@@ -4347,7 +4335,6 @@ class DVGeometry(BaseDVGeometry):
                 deriv = (coordsph - coords0) / h
 
                 for ii in range(len(deriv)):
-
                     relErr = (deriv[ii] - Jac[DVCountGlob, ii]) / (1e-16 + Jac[DVCountGlob, ii])
                     absErr = deriv[ii] - Jac[DVCountGlob, ii]
 
@@ -4359,7 +4346,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listLocal:
             for j in range(self.DV_listLocal[key].nVal):
-
                 print("========================================")
                 print("      LocalVar(%s), Value(%d)           " % (key, j))
                 print("========================================")
@@ -4389,7 +4375,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listSectionLocal:
             for j in range(self.DV_listSectionLocal[key].nVal):
-
                 print("========================================")
                 print("   SectionLocalVar(%s), Value(%d)       " % (key, j))
                 print("========================================")
@@ -4419,7 +4404,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listSpanwiseLocal:
             for j in range(self.DV_listSpanwiseLocal[key].nVal):
-
                 print("========================================")
                 print("   SpanwiseLocalVar(%s), Value(%d)       " % (key, j))
                 print("========================================")
