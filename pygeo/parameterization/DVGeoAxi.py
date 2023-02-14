@@ -40,7 +40,7 @@ class _AxiTransform:
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
             isComplex = kwargs.pop("complex")
-            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
         self.complex = isComplex
 
@@ -211,7 +211,7 @@ class DVGeometryAxi(DVGeometry):
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
             isComplex = kwargs.pop("complex")
-            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
         super().__init__(fileName, isComplex=isComplex, child=child, *args, **kwargs)
 

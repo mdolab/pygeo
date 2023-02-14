@@ -108,7 +108,7 @@ class DVGeometry(BaseDVGeometry):
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
             isComplex = kwargs.pop("complex")
-            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
@@ -2708,7 +2708,7 @@ class DVGeometry(BaseDVGeometry):
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
             if len(ignoreVars) != 0:
-                warnings.warn("Use of ignoreVars is incompatible with composite DVs")
+                warnings.warn("Use of ignoreVars is incompatible with composite DVs", stacklevel=2)
             lb = {}
             ub = {}
             for lst in varLists:
