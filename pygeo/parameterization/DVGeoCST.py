@@ -25,7 +25,7 @@ try:
     import matplotlib.pyplot as plt
 
     pltImport = True
-except ModuleNotFoundError:
+except ImportError:
     pltImport = False
 
 # Local modules
