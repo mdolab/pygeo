@@ -103,7 +103,6 @@ class Topology:
         self.nEnt = None
 
     def _calcDGs(self, edges, edgeLink, edgeLinkSorted, edgeLinkInd):
-
         dgCounter = -1
         for i in range(self.nEdge):
             if edges[i][2] == -1:  # Not set yet
@@ -262,7 +261,6 @@ class Topology:
             f.write("\n")
 
         if self.topoType == "volume":
-
             f.write("Vol Number | f0 | f1 | f2 | f3 | f4 | f5 |f0dir|f1dir|f2dir|f3dir|f4dir|f5dir|\n")
             for i in range(self.nVol):
                 f.write(
@@ -727,7 +725,6 @@ class SurfaceTopology(Topology):
 
             for i in range(N):
                 for j in range(M):
-
                     _type, edge, node, index = indexPosition2D(i, j, N, M)
 
                     if _type == 0:  # Interior
@@ -1084,7 +1081,6 @@ class BlockTopology(Topology):
             _type, number, _, _ = indexPosition3D(i, j, k, N, M, L)
 
             if _type == 1:  # Face
-
                 if number in [0, 1]:
                     icount = i
                     imax = N
@@ -1122,7 +1118,6 @@ class BlockTopology(Topology):
                 gIndex[curIndex].append([ivol, i, j, k])
 
             elif _type == 2:  # Edge
-
                 if number in [0, 1, 4, 5]:
                     if self.edgeDir[ii][number] == -1:  # Its a reverse dir
                         curIndex = edgeIndex[self.edgeLink[ii][number]][N - i - 2]
@@ -1201,7 +1196,6 @@ class BlockTopology(Topology):
         self.lIndex = lIndex
 
         if greedyReorder:
-
             # Reorder the indices with a greedy scheme
             newIndices = np.zeros(len(gIndex), "intc")
             newIndices[:] = -1
@@ -1386,7 +1380,6 @@ class BlockTopology(Topology):
         self.lIndex = lIndex
 
         if greedyReorder:
-
             # Reorder the indices with a greedy scheme
             newIndices = np.zeros(len(gIndex), "intc")
             newIndices[:] = -1

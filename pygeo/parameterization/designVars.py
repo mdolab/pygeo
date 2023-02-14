@@ -198,9 +198,7 @@ class geoDVSpanwiseLocal(geoDV):
 
             # Note: We are doing inefficient double looping here
             for idx_dv, coefs in enumerate(self.dv_to_coefs):
-
                 for coef in coefs:
-
                     if coef == indSetA[j]:
                         up = idx_dv
                     if coef == indSetB[j]:

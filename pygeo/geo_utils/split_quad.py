@@ -182,7 +182,6 @@ def tfi_2d(e0, e1, e2, e3):
     try:
         X = tfi2d(e0.T, e1.T, e2.T, e3.T).T
     except Exception:
-
         Nu = len(e0)
         Nv = len(e2)
         if Nu != len(e1):

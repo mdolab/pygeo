@@ -47,7 +47,6 @@ DVs = [
 @unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 @parameterized_class(airfoils)
 class DVGeometryCSTUnitTest(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):

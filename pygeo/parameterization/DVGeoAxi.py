@@ -40,7 +40,7 @@ class _AxiTransform:
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
             isComplex = kwargs.pop("complex")
-            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
         self.complex = isComplex
 
@@ -205,14 +205,13 @@ class DVGeometryAxi(DVGeometry):
     """
 
     def __init__(self, fileName, center, collapse_into, *args, isComplex=False, child=False, **kwargs):
-
         self.axiTransforms = OrderedDict()  # TODO: Why is this ordered?
 
         # FIXME: for backwards compatibility we still allow the argument complex=True/False
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
             isComplex = kwargs.pop("complex")
-            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
         super().__init__(fileName, isComplex=isComplex, child=child, *args, **kwargs)
 
@@ -247,7 +246,6 @@ class DVGeometryAxi(DVGeometry):
         super().addPointSet(xform.c_pts, ptName, origConfig, **kwargs)
 
     def update(self, ptSetName, childDelta=True, config=None):
-
         new_c_pts = super().update(ptSetName, childDelta, config)
 
         xform = self.axiTransforms[ptSetName]

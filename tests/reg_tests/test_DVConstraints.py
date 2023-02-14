@@ -133,7 +133,6 @@ test_params = [
 
 @parameterized_class(test_params)
 class RegTestPyGeo(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):
@@ -907,7 +906,6 @@ class RegTestPyGeo(unittest.TestCase):
     def test_curvature(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_curvature.ref")
         with BaseRegTest(refFile, train=train) as handler:
-
             # Use the RAE 2822 wing because we have a PLOT3D surface file for it
             DVGeo, DVCon = self.generate_dvgeo_dvcon("rae2822", addToDVGeo=True)
             surfFile = os.path.join(self.base_path, "../../input_files/deform_geometry_wing.xyz")
@@ -923,7 +921,6 @@ class RegTestPyGeo(unittest.TestCase):
     def test_curvature1D(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_curvature1D.ref")
         with BaseRegTest(refFile, train=train) as handler:
-
             # Use the RAE 2822 wing because we have a PLOT3D surface file for it
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172", addToDVGeo=True)
 
@@ -963,7 +960,6 @@ class RegTestPyGeo(unittest.TestCase):
 
 @unittest.skipUnless(geogradInstalled, "requires geograd")
 class RegTestGeograd(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):

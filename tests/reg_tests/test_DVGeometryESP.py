@@ -39,7 +39,6 @@ test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "paralle
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 @parameterized_class(test_params)
 class TestPyGeoESP_BasicCube(unittest.TestCase):
-
     # to be tested in serial and parallel automatically
     N_PROCS = 1
 
@@ -388,7 +387,6 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
-
     N_PROCS = 3
 
     def setUp(self):
@@ -587,7 +585,6 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
 
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
-
     N_PROCS = 4
 
     def setUp(self):
@@ -750,7 +747,6 @@ class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
 @unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 @parameterized_class(test_params)
 class TestPyGeoESP_NACAFoil(unittest.TestCase):
-
     # serial and parallel handled automatically
     N_PROCS = 1
 

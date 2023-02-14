@@ -291,14 +291,12 @@ class DVGeometryVSP(DVGeoSketch):
                 # Just pick the one that yields the smallest d
                 gind = 0
                 for gid in self.allComps:
-
                     # only project if the point is in the bounding box of the geometry
                     if (
                         (self.bbox[gid][0, 0] < points[i, 0] < self.bbox[gid][0, 1])
                         and (self.bbox[gid][1, 0] < points[i, 1] < self.bbox[gid][1, 1])
                         and (self.bbox[gid][2, 0] < points[i, 2] < self.bbox[gid][2, 1])
                     ):
-
                         # project the point onto the VSP geometry
                         dNew, rout, sout, tout = openvsp.FindRST(gid, 0, pnt)
 
