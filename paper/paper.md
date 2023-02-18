@@ -166,9 +166,9 @@ pyGeo first propagates the parent deformations to both the geometry and the chil
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
 This has facilitated the definition of control surface deflections [@Lyu2014c] and hydrofoil design [@Liao2021a].
 <!-- HMH: removing wind turbine references, wasn't a good example of child FFD usage -->
-\autoref{fig:ffd_child} from the latter paper shows a case where the parent FFD block is used to scale the chord of a hydrofoil using a reference axis at the trailing edge, whereas the twist and sweep variables are defined on the child FFD block with its reference axis at the quarter-chord.
+\autoref{fig:ffd_child} from the former paper shows a case where the parent FFD block is used to manipulate the shape of an entire wing of a blended wing body aircraft while the control surface on that wing is deformed using a child FFD block.
 
-![Example of parameterization through parent-child FFD blocks [@Liao2021a] \label{fig:ffd_child}](ffd_child.png)
+![Example of parameterization through parent-child FFD blocks [@Lyu2014c]. \label{fig:ffd_child}](child_ffd.pdf)
 
 <!-- [ ] TODO JM-: "blocks" of "volumes". Be consistent throughout and define clearly when first mentioned -->
 
@@ -239,7 +239,7 @@ The most commonly used class of geometry constraints in pyGeo involves tracking 
 These constraints are created by specifying a single point, a line, or an array of points, along with a normal direction, then computing two line-surface intersection points.
 Some commonly used geometric constraints in shape optimization, such as thickness, area, and volume constraints (\autoref{fig:constraint}) can be computed using variations on this approach, which is computationally cheap and robust [@Brelje2020a].
 
-![Thickness and volume constraints demonstrated on an wing section. \label{fig:constraint}](constraints_3d.pdf)
+![Thickness and volume constraints demonstrated on an wing section [@Brelje2020a]. \label{fig:constraint}](constraints_3d.pdf)
 
 <!--Thickness constraints control the distance between two points to prevent excessive local deformations.-->
 <!-- [x] TODO SS-: Almost all the constraints can be described by the line below. Should this section focus on why these constraints are useful or just describe them generally? -->
@@ -249,7 +249,7 @@ Some commonly used geometric constraints in shape optimization, such as thicknes
 <!-- MM: Maybe we can add two sentences here describing the different area constraints and how the volume is integrated, then link to picture-->
 <!--All three types constrain the geometry from deviating from the initial design by either a relative or absolute measure.-->
 
-![Triangulated surface constraint used to optimize an aeroshell around a complex geometry \label{fig:trisurf}](human-opt.png)
+![Triangulated surface constraint used to optimize an aeroshell around a complex geometry [@Brelje2020a].\label{fig:trisurf}](trisurfcon.pdf)
 
 If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described in [@Brelje2020a] and illustrated in \autoref{fig:trisurf}.
 
