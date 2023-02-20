@@ -1359,6 +1359,7 @@ class DVConstraints:
 
     def addTriangulatedSurfaceConstraint(
         self,
+        comm,
         surface_1_name=None,
         DVGeo_1_name="default",
         surface_2_name="default",
@@ -1464,6 +1465,7 @@ class DVConstraints:
 
         # Finally add constraint object
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(
+            comm,
             conName,
             surface_1,
             surface_1_name,
