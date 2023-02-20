@@ -273,6 +273,37 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
 
+    def nom_addTriangulatedSurfaceConstraint(   
+        self,
+            name,
+            surface_1_name=None,
+            DVGeo_1_name="default",
+            surface_2_name="default",
+            DVGeo_2_name="default",
+            rho=50.0,
+            heuristic_dist=None,
+            max_perim=3.0,
+        ):
+            self.DVCon.addTriangulatedSurfaceConstraint(
+                comm=self.comm,
+                surface_1_name=surface_1_name,
+                DVGeo_1_name=DVGeo_1_name,
+                surface_2_name=surface_2_name,
+                DVGeo_2_name=DVGeo_2_name,
+                rho=rho,
+                heuristic_dist=heuristic_dist,
+                max_perim=max_perim,
+                name=name,
+            )
+
+            comm = self.comm
+            if comm.rank == 0:
+                self.add_output(f"{name}_KS", distributed=True, val=0, shape=1)
+                self.add_output(f"{name}_perim", distributed=True, val=0, shape=1)
+            else:
+                self.add_output(f"{name}_KS", distributed=True, shape=0)
+                self.add_output(f"{name}_perim", distributed=True, shape=0)
+
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
         if self.geo_type != "ffd":
@@ -284,9 +315,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
 
-    def nom_setConstraintSurface(self, surface):
+    def nom_setConstraintSurface(
+        self, surface, name="default", addToDVGeo=False, DVGeoName="default", surfFormat="point-vector"
+    ):
         # constraint needs a triangulated reference surface at initialization
-        self.DVCon.setSurface(surface)
+        self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
