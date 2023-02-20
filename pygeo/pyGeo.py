@@ -8,7 +8,7 @@ import numpy as np
 from pyspline import Curve, Surface
 from pyspline.utils import closeTecplot, openTecplot, writeTecplot2D
 from scipy import sparse
-from scipy.sparse.linalg.dsolve import factorized
+from scipy.sparse.linalg import factorized
 
 # Local modules
 from . import geo_utils
