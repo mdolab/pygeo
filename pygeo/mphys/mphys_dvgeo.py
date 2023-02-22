@@ -218,16 +218,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=(0,))
 
-    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis):
-        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name)
+    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis, scaled=True):
+        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled)
         comm = self.comm
         if comm.rank == 0:
             self.add_output(name, distributed=True, val=np.ones(nCon), shape=nCon)
         else:
             self.add_output(name, distributed=True, shape=(0))
 
-    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10):
-        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name)
+    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
+        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name, surfaceName=surfaceName)
         comm = self.comm
         if comm.rank == 0:
             self.add_output(name, distributed=True, val=1.0)
@@ -273,36 +273,36 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             self.add_output(name, distributed=True, shape=0)
 
-    def nom_addTriangulatedSurfaceConstraint(   
+    def nom_addTriangulatedSurfaceConstraint(
         self,
-            name,
-            surface_1_name=None,
-            DVGeo_1_name="default",
-            surface_2_name="default",
-            DVGeo_2_name="default",
-            rho=50.0,
-            heuristic_dist=None,
-            max_perim=3.0,
-        ):
-            self.DVCon.addTriangulatedSurfaceConstraint(
-                comm=self.comm,
-                surface_1_name=surface_1_name,
-                DVGeo_1_name=DVGeo_1_name,
-                surface_2_name=surface_2_name,
-                DVGeo_2_name=DVGeo_2_name,
-                rho=rho,
-                heuristic_dist=heuristic_dist,
-                max_perim=max_perim,
-                name=name,
-            )
+        name,
+        surface_1_name=None,
+        DVGeo_1_name="default",
+        surface_2_name="default",
+        DVGeo_2_name="default",
+        rho=50.0,
+        heuristic_dist=None,
+        max_perim=3.0,
+    ):
+        self.DVCon.addTriangulatedSurfaceConstraint(
+            comm=self.comm,
+            surface_1_name=surface_1_name,
+            DVGeo_1_name=DVGeo_1_name,
+            surface_2_name=surface_2_name,
+            DVGeo_2_name=DVGeo_2_name,
+            rho=rho,
+            heuristic_dist=heuristic_dist,
+            max_perim=max_perim,
+            name=name,
+        )
 
-            comm = self.comm
-            if comm.rank == 0:
-                self.add_output(f"{name}_KS", distributed=True, val=0, shape=1)
-                self.add_output(f"{name}_perim", distributed=True, val=0, shape=1)
-            else:
-                self.add_output(f"{name}_KS", distributed=True, shape=0)
-                self.add_output(f"{name}_perim", distributed=True, shape=0)
+        comm = self.comm
+        if comm.rank == 0:
+            self.add_output(f"{name}_KS", distributed=True, val=0, shape=1)
+            self.add_output(f"{name}_perim", distributed=True, val=0, shape=1)
+        else:
+            self.add_output(f"{name}_KS", distributed=True, shape=0)
+            self.add_output(f"{name}_perim", distributed=True, shape=0)
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
