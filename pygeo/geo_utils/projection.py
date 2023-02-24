@@ -218,12 +218,14 @@ def projectNode(pt, upVec, p0, v1, v2):
         # This just returns the two points with the minimum absolute
         # distance to the points that have been found.
         fail = -1
+        
+        # Account for the direction of the projection
+        pmin = np.dot(newPoints[:nSol] - pt, upVec)
 
-        pmin = abs(np.dot(newPoints[:nSol] - pt, upVec))
-        minIndex = np.argsort(pmin)
-
-        return newPoints[minIndex[0]], newPoints[minIndex[1]], fail
-
+        minIndexDn = np.ma.masked_array(pmin,pmin>=0).argmin()
+        minIndexUp = np.ma.masked_array(pmin,pmin<=0).argmin()
+        
+        return newPoints[minIndexDn], newPoints[minIndexUp], fail 
 
 def projectNodePosOnly(pt, upVec, p0, v1, v2):
     """
