@@ -59,7 +59,6 @@ pyGeo is a geometry package for three-dimensional shape manipulation tailored fo
 It provides several methods for geometry parameterization, geometric constraints, and utility functions for geometry manipulation.
 pyGeo computes derivatives for all parameterization methods and constraints, facilitating efficient gradient-based optimization.
 
-
 # Features
 
 ## Integrations
@@ -70,27 +69,9 @@ Both MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization al
 
 [^1]: \url{https://github.com/OpenMDAO/mphys}
 
-
-<!--
-pyGeo was originally developed to use free-form deformation (FFD) for manipulating 3D geometries in CFD-based optimization [@Kenway2010b].
-The "Free-form Deformation" section describes this implementation and recent extensions in more detail. -->
-
 pyGeo's interface for design variables and constraints is independent of which solvers are accessing the geometry.
 This means that pyGeo geometries can interact with different types of solvers, such as structures and aerodynamics, in the same way.
 This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
-
-<!-- ## Geometry Generation -->
-<!-- commenting this out in case we want pieces for another section -->
-
-<!-- pyGeo can create simple geometries in the IGES file format, a common type readable by computer-aided design (CAD) tools. -->
-<!-- One method to generate a surface geometry in pyGeo lofts a series of user-specified cross-sections. -->
-<!-- This lofting is commonly used to create a wing from airfoil cross-sections (\autoref{fig:geo_gen}). -->
-<!-- Rounded or pinched wingtip geometries can be generated quickly. -->
-<!-- The method relies on the open-source package pySpline[^2], which handles the underlying B-spline implementation. -->
-
-<!-- ![Example of a wing generated with pyGeo and the airfoil used for its cross-sections.\label{fig:geo_gen}](geo_gen.pdf) -->
-
-<!-- [^2]: \url{https://github.com/mdolab/pyspline} -->
 
 ## Geometry Parameterization with pyGeo
 
@@ -104,26 +85,17 @@ The choice of parameterization depends on the user's experience, the geometry de
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches [@Zhang2018a].
 This approach embeds the entire reference geometry in a parameterized volume. 
 The set of control points that determine the shape of the volume are displaced to manipulate the points inside. 
-<!--JLA: The control points do not have to be (and often are not) on the surface of the embedding volume -->
 The user can have a high degree of control over the geometry by selecting different control point densities and locations.
 
 Individual control points can be moved to obtain local shape modifications.
 In pyGeo, these are referred to as _local_ design variables because a single control point is affected.
 Conversely, it is also common to define geometric operations involving a collection of control points across the entire FFD block.
 These are referred to as _global_ design variables in pyGeo.
-For example, wing twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. <!-- MM: this is a good example but I feel we need to specify what twist is to a non-aerospace audience-->
+For example, wing twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. 
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
 
 Design variables formulated from groupings of FFD control points often exhibit ill conditioning. 
 To alleviate this, a parameterization based on singular value decomposition is also possible within pyGeo [@Wu2022b].
-<!-- talk about ref axis more? -->
-
-<!-- Compared to other parameterization methods, the FFD method has several key advantages.
-Since the entire geometry is embedded, there is no need to start with or reverse-engineer a parametric geometry representation as commonly done with B-spline-based methods, where a least-squares fit is needed to generate a B-spline surface representation.
-Rather than parameterizing the geometry directly, the geometric _deformation_ is parameterized instead.
-This decoupling of geometry definition from geometric deformation allows for control and refinement of the deformation independently of the original geometry.
-When working with multiple geometries, for example, an optimization involving an aerodynamic and structural surface simultaneously, both surfaces can be embedded into the same FFD volume.
-Because the same volume would manipulate both surfaces, coincident surfaces remain coincident after deformations, and this approach ensures consistency between disparate geometries. -->
 
 ![Examples of common wing planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdf)
 
@@ -185,10 +157,12 @@ If a more complex geometry needs to be integrated into an optimized surface, pyG
 
 ![Triangulated surface constraint used to optimize an aeroshell around a complex geometry [@Brelje2020a].\label{fig:trisurf}](trisurfcon.pdf)
 
+
 # Parallelism
 pyGeo can optionally work under distributed memory parallelism using MPI, which is a requirement when interfacing with large-scale CFD applications.
 For example, the computational mesh may be partitioned and distributed among many processors by the CFD solver, and each processor may be aware of only its portion of the mesh.
 pyGeo can handle such scenarios by independently manipulating the geometry on each processor and aggregating the constraints across all processors when communicating with the optimizer.
+
 
 # Derivative Computation
 In addition to geometry manipulation and constraints, pyGeo can compute derivatives of these operations with respect to design variables.
