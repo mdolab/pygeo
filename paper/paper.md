@@ -50,7 +50,7 @@ header-includes: \usepackage{subcaption}
 
 # Summary
 In shape optimization, an algorithm modifies a body's geometry to improve its performance.
-A common shape optimization example is adjusting the shape of an aircraft wing to minimize aerodynamic drag computed via computational fluid dynamics (CFD).
+A common shape optimization example is adjusting the geometry of an aircraft wing to minimize aerodynamic drag computed via computational fluid dynamics (CFD).
 <!-- NW: what about 'geometry' instead of 'shape'? -->
 Multidisciplinary design optimization (MDO) couples multiple disciplines, such as aerodynamics and structural mechanics, to optimize them simultaneously.
 In MDO, the geometry must be represented consistently across multiple disciplines.
@@ -58,9 +58,8 @@ In MDO, the geometry must be represented consistently across multiple discipline
 <!--BB: Removed reference here to geometry generation per aY comment below -->
 pyGeo is a geometry package for three-dimensional shape manipulation tailored for aerodynamic and multidisciplinary design optimization.
 It provides several methods for geometry parameterization, geometric constraints, and utility functions for geometry manipulation.
-pyGeo computes derivatives for all parameterization methods and constraints, enabling gradient-based optimization.
-<!-- NW: it doesn't necessarily enable GB optimization since you can always FD everything
-but it certainly facilitates it -->
+pyGeo computes derivatives for all parameterization methods and constraints, facilitating efficient gradient-based optimization.
+<!-- NW: it doesn't necessarily enable GB optimization since you can always FD everything but it certainly facilitates it -->
 
 
 # Features
@@ -295,7 +294,7 @@ The method for using multiple FFD volumes has been used to optimize a convention
 <!-- AY: I added the following statements. please check -->
 <!-- BB: I added the following statements. please check -->
 pyGeo is maintained and developed by the MDO Lab[^2] at the University of Michigan and is actively used for MDO applications in both research and industry.
-The geometry parameterization capabilities provided by pyGeo have enabled the development of environmentally sustainable aircraft through design optimization.
+The geometry parameterization capabilities provided by pyGeo have facilitated the development of environmentally sustainable aircraft through design optimization.
 <!-- NW: as with the abstract, not convinced on 'enabled' but maybe 'facilitiates' even though it's less strong -->
 
 <!-- [x] TODO AY-: Please make sure I didnt mess up the footnote -->
