@@ -104,7 +104,7 @@ In addition to the basic FFD implementation, pyGeo offers two additional feature
 #### Hierarchical FFD
 FFD objects can be organized in a hierarchical structure within pyGeo.
 Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to enable modifications on a subset of the full geometry.
-pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. <!--MM: I would like to double check this sentence with Anil-->
+pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. 
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
 This has facilitated the definition of control surface deflections [@Lyu2014c] and hydrofoil design [@Liao2021a].
 \autoref{fig:ffd_child} from the former paper shows a case where the parent FFD block is used to manipulate the shape of an entire wing of a blended wing body aircraft while the control surface on that wing is deformed using a child FFD block.
