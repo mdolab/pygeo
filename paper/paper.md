@@ -193,14 +193,13 @@ While both OpenVSP and ESP can be used directly in optimization without using py
 pyGeo fills in these gaps through parallelism, efficient gradients, and geometric constraints.
 It keeps OpenVSP and ESP in the optimization loop and provides a standard interface to these tools for their use with external solvers.
 
-pyGeo has been used extensively [@Kenway2014c; @Bons2019a] in aerodynamic and aerostructural optimizations in aircraft, hydrofoil, and wind turbine applications.
-<!-- [x] TODO SS-: We should add a few citations for the basic FFD functionality. -->
+pyGeo has been used extensively in aerodynamic and aerostructural optimizations in aircraft, hydrofoil, and wind turbine applications.
 The different parameterizations within pyGeo have all been necessary for different optimization problems, depending on the geometry involved.
+pyGeo's standard FFD implementation is the most commonly used parameterization [@Kenway2014c; @Bons2019a].
+The method for using multiple FFD blocks has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in aeropropulsive optimizations [@Yildirim2022a].
-
 The implementation of CST airfoil parameterization was used to compare methods for airfoil optimization [@Adler2022c].
-The method for using multiple FFD volumes has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 
 pyGeo is maintained and developed by the MDO Lab[^2] at the University of Michigan and is actively used for MDO applications in both research and industry.
 The geometry parameterization capabilities provided by pyGeo have facilitated the development of environmentally sustainable aircraft through design optimization.
