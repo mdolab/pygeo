@@ -195,10 +195,8 @@ While both OpenVSP and ESP can be used directly in optimization without using py
 pyGeo fills in these gaps through parallelism, efficient gradients, and geometric constraints.
 It keeps OpenVSP and ESP in the optimization loop and provides a standard interface to these tools for their use with external solvers.
 
-pyGeo has been used extensively in aerodynamic and aerostructural optimizations in aircraft, hydrofoil, and wind turbine applications.
-<!-- [] TODO SS-: We should add a few citations for the basic FFD functionality. -->
-<!-- HMH: Any ideas on which would be representative? Neil suggested uCRM, maybe we want a wind turbine and/or hydrofoil paper as well for ~range~  -->
-<!-- MM: we can re-use the citations above for non-aircraft examples. For aero stuff, one of the latest Nick Bons' paprs could also be a good fit-->
+pyGeo has been used extensively [@Kenway2014c; @Bons2019a] in aerodynamic and aerostructural optimizations in aircraft, hydrofoil, and wind turbine applications.
+<!-- [x] TODO SS-: We should add a few citations for the basic FFD functionality. -->
 The different parameterizations within pyGeo have all been necessary for different optimization problems, depending on the geometry involved.
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in aeropropulsive optimizations [@Yildirim2022a].
