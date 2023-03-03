@@ -71,7 +71,7 @@ Both MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization al
 
 pyGeo's interface for design variables and constraints is independent of which solvers are accessing the geometry.
 This means that pyGeo geometries can interact with different types of solvers, such as structures and aerodynamics, in the same way.
-This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometric parameterization for each, such as two different flow solvers [@Adler2022c].
+This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometry parameterization for each, such as two different flow solvers [@Adler2022c].
 
 ## Geometry Parameterization with pyGeo
 
@@ -185,11 +185,9 @@ The CST derivatives are computed analytically.
 
 # Statement of Need
 Few open-source packages exist with comparable functionalities.
-To the authors' best knowledge, the only other open-source CFD-based optimization framework that contains geometry parameterization is SU2 [@Economon2016a].
-<!-- NW: changed to 'CFD-based framework' since in other fields there may be some geometry-related stuff -->
-It supports Hicks--Henne bump functions [@Hicks1978] for airfoil optimizations and the FFD method for three-dimensional cases.
-However, it cannot be used with other solvers because it is tightly integrated into the CFD solver.
-
+To the authors' best knowledge, the only other open-source CFD-based optimization framework that contains a geometry parameterization is SU2 [@Economon2016a].
+It supports Hicks--Henne bump functions [@Hicks1978] for airfoil optimizations and the FFD method for 3D cases.
+However, this geometry parameterization cannot be used with other solvers, whether CFD or other disciplines, because it is tightly integrated into SU2.
 
 While both OpenVSP and ESP can be used directly in optimization without using pyGeo, they lack capabilities needed for high-fidelity MDO when used as stand-alone tools.
 pyGeo fills in these gaps through parallelism, efficient gradients, and geometric constraints.
