@@ -49,11 +49,9 @@ header-includes: \usepackage{subcaption}
 ---
 
 # Summary
-
-In shape optimization, an algorithm modifies a body's geometry to improve its performance.
-A common shape optimization example is adjusting the geometry of an aircraft wing to minimize aerodynamic drag computed via computational fluid dynamics (CFD).
-Multidisciplinary design optimization (MDO) couples multiple disciplines, such as aerodynamics and structural mechanics, to optimize them simultaneously.
-In MDO, the geometry must be represented consistently across multiple disciplines.
+Geometry parameterization is a key challenge in shape optimization. 
+Parameterizations must accurately capture the design intent and perform well in optimization.
+In multidisciplinary design optimization (MDO), the parameterization must additionally represent the shape consistently across each discipline. 
 
 pyGeo is a geometry package for three-dimensional shape manipulation tailored for aerodynamic and multidisciplinary design optimization.
 It provides several methods for geometry parameterization, geometric constraints, and utility functions for geometry manipulation.
@@ -62,7 +60,6 @@ pyGeo computes derivatives for all parameterization methods and constraints, fac
 # Features
 
 ## Integrations
-
 pyGeo is the geometry manipulation engine within the MDO of Aircraft Configurations at High Fidelity (MACH) framework [@Kenway2014a; @Kenway2014c], which specializes in high-fidelity aerostructural optimization.
 pyGeo is also integrated into MPhys[^1], a more general framework for high-fidelity multiphysics problems built with OpenMDAO [@Gray2019a].
 Both MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization algorithms.
@@ -74,14 +71,11 @@ This means that pyGeo geometries can interact with different types of solvers, s
 This also allows direct comparison of the behavior or performance of two different solvers within the same discipline using the same geometry parameterization for each, such as two different flow solvers [@Adler2022c].
 
 ## Geometry Parameterization with pyGeo
-
-
 pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
 Because each parameterization method uses a common interface for interacting with the rest of the MACH framework, any surface parameterization can be used in place of another within an optimization setup [@Hajdik2023a].
 The choice of parameterization depends on the user's experience, the geometry details, and whether the user needs the final design in a specific format.
 
 ### Free-form Deformation
-
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches [@Zhang2018a].
 This approach embeds the entire reference geometry in a parameterized volume. 
 The set of control points that determine the shape of the volume are displaced to manipulate the points inside. 
@@ -106,13 +100,11 @@ FFD objects can be organized in a hierarchical structure within pyGeo.
 Dependent, "child" FFD blocks can be embedded in the main, "parent" FFD block to enable modifications on a subset of the full geometry.
 pyGeo first propagates the parent deformations to both the geometry and the child control points and then propagates the deformations of the child control points to their subset of the geometry. 
 One of the advantages of using this approach is that each FFD block can have its own independent reference axis to be used for global design variables such as rotations and scaling.
-This has facilitated the definition of control surface deflections [@Lyu2014c] and hydrofoil design [@Liao2021a].
-\autoref{fig:ffd_child} from the former paper shows a case where the parent FFD block is used to manipulate the shape of an entire wing of a blended wing body aircraft while the control surface on that wing is deformed using a child FFD block.
+\autoref{fig:ffd_child} shows a case where the parent FFD block is used to manipulate the shape of a blended wing body aircraft while its control surface is deformed using a child FFD block.
 
 ![Example of parameterization through parent-child FFD blocks [@Lyu2014c]. \label{fig:ffd_child}](child_ffd.pdf)
 
 #### Multi-component FFD
-
 The basic FFD implementation lacks flexibility when the geometry has intersecting components.
 In such cases, pyGeo can parameterize each component using FFD and ensure a watertight surface representation at the component intersections using an inverse-distance surface deformation method [@Yildirim2021b].
 \autoref{fig:ffd_multi} shows an example of a component-based FFD setup for a supersonic transport aircraft.
@@ -120,23 +112,19 @@ In such cases, pyGeo can parameterize each component using FFD and ensure a wate
 ![Example of FFD parameterization with intersecting components [@Seraj2022a]. \label{fig:ffd_multi}](ffd_multi.png)
 
 ### Parametric Geometry Tools
-
 pyGeo contains interfaces to two parametric geometry tools, the Engineering Sketch Pad (ESP) [@Haimes2013a] and OpenVSP [@McDonald2022a].
 ESP is a CAD software, while OpenVSP is a conceptual design tool.
 The two packages have different capabilities, but both directly define the geometry with design variables, and the created geometry can be used in external analysis tools.
 
 pyGeo interfaces with ESP and OpenVSP in similar ways.
 In both cases, pyGeo takes an instance of the model and its points are associated with coordinates in a mesh from a solver in the MACH framework.
-For ESP and OpenVSP models, the pyGeo interface to the respective software stores the model in a form usable within the MACH framework and updates it as design variables are changed throughout the optimization.
-The pyGeo interface to ESP was used by [@Brelje2021a] to parameterize hydrogen tanks (\autoref{fig:esp_example}) that were packaged within an aircraft wing as part of an aerostructural optimization.
-pyGeo's OpenVSP interface was used to parameterize the full aircraft configuration (\autoref{fig:vsp_example}) studied in the aeropropulsive optimization work in [@Yildirim2022a].
+For ESP (\autoref{fig:esp_example}) and OpenVSP models (\autoref{fig:vsp_example}), the pyGeo interface to the respective software stores the model in a form usable within the MACH framework and updates it as design variables are changed throughout the optimization.
 
 ![Example of ESP models of hydrogen tanks used through pyGeo [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
 
 ![Example of a VSP aircraft model used through VSP's pyGeo interface [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
 
 ### Class Shape Transformation
-
 The class shape transformation (CST) methodology [@Kulfan2008] is a popular airfoil parameterization.
 It generates a shape using Bernstein polynomials to scale a class function, which is most often a base airfoil shape.
 pyGeo contains an implementation of this airfoil parameterization that supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
@@ -145,7 +133,6 @@ pyGeo's CST implementation can only be used for 2D problems, such as airfoil opt
 ![Airfoil defined by three CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf)
 
 ## Constraints
-
 pyGeo also includes geometric constraints to prevent geometrically undesirable designs.
 The most commonly-used class of geometry constraints in pyGeo involves tracking one or more linear dimensions on the optimized object's surface.
 These constraints are created by specifying a single point, a line, or an array of points, along with a normal direction, then computing two line-surface intersection points.
@@ -193,16 +180,17 @@ While both OpenVSP and ESP can be used directly in optimization without using py
 pyGeo fills in these gaps through parallelism, efficient gradients, and geometric constraints.
 It keeps OpenVSP and ESP in the optimization loop and provides a standard interface to these tools for their use with external solvers.
 
-pyGeo has been used extensively in aerodynamic and aerostructural optimizations in aircraft, hydrofoil, and wind turbine applications.
-The different parameterizations within pyGeo have all been necessary for different optimization problems, depending on the geometry involved.
+pyGeo is maintained and developed by the MDO Lab[^2] at the University of Michigan and is actively used for MDO applications in both research and industry.
+The different parameterizations within pyGeo have all been necessary for different optimization problems depending on the geometry involved.
 pyGeo's standard FFD implementation is the most commonly used parameterization [@Kenway2014c; @Bons2019a].
+The hierarchical FFD method was used to optimize a blended wing body aircraft [@Lyu2014c], a hydrofoil [@Liao2021a], and a wind turbine [@Madsen2019a].
 The method for using multiple FFD blocks has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
 The interface to ESP made it possible to parameterize hydrogen tanks within a combined aerostructural and packaging optimization [@Brelje2021a].
 pyGeo's OpenVSP interface was used in aeropropulsive optimizations [@Yildirim2022a].
 The implementation of CST airfoil parameterization was used to compare methods for airfoil optimization [@Adler2022c].
 
-pyGeo is maintained and developed by the MDO Lab[^2] at the University of Michigan and is actively used for MDO applications in both research and industry.
-The geometry parameterization capabilities provided by pyGeo have facilitated the development of environmentally sustainable aircraft through design optimization.
+<!-- HH: Removed overarching sentence because this last paragraph acts as that sentence and this section is a statement of need, not a conclusion. This is in line with the format of pyOptSparse. -->
+
 
 [^2]: \url{https://mdolab.engin.umich.edu}
 
