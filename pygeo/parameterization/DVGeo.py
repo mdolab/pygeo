@@ -1,20 +1,22 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import copy
+# Standard Python modules
 from collections import OrderedDict
-import numpy as np
-from scipy import sparse
-from scipy.spatial import cKDTree
-from mpi4py import MPI
-from pyspline import Curve
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D, writeTecplot3D
-from .. import pyNetwork, pyBlock, geo_utils
+import copy
 import os
 import warnings
+
+# External modules
 from baseclasses.utils import Error
-from .designVars import geoDVGlobal, geoDVLocal, geoDVSpanwiseLocal, geoDVSectionLocal, geoDVComposite
+from mpi4py import MPI
+import numpy as np
+from pyspline import Curve
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D, writeTecplot3D
+from scipy import sparse
+from scipy.spatial import cKDTree
+
+# Local modules
+from .. import geo_utils, pyBlock, pyNetwork
 from .BaseDVGeo import BaseDVGeometry
+from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal
 
 
 class DVGeometry(BaseDVGeometry):
@@ -106,7 +108,7 @@ class DVGeometry(BaseDVGeometry):
         # which we now check in kwargs and overwrite
         if "complex" in kwargs:
             isComplex = kwargs.pop("complex")
-            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.")
+            warnings.warn("The keyword argument 'complex' is deprecated, use 'isComplex' instead.", stacklevel=2)
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
@@ -170,6 +172,7 @@ class DVGeometry(BaseDVGeometry):
         # Jacobians:
         self.JT = {}
         self.nPts = {}
+        self.dCoefdDVUpdated = False
 
         # dictionary to save any coordinate transformations we are given
         self.coordXfer = {}
@@ -1108,7 +1111,6 @@ class DVGeometry(BaseDVGeometry):
 
         volDVMap = []
         for ivol in volList:
-
             spanIdx = ijk_2_idx[spanIndex[ivol]]
             lIndex = self.FFD.topo.lIndex[ivol]
 
@@ -1401,11 +1403,10 @@ class DVGeometry(BaseDVGeometry):
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
-            u, s, _ = np.linalg.svd(J_full)
+            u, s, _ = np.linalg.svd(J_full, full_matrices=False)
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
-
         # map the initial design variable values
         # we do this manually instead of calling self.mapVecToComp
         # because self.DVComposite.u isn't available yet
@@ -1591,6 +1592,9 @@ class DVGeometry(BaseDVGeometry):
         # Flag all the pointSets as not being up to date:
         for pointSet in self.updated:
             self.updated[pointSet] = False
+
+        # also flag the dCoefdDV as out of date
+        self.dCoefdDVUpdated = False
 
         # Now call setValues on the children. This way the
         # variables will be set on the children
@@ -2386,7 +2390,6 @@ class DVGeometry(BaseDVGeometry):
         if self.JT[ptSetName] is None:
             xsdot = np.zeros((0, 3))
         else:
-
             # check if we have a coordinate transformation on this ptset
             if ptSetName in self.coordXfer:
                 # its important to remember that dIdpt are vector-like values,
@@ -2415,8 +2418,13 @@ class DVGeometry(BaseDVGeometry):
 
     def computeDVJacobian(self, config=None):
         """
-        return J_temp for a given config
+        return dCoefdDV for a given config
         """
+
+        # if dCoefdDV is not out of date, return immediately
+        if self.dCoefdDVUpdated:
+            return self.dCoefdDV
+
         # These routines are not recursive. They compute the derivatives at this level and
         # pass information down one level for the next pass call from the routine above
 
@@ -2436,37 +2444,40 @@ class DVGeometry(BaseDVGeometry):
         # this is the jacobian from accumulated derivative dependence from parent to child
         J_casc = self._cascadedDVJacobian(config=config)
 
-        J_temp = None
+        dCoefdDV = None
 
         # add them together
         if J_attach is not None:
-            J_temp = sparse.lil_matrix(J_attach)
+            dCoefdDV = sparse.lil_matrix(J_attach)
 
         if J_spanwiselocal is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_spanwiselocal)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_spanwiselocal)
             else:
-                J_temp += J_spanwiselocal
+                dCoefdDV += J_spanwiselocal
 
         if J_sectionlocal is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_sectionlocal)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_sectionlocal)
             else:
-                J_temp += J_sectionlocal
+                dCoefdDV += J_sectionlocal
 
         if J_local is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_local)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_local)
             else:
-                J_temp += J_local
+                dCoefdDV += J_local
 
         if J_casc is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_casc)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_casc)
             else:
-                J_temp += J_casc
+                dCoefdDV += J_casc
 
-        return J_temp
+        self.dCoefdDV = dCoefdDV
+        self.dCoefdDVUpdated = True
+
+        return dCoefdDV
 
     def computeTotalJacobian(self, ptSetName, config=None):
         """Return the total point jacobian in CSR format since we
@@ -2481,7 +2492,7 @@ class DVGeometry(BaseDVGeometry):
 
         # compute the derivatives of the coefficients of this level wrt all of the design
         # variables at this level and all levels above
-        J_temp = self.computeDVJacobian(config=config)
+        dCoefdDV = self.computeDVJacobian(config=config)
 
         # now get the derivative of the points for this level wrt the coefficients(dPtdCoef)
         if self.FFD.embeddedVolumes[ptSetName].dPtdCoef is not None:
@@ -2514,13 +2525,12 @@ class DVGeometry(BaseDVGeometry):
             new_dPtdCoef = sparse.coo_matrix((new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
 
             # Do Sparse Mat-Mat multiplication and resort indices
-            if J_temp is not None:
-                self.JT[ptSetName] = (J_temp.T * new_dPtdCoef.T).tocsr()
+            if dCoefdDV is not None:
+                self.JT[ptSetName] = (dCoefdDV.T * new_dPtdCoef.T).tocsr()
                 self.JT[ptSetName].sort_indices()
 
             # Add in child portion
             for iChild in range(len(self.children)):
-
                 # Reset control points on child for child link derivatives
                 self.applyToChild(iChild)
                 self.children[iChild].computeTotalJacobian(ptSetName, config=config)
@@ -2710,7 +2720,7 @@ class DVGeometry(BaseDVGeometry):
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
             if len(ignoreVars) != 0:
-                warnings.warn("Use of ignoreVars is incompatible with composite DVs")
+                warnings.warn("Use of ignoreVars is incompatible with composite DVs", stacklevel=2)
             lb = {}
             ub = {}
             for lst in varLists:
@@ -2897,6 +2907,7 @@ class DVGeometry(BaseDVGeometry):
             If scalar, it is applied across each surface. If list, the length must match the
             number of surfaces in the object and corresponding entries are matched with surfaces
         """
+
         # Function to check if value matches a knot point
         # (set to 1e-12 to match pySpline mult. tolerance)
         def check_mult(val, knots):
@@ -3215,7 +3226,6 @@ class DVGeometry(BaseDVGeometry):
             if self.axis[key]["axis"] is None:
                 tmpIDs, tmpS0 = self.refAxis.projectPoints(curPts, curves=[curveID])
             else:
-
                 if isinstance(self.axis[key]["axis"], str) and len(self.axis[key]["axis"]) == 1:
                     # The axis can be a string of length one.
                     # If so, we follow the ray projection approach.
@@ -3478,13 +3488,11 @@ class DVGeometry(BaseDVGeometry):
         return self.nDVG_count, self.nDVL_count, self.nDVSL_count, self.nDVSW_count
 
     def _update_deriv(self, iDV=0, oneoverh=1.0 / 1e-40, config=None, localDV=False):
-
         """Copy of update function for derivative calc"""
         new_pts = np.zeros((self.nPtAttach, 3), "D")
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
-
             # Recompute changes due to global dvs at current point + h
             self.updateCalculations(new_pts, isComplex=True, config=config)
 
@@ -3504,7 +3512,6 @@ class DVGeometry(BaseDVGeometry):
 
             # set the forward effect of the global design vars in each child
             for iChild in range(len(self.children)):
-
                 # get the derivative of the child axis and control points wrt the parent
                 # control points
                 dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
@@ -3542,7 +3549,6 @@ class DVGeometry(BaseDVGeometry):
         return new_pts
 
     def _update_deriv_cs(self, ptSetName, config=None):
-
         """
         A version of the update_deriv function specifically for use
         in the computeTotalJacobianCS function."""
@@ -3576,7 +3582,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Step 1: Call all the design variables IFF we have ref axis:
         if len(self.axis) > 0:
-
             # Compute changes due to global design vars
             self.updateCalculations(new_pts, isComplex=True, config=config)
 
@@ -3683,105 +3688,6 @@ class DVGeometry(BaseDVGeometry):
                 self.refAxis.curves[i].coef = self.refAxis.curves[i].coef.real.astype("d")
 
             self.coef = self.coef.real.astype("d")
-
-    def mapXDictToDVGeo(self, inDict):
-        """
-        Map a dictionary of DVs to the 'DVGeo' design, while keeping non-DVGeo DVs in place
-        without modifying them
-
-        Parameters
-        ----------
-        inDict : dict
-            The dictionary of DVs to be mapped
-
-        Returns
-        -------
-        dict
-            The mapped DVs in the same dictionary format
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = inDict.pop(self.DVComposite.name)
-        outVec = self.mapVecToDVGeo(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=False)
-        # now merge inDict and outDict
-        for key in inDict:
-            outDict[key] = inDict[key]
-        return outDict
-
-    def mapXDictToComp(self, inDict):
-        """
-        The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
-
-        Parameters
-        ----------
-        inDict : dict
-            The DVs to be mapped
-
-        Returns
-        -------
-        dict
-            The mapped DVs
-        """
-        # first make a copy so we don't modify in place
-        inDict = copy.deepcopy(inDict)
-        userVec = self.convertDictToSensitivity(inDict)
-        outVec = self.mapVecToComp(userVec)
-        outDict = self.convertSensitivityToDict(outVec.reshape(1, -1), out1D=True, useCompositeNames=True)
-        return outDict
-
-    def mapVecToDVGeo(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u @ inVec
-        return outVec.flatten()
-
-    def mapVecToComp(self, inVec):
-        """
-        This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The DVs in a single 1D array
-
-        Returns
-        -------
-        ndarray
-            The mapped DVs in a single 1D array
-        """
-        inVec = inVec.reshape(self.getNDV(), -1)
-        outVec = self.DVComposite.u.T @ inVec
-        return outVec.flatten()
-
-    def mapSensToComp(self, inVec):
-        """
-        Maps the sensitivity matrix to the composite design space
-
-        Parameters
-        ----------
-        inVec : ndarray
-            The sensitivities to be mapped
-
-        Returns
-        -------
-        ndarray
-            The mapped sensitivity matrix
-        """
-        outVec = inVec @ self.DVComposite.u  # this is the same as (self.DVComposite.u.T @ inVec.T).T
-        return outVec
 
     def computeTotalJacobianFD(self, ptSetName, config=None):
         """This function takes the total derivative of an objective,
@@ -3955,7 +3861,6 @@ class DVGeometry(BaseDVGeometry):
                 ):
                     nVal = self.DV_listGlobal[key].nVal
                     for j in range(nVal):
-
                         refVal = self.DV_listGlobal[key].value[j]
 
                         self.DV_listGlobal[key].value[j] += h
@@ -4123,7 +4028,6 @@ class DVGeometry(BaseDVGeometry):
                         # Jacobian[rows, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         Jacobian[coef * 3 : (coef + 1) * 3, iDVSectionLocal] += R.dot(T.dot(inFrame))
                         for iChild in range(len(self.children)):
-
                             dXrefdCoef = self.FFD.embeddedVolumes["child%d_axis" % (iChild)].dPtdCoef
                             dCcdCoef = self.FFD.embeddedVolumes["child%d_coef" % (iChild)].dPtdCoef
 
@@ -4187,7 +4091,6 @@ class DVGeometry(BaseDVGeometry):
                     or config is None
                     or any(c0 == config for c0 in self.DV_listLocal[key].config)
                 ):
-
                     self.DV_listLocal[key](self.FFD.coef, config)
 
                     nVal = self.DV_listLocal[key].nVal
@@ -4425,7 +4328,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listGlobal:
             for j in range(self.DV_listGlobal[key].nVal):
-
                 print("========================================")
                 print("      GlobalVar(%s), Value(%d)" % (key, j))
                 print("========================================")
@@ -4445,7 +4347,6 @@ class DVGeometry(BaseDVGeometry):
                 deriv = (coordsph - coords0) / h
 
                 for ii in range(len(deriv)):
-
                     relErr = (deriv[ii] - Jac[DVCountGlob, ii]) / (1e-16 + Jac[DVCountGlob, ii])
                     absErr = deriv[ii] - Jac[DVCountGlob, ii]
 
@@ -4457,7 +4358,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listLocal:
             for j in range(self.DV_listLocal[key].nVal):
-
                 print("========================================")
                 print("      LocalVar(%s), Value(%d)           " % (key, j))
                 print("========================================")
@@ -4487,7 +4387,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listSectionLocal:
             for j in range(self.DV_listSectionLocal[key].nVal):
-
                 print("========================================")
                 print("   SectionLocalVar(%s), Value(%d)       " % (key, j))
                 print("========================================")
@@ -4517,7 +4416,6 @@ class DVGeometry(BaseDVGeometry):
 
         for key in self.DV_listSpanwiseLocal:
             for j in range(self.DV_listSpanwiseLocal[key].nVal):
-
                 print("========================================")
                 print("   SpanwiseLocalVar(%s), Value(%d)       " % (key, j))
                 print("========================================")

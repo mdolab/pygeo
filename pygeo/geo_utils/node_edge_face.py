@@ -1,3 +1,4 @@
+# Local modules
 from .norm import eDist
 from .rotation import orientArray
 
@@ -126,7 +127,6 @@ def setNodeValue(arr, value, nodeIndex):
 
 
 def setEdgeValue(arr, values, edgeDir, edgeIndex):
-
     if edgeDir == -1:  # Reverse values
         values = values[::-1]
 
@@ -161,7 +161,6 @@ def setEdgeValue(arr, values, edgeDir, edgeIndex):
 
 
 def setFaceValue(arr, values, faceDir, faceIndex):
-
     # Orient the array first according to the dir:
 
     values = orientArray(faceDir, values)
@@ -183,7 +182,6 @@ def setFaceValue(arr, values, faceDir, faceIndex):
 
 
 def setFaceValue2(arr, values, faceDir, faceIndex):
-
     # Orient the array first according to the dir:
 
     values = orientArray(faceDir, values)
@@ -263,7 +261,6 @@ class EdgeCmpObject:
         return "Node1: %d Node2: %d MidPt: %f %f %f" % (self.n1, self.n2, self.midPt[0], self.midPt[1], self.midPt[2])
 
     def __lt__(self, other):
-
         if self.n1 != other.n1:
             return self.n1 < other.n1
 
@@ -315,7 +312,6 @@ class FaceCmpObject:
         )
 
     def __lt__(self, other):
-
         if self.n1 != other.n1:
             return self.n1 < other.n1
 

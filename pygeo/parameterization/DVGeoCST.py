@@ -6,34 +6,29 @@ DVGeo: CST Parameterisation
 @Description : A DVGeo implementation based on the Class-Shape Transformation method
 """
 
-# ==============================================================================
-# Standard Python modules
-# ==============================================================================
-
-# ==============================================================================
-# External Python modules
-# ==============================================================================
-import numpy as np
+# External modules
 from mpi4py import MPI
+import numpy as np
 from scipy.special import factorial
 
 try:
-    from prefoil.utils import readCoordFile
+    # External modules
     from prefoil.airfoil import Airfoil
+    from prefoil.utils import readCoordFile
+
+    prefoilInstalled = True
 except ImportError:
-    raise ImportError("preFoil is required to use DVGeometryCST")
+    prefoilInstalled = False
 
 try:
+    # External modules
     import matplotlib.pyplot as plt
 
     pltImport = True
-except ModuleNotFoundError:
+except ImportError:
     pltImport = False
 
-
-# ==============================================================================
-# Extension modules
-# ==============================================================================
+# Local modules
 from .BaseDVGeo import BaseDVGeometry
 from .designVars import cstDV
 
@@ -102,6 +97,10 @@ class DVGeometryCST(BaseDVGeometry):
         debug=False,
         tolTE=60.0,
     ):
+        # Check if preFoil is installed before initializing.
+        if not prefoilInstalled:
+            raise ImportError("preFoil is not installed and is required to use DVGeometryCST.")
+
         super().__init__(datFile)
         self.xIdx = idxChord
         self.yIdx = idxVertical
@@ -287,7 +286,7 @@ class DVGeometryCST(BaseDVGeometry):
         boundTol : float, optional
             Small absolute deviation by which the airfoil coordinates can exceed the initial
             minimum and maximum x coordinates, by default 1e-10.
-        kwargs
+        \*\*kwargs
             Any other parameters are ignored.
         """
         # Convert points to the type specified at initialization (with isComplex) and store the points
@@ -557,7 +556,7 @@ class DVGeometryCST(BaseDVGeometry):
             If you have many to do, it is faster to do many at once.
         ptSetName : str
             The name of set of points we are dealing with
-        kwargs
+        \*\*kwargs
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
 
@@ -692,7 +691,7 @@ class DVGeometryCST(BaseDVGeometry):
               values are the derivative seeds of the corresponding design variable.
         ptSetName : str
             The name of set of points we are dealing with
-        kwargs
+        \*\*kwargs
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
 
@@ -800,7 +799,7 @@ class DVGeometryCST(BaseDVGeometry):
         ptSetName : str
             Name of point-set to return. This must match ones of the
             given in an :func:`addPointSet()` call.
-        kwargs
+        \*\*kwargs
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
 
@@ -1208,7 +1207,7 @@ class DVGeometryCST(BaseDVGeometry):
             Number of coordinates to compute on each surface.
         ax : matplotlib Axes, optional
             Axes on which to plot airfoil.
-        **kwargs
+        \*\*kwargs
             Keyword arguments passed to matplotlib.pyplot.plot
 
         Returns

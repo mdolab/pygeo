@@ -1,15 +1,21 @@
+# Standard Python modules
+from collections import OrderedDict
+import copy
 import os
 import shutil
 import unittest
-import numpy as np
+
+# External modules
 from baseclasses import BaseRegTest
 import commonUtils
-from pygeo import DVGeometry, DVConstraints
+import numpy as np
 from stl import mesh
+
+# First party modules
+from pygeo import DVConstraints, DVGeometry
 
 
 class RegTestPyGeo(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):
@@ -862,6 +868,129 @@ class RegTestPyGeo(unittest.TestCase):
             FFD_coords = DVGeo.FFD.coef.copy()
 
             handler.root_add_val("Updated FFD coordinates", FFD_coords, rtol=1e-12, atol=1e-12)
+
+    def train_25_composite(self, train=True, refDeriv=True):
+        self.test_25_composite(train=train, refDeriv=refDeriv)
+
+    def test_25_composite(self, train=False, refDeriv=False):
+        """
+        D8 test with DVComposite
+        """
+
+        refFile = os.path.join(self.base_path, "ref/test_DVGeometry_25.ref")
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test composite DVs")
+            DVGeo, DVGeoChild = commonUtils.setupDVGeoD8(self.base_path, refDeriv)
+
+            # create global DVs on the parent
+            axisX = [0.0, 26.0, 30.5, 32.5, 34.0]
+            DVGeo.addGlobalDV("mainX", axisX, commonUtils.mainAxisPoints, lower=0.0, upper=35.0, scale=1.0)
+
+            self.assertIsNotNone(DVGeo)
+
+            # create test points
+            nPoints = 50
+            points = np.zeros([nPoints, 3])
+            for i in range(nPoints):
+                nose = 0.01
+                tail = 34.0
+                delta = (tail - nose) / nPoints
+                points[i, :] = [nose + i * delta, 1.0, 0.5]
+
+            # add points to the geometry object
+            ptName = "test_points"
+            DVGeo.addPointSet(points, ptName)
+            dh = 1e-6
+
+            DVGeo.addCompositeDV("ffdComp", "test_points")
+
+            # We will have nNodes*3 many functions of interest...
+            # dIdpt = np.random.rand(1, npts, 3)
+            dIdpt = np.zeros((nPoints * 3, nPoints, 3))
+
+            # set the seeds to one in the following fashion:
+            # first function of interest gets the first coordinate of the first point
+            # second func gets the second coord of first point etc....
+            for i in range(nPoints):
+                for j in range(3):
+                    dIdpt[i * 3 + j, i, j] = 1
+
+            # first get the dvgeo result
+            funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
+
+            # now perturb the design with finite differences and compute FD gradients
+            DVGeo.useComposite = False
+            DVGeo_DV = DVGeo.getValues()
+            DVs = OrderedDict()
+
+            for dvName in DVGeo_DV:
+                DVs[dvName] = DVGeo_DV[dvName]
+
+            funcSensFD = {}
+
+            inDict = copy.deepcopy(DVs)
+            userVec = DVGeo.convertDictToSensitivity(inDict)
+            DVvalues = DVGeo.convertSensitivityToDict(userVec.reshape(1, -1), out1D=True, useCompositeNames=False)
+
+            # We flag the composite DVs to be false to not to make any changes on default mode.
+
+            count = 0
+            for x in DVvalues:
+                # perturb the design
+                xRef = DVvalues[x].copy()
+                DVvalues[x] += dh
+
+                DVGeo.setDesignVars(DVvalues)
+
+                # get the new points
+                coorNew = DVGeo.update("test_points")
+
+                # calculate finite differences
+                funcSensFD[x] = (coorNew.flatten() - points.flatten()) / dh
+
+                # set back the DV
+                DVvalues[x] = xRef.copy()
+                count = count + 1
+            funcSensFD = commonUtils.totalSensitivityFD(DVGeo, nPoints * 3, ptName, step=1e-6)
+
+            DVGeo.useComposite = True
+
+            biggest_deriv = 1e-16
+
+            DVCount = DVGeo.getNDV()
+
+            funcSensFDMat = np.zeros((coorNew.size, DVCount), dtype="d")
+
+            i = 0
+
+            for key in DVGeo_DV:
+                nVal = len(DVGeo_DV[key])
+                funcSensFDMat[:, i : i + nVal] = funcSensFD[key]
+                i += 1
+
+            # Now we need to map our FD derivatives to composite
+            funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
+            funcSensFDDict = DVGeo.convertSensitivityToDict(funcSensFDMat, useCompositeNames=True)
+
+            # Now we check how much the derivatives deviates from each other
+            counter = 0
+            for x in [DVGeo.DVComposite.name]:
+                err = np.array(funcSens[x]) - np.array(funcSensFDDict[x])
+                maxderiv = np.max(np.abs(funcSens[x]))
+
+                if maxderiv > biggest_deriv:
+                    biggest_deriv = maxderiv
+                handler.assert_allclose(err, 0.0, name=f"{x}_grad_error", rtol=1e-10, atol=1e-6)
+                counter = counter + 1
+
+            # make sure that at least one derivative is nonzero
+            self.assertGreater(biggest_deriv, 0.005)
+
+            # composite DV
+            DVGeo.complex = False
+            Composite_FFD = DVGeo.getValues()
+            handler.root_add_val("Composite DVs :", Composite_FFD["ffdComp"], rtol=1e-12, atol=1e-12)
 
     def test_demoDesignVars(self):
         DVGeo, DVGeoChild = commonUtils.setupDVGeo(self.base_path)

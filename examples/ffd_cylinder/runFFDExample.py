@@ -1,6 +1,9 @@
-from pygeo import DVGeometry
-import numpy as np
+# External modules
 import matplotlib.pyplot as plt
+import numpy as np
+
+# First party modules
+from pygeo import DVGeometry
 
 # create a pointset. pointsets are of shape npts by 3 (the second dim is xyz coordinate)
 # we'll generate a cylinder in parametric coordinates

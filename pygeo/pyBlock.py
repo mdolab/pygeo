@@ -1,16 +1,19 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import os
+# Standard Python modules
 import copy
+import os
+
+# External modules
+from baseclasses.utils import Error
 import numpy as np
+from pyspline import Volume
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot3D
 from scipy import sparse
 from scipy.sparse import linalg
-from pyspline import Volume
-from pyspline.utils import openTecplot, writeTecplot3D, closeTecplot
-from .geo_utils import readNValues, blendKnotVectors
+from scipy.spatial import ConvexHull
+
+# Local modules
+from .geo_utils import blendKnotVectors, readNValues
 from .topology import BlockTopology
-from baseclasses.utils import Error
 
 
 class pyBlock:
@@ -48,7 +51,6 @@ class pyBlock:
     """
 
     def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
-
         self.initType = initType
         self.FFD = False
         self.topo = None  # The topology of the volumes/surface
@@ -290,7 +292,7 @@ class pyBlock:
         NN = sparse.csr_matrix((vals, colInd, rowPtr))
         NNT = NN.T
         NTN = NNT * NN
-        solve = linalg.dsolve.factorized(NTN)
+        solve = linalg.factorized(NTN)
         self.coef = np.zeros((nCtl, 3))
         for idim in range(3):
             self.coef[:, idim] = solve(NNT * pts[:, idim])
@@ -422,7 +424,6 @@ class pyBlock:
             for ivol in range(self.nVol):
                 for iedge in range(12):
                     if self.topo.edges[self.topo.edgeLink[ivol][iedge]].dg == idg:
-
                         if self.topo.edgeDir[ivol][iedge] == -1:
                             flip.append(True)
                         else:
@@ -449,7 +450,6 @@ class pyBlock:
             for ivol in range(self.nVol):
                 for iedge in range(12):
                     if self.topo.edges[self.topo.edgeLink[ivol][iedge]].dg == idg:
-
                         if iedge in [0, 1, 4, 5]:
                             if flip[counter]:
                                 self.vols[ivol].tu = newKnotVecFlip.copy()
@@ -784,7 +784,7 @@ class pyBlock:
         ptSetName : str
             The name given to this set of coordinates.
         interiorOnly : bool
-            Project only points that lie fully inside the volume
+            Only embed points that lie fully inside the volume
         embTol : float
             Tolerance on the distance between projected and closest point.
             Determines if a point is embedded or not in the FFD volume if interiorOnly is True.
@@ -798,9 +798,8 @@ class pyBlock:
 
         # Project Points, if some were actually passed in:
         if coordinates is not None:
-            checkErrors = not interiorOnly
             mask = None
-            volID, u, v, w, D = self.projectPoints(coordinates, checkErrors, embTol, eps, nIter)
+            volID, u, v, w, D = self.projectPoints(coordinates, interiorOnly, embTol, eps, nIter)
 
             if interiorOnly:
                 # Create the mask before creating the embedded volume
@@ -817,7 +816,7 @@ class pyBlock:
     #             Geometric Functions
     # ----------------------------------------------------------------------
 
-    def projectPoints(self, x0, checkErrors, embTol, eps, nIter):
+    def projectPoints(self, x0, interiorOnly, embTol, eps, nIter):
         """Project a set of points x0, into any one of the volumes. It
         returns the the volume ID, u, v, w, D of the point in volID or
         closest to it.
@@ -834,9 +833,6 @@ class pyBlock:
         ----------
         x0 : array of points (Nx3 array)
             The list or array of points to use
-        checkErrors : bool
-            Flag to print out the error is points have not been projected
-            to the tolerance defined by embTol.
 
         See Also
         --------
@@ -858,7 +854,31 @@ class pyBlock:
         v0 = 0.0
         w0 = 0.0
 
+        # If we are only interested in interior points, we skip projecting exterior points to save time.
+        # We identify exterior points by checking if they are outside the convex hull of the control points.
+        # A point can be inside the convex hull but still outside the FFD volume(s).
+        # In this case, we rely on the more costly projection approach to identify the exterior points.
+        if interiorOnly:
+            # Compute the convex hull of all control points
+            hull = ConvexHull(self.coef)
+
+            # ConvexHull.equations describes the planes that define the faces of the convex hull
+            # Extract the normal vector and offset for each plane
+            hullNormals = hull.equations[:, :-1]
+            hullOffsets = hull.equations[:, -1]
+
+            # The normals point outside the convex hull, so a point is inside the convex hull if the distance in the
+            # normal direction from the point to every plane defining the convex hull is negative.
+            # This is computed in a vectorized manner below.
+            # The offset is negative in the normal direction, so we add the offset instead of subtracting.
+            distanceToPlanes = np.dot(x0, hullNormals.T) + hullOffsets
+            isInsideHull = np.all(distanceToPlanes <= eps, axis=1)
+
         for i in range(N):
+            # Do not project this point if it is outside the convex hull and we are only interested in interior points
+            if interiorOnly and not isInsideHull[i]:
+                continue
+
             for j in range(self.nVol):
                 iVol = volList[j]
                 u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter)
@@ -887,10 +907,9 @@ class pyBlock:
             volList = np.hstack([iVol, volList[:j], volList[j + 1 :]])
         # end for (length of x0)
 
-        # If desired check the errors and print warnings:
-        if checkErrors:
-            # Loop back through the points and determine which ones are
-            # bad (> 50*eps) and print them to the screen:
+        # If we are interested in all points, we need to check whether they were all projected properly
+        if not interiorOnly:
+            # Loop back through the points and determine which ones are bad and print them to the screen
             counter = 0
             DMax = 0.0
             DRms = 0.0

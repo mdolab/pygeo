@@ -1,5 +1,10 @@
-import numpy as np
+# Standard Python modules
 import functools
+
+# External modules
+import numpy as np
+
+# Local modules
 from .misc import hangle, isLeft
 
 # --------------------------------------------------------------
@@ -33,7 +38,6 @@ class DCELEdge:
         self.con = [v1, v2]
 
     def __repr__(self):
-
         str1 = f"v1: {self.v1[0]:f} {self.v1[1]:f}\nv2: {self.v2[0]:f} {self.v2[1]:f}"
         return str1
 
@@ -123,7 +127,6 @@ class DCELFace:
         self.centroid = center / counter
 
     def calcSpatialCentroid(self):
-
         h = self.wedge
         center = np.zeros(3)
         center += h.origin.X
@@ -218,7 +221,6 @@ class DCEL:
             multCheck = mult < 2
 
             if np.any(multCheck):
-
                 # We need to do a couple of things:
                 # 1. The bad vertices need to be removed from the vertex list
                 # 2. Remaning vertices must be renamed
@@ -265,7 +267,6 @@ class DCEL:
         appendCount = 0
 
         for e in self.el:
-
             h1 = DCELHedge(self.vertices[e.con[0]], self.vertices[e.con[1]], e.PID, e.uv, e.tag)
             h2 = DCELHedge(self.vertices[e.con[1]], self.vertices[e.con[0]], e.PID, e.uv, e.tag)
 
@@ -321,7 +322,6 @@ class DCEL:
                 self.faces[i].tag = self.faceInfo[i]
 
     def writeTecplot(self, fileName):
-
         f = open(fileName, "w")
         f.write('VARIABLES = "X","Y"\n')
         for i in range(len(self.el)):
@@ -390,7 +390,6 @@ class DCEL:
         return len(self.hedges) // 2
 
     def saveDCEL(self, fileName):
-
         f = open(fileName, "w")
         f.write("%d %d %d\n" % (self.nvertices(), self.nedges(), self.nfaces()))
         for i in range(self.nvertices()):
@@ -443,7 +442,6 @@ class DCEL:
         f.close()
 
     def loadDCEL(self, fileName):
-
         f = open(fileName)
         # Read sizes
         tmp = f.readline().split()

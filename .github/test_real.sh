@@ -2,8 +2,8 @@
 set -e
 ./input_files/get-input-files.sh
 
-# all tests should pass on private
-if [[ $IMAGE == "private" ]] && [[ $OS == "ubuntu" ]]; then
+# All tests should pass on Ubuntu
+if [[ $OS == "ubuntu" ]]; then
     EXTRA_FLAGS='--disallow_skipped'
 fi
 

@@ -4,23 +4,21 @@ DVGeometryCST: Test suite for the DVGeometryCST module.
 ==============================================================================
 """
 
-# ==============================================================================
 # Standard Python modules
-# ==============================================================================
-import unittest
 import os
+import unittest
+
+# External modules
+from mpi4py import MPI
+import numpy as np
 from parameterized import parameterized_class
 
-# ==============================================================================
-# External Python modules
-# ==============================================================================
-import numpy as np
-from mpi4py import MPI
-
-# Try importing prefoil and DVGeometryCST
-prefoilImported = True
 try:
+    # External modules
     from prefoil.utils import readCoordFile
+
+    prefoilImported = True
+    # First party modules
     from pygeo import DVGeometryCST
 except ImportError:
     prefoilImported = False
@@ -49,7 +47,6 @@ DVs = [
 @unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
 @parameterized_class(airfoils)
 class DVGeometryCSTUnitTest(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):

@@ -1,32 +1,44 @@
-import unittest
+# Standard Python modules
+from collections import OrderedDict
+import copy
 import os
-import numpy as np
-from stl import mesh
+import time
+import unittest
+
+# External modules
 from baseclasses import BaseRegTest
 from baseclasses.utils import Error
+import numpy as np
 from parameterized import parameterized_class
-import time
+from stl import mesh
 
 try:
+    # External modules
     from mpi4py import MPI
-except ImportError:
-    MPI = None
 
-if MPI:
+    mpiInstalled = True
+except ImportError:
+    mpiInstalled = False
+
+if mpiInstalled:
     try:
-        import pyOCSM
+        # External modules
+        import pyOCSM  # noqa
+
+        # First party modules
         from pygeo import DVGeometryESP
+
+        ocsmInstalled = True
     except ImportError:
-        pyOCSM = None
+        ocsmInstalled = False
 
 
 test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 @parameterized_class(test_params)
 class TestPyGeoESP_BasicCube(unittest.TestCase):
-
     # to be tested in serial and parallel automatically
     N_PROCS = 1
 
@@ -251,10 +263,130 @@ class TestPyGeoESP_BasicCube(unittest.TestCase):
         for ipt in range(npts):
             self.assertAlmostEqual(np.sum(np.abs(testjac[ipt, :, :] - analyticjac[ipt, :, :])), 0)
 
+    def train_composite(self, train=True):
+        self.test_composite(train=train)
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+    def test_composite(self, train=False):
+        """
+        ESP wing test with DVComposite
+        """
+
+        refFile = os.path.join(self.input_path, "reg_tests/ref/test_DVGeometryESP_02.ref")
+
+        csmFile = os.path.join(self.input_path, "../input_files/esp/box.csm")
+        DVGeo = DVGeometryESP(csmFile)
+        self.assertIsNotNone(DVGeo)
+
+        # add variables with a mix of optional arguments
+        DVGeo.addVariable("cubex0", lower=np.array([-10.0]), upper=np.array([10.0]), scale=0.1, dh=0.0001)
+        self.assertEqual(DVGeo.getNDV(), 1)
+        DVGeo.addVariable("cubey0")
+        self.assertEqual(DVGeo.getNDV(), 2)
+        DVGeo.addVariable("cubez0", lower=np.array([-10.0]), upper=np.array([10.0]))
+        self.assertEqual(DVGeo.getNDV(), 3)
+
+        _, initpts = self.setup_cubemodel()
+
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("ESP NACA 0012 composite derivative test")
+            dh = 1e-6
+            # extract node coordinates and save them in a numpy array
+            npts = initpts.shape[0]
+
+            coor = initpts
+            # Add this pointSet to DVGeo
+            DVGeo.addPointSet(coor, "test_points")
+            DVGeo.addCompositeDV("espComp", "test_points")
+
+            # We will have nNodes*3 many functions of interest...
+            dIdpt = np.zeros((npts * 3, npts, 3))
+
+            # set the seeds to one in the following fashion:
+            # first function of interest gets the first coordinate of the first point
+            # second func gets the second coord of first point etc....
+            for i in range(npts):
+                for j in range(3):
+                    dIdpt[i * 3 + j, i, j] = 1
+            # first get the dvgeo result
+            funcSens = DVGeo.totalSensitivity(dIdpt.copy(), "test_points")
+
+            # now perturb the design with finite differences and compute FD gradients
+            DVs = OrderedDict()
+
+            for dvName in DVGeo.DVs:
+                DVs[dvName] = DVGeo.DVs[dvName].value
+
+            funcSensFD = {}
+
+            inDict = copy.deepcopy(DVs)
+            userVec = DVGeo.convertDictToSensitivity(inDict)
+            DVvalues = DVGeo.convertSensitivityToDict(userVec.reshape(1, -1), out1D=True, useCompositeNames=False)
+
+            # We flag the composite DVs to be false to not to make any changes on default mode.
+            DVGeo.useComposite = False
+
+            count = 0
+            for x in DVvalues:
+                # perturb the design
+                xRef = DVvalues[x].copy()
+                DVvalues[x] += dh
+
+                DVGeo.setDesignVars(DVvalues)
+
+                # get the new points
+                coorNew = DVGeo.update("test_points")
+
+                # calculate finite differences
+                funcSensFD[x] = (coorNew.flatten() - coor.flatten()) / dh
+
+                # set back the DV
+                DVvalues[x] = xRef.copy()
+                count = count + 1
+
+            DVGeo.useComposite = True
+            # now loop over the values and compare
+            # when this is run with multiple procs, VSP sometimes has a bug
+            # that leads to different procs having different spanwise
+            # u-v distributions. as a result, the final values can differ up to 1e-5 levels
+            # this issue does not come up if this tests is ran with a single proc
+            biggest_deriv = 1e-16
+
+            DVCount = DVGeo.getNDV()
+
+            funcSensFDMat = np.zeros((coorNew.size, DVCount), dtype="d")
+            i = 0
+
+            for key in DVGeo.DVs:
+                funcSensFDMat[:, i] = funcSensFD[key].T
+                i += 1
+
+            # Now we need to map our FD derivatives to composite
+            funcSensFDMat = DVGeo.mapSensToComp(funcSensFDMat)
+            funcSensFDDict = DVGeo.convertSensitivityToDict(funcSensFDMat, useCompositeNames=True)
+
+            # Now we check how much the derivatives deviates from each other
+            counter = 0
+            for x in [DVGeo.DVComposite.name]:
+                err = np.array(funcSens[x]) - np.array(funcSensFDDict[x])
+                maxderiv = np.max(np.abs(funcSens[x]))
+                normalizer = np.median(np.abs(funcSensFDDict[x]))
+                if np.abs(normalizer) < 1:
+                    normalizer = np.ones(1)
+                normalized_error = err / normalizer
+                if maxderiv > biggest_deriv:
+                    biggest_deriv = maxderiv
+                handler.assert_allclose(normalized_error, 0.0, name=f"{x}_grad_normalized_error", rtol=1e0, atol=5e-5)
+                counter = counter + 1
+
+            # make sure that at least one derivative is nonzero
+            self.assertGreater(biggest_deriv, 0.005)
+
+            Composite_FFD = DVGeo.getValues()
+            handler.root_add_val("Composite DVs :", Composite_FFD["espComp"], rtol=1e-12, atol=1e-12)
+
+
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
-
     N_PROCS = 3
 
     def setUp(self):
@@ -451,9 +583,8 @@ class TestPyGeoESP_BasicCube_Distributed(unittest.TestCase):
             self.assertAlmostEqual(np.sum(np.abs(testjac[ipt, :, :] - analyticjac[ipt, :, :])), 0)
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
-
     N_PROCS = 4
 
     def setUp(self):
@@ -613,10 +744,9 @@ class TestPyGeoESP_BasicCube_Distributed_OneProcBlank(unittest.TestCase):
                 self.assertAlmostEqual(np.sum(np.abs(DVGeo.DVs[key].value - dvdict_cache[key].value)), 0.0)
 
 
-@unittest.skipUnless(MPI and pyOCSM, "MPI and pyOCSM are required.")
+@unittest.skipUnless(mpiInstalled and ocsmInstalled, "MPI and pyOCSM are required.")
 @parameterized_class(test_params)
 class TestPyGeoESP_NACAFoil(unittest.TestCase):
-
     # serial and parallel handled automatically
     N_PROCS = 1
 

@@ -1,3 +1,4 @@
+# External modules
 import numpy as np
 
 
@@ -159,7 +160,6 @@ def write_wing_FFD_file(fileName, slices, N0, N1, N2, axes=None, dist=None):
 
 
 def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord, absMargins, relMargins, liftIndex):
-
     """
     Generates a wing FFD with chordwise points that follow the airfoil geometry.
 
@@ -221,6 +221,7 @@ def createFittedWingFFD(surf, surfFormat, outFile, leList, teList, nSpan, nChord
     """
 
     # Import inside this function to avoid circular imports
+    # First party modules
     from pygeo import DVConstraints
 
     # Set the triangulated surface in DVCon

@@ -1,13 +1,17 @@
+# Standard Python modules
 import os
 import unittest
-import numpy as np
+
+# External modules
 from baseclasses import BaseRegTest
 import commonUtils
+import numpy as np
+
+# First party modules
 from pygeo import DVGeometry, geo_utils
 
 
 class RegTestPyGeo(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):
@@ -281,7 +285,6 @@ the different test cases.
 
 
 def add_vars(geo, name, translate=False, rotate=None, scale=None, local=None, slocal=False):
-
     if translate:
         dvName = f"translate_{name}"
         geo.addGlobalDV(dvName=dvName, value=[0] * 3, func=f_translate)

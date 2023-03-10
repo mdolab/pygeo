@@ -6,14 +6,18 @@ Enables the use of ESP (Engineering Sketch Pad) and OpenVSP (Open Vehicle Sketch
 
 """
 
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 from abc import abstractmethod
 from collections import OrderedDict
+
+# External modules
 from mpi4py import MPI
+import numpy as np
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
+
+# Local modules
 from .BaseDVGeo import BaseDVGeometry
-from pyspline.utils import openTecplot, closeTecplot, writeTecplot1D
+from .designVars import geoDVComposite
 
 
 class DVGeoSketch(BaseDVGeometry):
@@ -75,6 +79,54 @@ class DVGeoSketch(BaseDVGeometry):
         # Initial list of DVs
         self.DVs = OrderedDict()
 
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, comm=None):
+        """
+        Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
+        at the moment.
+
+        Parameters
+        ----------
+        dvName : str
+            The name of the composite DVs
+        ptSetName : str, optional
+            If the matrices need to be computed, then a point set must be specified, by default None
+        u : ndarray, optional
+            The u matrix used for the composite DV, by default None
+        scale : float or ndarray, optional
+            The scaling applied to this DV, by default None
+        """
+        NDV = self.getNDV()
+
+        if u is not None:
+            # we are after a square matrix
+            if u.shape != (NDV, NDV):
+                raise ValueError(f"The shapes don't match! Got shape = {u.shape} but NDV = {NDV}")
+            if scale is None:
+                raise ValueError("If u is provided, then scale must also be provided.")
+            s = None
+        else:
+            if ptSetName is None:
+                raise ValueError("If u and s need to be computed, you must specify the ptSetName")
+            if not self.updatedJac[ptSetName]:
+                self._computeSurfJacobian()
+
+            J_full = self.pointSets[ptSetName].jac
+
+            u, s, _ = np.linalg.svd(J_full.T, full_matrices=False)
+
+            scale = np.sqrt(s)
+            # normalize the scaling
+            scale = scale * (NDV / np.sum(scale))
+
+        # map the initial design variable values
+        # we do this manually instead of calling self.mapVecToComp
+        # because self.DVComposite.u isn't available yet
+        values = u.T @ self.convertDictToSensitivity(self.getValues())
+
+        self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
+
+        self.useComposite = True
+
     def getValues(self):
         """
         Generic routine to return the current set of design
@@ -90,6 +142,9 @@ class DVGeoSketch(BaseDVGeometry):
         for dvName in self.DVs:
             dvDict[dvName] = self.DVs[dvName].value
 
+        if self.useComposite:
+            dvDict = self.mapXDictToComp(dvDict)
+
         return dvDict
 
     def getVarNames(self, pyOptSparse=False):
@@ -101,7 +156,89 @@ class DVGeoSketch(BaseDVGeometry):
         --------
         >>> optProb.addCon(.....wrt=DVGeo.getVarNames())
         """
-        return list(self.DVs.keys())
+        if not self.useComposite:
+            names = list(self.DVs.keys())
+        else:
+            names = [self.DVComposite.name]
+
+        return names
+
+    def convertDictToSensitivity(self, dIdxDict):
+        """
+        This function performs the reverse operation of
+        convertSensitivityToDict(); it transforms the dictionary back
+        into an array. This function is important for the matrix-free
+        interface.
+
+        Parameters
+        ----------
+        dIdxDict : dictionary
+           Dictionary of information keyed by this object's
+           design variables
+
+        Returns
+        -------
+        dIdx : array
+           Flattened array of length getNDV().
+        """
+        DVCount = self.getNDV()
+
+        dIdx = np.zeros(DVCount, dtype="d")
+        i = 0
+        for key in self.DVs:
+            dv = self.DVs[key]
+            dIdx[i : i + dv.nVal] = dIdxDict[key]
+            i += dv.nVal
+
+        return dIdx
+
+    def convertSensitivityToDict(self, dIdx, out1D=False, useCompositeNames=False):
+        """
+        This function takes the result of totalSensitivity and
+        converts it to a dict for use in pyOptSparse
+
+        Parameters
+        ----------
+        dIdx : array
+           Flattened array of length getNDV(). Generally it comes from
+           a call to totalSensitivity()
+        out1D : boolean
+            If true, creates a 1D array in the dictionary instead of 2D.
+            This function is used in the matrix-vector product calculation.
+        useCompositeNames : boolean
+            Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
+            If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
+            If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
+
+        Returns
+        -------
+        dIdxDict : dictionary
+           Dictionary of the same information keyed by this object's
+           design variables
+        """
+
+        # compute the various DV offsets
+        # DVCountGlobal= self._getDVOffsets()
+
+        i = 0
+        dIdxDict = {}
+        for key in self.DVs:
+            dv = self.DVs[key]
+            if out1D:
+                dIdxDict[key] = np.ravel(dIdx[:, i : i + dv.nVal])
+            else:
+                dIdxDict[key] = np.array(dIdx[:, i : i + dv.nVal])
+            i += dv.nVal
+
+        # replace other names with user
+        if useCompositeNames and self.useComposite:
+            array = []
+            for _key, val in dIdxDict.items():
+                array.append(val)
+            array = np.column_stack(array)
+            dIdxDict = {self.DVComposite.name: array}
+
+        return dIdxDict
 
     @abstractmethod
     def addVariable(self):
@@ -119,9 +256,37 @@ class DVGeoSketch(BaseDVGeometry):
         optProb : pyOpt_optimization class
             Optimization problem definition to which variables are added
         """
-        for dvName in self.DVs:
-            dv = self.DVs[dvName]
+        # add the linear DV constraints that replace the existing bounds!
+        if self.useComposite:
+            dv = self.DVComposite
             optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            lb = {}
+            ub = {}
+
+            for dvName in self.DVs:
+                dv = self.DVs[dvName]
+                lb[dvName] = dv.lower
+                ub[dvName] = dv.upper
+
+            lb = self.convertDictToSensitivity(lb)
+            ub = self.convertDictToSensitivity(ub)
+
+            optProb.addConGroup(
+                f"{self.DVComposite.name}_con",
+                self.getNDV(),
+                lower=lb,
+                upper=ub,
+                scale=1.0,
+                linear=True,
+                wrt=self.DVComposite.name,
+                jac={self.DVComposite.name: self.DVComposite.u},
+            )
+        else:
+            for dvName in self.DVs:
+                dv = self.DVs[dvName]
+                optProb.addVarGroup(
+                    dvName, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                )
 
     def writePointSet(self, name, fileName):
         """

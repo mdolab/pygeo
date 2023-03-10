@@ -1,24 +1,35 @@
+# Standard Python modules
 import os
 import unittest
-import numpy as np
+
+# External modules
 from baseclasses import BaseRegTest
-from pygeo import DVGeometry, DVConstraints
-from stl import mesh
+import numpy as np
 from parameterized import parameterized_class
+from stl import mesh
+
+# First party modules
+from pygeo import DVConstraints, DVGeometry
 
 try:
+    # External modules
     import geograd  # noqa: F401
 
-    missing_geograd = False
+    geogradInstalled = True
 except ImportError:
-    missing_geograd = True
+    geogradInstalled = False
 
 try:
-    from pygeo import DVGeometryMulti
+    # External modules
+    import pysurf  # noqa: F401
 
-    missing_pysurf = False
+    pysurfInstalled = True
 except ImportError:
-    missing_pysurf = True
+    pysurfInstalled = False
+
+if pysurfInstalled:
+    # First party modules
+    from pygeo import DVGeometryMulti
 
 
 def evalFunctionsSensFD(DVGeo, DVCon, fdstep=1e-2):
@@ -97,31 +108,31 @@ def generic_test_base(DVGeo, DVCon, handler, checkDerivs=True, fdstep=1e-4):
     return funcs, funcsSens
 
 
-@parameterized_class(
-    [
-        {
-            # Standard one-level FFD
-            "name": "standard",
-            "child": False,
-            "multi": False,
-        },
-        {
-            # Deforming child FFD with a stationary parent FFD
-            "name": "child",
-            "child": True,
-            "multi": False,
-        },
-        {
-            # One deforming component FFD and a stationary component FFD
-            # The components do not intersect
-            "name": "multi",
-            "child": False,
-            "multi": True,
-        },
-    ]
-)
-class RegTestPyGeo(unittest.TestCase):
+test_params = [
+    {
+        # Standard one-level FFD
+        "name": "standard",
+        "child": False,
+        "multi": False,
+    },
+    {
+        # Deforming child FFD with a stationary parent FFD
+        "name": "child",
+        "child": True,
+        "multi": False,
+    },
+    {
+        # One deforming component FFD and a stationary component FFD
+        # The components do not intersect
+        "name": "multi",
+        "child": False,
+        "multi": True,
+    },
+]
 
+
+@parameterized_class(test_params)
+class RegTestPyGeo(unittest.TestCase):
     N_PROCS = 1
 
     def setUp(self):
@@ -131,7 +142,7 @@ class RegTestPyGeo(unittest.TestCase):
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
         # Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
-        if self.multi and missing_pysurf:
+        if self.multi and not pysurfInstalled:
             self.skipTest("requires pySurf")
 
     def generate_dvgeo_dvcon(self, geometry, addToDVGeo=False, intersected=False):
@@ -830,7 +841,7 @@ class RegTestPyGeo(unittest.TestCase):
                 atol=1e-7,
             )
 
-    @unittest.skipIf(missing_geograd, "requires geograd")
+    @unittest.skipUnless(geogradInstalled, "requires geograd")
     def test_triangulatedSurface(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -847,7 +858,7 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
-    @unittest.skipIf(missing_geograd, "requires geograd")
+    @unittest.skipUnless(geogradInstalled, "requires geograd")
     def test_triangulatedSurface_intersected(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -895,7 +906,6 @@ class RegTestPyGeo(unittest.TestCase):
     def test_curvature(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_curvature.ref")
         with BaseRegTest(refFile, train=train) as handler:
-
             # Use the RAE 2822 wing because we have a PLOT3D surface file for it
             DVGeo, DVCon = self.generate_dvgeo_dvcon("rae2822", addToDVGeo=True)
             surfFile = os.path.join(self.base_path, "../../input_files/deform_geometry_wing.xyz")
@@ -911,7 +921,6 @@ class RegTestPyGeo(unittest.TestCase):
     def test_curvature1D(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_curvature1D.ref")
         with BaseRegTest(refFile, train=train) as handler:
-
             # Use the RAE 2822 wing because we have a PLOT3D surface file for it
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172", addToDVGeo=True)
 
@@ -949,9 +958,8 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
 
-@unittest.skipIf(missing_geograd, "requires geograd")
+@unittest.skipUnless(geogradInstalled, "requires geograd")
 class RegTestGeograd(unittest.TestCase):
-
     N_PROCS = 1
 
     def setUp(self):

@@ -1,10 +1,10 @@
+# External modules
 import numpy as np
 from pyspline.utils import bilinearSurface
 
 
 class PointSelect:
     def __init__(self, psType, *args, **kwargs):
-
         """Initialize a control point selection class. There are several ways
         to initialize this class depending on the 'type' qualifier:
 
@@ -120,12 +120,10 @@ class PointSelect:
                 raise ValueError("The indices provided to pointSelect are not unique.")
 
         elif psType == "ijkBounds":
-
             self.ijkBounds = kwargs["ijkBounds"]  # Store the ijk bounds dictionary
             self.type = "ijkBounds"
 
     def getPoints(self, points):
-
         """Take in a list of points and return the ones that statify
         the point select class."""
         ptList = []
@@ -151,7 +149,6 @@ class PointSelect:
         return ptList, indList
 
     def getPoints_ijk(self, DVGeo):
-
         """Receives a DVGeo object (with an embedded FFD) and uses the ijk bounds specified in the initialization to extract
         the corresponding indices.
 
@@ -164,7 +161,6 @@ class PointSelect:
 
         # Loop over every dictionary entry to get cooresponding indices
         for iVol in self.ijkBounds:
-
             # Get current bounds
             ilow = self.ijkBounds[iVol][0][0]
             ihigh = self.ijkBounds[iVol][0][1]
