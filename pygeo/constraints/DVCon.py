@@ -3139,7 +3139,7 @@ class DVConstraints:
         self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childIdx=None, comp=None, DVGeoName="default"
     ):
         """
-        Add monotonic constraints to a give design variable.
+        Add monotonic constraints to a given design variable.
 
         Parameters
         ----------
