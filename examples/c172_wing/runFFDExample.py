@@ -1,6 +1,7 @@
 # External modules
 import numpy as np
 from stl import mesh
+from copy import deepcopy
 
 # First party modules
 from pygeo import DVGeometry
@@ -45,6 +46,75 @@ stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
 stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
 stlmesh.save("local_wing.stl")
 DVGeo.writeTecplot("local_ffd.dat")
+
+
+# add shape function DVs
+DVGeo, stlmesh = create_fresh_dvgeo()
+# create the shape functions. to demonstrate the capability, we add 2 shape functions. each
+# adds a bump to a spanwise section, and then the two neighboring spanwise sections also get
+# half of the perturbation.
+
+# this array can be access as [i,j,k] that follows the FFD volume's topology, and returns the global
+# coef indices, which is what we need to set the shape
+lidx = DVGeo.getLocalIndex(0)
+
+# create the dictionaries
+shape_1 = {}
+shape_2 = {}
+
+k_center = 4
+i_center = 5
+n_chord = lidx.shape[0]
+
+for kk in [-1, 0, 1]:
+    if kk == 0:
+        k_weight = 1.0
+    else:
+        k_weight = 0.5
+
+    for ii in range(n_chord):
+        # compute the chord weight. we want the shape to peak at i_center
+        if ii == i_center:
+            i_weight = 1.0
+        elif ii < i_center:
+            # we are ahead of the center point
+            i_weight = ii / i_center
+        else:
+            # we are behind the center point
+            i_weight = (n_chord - ii - 1) / (n_chord - i_center - 1)
+
+        # get the direction vectors with unit length
+        dir_up = np.array([0.0, 1.0, 0.0])
+        # dir down can also be defined as an upwards pointing vector. Then, the DV itself
+        # getting a negative value means the surface would move down etc. For now, we define
+        # the vector as its pointing down, so a positive DV value moves the surface down.
+        dir_down = np.array([0.0, -1.0, 0.0])
+
+        # scale them by the i and k weights
+        dir_up *= k_weight * i_weight
+        dir_down *= k_weight * i_weight
+
+        # get this point's global index and add to the dictionary with the direction vector.
+        gidx_up = lidx[ii, 1, kk + k_center]
+        gidx_down = lidx[ii, 0, kk + k_center]
+
+        shape_1[gidx_up] = dir_up
+        # the lower face is perturbed with a separate dictionary
+        shape_2[gidx_down] = dir_down
+
+shapes = [shape_1, shape_2]
+DVGeo.addShapeFunctionDV("shape_func", shapes)
+
+dvdict = DVGeo.getValues()
+dvdict["shape_func"] = np.array([0.3, 0.2])
+DVGeo.setDesignVars(dvdict)
+
+# write out to data files for visualization
+stlmesh.vectors[:, 0, :] = DVGeo.update("mesh_v0")
+stlmesh.vectors[:, 1, :] = DVGeo.update("mesh_v1")
+stlmesh.vectors[:, 2, :] = DVGeo.update("mesh_v2")
+stlmesh.save("shape_func_wing.stl")
+DVGeo.writeTecplot("shape_func_ffd.dat")
 
 # rst ref axis
 DVGeo, stlmesh = create_fresh_dvgeo()
