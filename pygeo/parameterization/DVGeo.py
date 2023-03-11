@@ -16,7 +16,7 @@ from scipy.spatial import cKDTree
 # Local modules
 from .. import geo_utils, pyBlock, pyNetwork
 from .BaseDVGeo import BaseDVGeometry
-from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal
+from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal, geoDVShapeFunc
 
 
 class DVGeometry(BaseDVGeometry):
@@ -1414,6 +1414,82 @@ class DVGeometry(BaseDVGeometry):
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
         self.useComposite = True
+
+    def addShapeFunctionDV(
+            self,
+            dvName,
+            shapes,
+            lower=None,
+            upper=None,
+            scale=1.0,
+            config=None,
+    ):
+        """
+        Add one or more local design variables ot the DVGeometry
+        object. Local variables are used for small shape modifications.
+
+        Parameters
+        ----------
+        dvName : str
+            A unique name to be given to this design variable group
+
+        shapes : list of dictionaries, or a single dictionary
+            If a single dictionary is provided, it will be converted to a
+            list with a single entry. The dictionaries in the list provide
+            the shape functions for each DV; so a list with N dictionaries
+            will result in N DVs. The dictionary keys are global point indices,
+            and the values are 3d numpy arrays that prescribe the direction
+            of the shape function displacement for that node. The magnitudes
+            of the arrays determine how much the FFD point moves with a
+            unit change in the DV. If an FFD point is controlled by multiple
+            shape DVs, the changes from each shape function is superposed
+            in the order shape functions are sorted in the list.
+
+        lower : float, or array size (N)
+            The lower bound for the variable(s). If a single float is provided,
+            it will be applied to all shape variables. If an array is provided,
+            it will be applied to each individual shape function.
+
+        upper : float, or array size (N)
+            The upper bound for the variable(s). If a single float is provided,
+            it will be applied to all shape variables. If an array is provided,
+            it will be applied to each individual shape function.
+
+        scale : float, or array size (N)
+            The scaling of the variables. A good approximate scale to
+            start with is approximately 1.0/(upper-lower). This gives
+            variables that are of order ~1.0. If a single value is provided,
+            it will be applied to all shape functions.
+
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable applies to *ALL* configurations.
+
+        Returns
+        -------
+        N : int
+            The number of design variables added.
+
+        Examples
+        --------
+        >>> # TODO add example use
+        """
+        if self.name is not None:
+            dvName = self.name + "_" + dvName
+
+        if isinstance(config, str):
+            config = [config]
+
+        # convert the input shapes to a list if a single dictionary is provided.
+        if isinstance(shapes, dict):
+            shapes = [shapes]
+
+        # this is treated the same way as local DVs
+        self.DV_listLocal[dvName] = geoDVShapeFunc(dvName, shapes, lower, upper, scale, self.masks, config)
+
+        return self.DV_listLocal[dvName].nVal
 
     def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8, getSymmPlane=False):
         """

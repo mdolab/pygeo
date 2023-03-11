@@ -296,6 +296,42 @@ class geoDVComposite(geoDV):
         self.s = s
 
 
+class geoDVShapeFunc(geoDV):
+    def __init__(self, name, shapes, lower, upper, scale, mask, config):
+        """
+        Create a set of geometric design variables which change the shape
+        of a surface surface_id. Local design variables change the surface
+        in all three axis.
+        See addLocalDV for more information
+
+        """
+
+        nVal = len(shapes)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
+
+        self.config = config
+        self.shapes = shapes
+
+    def __call__(self, coef, config):
+        """When the object is called, apply the design variable values to
+        coefficients"""
+        if self.config is None or config is None or any(c0 == config for c0 in self.config):
+            # loop over the shapes and add the perturbations to each coef
+            for ii, shape in enumerate(self.shapes):
+                for ind, dir in shape.items():
+                    coef[ind] += dir * self.value[ii].real
+
+        return coef
+
+    def updateComplex(self, coef, config):
+        if self.config is None or config is None or any(c0 == config for c0 in self.config):
+            for ii, shape in enumerate(self.shapes):
+                for ind, dir in shape.items():
+                    coef[ind] += dir * self.value[ii].imag * 1j
+
+        return coef
+
+
 class espDV(geoDV):
     def __init__(self, csmDesPmtr, name, value, lower, upper, scale, rows, cols, dh, globalstartind):
         """
