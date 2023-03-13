@@ -303,8 +303,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             name=name,
         )
 
-        self.add_output(f"{name}_KS", distributed=False, val=0, shape=1)
-        self.add_output(f"{name}_perim", distributed=False, val=0, shape=1)
+        self.add_output(f"{name}_KS", distributed=False, val=0)
+        self.add_output(f"{name}_perim", distributed=False, val=0)
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
