@@ -215,10 +215,12 @@ class BaseDVGeometry(ABC):
     def mapXDictToComp(self, inDict):
         """
         The inverse of :func:`mapXDictToDVGeo`, where we map the DVs to the composite space
+
         Parameters
         ----------
         inDict : dict
             The DVs to be mapped
+
         Returns
         -------
         dict
@@ -234,10 +236,12 @@ class BaseDVGeometry(ABC):
     def mapVecToDVGeo(self, inVec):
         """
         This is the vector version of :func:`mapXDictToDVGeo`, where the actual mapping is done
+
         Parameters
         ----------
         inVec : ndarray
             The DVs in a single 1D array
+
         Returns
         -------
         ndarray
@@ -250,10 +254,12 @@ class BaseDVGeometry(ABC):
     def mapVecToComp(self, inVec):
         """
         This is the vector version of :func:`mapXDictToComp`, where the actual mapping is done
+
         Parameters
         ----------
         inVec : ndarray
             The DVs in a single 1D array
+
         Returns
         -------
         ndarray
@@ -266,10 +272,12 @@ class BaseDVGeometry(ABC):
     def mapSensToComp(self, inVec):
         """
         Maps the sensitivity matrix to the composite design space
+
         Parameters
         ----------
         inVec : ndarray
             The sensitivities to be mapped
+
         Returns
         -------
         ndarray

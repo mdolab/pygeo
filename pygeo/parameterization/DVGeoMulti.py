@@ -5,6 +5,7 @@ from collections import OrderedDict
 from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
+from scipy import sparse
 
 try:
     # External modules
@@ -652,8 +653,6 @@ class DVGeometryMulti:
         """
 
         # Compute the total Jacobian for this point set
-        # TODO: this can be done without converting sparse matrices to dense
-        # or with a function for mat-vec products with all DVGeos
         self._computeTotalJacobian(ptSetName)
 
         # Make dIdpt at least 3D
@@ -878,8 +877,8 @@ class DVGeometryMulti:
         # number of design variables
         nDV = self.getNDV()
 
-        # allocate space for the jacobian.
-        jac = np.zeros((self.points[ptSetName].nPts * 3, nDV))
+        # Initialize the Jacobian as a LIL matrix because this is convenient for indexing
+        jac = sparse.lil_matrix((self.points[ptSetName].nPts * 3, nDV))
 
         # ptset
         ptSet = self.points[ptSetName]
@@ -894,16 +893,17 @@ class DVGeometryMulti:
             self.comps[comp].DVGeo.computeTotalJacobian(ptSetName)
 
             if self.comps[comp].DVGeo.JT[ptSetName] is not None:
-                # We convert to dense storage
-                # This is not the best way to do this
-                # TODO: use sparse storage for these
-                compJ = self.comps[comp].DVGeo.JT[ptSetName].todense().T
+                # Get the component Jacobian
+                compJ = self.comps[comp].DVGeo.JT[ptSetName].T
 
-                # do it (kinda) vectorized
-                jac[ptSet.compMapFlat[comp], dvOffset : dvOffset + nDVComp] = compJ[:, :]
+                # Set the block of the full Jacobian associated with this component
+                jac[ptSet.compMapFlat[comp], dvOffset : dvOffset + nDVComp] = compJ
 
             # increment the offset
             dvOffset += nDVComp
+
+        # Convert to CSR format because this is better for arithmetic
+        jac = sparse.csr_matrix(jac)
 
         # now we can save this jacobian in the pointset
         ptSet.jac = jac

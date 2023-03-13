@@ -172,6 +172,7 @@ class DVGeometry(BaseDVGeometry):
         # Jacobians:
         self.JT = {}
         self.nPts = {}
+        self.dCoefdDVUpdated = False
 
         # dictionary to save any coordinate transformations we are given
         self.coordXfer = {}
@@ -1592,6 +1593,9 @@ class DVGeometry(BaseDVGeometry):
         for pointSet in self.updated:
             self.updated[pointSet] = False
 
+        # also flag the dCoefdDV as out of date
+        self.dCoefdDVUpdated = False
+
         # Now call setValues on the children. This way the
         # variables will be set on the children
         for child in self.children:
@@ -2414,8 +2418,13 @@ class DVGeometry(BaseDVGeometry):
 
     def computeDVJacobian(self, config=None):
         """
-        return J_temp for a given config
+        return dCoefdDV for a given config
         """
+
+        # if dCoefdDV is not out of date, return immediately
+        if self.dCoefdDVUpdated:
+            return self.dCoefdDV
+
         # These routines are not recursive. They compute the derivatives at this level and
         # pass information down one level for the next pass call from the routine above
 
@@ -2435,37 +2444,40 @@ class DVGeometry(BaseDVGeometry):
         # this is the jacobian from accumulated derivative dependence from parent to child
         J_casc = self._cascadedDVJacobian(config=config)
 
-        J_temp = None
+        dCoefdDV = None
 
         # add them together
         if J_attach is not None:
-            J_temp = sparse.lil_matrix(J_attach)
+            dCoefdDV = sparse.lil_matrix(J_attach)
 
         if J_spanwiselocal is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_spanwiselocal)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_spanwiselocal)
             else:
-                J_temp += J_spanwiselocal
+                dCoefdDV += J_spanwiselocal
 
         if J_sectionlocal is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_sectionlocal)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_sectionlocal)
             else:
-                J_temp += J_sectionlocal
+                dCoefdDV += J_sectionlocal
 
         if J_local is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_local)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_local)
             else:
-                J_temp += J_local
+                dCoefdDV += J_local
 
         if J_casc is not None:
-            if J_temp is None:
-                J_temp = sparse.lil_matrix(J_casc)
+            if dCoefdDV is None:
+                dCoefdDV = sparse.lil_matrix(J_casc)
             else:
-                J_temp += J_casc
+                dCoefdDV += J_casc
 
-        return J_temp
+        self.dCoefdDV = dCoefdDV
+        self.dCoefdDVUpdated = True
+
+        return dCoefdDV
 
     def computeTotalJacobian(self, ptSetName, config=None):
         """Return the total point jacobian in CSR format since we
@@ -2480,7 +2492,7 @@ class DVGeometry(BaseDVGeometry):
 
         # compute the derivatives of the coefficients of this level wrt all of the design
         # variables at this level and all levels above
-        J_temp = self.computeDVJacobian(config=config)
+        dCoefdDV = self.computeDVJacobian(config=config)
 
         # now get the derivative of the points for this level wrt the coefficients(dPtdCoef)
         if self.FFD.embeddedVolumes[ptSetName].dPtdCoef is not None:
@@ -2513,8 +2525,8 @@ class DVGeometry(BaseDVGeometry):
             new_dPtdCoef = sparse.coo_matrix((new_data, (new_row, new_col)), shape=(Nrow, Ncol)).tocsr()
 
             # Do Sparse Mat-Mat multiplication and resort indices
-            if J_temp is not None:
-                self.JT[ptSetName] = (J_temp.T * new_dPtdCoef.T).tocsr()
+            if dCoefdDV is not None:
+                self.JT[ptSetName] = (dCoefdDV.T * new_dPtdCoef.T).tocsr()
                 self.JT[ptSetName].sort_indices()
 
             # Add in child portion
