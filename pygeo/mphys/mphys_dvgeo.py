@@ -73,7 +73,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
         comm = self.comm
+
         for constraintname in constraintfunc:
+            # if any constraint returned a fail flag throw an error to OpenMDAO
+            # all constraints need the same fail flag, no <name_> prefix
             if constraintname == "fail":
                 raise AnalysisError("Analysis error in geometric constraints")
 
@@ -300,13 +303,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             name=name,
         )
 
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(f"{name}_KS", distributed=True, val=0, shape=1)
-            self.add_output(f"{name}_perim", distributed=True, val=0, shape=1)
-        else:
-            self.add_output(f"{name}_KS", distributed=True, shape=0)
-            self.add_output(f"{name}_perim", distributed=True, shape=0)
+        self.add_output(f"{name}_KS", distributed=False, val=0, shape=1)
+        self.add_output(f"{name}_perim", distributed=False, val=0, shape=1)
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
