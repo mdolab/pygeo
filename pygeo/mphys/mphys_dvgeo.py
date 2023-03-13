@@ -2,6 +2,7 @@
 from mpi4py import MPI
 import numpy as np
 import openmdao.api as om
+from openmdao.api import AnalysisError
 
 # Local modules
 from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
@@ -72,8 +73,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
         comm = self.comm
-        if comm.rank == 0:
-            for constraintname in constraintfunc:
+        for constraintname in constraintfunc:
+            if constraintname == "fail":
+                raise AnalysisError("Analysis error in geometric constraints")
+
+            if comm.rank == 0:
                 outputs[constraintname] = constraintfunc[constraintname]
 
         # we ran a compute so the inputs changed. update the dvcon jac
