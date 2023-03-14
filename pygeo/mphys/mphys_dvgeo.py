@@ -72,7 +72,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # compute the DVCon constraint values
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
-        comm = self.comm
 
         for constraintname in constraintfunc:
             # if any constraint returned a fail flag throw an error to OpenMDAO
