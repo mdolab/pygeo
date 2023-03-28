@@ -185,7 +185,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
 
-        # add the DV to a child DVGeo
+        # add the DV to a normal DVGeo
         if childIdx is None:
             nVal = self.DVGeo.addLocalSectionDV(
                 dvName=dvName,
@@ -197,7 +197,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 orient2=orient2,
                 config=config,
             )
-        # add the DV to a normal DVGeo
+        # add the DV to a child DVGeo
         else:
             nVal = self.DVGeo.children[childIdx].addLocalSectionDV(
                 dvName=dvName,
