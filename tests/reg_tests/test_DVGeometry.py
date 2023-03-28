@@ -1091,11 +1091,11 @@ class RegTestPyGeo(unittest.TestCase):
 
         # Check that files were written
         self.assertTrue(os.path.isfile(axesPath + "_parent.dat"))
-        self.assertTrue(os.path.isfile(axesPath + "_child000.dat"))
+        self.assertTrue(os.path.isfile(axesPath + "_child0.dat"))
 
         # Delete axis files
         os.remove(axesPath + "_parent.dat")
-        os.remove(axesPath + "_child000.dat")
+        os.remove(axesPath + "_child0.dat")
 
     def train_ffdSplineOrder(self, train=True, refDeriv=True):
         self.test_ffdSplineOrder(train=train, refDeriv=refDeriv)
