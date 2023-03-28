@@ -2,6 +2,7 @@
 from mpi4py import MPI
 import numpy as np
 import openmdao.api as om
+from openmdao.api import AnalysisError
 
 # Local modules
 from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
@@ -71,10 +72,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # compute the DVCon constraint values
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
-        comm = self.comm
-        if comm.rank == 0:
-            for constraintname in constraintfunc:
-                outputs[constraintname] = constraintfunc[constraintname]
+
+        for constraintname in constraintfunc:
+            # if any constraint returned a fail flag throw an error to OpenMDAO
+            # all constraints need the same fail flag, no <name_> prefix
+            if constraintname == "fail":
+                raise AnalysisError("Analysis error in geometric constraints")
+            outputs[constraintname] = constraintfunc[constraintname]
 
         # we ran a compute so the inputs changed. update the dvcon jac
         # next time the jacvec product routine is called
@@ -212,66 +216,64 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addThicknessConstraints2D(self, name, leList, teList, nSpan=10, nChord=10):
         self.DVCon.addThicknessConstraints2D(leList, teList, nSpan, nChord, lower=1.0, name=name)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=np.ones((nSpan * nChord,)), shape=nSpan * nChord)
-        else:
-            self.add_output(name, distributed=True, shape=(0,))
+        self.add_output(name, distributed=False, val=np.ones((nSpan * nChord,)), shape=nSpan * nChord)
 
-    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis):
-        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=np.ones(nCon), shape=nCon)
-        else:
-            self.add_output(name, distributed=True, shape=(0))
+    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis, scaled=True):
+        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled)
+        self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
-    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10):
-        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=1.0)
-        else:
-            self.add_output(name, distributed=True, shape=0)
+    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
+        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name, surfaceName=surfaceName)
+        self.add_output(name, distributed=False, val=1.0)
 
     def nom_add_LETEConstraint(self, name, volID, faceID, topID=None, childIdx=None):
         self.DVCon.addLeTeConstraints(volID, faceID, name=name, topID=topID, childIdx=childIdx)
         # how many are there?
         conobj = self.DVCon.linearCon[name]
         nCon = len(conobj.indSetA)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=np.zeros((nCon,)), shape=nCon)
-        else:
-            self.add_output(name, distributed=True, shape=0)
+        self.add_output(name, distributed=False, val=np.zeros((nCon,)), shape=nCon)
         return nCon
 
     def nom_addLERadiusConstraints(self, name, leList, nSpan, axis, chordDir):
         self.DVCon.addLERadiusConstraints(leList=leList, nSpan=nSpan, axis=axis, chordDir=chordDir, name=name)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=np.ones(nSpan), shape=nSpan)
-        else:
-            self.add_output(name, distributed=True, shape=0)
+        self.add_output(name, distributed=False, val=np.ones(nSpan), shape=nSpan)
 
     def nom_addCurvatureConstraint1D(self, name, start, end, nPts, axis, **kwargs):
         self.DVCon.addCurvatureConstraint1D(start=start, end=end, nPts=nPts, axis=axis, name=name, **kwargs)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=1.0)
-        else:
-            self.add_output(name, distributed=True, shape=0)
+        self.add_output(name, distributed=False, val=1.0)
 
     def nom_addLinearConstraintsShape(self, name, indSetA, indSetB, factorA, factorB, childIdx=None):
         self.DVCon.addLinearConstraintsShape(
             indSetA=indSetA, indSetB=indSetB, factorA=factorA, factorB=factorB, name=name, childIdx=childIdx
         )
         lSize = len(indSetA)
-        comm = self.comm
-        if comm.rank == 0:
-            self.add_output(name, distributed=True, val=np.zeros(lSize), shape=lSize)
-        else:
-            self.add_output(name, distributed=True, shape=0)
+        self.add_output(name, distributed=False, val=np.zeros(lSize), shape=lSize)
+
+    def nom_addTriangulatedSurfaceConstraint(
+        self,
+        name,
+        surface_1_name=None,
+        DVGeo_1_name="default",
+        surface_2_name="default",
+        DVGeo_2_name="default",
+        rho=50.0,
+        heuristic_dist=None,
+        max_perim=3.0,
+    ):
+        self.DVCon.addTriangulatedSurfaceConstraint(
+            comm=self.comm,
+            surface_1_name=surface_1_name,
+            DVGeo_1_name=DVGeo_1_name,
+            surface_2_name=surface_2_name,
+            DVGeo_2_name=DVGeo_2_name,
+            rho=rho,
+            heuristic_dist=heuristic_dist,
+            max_perim=max_perim,
+            name=name,
+        )
+
+        self.add_output(f"{name}_KS", distributed=False, val=0)
+        self.add_output(f"{name}_perim", distributed=False, val=0)
 
     def nom_addRefAxis(self, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
@@ -284,9 +286,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
 
-    def nom_setConstraintSurface(self, surface):
+    def nom_setConstraintSurface(
+        self, surface, name="default", addToDVGeo=False, DVGeoName="default", surfFormat="point-vector"
+    ):
         # constraint needs a triangulated reference surface at initialization
-        self.DVCon.setSurface(surface)
+        self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
@@ -308,14 +312,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 for dvname in self.constraintfuncsens[constraintname]:
                     if dvname in d_inputs:
                         dcdx = self.constraintfuncsens[constraintname][dvname]
-                        if self.comm.rank == 0:
-                            dout = d_outputs[constraintname]
-                            jvtmp = np.dot(np.transpose(dcdx), dout)
-                        else:
-                            jvtmp = 0.0
+                        dout = d_outputs[constraintname]
+                        jvtmp = np.dot(np.transpose(dcdx), dout)
                         d_inputs[dvname] += jvtmp
-                        # OM does the reduction itself
-                        # d_inputs[dvname] += self.comm.reduce(jvtmp, op=MPI.SUM, root=0)
 
             for ptSetName in self.DVGeo.ptSetNames:
                 if ptSetName in self.omPtSetList:

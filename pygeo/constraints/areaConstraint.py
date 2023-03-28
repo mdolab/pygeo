@@ -1,5 +1,4 @@
 # External modules
-from mpi4py import MPI
 import numpy as np
 
 # Local modules
@@ -22,6 +21,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
     def __init__(
         self,
+        comm,
         name,
         surface_1,
         surface_1_name,
@@ -40,6 +40,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             raise ImportError("Geograd package must be installed to use triangulated surface constraint")
 
         super().__init__(name, 2, -1e10, 0.0, scale, None, addToPyOpt)
+
+        self.comm = comm
 
         # get the point sets
         self.surface_1_name = surface_1_name
@@ -233,7 +235,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             mindist_tmp,
             self.rho,
             self.maxdim,
-            MPI.COMM_WORLD.py2f(),
+            self.comm.py2f(),
         )
         # second run gets the well-conditioned KS
         KS, perim_length, mindist, _, _ = geograd_parallel.compute(
@@ -246,7 +248,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             mindist,
             self.rho,
             self.maxdim,
-            MPI.COMM_WORLD.py2f(),
+            self.comm.py2f(),
         )
 
         self.perim_length = perim_length
@@ -254,8 +256,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.perim_length > self.max_perim:
             failflag = True
-            if MPI.COMM_WORLD.rank == 0:
-                print("Intersection length ", str(perim_length), " exceeds tol, returning fail flag")
+            if self.comm.rank == 0:
+                print(f"Intersection length {self.perim_length} exceeds tol {self.max_perim}, returning fail flag")
         else:
             failflag = False
         return KS, perim_length, failflag
@@ -275,7 +277,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.minimum_distance,
             self.rho,
             self.maxdim,
-            MPI.COMM_WORLD.py2f(),
+            self.comm.py2f(),
         )
         return deriv_output
 
