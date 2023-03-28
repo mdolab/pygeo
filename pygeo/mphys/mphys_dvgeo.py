@@ -199,7 +199,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             )
         # add the DV to a normal DVGeo
         else:
-            nVal = self.DVGeo.addLocalSectionDV(
+            nVal = self.DVGeo.children[childIdx].addLocalSectionDV(
                 dvName=dvName,
                 secIndex=secIndex,
                 axis=axis,
