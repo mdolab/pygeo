@@ -169,6 +169,51 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
+    def nom_addLocalSectionDV(
+        self,
+        dvName,
+        secIndex,
+        childIdx=None,
+        axis=1,
+        pointSelect=None,
+        volList=None,
+        orient0=None,
+        orient2="svd",
+        config=None,
+    ):
+        # local DVs are only added to FFD-based DVGeo objects
+        if self.geo_type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+
+        # add the DV to a child DVGeo
+        if childIdx is None:
+            nVal = self.DVGeo.addLocalSectionDV(
+                dvName=dvName,
+                secIndex=secIndex,
+                axis=axis,
+                pointSelect=pointSelect,
+                volList=volList,
+                orient0=orient0,
+                orient2=orient2,
+                config=config,
+            )
+        # add the DV to a normal DVGeo
+        else:
+            nVal = self.DVGeo.addLocalSectionDV(
+                dvName=dvName,
+                secIndex=secIndex,
+                axis=axis,
+                pointSelect=pointSelect,
+                volList=volList,
+                orient0=orient0,
+                orient2=orient2,
+                config=config,
+            )
+
+        # define the input
+        self.add_input(dvName, distributed=False, shape=nVal)
+        return nVal
+
     def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, **kwargs):
         # call the dvgeo object and add this dv
         self.DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
@@ -291,6 +336,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     ):
         # constraint needs a triangulated reference surface at initialization
         self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
+
+    def nom_writeSurfaceSTL(self, fileName, surfaceName="default", fromDVGeo=None):
+        self.DVCon.writeSurfaceSTL(fileName=fileName, surfaceName=surfaceName, fromDVGeo=fromDVGeo)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
