@@ -793,11 +793,11 @@ class DVGeometry(BaseDVGeometry):
             self.FFD._updateVolumeCoef()
 
         # Now embed into the children:
-        for child in self.children.values():
+        for childName, child in self.children.items():
             # only add to the active children for this pointset.
             # when we are getting the points back from children,
             # we will check if the ptsetname is already added to the child
-            if child in activeChildren:
+            if childName in activeChildren:
                 child.addPointSet(points, ptName, origConfig, **kwargs)
 
         self.FFD.calcdPtdCoef(ptName)
