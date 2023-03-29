@@ -95,7 +95,7 @@ class DVGeometry(BaseDVGeometry):
       >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
+    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, vol_bounds={}, **kwargs):
         super().__init__(fileName=fileName)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
@@ -131,7 +131,7 @@ class DVGeometry(BaseDVGeometry):
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, vol_bounds=vol_bounds, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None

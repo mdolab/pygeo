@@ -50,7 +50,7 @@ class pyBlock:
         allow.
     """
 
-    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, vol_bounds={}, **kwargs):
         self.initType = initType
         self.FFD = False
         self.topo = None  # The topology of the volumes/surface
@@ -59,6 +59,7 @@ class pyBlock:
         self.coef = None  # The global (reduced) set of control pts
         self.embeddedVolumes = {}
         self.symmPlane = symmPlane
+        self.vol_bounds = vol_bounds
 
         if initType == "plot3d":
             self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
@@ -881,9 +882,30 @@ class pyBlock:
 
             for j in range(self.nVol):
                 iVol = volList[j]
+                # TODO modify projectPoint call to take in the volume bounds
                 u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter)
 
                 D0Norm = np.linalg.norm(D0)
+
+                # check if we have u,v,w bounds on this volume
+                if iVol in self.vol_bounds:
+                    # we have bounds enforced on this volume
+                    # need to make sure the solution is within the range we want
+                    u_min = self.vol_bounds[iVol][0][0]
+                    u_max = self.vol_bounds[iVol][0][1]
+                    v_min = self.vol_bounds[iVol][1][0]
+                    v_max = self.vol_bounds[iVol][1][1]
+                    w_min = self.vol_bounds[iVol][2][0]
+                    w_max = self.vol_bounds[iVol][2][1]
+
+                    # we set D0Norm to a large value if we are not within bounds
+                    within_bounds = (u_min <= u0 <= u_max) and \
+                        (v_min <= v0 <= v_max) and \
+                        (w_min <= w0 <= w_max)
+
+                    if not within_bounds:
+                        D0Norm = D0Norm * 2e11
+
                 # If the new distance is less than the previous best
                 # distance, set the volID, u, v, w, since this may be
                 # best we can do:
@@ -970,6 +992,10 @@ class pyBlock:
                 Xmax[iDim] = max(Xmax[iDim], Xmax0[iDim])
 
         return Xmin, Xmax
+
+    def setVolumeBounds(self, vol_bounds):
+        # routine to update the volume bounds after initialization
+        self.vol_bounds = vol_bounds
 
 
 class EmbeddedVolume:
