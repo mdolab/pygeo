@@ -658,7 +658,7 @@ class DVGeometry(BaseDVGeometry):
 
         return nAxis
 
-    def addPointSet(self, points, ptName, origConfig=True, coordXfer=None, **kwargs):
+    def addPointSet(self, points, ptName, origConfig=True, coordXfer=None, activeChildren=None, **kwargs):
         """
         Add a set of coordinates to DVGeometry
 
@@ -752,6 +752,11 @@ class DVGeometry(BaseDVGeometry):
         # compNames is only needed for DVGeometryMulti, so remove it if passed
         kwargs.pop("compNames", None)
 
+        # check if we want a custom subset of child DVGeos
+        if activeChildren is None:
+            # take it all
+            activeChildren = list(self.children.keys())
+
         # save this name so that we can zero out the jacobians properly
         self.ptSetNames.append(ptName)
         self.zeroJacobians([ptName])
@@ -789,7 +794,11 @@ class DVGeometry(BaseDVGeometry):
 
         # Now embed into the children:
         for child in self.children.values():
-            child.addPointSet(points, ptName, origConfig, **kwargs)
+            # only add to the active children for this pointset.
+            # when we are getting the points back from children,
+            # we will check if the ptsetname is already added to the child
+            if child in activeChildren:
+                child.addPointSet(points, ptName, origConfig, **kwargs)
 
         self.FFD.calcdPtdCoef(ptName)
         self.updated[ptName] = False
@@ -817,6 +826,10 @@ class DVGeometry(BaseDVGeometry):
         # Make sure the DVGeo being added is flaged as a child:
         if childDVGeo.isChild is False:
             raise Error("Trying to add a child FFD that has NOT been " "created as a child. This operation is illegal.")
+
+        # check if this custom name has already been used
+        if childName in self.children:
+            raise Error(f"Another child DVGeo has already been added with the name {childName}. Change the name of one of the child FFDs with the same name and try again.")
 
         # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
@@ -1973,7 +1986,10 @@ class DVGeometry(BaseDVGeometry):
                 child.refAxis.coef = child.coef.copy()
                 child.refAxis._updateCurveCoef()
 
-            Xfinal += child.update(ptSetName, childDelta=True, config=config)
+            if ptSetName in child.points:
+                # only get this child's contribution if it is active for this pointset
+                # we don't skip the other computations for consistency
+                Xfinal += child.update(ptSetName, childDelta=True, config=config)
 
         self._unComplexifyCoef()
 
