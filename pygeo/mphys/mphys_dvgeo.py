@@ -209,9 +209,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_getChildList(self):
-        return self.DVGeo.children
-
     def nom_getLocalIndex(self, iVol, childIdx=None):
         # this function is only for FFD-based DVGeo objects
         if self.geo_type != "ffd":
