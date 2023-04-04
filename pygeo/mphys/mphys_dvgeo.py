@@ -138,8 +138,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False):
         """Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
 
-        _extended_summary_
-
         Parameters
         ----------
         dvName : str
