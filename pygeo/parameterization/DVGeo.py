@@ -2552,12 +2552,14 @@ class DVGeometry(BaseDVGeometry):
             for childName, child in self.children.items():
                 # Reset control points on child for child link derivatives
                 self.applyToChild(childName)
-                child.computeTotalJacobian(ptSetName, config=config)
 
-                if self.JT[ptSetName] is not None:
-                    self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
-                else:
-                    self.JT[ptSetName] = child.JT[ptSetName]
+                if ptSetName in child.points:
+                    child.computeTotalJacobian(ptSetName, config=config)
+
+                    if self.JT[ptSetName] is not None:
+                        self.JT[ptSetName] = self.JT[ptSetName] + child.JT[ptSetName]
+                    else:
+                        self.JT[ptSetName] = child.JT[ptSetName]
         else:
             self.JT[ptSetName] = None
 
@@ -4109,11 +4111,28 @@ class DVGeometry(BaseDVGeometry):
                 ):
                     self.DV_listLocal[key](self.FFD.coef, config)
 
+                    # figure out if this is a regular local DV or if its a shapeFunc DV
+                    if hasattr(self.DV_listLocal[key], "shapes"):
+                        shapeFunc = True
+                    else:
+                        shapeFunc = False
+
                     nVal = self.DV_listLocal[key].nVal
                     for j in range(nVal):
-                        pt_dv = self.DV_listLocal[key].coefList[j]
-                        irow = pt_dv[0] * 3 + pt_dv[1]
-                        Jacobian[irow, iDVLocal] = 1.0
+                        if shapeFunc:
+                            # get the current shape
+                            shape = self.DV_listLocal[key].shapes[j]
+
+                            # loop over entries in shape and set values in jac
+                            for coefInd, direction in shape.items():
+                                # set the 3 coordinates
+                                for jj in range(3):
+                                    irow = coefInd * 3 + jj
+                                    Jacobian[irow, iDVLocal] = direction[jj]
+                        else:
+                            pt_dv = self.DV_listLocal[key].coefList[j]
+                            irow = pt_dv[0] * 3 + pt_dv[1]
+                            Jacobian[irow, iDVLocal] = 1.0
 
                         for childName, child in self.children.items():
                             # Get derivatives of child ref axis and FFD control
@@ -4123,7 +4142,19 @@ class DVGeometry(BaseDVGeometry):
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
-                            tmp[pt_dv[0], pt_dv[1]] = 1.0
+                            if shapeFunc:
+                                # get the current shape
+                                shape = self.DV_listLocal[key].shapes[j]
+
+                                # loop over entries in shape and set values in jac
+                                for coefInd, direction in shape.items():
+                                    # set the 3 coordinates
+                                    for jj in range(3):
+                                        irow = coefInd * 3 + jj
+                                        tmp[irow, iDVLocal] = direction[jj]
+
+                            else:
+                                tmp[pt_dv[0], pt_dv[1]] = 1.0
 
                             dXrefdXdvl = np.zeros((dXrefdCoef.shape[0] * 3), "d")
                             dCcdXdvl = np.zeros((dCcdCoef.shape[0] * 3), "d")
