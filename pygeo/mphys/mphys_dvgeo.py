@@ -141,18 +141,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         Parameters
         ----------
         dvName : str
-            A unique name to be given to this design variable group
+            See :meth:`addGlobalDV <.DVGeometry.addGlobalDV>`
 
         value : float, or iterable list of floats
-            The starting value(s) for the design variable. This
-            parameter may be a single variable or a numpy array
-            (or list) if the function requires more than one
-            variable. The number of variables is determined by the
-            rank (and if rank ==1, the length) of this parameter.
+            See :meth:`addGlobalDV <.DVGeometry.addGlobalDV>`
 
         func : python function
-            The python function handle that will be used to apply the
-            design variable
+            See :meth:`addGlobalDV <.DVGeometry.addGlobalDV>`
 
         childIdx : int, optional
             The zero-based index of the child FFD, if this DV is for a child FFD.
