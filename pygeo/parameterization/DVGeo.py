@@ -4143,6 +4143,7 @@ class DVGeometry(BaseDVGeometry):
         variables
         """
 
+        # TODO the comment below is not correct with the addition of shape func DVs. either separate out their implementation or fix the comment.
         # This is relatively straight forward, since the matrix is
         # entirely one's or zeros
         nDV = self._getNDVLocalSelf()
@@ -4169,11 +4170,28 @@ class DVGeometry(BaseDVGeometry):
                 ):
                     self.DV_listLocal[key](self.FFD.coef, config)
 
+                    # figure out if this is a regular local DV or if its a shapeFunc DV
+                    if hasattr(self.DV_listLocal[key], "shapes"):
+                        shapeFunc = True
+                    else:
+                        shapeFunc = False
+
                     nVal = self.DV_listLocal[key].nVal
                     for j in range(nVal):
-                        pt_dv = self.DV_listLocal[key].coefList[j]
-                        irow = pt_dv[0] * 3 + pt_dv[1]
-                        Jacobian[irow, iDVLocal] = 1.0
+                        if shapeFunc:
+                            # get the current shape
+                            shape = self.DV_listLocal[key].shapes[j]
+
+                            # loop over entries in shape and set values in jac
+                            for coefInd, direction in shape.items():
+                                # set the 3 coordinates
+                                for jj in range(3):
+                                    irow = coefInd * 3 + jj
+                                    Jacobian[irow, iDVLocal] = direction[jj]
+                        else:
+                            pt_dv = self.DV_listLocal[key].coefList[j]
+                            irow = pt_dv[0] * 3 + pt_dv[1]
+                            Jacobian[irow, iDVLocal] = 1.0
 
                         for iChild in range(len(self.children)):
                             # Get derivatives of child ref axis and FFD control
@@ -4183,7 +4201,18 @@ class DVGeometry(BaseDVGeometry):
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
-                            tmp[pt_dv[0], pt_dv[1]] = 1.0
+                            if shapeFunc:
+                                # get the current shape
+                                shape = self.DV_listLocal[key].shapes[j]
+
+                                # loop over entries in shape and set values in jac
+                                for coefInd, direction in shape.items():
+                                    # set the 3 coordinates
+                                    for jj in range(3):
+                                        tmp[coefInd, jj] = direction[jj]
+
+                            else:
+                                tmp[pt_dv[0], pt_dv[1]] = 1.0
 
                             dXrefdXdvl = np.zeros((dXrefdCoef.shape[0] * 3), "d")
                             dCcdXdvl = np.zeros((dCcdCoef.shape[0] * 3), "d")
