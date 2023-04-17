@@ -30,7 +30,7 @@ extensions.extend(
 )
 
 # mock import for autodoc
-autodoc_mock_imports = ["numpy", "mpi4py", "scipy", "pyspline", "baseclasses", "pysurf", "prefoil", "pyOCSM", "openvsp"]
+autodoc_mock_imports = ["numpy", "mpi4py", "scipy", "pyspline", "baseclasses", "pysurf", "prefoil", "pyOCSM", "openvsp", "openMDAO"]
 
 # This sets the bibtex bibliography file(s) to reference in the documentation
 bibtex_bibfiles = ["ref.bib"]
