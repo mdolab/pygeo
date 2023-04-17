@@ -40,8 +40,7 @@ autodoc_mock_imports = [
     "prefoil",
     "pyOCSM",
     "openvsp",
-    "openMDAO",
-    "mphys",
+    "openmdao",
 ]
 
 # This sets the bibtex bibliography file(s) to reference in the documentation
