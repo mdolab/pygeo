@@ -213,6 +213,43 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         orient2="svd",
         config=None,
     ):
+        """
+        Add one or more section local design variables to the DVGeometry object.
+        Wrapper for :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+
+        Parameters
+        ----------
+        dvName : str
+            Name to give this design variable
+        secIndex : char or list of chars
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        childIdx : _type_, optional
+            The zero-based index of the child FFD, if this DV is for a child FFD.
+            The index is defined by the order in which you add the child FFD to the parent.
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        axis : int, optional
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        pointSelect : pointSelect object, optional
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        volList : list, optional
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        orient0 : orientation, optional
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        orient2 : str, optional
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        config : str or list, optional
+            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+
+        Returns
+        -------
+        nVal, int
+            number of local section DVs
+
+        Raises
+        ------
+        RuntimeError
+            Raised if the underlying DVGeo parameterization is not FFD-based
+        """
         # local DVs are only added to FFD-based DVGeo objects
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
@@ -238,6 +275,29 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         return nVal
 
     def nom_getLocalIndex(self, iVol, childIdx=None):
+        """
+        Return the local index mapping that points to the global coefficient list for a given volume
+        Wrapper for :meth:`getLocalIndex <.DVGeometry.getLocalIndex>`
+
+        Parameters
+        ----------
+        iVol : int
+            See :meth:`getLocalIndex <.DVGeometry.getLocalIndex>`
+        childIdx : int, optional
+            The zero-based index of the child FFD, if this DV is for a child FFD.
+            The index is defined by the order in which you add the child FFD to the parent.
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+
+        Returns
+        -------
+        lIndex, int
+            local index mapping
+
+        Raises
+        ------
+        RuntimeError
+            Raised if the underlying DVGeo parameterization is not FFD-based
+        """
         # this function is only for FFD-based DVGeo objects
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use getLocalIndex(), not type:{self.geo_type}")
@@ -412,6 +472,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
 
     def nom_writeSurfaceSTL(self, fileName, surfaceName="default", fromDVGeo=None):
+        """
+        Write the triangulated surface mesh to a .STL file for manipulation and visualization.
+        Wrapper for :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+
+        Parameters
+        ----------
+        fileName : str
+            See :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+        surfaceName : str, optional
+            See :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+        fromDVGeo : str, optional
+            See :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+        """
         self.DVCon.writeSurfaceSTL(fileName=fileName, surfaceName=surfaceName, fromDVGeo=fromDVGeo)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
