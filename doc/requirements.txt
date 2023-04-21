@@ -1,2 +1,4 @@
 numpydoc
 sphinx_mdolab_theme
+openmdao
+mphys
