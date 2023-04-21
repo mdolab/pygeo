@@ -301,7 +301,7 @@ class geoDVShapeFunc(geoDV):
         """
         Create a set of geometric design variables which change the shape
         of a surface surface_id. Local design variables change the surface
-        in all three axis.
+        in all three axes.
         See addLocalDV for more information
 
         """
