@@ -419,7 +419,6 @@ class DVConstraints:
         stlmesh.vectors[:, 1, :] = p1
         stlmesh.vectors[:, 2, :] = p2
 
-        # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
 
     def addThicknessConstraints2D(
@@ -1361,9 +1360,9 @@ class DVConstraints:
         self,
         comm,
         surface_1_name=None,
-        DVGeo_1_name="default",
+        DVGeo1=None,
         surface_2_name="default",
-        DVGeo_2_name="default",
+        DVGeo2=None,
         rho=50.0,
         heuristic_dist=None,
         perim_scale=0.1,
@@ -1438,18 +1437,16 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
         """
-        if DVGeo_1_name is not None:
-            self._checkDVGeo(DVGeo_1_name)
-            DVGeo1 = self.DVGeometries[DVGeo_1_name]
-        else:
-            DVGeo1 = None
-        if DVGeo_2_name is not None:
-            self._checkDVGeo(DVGeo_2_name)
-            DVGeo2 = self.DVGeometries[DVGeo_2_name]
-        else:
-            DVGeo2 = None
-        if DVGeo1 is None and DVGeo2 is None:
-            raise ValueError("At least one DVGeo object must be specified")
+        # if DVGeo1 is not None:
+        #     self._checkDVGeo(DVGeo1.name)
+        # else:
+        #     DVGeo1 = None
+        # if DVGeo2 is not None:
+        #     self._checkDVGeo(DVGeo2.name)
+        # else:
+        #     DVGeo2 = None
+        # if DVGeo1 is None and DVGeo2 is None:
+        #     raise ValueError("At least one DVGeo object must be specified")
 
         typeName = "triSurfCon"
         if typeName not in self.constraints:
@@ -1748,12 +1745,10 @@ class DVConstraints:
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
 
-        The general ussage is as follows::
+        The general usage is as follows:
 
-          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
-                                    name='part1', addToPyOpt=False)
-          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
-                                    name='part2', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord, name='part1', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord, name='part2', addToPyOpt=False)
           DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
 
 

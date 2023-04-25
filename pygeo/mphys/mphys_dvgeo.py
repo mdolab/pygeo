@@ -14,6 +14,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.options.declare("file", default=None)
         self.options.declare("type", default=None)
         self.options.declare("options", default=None)
+        self.options.declare("name", default="default")
+        # self.options.declare("DVCon", default=None)
 
     def setup(self):
         self.geo_type = self.options["type"]
@@ -26,7 +28,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             else:
                 ffd_options = self.options["options"]
 
-            self.DVGeo = DVGeometry(self.options["file"], **ffd_options)
+            self.DVGeo = DVGeometry(self.options["file"], name=self.options["name"], **ffd_options)
 
         elif self.geo_type == "vsp":
             # we are doing a VSP-based DVGeo
@@ -46,8 +48,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             self.DVGeo = DVGeometryESP(self.options["file"], comm=self.comm, **esp_options)
 
+        # if self.options["DVCon"] == None:
         self.DVCon = DVConstraints()
-        self.DVCon.setDVGeo(self.DVGeo)
+        # else:
+            # self.DVCon = self.options["DVCon"]
+        self.DVCon.setDVGeo(self.DVGeo, name=self.options["name"])
+
         self.omPtSetList = []
 
     def compute(self, inputs, outputs):
@@ -84,6 +90,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
+    def getDVGeo(self):
+        return self.DVGeo
+    
     """
     Wrapper for DVGeo functions
     """
@@ -336,8 +345,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=np.ones((nSpan * nChord,)), shape=nSpan * nChord)
 
-    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis, scaled=True):
-        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled)
+    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis, scaled=True, surfaceName="default", DVGeoName="default", compNames=None):
+        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled, surfaceName=surfaceName, DVGeoName=DVGeoName, compNames=compNames)
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
     def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
@@ -371,9 +380,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self,
         name,
         surface_1_name=None,
-        DVGeo_1_name="default",
+        DVGeo1=None,
         surface_2_name="default",
-        DVGeo_2_name="default",
+        DVGeo2=None,
         rho=50.0,
         heuristic_dist=None,
         max_perim=3.0,
@@ -381,9 +390,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.addTriangulatedSurfaceConstraint(
             comm=self.comm,
             surface_1_name=surface_1_name,
-            DVGeo_1_name=DVGeo_1_name,
+            DVGeo1=DVGeo1,
             surface_2_name=surface_2_name,
-            DVGeo_2_name=DVGeo_2_name,
+            DVGeo2=DVGeo2,
             rho=rho,
             heuristic_dist=heuristic_dist,
             max_perim=max_perim,
