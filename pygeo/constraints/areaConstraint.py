@@ -257,7 +257,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if self.perim_length > self.max_perim:
             failflag = True
             if self.comm.rank == 0:
-                print(f"Intersection length {self.perim_length} exceeds tol {self.max_perim}, returning fail flag")
+                print(f"Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag")
         else:
             failflag = False
         return KS, perim_length, failflag
