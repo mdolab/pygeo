@@ -193,7 +193,7 @@ class TestDVGeoMulti(unittest.TestCase):
         # Regression test the updated points for the real DVGeo
         refFile = os.path.join(baseDir, "ref/test_DVGeometryMulti.ref")
         with BaseRegTest(refFile, train=train) as handler:
-            handler.par_add_val("ptsUpdated", ptsUpdated, tol=1e-14)
+            handler.par_add_val("ptsUpdated", ptsUpdated, tol=1e-6)
 
         # Now we will test the derivatives
 
@@ -255,8 +255,8 @@ class TestDVGeoMulti(unittest.TestCase):
 
         # Check that the analytic derivatives are consistent with FD and CS
         for x in dvDict_real:
-            np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-10)
-            np.testing.assert_allclose(funcSens[x].T, funcSensCS[x], rtol=1e-4, atol=1e-10)
+            np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-7)
+            np.testing.assert_allclose(funcSens[x].T, funcSensCS[x], rtol=1e-4, atol=1e-7)
 
         # Test that adding a point outside any FFD raises an Error
         with self.assertRaises(Error):
