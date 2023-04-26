@@ -118,6 +118,7 @@ class DVGeometryESP(DVGeoSketch):
         exclude_edge_projections=False,
         ulimits=None,
         vlimits=None,
+        name=None
     ):
         if not ocsmImported:
             raise ImportError("OCSM and pyOCSM must be installed to use DVGeometryESP.")
@@ -127,8 +128,11 @@ class DVGeometryESP(DVGeoSketch):
 
         super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
 
+        self.geoType = "esp"
+
         self.maxproc = maxproc
         self.esp = True
+        self.name = name
 
         # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
         self.globalDVList = []

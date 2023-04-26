@@ -11,48 +11,46 @@ from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
 # class that actually calls the dvgeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
-        self.options.declare("file", default=None)
-        self.options.declare("type", default=None)
-        self.options.declare("options", default=None)
-        self.options.declare("name", default="default")
-        # self.options.declare("DVCon", default=None)
+        self.options.declare("DVGeoInfo", default=None)
 
     def setup(self):
-        self.geo_type = self.options["type"]
+        self.DVGeoInfo = self.options["DVGeoInfo"]
+        self.DVGeos = {}
 
-        # create the DVGeo object that does the computations
-        if self.geo_type == "ffd":
-            # we are doing an FFD-based DVGeo
-            if self.options["options"] is None:
-                ffd_options = {}
-            else:
-                ffd_options = self.options["options"]
+        print(self.DVGeoInfo)
+        for name, info in self.DVGeoInfo.items():
+            # create the DVGeo object that does the computations
+            if info["type"] == "ffd":
+                # we are doing an FFD-based DVGeo
+                # if info["options"] is None:
+                #     ffd_options = {}
+                # else:
+                #     ffd_options = info["options"]
 
-            self.DVGeo = DVGeometry(self.options["file"], name=self.options["name"], **ffd_options)
+                self.DVGeos.update({name: DVGeometry(info["file"], name=info["name"])})
 
-        elif self.geo_type == "vsp":
-            # we are doing a VSP-based DVGeo
-            if self.options["options"] is None:
-                vsp_options = {}
-            else:
-                vsp_options = self.options["options"]
+            elif info["type"] == "vsp":
+                # we are doing a VSP-based DVGeo
+                if info["options"] is None:
+                    vsp_options = {}
+                else:
+                    vsp_options = info["options"]
 
-            self.DVGeo = DVGeometryVSP(self.options["file"], comm=self.comm, **vsp_options)
+                self.DVGeo.update({name: DVGeometryVSP(info["file"], comm=self.comm, **vsp_options)})
 
-        elif self.geo_type == "esp":
-            # we are doing an ESP-based DVGeo
-            if self.options["options"] is None:
-                esp_options = {}
-            else:
-                esp_options = self.options["options"]
+            elif info["type"] == "esp":
+                # we are doing an ESP-based DVGeo
+                # if info["options"] is None:
+                #     esp_options = {}
+                # else:
+                #     esp_options = info["options"]
 
-            self.DVGeo = DVGeometryESP(self.options["file"], comm=self.comm, **esp_options)
+                self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=info["name"])})
 
-        # if self.options["DVCon"] == None:
+
         self.DVCon = DVConstraints()
-        # else:
-            # self.DVCon = self.options["DVCon"]
-        self.DVCon.setDVGeo(self.DVGeo, name=self.options["name"])
+        for _, DVGeo in self.DVGeos.items():
+            self.DVCon.setDVGeo(DVGeo, name=DVGeo.name)
 
         self.omPtSetList = []
 
@@ -66,14 +64,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 if var_out not in self.omPtSetList:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
-        # inputs are the geometric design variables
-        self.DVGeo.setDesignVars(inputs)
+        for _, DVGeo in self.DVGeos.items():
+            # inputs are the geometric design variables
+            DVGeo.setDesignVars(inputs)
 
-        # ouputs are the coordinates of the pointsets we have
-        for ptName in self.DVGeo.points:
-            if ptName in self.omPtSetList:
-                # update this pointset and write it as output
-                outputs[ptName] = self.DVGeo.update(ptName).flatten()
+            # ouputs are the coordinates of the pointsets we have
+            for ptName in DVGeo.points:
+                if ptName in self.omPtSetList:
+                    # update this pointset and write it as output
+                    outputs[ptName] = DVGeo.update(ptName).flatten()
 
         # compute the DVCon constraint values
         constraintfunc = dict()
@@ -90,28 +89,28 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    def getDVGeo(self):
-        return self.DVGeo
+    def nom_getDVGeo(self, name):
+        return self.DVGeos[name]
     
     """
     Wrapper for DVGeo functions
     """
 
-    def nom_addChild(self, ffd_file):
+    def nom_addChild(self, DVGeo, ffd_file):
         # can only add a child to a FFD DVGeo
-        if self.geo_type != "ffd":
+        if DVGeo.geoType != "ffd":
             raise RuntimeError(
-                f"Only FFD-based DVGeo objects can have children added to them, not type:{self.geo_type}"
+                f"Only FFD-based DVGeo objects can have children added to them, not type:{DVGeo.geoType}"
             )
 
         # Add child FFD
         child_ffd = DVGeometry(ffd_file, child=True)
-        self.DVGeo.addChild(child_ffd)
+        DVGeo.addChild(child_ffd)
 
         # Embed points from parent if not already done
-        for pointSet in self.DVGeo.points:
-            if pointSet not in self.DVGeo.children[-1].points:
-                self.DVGeo.children[-1].addPointSet(self.DVGeo.points[pointSet], pointSet)
+        for pointSet in DVGeo.points:
+            if pointSet not in DVGeo.children[-1].points:
+                DVGeo.children[-1].addPointSet(DVGeo.points[pointSet], pointSet)
 
     def nom_add_discipline_coords(self, discipline, points=None):
         # TODO remove one of these methods to keep only one method to add pointsets
@@ -127,17 +126,17 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, points, ptName, add_output=True, **kwargs):
+    def nom_addPointSet(self, DVGeo, points, ptName, add_output=True, **kwargs):
         # add the points to the dvgeo object
-        self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
-        if self.geo_type == "ffd":
-            for i in range(len(self.DVGeo.children)):
+        if DVGeo.geoType == "ffd":
+            for i in range(len(DVGeo.children)):
                 # Embed points from parent if not already done
-                for pointSet in self.DVGeo.points:
-                    if pointSet not in self.DVGeo.children[i].points:
-                        self.DVGeo.children[i].addPointSet(self.DVGeo.points[pointSet], pointSet)
+                for pointSet in DVGeo.points:
+                    if pointSet not in DVGeo.children[i].points:
+                        DVGeo.children[i].addPointSet(DVGeo.points[pointSet], pointSet)
 
         if add_output:
             # add an output to the om component
@@ -148,10 +147,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False):
+    def nom_addGlobalDV(self, DVGeo, dvName, value, func, childIdx=None, isComposite=False):
         # global DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{DVGeo.geoType}")
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -161,19 +160,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # call the dvgeo object and add this dv
         if childIdx is None:
-            self.DVGeo.addGlobalDV(dvName, value, func)
+            DVGeo.addGlobalDV(dvName, value, func)
         else:
-            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
+            DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
-    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False):
+    def nom_addLocalDV(self, DVGeo, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False):
         # local DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
 
         if childIdx is None:
-            nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
         else:
-            nVal = self.DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -184,6 +183,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addLocalSectionDV(
         self,
+        DVGeo,
         dvName,
         secIndex,
         childIdx=None,
@@ -195,15 +195,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         config=None,
     ):
         # local DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
 
         # add the DV to a normal DVGeo
         if childIdx is None:
-            nVal = self.DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config)
+            nVal = DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config)
         # add the DV to a child DVGeo
         else:
-            nVal = self.DVGeo.children[childIdx].addLocalSectionDV(
+            nVal = DVGeo.children[childIdx].addLocalSectionDV(
                 dvName,
                 secIndex,
                 axis,
@@ -218,57 +218,57 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addShapeFunctionDV(self, dvName, shapes, childIdx=None, config=None):
+    def nom_addShapeFunctionDV(self, DVGeo, dvName, shapes, childIdx=None, config=None):
         # shape function DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
 
         # add the DV to a normal DVGeo
         if childIdx is None:
-            nVal = self.DVGeo.addShapeFunctionDV(dvName, shapes, config)
+            nVal = DVGeo.addShapeFunctionDV(dvName, shapes, config)
         # add the DV to a child DVGeo
         else:
-            nVal = self.DVGeo.children[childIdx].addShapeFunctionDV(dvName, shapes, config)
+            nVal = DVGeo.children[childIdx].addShapeFunctionDV(dvName, shapes, config)
 
         # define the input
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_getLocalIndex(self, iVol, childIdx=None):
+    def nom_getLocalIndex(self, DVGeo, iVol, childIdx=None):
         # this function is only for FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use getLocalIndex(), not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use getLocalIndex(), not type:{DVGeo.geoType}")
 
         # get local index from the parent DVGeo
         if childIdx is None:
-            lIndex = self.DVGeo.getLocalIndex(iVol)
+            lIndex = DVGeo.getLocalIndex(iVol)
         # get local index from a child DVGeo
         else:
-            lIndex = self.DVGeo.children[childIdx].getLocalIndex(iVol)
+            lIndex = DVGeo.children[childIdx].getLocalIndex(iVol)
 
         return lIndex
 
-    def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, **kwargs):
+    def nom_addGeoCompositeDV(self, DVGeo, dvName, ptSetName=None, u=None, scale=None, **kwargs):
         # call the dvgeo object and add this dv
-        self.DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
-        val = self.DVGeo.getValues()
+        DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
+        val = DVGeo.getValues()
 
         # define the input
-        self.add_input(dvName, distributed=False, shape=self.DVGeo.getNDV(), val=val[dvName][0])
+        self.add_input(dvName, distributed=False, shape=DVGeo.getNDV(), val=val[dvName][0])
 
-    def nom_addVSPVariable(self, component, group, parm, isComposite=False, **kwargs):
+    def nom_addVSPVariable(self, DVGeo, component, group, parm, isComposite=False, **kwargs):
         # VSP DVs are only added to VSP-based DVGeo objects
-        if self.geo_type != "vsp":
-            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{self.geo_type}")
+        if DVGeo.geoType != "vsp":
+            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{DVGeo.geoType}")
 
         # actually add the DV to VSP
-        self.DVGeo.addVariable(component, group, parm, **kwargs)
+        DVGeo.addVariable(component, group, parm, **kwargs)
 
         # full name of this DV
         dvName = "%s:%s:%s" % (component, group, parm)
 
         # get the value
-        val = self.DVGeo.DVs[dvName].value.copy()
+        val = DVGeo.DVs[dvName].value.copy()
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -276,16 +276,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, distributed=False, shape=1, val=val)
 
-    def nom_addESPVariable(self, desmptr_name, isComposite=False, **kwargs):
+    def nom_addESPVariable(self, DVGeo, desmptr_name, isComposite=False, **kwargs):
         # ESP DVs are only added to VSP-based DVGeo objects
-        if self.geo_type != "esp":
-            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{self.geo_type}")
+        if DVGeo.geoType != "esp":
+            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{DVGeo.geoType}")
 
         # actually add the DV to ESP
-        self.DVGeo.addVariable(desmptr_name, **kwargs)
+        DVGeo.addVariable(desmptr_name, **kwargs)
 
         # get the value
-        val = self.DVGeo.DVs[desmptr_name].value.copy()
+        val = DVGeo.DVs[desmptr_name].value.copy()
 
         # add the input with the correct value, VSP DVs always have a size of 1
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -293,28 +293,28 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
-    def nom_addRefAxis(self, childIdx=None, **kwargs):
+    def nom_addRefAxis(self, DVGeo, childIdx=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
 
         # we just pass this through
         if childIdx is None:
-            return self.DVGeo.addRefAxis(**kwargs)
+            return DVGeo.addRefAxis(**kwargs)
         else:
-            return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
+            return DVGeo.children[childIdx].addRefAxis(**kwargs)
 
-    def nom_writeRefAxis(self, fileName, childIdx=None):
+    def nom_writeRefAxis(self, DVGeo, fileName, childIdx=None):
         # references axes are only needed in FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
+        if DVGeo.geoType != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
 
         # write reference axis for parent and children (if any)
         if childIdx is None:
-            return self.DVGeo.writeRefAxes(fileName)
+            return DVGeo.writeRefAxes(fileName)
         # write reference axis for just a child
         else:
-            return self.DVGeo.children[childIdx].writeRefAxes(fileName)
+            return DVGeo.children[childIdx].writeRefAxes(fileName)
 
     """
     Wrapper for DVCon functions
@@ -435,36 +435,37 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                         jvtmp = np.dot(np.transpose(dcdx), dout)
                         d_inputs[dvname] += jvtmp
 
-            for ptSetName in self.DVGeo.ptSetNames:
-                if ptSetName in self.omPtSetList:
-                    dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
+            for _, DVGeo in self.DVGeos.items():
+                for ptSetName in DVGeo.ptSetNames:
+                    if ptSetName in self.omPtSetList:
+                        dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
 
-                    # only do the calc. if d_output is not zero on ANY proc
-                    local_all_zeros = np.all(dout == 0)
-                    global_all_zeros = np.zeros(1, dtype=bool)
-                    # we need to communicate for this check otherwise we may hang
-                    self.comm.Allreduce([local_all_zeros, MPI.BOOL], [global_all_zeros, MPI.BOOL], MPI.LAND)
+                        # only do the calc. if d_output is not zero on ANY proc
+                        local_all_zeros = np.all(dout == 0)
+                        global_all_zeros = np.zeros(1, dtype=bool)
+                        # we need to communicate for this check otherwise we may hang
+                        self.comm.Allreduce([local_all_zeros, MPI.BOOL], [global_all_zeros, MPI.BOOL], MPI.LAND)
 
-                    # global_all_zeros is a numpy array of size 1
-                    if not global_all_zeros[0]:
-                        # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
-                        # xdot = self.DVGeo.totalSensitivityTransProd(dout, ptSetName)
-                        xdot = self.DVGeo.totalSensitivity(dout, ptSetName)
+                        # global_all_zeros is a numpy array of size 1
+                        if not global_all_zeros[0]:
+                            # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
+                            # xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
+                            xdot = DVGeo.totalSensitivity(dout, ptSetName)
 
-                        # loop over dvs and accumulate
-                        xdotg = {}
-                        for k in xdot:
-                            # check if this dv is present
-                            if k in d_inputs:
-                                # do the allreduce
-                                # TODO reove the allreduce when this is fixed in openmdao
-                                # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
-                                xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+                            # loop over dvs and accumulate
+                            xdotg = {}
+                            for k in xdot:
+                                # check if this dv is present
+                                if k in d_inputs:
+                                    # do the allreduce
+                                    # TODO reove the allreduce when this is fixed in openmdao
+                                    # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
+                                    xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
 
-                                # accumulate in the dict
-                                # TODO
-                                # because we only do one point set at a time, we always want the 0th
-                                # entry of this array since dvgeo always behaves like we are passing
-                                # in multiple objective seeds with totalSensitivity. we can remove the [0]
-                                # once we move back to totalSensitivityTransProd
-                                d_inputs[k] += xdotg[k][0]
+                                    # accumulate in the dict
+                                    # TODO
+                                    # because we only do one point set at a time, we always want the 0th
+                                    # entry of this array since dvgeo always behaves like we are passing
+                                    # in multiple objective seeds with totalSensitivity. we can remove the [0]
+                                    # once we move back to totalSensitivityTransProd
+                                    d_inputs[k] += xdotg[k][0]

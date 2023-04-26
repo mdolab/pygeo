@@ -98,6 +98,8 @@ class DVGeometry(BaseDVGeometry):
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
         super().__init__(fileName=fileName)
 
+        self.geoType = "ffd"
+
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
         self.DV_listSectionLocal = OrderedDict()  # Local Normal Design Variable List
@@ -2941,7 +2943,7 @@ class DVGeometry(BaseDVGeometry):
             raise Error('Must call "writePointSet" from parent DVGeo.')
         else:
             coords = self.update(name, childDelta=True)
-            fileName = fileName + "_%s.dat" % name
+            fileName = fileName + ".dat"
             f = openTecplot(fileName, 3)
             writeTecplot1D(f, name, coords, solutionTime)
             closeTecplot(f)
