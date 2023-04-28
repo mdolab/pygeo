@@ -256,19 +256,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         Parameters
         ----------
         name :
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
         leList :
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
         teList :
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
         nSpan : int, optional
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`, by default 10
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
         nChord : int, optional
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`, by default 10
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
         scaled : bool, optional
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`, by default True
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default True
         surfaceName : str, optional
-            See :meth:`addVolumeConstraint <.DVCon.addVolumeConstraint>`, by default "default"
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default "default"
         """
         self.DVCon.addVolumeConstraint(
             leList, teList, nSpan=nSpan, nChord=nChord, scaled=scaled, name=name, surfaceName=surfaceName
@@ -281,13 +281,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         Parameters
         ----------
         name :
-            See :meth:`addProjectedAreaConstraint <.DVCon.addProjectedAreaConstraint>`
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
         axis :
-            See :meth:`addProjectedAreaConstraint <.DVCon.addProjectedAreaConstraint>`
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
         scaled : bool, optional
-            See :meth:`addProjectedAreaConstraint <.DVCon.addProjectedAreaConstraint>`, by default True
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default True
         surface_name : str, optional
-            See :meth:`addProjectedAreaConstraint <.DVCon.addProjectedAreaConstraint>`, by default "default"
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default "default"
         """
         self.DVCon.addProjectedAreaConstraint(axis, name=name, scaled=scaled, surfaceName=surface_name)
         self.add_output(name, distributed=False, val=1.0)
