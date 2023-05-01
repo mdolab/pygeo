@@ -29,25 +29,21 @@ except ImportError:
         openvsp = None
         vspInstalled = False
 
-# make sure volume projection api is available
-try:
-    openvsp.CompPntRST
 
-    vspOutOfDate = False
-except AttributeError:
-    vspOutOfDate = True
-
-
-# Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
-# After this version, this range was changed to [0, 1.0].
+vspOutOfDate = False
 if vspInstalled:
     vsp_version_str = openvsp.GetVSPVersion()
     words = vsp_version_str.split()
     vsp_version = words[-1]
-    if Version(vsp_version) >= Version("3.33.0"):
-        SMAX = 1.0
-    else:
+    # VSP is installed, but version too old
+    if Version(vsp_version) < Version("3.28.0"):
+        vspOutOfDate = True
+    # Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
+    elif Version(vsp_version) < Version("3.33.0"):
         SMAX = 0.5
+    # After this version, the range was changed to [0, 1.0].
+    else: # Version(vsp_version) >= Version("3.33.0")
+        SMAX = 1.0
 
 
 class DVGeometryVSP(DVGeoSketch):
