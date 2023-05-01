@@ -40,13 +40,14 @@ except AttributeError:
 
 # Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
 # After this version, this range was changed to [0, 1.0].
-vsp_version_str = openvsp.GetVSPVersion()
-words = vsp_version_str.split()
-vsp_version = words[-1]
-if Version(vsp_version) >= Version("3.33.0"):
-    SMAX = 1.0
-else:
-    SMAX = 0.5
+if vspInstalled:
+    vsp_version_str = openvsp.GetVSPVersion()
+    words = vsp_version_str.split()
+    vsp_version = words[-1]
+    if Version(vsp_version) >= Version("3.33.0"):
+        SMAX = 1.0
+    else:
+        SMAX = 0.5
 
 
 class DVGeometryVSP(DVGeoSketch):
