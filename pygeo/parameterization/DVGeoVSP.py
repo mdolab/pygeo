@@ -1,12 +1,12 @@
 # Standard Python modules
 from collections import OrderedDict
-from packaging.version import Version
 import time
 
 # External modules
 from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
+from packaging.version import Version
 from pyspline.utils import searchQuads
 
 # Local modules
