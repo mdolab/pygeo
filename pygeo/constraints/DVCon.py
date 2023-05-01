@@ -1,24 +1,26 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import numpy as np
-from .. import geo_utils, pyGeo
-from pyspline import Curve
+# Standard Python modules
 from collections import OrderedDict
+
+# External modules
 from baseclasses.utils import Error
-from .baseConstraint import LinearConstraint, GlobalLinearConstraint
-from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
-from .radiusConstraint import RadiusConstraint
-from .locationConstraint import LocationConstraint
-from .areaConstraint import TriangulatedSurfaceConstraint, SurfaceAreaConstraint, ProjectedAreaConstraint
-from .volumeConstraint import VolumeConstraint, TriangulatedVolumeConstraint, CompositeVolumeConstraint
-from .colinearityConstraint import ColinearityConstraint
-from .gearPostConstraint import GearPostConstraint
-from .circularityConstraint import CircularityConstraint
-from .planarityConstraint import PlanarityConstraint
-from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
-from ..geo_utils.misc import convertTo2D
+import numpy as np
+from pyspline import Curve
+
+# Local modules
+from .. import geo_utils, pyGeo
 from ..geo_utils.file_io import readPlot3DSurfFile
+from ..geo_utils.misc import convertTo2D
+from .areaConstraint import ProjectedAreaConstraint, SurfaceAreaConstraint, TriangulatedSurfaceConstraint
+from .baseConstraint import GlobalLinearConstraint, LinearConstraint
+from .circularityConstraint import CircularityConstraint
+from .colinearityConstraint import ColinearityConstraint
+from .curvatureConstraint import CurvatureConstraint, CurvatureConstraint1D
+from .gearPostConstraint import GearPostConstraint
+from .locationConstraint import LocationConstraint
+from .planarityConstraint import PlanarityConstraint
+from .radiusConstraint import RadiusConstraint
+from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
+from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
 class DVConstraints:
@@ -401,6 +403,7 @@ class DVConstraints:
             Name of the DVGeo object to obtain the surface from (default is 'None')
         """
         try:
+            # External modules
             from stl import mesh
         except ImportError as e:
             raise ImportError("numpy-stl package must be installed") from e
@@ -1081,7 +1084,6 @@ class DVConstraints:
         DVGeoName="default",
         compNames=None,
     ):
-
         """This is similar to addLocationConstraints1D except that the actual
         poly line is determined by first projecting points on to the
         surface in a similar manner as addConstraints1D, and then
@@ -1357,6 +1359,7 @@ class DVConstraints:
 
     def addTriangulatedSurfaceConstraint(
         self,
+        comm,
         surface_1_name=None,
         DVGeo_1_name="default",
         surface_2_name="default",
@@ -1462,6 +1465,7 @@ class DVConstraints:
 
         # Finally add constraint object
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(
+            comm,
             conName,
             surface_1,
             surface_1_name,
@@ -2178,7 +2182,6 @@ class DVConstraints:
         DVGeoName="default",
         compNames=None,
     ):
-
         """Code for doing landing gear post constraints on the fly in an
         optimization. As it turns out, this is a critical constraint
         for wing-mounted landing gear and high-aspect ratio swept
@@ -3138,6 +3141,8 @@ class DVConstraints:
         self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childIdx=None, comp=None, DVGeoName="default"
     ):
         """
+        Add monotonic constraints to a given design variable.
+
         Parameters
         ----------
         key : str
@@ -3201,7 +3206,6 @@ class DVConstraints:
         )
 
     def _checkDVGeo(self, name="default"):
-
         """check if DVGeo exists"""
         if name not in self.DVGeometries.keys():
             raise Error(
@@ -3259,7 +3263,6 @@ class DVConstraints:
             te_span_s = np.array([])
 
             for i in range(numSegments):
-
                 # Only include the endpoint if this is the last segment to avoid double counting points
                 if i == numSegments - 1:
                     endpoint = True

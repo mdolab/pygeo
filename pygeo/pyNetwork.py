@@ -1,10 +1,12 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 import os
+
+# External modules
 import numpy as np
 from pyspline import Surface
-from pyspline.utils import openTecplot, writeTecplot1D, closeTecplot, line
+from pyspline.utils import closeTecplot, line, openTecplot, writeTecplot1D
+
+# Local modules
 from .topology import CurveTopology
 
 
@@ -411,7 +413,6 @@ class pyNetwork:
         for i in range(len(curves)):
             icurve = curves[i]
             for j in range(N):
-
                 # we need to initialize a pySurface object for this point
                 # the point is perturbed in dir 1 and dir2 to get 4 corners of the plane
                 point = points[j]

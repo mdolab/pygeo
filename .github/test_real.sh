@@ -2,8 +2,8 @@
 set -e
 ./input_files/get-input-files.sh
 
-# all tests should pass on private
-if [[ $IMAGE == "private" ]] && [[ $OS == "ubuntu" ]]; then
+# No tests should be skipped on GCC and non Intel MPI
+if [[ $COMPILERS == "gcc" ]] && [[ -z $I_MPI_ROOT ]]; then
     EXTRA_FLAGS='--disallow_skipped'
 fi
 

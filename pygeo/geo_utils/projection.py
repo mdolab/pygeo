@@ -1,6 +1,11 @@
-import numpy as np
+# Standard Python modules
 import sys
+
+# External modules
+import numpy as np
 from pyspline.utils import line_plane
+
+# Local modules
 from .remove_duplicates import pointReduce
 
 # --------------------------------------------------------------
@@ -102,7 +107,6 @@ def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
         secondS = ss[1]
 
         if np.dot(first - pt, upVec) >= np.dot(second - pt, upVec):
-
             return (
                 [first, firstPatchID, firstU, firstV, firstS],
                 [second, secondPatchID, secondU, secondV, secondS],
@@ -121,7 +125,6 @@ def projectNodePID(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
 
 
 def projectNodePIDPosOnly(pt, upVec, p0, v1, v2, uv0, uv1, uv2, PID):
-
     # Get the bounds of the geo object so we know what to scale by
 
     fail = 0

@@ -1,16 +1,18 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import os
+# Standard Python modules
 import copy
+import os
+
+# External modules
+from baseclasses.utils import Error
 import numpy as np
-from scipy import sparse
-from scipy.sparse.linalg.dsolve import factorized
 from pyspline import Curve, Surface
-from pyspline.utils import openTecplot, writeTecplot2D, closeTecplot
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot2D
+from scipy import sparse
+from scipy.sparse.linalg import factorized
+
+# Local modules
 from . import geo_utils
 from .topology import SurfaceTopology
-from baseclasses.utils import Error
 
 
 class pyGeo:
@@ -596,7 +598,6 @@ class pyGeo:
         print("Computing Tip surfaces ...")
         # # Add on additional surfaces if required for a rounded pinch tip
         if tip == "rounded":
-
             # Generate the midpoint of the coefficients
             midPts = np.zeros([ncoef, 3])
             upVec = np.zeros([ncoef, 3])
@@ -973,7 +974,6 @@ class pyGeo:
         edgeLabels=False,
         nodeLabels=False,
     ):
-
         """Write the pyGeo Object to Tecplot dat file
 
         Parameters
@@ -1131,6 +1131,7 @@ class pyGeo:
             File name of tin file. Should have .tin extension.
         """
         f = open(fileName, "w")
+        # Standard Python modules
         import datetime
 
         # Write the required header info here:

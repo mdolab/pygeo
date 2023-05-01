@@ -1,4 +1,7 @@
+# External modules
 import numpy as np
+
+# First party modules
 from pygeo import pyGeo
 
 # ==============================================================================

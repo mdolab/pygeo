@@ -1,7 +1,7 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# External modules
 import numpy as np
+
+# Local modules
 from .. import geo_utils
 from .baseConstraint import GeometricConstraint
 

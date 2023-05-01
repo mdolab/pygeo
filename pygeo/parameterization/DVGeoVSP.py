@@ -1,32 +1,41 @@
-# ======================================================================
-#         Imports
-# ======================================================================
+# Standard Python modules
 from collections import OrderedDict
 from packaging.version import Version
 import time
-import numpy as np
-from mpi4py import MPI
+
+# External modules
 from baseclasses.utils import Error
-from .DVGeoSketch import DVGeoSketch
+from mpi4py import MPI
+import numpy as np
 from pyspline.utils import searchQuads
+
+# Local modules
+from .DVGeoSketch import DVGeoSketch
 from .designVars import vspDV
 
 # openvsp python interface
 try:
+    # External modules
     import openvsp
+
+    vspInstalled = True
 except ImportError:
     try:
+        # External modules
         import vsp as openvsp
+
+        vspInstalled = True
     except ImportError:
-        raise ImportError("The OpenVSP Python API is required in order to use DVGeometryVSP")
+        openvsp = None
+        vspInstalled = False
 
 # make sure volume projection api is available
 try:
     openvsp.CompPntRST
+
+    vspOutOfDate = False
 except AttributeError:
-    raise ImportError(
-        "Out of date version of OpenVSP detected." "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
-    )
+    vspOutOfDate = True
 
 
 # Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
@@ -84,6 +93,17 @@ class DVGeometryVSP(DVGeoSketch):
     """
 
     def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+        if not vspInstalled:
+            raise ImportError(
+                "The OpenVSP Python API is required in order to use DVGeometryVSP. "
+                + "Ensure OpenVSP is installed properly and can be found on your path."
+            )
+        elif vspOutOfDate:
+            raise AttributeError(
+                "Out of date version of OpenVSP detected. "
+                + "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
+            )
+
         if comm.rank == 0:
             print("Initializing DVGeometryVSP")
             t0 = time.time()
@@ -136,6 +156,8 @@ class DVGeometryVSP(DVGeoSketch):
         if comm.rank == 0:
             print("Building a quad mesh for fast projections.")
         self._getQuads()
+
+        self.useComposite = False
 
         if comm.rank == 0:
             t3 = time.time()
@@ -285,14 +307,12 @@ class DVGeometryVSP(DVGeoSketch):
                 # Just pick the one that yields the smallest d
                 gind = 0
                 for gid in self.allComps:
-
                     # only project if the point is in the bounding box of the geometry
                     if (
                         (self.bbox[gid][0, 0] < points[i, 0] < self.bbox[gid][0, 1])
                         and (self.bbox[gid][1, 0] < points[i, 1] < self.bbox[gid][1, 1])
                         and (self.bbox[gid][2, 0] < points[i, 2] < self.bbox[gid][2, 1])
                     ):
-
                         # project the point onto the VSP geometry
                         dNew, rout, sout, tout = self.vsp_model.FindRST(gid, 0, pnt)
 
@@ -343,6 +363,8 @@ class DVGeometryVSP(DVGeoSketch):
             must correspond to the design variable names. Any
             additional keys in the dv-dictionary are simply ignored.
         """
+        if self.useComposite:
+            dvDict = self.mapXDictToDVGeo(dvDict)
 
         # Just dump in the values
         for key in dvDict:
@@ -485,12 +507,18 @@ class DVGeometryVSP(DVGeoSketch):
         else:
             dIdx = dIdx_local
 
-        # Now convert to dict:
-        dIdxDict = {}
-        i = 0
-        for dvName in self.DVs:
-            dIdxDict[dvName] = np.array(dIdx[:, i]).T
-            i += 1
+        if self.useComposite:
+            dIdx = self.mapSensToComp(dIdx)
+            dIdxDict = self.convertSensitivityToDict(dIdx, useCompositeNames=True)
+
+        else:
+            # Now convert to dict:
+            dIdxDict = {}
+            i = 0
+            for dvName in self.DVs:
+                arr = np.array(dIdx[:, i]).T
+                dIdxDict[dvName] = arr.reshape(arr.shape[0], 1)
+                i += 1
 
         return dIdxDict
 

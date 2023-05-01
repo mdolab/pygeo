@@ -1,10 +1,10 @@
-# ======================================================================
-#         Imports
-# ======================================================================
-import numpy as np
-from mpi4py import MPI
-from scipy.sparse import csr_matrix
+# External modules
 from baseclasses.utils import Error
+from mpi4py import MPI
+import numpy as np
+from scipy.sparse import csr_matrix
+
+# Local modules
 from .baseConstraint import GeometricConstraint
 
 
