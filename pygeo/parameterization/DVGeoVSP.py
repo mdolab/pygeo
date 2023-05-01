@@ -2,6 +2,7 @@
 #         Imports
 # ======================================================================
 from collections import OrderedDict
+from packaging.version import Version
 import time
 import numpy as np
 from mpi4py import MPI
@@ -26,6 +27,17 @@ except AttributeError:
     raise ImportError(
         "Out of date version of OpenVSP detected." "OpenVSP 3.28.0 or greater is required in order to use DVGeometryVSP"
     )
+
+
+# Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
+# After this version, this range was changed to [0, 1.0].
+vsp_version_str = openvsp.GetVSPVersion()
+words = vsp_version_str.split()
+vsp_version = words[-1]
+if Version(vsp_version) >= Version("3.33.0"):
+    SMAX = 1.0
+else:
+    SMAX = 0.5
 
 
 class DVGeometryVSP(DVGeoSketch):
@@ -252,10 +264,10 @@ class DVGeometryVSP(DVGeoSketch):
             rg = ug
             if vg < 0.5:
                 # This point is on the lower surface
-                sg = vg
+                sg = SMAX * 2.0 * vg
             else:
                 # This point is on the upper surface
-                sg = 1.0 - vg
+                sg = SMAX * 2.0 * (1.0 - vg)
             # tg = 0.5 places the initial guess in the middle of the upper and lower surfaces for the volume
             # Note: If the point we're looking for actually lies on the surface openvsp's
             # projection algorithm (FindRSTGuess) will still quickly locate it, since our volume interpolation
