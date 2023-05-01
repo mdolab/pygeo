@@ -42,7 +42,7 @@ if vspInstalled:
     elif Version(vsp_version) < Version("3.33.0"):
         SMAX = 0.5
     # After this version, the range was changed to [0, 1.0].
-    else: # Version(vsp_version) >= Version("3.33.0")
+    else:  # Version(vsp_version) >= Version("3.33.0")
         SMAX = 1.0
 
 
