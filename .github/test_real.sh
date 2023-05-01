@@ -2,8 +2,8 @@
 set -e
 ./input_files/get-input-files.sh
 
-# All tests should pass on Ubuntu
-if [[ $OS == "ubuntu" ]]; then
+# All tests should pass on GCC
+if [[ $COMPILERS == "gcc" ]]; then
     EXTRA_FLAGS='--disallow_skipped'
 fi
 
