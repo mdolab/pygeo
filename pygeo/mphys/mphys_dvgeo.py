@@ -17,7 +17,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVGeoInfo = self.options["DVGeoInfo"]
         self.DVGeos = {}
 
-        print(self.DVGeoInfo)
         for name, info in self.DVGeoInfo.items():
             # create the DVGeo object that does the computations
             if info["type"] == "ffd":
@@ -77,6 +76,45 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # compute the DVCon constraint values
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
+        # print("before")
+        # ind = 10
+        # step = 1e-4
+        # # self.constraintfuncsens = dict()
+        # # self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
+
+        # cabin_ks_1 = constraintfunc["cabin_trisurf_KS"]
+        # battery_ks_1 = constraintfunc["battery_trisurf_KS"]
+        # cabin_perim_1 = constraintfunc["cabin_trisurf_perim"]
+        # battery_perim_1 = constraintfunc["battery_trisurf_perim"]
+
+        # print("\nafter")
+        # DVGeo = self.DVGeos["vehicle"]
+        # dvDict = DVGeo.getValues()
+        # shapes = dvDict["fuse_shape"]
+        # shapes[ind] += step
+        # dvDict.update({"fuse_shape": shapes})
+        # DVGeo.setDesignVars(dvDict)
+        # self.DVCon.writeSurfaceSTL(f"change_fuse_{ind}_dvgeo.stl", fromDVGeo="vehicle")  # this has the update from the dv change
+        # self.DVCon.writeSurfaceSTL(f"change_fuse_{ind}_dvcon.stl")   # this does not hae the update from the DV change
+
+        # self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
+        # # self.constraintfuncsens = dict()
+        # # self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
+
+        # cabin_ks_2 = constraintfunc["cabin_trisurf_KS"]
+        # battery_ks_2 = constraintfunc["battery_trisurf_KS"]
+        # cabin_perim_2 = constraintfunc["cabin_trisurf_perim"]
+        # battery_perim_2 = constraintfunc["battery_trisurf_perim"]
+
+        # cabin_ks_fd = (cabin_ks_2 - cabin_ks_1) / step
+        # battery_ks_fd = (battery_ks_2 - battery_ks_1) / step
+        # cabin_perim_fd = (cabin_perim_2 - cabin_perim_1) / step
+        # battery_perim_fd = (battery_perim_2 - battery_perim_1) / step
+
+        # print(f"cabin ks {cabin_ks_fd}")
+        # print(f"battery ks {battery_ks_fd}")
+        # print(f"cabin perim {cabin_perim_fd}")
+        # print(f"battery perim {battery_perim_fd}")
 
         for constraintname in constraintfunc:
             # if any constraint returned a fail flag throw an error to OpenMDAO
@@ -112,7 +150,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             if pointSet not in DVGeo.children[-1].points:
                 DVGeo.children[-1].addPointSet(DVGeo.points[pointSet], pointSet)
 
-    def nom_add_discipline_coords(self, discipline, points=None):
+    def nom_add_discipline_coords(self, discipline, DVGeo=None, points=None):
         # TODO remove one of these methods to keep only one method to add pointsets
 
         if points is None:
@@ -122,7 +160,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False)
+            self.nom_addPointSet(DVGeo, points, "x_%s0" % discipline, add_output=False)
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
