@@ -64,7 +64,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), self.surf2_p2.max(axis=1))
         xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), self.surf2_p2.min(axis=1))
 
-        print("maxx", xyzmax-xyzmin)
         computed_maxdim = np.sqrt(np.sum((xyzmax - xyzmin) ** 2))
 
         if heuristic_dist is not None:
@@ -270,7 +269,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if self.perim_length > self.max_perim:
             failflag = True
             if self.comm.rank == 0:
-                print(f"Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag")
+                print(
+                    f"Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag"
+                )
         else:
             failflag = False
 
