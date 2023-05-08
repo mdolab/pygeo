@@ -194,6 +194,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
         # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
         if not isComposite:
+            print(f"add dv {dvName} with shape {value}")
             self.add_input(dvName, distributed=False, shape=len(value))
 
         # call the dvgeo object and add this dv

@@ -64,6 +64,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         xyzmax = np.maximum(np.maximum(self.surf2_p0.max(axis=1), self.surf2_p1.max(axis=1)), self.surf2_p2.max(axis=1))
         xyzmin = np.minimum(np.minimum(self.surf2_p0.min(axis=1), self.surf2_p1.min(axis=1)), self.surf2_p2.min(axis=1))
 
+        print("maxx", xyzmax-xyzmin)
         computed_maxdim = np.sqrt(np.sum((xyzmax - xyzmin) ** 2))
 
         if heuristic_dist is not None:
@@ -75,6 +76,8 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.maxdim = heuristic_dist
         else:
             self.maxdim = computed_maxdim * 1.05
+            # print(computed_maxdim)
+            # raise ValueError()
 
         self.rho = rho
         self.perim_scale = perim_scale
@@ -157,7 +160,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.DVGeo1 is not None:
             nDV1 = self.DVGeo1.getNDV()
+            # print(f"{self.name}: {nDV1} on DVGeo1 {self.DVGeo1.name}")
         else:
+            # print(f"{self.name}: no DVGeo1")
             nDV1 = 0
 
         if nDV1 > 0:
@@ -187,7 +192,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.DVGeo2 is not None:
             nDV2 = self.DVGeo2.getNDV()
+            # print(f"{self.name}: {nDV2} on DVGeo2 {self.DVGeo2.name}")
         else:
+            # print(f"{self.name}: no DVGeo2")
             nDV2 = 0
 
         if nDV2 > 0:
@@ -216,6 +223,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 tmpTotalPerim[key] = tmp_perim_p0[key] + tmp_perim_p1[key] + tmp_perim_p2[key]
         funcsSens[self.name + "_KS"] = tmpTotalKS
         funcsSens[self.name + "_perim"] = tmpTotalPerim
+
+        # if self.comm.rank == 0:
+        #     print(f"{self.name} deriv: intersection {tmpTotalPerim}, ks {tmpTotalKS}")
 
     def evalTriangulatedSurfConstraint(self):
         """
@@ -254,12 +264,16 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.perim_length = perim_length
         self.minimum_distance = mindist
 
+        if self.comm.rank == 0:
+            print(f"{self.name}: intersection {self.perim_length}, mindist {self.minimum_distance}, ks {KS}")
+
         if self.perim_length > self.max_perim:
             failflag = True
             if self.comm.rank == 0:
                 print(f"Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag")
         else:
             failflag = False
+
         return KS, perim_length, failflag
 
     def evalTriangulatedSurfConstraintSens(self):
@@ -279,6 +293,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.maxdim,
             self.comm.py2f(),
         )
+
         return deriv_output
 
     def addConstraintsPyOpt(self, optProb, exclude_wrt=None):
