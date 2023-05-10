@@ -292,7 +292,7 @@ class pyBlock:
         NN = sparse.csr_matrix((vals, colInd, rowPtr))
         NNT = NN.T
         NTN = NNT * NN
-        solve = linalg.dsolve.factorized(NTN)
+        solve = linalg.factorized(NTN)
         self.coef = np.zeros((nCtl, 3))
         for idim in range(3):
             self.coef[:, idim] = solve(NNT * pts[:, idim])

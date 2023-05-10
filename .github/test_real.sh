@@ -2,8 +2,8 @@
 set -e
 ./input_files/get-input-files.sh
 
-# All tests should pass on Ubuntu
-if [[ $OS == "ubuntu" ]]; then
+# No tests should be skipped on GCC and non Intel MPI
+if [[ $COMPILERS == "gcc" ]] && [[ -z $I_MPI_ROOT ]]; then
     EXTRA_FLAGS='--disallow_skipped'
 fi
 

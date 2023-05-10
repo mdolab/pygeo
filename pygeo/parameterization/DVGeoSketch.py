@@ -83,6 +83,7 @@ class DVGeoSketch(BaseDVGeometry):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
+
         Parameters
         ----------
         dvName : str
@@ -168,11 +169,13 @@ class DVGeoSketch(BaseDVGeometry):
         convertSensitivityToDict(); it transforms the dictionary back
         into an array. This function is important for the matrix-free
         interface.
+
         Parameters
         ----------
         dIdxDict : dictionary
            Dictionary of information keyed by this object's
            design variables
+
         Returns
         -------
         dIdx : array
@@ -193,6 +196,7 @@ class DVGeoSketch(BaseDVGeometry):
         """
         This function takes the result of totalSensitivity and
         converts it to a dict for use in pyOptSparse
+
         Parameters
         ----------
         dIdx : array
@@ -205,6 +209,7 @@ class DVGeoSketch(BaseDVGeometry):
             Whether the sensitivity dIdx is with respect to the composite DVs or the original DVGeo DVs.
             If False, the returned dictionary will have keys corresponding to the original set of geometric DVs.
             If True,  the returned dictionary will have replace those with a single key corresponding to the composite DV name.
+
         Returns
         -------
         dIdxDict : dictionary
