@@ -1508,8 +1508,8 @@ class CompIntersection:
             # Compute denominators for the integral evaluations
             # Add an epsilon so that these terms never become zero
             # disc <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0
-            den1 = disc * sabc - eps
-            den2 = disc * sc - eps
+            den1 = np.minimum(disc * sabc, -eps)
+            den2 = np.minimum(disc * sc, -eps)
 
             # integral evaluations
             eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length
@@ -1598,8 +1598,8 @@ class CompIntersection:
             sc = np.sqrt(c)
 
             # Compute denominators for the integral evaluations
-            den1 = disc * sabc - eps
-            den2 = disc * sc - eps
+            den1 = np.minimum(disc * sabc, -eps)
+            den2 = np.minimum(disc * sc, -eps)
 
             # integral evaluations
             eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length

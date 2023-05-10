@@ -31,6 +31,9 @@ inputDir = os.path.join(baseDir, "../../input_files")
 class TestDVGeoMulti(unittest.TestCase):
     N_PROCS = 1
 
+    def train_boxes(self, train=True):
+        self.test_boxes(train=train)
+
     def test_boxes(self, train=False):
         # box1 and box2 intersect
         # box3 does not intersect anything
