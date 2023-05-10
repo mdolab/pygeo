@@ -1452,7 +1452,7 @@ class CompIntersection:
             return delta
 
         # Define an epsilon to avoid dividing by zero later on
-        eps = 1e-50
+        eps = 1e-20
 
         # Get the two end points for the line elements
         r0 = coor[conn[:, 0]]
@@ -1550,7 +1550,7 @@ class CompIntersection:
         conn = self.seamConn
 
         # Define an epsilon to avoid dividing by zero later on
-        eps = 1e-50
+        eps = 1e-20
 
         # Get the two end points for the line elements
         r0 = coor[conn[:, 0]]
