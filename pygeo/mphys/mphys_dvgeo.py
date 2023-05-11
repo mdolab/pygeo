@@ -250,8 +250,46 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled)
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
-    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
-        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name, surfaceName=surfaceName)
+    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, scaled=True, surfaceName="default"):
+        """Add a DVCon volume constraint to the problem
+
+        Parameters
+        ----------
+        name :
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        leList :
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        teList :
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        nSpan : int, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
+        nChord : int, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
+        scaled : bool, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default True
+        surfaceName : str, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default "default"
+        """
+        self.DVCon.addVolumeConstraint(
+            leList, teList, nSpan=nSpan, nChord=nChord, scaled=scaled, name=name, surfaceName=surfaceName
+        )
+        self.add_output(name, distributed=False, val=1.0)
+
+    def nom_addProjectedAreaConstraint(self, name, axis, scaled=True, surface_name="default"):
+        """Add a DVCon projected area constraint to the problem
+
+        Parameters
+        ----------
+        name :
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+        axis :
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+        scaled : bool, optional
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default True
+        surface_name : str, optional
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default "default"
+        """
+        self.DVCon.addProjectedAreaConstraint(axis, name=name, scaled=scaled, surfaceName=surface_name)
         self.add_output(name, distributed=False, val=1.0)
 
     def nom_add_LETEConstraint(self, name, volID, faceID, topID=None, childIdx=None):
