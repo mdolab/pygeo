@@ -88,8 +88,8 @@ These are referred to as _global_ design variables in pyGeo.
 For example, wing twist variables can be defined as rotations of the control points about a reference axis that runs along the wing. 
 \autoref{fig:FFD_DV} shows a few common planform design variables for an aircraft wing.
 
-Design variables formulated from groupings of FFD control points often exhibit ill conditioning. 
-To alleviate this, a parameterization based on singular value decomposition is also possible within pyGeo [@Wu2022b].
+Design variables formulated from groupings of FFD control points often exhibit ill conditioning [@Wu2022b]. 
+To alleviate this, a parameterization based on singular value decomposition is also possible within pyGeo.
 
 ![Examples of common wing planform design variables.\label{fig:FFD_DV}](ffd_dvs.pdf)
 
