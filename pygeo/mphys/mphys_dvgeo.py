@@ -227,31 +227,32 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         config=None,
     ):
         """
-        Add one or more section local design variables to the DVGeometry object.
+        Add one or more section local design variables to the DVGeometry object
         Wrapper for :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
 
         Parameters
         ----------
         dvName : str
             Name to give this design variable
         secIndex : char or list of chars
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
         childIdx : _type_, optional
-            The zero-based index of the child FFD, if this DV is for a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+            The zero-based index of the child FFD, if this DV is for a child FFD
+            The index is defined by the order in which you add the child FFD to the parent
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on
         axis : int, optional
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
         pointSelect : pointSelect object, optional
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
         volList : list, optional
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
         orient0 : orientation, optional
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
         orient2 : str, optional
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
         config : str or list, optional
-            See :meth:`addLocalSectionDV <.DVGeometry.addLocalSectionDV>`
+            See wrapped
 
         Returns
         -------
@@ -431,19 +432,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         Parameters
         ----------
         name :
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+            See wrapped
         leList :
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+            See wrapped
         teList :
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+            See wrapped
         nSpan : int, optional
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
+            See wrapped
         nChord : int, optional
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
+            See wrapped
         scaled : bool, optional
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default True
+            See wrapped
         surfaceName : str, optional
-            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default "default"
+            See wrapped
         """
         self.DVCon.addVolumeConstraint(
             leList, teList, nSpan=nSpan, nChord=nChord, scaled=scaled, name=name, surfaceName=surfaceName
@@ -456,13 +457,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         Parameters
         ----------
         name :
-            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+            See wrapped
         axis :
-            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+            See wrapped
         scaled : bool, optional
-            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default True
+            See wrapped
         surface_name : str, optional
-            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default "default"
+            See wrapped
         """
         self.DVCon.addProjectedAreaConstraint(axis, name=name, scaled=scaled, surfaceName=surface_name)
         self.add_output(name, distributed=False, val=1.0)
@@ -530,11 +531,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         Parameters
         ----------
         fileName : str
-            See :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+            See wrapped
         surfaceName : str, optional
-            See :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+            See wrapped
         fromDVGeo : str, optional
-            See :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
+            See wrapped
         """
         self.DVCon.writeSurfaceSTL(fileName=fileName, surfaceName=surfaceName, fromDVGeo=fromDVGeo)
 
