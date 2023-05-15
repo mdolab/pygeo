@@ -135,9 +135,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_getDVGeo(self):
+    def nom_getDVGeo(self, childIdx=None):
         """
         Gets the DVGeo object held in the geometry component so DVGeo methods can be called directly on it
+
+        Parameters
+        ----------
+        childIdx : int, optional
+            The zero-based index of the child FFD, you want a child DVGeo returned
 
         Returns
         -------
@@ -146,7 +151,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         """
 
-        return self.DVGeo
+        # return the top level DVGeo
+        if childIdx is None:
+            return self.DVGeo
+
+        # return a child DVGeo
+        else:
+            return self.DVGeo.children[childIdx]
 
     """
     Wrapper for DVGeo functions
