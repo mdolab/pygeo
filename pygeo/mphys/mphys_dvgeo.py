@@ -401,6 +401,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, scaled=True, surfaceName="default"):
         """Add a DVCon volume constraint to the problem
+        Wrapper for :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
 
         Parameters
         ----------
@@ -426,6 +428,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addProjectedAreaConstraint(self, name, axis, scaled=True, surface_name="default"):
         """Add a DVCon projected area constraint to the problem
+        Wrapper for :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
 
         Parameters
         ----------
