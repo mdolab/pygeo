@@ -84,10 +84,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    """
-    Wrapper for DVGeo functions
-    """
-
     def nom_addChild(self, ffd_file):
         # can only add a child to a FFD DVGeo
         if self.geo_type != "ffd":
@@ -138,6 +134,23 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # add every pointset in the dict, and set the ptset name as the key
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
+
+    def nom_getDVGeo(self):
+        """
+        Gets the DVGeo object held in the geometry component so DVGeo methods can be called directly on it
+
+        Returns
+        -------
+        self.DVGeo, DVGeometry object
+            DVGeometry object held by this geometry component
+
+        """
+
+        return self.DVGeo
+
+    """
+    Wrapper for DVGeo functions
+    """
 
     def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False):
         """Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
