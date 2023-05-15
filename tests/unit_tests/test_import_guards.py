@@ -38,6 +38,9 @@ class TestImportGuards(unittest.TestCase):
             def __init__(self):
                 pass
 
+            def GetVSPVersion(self):
+                return "OpenVSP 0.0.0"
+
         dummy_module = DummyOpenVSPModule()
         with patch.dict(sys.modules, {"openvsp": dummy_module}):
             with self.assertRaises(AttributeError) as context:

@@ -6,6 +6,7 @@ import time
 from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
+from packaging.version import Version
 from pyspline.utils import searchQuads
 
 # Local modules
@@ -28,13 +29,21 @@ except ImportError:
         openvsp = None
         vspInstalled = False
 
-# make sure volume projection api is available
-try:
-    openvsp.CompPntRST
 
-    vspOutOfDate = False
-except AttributeError:
-    vspOutOfDate = True
+vspOutOfDate = False
+if vspInstalled:
+    vspVersionStr = openvsp.GetVSPVersion()
+    words = vspVersionStr.split()
+    vspVersion = words[-1]
+    # VSP is installed, but version too old
+    if Version(vspVersion) < Version("3.28.0"):
+        vspOutOfDate = True
+    # Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
+    elif Version(vspVersion) < Version("3.33.0"):
+        SMAX = 0.5
+    # After this version, the range was changed to [0, 1.0].
+    else:  # Version(vsp_version) >= Version("3.33.0")
+        SMAX = 1.0
 
 
 class DVGeometryVSP(DVGeoSketch):
@@ -98,15 +107,19 @@ class DVGeometryVSP(DVGeoSketch):
 
         super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
 
+        if hasattr(openvsp, "VSPVehicle"):
+            self.vspModel = openvsp.VSPVehicle()
+        else:
+            self.vspModel = openvsp
+
         self.exportComps = []
 
         # Clear the vsp model
-        openvsp.ClearVSPModel()
+        self.vspModel.ClearVSPModel()
 
         t1 = time.time()
         # read the model
-
-        openvsp.ReadVSPFile(fileName)
+        self.vspModel.ReadVSPFile(fileName)
         t2 = time.time()
         if self.comm.rank == 0:
             print("Loading the vsp model took:", (t2 - t1))
@@ -114,10 +127,10 @@ class DVGeometryVSP(DVGeoSketch):
         # List of all components returned from VSP. Note that this
         # order is important. It is the order that we use to map the
         # actual geom_id by using the geom_names
-        allComps = openvsp.FindGeoms()
+        allComps = self.vspModel.FindGeoms()
         allNames = []
         for c in allComps:
-            allNames.append(openvsp.GetContainerName(c))
+            allNames.append(self.vspModel.GetContainerName(c))
 
         if not comps:
             # no components specified, we use all
@@ -133,7 +146,7 @@ class DVGeometryVSP(DVGeoSketch):
         self.bbox = OrderedDict()
         self.bboxuv = self._getuv()
         for c in self.allComps:
-            self.compNames.append(openvsp.GetContainerName(c))
+            self.compNames.append(self.vspModel.GetContainerName(c))
             self.bbox[c] = self._getBBox(c)
 
         # Now, we need to form our own quad meshes for fast projections
@@ -270,17 +283,17 @@ class DVGeometryVSP(DVGeoSketch):
             rg = ug
             if vg < 0.5:
                 # This point is on the lower surface
-                sg = vg
+                sg = SMAX * 2.0 * vg
             else:
                 # This point is on the upper surface
-                sg = 1.0 - vg
+                sg = SMAX * 2.0 * (1.0 - vg)
             # tg = 0.5 places the initial guess in the middle of the upper and lower surfaces for the volume
             # Note: If the point we're looking for actually lies on the surface openvsp's
             # projection algorithm (FindRSTGuess) will still quickly locate it, since our volume interpolation
             # is linear through the depth (i.e. in t)
             tg = 0.5
             # Now, find the closest volume projection
-            d, r[i], s[i], t[i] = openvsp.FindRSTGuess(gid, 0, pnt, rg, sg, tg)
+            d, r[i], s[i], t[i] = self.vspModel.FindRSTGuess(gid, 0, pnt, rg, sg, tg)
             geom[i] = gind
 
             # if we dont have a good projection, try projecting again to surfaces
@@ -298,7 +311,7 @@ class DVGeometryVSP(DVGeoSketch):
                         and (self.bbox[gid][2, 0] < points[i, 2] < self.bbox[gid][2, 1])
                     ):
                         # project the point onto the VSP geometry
-                        dNew, rout, sout, tout = openvsp.FindRST(gid, 0, pnt)
+                        dNew, rout, sout, tout = self.vspModel.FindRST(gid, 0, pnt)
 
                         # check if we are closer
                         if dNew < d:
@@ -314,7 +327,7 @@ class DVGeometryVSP(DVGeoSketch):
             dMax = max(d, dMax)
 
             # We need to evaluate this pnt to get its coordinates in physical space
-            pnt = openvsp.CompPntRST(self.allComps[geom[i]], 0, r[i], s[i], t[i])
+            pnt = self.vspModel.CompPntRST(self.allComps[geom[i]], 0, r[i], s[i], t[i])
             pts[i, 0] = pnt.x() * self.modelScale
             pts[i, 1] = pnt.y() * self.modelScale
             pts[i, 2] = pnt.z() * self.modelScale
@@ -404,7 +417,7 @@ class DVGeometryVSP(DVGeoSketch):
         exportSet : int
             optional input parameter to select an export set in VSP
         """
-        openvsp.WriteVSPFile(fileName, exportSet)
+        self.vspModel.WriteVSPFile(fileName, exportSet)
 
     def getNDV(self):
         """
@@ -665,16 +678,16 @@ class DVGeometryVSP(DVGeoSketch):
             this actual step is used.
         """
 
-        container_id = openvsp.FindContainer(component, 0)
+        container_id = self.vspModel.FindContainer(component, 0)
         if container_id == "":
             raise Error("Bad component for DV: %s" % component)
 
-        parm_id = openvsp.FindParm(container_id, parm, group)
+        parm_id = self.vspModel.FindParm(container_id, parm, group)
         if parm_id == "":
             raise Error(f"Bad group or parm: {component} {group} {parm}")
 
         # Now we know the parmID is ok. So we just get the value
-        val = openvsp.GetParmVal(parm_id)
+        val = self.vspModel.GetParmVal(parm_id)
 
         dvName = f"{component}:{group}:{parm}"
 
@@ -736,22 +749,22 @@ class DVGeometryVSP(DVGeoSketch):
             # We use float here since sometimes pyOptsparse will give
             # stupid numpy zero-dimensional arrays, which swig does
             # not like.
-            openvsp.SetParmVal(DV.parmID, float(DV.value))
-        openvsp.Update()
+            self.vspModel.SetParmVal(DV.parmID, float(DV.value))
+        self.vspModel.Update()
 
         # First set the export flag for exportSet to False for everyone
         for comp in self.allComps:
-            openvsp.SetSetFlag(comp, exportSet, False)
+            self.vspModel.SetSetFlag(comp, exportSet, False)
 
         for comp in self.allComps:
             # Check if this one is in our list:
-            compName = openvsp.GetContainerName(comp)
+            compName = self.vspModel.GetContainerName(comp)
             if compName in self.compNames:
-                openvsp.SetSetFlag(comp, exportSet, True)
+                self.vspModel.SetSetFlag(comp, exportSet, True)
                 self.exportComps.append(compName)
 
         # Write the export file.
-        openvsp.ExportFile(fileName, exportSet, openvsp.EXPORT_PLOT3D)
+        self.vspModel.ExportFile(fileName, exportSet, openvsp.EXPORT_PLOT3D)
 
     # ----------------------------------------------------------------------- #
     #      THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER      #
@@ -773,14 +786,14 @@ class DVGeometryVSP(DVGeoSketch):
             if "angle" in DV.parm.lower():
                 # set this new value separately to leave the DV.value itself untouched
                 new_value = ((DV.value + 180.0) % 360.0) - 180.0
-                openvsp.SetParmVal(DV.parmID, float(new_value))
+                self.vspModel.SetParmVal(DV.parmID, float(new_value))
             else:
                 # We use float here since sometimes pyOptsparse will give
                 # numpy zero-dimensional arrays, which swig does not like
-                openvsp.SetParmValUpdate(DV.parmID, float(DV.value))
+                self.vspModel.SetParmValUpdate(DV.parmID, float(DV.value))
 
         # update the model
-        openvsp.Update()
+        self.vspModel.Update()
 
     def _updateProjectedPts(self):
         """
@@ -803,7 +816,7 @@ class DVGeometryVSP(DVGeoSketch):
             # This can all be done with arrays if we group points wrt geometry
             for i in range(n):
                 # evaluate the new projected point coordinates
-                pnt = openvsp.CompPntRST(self.allComps[geom[i]], 0, r[i], s[i], t[i])
+                pnt = self.vspModel.CompPntRST(self.allComps[geom[i]], 0, r[i], s[i], t[i])
 
                 # update the coordinates
                 newPts[i, :] = (pnt.x(), pnt.y(), pnt.z())
@@ -825,7 +838,7 @@ class DVGeometryVSP(DVGeoSketch):
         bbox = np.zeros((3, 2))
 
         # we need to get the number of main surfaces on this geometry
-        nSurf = openvsp.GetNumMainSurfs(comp)
+        nSurf = self.vspModel.GetNumMainSurfs(comp)
         nuv = self.bboxuv.shape[0]
 
         # allocate the arrays
@@ -835,7 +848,7 @@ class DVGeometryVSP(DVGeoSketch):
         for iSurf in range(nSurf):
             offset = iSurf * nuv
             # evaluate the points
-            ptVec = openvsp.CompVecPnt01(comp, iSurf, self.bboxuv[:, 0], self.bboxuv[:, 1])
+            ptVec = self.vspModel.CompVecPnt01(comp, iSurf, self.bboxuv[:, 0], self.bboxuv[:, 1])
             # now extract the coordinates from the vec3dvec...sigh...
             for i in range(nuv):
                 nodes[offset + i, :] = (ptVec[i].x(), ptVec[i].y(), ptVec[i].z())
@@ -958,7 +971,7 @@ class DVGeometryVSP(DVGeoSketch):
 
         # evaluate the points
         for j in range(nptsg):
-            pnt = openvsp.CompPntRST(self.allComps[gg[j]], 0, rg[j], sg[j], tg[j])
+            pnt = self.vspModel.CompPntRST(self.allComps[gg[j]], 0, rg[j], sg[j], tg[j])
             pts0[j, :] = (pnt.x(), pnt.y(), pnt.z())
 
         # determine how many DVs this proc will perturb.
@@ -993,7 +1006,7 @@ class DVGeometryVSP(DVGeoSketch):
                 t11 = time.time()
                 # evaluate the points
                 for j in range(nptsg):
-                    pnt = openvsp.CompPntRST(self.allComps[gg[j]], 0, rg[j], sg[j], tg[j])
+                    pnt = self.vspModel.CompPntRST(self.allComps[gg[j]], 0, rg[j], sg[j], tg[j])
                     ptsNew[i, j, :] = (pnt.x(), pnt.y(), pnt.z())
                 t12 = time.time()
                 teval += t12 - t11
@@ -1088,7 +1101,7 @@ class DVGeometryVSP(DVGeoSketch):
         gind = 0
         for geom in self.allComps:
             # get uv tesselation
-            utess, wtess = openvsp.GetUWTess01(geom, 0)
+            utess, wtess = self.vspModel.GetUWTess01(geom, 0)
             # check if these values are good, otherwise, do it yourself!
 
             # save these values
@@ -1103,7 +1116,7 @@ class DVGeometryVSP(DVGeoSketch):
             wtess = vv.flatten()
 
             # get the points
-            ptvec = openvsp.CompVecPnt01(geom, 0, utess, wtess)
+            ptvec = self.vspModel.CompVecPnt01(geom, 0, utess, wtess)
 
             # number of nodes for this geometry
             curSize = len(ptvec)
