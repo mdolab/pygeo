@@ -137,7 +137,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_getDVGeo(self, childIdx=None):
         """
-        Gets the DVGeo object held in the geometry component so DVGeo methods can be called directly on it
+        Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
 
         Parameters
         ----------
@@ -158,6 +158,17 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # return a child DVGeo
         else:
             return self.DVGeo.children[childIdx]
+
+    def nom_getDVCon(self):
+        """
+        Gets the DVConstraints object held in the geometry component so DVCon methods can be called directly on it
+
+        Returns
+        -------
+        self.DVCon, DVConstraints object
+            DVConstraints object held by this geometry component
+        """
+        return self.DVCon
 
     """
     Wrapper for DVGeo functions
@@ -299,43 +310,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_getLocalIndex(self, iVol, childIdx=None):
-        """
-        Return the local index mapping that points to the global coefficient list for a given volume
-        Wrapper for :meth:`getLocalIndex <.DVGeometry.getLocalIndex>`
-
-        Parameters
-        ----------
-        iVol : int
-            See :meth:`getLocalIndex <.DVGeometry.getLocalIndex>`
-        childIdx : int, optional
-            The zero-based index of the child FFD, if this DV is for a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
-
-        Returns
-        -------
-        lIndex, int
-            local index mapping
-
-        Raises
-        ------
-        RuntimeError
-            Raised if the underlying DVGeo parameterization is not FFD-based
-        """
-        # this function is only for FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use getLocalIndex(), not type:{self.geo_type}")
-
-        # get local index from the parent DVGeo
-        if childIdx is None:
-            lIndex = self.DVGeo.getLocalIndex(iVol)
-        # get local index from a child DVGeo
-        else:
-            lIndex = self.DVGeo.children[childIdx].getLocalIndex(iVol)
-
-        return lIndex
-
     def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, **kwargs):
         # call the dvgeo object and add this dv
         self.DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
@@ -391,18 +365,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             return self.DVGeo.addRefAxis(**kwargs)
         else:
             return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
-
-    def nom_writeRefAxis(self, fileName, childIdx=None):
-        # references axes are only needed in FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
-
-        # write reference axis for parent and children (if any)
-        if childIdx is None:
-            return self.DVGeo.writeRefAxes(fileName)
-        # write reference axis for just a child
-        else:
-            return self.DVGeo.children[childIdx].writeRefAxes(fileName)
 
     """
     Wrapper for DVCon functions
@@ -533,22 +495,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     ):
         # constraint needs a triangulated reference surface at initialization
         self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
-
-    def nom_writeSurfaceSTL(self, fileName, surfaceName="default", fromDVGeo=None):
-        """
-        Write the triangulated surface mesh to a .STL file for manipulation and visualization.
-        Wrapper for :meth:`writeSurfaceSTL <.DVConstraints.writeSurfaceSTL>`
-
-        Parameters
-        ----------
-        fileName : str
-            See wrapped
-        surfaceName : str, optional
-            See wrapped
-        fromDVGeo : str, optional
-            See wrapped
-        """
-        self.DVCon.writeSurfaceSTL(fileName=fileName, surfaceName=surfaceName, fromDVGeo=fromDVGeo)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
