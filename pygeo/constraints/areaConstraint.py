@@ -75,8 +75,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.maxdim = heuristic_dist
         else:
             self.maxdim = computed_maxdim * 1.05
-            # print(computed_maxdim)
-            # raise ValueError()
 
         self.rho = rho
         self.perim_scale = perim_scale
@@ -116,7 +114,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         # running setSurface()
 
         # check if the first mesh has a DVGeo, and if it does, update the points
-
         if self.DVGeo1 is not None:
             self.surf1_p0 = self.DVGeo1.update(self.surface_1_name + "_p0", config=config).transpose()
             self.surf1_p1 = self.DVGeo1.update(self.surface_1_name + "_p1", config=config).transpose()
@@ -159,9 +156,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.DVGeo1 is not None:
             nDV1 = self.DVGeo1.getNDV()
-            # print(f"{self.name}: {nDV1} on DVGeo1 {self.DVGeo1.name}")
         else:
-            # print(f"{self.name}: no DVGeo1")
             nDV1 = 0
 
         if nDV1 > 0:
@@ -191,9 +186,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
 
         if self.DVGeo2 is not None:
             nDV2 = self.DVGeo2.getNDV()
-            # print(f"{self.name}: {nDV2} on DVGeo2 {self.DVGeo2.name}")
         else:
-            # print(f"{self.name}: no DVGeo2")
             nDV2 = 0
 
         if nDV2 > 0:
@@ -222,9 +215,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
                 tmpTotalPerim[key] = tmp_perim_p0[key] + tmp_perim_p1[key] + tmp_perim_p2[key]
         funcsSens[self.name + "_KS"] = tmpTotalKS
         funcsSens[self.name + "_perim"] = tmpTotalPerim
-
-        # if self.comm.rank == 0:
-        #     print(f"{self.name} deriv: intersection {tmpTotalPerim}, ks {tmpTotalKS}")
 
     def evalTriangulatedSurfConstraint(self):
         """

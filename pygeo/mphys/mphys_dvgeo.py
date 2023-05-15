@@ -8,7 +8,7 @@ from openmdao.api import AnalysisError
 from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
 
 
-# class that actually calls the dvgeometry methods
+# class that actually calls the DVGeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
         self.options.declare("DVGeoInfo", default=None)
@@ -46,7 +46,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
                 self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=info["name"])})
 
-
         self.DVCon = DVConstraints()
         for _, DVGeo in self.DVGeos.items():
             self.DVCon.setDVGeo(DVGeo, name=DVGeo.name)
@@ -76,45 +75,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # compute the DVCon constraint values
         constraintfunc = dict()
         self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
-        # print("before")
-        # ind = 10
-        # step = 1e-4
-        # # self.constraintfuncsens = dict()
-        # # self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
-
-        # cabin_ks_1 = constraintfunc["cabin_trisurf_KS"]
-        # battery_ks_1 = constraintfunc["battery_trisurf_KS"]
-        # cabin_perim_1 = constraintfunc["cabin_trisurf_perim"]
-        # battery_perim_1 = constraintfunc["battery_trisurf_perim"]
-
-        # print("\nafter")
-        # DVGeo = self.DVGeos["vehicle"]
-        # dvDict = DVGeo.getValues()
-        # shapes = dvDict["fuse_shape"]
-        # shapes[ind] += step
-        # dvDict.update({"fuse_shape": shapes})
-        # DVGeo.setDesignVars(dvDict)
-        # self.DVCon.writeSurfaceSTL(f"change_fuse_{ind}_dvgeo.stl", fromDVGeo="vehicle")  # this has the update from the dv change
-        # self.DVCon.writeSurfaceSTL(f"change_fuse_{ind}_dvcon.stl")   # this does not hae the update from the DV change
-
-        # self.DVCon.evalFunctions(constraintfunc, includeLinear=True)
-        # # self.constraintfuncsens = dict()
-        # # self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
-
-        # cabin_ks_2 = constraintfunc["cabin_trisurf_KS"]
-        # battery_ks_2 = constraintfunc["battery_trisurf_KS"]
-        # cabin_perim_2 = constraintfunc["cabin_trisurf_perim"]
-        # battery_perim_2 = constraintfunc["battery_trisurf_perim"]
-
-        # cabin_ks_fd = (cabin_ks_2 - cabin_ks_1) / step
-        # battery_ks_fd = (battery_ks_2 - battery_ks_1) / step
-        # cabin_perim_fd = (cabin_perim_2 - cabin_perim_1) / step
-        # battery_perim_fd = (battery_perim_2 - battery_perim_1) / step
-
-        # print(f"cabin ks {cabin_ks_fd}")
-        # print(f"battery ks {battery_ks_fd}")
-        # print(f"cabin perim {cabin_perim_fd}")
-        # print(f"battery perim {battery_perim_fd}")
 
         for constraintname in constraintfunc:
             # if any constraint returned a fail flag throw an error to OpenMDAO
@@ -129,7 +89,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_getDVGeo(self, name):
         return self.DVGeos[name]
-    
+
     """
     Wrapper for DVGeo functions
     """
@@ -384,8 +344,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=np.ones((nSpan * nChord,)), shape=nSpan * nChord)
 
-    def nom_addThicknessConstraints1D(self, name, ptList, nCon, axis, scaled=True, surfaceName="default", DVGeoName="default", compNames=None):
-        self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled, surfaceName=surfaceName, DVGeoName=DVGeoName, compNames=compNames)
+    def nom_addThicknessConstraints1D(
+        self, name, ptList, nCon, axis, scaled=True, surfaceName="default", DVGeoName="default", compNames=None
+    ):
+        self.DVCon.addThicknessConstraints1D(
+            ptList,
+            nCon,
+            axis,
+            name=name,
+            scaled=scaled,
+            surfaceName=surfaceName,
+            DVGeoName=DVGeoName,
+            compNames=compNames,
+        )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
     def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
