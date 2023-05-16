@@ -16,9 +16,10 @@ class BaseDVGeometry(ABC):
     Abstract class for a basic geometry object
     """
 
-    def __init__(self, fileName, name):
+    def __init__(self, fileName, name, geoType):
         self.fileName = fileName
         self.name = name
+        self.geoType = geoType
 
         self.points = OrderedDict()
         self.pointSets = OrderedDict()
