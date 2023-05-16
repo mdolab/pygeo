@@ -259,7 +259,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             Name to give this design variable
         secIndex : char or list of chars
             See wrapped
-        childIdx : _type_, optional
+        childIdx : int, optional
             The zero-based index of the child FFD, if this DV is for a child FFD
             The index is defined by the order in which you add the child FFD to the parent
             For example, the first child FFD has an index of 0, the second an index of 1, and so on
