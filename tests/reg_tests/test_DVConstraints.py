@@ -850,10 +850,10 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVCon = self.generate_dvgeo_dvcon("bwb", addToDVGeo=True)
 
             DVCon.addTriangulatedSurfaceConstraint(
-                self.comm, "default", "default", "blob", None, rho=10.0, addToPyOpt=True
+                self.comm, "default", DVGeo, "blob", None, rho=10.0, addToPyOpt=True
             )
             DVCon.addTriangulatedSurfaceConstraint(
-                self.comm, "default", "default", "blob", None, rho=1000.0, addToPyOpt=True
+                self.comm, "default", DVGeo, "blob", None, rho=1000.0, addToPyOpt=True
             )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, fdstep=1e-3)
@@ -871,7 +871,7 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVCon = self.generate_dvgeo_dvcon("bwb", addToDVGeo=True, intersected=True)
 
             DVCon.addTriangulatedSurfaceConstraint(
-                self.comm, "default", "default", "blob", None, rho=10.0, addToPyOpt=True
+                self.comm, "default", DVGeo, "blob", None, rho=10.0, addToPyOpt=True
             )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
@@ -1027,7 +1027,7 @@ class RegTestGeograd(unittest.TestCase):
             DVCon.setSurface([p0b, v1b, v2b], name="blob", addToDVGeo=True, DVGeoName="second")
 
             DVCon.addTriangulatedSurfaceConstraint(
-                self.comm, "default", "default", "blob", "second", rho=10.0, addToPyOpt=True
+                self.comm, "default", DVGeo1, "blob", DVGeo2, rho=10.0, addToPyOpt=True
             )
 
             funcs = {}

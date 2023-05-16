@@ -15,8 +15,7 @@ except ImportError:
 
 class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
-    This class is used to enclose a triangulated object inside an
-    aerodynamic surface.
+    This class is used to enclose a triangulated object inside an aerodynamic surface.
     """
 
     def __init__(
@@ -69,8 +68,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if heuristic_dist is not None:
             if heuristic_dist < computed_maxdim:
                 raise ValueError(
-                    "The heuristic distance must be less than the max diagonal"
-                    "dimension of the bounding box, " + str(computed_maxdim)
+                    f"The heuristic distance {heuristic_dist} must be less than the max diagonal dimension of the bounding box {computed_maxdim}"
                 )
             self.maxdim = heuristic_dist
         else:
@@ -110,8 +108,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
         """
-        # get the CFD triangulated mesh updates. need addToDVGeo = True when
-        # running setSurface()
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when running setSurface()
 
         # check if the first mesh has a DVGeo, and if it does, update the points
         if self.DVGeo1 is not None:
