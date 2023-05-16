@@ -23,7 +23,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 options = {}
             else:
                 options = info["options"]
-            
+
             if info.get("name") is None:
                 name = None
             else:
@@ -83,13 +83,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    def nom_getDVGeo(self, name):
-        return self.DVGeos[name]
-
-    """
-    Wrapper for DVGeo functions
-    """
-
     def nom_addChild(self, DVGeo, ffd_file):
         # can only add a child to a FFD DVGeo
         if DVGeo.geoType != "ffd":
@@ -140,6 +133,41 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # add every pointset in the dict, and set the ptset name as the key
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
+
+    def nom_getDVGeo(self, name, childIdx=None):
+        """
+        Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
+        Parameters
+        ----------
+        childIdx : int, optional
+            The zero-based index of the child FFD, you want a child DVGeo returned
+        Returns
+        -------
+        self.DVGeo, DVGeometry object
+            DVGeometry object held by this geometry component
+        """
+
+        # return the top level DVGeo
+        if childIdx is None:
+            return self.DVGeos[name]
+
+        # return a child DVGeo
+        else:
+            return self.DVGeos[name].children[childIdx]
+
+    def nom_getDVCon(self):
+        """
+        Gets the DVConstraints object held in the geometry component so DVCon methods can be called directly on it
+        Returns
+        -------
+        self.DVCon, DVConstraints object
+            DVConstraints object held by this geometry component
+        """
+        return self.DVCon
+
+    """
+    Wrapper for DVGeo functions
+    """
 
     def nom_addGlobalDV(self, DVGeo, dvName, value, func, childIdx=None, isComposite=False):
         # global DVs are only added to FFD-based DVGeo objects
@@ -229,20 +257,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_getLocalIndex(self, DVGeo, iVol, childIdx=None):
-        # this function is only for FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use getLocalIndex(), not type:{DVGeo.geoType}")
-
-        # get local index from the parent DVGeo
-        if childIdx is None:
-            lIndex = DVGeo.getLocalIndex(iVol)
-        # get local index from a child DVGeo
-        else:
-            lIndex = DVGeo.children[childIdx].getLocalIndex(iVol)
-
-        return lIndex
-
     def nom_addGeoCompositeDV(self, DVGeo, dvName, ptSetName=None, u=None, scale=None, **kwargs):
         # call the dvgeo object and add this dv
         DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
@@ -287,29 +301,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
         if not isComposite:
             self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
-
-    def nom_addRefAxis(self, DVGeo, childIdx=None, **kwargs):
-        # references axes are only needed in FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
-
-        # we just pass this through
-        if childIdx is None:
-            return DVGeo.addRefAxis(**kwargs)
-        else:
-            return DVGeo.children[childIdx].addRefAxis(**kwargs)
-
-    def nom_writeRefAxis(self, DVGeo, fileName, childIdx=None):
-        # references axes are only needed in FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
-
-        # write reference axis for parent and children (if any)
-        if childIdx is None:
-            return DVGeo.writeRefAxes(fileName)
-        # write reference axis for just a child
-        else:
-            return DVGeo.children[childIdx].writeRefAxes(fileName)
 
     """
     Wrapper for DVCon functions
@@ -413,9 +404,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     ):
         # constraint needs a triangulated reference surface at initialization
         self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
-
-    def nom_writeSurfaceSTL(self, fileName, surfaceName="default", fromDVGeo=None):
-        self.DVCon.writeSurfaceSTL(fileName=fileName, surfaceName=surfaceName, fromDVGeo=fromDVGeo)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
