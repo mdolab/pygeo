@@ -355,17 +355,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
-    def nom_addRefAxis(self, childIdx=None, **kwargs):
-        # references axes are only needed in FFD-based DVGeo objects
-        if self.geo_type != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
-
-        # we just pass this through
-        if childIdx is None:
-            return self.DVGeo.addRefAxis(**kwargs)
-        else:
-            return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
-
     """
     Wrapper for DVCon functions
     """
