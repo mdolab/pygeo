@@ -69,7 +69,7 @@ class DVConstraints:
 
     def __init__(self, name="DVCon1"):
         """
-        Create a (empty) DVconstrains object. Specific types of
+        Create a (empty) DVConstraints object. Specific types of
         constraints will added individually
         """
 

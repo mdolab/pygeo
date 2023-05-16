@@ -17,35 +17,31 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVGeoInfo = self.options["DVGeoInfo"]
         self.DVGeos = {}
 
+        # create the DVGeo object that does the computations
         for name, info in self.DVGeoInfo.items():
-            # create the DVGeo object that does the computations
+            if info.get("options") is None:
+                options = {}
+            else:
+                options = info["options"]
+            
+            if info.get("name") is None:
+                name = None
+            else:
+                name = info["name"]
+
+            # we are doing an FFD-based DVGeo
             if info["type"] == "ffd":
-                # we are doing an FFD-based DVGeo
-                # if info["options"] is None:
-                #     ffd_options = {}
-                # else:
-                #     ffd_options = info["options"]
+                self.DVGeos.update({name: DVGeometry(info["file"], name=name, **options)})
 
-                self.DVGeos.update({name: DVGeometry(info["file"], name=info["name"])})
-
+            # we are doing a VSP-based DVGeo
             elif info["type"] == "vsp":
-                # we are doing a VSP-based DVGeo
-                if info["options"] is None:
-                    vsp_options = {}
-                else:
-                    vsp_options = info["options"]
+                self.DVGeo.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=name, **options)})
 
-                self.DVGeo.update({name: DVGeometryVSP(info["file"], comm=self.comm, **vsp_options)})
-
+            # we are doing an ESP-based DVGeo
             elif info["type"] == "esp":
-                # we are doing an ESP-based DVGeo
-                # if info["options"] is None:
-                #     esp_options = {}
-                # else:
-                #     esp_options = info["options"]
+                self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=name, **options)})
 
-                self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=info["name"])})
-
+        # create a constraints object and add each DVGeo to it
         self.DVCon = DVConstraints()
         for _, DVGeo in self.DVGeos.items():
             self.DVCon.setDVGeo(DVGeo, name=DVGeo.name)

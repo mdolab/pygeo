@@ -126,13 +126,12 @@ class DVGeometryESP(DVGeoSketch):
             print("Initializing DVGeometryESP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         self.geoType = "esp"
 
         self.maxproc = maxproc
         self.esp = True
-        self.name = name
 
         # will become a list of tuples with (DVName, localIndex) - used for finite difference load balancing
         self.globalDVList = []
