@@ -1,7 +1,6 @@
 # External modules
 import numpy as np
 from stl import mesh
-from copy import deepcopy
 
 # First party modules
 from pygeo import DVGeometry

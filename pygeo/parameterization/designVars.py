@@ -318,16 +318,16 @@ class geoDVShapeFunc(geoDV):
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             # loop over the shapes and add the perturbations to each coef
             for ii, shape in enumerate(self.shapes):
-                for ind, dir in shape.items():
-                    coef[ind] += dir * self.value[ii].real
+                for idx, vec in shape.items():
+                    coef[idx] += vec * self.value[ii].real
 
         return coef
 
     def updateComplex(self, coef, config):
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             for ii, shape in enumerate(self.shapes):
-                for ind, dir in shape.items():
-                    coef[ind] += dir * self.value[ii].imag * 1j
+                for idx, vec in shape.items():
+                    coef[idx] += vec * self.value[ii].imag * 1j
 
         return coef
 

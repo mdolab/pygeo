@@ -1416,13 +1416,13 @@ class DVGeometry(BaseDVGeometry):
         self.useComposite = True
 
     def addShapeFunctionDV(
-            self,
-            dvName,
-            shapes,
-            lower=None,
-            upper=None,
-            scale=1.0,
-            config=None,
+        self,
+        dvName,
+        shapes,
+        lower=None,
+        upper=None,
+        scale=1.0,
+        config=None,
     ):
         """
         Add one or more local design variables ot the DVGeometry
