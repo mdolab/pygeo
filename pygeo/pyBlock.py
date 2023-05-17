@@ -904,7 +904,7 @@ class pyBlock:
                         (w_min <= w0 <= w_max)
 
                     if not within_bounds:
-                        D0Norm = D0Norm * 2e11
+                        D0Norm = 2e11
 
                 # If the new distance is less than the previous best
                 # distance, set the volID, u, v, w, since this may be
