@@ -829,7 +829,9 @@ class DVGeometry(BaseDVGeometry):
 
         # check if this custom name has already been used
         if childName in self.children:
-            raise Error(f"Another child DVGeo has already been added with the name {childName}. Change the name of one of the child FFDs with the same name and try again.")
+            raise Error(
+                f"Another child DVGeo has already been added with the name {childName}. Change the name of one of the child FFDs with the same name and try again."
+            )
 
         # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
@@ -2091,9 +2093,7 @@ class DVGeometry(BaseDVGeometry):
 
         # Add in child portion
         for child in self.children.values():
-            childdIdx = child.convertSensitivityToDict(
-                dIdx, out1D=out1D, useCompositeNames=useCompositeNames
-            )
+            childdIdx = child.convertSensitivityToDict(dIdx, out1D=out1D, useCompositeNames=useCompositeNames)
             # update the total sensitivities with the derivatives from the child
             for key in childdIdx:
                 if key in dIdxDict.keys():
