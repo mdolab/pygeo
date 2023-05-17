@@ -136,21 +136,49 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.nom_addPointSet(v, k)
 
     def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False):
+        """Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
+
+        Parameters
+        ----------
+        dvName : str
+            See :meth:`addGlobalDV <.DVGeometry.addGlobalDV>`
+
+        value : float, or iterable list of floats
+            See :meth:`addGlobalDV <.DVGeometry.addGlobalDV>`
+
+        func : python function
+            See :meth:`addGlobalDV <.DVGeometry.addGlobalDV>`
+
+        childIdx : int, optional
+            The zero-based index of the child FFD, if this DV is for a child FFD.
+            The index is defined by the order in which you add the child FFD to the parent.
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+
+        isComposite : bool, optional
+            Whether this DV is to be included in the composite DVs, by default False
+
+        Raises
+        ------
+        RuntimeError
+            Raised if the underlying DVGeo object is not an FFD
+        """
         # global DVs are only added to FFD-based DVGeo objects
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.geo_type}")
+
+        # call the dvgeo object and add this dv
+        if childIdx is None:
+            self.DVGeo.addGlobalDV(dvName, value, func)
+            shape = self.DVGeo.DV_listGlobal[dvName].nVal
+        else:
+            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
+            shape = self.DVGeo.children[childIdx].DV_listGlobal[dvName].nVal
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
         # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
         if not isComposite:
-            self.add_input(dvName, distributed=False, shape=len(value))
-
-        # call the dvgeo object and add this dv
-        if childIdx is None:
-            self.DVGeo.addGlobalDV(dvName, value, func)
-        else:
-            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
+            self.add_input(dvName, val=value, distributed=False, shape=shape)
 
     def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False):
         # local DVs are only added to FFD-based DVGeo objects
@@ -222,8 +250,46 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.addThicknessConstraints1D(ptList, nCon, axis, name=name, scaled=scaled)
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
-    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
-        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name, surfaceName=surfaceName)
+    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, scaled=True, surfaceName="default"):
+        """Add a DVCon volume constraint to the problem
+
+        Parameters
+        ----------
+        name :
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        leList :
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        teList :
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
+        nSpan : int, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
+        nChord : int, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default 10
+        scaled : bool, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default True
+        surfaceName : str, optional
+            See :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`, by default "default"
+        """
+        self.DVCon.addVolumeConstraint(
+            leList, teList, nSpan=nSpan, nChord=nChord, scaled=scaled, name=name, surfaceName=surfaceName
+        )
+        self.add_output(name, distributed=False, val=1.0)
+
+    def nom_addProjectedAreaConstraint(self, name, axis, scaled=True, surface_name="default"):
+        """Add a DVCon projected area constraint to the problem
+
+        Parameters
+        ----------
+        name :
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+        axis :
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
+        scaled : bool, optional
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default True
+        surface_name : str, optional
+            See :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`, by default "default"
+        """
+        self.DVCon.addProjectedAreaConstraint(axis, name=name, scaled=scaled, surfaceName=surface_name)
         self.add_output(name, distributed=False, val=1.0)
 
     def nom_add_LETEConstraint(self, name, volID, faceID, topID=None, childIdx=None):
