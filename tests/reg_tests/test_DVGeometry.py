@@ -729,13 +729,13 @@ class RegTestPyGeo(unittest.TestCase):
                 refPoints = DVGeo.update(ptName)
                 nPt = 3 * refPoints.shape[0]
                 step = 1e-5
-                J_fd = commonUtils.totalSensitivityFD(DVGeo, nPt, ptName, step)
-                handler.root_add_dict(J_fd, rtol=1e-7, atol=1e-7)
+                dIdx = commonUtils.totalSensitivityFD(DVGeo, nPt, ptName, step)
 
             else:
                 # Compute the analytic derivatives
                 dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
-                handler.root_add_dict("dIdx", dIdx, rtol=1e-7, atol=1e-7)
+
+            handler.root_add_dict("dIdx", dIdx, rtol=1e-7, atol=1e-7)
 
     def test_spanwise_dvs(self, train=False, refDeriv=False):
         """
