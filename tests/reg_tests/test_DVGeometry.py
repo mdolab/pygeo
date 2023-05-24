@@ -1322,6 +1322,87 @@ class RegTestPyGeo(unittest.TestCase):
 
             handler.root_add_val("links_x", DVGeo.links_x, rtol=1e-12, atol=1e-12)
 
+    def train_shape_functions(self, train=True, refDeriv=True):
+        self.test_shape_functions(train=train, refDeriv=refDeriv)
+
+    def test_shape_functions(self, train=False, refDeriv=False):
+        """
+        Shape function DV test
+        """
+
+        refFile = os.path.join(self.base_path, "ref/test_shape_function_dv.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test shape function DVs")
+
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
+
+            # DVGeo.addRefAxis("RefAx", xFraction=0.5, alignIndex="k", rotType=0, rot0ang=-90)
+            # DVGeo.addGlobalDV(dvName="span", value=0.5, func=commonUtils.span, lower=0.1, upper=10, scale=1)
+
+            # this array can be access as [i,j,k] that follows the FFD volume's topology, and returns the global
+
+            # coef indices, which is what we need to set the shape
+            lidx = DVGeo.getLocalIndex(0)
+
+            # create the dictionaries
+            shape_1 = {}
+            shape_2 = {}
+
+            k_center = 2
+            i_center = 1
+            n_chord = lidx.shape[0]
+
+            for kk in [-1, 0, 1]:
+                if kk == 0:
+                    k_weight = 1.0
+                else:
+                    k_weight = 0.5
+
+                for ii in range(n_chord):
+                    # compute the chord weight. we want the shape to peak at i_center
+                    if ii == i_center:
+                        i_weight = 1.0
+                    elif ii < i_center:
+                        # we are ahead of the center point
+                        i_weight = ii / i_center
+                    else:
+                        # we are behind the center point
+                        i_weight = (n_chord - ii - 1) / (n_chord - i_center - 1)
+
+                    # get the direction vectors with unit length
+                    dir_up = np.array([0.0, 1.0, 0.0])
+                    # dir down can also be defined as an upwards pointing vector. Then, the DV itself
+                    # getting a negative value means the surface would move down etc. For now, we define
+                    # the vector as its pointing down, so a positive DV value moves the surface down.
+                    dir_down = np.array([0.0, -1.0, 0.0])
+
+                    # scale them by the i and k weights
+                    dir_up *= k_weight * i_weight
+                    dir_down *= k_weight * i_weight
+
+                    # get this point's global index and add to the dictionary with the direction vector.
+                    gidx_up = lidx[ii, 1, kk + k_center]
+                    gidx_down = lidx[ii, 0, kk + k_center]
+
+                    shape_1[gidx_up] = dir_up
+                    # the lower face is perturbed with a separate dictionary
+                    shape_2[gidx_down] = dir_down
+
+            shapes = [shape_1, shape_2]
+            DVGeo.addShapeFunctionDV("shape_func", shapes)
+
+            # test derivatives
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=2)
+
+            # perturb the DV and test point coordinates
+            xDV = {"shape_func": np.array([0.5, 1.0])}
+            DVGeo.setDesignVars(xDV)
+
+            # testPoints were added in the commonUtils.testSensitivities call
+            new_pts = DVGeo.update("testPoints")
+
+            handler.root_add_val("new_pts", new_pts, rtol=1e-10, atol=1e-10)
+
 
 if __name__ == "__main__":
     unittest.main()
