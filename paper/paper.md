@@ -4,7 +4,7 @@ tags:
   - geometry
   - Python
 authors:
-  - name: Hannah Hajdik
+  - name: Hannah M. Hajdik
     orcid: 0000-0002-5103-7159
     affiliation: 1
   - name: Anil Yildirim
@@ -13,7 +13,7 @@ authors:
   - name: Neil Wu
     orcid: 0000-0001-8856-9661
     affiliation: 1
-  - name: Ben Brelje
+  - name: Benjamin J. Brelje
     orcid: 0000-0002-9819-3028
     affiliation: 1
   - name: Sabet Seraj
@@ -22,19 +22,19 @@ authors:
   - name: Marco Mangano
     orcid: 0000-0001-8495-3578
     affiliation: 1
-  - name: Josh Anibal
+  - name: Joshua L. Anibal
     orcid: 0000-0002-7795-2523
     affiliation: 1
   - name: Eirikur Jonsson
     orcid: 0000-0002-5166-3889
     affiliation: 1
-  - name: Eytan Adler
+  - name: Eytan J. Adler
     orcid: 0000-0002-8716-1805
     affiliation: 1
   - name: Charles A. Mader
     orcid: 0000-0002-2744-1151
     affiliation: 1
-  - name: Gaetan Kenway
+  - name: Gaetan K. W. Kenway
     orcid: 0000-0003-1352-5458
     affiliation: 1
   - name: Joaquim R. R. A. Martins
