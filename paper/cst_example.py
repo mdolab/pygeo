@@ -1,7 +1,7 @@
-from pygeo.parameterization.DVGeoCST import DVGeometryCST
+import os
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from pygeo.parameterization.DVGeoCST import DVGeometryCST
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 out_file = os.path.join(cur_dir, "cst_example.pdf")

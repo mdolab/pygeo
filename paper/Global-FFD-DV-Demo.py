@@ -1,12 +1,12 @@
-# rst Import libraries
+import copy
 import numpy as np
 from pygeo import DVGeometry
-import copy
 
 FFDFile = "ffd.xyz"
 DVGeo = DVGeometry(FFDFile)
 
 nRefAxPts = DVGeo.addRefAxis("wing", xFraction=0.25, alignIndex="k")
+
 
 def dihedral(val, geo):
     C = geo.extractCoef("wing")
