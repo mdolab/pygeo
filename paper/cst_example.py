@@ -4,6 +4,8 @@ import os
 # External modules
 import matplotlib.pyplot as plt
 import numpy as np
+
+# First party modules
 from pygeo.parameterization.DVGeoCST import DVGeometryCST
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))

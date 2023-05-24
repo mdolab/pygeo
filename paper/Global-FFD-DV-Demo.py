@@ -3,6 +3,8 @@ import copy
 
 # External modules
 import numpy as np
+
+# First party modules
 from pygeo import DVGeometry
 
 FFDFile = "ffd.xyz"
