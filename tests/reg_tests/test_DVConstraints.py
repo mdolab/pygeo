@@ -4,6 +4,7 @@ import unittest
 
 # External modules
 from baseclasses import BaseRegTest
+from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
 from stl import mesh
@@ -140,6 +141,7 @@ class RegTestPyGeo(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.comm = MPI.COMM_WORLD
 
         # Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
         if self.multi and not pysurfInstalled:
@@ -847,8 +849,12 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("bwb", addToDVGeo=True)
 
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=1000.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", None, rho=10.0, addToPyOpt=True
+            )
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", None, rho=1000.0, addToPyOpt=True
+            )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, fdstep=1e-3)
             handler.assert_allclose(
@@ -864,7 +870,9 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("bwb", addToDVGeo=True, intersected=True)
 
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", None, rho=10.0, addToPyOpt=True
+            )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             np.testing.assert_array_less(np.zeros(1), funcs["DVCon1_trisurf_constraint_0_perim"])
@@ -967,6 +975,7 @@ class RegTestGeograd(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.comm = MPI.COMM_WORLD
 
     def test_triangulatedSurface_intersected_2DVGeos(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected_2DVGeos.ref")
@@ -1017,7 +1026,9 @@ class RegTestGeograd(unittest.TestCase):
             p0b = p0b + np.array([0.0, 0.3, 0.0])
             DVCon.setSurface([p0b, v1b, v2b], name="blob", addToDVGeo=True, DVGeoName="second")
 
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", "second", rho=10.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", "second", rho=10.0, addToPyOpt=True
+            )
 
             funcs = {}
             DVCon.evalFunctions(funcs, includeLinear=True)
