@@ -16,7 +16,7 @@ from scipy.spatial import cKDTree
 # Local modules
 from .. import geo_utils, pyBlock, pyNetwork
 from .BaseDVGeo import BaseDVGeometry
-from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal, geoDVShapeFunc
+from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVShapeFunc, geoDVSpanwiseLocal
 
 
 class DVGeometry(BaseDVGeometry):
