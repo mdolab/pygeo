@@ -67,7 +67,7 @@ MACH and MPhys use pyOptSparse [@Wu2020a] to interface with optimization algorit
 [^1]: \url{https://github.com/OpenMDAO/mphys}
 
 pyGeo's interface for design variables and constraints is independent of which disciplinary models access the geometry.
-This means that pyGeo can interact with different disciplines ( such as structures and aerodynamics) in the same way.
+This means that pyGeo can interact with different disciplines (such as structures and aerodynamics) in the same way.
 This also facilitates a direct comparison of the behavior or performance of two alternative models for a discipline using the same geometry parameterization [@Adler2022c].
 
 ## Geometry Parameterization with pyGeo
@@ -78,7 +78,7 @@ The choice of parameterization depends on the user's experience, the geometry de
 ### Free-form Deformation
 The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches [@Zhang2018a].
 This approach embeds the entire reference geometry in a parameterized volume. 
-The set of control points that determine the shape of the volume is displaced to manipulate the points inside. 
+The set of control points that determines the shape of the volume is displaced to manipulate the points inside. 
 The user can have a high degree of control over the geometry by selecting different control point densities and locations.
 
 Individual control points can be moved to obtain local shape modifications.
@@ -140,7 +140,7 @@ Some commonly used geometric constraints in shape optimization, such as thicknes
 
 ![Thickness and volume constraints demonstrated on an wing section [@Brelje2020a]. \label{fig:constraint}](constraints_3d.pdf)
 
-If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described by Brelje et al. [@Brelje2020a] and illustrated in \autoref{fig:trisurf}.
+If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described in [@Brelje2020a] and illustrated in \autoref{fig:trisurf}.
 
 ![Triangulated surface constraint used to optimize an aeroshell around a complex geometry [@Brelje2020a].\label{fig:trisurf}](trisurfcon.pdf)
 
