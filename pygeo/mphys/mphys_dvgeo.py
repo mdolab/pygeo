@@ -311,6 +311,34 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         return nVal
 
     def nom_addShapeFunctionDV(self, dvName, shapes, childIdx=None, config=None):
+        """
+        Add one or more local shape function design variables to the DVGeometry object
+        Wrapper for :meth:`addLocalSectionDV <.DVGeometry.addShapeFunctionDV>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
+
+        Parameters
+        ----------
+        dvName : str
+            Name to give this design variable
+        shapes : list of dictionaries, or a single dictionary
+            See wrapped
+        childIdx : int, optional
+            The zero-based index of the child FFD, if this DV is for a child FFD
+            The index is defined by the order in which you add the child FFD to the parent
+            For example, the first child FFD has an index of 0, the second an index of 1, and so on
+        config : str or list, optional
+            See wrapped
+
+        Returns
+        -------
+        N : int
+            The number of design variables added.
+
+        Raises
+        ------
+        RuntimeError
+            Raised if the underlying DVGeo parameterization is not FFD-based
+        """
         # shape function DVs are only added to FFD-based DVGeo objects
         if self.geo_type != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
