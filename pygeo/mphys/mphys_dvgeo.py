@@ -310,6 +310,22 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
+    def nom_addShapeFunctionDV(self, dvName, shapes, childIdx=None, config=None):
+        # shape function DVs are only added to FFD-based DVGeo objects
+        if self.geo_type != "ffd":
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
+
+        # add the DV to a normal DVGeo
+        if childIdx is None:
+            nVal = self.DVGeo.addShapeFunctionDV(dvName, shapes, config)
+        # add the DV to a child DVGeo
+        else:
+            nVal = self.DVGeo.children[childIdx].addShapeFunctionDV(dvName, shapes, config)
+
+        # define the input
+        self.add_input(dvName, distributed=False, shape=nVal)
+        return nVal
+
     def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, **kwargs):
         # call the dvgeo object and add this dv
         self.DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
