@@ -165,7 +165,7 @@ Similarly, pyGeo can compute the constraint Jacobian matrix
 \end{equation*}
 where $g$ is the vector of geometric constraints.
 
-For the FFD parameterization, these derivatives are computed using implicit analytic methods [@Martins2021] and the complex-step method [@Martins2003a].
+For the FFD parameterization, these derivatives are computed using implicit analytic methods (Sec.~6.7)[@Martins2021] and the complex-step method [@Martins2003a].
 For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences.
 The CST derivatives are computed analytically.
 
