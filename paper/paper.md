@@ -71,12 +71,12 @@ This means that pyGeo can interact with different disciplines (such as structure
 This also facilitates a direct comparison of the behavior or performance of two alternative models for a discipline using the same geometry parameterization [@Adler2022c].
 
 ## Geometry Parameterization with pyGeo
-pyGeo contains several options for parameterizing geometry: variations on the FFD method, interfaces to external parametric modeling tools, and an analytic parameterization.
+pyGeo contains several options for parameterizing geometry: variations on the free-form deformation (FFD) method, interfaces to external parametric modeling tools, and an analytic parameterization.
 Because each parameterization method uses a common interface for interacting with the rest of the MACH framework, any surface parameterization can be used in place of another within an optimization setup [@Hajdik2023a].
 The choice of parameterization depends on the user's experience, the geometry details, and whether the user needs the final design in a specific format.
 
 ### Free-form Deformation
-The free-form deformation (FFD) method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches [@Zhang2018a].
+The FFD method [@Sederberg1986] is one of the most popular three-dimensional geometry parameterization approaches [@Zhang2018a].
 This approach embeds the entire reference geometry in a parameterized volume. 
 The set of control points that determines the shape of the volume is displaced to manipulate the points inside. 
 The user can have a high degree of control over the geometry by selecting different control point densities and locations.
@@ -122,7 +122,7 @@ For ESP (\autoref{fig:esp_example}) and OpenVSP models (\autoref{fig:vsp_example
 
 ![Example of ESP models of hydrogen tanks used through pyGeo [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
 
-![Example of a VSP aircraft model used through VSP's pyGeo interface [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
+![Example of an OpenVSP aircraft model used through OpenVSP's pyGeo interface [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
 
 ### Class Shape Transformation
 The class shape transformation (CST) [@Kulfan2008] is a popular airfoil parameterization.
@@ -140,7 +140,7 @@ Some commonly used geometric constraints in shape optimization, such as thicknes
 
 ![Thickness and volume constraints demonstrated on an wing section [@Brelje2020a]. \label{fig:constraint}](constraints_3d.pdf)
 
-If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described in [@Brelje2020a] and illustrated in \autoref{fig:trisurf}.
+If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described in [@Brelje2020a], illustrated in \autoref{fig:trisurf}.
 
 ![Triangulated surface constraint used to optimize an aeroshell around a complex geometry [@Brelje2020a].\label{fig:trisurf}](trisurfcon.pdf)
 
@@ -172,7 +172,7 @@ The CST derivatives are computed analytically.
 
 # Statement of Need
 Few open-source packages exist with comparable functionalities.
-To the authors' best knowledge, the only other open-source CFD-based optimization framework that contains a geometry parameterization is SU2 [@Economon2016a].
+To the authors' best knowledge, the only other open-source CFD-based optimization framework that contains a geometry parameterization method is SU2 [@Economon2016a].
 It supports Hicks--Henne bump functions [@Hicks1978] for airfoil optimizations and the FFD method for 3D cases.
 However, this geometry parameterization cannot be used with other solvers (aerodynamic or otherwise) because it is tightly integrated into SU2.
 
