@@ -140,7 +140,7 @@ Some commonly used geometric constraints in shape optimization, such as thicknes
 
 ![Thickness and volume constraints demonstrated on an wing section [@Brelje2020a]. \label{fig:constraint}](constraints_3d.pdf)
 
-If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as described in [@Brelje2020a], illustrated in \autoref{fig:trisurf}.
+If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as illustrated in \autoref{fig:trisurf} [@Brelje2020a].
 
 ![Triangulated surface constraint used to optimize an aeroshell around a complex geometry [@Brelje2020a].\label{fig:trisurf}](trisurfcon.pdf)
 
@@ -153,19 +153,19 @@ pyGeo can handle such scenarios by independently manipulating the geometry on ea
 
 # Derivative Computation
 In addition to geometry manipulation and constraints, pyGeo can compute derivatives of these operations with respect to design variables.
-For the geometric deformation, pyGeo can compute the Jacobian
+For the geometric deformation, pyGeo can compute the Jacobian matrix
 \begin{equation*}
 \frac{\mathrm{d}X_s}{\mathrm{d}x} ,
 \end{equation*}
 where $X_s$ is the vector of surface mesh coordinates, and $x$ is the vector of geometric design variables.
 
-Similarly, pyGeo can compute the constraint Jacobian
+Similarly, pyGeo can compute the constraint Jacobian matrix
 \begin{equation*}
 \frac{\mathrm{d}g}{\mathrm{d}x} ,
 \end{equation*}
 where $g$ is the vector of geometric constraints.
 
-For the FFD parameterization, these derivatives are computed using analytic methods [@Martins2021] and the complex-step method [@Martins2003a].
+For the FFD parameterization, these derivatives are computed using implicit analytic methods (Sec.~6.7)[@Martins2021] and the complex-step method [@Martins2003a].
 For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences.
 The CST derivatives are computed analytically.
 
@@ -181,7 +181,7 @@ pyGeo fills these gaps through parallelism, efficient gradients, and geometric c
 It keeps OpenVSP and ESP in the optimization loop and provides a standard interface to these tools for use with external solvers.
 
 pyGeo is maintained and developed by the MDO Lab[^2] at the University of Michigan and is actively used for MDO applications in research and industry.
-The different parameterizations within pyGeo have all been necessary for different optimization problems depending on the geometry involved.
+Having different parameterization choices in pyGeo has been useful because the best parameterization depends on the type of problem.
 pyGeo's standard FFD implementation is the most commonly used parameterization [@Kenway2014c; @Bons2019a].
 The hierarchical FFD method was used to optimize a blended wing body aircraft [@Lyu2014c], a hydrofoil [@Liao2021a], and a wind turbine [@Madsen2019a].
 The method for using multiple FFD blocks has been used to optimize a conventional aircraft [@Yildirim2021b], a T-shaped hydrofoil [@Liao2022], and a supersonic transport aircraft [@Seraj2022a].
