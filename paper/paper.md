@@ -109,7 +109,7 @@ The basic FFD implementation lacks flexibility when the geometry has intersectin
 In such cases, pyGeo can parameterize each component using FFD and ensure a watertight surface representation at the component intersections using an inverse-distance surface deformation method [@Yildirim2021b].
 \autoref{fig:ffd_multi} shows an example of a component-based FFD setup for a supersonic transport aircraft.
 
-![Example of FFD parameterization with intersecting components [@Seraj2022a]. \label{fig:ffd_multi}](ffd_multi.png)
+![Example of FFD parameterization with intersecting components [@Seraj2022a]. \label{fig:ffd_multi}](ffd_multi.png){ width=75% }
 
 ### Parametric Geometry Tools
 pyGeo contains interfaces to two parametric geometry tools, the Engineering Sketch Pad (ESP) [@Haimes2013a] and OpenVSP [@McDonald2022a].
@@ -120,9 +120,9 @@ pyGeo interfaces with ESP and OpenVSP in similar ways.
 In both cases, pyGeo takes an instance of the model, and its points are associated with coordinates in a mesh from a solver in the MACH framework.
 For ESP (\autoref{fig:esp_example}) and OpenVSP models (\autoref{fig:vsp_example}), the pyGeo interface to the respective software stores the model in a form usable within the MACH framework and updates it as design variables are changed throughout the optimization.
 
-![Example of ESP models of hydrogen tanks used through pyGeo [@Brelje2021a]. \label{fig:esp_example}](esp_example.png)
+![Example of ESP models of hydrogen tanks used through pyGeo [@Brelje2021a]. \label{fig:esp_example}](esp_example.png){ width=75% }
 
-![Example of an OpenVSP aircraft model used through OpenVSP's pyGeo interface [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png)
+![Example of an OpenVSP aircraft model used through OpenVSP's pyGeo interface [@Yildirim2022a]. \label{fig:vsp_example}](vsp_example.png){ width=85% }
 
 ### Class Shape Transformation
 The class shape transformation (CST) [@Kulfan2008] is a popular airfoil parameterization.
@@ -130,7 +130,7 @@ It generates a shape using Bernstein polynomials to scale a class function, whic
 pyGeo contains an implementation of this airfoil parameterization that supports design variables for the Bernstein polynomial weightings, the class function parameters, and the airfoil chord length.
 pyGeo's CST implementation can only be used for 2D problems, such as airfoil optimization (\autoref{fig:cst_example}).
 
-![Airfoil defined by three CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf)
+![Airfoil defined by three CST coefficients on each surface undergoing a perturbation in one Bernstein polynomial. \label{fig:cst_example}](cst_example.pdf){ width=85% }
 
 ## Constraints
 pyGeo also includes geometric constraints to prevent geometrically undesirable designs.
@@ -138,7 +138,7 @@ The most commonly-used class of geometry constraints in pyGeo involves tracking 
 These constraints are created by specifying a single point, a line, or an array of points, along with a normal direction, then computing two line-surface intersection points.
 Some commonly used geometric constraints in shape optimization, such as thickness, area, and volume constraints (\autoref{fig:constraint}) can be computed using variations on this approach, which is computationally cheap and robust [@Brelje2020a].
 
-![Thickness and volume constraints demonstrated on an wing section [@Brelje2020a]. \label{fig:constraint}](constraints_3d.pdf)
+![Thickness and volume constraints demonstrated on an wing section [@Brelje2020a]. \label{fig:constraint}](constraints_3d.pdf){ width=75% }
 
 If a more complex geometry needs to be integrated into an optimized surface, pyGeo supports an alternative geometric constraint formulation based on arbitrary triangulated surfaces as illustrated in \autoref{fig:trisurf} [@Brelje2020a].
 
@@ -165,7 +165,7 @@ Similarly, pyGeo can compute the constraint Jacobian matrix
 \end{equation*}
 where $g$ is the vector of geometric constraints.
 
-For the FFD parameterization, these derivatives are computed using implicit analytic methods (Sec.~6.7)[@Martins2021] and the complex-step method [@Martins2003a].
+For the FFD parameterization, these derivatives are computed using implicit analytic methods [@Martins2021, Sec. 6.7] and the complex-step method [@Martins2003a].
 For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences.
 The CST derivatives are computed analytically.
 
