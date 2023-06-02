@@ -313,7 +313,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     def nom_addShapeFunctionDV(self, dvName, shapes, childIdx=None, config=None):
         """
         Add one or more local shape function design variables to the DVGeometry object
-        Wrapper for :meth:`addLocalSectionDV <.DVGeometry.addShapeFunctionDV>`
+        Wrapper for :meth:`addShapeFunctionDV <.DVGeometry.addShapeFunctionDV>`
         Input parameters are identical to those in wrapped function unless otherwise specified
 
         Parameters

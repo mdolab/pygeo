@@ -1425,7 +1425,7 @@ class DVGeometry(BaseDVGeometry):
         config=None,
     ):
         """
-        Add one or more local design variables ot the DVGeometry
+        Add one or more local design variables to the DVGeometry
         object. Local variables are used for small shape modifications.
 
         Parameters
@@ -1443,7 +1443,11 @@ class DVGeometry(BaseDVGeometry):
             of the arrays determine how much the FFD point moves with a
             unit change in the DV. If an FFD point is controlled by multiple
             shape DVs, the changes from each shape function is superposed
-            in the order shape functions are sorted in the list.
+            in the order shape functions are sorted in the list. The order
+            of the shape functions does not matter because the final control
+            point location only depends on the shapes and magnitude of the DV.
+            However, the order of the shapes must be consistent across processors
+            when running in parallel.
 
         lower : float, or array size (N)
             The lower bound for the variable(s). If a single float is provided,
@@ -4139,13 +4143,11 @@ class DVGeometry(BaseDVGeometry):
 
     def _localDVJacobian(self, config=None):
         """
-        Return the derivative of the coefficients wrt the local design
-        variables
+        Return the derivative of the coefficients wrt the local and shape function
+        design variables
         """
-
-        # TODO the comment below is not correct with the addition of shape func DVs. either separate out their implementation or fix the comment.
-        # This is relatively straight forward, since the matrix is
-        # entirely one's or zeros
+        # This is relatively straight forward, since the matrix is entirely one's or zeros for local DVs,
+        # and the sparsity pattern is explicitly provided for the shape function dvs with the definition of the shapes.
         nDV = self._getNDVLocalSelf()
         self._getDVOffsets()
 

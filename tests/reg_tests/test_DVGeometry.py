@@ -1336,9 +1336,6 @@ class RegTestPyGeo(unittest.TestCase):
 
             DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
 
-            # DVGeo.addRefAxis("RefAx", xFraction=0.5, alignIndex="k", rotType=0, rot0ang=-90)
-            # DVGeo.addGlobalDV(dvName="span", value=0.5, func=commonUtils.span, lower=0.1, upper=10, scale=1)
-
             # this array can be access as [i,j,k] that follows the FFD volume's topology, and returns the global
 
             # coef indices, which is what we need to set the shape
