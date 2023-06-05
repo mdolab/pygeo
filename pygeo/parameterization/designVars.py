@@ -297,12 +297,11 @@ class geoDVComposite(geoDV):
 
 
 class geoDVShapeFunc(geoDV):
-    def __init__(self, name, shapes, lower, upper, scale, mask, config):
+    def __init__(self, name, shapes, lower, upper, scale, config):
         """
-        Create a set of geometric design variables which change the shape
-        of a surface surface_id. Local design variables change the surface
-        in all three axis.
-        See addLocalDV for more information
+        Create a set of geometric design variables that are represented
+        as shape functions defined on one or more FFD control points.
+        See addShapeFunctionDV for more information
 
         """
 

@@ -1506,7 +1506,7 @@ class DVGeometry(BaseDVGeometry):
             shapes = [shapes]
 
         # this is treated the same way as local DVs
-        self.DV_listLocal[dvName] = geoDVShapeFunc(dvName, shapes, lower, upper, scale, self.masks, config)
+        self.DV_listLocal[dvName] = geoDVShapeFunc(dvName, shapes, lower, upper, scale, config)
 
         return self.DV_listLocal[dvName].nVal
 
