@@ -1425,8 +1425,11 @@ class DVGeometry(BaseDVGeometry):
         config=None,
     ):
         """
-        Add one or more local design variables to the DVGeometry
-        object. Local variables are used for small shape modifications.
+        Add shape function design variables to the DVGeometry.
+        Shape functions contain displacement vectors for one or
+        more FFD control points and can be used to define design
+        variables that move a set of control points together
+        according to some shape function determined by the user.
 
         Parameters
         ----------
@@ -1478,7 +1481,19 @@ class DVGeometry(BaseDVGeometry):
 
         Examples
         --------
-        >>> # TODO add example use
+        We can add two shape functions as follows. The first shape moves the FFD control points
+        on indices 0,0,0 and 0,0,1 together in the +y direction. A value of 1.0 for this DV will
+        result in these points moving by 1 distance unit. The second shape moves the point
+        at 1,0,0 in the same direction and two other points at 1,0,1 and 2,0,1 in the same direction
+        but by half the magnitude.
+
+            >>> lidx = DVGeo.getLocalIndex(0)
+            >>> dir_up = np.array([0.0, 1.0, 0.0])
+            >>> shape_1 = {lidx[0, 0, 0]: dir_up, lidx[0, 0, 1]: dir_up}
+            >>> shape_2 = {lidx[1, 0, 0]: dir_up, lidx[1, 0, 1]: dir_up * 0.5, lidx[2, 0, 1]: dir_up * 0.5, }
+            >>> shapes = [shape_1, shape_2]
+            >>> DVGeo.addShapeFunctionDV("shape_func", shapes)
+
         """
         if self.name is not None:
             dvName = self.name + "_" + dvName
