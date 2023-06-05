@@ -47,7 +47,7 @@ stlmesh.save("local_wing.stl")
 DVGeo.writeTecplot("local_ffd.dat")
 
 
-# add shape function DVs
+# rst add shape function DVs
 DVGeo, stlmesh = create_fresh_dvgeo()
 # create the shape functions. to demonstrate the capability, we add 2 shape functions. each
 # adds a bump to a spanwise section, and then the two neighboring spanwise sections also get
