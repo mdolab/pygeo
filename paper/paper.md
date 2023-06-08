@@ -146,7 +146,7 @@ If a more complex geometry needs to be integrated into an optimized surface, pyG
 
 
 # Parallelism
-pyGeo can optionally work under distributed memory parallelism using MPI, which is required when interfacing with large-scale CFD applications.
+pyGeo can optionally work under distributed memory parallelism using MPI (Message Passing Interface), which is required when interfacing with large-scale computational fluid dynamics (CFD) applications.
 For example, the computational mesh may be partitioned and distributed among many processors by the CFD solver, and each processor may be aware of only its portion of the mesh.
 pyGeo can handle such scenarios by independently manipulating the geometry on each processor and aggregating the constraints across all processors when communicating with the optimizer.
 
@@ -165,7 +165,7 @@ Similarly, pyGeo can compute the constraint Jacobian matrix
 \end{equation*}
 where $g$ is the vector of geometric constraints.
 
-For the FFD parameterization, these derivatives are computed using implicit analytic methods [@Martins2021, Sec. 6.7] and the complex-step method [@Martins2003a].
+For the FFD parameterization, these derivatives are computed using analytic methods [@Martins2021, Sec. 6.3] and the complex-step method [@Martins2003a].
 For the interfaces to OpenVSP and ESP, the derivatives are computed with parallel finite differences.
 The CST derivatives are computed analytically.
 
