@@ -5,7 +5,7 @@ import openmdao.api as om
 from openmdao.api import AnalysisError
 
 # Local modules
-from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
+from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP, DVGeometryMulti
 
 
 # class that actually calls the dvgeometry methods
@@ -45,6 +45,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 esp_options = self.options["options"]
 
             self.DVGeo = DVGeometryESP(self.options["file"], comm=self.comm, **esp_options)
+
+        elif self.geo_type == "multi":
+            # we are doing a multi-DVGeo-based DVGeo
+            self.DVGeo = DVGeometryMulti()
 
         self.DVCon = DVConstraints()
         self.DVCon.setDVGeo(self.DVGeo)
@@ -100,7 +104,26 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             if pointSet not in self.DVGeo.children[-1].points:
                 self.DVGeo.children[-1].addPointSet(self.DVGeo.points[pointSet], pointSet)
 
-    def nom_add_discipline_coords(self, discipline, points=None):
+    def nom_addComponent(self, comp, ffd_file, triMesh, scale=1.0):
+        if self.geo_type != "multi":
+            raise RuntimeError(
+                f"Only multi-based DVGeo objects can have components added to them, not type:{self.geo_type}"
+            )
+
+        # Add component
+        DVGeo = DVGeometry(ffd_file)
+        self.DVGeo.addComponent(comp=comp, DVGeo=DVGeo, triMesh=triMesh, scale=scale)
+
+    def nom_addIntersection(self, compA, compB, dStarA, dStarB, featureCurves, project, includeCurves, curveEpsDict, anisotropy):#, trackSurfaces):
+        if self.geo_type != "multi":
+            raise RuntimeError(
+                f"Only multi-based DVGeo objects can have intersections added to them, not type:{self.geo_type}"
+            )
+
+        # Add intersection
+        self.DVGeo.addIntersection(compA=compA, compB=compB, dStarA=dStarA, dStarB=dStarB, featureCurves=featureCurves, project=project, includeCurves=includeCurves, curveEpsDict=curveEpsDict, anisotropy=anisotropy)#, trackSurfaces=trackSurfaces)
+
+    def nom_add_discipline_coords(self, discipline, points=None, applyIC=False):
         # TODO remove one of these methods to keep only one method to add pointsets
 
         if points is None:
@@ -110,13 +133,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False)
+            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False, applyIC=applyIC)
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, points, ptName, add_output=True, **kwargs):
+    def nom_addPointSet(self, points, ptName, add_output=True, applyIC=False):
         # add the points to the dvgeo object
-        self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        if self.geo_type == "multi":
+            self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, applyIC=applyIC)
+        else:
+            self.DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName)
         self.omPtSetList.append(ptName)
 
         if self.geo_type == "ffd":
@@ -135,7 +161,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_getDVGeo(self, childIdx=None):
+    def nom_getDVGeo(self, childIdx=None, comp=None):
         """
         Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
 
@@ -152,12 +178,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         """
 
         # return the top level DVGeo
-        if childIdx is None:
+        if childIdx is None and comp is None:
             return self.DVGeo
 
         # return a child DVGeo
-        else:
+        elif childIdx is not None:
             return self.DVGeo.children[childIdx]
+
+        # return a component DVGeo
+        else:
+            return self.DVGeo.DVGeoDict[comp]
 
     def nom_getDVCon(self):
         """
@@ -174,7 +204,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     Wrapper for DVGeo functions
     """
 
-    def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False):
+    def nom_addGlobalDV(self, dvName, value, func, childIdx=None, compName=None, isComposite=False):
         """Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
 
         Parameters
@@ -202,16 +232,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             Raised if the underlying DVGeo object is not an FFD
         """
         # global DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
+        if self.geo_type != "ffd" and self.geo_type != "multi":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{self.geo_type}")
 
         # call the dvgeo object and add this dv
-        if childIdx is None:
-            self.DVGeo.addGlobalDV(dvName, value, func)
-            shape = self.DVGeo.DV_listGlobal[dvName].nVal
-        else:
-            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
-            shape = self.DVGeo.children[childIdx].DV_listGlobal[dvName].nVal
+        if self.geo_type == "ffd":
+            if childIdx is None:
+                self.DVGeo.addGlobalDV(dvName, value, func)
+                shape = self.DVGeo.DV_listGlobal[dvName].nVal
+            else:
+                self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
+                shape = self.DVGeo.children[childIdx].DV_listGlobal[dvName].nVal
+
+        if self.geo_type == "multi":
+            self.DVGeo.DVGeoDict[compName].addGlobalDV(dvName, value, func)
+            shape = self.DVGeo.DVGeoDict[compName].DV_listGlobal[dvName].nVal
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -219,15 +254,19 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, val=value, distributed=False, shape=shape)
 
-    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False):
+    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, compName=None, isComposite=False):
         # local DVs are only added to FFD-based DVGeo objects
-        if self.geo_type != "ffd":
+        if self.geo_type != "ffd" and self.geo_type != "multi":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{self.geo_type}")
 
-        if childIdx is None:
-            nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
-        else:
-            nVal = self.DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+        if self.geo_type == "ffd":
+            if childIdx is None:
+                nVal = self.DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            else:
+                nVal = self.DVGeo.children[childIdx].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+
+        if self.geo_type == "multi":
+            nVal = self.DVGeo.DVGeoDict[compName].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -399,16 +438,20 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
-    def nom_addRefAxis(self, childIdx=None, **kwargs):
+    def nom_addRefAxis(self, childIdx=None, compName=None, **kwargs):
         # references axes are only needed in FFD-based DVGeo objects
-        if self.geo_type != "ffd":
+        if self.geo_type != "ffd" and self.geo_type != "multi":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{self.geo_type}")
 
         # we just pass this through
-        if childIdx is None:
-            return self.DVGeo.addRefAxis(**kwargs)
-        else:
-            return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
+        if self.geo_type == "ffd":
+            if childIdx is None:
+                return self.DVGeo.addRefAxis(**kwargs)
+            else:
+                return self.DVGeo.children[childIdx].addRefAxis(**kwargs)
+
+        if self.geo_type == "multi":
+            return self.DVGeo.DVGeoDict[compName].addRefAxis(**kwargs)
 
     """
     Wrapper for DVCon functions
