@@ -611,7 +611,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                         jvtmp = np.dot(np.transpose(dcdx), dout)
                         d_inputs[dvname] += jvtmp
 
-            for ptSetName in self.DVGeo.ptSetNames:
+            if self.geo_type != "multi":
+                ptSetNames = []
+                for comp in self.DVGeo.DVGeoDict.keys():
+                    for ptSet in self.DVGeo.DVGeoDict[comp].ptSetNames:
+                        if ptSet not in ptSetNames:
+                            ptSetNames.append(ptSet)
+            else:
+                ptSetNames = self.DVGeo.ptSetNames
+
+            for ptSetName in ptSetNames:
                 if ptSetName in self.omPtSetList:
                     dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
 
