@@ -114,15 +114,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = DVGeometry(ffd_file)
         self.DVGeo.addComponent(comp=comp, DVGeo=DVGeo, triMesh=triMesh, scale=scale)
 
-    def nom_addIntersection(self, compA, compB, dStarA, dStarB, featureCurves, project, includeCurves, curveEpsDict, anisotropy):#, trackSurfaces):
-        if self.geo_type != "multi":
-            raise RuntimeError(
-                f"Only multi-based DVGeo objects can have intersections added to them, not type:{self.geo_type}"
-            )
-
-        # Add intersection
-        self.DVGeo.addIntersection(compA=compA, compB=compB, dStarA=dStarA, dStarB=dStarB, featureCurves=featureCurves, project=project, includeCurves=includeCurves, curveEpsDict=curveEpsDict, anisotropy=anisotropy)#, trackSurfaces=trackSurfaces)
-
     def nom_add_discipline_coords(self, discipline, points=None, applyIC=False):
         # TODO remove one of these methods to keep only one method to add pointsets
 
