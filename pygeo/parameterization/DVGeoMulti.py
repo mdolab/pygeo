@@ -6,6 +6,8 @@ from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
 from scipy import sparse
+from scipy.spatial.distance import cdist
+from copy import deepcopy
 
 try:
     # External modules
@@ -48,18 +50,20 @@ class DVGeometryMulti:
 
     """
 
-    def __init__(self, comm=MPI.COMM_WORLD, checkDVs=True, debug=False, isComplex=False):
+    def __init__(self, comm=MPI.COMM_WORLD, fillet=False, checkDVs=True, debug=False, isComplex=False):
         # Check to make sure pySurf is installed before initializing
-        if not pysurfInstalled:
-            raise ImportError("pySurf is not installed and is required to use DVGeometryMulti.")
+        if not pysurfInstalled and not fillet:
+            raise ImportError("pySurf is not installed and is required to use DVGeometryMulti outside of fillet mode.")
 
         self.compNames = []
         self.comps = OrderedDict()
         self.DVGeoDict = OrderedDict()
         self.points = OrderedDict()
-        self.comm = comm
         self.updated = {}
         self.intersectComps = []
+
+        self.comm = comm
+        self.fillet = fillet
         self.checkDVs = checkDVs
         self.debug = debug
         self.complex = isComplex
@@ -72,7 +76,7 @@ class DVGeometryMulti:
             self.dtype = float
             self.adtAPI = adtAPI.adtapi
 
-    def addComponent(self, comp, DVGeo, triMesh=None, scale=1.0, bbox=None, pointSetKwargs=None):
+    def addComponent(self, comp, DVGeo=None, triMesh=None, points=None, scale=1.0, bbox=None, pointSetKwargs=None):
         """
         Method to add components to the DVGeometryMulti object.
 
@@ -81,11 +85,16 @@ class DVGeometryMulti:
         comp : str
             The name of the component.
 
-        DVGeo : DVGeometry
+        DVGeo : DVGeometry, optional
             The DVGeometry object defining the component FFD.
+            This is needed in all cases except when the component is a fillet.
 
         triMesh : str, optional
             Path to the triangulated mesh file for this component.
+
+        points: str, optional
+            Path to the .dat file of points for this component.
+            This unstructured data is only valid for a fillet component or its adjacent surfaces.
 
         scale : float, optional
             A multiplicative scaling factor applied to the triangulated mesh coordinates.
@@ -100,6 +109,14 @@ class DVGeometryMulti:
             Keyword arguments to be passed to the component addPointSet call for the triangulated mesh.
 
         """
+        if DVGeo is None and self.fillet is False:
+            raise Error("DVGeo must be assigned for non-fillet DVGeoMulti components")
+
+        if self.fillet is False and points is not None:
+            raise Error("Unstructured point data is only valid for fillet DVGeoMulti")
+        
+        # if self.fillet is True and triMesh is not None:
+        # this should work with a triangulated surface it just isn't necessary
 
         # Assign mutable defaults
         if bbox is None:
@@ -107,21 +124,35 @@ class DVGeometryMulti:
         if pointSetKwargs is None:
             pointSetKwargs = {}
 
-        if triMesh is not None:
-            # We also need to read the triMesh and save the points
-            nodes, triConn, triConnStack, barsConn = self._readCGNSFile(triMesh)
+        # we have a fillet so no structured surfaces are necessary
+        if self.fillet:
+            # save unstructured point data
+            surfPts = self._readDATFile(points, surf=True)
 
             # scale the nodes
-            nodes *= scale
+            surfPts *= scale
 
             # add these points to the corresponding dvgeo
-            DVGeo.addPointSet(nodes, "triMesh", **pointSetKwargs)
+            if DVGeo is not None:
+                DVGeo.addPointSet(nodes, "datPts", **pointSetKwargs)
+
+        # we have a standard intersection group which has structured surfaces
         else:
-            # the user has not provided a triangulated surface mesh for this file
-            nodes = None
-            triConn = None
-            triConnStack = None
-            barsConn = None
+            if triMesh is not None:
+                # We also need to read the triMesh and save the points
+                nodes, triConn, triConnStack, barsConn = self._readCGNSFile(triMesh)
+
+                # scale the nodes
+                nodes *= scale
+
+                # add these points to the corresponding dvgeo
+                DVGeo.addPointSet(nodes, "triMesh", **pointSetKwargs)
+            else:
+                # the user has not provided a triangulated surface mesh for this file
+                nodes = None
+                triConn = None
+                triConnStack = None
+                barsConn = None
 
         # we will need the bounding box information later on, so save this here
         xMin, xMax = DVGeo.FFD.getBounds()
@@ -865,6 +896,26 @@ class DVGeometryMulti:
 
         return nodes, triConn, triConnStack, barsConn
 
+    def _readDATFile(self, filename, surf=True):
+        if surf:
+            surfFile = open(filename, "r")
+            nElem = int(surfFile.readline())
+            surfPts = np.loadtxt(filename, skiprows=1, max_rows=nElem)
+
+            points = surfPts[surfPts[:, 0].argsort()]
+
+        else:
+            curves = []
+            for f in filename:
+                curvePts = np.loadtxt(f, skiprows=1)
+                curves.append(curvePts)
+
+            points = curves[0]
+            for i in range(1, len(filename)):
+                points = np.vstack((points, points[i]))
+
+        return points
+
     def _computeTotalJacobian(self, ptSetName):
         """
         This routine computes the total jacobian. It takes the jacobians
@@ -934,6 +985,20 @@ class component:
         # update the triangulated surface mesh
         self.nodes = self.DVGeo.update("triMesh")
 
+
+class filletComp:
+    def __init__(self, name, nodes, xMin, xMax, DVGeo=None):
+        self.name = name
+        self.nodes = nodes
+
+        self.xMin = xMin
+        self.xMax = xMax
+
+        if DVGeo is not None:
+            self.dvDict = {}
+    
+    def updatePoints(self):
+        self.nodes = self.DVGeo.update("name")
 
 class PointSet:
     def __init__(self, points, comm):
