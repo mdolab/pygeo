@@ -246,7 +246,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     Wrapper for DVGeo functions
     """
 
-    def nom_addGlobalDV(self, DVGeo, dvName, value, func, childIdx=None, isComposite=False):
+    def nom_addGlobalDV(self, dvName, value, func, childIdx=None, isComposite=False, DVGeoName=None):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # global DVs are only added to FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{DVGeo.geoType}")
@@ -264,7 +270,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         else:
             DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
-    def nom_addLocalDV(self, DVGeo, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False):
+    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False, DVGeoName=None):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # local DVs are only added to FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
@@ -283,7 +295,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addLocalSectionDV(
         self,
-        DVGeo,
         dvName,
         secIndex,
         childIdx=None,
@@ -293,7 +304,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         orient0=None,
         orient2="svd",
         config=None,
+        DVGeoName=None,
     ):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # local DVs are only added to FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
@@ -318,7 +336,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addShapeFunctionDV(self, DVGeo, dvName, shapes, childIdx=None, config=None):
+    def nom_addShapeFunctionDV(self, dvName, shapes, childIdx=None, config=None, DVGeoName=None):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # shape function DVs are only added to FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
@@ -334,7 +358,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addGeoCompositeDV(self, DVGeo, dvName, ptSetName=None, u=None, scale=None, **kwargs):
+    def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, DVGeoName=None, **kwargs):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # call the dvgeo object and add this dv
         DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
         val = DVGeo.getValues()
@@ -342,7 +372,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # define the input
         self.add_input(dvName, distributed=False, shape=DVGeo.getNDV(), val=val[dvName][0])
 
-    def nom_addVSPVariable(self, DVGeo, component, group, parm, isComposite=False, **kwargs):
+    def nom_addVSPVariable(self, component, group, parm, isComposite=False, DVGeoName=None, **kwargs):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # VSP DVs are only added to VSP-based DVGeo objects
         if DVGeo.geoType != "vsp":
             raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{DVGeo.geoType}")
@@ -362,7 +398,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, distributed=False, shape=1, val=val)
 
-    def nom_addESPVariable(self, DVGeo, desmptr_name, isComposite=False, **kwargs):
+    def nom_addESPVariable(self, desmptr_name, isComposite=False, DVGeoName=None, **kwargs):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # ESP DVs are only added to VSP-based DVGeo objects
         if DVGeo.geoType != "esp":
             raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{DVGeo.geoType}")
@@ -379,14 +421,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(desmptr_name, distributed=False, shape=val.shape, val=val)
 
-    def nom_addRefAxis(self, DVGeo, childIdx=None, **kwargs):
+    def nom_addRefAxis(self, childIdx=None, DVGeoName=None, **kwargs):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # references axes are only needed in FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
-
-        # we just pass this through
+        
+        # add ref axis to this DVGeo
         if childIdx is None:
             return DVGeo.addRefAxis(**kwargs)
+        # add ref axis to the specified child
         else:
             return DVGeo.children[childIdx].addRefAxis(**kwargs)
 
