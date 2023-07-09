@@ -11,42 +11,92 @@ from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
 # class that actually calls the DVGeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
+        # set up a geometry component with only 1 DVGeo (stadard)
+        self.options.declare("file", default=None)
+        self.options.declare("type", default=None)
+        self.options.declare("options", default=None)
+
+        # use additional options for a geometry component that needs multiple DVGeos
         self.options.declare("DVGeoInfo", default=None)
 
     def setup(self):
-        self.DVGeoInfo = self.options["DVGeoInfo"]
-        self.DVGeos = {}
+        self.DVCon = DVConstraints()
 
-        # create the DVGeo object that does the computations
-        for name, info in self.DVGeoInfo.items():
-            if info.get("options") is None:
+        # create the DVGeo object that does the computations (or multiple DVGeo objects)
+        # conventional setup with one DVGeo. maintains old interface
+        if self.options["DVGeoInfo"] is None:
+            self.multDVGeo = False
+
+            geoType = self.options["type"]
+            file = self.optionsp["file"]
+
+            if self.options["options"] is None:
                 options = {}
             else:
-                options = info["options"]
-
-            if info.get("name") is None:
-                name = None
-            else:
-                name = info["name"]
-
+                options = self.options["options"]
+                
             # we are doing an FFD-based DVGeo
-            if info["type"] == "ffd":
-                self.DVGeos.update({name: DVGeometry(info["file"], name=name, **options)})
+            if geoType == "ffd":
+                self.DVGeo = DVGeometry(file, **options)
 
             # we are doing a VSP-based DVGeo
-            elif info["type"] == "vsp":
-                self.DVGeo.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=name, **options)})
+            elif geoType == "vsp":
+                self.DVGeo = DVGeometryVSP(file, comm=self.comm, **options)
 
             # we are doing an ESP-based DVGeo
-            elif info["type"] == "esp":
-                self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=name, **options)})
+            elif geoType == "esp":
+                self.DVGeo = DVGeometryESP(file, comm=self.comm, **options)
 
-        # create a constraints object and add each DVGeo to it
-        self.DVCon = DVConstraints()
-        for _, DVGeo in self.DVGeos.items():
-            self.DVCon.setDVGeo(DVGeo, name=DVGeo.name)
+            # add the geometry to the constraints object
+            self.DVCon.setDVGeo(self.DVGeo)
+        
+        # we need to add multiple DVGeos to this geometry component
+        else:
+            self.multDVGeo = True
+
+            DVGeoInfo = self.options["DVGeoInfo"]
+            self.DVGeos = {}
+
+            # create the DVGeo object that does the computations
+            for name, info in DVGeoInfo.items():
+                if info.get("options") is None:
+                    options = {}
+                else:
+                    options = info["options"]
+
+                if info.get("name") is None:
+                    name = None
+                else:
+                    name = info["name"]
+
+                # this DVGeo uses FFD
+                if info["type"] == "ffd":
+                    self.DVGeos.update({name: DVGeometry(info["file"], name=name, **options)})
+
+                # this DVGeo uses VSP
+                elif info["type"] == "vsp":
+                    self.DVGeo.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=name, **options)})
+
+                # this DVGeo uses ESP
+                elif info["type"] == "esp":
+                    self.DVGeos.update({name: DVGeometryESP(info["file"], comm=self.comm, name=name, **options)})
+
+            # add each geometry to the constraints object
+            for _, DVGeo in self.DVGeos.items():
+                self.DVCon.setDVGeo(DVGeo, name=DVGeo.name)
 
         self.omPtSetList = []
+
+    def nom_updateDVGeo(self, inputs, outputs, DVGeo):
+        # inputs are the geometric design variables
+        DVGeo.setDesignVars(inputs)
+
+        # ouputs are the coordinates of the pointsets we have
+        for ptName in DVGeo.points:
+            if ptName in self.omPtSetList:
+                # update this pointset and write it as output
+                outputs[ptName] = DVGeo.update(ptName).flatten()
+
 
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
@@ -58,15 +108,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 if var_out not in self.omPtSetList:
                     self.nom_addPointSet(inputs[var], var_out, add_output=False)
 
-        for _, DVGeo in self.DVGeos.items():
-            # inputs are the geometric design variables
-            DVGeo.setDesignVars(inputs)
-
-            # ouputs are the coordinates of the pointsets we have
-            for ptName in DVGeo.points:
-                if ptName in self.omPtSetList:
-                    # update this pointset and write it as output
-                    outputs[ptName] = DVGeo.update(ptName).flatten()
+        # handle DV update and pointset changes for all of our DVGeos
+        if self.multDVGeo:
+            for _, DVGeo in self.DVGeos.items():
+               self.updateDVGeo(inputs, outputs, DVGeo)
+        else:
+            self.nom_updateDVGeo(inputs, outputs, self.DVGeo)
 
         # compute the DVCon constraint values
         constraintfunc = dict()
