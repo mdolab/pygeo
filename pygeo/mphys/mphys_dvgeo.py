@@ -201,7 +201,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         ----------
         DVGeoName : string, optional
             The name of the DVGeo to return, necessary if there are multiple DVGeo objects
-            
+
         childIdx : int, optional
             The zero-based index of the child FFD, if you want a child DVGeo returned
 
@@ -273,10 +273,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         """
 
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # global DVs are only added to FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
@@ -340,22 +337,30 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         ----------
         dvName : str
             Name to give this design variable
+
         secIndex : char or list of chars
             See wrapped
+
         childIdx : int, optional
             The zero-based index of the child FFD, if this DV is for a child FFD
             The index is defined by the order in which you add the child FFD to the parent
             For example, the first child FFD has an index of 0, the second an index of 1, and so on
+
         axis : int, optional
             See wrapped
+
         pointSelect : pointSelect object, optional
             See wrapped
+
         volList : list, optional
             See wrapped
+
         orient0 : orientation, optional
             See wrapped
+
         orient2 : str, optional
             See wrapped
+            
         config : str or list, optional
             See wrapped
         
