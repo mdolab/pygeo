@@ -97,7 +97,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 # update this pointset and write it as output
                 outputs[ptName] = DVGeo.update(ptName).flatten()
 
-
     def compute(self, inputs, outputs):
         # check for inputs that have been added but the points have not been added to dvgeo
         for var in inputs.keys():
@@ -130,7 +129,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # next time the jacvec product routine is called
         self.update_jac = True
 
-    def nom_addChild(self, DVGeo, ffd_file):
+    def nom_addChild(self, ffd_file, DVGeoName=None):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # can only add a child to a FFD DVGeo
         if DVGeo.geoType != "ffd":
             raise RuntimeError(
@@ -146,7 +151,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             if pointSet not in DVGeo.children[-1].points:
                 DVGeo.children[-1].addPointSet(DVGeo.points[pointSet], pointSet)
 
-    def nom_add_discipline_coords(self, discipline, DVGeo=None, points=None):
+    def nom_add_discipline_coords(self, discipline, DVGeoName=None, points=None):
         # TODO remove one of these methods to keep only one method to add pointsets
 
         if points is None:
@@ -155,12 +160,24 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_output("x_%s0" % discipline, distributed=True, copy_shape="x_%s_in" % discipline)
 
         else:
+            # if we have multiple DVGeos use the one specified by name
+            if self.multDVGeo:
+                DVGeo = self.DVGeos[DVGeoName]
+            else:
+                DVGeo = self.DVGeo
+
             # we are provided with points. we can do the full initialization now
             self.nom_addPointSet(DVGeo, points, "x_%s0" % discipline, add_output=False)
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, DVGeo, points, ptName, add_output=True, **kwargs):
+    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
+
         # add the points to the dvgeo object
         DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
@@ -181,36 +198,49 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         for k, v in point_dict.items():
             self.nom_addPointSet(v, k)
 
-    def nom_getDVGeo(self, name, childIdx=None):
+    def nom_getDVGeo(self, childIdx=None, DVGeoName=None):
         """
-        Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
+         Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
+
         Parameters
         ----------
+        DVGeoName : string, optional
+            The name of the DVGeo to return, necessary if there are multiple DVGeo objects
         childIdx : int, optional
-            The zero-based index of the child FFD, you want a child DVGeo returned
+            The zero-based index of the child FFD, if you want a child DVGeo returned
+
         Returns
         -------
-        self.DVGeo, DVGeometry object
-            DVGeometry object held by this geometry component
+        DVGeo object
         """
+        y = 0
+
+
+        # if we have multiple DVGeos use the one specified by name
+        if self.multDVGeo:
+            DVGeo = self.DVGeos[DVGeoName]
+        else:
+            DVGeo = self.DVGeo
 
         # return the top level DVGeo
         if childIdx is None:
-            return self.DVGeos[name]
+            return DVGeo
 
         # return a child DVGeo
         else:
-            return self.DVGeos[name].children[childIdx]
+            return DVGeo.children[childIdx]
 
     def nom_getDVCon(self):
         """
         Gets the DVConstraints object held in the geometry component so DVCon methods can be called directly on it
+
         Returns
         -------
         self.DVCon, DVConstraints object
             DVConstraints object held by this geometry component
         """
         return self.DVCon
+
 
     """
     Wrapper for DVGeo functions
@@ -463,6 +493,42 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # constraint needs a triangulated reference surface at initialization
         self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
 
+    def nom_computeOnDVGeo(self, DVGeo, d_inputs, d_outputs):
+        for ptSetName in DVGeo.ptSetNames:
+            if ptSetName in self.omPtSetList:
+                dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
+
+                # only do the calc. if d_output is not zero on ANY proc
+                local_all_zeros = np.all(dout == 0)
+                global_all_zeros = np.zeros(1, dtype=bool)
+                # we need to communicate for this check otherwise we may hang
+                self.comm.Allreduce([local_all_zeros, MPI.BOOL], [global_all_zeros, MPI.BOOL], MPI.LAND)
+
+                # global_all_zeros is a numpy array of size 1
+                if not global_all_zeros[0]:
+                    # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
+                    # xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
+                    xdot = DVGeo.totalSensitivity(dout, ptSetName)
+
+                    # loop over dvs and accumulate
+                    xdotg = {}
+                    for k in xdot:
+                        # check if this dv is present
+                        if k in d_inputs:
+                            # do the allreduce
+                            # TODO reove the allreduce when this is fixed in openmdao
+                            # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
+                            xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+
+                            # accumulate in the dict
+                            # TODO
+                            # because we only do one point set at a time, we always want the 0th
+                            # entry of this array since dvgeo always behaves like we are passing
+                            # in multiple objective seeds with totalSensitivity. we can remove the [0]
+                            # once we move back to totalSensitivityTransProd
+                            d_inputs[k] += xdotg[k][0]
+        return d_inputs
+
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # only do the computations when we have more than zero entries in d_inputs in the reverse mode
         ni = len(list(d_inputs.keys()))
@@ -487,37 +553,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                         jvtmp = np.dot(np.transpose(dcdx), dout)
                         d_inputs[dvname] += jvtmp
 
-            for _, DVGeo in self.DVGeos.items():
-                for ptSetName in DVGeo.ptSetNames:
-                    if ptSetName in self.omPtSetList:
-                        dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
-
-                        # only do the calc. if d_output is not zero on ANY proc
-                        local_all_zeros = np.all(dout == 0)
-                        global_all_zeros = np.zeros(1, dtype=bool)
-                        # we need to communicate for this check otherwise we may hang
-                        self.comm.Allreduce([local_all_zeros, MPI.BOOL], [global_all_zeros, MPI.BOOL], MPI.LAND)
-
-                        # global_all_zeros is a numpy array of size 1
-                        if not global_all_zeros[0]:
-                            # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
-                            # xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
-                            xdot = DVGeo.totalSensitivity(dout, ptSetName)
-
-                            # loop over dvs and accumulate
-                            xdotg = {}
-                            for k in xdot:
-                                # check if this dv is present
-                                if k in d_inputs:
-                                    # do the allreduce
-                                    # TODO reove the allreduce when this is fixed in openmdao
-                                    # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
-                                    xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
-
-                                    # accumulate in the dict
-                                    # TODO
-                                    # because we only do one point set at a time, we always want the 0th
-                                    # entry of this array since dvgeo always behaves like we are passing
-                                    # in multiple objective seeds with totalSensitivity. we can remove the [0]
-                                    # once we move back to totalSensitivityTransProd
-                                    d_inputs[k] += xdotg[k][0]
+            if self.multDVGeo:
+                for _, DVGeo in self.DVGeos.items():
+                    d_inputs = self.nom_computeOnDVGeo(DVGeo, d_inputs, d_outputs)
+            else:
+                d_inputs = self.nom_computeOnDVGeo(DVGeo, d_inputs, d_outputs)
