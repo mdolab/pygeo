@@ -29,13 +29,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.multDVGeo = False
 
             geoType = self.options["type"]
-            file = self.optionsp["file"]
+            file = self.options["file"]
 
             if self.options["options"] is None:
                 options = {}
             else:
                 options = self.options["options"]
-                
+
             # we are doing an FFD-based DVGeo
             if geoType == "ffd":
                 self.DVGeo = DVGeometry(file, **options)
@@ -50,7 +50,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             # add the geometry to the constraints object
             self.DVCon.setDVGeo(self.DVGeo)
-        
+
         # we need to add multiple DVGeos to this geometry component
         else:
             self.multDVGeo = True
@@ -111,7 +111,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # handle DV update and pointset changes for all of our DVGeos
         if self.multDVGeo:
             for _, DVGeo in self.DVGeos.items():
-               self.updateDVGeo(inputs, outputs, DVGeo)
+                self.nom_updateDVGeo(inputs, outputs, DVGeo)
         else:
             self.nom_updateDVGeo(inputs, outputs, self.DVGeo)
 
@@ -195,7 +195,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_getDVGeo(self, childIdx=None, DVGeoName=None):
         """
-         Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
+        Gets the DVGeometry object held in the geometry component so DVGeo methods can be called directly on it
 
         Parameters
         ----------
@@ -207,7 +207,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         Returns
         -------
-       DVGeometry object
+        DVGeometry object
             DVGeometry object held by this geometry component
         """
         # if we have multiple DVGeos use the one specified by name
@@ -234,7 +234,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVConstraints object held by this geometry component
         """
         return self.DVCon
-
 
     """
     Wrapper for DVGeo functions
@@ -283,7 +282,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
         # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
         if not isComposite:
-            print(f"add dv {dvName} with shape {value}")
             self.add_input(dvName, distributed=False, shape=len(value))
 
         # call the dvgeo object and add this dv
@@ -360,10 +358,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         orient2 : str, optional
             See wrapped
-            
+
         config : str or list, optional
             See wrapped
-        
+
         DVGeoName : string, optional
             The name of the DVGeo to return, necessary if there are multiple DVGeo objects
 
@@ -432,7 +430,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         DVGeoName : string, optional
             The name of the DVGeo to return, necessary if there are multiple DVGeo objects
-            
+
         Returns
         -------
         N : int
@@ -538,7 +536,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # references axes are only needed in FFD-based DVGeo objects
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
-        
+
         # add ref axis to this DVGeo
         if childIdx is None:
             return DVGeo.addRefAxis(**kwargs)

@@ -320,7 +320,7 @@ class DVConstraints:
             constraints. Normally this can be false since pyOptSparse
             does not need linear constraints to be returned.
         """
-        
+
         # loop over the generated constraints and evaluate their function values
         for conTypeKey in self.constraints:
             constraint = self.constraints[conTypeKey]
