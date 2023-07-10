@@ -89,7 +89,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01, name=None):
         if not vspInstalled:
             raise ImportError(
                 "The OpenVSP Python API is required in order to use DVGeometryVSP. "
@@ -105,7 +105,7 @@ class DVGeometryVSP(DVGeoSketch):
             print("Initializing DVGeometryVSP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, geoType="vsp")
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, geoType="vsp", name=name)
 
         if hasattr(openvsp, "VSPVehicle"):
             self.vspModel = openvsp.VSPVehicle()
