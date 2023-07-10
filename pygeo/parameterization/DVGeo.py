@@ -16,7 +16,7 @@ from scipy.spatial import cKDTree
 # Local modules
 from .. import geo_utils, pyBlock, pyNetwork
 from .BaseDVGeo import BaseDVGeometry
-from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal, geoDVShapeFunc
+from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVShapeFunc, geoDVSpanwiseLocal
 
 
 class DVGeometry(BaseDVGeometry):
@@ -1413,17 +1413,20 @@ class DVGeometry(BaseDVGeometry):
         self.useComposite = True
 
     def addShapeFunctionDV(
-            self,
-            dvName,
-            shapes,
-            lower=None,
-            upper=None,
-            scale=1.0,
-            config=None,
+        self,
+        dvName,
+        shapes,
+        lower=None,
+        upper=None,
+        scale=1.0,
+        config=None,
     ):
         """
-        Add one or more local design variables ot the DVGeometry
-        object. Local variables are used for small shape modifications.
+        Add shape function design variables to the DVGeometry.
+        Shape functions contain displacement vectors for one or
+        more FFD control points and can be used to define design
+        variables that move a set of control points together
+        according to some shape function determined by the user.
 
         Parameters
         ----------
@@ -1440,7 +1443,11 @@ class DVGeometry(BaseDVGeometry):
             of the arrays determine how much the FFD point moves with a
             unit change in the DV. If an FFD point is controlled by multiple
             shape DVs, the changes from each shape function is superposed
-            in the order shape functions are sorted in the list.
+            in the order shape functions are sorted in the list. The order
+            of the shape functions does not matter because the final control
+            point location only depends on the shapes and magnitude of the DV.
+            However, the order of the shapes must be consistent across processors
+            when running in parallel.
 
         lower : float, or array size (N)
             The lower bound for the variable(s). If a single float is provided,
@@ -1471,7 +1478,19 @@ class DVGeometry(BaseDVGeometry):
 
         Examples
         --------
-        >>> # TODO add example use
+        We can add two shape functions as follows. The first shape moves the FFD control points
+        on indices 0,0,0 and 0,0,1 together in the +y direction. A value of 1.0 for this DV will
+        result in these points moving by 1 distance unit. The second shape moves the point
+        at 1,0,0 in the same direction and two other points at 1,0,1 and 2,0,1 in the same direction
+        but by half the magnitude.
+
+            >>> lidx = DVGeo.getLocalIndex(0)
+            >>> dir_up = np.array([0.0, 1.0, 0.0])
+            >>> shape_1 = {lidx[0, 0, 0]: dir_up, lidx[0, 0, 1]: dir_up}
+            >>> shape_2 = {lidx[1, 0, 0]: dir_up, lidx[1, 0, 1]: dir_up * 0.5, lidx[2, 0, 1]: dir_up * 0.5, }
+            >>> shapes = [shape_1, shape_2]
+            >>> DVGeo.addShapeFunctionDV("shape_func", shapes)
+
         """
         if self.name is not None:
             dvName = self.name + "_" + dvName
@@ -1484,7 +1503,7 @@ class DVGeometry(BaseDVGeometry):
             shapes = [shapes]
 
         # this is treated the same way as local DVs
-        self.DV_listLocal[dvName] = geoDVShapeFunc(dvName, shapes, lower, upper, scale, self.masks, config)
+        self.DV_listLocal[dvName] = geoDVShapeFunc(dvName, shapes, lower, upper, scale, config)
 
         return self.DV_listLocal[dvName].nVal
 
@@ -4136,13 +4155,11 @@ class DVGeometry(BaseDVGeometry):
 
     def _localDVJacobian(self, config=None):
         """
-        Return the derivative of the coefficients wrt the local design
-        variables
+        Return the derivative of the coefficients wrt the local and shape function
+        design variables
         """
-
-        # TODO the comment below is not correct with the addition of shape func DVs. either separate out their implementation or fix the comment.
-        # This is relatively straight forward, since the matrix is
-        # entirely one's or zeros
+        # This is relatively straight forward, since the matrix is entirely one's or zeros for local DVs,
+        # and the sparsity pattern is explicitly provided for the shape function dvs with the definition of the shapes.
         nDV = self._getNDVLocalSelf()
         self._getDVOffsets()
 

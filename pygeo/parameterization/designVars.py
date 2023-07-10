@@ -297,12 +297,11 @@ class geoDVComposite(geoDV):
 
 
 class geoDVShapeFunc(geoDV):
-    def __init__(self, name, shapes, lower, upper, scale, mask, config):
+    def __init__(self, name, shapes, lower, upper, scale, config):
         """
-        Create a set of geometric design variables which change the shape
-        of a surface surface_id. Local design variables change the surface
-        in all three axes.
-        See addLocalDV for more information
+        Create a set of geometric design variables that are represented
+        as shape functions defined on one or more FFD control points.
+        See addShapeFunctionDV for more information
 
         """
 
@@ -318,16 +317,16 @@ class geoDVShapeFunc(geoDV):
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             # loop over the shapes and add the perturbations to each coef
             for ii, shape in enumerate(self.shapes):
-                for ind, dir in shape.items():
-                    coef[ind] += dir * self.value[ii].real
+                for idx, vec in shape.items():
+                    coef[idx] += vec * self.value[ii].real
 
         return coef
 
     def updateComplex(self, coef, config):
         if self.config is None or config is None or any(c0 == config for c0 in self.config):
             for ii, shape in enumerate(self.shapes):
-                for ind, dir in shape.items():
-                    coef[ind] += dir * self.value[ii].imag * 1j
+                for idx, vec in shape.items():
+                    coef[idx] += vec * self.value[ii].imag * 1j
 
         return coef
 

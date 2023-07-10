@@ -278,6 +278,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if DVGeo.geoType != "ffd":
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{DVGeo.geoType}")
 
+        # call the dvgeo object and add this dv
+        if childIdx is None:
+            self.DVGeo.addGlobalDV(dvName, value, func)
+            shape = self.DVGeo.DV_listGlobal[dvName].nVal
+        else:
+            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
+            shape = self.DVGeo.children[childIdx].DV_listGlobal[dvName].nVal
+
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
         # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
@@ -588,7 +596,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
-    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, surfaceName="default"):
+    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, scaled=True, surfaceName="default"):
         """
         Add a DVCon volume constraint to the problem
         Wrapper for :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
@@ -612,7 +620,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             See wrapped
         """
 
-        self.DVCon.addVolumeConstraint(leList, teList, nSpan=nSpan, nChord=nChord, name=name, surfaceName=surfaceName)
+        self.DVCon.addVolumeConstraint(
+            leList, teList, nSpan=nSpan, nChord=nChord, scaled=scaled, name=name, surfaceName=surfaceName
+        )
         self.add_output(name, distributed=False, val=1.0)
 
     def nom_addProjectedAreaConstraint(self, name, axis, scaled=True, surface_name="default"):

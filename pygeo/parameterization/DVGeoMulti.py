@@ -979,6 +979,9 @@ class CompIntersection:
         # same communicator with DVGeo
         self.comm = DVGeo.comm
 
+        # define epsilon as a small value to prevent division by zero in the inverse distance computation
+        self.eps = 1e-20
+
         # counter for outputting curves etc at each update
         self.counter = 0
 
@@ -1451,9 +1454,6 @@ class CompIntersection:
                 print("The intersection topology has changed. The intersection will not be updated.")
             return delta
 
-        # Define an epsilon to avoid dividing by zero later on
-        eps = 1e-50
-
         # Get the two end points for the line elements
         r0 = coor[conn[:, 0]]
         r1 = coor[conn[:, 1]]
@@ -1506,10 +1506,11 @@ class CompIntersection:
             sc = np.sqrt(c)
 
             # Compute denominators for the integral evaluations
-            # Add an epsilon so that these terms never become zero
-            # disc <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0
-            den1 = disc * sabc - eps
-            den2 = disc * sc - eps
+            # We clip these values so that they are at max -eps to prevent them from getting a value of zero.
+            # disc <= 0, sabc and sc >= 0, therefore the den1 and den2 should be <=0.
+            # The clipping forces these terms to be <= -eps
+            den1 = np.minimum(disc * sabc, -self.eps)
+            den2 = np.minimum(disc * sc, -self.eps)
 
             # integral evaluations
             eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length
@@ -1548,9 +1549,6 @@ class CompIntersection:
         coor = self.seam0
         # bar connectivity for the remeshed elements
         conn = self.seamConn
-
-        # Define an epsilon to avoid dividing by zero later on
-        eps = 1e-50
 
         # Get the two end points for the line elements
         r0 = coor[conn[:, 0]]
@@ -1598,8 +1596,8 @@ class CompIntersection:
             sc = np.sqrt(c)
 
             # Compute denominators for the integral evaluations
-            den1 = disc * sabc - eps
-            den2 = disc * sc - eps
+            den1 = np.minimum(disc * sabc, -self.eps)
+            den2 = np.minimum(disc * sc, -self.eps)
 
             # integral evaluations
             eval1 = (-2 * (2 * a + b) / den1 + 2 * b / den2) * length
