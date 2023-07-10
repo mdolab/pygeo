@@ -250,9 +250,6 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         self.perim_length = perim_length
         self.minimum_distance = mindist
 
-        if self.comm.rank == 0:
-            print(f"{self.name}: intersection {self.perim_length}, mindist {self.minimum_distance}, ks {KS}")
-
         if self.perim_length > self.max_perim:
             failflag = True
             if self.comm.rank == 0:
