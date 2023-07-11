@@ -84,6 +84,8 @@ class DVGeometryCST(BaseDVGeometry):
     tolTE : float, optional
         Tolerance used to detect trailing edge corners on the airfoil. The value represents the angle difference
         in degrees between adjacent edges of the airfoil, by default 60 deg.
+    name : string, optional
+        Name of this DVGeo object, not necessary unless multiple DVGeos are used in one optimization.
     """
 
     def __init__(
@@ -96,12 +98,13 @@ class DVGeometryCST(BaseDVGeometry):
         isComplex=False,
         debug=False,
         tolTE=60.0,
+        name=None,
     ):
         # Check if preFoil is installed before initializing.
         if not prefoilInstalled:
             raise ImportError("preFoil is not installed and is required to use DVGeometryCST.")
 
-        super().__init__(datFile)
+        super().__init__(datFile, name=name, geoType="cst")
         self.xIdx = idxChord
         self.yIdx = idxVertical
         self.comm = comm
