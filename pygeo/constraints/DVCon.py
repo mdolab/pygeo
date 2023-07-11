@@ -1360,9 +1360,9 @@ class DVConstraints:
         self,
         comm,
         surface_1_name=None,
-        DVGeo1=None,
+        DVGeo_1_name="default",
         surface_2_name="default",
-        DVGeo2=None,
+        DVGeo_2_name="default",
         rho=50.0,
         heuristic_dist=None,
         perim_scale=0.1,
@@ -1437,6 +1437,17 @@ class DVConstraints:
             addToPyOpt=False, the lower, upper and scale variables are
             meaningless
         """
+        if DVGeo_1_name is not None:
+            self._checkDVGeo(DVGeo_1_name)
+            DVGeo1 = self.DVGeometries[DVGeo_1_name]
+        else:
+            DVGeo1 = None
+        if DVGeo_2_name is not None:
+            self._checkDVGeo(DVGeo_2_name)
+            DVGeo2 = self.DVGeometries[DVGeo_2_name]
+        else:
+            DVGeo2 = None
+
         if DVGeo1 is None and DVGeo2 is None:
             raise ValueError("At least one DVGeo object must be specified")
 

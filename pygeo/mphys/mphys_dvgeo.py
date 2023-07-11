@@ -280,17 +280,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # call the dvgeo object and add this dv
         if childIdx is None:
-            self.DVGeo.addGlobalDV(dvName, value, func)
-            shape = self.DVGeo.DV_listGlobal[dvName].nVal
+            DVGeo.addGlobalDV(dvName, value, func)
         else:
-            self.DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
-            shape = self.DVGeo.children[childIdx].DV_listGlobal[dvName].nVal
+            DVGeo.children[childIdx].addGlobalDV(dvName, value, func)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
         # the actual DVs. So OpenMDAO don't need the default DVs as inputs.
         if not isComposite:
-            self.add_input(dvName, distributed=False, shape=len(value))
+            self.add_input(dvName, distributed=False, shape=len(np.atleast_1d(value)))
 
         # call the dvgeo object and add this dv
         if childIdx is None:
@@ -673,9 +671,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self,
         name,
         surface_1_name=None,
-        DVGeo1=None,
+        DVGeo_1_name="default",
         surface_2_name="default",
-        DVGeo2=None,
+        DVGeo_2_name="default",
         rho=50.0,
         heuristic_dist=None,
         max_perim=3.0,
@@ -683,9 +681,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.addTriangulatedSurfaceConstraint(
             comm=self.comm,
             surface_1_name=surface_1_name,
-            DVGeo1=DVGeo1,
+            DVGeo_1_name=DVGeo_1_name,
             surface_2_name=surface_2_name,
-            DVGeo2=DVGeo2,
+            DVGeo_2_name=DVGeo_2_name,
             rho=rho,
             heuristic_dist=heuristic_dist,
             max_perim=max_perim,
