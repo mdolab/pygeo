@@ -17,6 +17,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.options.declare("options", default=None)
 
         # use additional options for a geometry component that needs multiple DVGeos
+        # format is:
+        # DVGeoInfo = {
+        #     "name1": {"file": file1, "type": type1}
+        #     "name2": {"file": file2, "type": type2}
+        # }
         self.options.declare("DVGeoInfo", default=None)
 
     def setup(self):
@@ -64,11 +69,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                     options = {}
                 else:
                     options = info["options"]
-
-                if info.get("name") is None:
-                    name = None
-                else:
-                    name = info["name"]
 
                 # this DVGeo uses FFD
                 if info["type"] == "ffd":
