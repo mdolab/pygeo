@@ -2957,7 +2957,7 @@ class DVGeometry(BaseDVGeometry):
             raise Error('Must call "writePointSet" from parent DVGeo.')
         else:
             coords = self.update(name, childDelta=True)
-            fileName = fileName + ".dat"
+            fileName = fileName + "_%s.dat" % name
             f = openTecplot(fileName, 3)
             writeTecplot1D(f, name, coords, solutionTime)
             closeTecplot(f)
