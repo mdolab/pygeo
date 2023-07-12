@@ -1023,6 +1023,14 @@ class Intersection:
         self.compA = compA
         self.compB = compB
 
+    def setSurface(self, comm):
+        """This set the new udpated surface on which we need to compute the new intersection curve"""
+
+        # get the updated surface coordinates
+        self._getUpdatedCoords()
+
+        self.seam = self._getIntersectionSeam(comm)
+
     def _warpSurfPts(self, pts0, ptsNew, indices, curvePtCoords, delta):
         """
         This function warps points using the displacements from curve projections.
@@ -1298,14 +1306,6 @@ class CompIntersection(Intersection):
             print(f"Computing initial intersection between {compA} and {compB}")
         self.seam0 = self._getIntersectionSeam(self.comm, firstCall=True)
         self.seam = self.seam0.copy()
-
-    def setSurface(self, comm):
-        """This set the new udpated surface on which we need to compute the new intersection curve"""
-
-        # get the updated surface coordinates
-        self._getUpdatedCoords()
-
-        self.seam = self._getIntersectionSeam(comm)
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
         # Figure out which points this intersection object has to deal with
@@ -3273,4 +3273,20 @@ class FilletIntersection(Intersection):
         self.compB = compB
         self.filletComp = filletComp
 
-    # def project(self):
+    def addPointSet(self, pts, ptSetName, comm):
+        nPt = len(pts)
+
+    def update(self, ptSetName, delta):
+        pts = self.points[ptSetName].pts
+
+        return delta
+
+    def project(self):
+        self._warpSurfPts(pts0, ptsNew, indices, curvePtCoords, delta)
+
+    def _getUpdatedCoords(self):
+        self.compA.updatePoints()
+        self.compB.updatePoints()
+
+    def _getIntersectionSeam(self, comm):
+        nPt = pts.shape[0]
