@@ -1057,6 +1057,36 @@ class Intersection:
             # finally, update the coord in place
             ptsNew[j] = ptsNew[j] + interp
 
+    def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
+        # seeds for delta
+        deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
+
+        # Return zeros if curvePtCoords is empty
+        if not np.any(curvePtCoords):
+            return deltaBar
+
+        for k in range(dIdPt.shape[0]):
+            for j in indices:
+                # point coordinates with the baseline design
+                # this is the point we will warp
+                ptCoords = pts0[j]
+
+                # local seed for 3 coords
+                localVal = dIdPt[k, j]
+
+                # Vectorized point-based warping
+                rr = ptCoords - curvePtCoords
+                LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+                LdefoDist3 = LdefoDist**3
+                Wi = LdefoDist3
+                den = np.sum(Wi)
+
+                for iDim in range(3):
+                    deltaBar[k, :, iDim] += Wi * localVal[iDim] / den
+
+        # return the seeds for the delta vector
+        return deltaBar
+
 
 class CompIntersection(Intersection):
     def __init__(
@@ -2291,36 +2321,6 @@ class CompIntersection(Intersection):
 
         return nptsg, sizes, curvePtCoords
 
-    def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
-        # seeds for delta
-        deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
-
-        # Return zeros if curvePtCoords is empty
-        if not np.any(curvePtCoords):
-            return deltaBar
-
-        for k in range(dIdPt.shape[0]):
-            for j in indices:
-                # point coordinates with the baseline design
-                # this is the point we will warp
-                ptCoords = pts0[j]
-
-                # local seed for 3 coords
-                localVal = dIdPt[k, j]
-
-                # Vectorized point-based warping
-                rr = ptCoords - curvePtCoords
-                LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-                LdefoDist3 = LdefoDist**3
-                Wi = LdefoDist3
-                den = np.sum(Wi)
-
-                for iDim in range(3):
-                    deltaBar[k, :, iDim] += Wi * localVal[iDim] / den
-
-        # return the seeds for the delta vector
-        return deltaBar
-
     def _projectToComponent(self, pts, comp, projDict, surface=None):
         # We build an ADT for this component using pySurf
         # Set bounding box for new tree
@@ -3272,3 +3272,5 @@ class FilletIntersection(Intersection):
         self.compA = compA
         self.compB = compB
         self.filletComp = filletComp
+
+    # def project(self):
