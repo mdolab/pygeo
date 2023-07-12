@@ -114,7 +114,13 @@ class DVGeometryMulti:
 
         if self.fillet is False and points is not None:
             raise Error("Unstructured point data is only valid for fillet DVGeoMulti")
-        
+
+        # determine whether this component is a fillet or a normal surface
+        if DVGeo is None:
+            filletComp = True
+        else:
+            filletComp = False
+
         # if self.fillet is True and triMesh is not None:
         # this should work with a triangulated surface it just isn't necessary
 
@@ -135,6 +141,11 @@ class DVGeometryMulti:
             # add these points to the corresponding dvgeo
             if DVGeo is not None:
                 DVGeo.addPointSet(nodes, "datPts", **pointSetKwargs)
+
+            nodes = surfPts
+            triConn = None
+            triConnStack = None
+            barsConn = None
 
         # we have a standard intersection group which has structured surfaces
         else:
@@ -172,7 +183,7 @@ class DVGeometryMulti:
             xMax[2] = bbox["zmax"]
 
         # initialize the component object
-        self.comps[comp] = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax)
+        self.comps[comp] = component(comp, DVGeo, nodes, filletComp, triConn, triConnStack, barsConn, xMin, xMax)
 
         # add the name to the list
         self.compNames.append(comp)
@@ -184,6 +195,7 @@ class DVGeometryMulti:
         self,
         compA,
         compB,
+        filletComp=None,
         dStarA=0.2,
         dStarB=0.2,
         featureCurves=None,
@@ -274,6 +286,9 @@ class DVGeometryMulti:
 
         """
 
+        if filletComp is not None and not self.fillet:
+            print("no")
+
         # Assign mutable defaults
         if featureCurves is None:
             featureCurves = []
@@ -289,6 +304,7 @@ class DVGeometryMulti:
             CompIntersection(
                 compA,
                 compB,
+                filletComp,
                 dStarA,
                 dStarB,
                 featureCurves,
@@ -328,7 +344,7 @@ class DVGeometryMulti:
             or when getting the derivatives of the coordinates.
         compNames : list, optional
             A list of component names that this point set should be added to.
-            To ease bookkeepping, an empty point set with ptName will be added to components not in this list.
+            To ease bookkeeping, an empty point set with ptName will be added to components not in this list.
             If a list is not provided, this point set is added to all components.
         comm : MPI.IntraComm, optional
             Comm that is associated with the added point set. Does not
@@ -961,10 +977,11 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax):
+    def __init__(self, name, DVGeo, fillet, nodes, triConn, triConnStack, barsConn, xMin, xMax):
         # save the info
         self.name = name
         self.DVGeo = DVGeo
+        self.fillet = fillet
         self.nodes = nodes
         self.triConn = triConn
         self.triConnStack = triConnStack
@@ -982,23 +999,14 @@ class component:
             self.triMesh = True
 
     def updateTriMesh(self):
+        if self.fillet:
+            pointset = self.name
+        else:
+            pointset = "trimesh"
+
         # update the triangulated surface mesh
-        self.nodes = self.DVGeo.update("triMesh")
+        self.nodes = self.DVGeo.update(pointset)
 
-
-class filletComp:
-    def __init__(self, name, nodes, xMin, xMax, DVGeo=None):
-        self.name = name
-        self.nodes = nodes
-
-        self.xMin = xMin
-        self.xMax = xMax
-
-        if DVGeo is not None:
-            self.dvDict = {}
-    
-    def updatePoints(self):
-        self.nodes = self.DVGeo.update("name")
 
 class PointSet:
     def __init__(self, points, comm):
@@ -1009,7 +1017,48 @@ class PointSet:
         self.comm = comm
 
 
-class CompIntersection:
+class Intersection:
+    def __init__(self, dtype, compA, compB):
+        self.dtype = dtype
+        self.compA = compA
+        self.compB = compB
+
+    def _warpSurfPts(self, pts0, ptsNew, indices, curvePtCoords, delta):
+        """
+        This function warps points using the displacements from curve projections.
+
+        pts0: The original surface point coordinates.
+        ptsNew: Updated surface pt coordinates. We will add the warped delta to these inplace.
+        indices: Indices of the points that we will use for this operation.
+        curvePtCoords: Original coordinates of points on curves.
+        delta: Displacements of the points on curves after projecting them.
+
+        """
+
+        # Return if curvePtCoords is empty
+        if not np.any(curvePtCoords):
+            return
+
+        for j in indices:
+            # point coordinates with the baseline design
+            # this is the point we will warp
+            ptCoords = pts0[j]
+
+            # Vectorized point-based warping
+            rr = ptCoords - curvePtCoords
+            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
+            LdefoDist3 = LdefoDist**3
+            Wi = LdefoDist3
+            den = np.sum(Wi)
+            interp = np.zeros(3, dtype=self.dtype)
+            for iDim in range(3):
+                interp[iDim] = np.sum(Wi * delta[:, iDim]) / den
+
+            # finally, update the coord in place
+            ptsNew[j] = ptsNew[j] + interp
+
+
+class CompIntersection(Intersection):
     def __init__(
         self,
         compA,
@@ -1040,6 +1089,11 @@ class CompIntersection:
         See the documentation for ``addIntersection`` in DVGeometryMulti for the API.
 
         """
+        # names of compA and compB must be provided
+        componentA = DVGeo.comps[compA]
+        componentB = DVGeo.comps[compB]
+
+        super.__init__(dtype, componentA, componentB)
 
         # same communicator with DVGeo
         self.comm = DVGeo.comm
@@ -1057,7 +1111,6 @@ class CompIntersection:
         self.debug = debug
 
         # Set real or complex Fortran APIs
-        self.dtype = dtype
         if dtype == float:
             self.adtAPI = adtAPI.adtapi
             self.curveSearchAPI = curveSearchAPI.curvesearchapi
@@ -1105,10 +1158,6 @@ class CompIntersection:
         # dictionaries to save the indices of points mapped to surfaces for each comp
         self.surfIdxA = {}
         self.surfIdxB = {}
-
-        # names of compA and compB must be provided
-        self.compA = DVGeo.comps[compA]
-        self.compB = DVGeo.comps[compB]
 
         self.dStarA = dStarA
         self.dStarB = dStarB
@@ -2242,40 +2291,6 @@ class CompIntersection:
 
         return nptsg, sizes, curvePtCoords
 
-    def _warpSurfPts(self, pts0, ptsNew, indices, curvePtCoords, delta):
-        """
-        This function warps points using the displacements from curve projections.
-
-        pts0: The original surface point coordinates.
-        ptsNew: Updated surface pt coordinates. We will add the warped delta to these inplace.
-        indices: Indices of the points that we will use for this operation.
-        curvePtCoords: Original coordinates of points on curves.
-        delta: Displacements of the points on curves after projecting them.
-
-        """
-
-        # Return if curvePtCoords is empty
-        if not np.any(curvePtCoords):
-            return
-
-        for j in indices:
-            # point coordinates with the baseline design
-            # this is the point we will warp
-            ptCoords = pts0[j]
-
-            # Vectorized point-based warping
-            rr = ptCoords - curvePtCoords
-            LdefoDist = 1.0 / np.sqrt(rr[:, 0] ** 2 + rr[:, 1] ** 2 + rr[:, 2] ** 2 + 1e-16)
-            LdefoDist3 = LdefoDist**3
-            Wi = LdefoDist3
-            den = np.sum(Wi)
-            interp = np.zeros(3, dtype=self.dtype)
-            for iDim in range(3):
-                interp[iDim] = np.sum(Wi * delta[:, iDim]) / den
-
-            # finally, update the coord in place
-            ptsNew[j] = ptsNew[j] + interp
-
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
         # seeds for delta
         deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
@@ -3250,3 +3265,10 @@ class CompIntersection:
             self.projData[ptSetName][comp]["surfaceInd"][surface] = surfaceInd
             # Initialize a data dictionary for this surface
             self.projData[ptSetName][surface] = {}
+
+
+class FilletIntersection(Intersection):
+    def __init__(self, compA, compB, filletComp):
+        self.compA = compA
+        self.compB = compB
+        self.filletComp = filletComp
