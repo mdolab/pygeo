@@ -1007,13 +1007,18 @@ class component:
         # update the triangulated surface mesh
         self.nodes = self.DVGeo.update(pointset)
 
+class Comp:
+    def __init__(self, name, fillet, surfPts, curvePts, DVGeo=None, tol=1e-3):
+        self.name = name
+        self.fillet = fillet
+        self.DVGeo = DVGeo
+        self.surfPts = surfPts
+        self.surfPtsOrig = deepcopy(surfPts)
+        self.curvePts = curvePts
 
-class Fillet:
-    def __init__(self, nodes, compA, compB):
-        self.name = "fillet"
-        self.nodes = nodes
-        self.compA = compA
-        self.compB = compB
+        self.intersectPts = []
+        self.intersectInd = []
+        self.adjacentComponents = []
 
 
 class PointSet:
@@ -3281,20 +3286,52 @@ class FilletIntersection(Intersection):
         self.compB = compB
         self.filletComp = filletComp
 
-    def addPointSet(self, pts, ptSetName, comm):
-        nPt = len(pts)
+    def findIntersection(self, surf, curve):  # TODO fix this function
+        nPtSurf = surf.shape[0]
+        minSurfCurveDist = -np.ones(nPtSurf)
+        intersectPts = []
+        intersectInd = []
+
+        # check each point in surf
+        for i, surfPt in enumerate(surf):
+            surfPt = surf[i]
+
+            # calculate distances between this surface point and the whole curve
+            ptSurfCurveDist = cdist(surfPt.reshape(1, 3), curve)
+
+            # find minimum of these distances and save it
+            dist2ClosestPt = min(ptSurfCurveDist[0])
+            minSurfCurveDist[i] = dist2ClosestPt
+
+            # keep this as an intersection point if it is within tolerance
+            if dist2ClosestPt < self.tol:
+                intersectPts.append(surfPt)
+                intersectInd.append(i)
+
+        intersectPts = np.asarray(intersectPts)
+
+        return intersectPts, intersectInd
 
     def update(self, ptSetName, delta):
         pts = self.points[ptSetName].pts
 
+
         return delta
 
     def project(self):
+        newCurveCoords = np.vstack((self.compA.intersectPts, self.compB.intersectPts))
+        curvePtCoords = np.vstack((self.compA.intPtsOrig, self.compB.intPtsOrig))
+        delta = newCurveCoords - curvePtCoords
+
+        ptsNew = deepcopy(self.fillet.surfPtOrig)
+        ptsNew[self.fillet.compAIntInd] = self.compA.surf[self.intersectInd]
+        ptsNew[self.fillet.compBIntInd] = self.compB.surf[self.intersectInd]
+
+        pts0 = self.fillet.surfPtOrig
+        indices = self.indices
+
         self._warpSurfPts(pts0, ptsNew, indices, curvePtCoords, delta)
 
     def _getUpdatedCoords(self):
         self.compA.updatePoints()
         self.compB.updatePoints()
-
-    def _getIntersectionSeam(self, comm):
-        nPt = pts.shape[0]
