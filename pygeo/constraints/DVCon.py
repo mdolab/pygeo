@@ -359,7 +359,7 @@ class DVConstraints:
             self.linearCon[key].writeTecplot(f)
         f.close()
 
-    def writeSurfaceTecplot(self, fileName, surfaceName="default"):
+    def writeSurfaceTecplot(self, fileName, surfaceName="default", fromDVGeo=None):
         """
         Write the triangulated surface mesh used in the constraint object
         to a tecplot file for visualization.
@@ -370,8 +370,11 @@ class DVConstraints:
             File name for tecplot file. Should have a .dat extension.
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None')
         """
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
+        p0, p1, p2 = self._getSurfacePoints(surfaceName, fromDVGeo)
 
         f = open(fileName, "w")
         f.write('TITLE = "DVConstraints Surface Mesh"\n')
@@ -407,12 +410,8 @@ class DVConstraints:
             from stl import mesh
         except ImportError as e:
             raise ImportError("numpy-stl package must be installed") from e
-        if fromDVGeo is None:
-            p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-        else:
-            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
-            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
-            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
+
+        p0, p1, p2 = self._getSurfacePoints(surfaceName, fromDVGeo)
 
         stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
         stlmesh.vectors[:, 0, :] = p0
@@ -421,6 +420,30 @@ class DVConstraints:
 
         # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
+
+    def _getSurfacePoints(self, surfaceName="default", fromDVGeo=None):
+        """Get the points that define a triangulated surface mesh.
+
+        Parameters
+        ----------
+        surfaceName : str
+            Which DVConstraints surface to get the points for (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from the DVConstraints object itself)
+
+        Returns
+        -------
+        (np.array, np.array, np.array)
+            Arrays of points that define the triangulated surface mesh
+        """
+        if fromDVGeo is None:
+            p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+        else:
+            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
+            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
+            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
+        return p0, p1, p2
 
     def addThicknessConstraints2D(
         self,
