@@ -1008,6 +1008,14 @@ class component:
         self.nodes = self.DVGeo.update(pointset)
 
 
+class Fillet:
+    def __init__(self, nodes, compA, compB):
+        self.name = "fillet"
+        self.nodes = nodes
+        self.compA = compA
+        self.compB = compB
+
+
 class PointSet:
     def __init__(self, points, comm):
         self.points = points
