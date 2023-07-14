@@ -371,7 +371,8 @@ class DVConstraints:
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
         fromDVGeo : str or None
-            Name of the DVGeo object to obtain the surface from (default is 'None')
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
         """
 
         p0, p1, p2 = self._getSurfaceVertices(surfaceName, fromDVGeo)
@@ -403,7 +404,8 @@ class DVConstraints:
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
         fromDVGeo : str or None
-            Name of the DVGeo object to obtain the surface from (default is 'None')
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
         """
         try:
             # External modules
@@ -3222,7 +3224,7 @@ class DVConstraints:
             Which DVConstraints surface to get the points for (default is 'default')
         fromDVGeo : str or None
             Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
-            from the DVConstraints object itself)
+            from self.surfaces, which will always be the original surface)
 
         Returns
         -------
