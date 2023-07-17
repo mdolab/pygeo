@@ -138,9 +138,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # can only add a child to a FFD DVGeo
-        if DVGeo.geoType != "ffd":
+        if not isinstance(DVGeo, DVGeometry):
             raise RuntimeError(
-                f"Only FFD-based DVGeo objects can have children added to them, not type:{DVGeo.geoType}"
+                f"Only FFD-based DVGeo objects can have children added to them, not type: {type(DVGeo).__name__}"
             )
 
         # Add child FFD
@@ -177,7 +177,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
-        if DVGeo.geoType == "ffd":
+        if isinstance(DVGeo, DVGeometry):
             for i in range(len(DVGeo.children)):
                 # Embed points from parent if not already done
                 for pointSet in DVGeo.points:
@@ -275,8 +275,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # global DVs are only added to FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometry):
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type: {type(DVGeo).__name__}")
 
         # call the dvgeo object and add this dv
         if childIdx is None:
@@ -304,8 +304,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # local DVs are only added to FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometry):
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type: {type(DVGeo).__name__}")
 
         if childIdx is None:
             nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
@@ -389,8 +389,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # local DVs are only added to FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometry):
+            raise RuntimeError(
+                f"Only FFD-based DVGeo objects can use local section DVs, not type: {type(DVGeo).__name__}"
+            )
 
         # add the DV to a normal DVGeo
         if childIdx is None:
@@ -455,8 +457,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # shape function DVs are only added to FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometry):
+            raise RuntimeError(
+                f"Only FFD-based DVGeo objects can use shape function DVs, not type: {type(DVGeo).__name__}"
+            )
 
         # add the DV to a normal DVGeo
         if childIdx is None:
@@ -491,8 +495,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # VSP DVs are only added to VSP-based DVGeo objects
-        if DVGeo.geoType != "vsp":
-            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometryVSP):
+            raise RuntimeError(f"Only VSP-based DVGeo objects can use VSP DVs, not type: {type(DVGeo).__name__}")
 
         # actually add the DV to VSP
         DVGeo.addVariable(component, group, parm, **kwargs)
@@ -517,8 +521,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # ESP DVs are only added to VSP-based DVGeo objects
-        if DVGeo.geoType != "esp":
-            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometryESP):
+            raise RuntimeError(f"Only ESP-based DVGeo objects can use ESP DVs, not type: {type(DVGeo).__name__}")
 
         # actually add the DV to ESP
         DVGeo.addVariable(desmptr_name, **kwargs)
@@ -540,8 +544,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             DVGeo = self.DVGeo
 
         # references axes are only needed in FFD-based DVGeo objects
-        if DVGeo.geoType != "ffd":
-            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type:{DVGeo.geoType}")
+        if not isinstance(DVGeo, DVGeometry):
+            raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type: {type(DVGeo).__name__}")
 
         # add ref axis to this DVGeo
         if childIdx is None:

@@ -64,7 +64,7 @@ class DVGeoSketch(BaseDVGeometry):
 
     """
 
-    def __init__(self, fileName, geoType, comm=MPI.COMM_WORLD, scale=1.0, projTol=0.01, name=None):
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, projTol=0.01, name=None):
         super().__init__(fileName=fileName, name=name)
 
         # this scales coordinates from model to mesh geometry
