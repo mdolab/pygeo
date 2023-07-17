@@ -344,10 +344,10 @@ class DVGeometryMulti:
         filletIntCurve, filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
         compIntCurve, compIntInd = intersection.findIntersection(comp.surfPts, curvePts)
 
-        fillet.intCurve = filletIntCurve
-        fillet.intInd = filletIntInd
-        comp.intCurve = compIntCurve
-        comp.intInd = compIntInd
+        fillet.intersectPts.update({compName: filletIntCurve})
+        fillet.intersectInd.update({compName: filletIntInd})
+        comp.intersectPts.update({"fillet": compIntCurve})
+        comp.intersectInd.update({"fillet": compIntInd})
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -953,7 +953,7 @@ class DVGeometryMulti:
 
             points = curves[0]
             for i in range(1, len(filename)):
-                points = np.vstack((points, points[i]))
+                points = np.vstack((points, curves[i]))
 
         return points
 
@@ -1042,9 +1042,8 @@ class Comp:
         self.surfPtsOrig = deepcopy(surfPts)
 
         self.intersection = None
-        self.intersectPts = []
-        self.intersectInd = []
-        self.adjacentComponents = []
+        self.intersectPts = {}
+        self.intersectInd = {}
 
 
 class PointSet:
