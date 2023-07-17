@@ -11,17 +11,22 @@ from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP
 # class that actually calls the DVGeometry methods
 class OM_DVGEOCOMP(om.ExplicitComponent):
     def initialize(self):
-        """
+        r"""
         Set up a geometry component with either 1 DVGeo or multiple DVGeos.
+
         A single DVGeo are initialized by specifying its file and type and, optionally, additional options.
         Available options can be found in the specific DVGeometry class.
+
         Multiple DVGeos are initialized in a dictionary of these values and must have a unique name. The format is:
-            DVGeoInfo = {
-                "name1": {"file": file1, "type": type1, "options": options1}
-                "name2": {"file": file2, "type": type2, "options": options2}
-            }
+
+        >>> DVGeoInfo = {
+        >>>     "name1": {"file": file1, "type": type1, "options": options1}
+        >>>     "name2": {"file": file2, "type": type2, "options": options2}
+        >>> }
+
         The two setup methods cannot currently be used together.
         """
+
         self.options.declare("file", default=None)
         self.options.declare("type", default=None)
         self.options.declare("options", default=None)
