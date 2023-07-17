@@ -132,10 +132,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addChild(self, ffd_file, DVGeoName=None):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # can only add a child to a FFD DVGeo
         if not isinstance(DVGeo, DVGeometry):
@@ -168,10 +165,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
         DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
@@ -298,10 +292,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childIdx=None, isComposite=False, DVGeoName=None):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
         if not isinstance(DVGeo, DVGeometry):
@@ -383,10 +374,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         """
 
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
         if not isinstance(DVGeo, DVGeometry):
@@ -451,10 +439,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         """
 
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # shape function DVs are only added to FFD-based DVGeo objects
         if not isinstance(DVGeo, DVGeometry):
@@ -475,10 +460,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # call the dvgeo object and add this dv
         DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
@@ -489,10 +471,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addVSPVariable(self, component, group, parm, isComposite=False, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # VSP DVs are only added to VSP-based DVGeo objects
         if not isinstance(DVGeo, DVGeometryVSP):
@@ -515,10 +494,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addESPVariable(self, desmptr_name, isComposite=False, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # ESP DVs are only added to VSP-based DVGeo objects
         if not isinstance(DVGeo, DVGeometryESP):
@@ -538,10 +514,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
     def nom_addRefAxis(self, childIdx=None, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
-        if self.multDVGeo:
-            DVGeo = self.DVGeos[DVGeoName]
-        else:
-            DVGeo = self.DVGeo
+        DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # references axes are only needed in FFD-based DVGeo objects
         if not isinstance(DVGeo, DVGeometry):
