@@ -324,6 +324,24 @@ class DVGeometryMulti:
             )
         )
 
+    def addCurve(self, compName, curveFiles):
+        if not self.fillet:
+            print("no")
+        
+        curvePts = self._readDATFile(curveFiles, surf=False)
+
+        comp = self.comps[compName]
+        fillet = self.comps["fillet"]
+        intersection = self.intersectComps[fillet.intersection]
+
+        filletIntCurve, filletIntInd = intersection.findIntersection(fillet.pts, curvePts)
+        compIntCurve, compIntInd = intersection.findIntersection(comp.pts, curvePts)
+
+        fillet.intCurve = filletIntCurve
+        fillet.intInd = filletIntInd
+        comp.intCurve = compIntCurve
+        comp.intInd = compIntInd
+
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
         return self.DVGeoDict
@@ -3281,7 +3299,7 @@ class CompIntersection(Intersection):
 
 
 class FilletIntersection(Intersection):
-    def __init__(self, compA, compB, filletComp):
+    def __init__(self, compA, compB, filletComp,   ):
         self.compA = compA
         self.compB = compB
         self.filletComp = filletComp
