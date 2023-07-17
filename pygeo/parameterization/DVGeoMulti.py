@@ -137,12 +137,12 @@ class DVGeometryMulti:
 
             # scale the nodes
             surfPts *= scale
+            nodes = surfPts
 
             # add these points to the corresponding dvgeo
             if DVGeo is not None:
                 DVGeo.addPointSet(nodes, "datPts", **pointSetKwargs)
 
-            nodes = surfPts
             triConn = None
             triConnStack = None
             barsConn = None
@@ -165,22 +165,27 @@ class DVGeometryMulti:
                 triConnStack = None
                 barsConn = None
 
-        # we will need the bounding box information later on, so save this here
-        xMin, xMax = DVGeo.FFD.getBounds()
+        if DVGeo is not None:
+            # we will need the bounding box information later on, so save this here
+            xMin, xMax = DVGeo.FFD.getBounds()
 
-        # also we might want to modify the bounding box if the user specified any coordinates
-        if "xmin" in bbox:
-            xMin[0] = bbox["xmin"]
-        if "ymin" in bbox:
-            xMin[1] = bbox["ymin"]
-        if "zmin" in bbox:
-            xMin[2] = bbox["zmin"]
-        if "xmax" in bbox:
-            xMax[0] = bbox["xmax"]
-        if "ymax" in bbox:
-            xMax[1] = bbox["ymax"]
-        if "zmax" in bbox:
-            xMax[2] = bbox["zmax"]
+            # also we might want to modify the bounding box if the user specified any coordinates
+            if "xmin" in bbox:
+                xMin[0] = bbox["xmin"]
+            if "ymin" in bbox:
+                xMin[1] = bbox["ymin"]
+            if "zmin" in bbox:
+                xMin[2] = bbox["zmin"]
+            if "xmax" in bbox:
+                xMax[0] = bbox["xmax"]
+            if "ymax" in bbox:
+                xMax[1] = bbox["ymax"]
+            if "zmax" in bbox:
+                xMax[2] = bbox["zmax"]
+
+        else:
+            xMin = 3 * [0]
+            xMax = 3 * [0]
 
         # initialize the component object
         self.comps[comp] = component(comp, DVGeo, nodes, filletComp, triConn, triConnStack, barsConn, xMin, xMax)
@@ -327,7 +332,7 @@ class DVGeometryMulti:
     def addCurve(self, compName, curveFiles):
         if not self.fillet:
             print("no")
-        
+
         curvePts = self._readDATFile(curveFiles, surf=False)
 
         comp = self.comps[compName]
@@ -1024,6 +1029,7 @@ class component:
 
         # update the triangulated surface mesh
         self.nodes = self.DVGeo.update(pointset)
+
 
 class Comp:
     def __init__(self, name, fillet, surfPts, curvePts, DVGeo=None, tol=1e-3):
@@ -3299,7 +3305,12 @@ class CompIntersection(Intersection):
 
 
 class FilletIntersection(Intersection):
-    def __init__(self, compA, compB, filletComp,   ):
+    def __init__(
+        self,
+        compA,
+        compB,
+        filletComp,
+    ):
         self.compA = compA
         self.compB = compB
         self.filletComp = filletComp
@@ -3332,7 +3343,6 @@ class FilletIntersection(Intersection):
 
     def update(self, ptSetName, delta):
         pts = self.points[ptSetName].pts
-
 
         return delta
 
