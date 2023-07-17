@@ -126,7 +126,7 @@ class DVGeometryESP(DVGeoSketch):
             print("Initializing DVGeometryESP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name, geoType="esp")
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         self.maxproc = maxproc
         self.esp = True

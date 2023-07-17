@@ -105,7 +105,7 @@ class DVGeometryVSP(DVGeoSketch):
             print("Initializing DVGeometryVSP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, geoType="vsp", name=name)
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         if hasattr(openvsp, "VSPVehicle"):
             self.vspModel = openvsp.VSPVehicle()

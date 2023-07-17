@@ -96,7 +96,7 @@ class DVGeometry(BaseDVGeometry):
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
-        super().__init__(fileName=fileName, name=name, geoType="ffd")
+        super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
