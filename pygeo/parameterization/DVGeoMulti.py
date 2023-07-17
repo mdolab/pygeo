@@ -146,6 +146,7 @@ class DVGeometryMulti:
             triConn = None
             triConnStack = None
             barsConn = None
+            component = Comp(comp, filletComp, nodes, DVGeo)
 
         # we have a standard intersection group which has structured surfaces
         else:
@@ -165,8 +166,6 @@ class DVGeometryMulti:
                 triConnStack = None
                 barsConn = None
 
-        # get bounding box information if this component has a DVGeo (is not a fillet)
-        if DVGeo is not None:
             # we will need the bounding box information later on, so save this here
             xMin, xMax = DVGeo.FFD.getBounds()
 
@@ -184,13 +183,10 @@ class DVGeometryMulti:
             if "zmax" in bbox:
                 xMax[2] = bbox["zmax"]
 
-        # dummy bounding box for fillet component
-        else:
-            xMin = 3 * [0]
-            xMax = 3 * [0]
+            component = component(comp, DVGeo, nodes, filletComp, triConn, triConnStack, barsConn, xMin, xMax)
 
         # initialize the component object
-        self.comps[comp] = component(comp, DVGeo, nodes, filletComp, triConn, triConnStack, barsConn, xMin, xMax)
+        self.comps[comp] = component
 
         # add the name to the list
         self.compNames.append(comp)
@@ -298,7 +294,7 @@ class DVGeometryMulti:
             if filletComp is None:
                 print("no")
 
-            inter = FilletIntersection(compA, compB, filletComp, self, self.dtype)
+            inter = FilletIntersection(compA, compB, filletComp, distTol, self, self.dtype)
 
         # initialize a standard intersection object
         else:
@@ -315,7 +311,6 @@ class DVGeometryMulti:
             inter = CompIntersection(
                 compA,
                 compB,
-                filletComp,
                 dStarA,
                 dStarB,
                 featureCurves,
@@ -344,10 +339,10 @@ class DVGeometryMulti:
 
         comp = self.comps[compName]
         fillet = self.comps["fillet"]
-        intersection = self.intersectComps[fillet.intersection]
+        intersection = fillet.intersection
 
-        filletIntCurve, filletIntInd = intersection.findIntersection(fillet.pts, curvePts)
-        compIntCurve, compIntInd = intersection.findIntersection(comp.pts, curvePts)
+        filletIntCurve, filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
+        compIntCurve, compIntInd = intersection.findIntersection(comp.surfPts, curvePts)
 
         fillet.intCurve = filletIntCurve
         fillet.intInd = filletIntInd
@@ -1045,8 +1040,8 @@ class Comp:
         self.DVGeo = DVGeo
         self.surfPts = surfPts
         self.surfPtsOrig = deepcopy(surfPts)
-        self.curvePts = curvePts
 
+        self.intersection = None
         self.intersectPts = []
         self.intersectInd = []
         self.adjacentComponents = []
@@ -1062,15 +1057,18 @@ class PointSet:
 
 
 class Intersection:
-    def __init__(self, dtype, compA, compB, DVGeo):
-        self.dtype = dtype
-
+    def __init__(self, compA, compB, distTol, DVGeo, dtype):
         componentA = DVGeo.comps[compA]
         componentB = DVGeo.comps[compB]
 
         self.compA = componentA
         self.compB = componentB
         self.DVGeo = DVGeo
+        self.dtype = dtype
+        self.distTol = distTol
+
+        # same communicator with DVGeo
+        self.comm = DVGeo.comm
 
     def setSurface(self, comm):
         """This set the new udpated surface on which we need to compute the new intersection curve"""
@@ -1176,14 +1174,8 @@ class CompIntersection(Intersection):
         See the documentation for ``addIntersection`` in DVGeometryMulti for the API.
 
         """
-        # names of compA and compB must be provided
-        componentA = DVGeo.comps[compA]
-        componentB = DVGeo.comps[compB]
 
-        super.__init__(dtype, componentA, componentB)
-
-        # same communicator with DVGeo
-        self.comm = DVGeo.comm
+        super.__init__(compA, compB, distTol, DVGeo, dtype)
 
         # define epsilon as a small value to prevent division by zero in the inverse distance computation
         self.eps = 1e-20
@@ -3317,10 +3309,11 @@ class CompIntersection(Intersection):
 
 
 class FilletIntersection(Intersection):
-    def __init__(self, compA, compB, filletComp, DVGeo, dtype):
-        super().__init__(compA, compB, DVGeo, dtype)
+    def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype):
+        super().__init__(compA, compB, distTol, DVGeo, dtype)
 
         self.filletComp = DVGeo.comps[filletComp]
+        self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
 
     def findIntersection(self, surf, curve):  # TODO fix this function
         nPtSurf = surf.shape[0]
@@ -3340,7 +3333,7 @@ class FilletIntersection(Intersection):
             minSurfCurveDist[i] = dist2ClosestPt
 
             # keep this as an intersection point if it is within tolerance
-            if dist2ClosestPt < self.tol:
+            if dist2ClosestPt < self.distTol:
                 intersectPts.append(surfPt)
                 intersectInd.append(i)
 
