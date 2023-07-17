@@ -289,7 +289,7 @@ class DVGeometryCST(BaseDVGeometry):
         boundTol : float, optional
             Small absolute deviation by which the airfoil coordinates can exceed the initial
             minimum and maximum x coordinates, by default 1e-10.
-        \*\*kwargs
+        \\*\\*kwargs
             Any other parameters are ignored.
         """
         # Convert points to the type specified at initialization (with isComplex) and store the points
@@ -559,7 +559,7 @@ class DVGeometryCST(BaseDVGeometry):
             If you have many to do, it is faster to do many at once.
         ptSetName : str
             The name of set of points we are dealing with
-        \*\*kwargs
+        \\*\\*kwargs
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
 
@@ -694,7 +694,7 @@ class DVGeometryCST(BaseDVGeometry):
               values are the derivative seeds of the corresponding design variable.
         ptSetName : str
             The name of set of points we are dealing with
-        \*\*kwargs
+        \\*\\*kwargs
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
 
@@ -802,7 +802,7 @@ class DVGeometryCST(BaseDVGeometry):
         ptSetName : str
             Name of point-set to return. This must match ones of the
             given in an :func:`addPointSet()` call.
-        \*\*kwargs
+        \\*\\*kwargs
             Any other parameters ignored, but this is maintained to allow the same
             interface as other DVGeo implementations.
 
@@ -1210,7 +1210,7 @@ class DVGeometryCST(BaseDVGeometry):
             Number of coordinates to compute on each surface.
         ax : matplotlib Axes, optional
             Axes on which to plot airfoil.
-        \*\*kwargs
+        \\*\\*kwargs
             Keyword arguments passed to matplotlib.pyplot.plot
 
         Returns
