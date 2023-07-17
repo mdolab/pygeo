@@ -104,7 +104,7 @@ class DVGeometryCST(BaseDVGeometry):
         if not prefoilInstalled:
             raise ImportError("preFoil is not installed and is required to use DVGeometryCST.")
 
-        super().__init__(datFile, name=name, geoType="cst")
+        super().__init__(datFile, name=name)
         self.xIdx = idxChord
         self.yIdx = idxVertical
         self.comm = comm

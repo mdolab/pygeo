@@ -1393,7 +1393,7 @@ class DVConstraints:
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
 
-        DVGeo_1_name : str or None
+        DVGeo_2_name : str or None
             The name of the DVGeo object to associate surface_2 to.
             If None, surface_2 will remain static during optimization.
             By default, it's the 'default' DVGeo object.
