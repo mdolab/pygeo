@@ -8,6 +8,8 @@ import numpy as np
 from scipy import sparse
 from scipy.spatial.distance import cdist
 from copy import deepcopy
+from pyspline.utils import closeTecplot, openTecplot, writeTecplot1D
+
 
 try:
     # External modules
@@ -146,7 +148,6 @@ class DVGeometryMulti:
             triConn = None
             triConnStack = None
             barsConn = None
-            component = Comp(comp, filletComp, nodes, DVGeo)
 
         # we have a standard intersection group which has structured surfaces
         else:
@@ -166,6 +167,7 @@ class DVGeometryMulti:
                 triConnStack = None
                 barsConn = None
 
+        if not filletComp:
             # we will need the bounding box information later on, so save this here
             xMin, xMax = DVGeo.FFD.getBounds()
 
@@ -182,8 +184,13 @@ class DVGeometryMulti:
                 xMax[1] = bbox["ymax"]
             if "zmax" in bbox:
                 xMax[2] = bbox["zmax"]
+        else:
+            xMin = xMax = 3 * [0]
 
-            component = component(comp, DVGeo, nodes, filletComp, triConn, triConnStack, barsConn, xMin, xMax)
+        if self.fillet:
+            component = Comp(comp, filletComp, nodes, DVGeo, xMin, xMax)
+        else:
+            component = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax)
 
         # initialize the component object
         self.comps[comp] = component
@@ -387,35 +394,36 @@ class DVGeometryMulti:
 
         # before we do anything, we need to create surface ADTs
         # for which the user provided triangulated meshes
-        for comp in compNames:
-            # check if we have a trimesh for this component
-            if self.comps[comp].triMesh:
-                # Now we build the ADT using pySurf
-                # Set bounding box for new tree
-                BBox = np.zeros((2, 3))
-                useBBox = False
+        if not self.fillet:
+            for comp in compNames:
+                # check if we have a trimesh for this component
+                if self.comps[comp].triMesh:
+                    # Now we build the ADT using pySurf
+                    # Set bounding box for new tree
+                    BBox = np.zeros((2, 3))
+                    useBBox = False
 
-                # dummy connectivity data for quad elements since we have all tris
-                quadConn = np.zeros((0, 4))
+                    # dummy connectivity data for quad elements since we have all tris
+                    quadConn = np.zeros((0, 4))
 
-                # Compute set of nodal normals by taking the average normal of all
-                # elements surrounding the node. This allows the meshing algorithms,
-                # for instance, to march in an average direction near kinks.
-                nodal_normals = self.adtAPI.adtcomputenodalnormals(
-                    self.comps[comp].nodes.T, self.comps[comp].triConnStack.T, quadConn.T
-                )
-                self.comps[comp].nodal_normals = nodal_normals.T
+                    # Compute set of nodal normals by taking the average normal of all
+                    # elements surrounding the node. This allows the meshing algorithms,
+                    # for instance, to march in an average direction near kinks.
+                    nodal_normals = self.adtAPI.adtcomputenodalnormals(
+                        self.comps[comp].nodes.T, self.comps[comp].triConnStack.T, quadConn.T
+                    )
+                    self.comps[comp].nodal_normals = nodal_normals.T
 
-                # Create new tree (the tree itself is stored in Fortran level)
-                self.adtAPI.adtbuildsurfaceadt(
-                    self.comps[comp].nodes.T,
-                    self.comps[comp].triConnStack.T,
-                    quadConn.T,
-                    BBox.T,
-                    useBBox,
-                    MPI.COMM_SELF.py2f(),
-                    comp,
-                )
+                    # Create new tree (the tree itself is stored in Fortran level)
+                    self.adtAPI.adtbuildsurfaceadt(
+                        self.comps[comp].nodes.T,
+                        self.comps[comp].triConnStack.T,
+                        quadConn.T,
+                        BBox.T,
+                        useBBox,
+                        MPI.COMM_SELF.py2f(),
+                        comp,
+                    )
 
         # create the pointset class
         self.points[ptName] = PointSet(points, comm=comm)
@@ -464,6 +472,8 @@ class DVGeometryMulti:
                 # set a high initial distance
                 dMin2 = 1e10
 
+                # TODO need to skip this or have some alternate version of assigning a point that's in 2
+
                 # loop over the components
                 for comp in compNames:
                     # check if this component is in the projList
@@ -511,7 +521,7 @@ class DVGeometryMulti:
                 )
 
         # using the mapping array, add the pointsets to respective DVGeo objects
-        for comp in self.compNames:
+        for comp in compNames:
             compMap = self.points[ptName].compMap[comp]
             self.comps[comp].DVGeo.addPointSet(points[compMap], ptName, **kwargs)
 
@@ -522,9 +532,10 @@ class DVGeometryMulti:
                 IC.addPointSet(points, ptName, self.points[ptName].compMap, comm)
 
         # finally, we can deallocate the ADTs
-        for comp in compNames:
-            if self.comps[comp].triMesh:
-                self.adtAPI.adtdeallocateadts(comp)
+        if not self.fillet:
+            for comp in compNames:
+                if self.comps[comp].triMesh:
+                    self.adtAPI.adtdeallocateadts(comp)
 
         # mark this pointset as up to date
         self.updated[ptName] = False
@@ -888,6 +899,10 @@ class DVGeometryMulti:
         DVGeo = self.comps[comp].DVGeo
         return DVGeo.FFD.topo.lIndex[iVol].copy()
 
+    def writeCompSurf(self, compName, fileName):
+        comp = self.comps[compName]
+        comp.writeSurf(fileName)
+
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
     # ----------------------------------------------------------------------
@@ -1002,11 +1017,10 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, name, DVGeo, fillet, nodes, triConn, triConnStack, barsConn, xMin, xMax):
+    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax):
         # save the info
         self.name = name
         self.DVGeo = DVGeo
-        self.fillet = fillet
         self.nodes = nodes
         self.triConn = triConn
         self.triConnStack = triConnStack
@@ -1034,16 +1048,25 @@ class component:
 
 
 class Comp:
-    def __init__(self, name, fillet, surfPts, curvePts, DVGeo=None, tol=1e-3):
+    def __init__(self, name, fillet, surfPts, DVGeo, xMin, xMax, tol=1e-3):
         self.name = name
         self.fillet = fillet
         self.DVGeo = DVGeo
         self.surfPts = surfPts
         self.surfPtsOrig = deepcopy(surfPts)
 
+        self.xMin = xMin
+        self.xMax = xMax
+
         self.intersection = None
         self.intersectPts = {}
         self.intersectInd = {}
+
+    def writeSurf(self, fileName):
+        fileName = f"{fileName}_{self.name}_surf.dat"
+        f = openTecplot(fileName, 3)
+        writeTecplot1D(f, self.name, self.surfPts)
+        closeTecplot(f)
 
 
 class PointSet:
