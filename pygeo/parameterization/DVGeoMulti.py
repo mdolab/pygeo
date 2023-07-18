@@ -52,20 +52,23 @@ class DVGeometryMulti:
 
     """
 
-    def __init__(self, comm=MPI.COMM_WORLD, fillet=False, checkDVs=True, debug=False, isComplex=False):
+    def __init__(self, comm=MPI.COMM_WORLD, filletIntersection=False, checkDVs=True, debug=False, isComplex=False):
         # Check to make sure pySurf is installed before initializing
-        if not pysurfInstalled and not fillet:
+        if not pysurfInstalled and not filletIntersection:
             raise ImportError("pySurf is not installed and is required to use DVGeometryMulti outside of fillet mode.")
 
         self.compNames = []
         self.comps = OrderedDict()
+        # separate out fillets to avoid checking whether components in comps have a DVGeo everywhere
+        self.filletNames = []  
+        self.fillets = OrderedDict()
         self.DVGeoDict = OrderedDict()
         self.points = OrderedDict()
         self.updated = {}
         self.intersectComps = []
 
         self.comm = comm
-        self.fillet = fillet
+        self.filletIntersection = filletIntersection
         self.checkDVs = checkDVs
         self.debug = debug
         self.complex = isComplex
@@ -111,10 +114,10 @@ class DVGeometryMulti:
             Keyword arguments to be passed to the component addPointSet call for the triangulated mesh.
 
         """
-        if DVGeo is None and self.fillet is False:
+        if DVGeo is None and self.filletIntersection is False:
             raise Error("DVGeo must be assigned for non-fillet DVGeoMulti components")
 
-        if self.fillet is False and points is not None:
+        if self.filletIntersection is False and points is not None:
             raise Error("Unstructured point data is only valid for fillet DVGeoMulti")
 
         # determine whether this component is a fillet or a normal surface
@@ -123,7 +126,7 @@ class DVGeometryMulti:
         else:
             filletComp = False
 
-        # if self.fillet is True and triMesh is not None:
+        # if self.filletIntersection is True and triMesh is not None:
         # this should work with a triangulated surface it just isn't necessary
 
         # Assign mutable defaults
@@ -132,8 +135,31 @@ class DVGeometryMulti:
         if pointSetKwargs is None:
             pointSetKwargs = {}
 
+        # fillets don't have a DVGeo to get a bounding box from and don't need it
+        if filletComp:
+            xMin = xMax = 3 * [0]
+
+        # standard components need a bounding box to associate points with each FFD
+        else:
+            # we will need the bounding box information later on, so save this here
+            xMin, xMax = DVGeo.FFD.getBounds()
+
+            # also we might want to modify the bounding box if the user specified any coordinates
+            if "xmin" in bbox:
+                xMin[0] = bbox["xmin"]
+            if "ymin" in bbox:
+                xMin[1] = bbox["ymin"]
+            if "zmin" in bbox:
+                xMin[2] = bbox["zmin"]
+            if "xmax" in bbox:
+                xMax[0] = bbox["xmax"]
+            if "ymax" in bbox:
+                xMax[1] = bbox["ymax"]
+            if "zmax" in bbox:
+                xMax[2] = bbox["zmax"]
+
         # we have a fillet so no structured surfaces are necessary
-        if self.fillet:
+        if self.filletIntersection:
             # save unstructured point data
             surfPts = self._readDATFile(points, surf=True)
 
@@ -141,13 +167,13 @@ class DVGeometryMulti:
             surfPts *= scale
             nodes = surfPts
 
-            # add these points to the corresponding dvgeo
-            if DVGeo is not None:
+            # add these points to the corresponding dvgeo unless this component is a fillet
+            if not filletComp:
                 DVGeo.addPointSet(nodes, "datPts", **pointSetKwargs)
 
-            triConn = None
-            triConnStack = None
-            barsConn = None
+            # initialize the component object
+            # a different class is used for fillets & their adjacent components
+            component = Comp(comp, filletComp, nodes, DVGeo, xMin, xMax)
 
         # we have a standard intersection group which has structured surfaces
         else:
@@ -167,38 +193,19 @@ class DVGeometryMulti:
                 triConnStack = None
                 barsConn = None
 
-        if not filletComp:
-            # we will need the bounding box information later on, so save this here
-            xMin, xMax = DVGeo.FFD.getBounds()
-
-            # also we might want to modify the bounding box if the user specified any coordinates
-            if "xmin" in bbox:
-                xMin[0] = bbox["xmin"]
-            if "ymin" in bbox:
-                xMin[1] = bbox["ymin"]
-            if "zmin" in bbox:
-                xMin[2] = bbox["zmin"]
-            if "xmax" in bbox:
-                xMax[0] = bbox["xmax"]
-            if "ymax" in bbox:
-                xMax[1] = bbox["ymax"]
-            if "zmax" in bbox:
-                xMax[2] = bbox["zmax"]
-        else:
-            xMin = xMax = 3 * [0]
-
-        if self.fillet:
-            component = Comp(comp, filletComp, nodes, DVGeo, xMin, xMax)
-        else:
+            # initialize the component object
             component = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax)
 
-        # initialize the component object
-        self.comps[comp] = component
+        # add component object to the dictionary and list keeping track of components
+        # if this component is a fillet (no DVGeo) put in a separate list to avoid unnecessary checks for a DVGeo later
+        if filletComp:
+            self.fillets[comp] = component
+            self.filletNames.append(comp)
+        else:
+            self.comps[comp] = component
+            self.compNames.append(comp)
 
-        # add the name to the list
-        self.compNames.append(comp)
-
-        # also save the DVGeometry pointer in the dictionary we pass back
+        # also save the DVGeometry pointer in the dictionary we pass back (fillet entry will be None)
         self.DVGeoDict[comp] = DVGeo
 
     def addIntersection(
@@ -297,7 +304,7 @@ class DVGeometryMulti:
         """
 
         # initialize a fillet intersection object
-        if self.fillet:
+        if self.filletIntersection:
             if filletComp is None:
                 print("no")
 
@@ -339,7 +346,7 @@ class DVGeometryMulti:
         self.intersectComps.append(inter)
 
     def addCurve(self, compName, curveFiles):
-        if not self.fillet:
+        if not self.filletIntersection:
             print("no")
 
         curvePts = self._readDATFile(curveFiles, surf=False)
@@ -394,7 +401,7 @@ class DVGeometryMulti:
 
         # before we do anything, we need to create surface ADTs
         # for which the user provided triangulated meshes
-        if not self.fillet:
+        if not self.filletIntersection:
             for comp in compNames:
                 # check if we have a trimesh for this component
                 if self.comps[comp].triMesh:
@@ -524,6 +531,7 @@ class DVGeometryMulti:
         for comp in compNames:
             compMap = self.points[ptName].compMap[comp]
             self.comps[comp].DVGeo.addPointSet(points[compMap], ptName, **kwargs)
+            self.comps[comp].surfPtsName = ptName
 
         # check if this pointset will get the IC treatment
         if applyIC:
@@ -532,7 +540,7 @@ class DVGeometryMulti:
                 IC.addPointSet(points, ptName, self.points[ptName].compMap, comm)
 
         # finally, we can deallocate the ADTs
-        if not self.fillet:
+        if not self.filletIntersection:
             for comp in compNames:
                 if self.comps[comp].triMesh:
                     self.adtAPI.adtdeallocateadts(comp)
@@ -1038,13 +1046,8 @@ class component:
             self.triMesh = True
 
     def updateTriMesh(self):
-        if self.fillet:
-            pointset = self.name
-        else:
-            pointset = "trimesh"
-
         # update the triangulated surface mesh
-        self.nodes = self.DVGeo.update(pointset)
+        self.nodes = self.DVGeo.update("trimesh")
 
 
 class Comp:
@@ -1054,13 +1057,18 @@ class Comp:
         self.DVGeo = DVGeo
         self.surfPts = surfPts
         self.surfPtsOrig = deepcopy(surfPts)
-
         self.xMin = xMin
         self.xMax = xMax
 
         self.intersection = None
         self.intersectPts = {}
         self.intersectInd = {}
+
+    def updateSurfPts(self):
+        if self.fillet:
+            print("no")
+        else:
+            self.surfPts = self.DVGeo.update("datPts")
 
     def writeSurf(self, fileName):
         fileName = f"{fileName}_{self.name}_surf.dat"
@@ -3362,6 +3370,10 @@ class FilletIntersection(Intersection):
         intersectPts = np.asarray(intersectPts)
 
         return intersectPts, intersectInd
+
+    def addPointSet(self, pts, ptSetName, compMap, comm):
+        # Save the affected indices and the factor in the little dictionary
+        self.points[ptSetName] = [pts.copy(), indices, factors, comm]
 
     def update(self, ptSetName, delta):
         pts = self.points[ptSetName].pts
