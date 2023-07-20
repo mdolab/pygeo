@@ -3448,6 +3448,8 @@ class FilletIntersection(Intersection):
 
         self._warpSurfPts(pts0, ptsNew, indices, curvePtCoords, delta)
 
+        self.filletComp.surfPts = ptsNew
+
     def _getIntersectionSeam(self, comm):
         pass
 
