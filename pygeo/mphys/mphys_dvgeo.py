@@ -77,7 +77,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
             # this DVGeo uses VSP
             elif info["type"] == "vsp":
-                self.DVGeo.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=DVGeoName, **options)})
+                self.DVGeos.update({name: DVGeometryVSP(info["file"], comm=self.comm, name=DVGeoName, **options)})
 
             # this DVGeo uses ESP
             elif info["type"] == "esp":
@@ -738,4 +738,5 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 for _, DVGeo in self.DVGeos.items():
                     d_inputs = self.nom_computeOnDVGeo(DVGeo, d_inputs, d_outputs)
             else:
+                DVGeo = self.nom_getDVGeo()
                 d_inputs = self.nom_computeOnDVGeo(DVGeo, d_inputs, d_outputs)
