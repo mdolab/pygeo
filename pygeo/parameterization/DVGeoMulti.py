@@ -358,10 +358,14 @@ class DVGeometryMulti:
         filletIntCurve, filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
         compIntCurve, compIntInd = intersection.findIntersection(comp.surfPts, curvePts)
 
-        fillet.intersectPts.update({compName: filletIntCurve})
         fillet.intersectInd.update({compName: filletIntInd})
-        comp.intersectPts.update({filletName: compIntCurve})
         comp.intersectInd.update({filletName: compIntInd})
+
+        fillet.intersectPtsOrig.update({compName: filletIntCurve})
+        comp.intersectPtsOrig.update({filletName: compIntCurve})
+
+        fillet.intersectPts.update({compName: filletIntCurve})
+        comp.intersectPts.update({filletName: compIntCurve})
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -909,7 +913,10 @@ class DVGeometryMulti:
         return DVGeo.FFD.topo.lIndex[iVol].copy()
 
     def writeCompSurf(self, compName, fileName):
-        comp = self.comps[compName]
+        if compName in self.compNames:
+            comp = self.comps[compName]
+        elif compName in self.filletNames:
+            comp = self.fillets[compName]
         comp.writeSurf(fileName)
 
     def writePointSet(self, name, fileName, solutionTime=None):
@@ -1085,6 +1092,7 @@ class Comp:
         self.xMax = xMax
 
         self.intersection = None
+        self.intersectPtsOrig = {}
         self.intersectPts = {}
         self.intersectInd = {}
 
@@ -3401,20 +3409,41 @@ class FilletIntersection(Intersection):
         self.points[ptSetName] = [pts.copy(), [], [], comm]
 
     def update(self, ptSetName, delta):
-        pts = self.points[ptSetName].pts
+        n = self.filletComp.surfPtsOrig.shape[0]
+        indices = np.linspace(0, n - 1, n, dtype=int)
+        indices = np.delete(
+            indices, self.filletComp.intersectInd[self.compA.name] + self.filletComp.intersectInd[self.compB.name]
+        )
+        self.indices = indices
 
+        # make sure each component's subset of points on the intersection curve is up to date
+        self.compA.intersectPts[self.filletComp.name] = self.compA.surfPts[
+            self.compA.intersectInd[self.filletComp.name]
+        ]
+        self.compB.intersectPts[self.filletComp.name] = self.compB.surfPts[
+            self.compB.intersectInd[self.filletComp.name]
+        ]
+
+        # don't update the delta because we aren't remeshing
         return delta
 
-    def project(self):
-        newCurveCoords = np.vstack((self.compA.intersectPts, self.compB.intersectPts))
-        curvePtCoords = np.vstack((self.compA.intPtsOrig, self.compB.intPtsOrig))
+    def project(self, ptSetName, newPts):
+        # redo the delta because this is how the fillet was initially set up
+        # TODO maybe stop doing this
+        newCurveCoords = np.vstack(
+            (self.compA.intersectPts[self.filletComp.name], self.compB.intersectPts[self.filletComp.name])
+        )
+        curvePtCoords = np.vstack(
+            (self.compA.intersectPtsOrig[self.filletComp.name], self.compB.intersectPtsOrig[self.filletComp.name])
+        )
         delta = newCurveCoords - curvePtCoords
 
-        ptsNew = deepcopy(self.fillet.surfPtOrig)
-        ptsNew[self.fillet.compAIntInd] = self.compA.surf[self.intersectInd]
-        ptsNew[self.fillet.compBIntInd] = self.compB.surf[self.intersectInd]
+        # modify the intersection curves of the fillet
+        ptsNew = deepcopy(self.filletComp.surfPtsOrig)
+        ptsNew[self.filletComp.intersectInd[self.compA.name]] = self.compA.intersectPts[self.filletComp.name]
+        ptsNew[self.filletComp.intersectInd[self.compB.name]] = self.compB.intersectPts[self.filletComp.name]
 
-        pts0 = self.fillet.surfPtOrig
+        pts0 = self.filletComp.surfPtsOrig
         indices = self.indices
 
         self._warpSurfPts(pts0, ptsNew, indices, curvePtCoords, delta)
