@@ -60,7 +60,7 @@ class DVGeometryMulti:
         self.compNames = []
         self.comps = OrderedDict()
         # separate out fillets to avoid checking whether components in comps have a DVGeo everywhere
-        self.filletNames = []  
+        self.filletNames = []
         self.fillets = OrderedDict()
         self.DVGeoDict = OrderedDict()
         self.points = OrderedDict()
@@ -345,14 +345,14 @@ class DVGeometryMulti:
 
         self.intersectComps.append(inter)
 
-    def addCurve(self, compName, curveFiles):
+    def addCurve(self, compName, filletName, curveFiles):
         if not self.filletIntersection:
             print("no")
 
         curvePts = self._readDATFile(curveFiles, surf=False)
 
         comp = self.comps[compName]
-        fillet = self.comps["fillet"]
+        fillet = self.fillets[filletName]
         intersection = fillet.intersection
 
         filletIntCurve, filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
@@ -360,8 +360,8 @@ class DVGeometryMulti:
 
         fillet.intersectPts.update({compName: filletIntCurve})
         fillet.intersectInd.update({compName: filletIntInd})
-        comp.intersectPts.update({"fillet": compIntCurve})
-        comp.intersectInd.update({"fillet": compIntInd})
+        comp.intersectPts.update({filletName: compIntCurve})
+        comp.intersectInd.update({filletName: compIntInd})
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -623,12 +623,13 @@ class DVGeometryMulti:
         newPts = np.zeros((self.points[ptSetName].nPts, 3), dtype=self.dtype)
 
         # we first need to update all points with their respective DVGeo objects
-        for comp in self.compNames:
-            ptsComp = self.comps[comp].DVGeo.update(ptSetName)
+        for compName, comp in self.comps.items():
+            if ptSetName in comp.DVGeo.ptSetNames:  # TODO make this work with old Multi
+                ptsComp = comp.DVGeo.update(ptSetName)
 
-            # now save this info with the pointset mapping
-            ptMap = self.points[ptSetName].compMap[comp]
-            newPts[ptMap] = ptsComp
+                # now save this info with the pointset mapping
+                ptMap = self.points[ptSetName].compMap[compName]
+                newPts[ptMap] = ptsComp
 
         # get the delta
         delta = newPts - self.points[ptSetName].points
@@ -911,6 +912,29 @@ class DVGeometryMulti:
         comp = self.comps[compName]
         comp.writeSurf(fileName)
 
+    def writePointSet(self, name, fileName, solutionTime=None):
+        """
+        Write a given point set to a tecplot file
+
+        Parameters
+        ----------
+        name : str
+             The name of the point set to write to a file
+
+        fileName : str
+           Filename for tecplot file. Should have no extension, an
+           extension will be added
+        SolutionTime : float
+            Solution time to write to the file. This could be a fictitious time to
+            make visualization easier in tecplot.
+        """
+
+        coords = self.update(name)
+        fileName = fileName + "_%s.dat" % name
+        f = openTecplot(fileName, 3)
+        writeTecplot1D(f, name, coords, solutionTime)
+        closeTecplot(f)
+
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
     # ----------------------------------------------------------------------
@@ -1087,7 +1111,7 @@ class PointSet:
 
 
 class Intersection:
-    def __init__(self, compA, compB, distTol, DVGeo, dtype):
+    def __init__(self, compA, compB, distTol, DVGeo, dtype, project):
         componentA = DVGeo.comps[compA]
         componentB = DVGeo.comps[compB]
 
@@ -1099,6 +1123,11 @@ class Intersection:
 
         # same communicator with DVGeo
         self.comm = DVGeo.comm
+
+        self.points = OrderedDict()
+
+        # flag to determine if we want to project nodes after intersection treatment
+        self.projectFlag = project
 
     def setSurface(self, comm):
         """This set the new udpated surface on which we need to compute the new intersection curve"""
@@ -1205,7 +1234,7 @@ class CompIntersection(Intersection):
 
         """
 
-        super.__init__(compA, compB, distTol, DVGeo, dtype)
+        super.__init__(compA, compB, distTol, DVGeo, dtype, project)
 
         # define epsilon as a small value to prevent division by zero in the inverse distance computation
         self.eps = 1e-20
@@ -1270,7 +1299,6 @@ class CompIntersection(Intersection):
 
         self.dStarA = dStarA
         self.dStarB = dStarB
-        self.points = OrderedDict()
 
         # Make surface names lowercase
         self.trackSurfaces = {}
@@ -1355,9 +1383,6 @@ class CompIntersection(Intersection):
                 curveComp.barsConn[curveName] = newConn
 
         self.distTol = distTol
-
-        # flag to determine if we want to project nodes after intersection treatment
-        self.projectFlag = project
 
         # create the dictionary if we are projecting.
         if project:
@@ -3339,10 +3364,10 @@ class CompIntersection(Intersection):
 
 
 class FilletIntersection(Intersection):
-    def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype):
-        super().__init__(compA, compB, distTol, DVGeo, dtype)
+    def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype, project=True):
+        super().__init__(compA, compB, distTol, DVGeo, dtype, project)
 
-        self.filletComp = DVGeo.comps[filletComp]
+        self.filletComp = DVGeo.fillets[filletComp]
         self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
 
     def findIntersection(self, surf, curve):  # TODO fix this function
@@ -3373,7 +3398,7 @@ class FilletIntersection(Intersection):
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
         # Save the affected indices and the factor in the little dictionary
-        self.points[ptSetName] = [pts.copy(), indices, factors, comm]
+        self.points[ptSetName] = [pts.copy(), [], [], comm]
 
     def update(self, ptSetName, delta):
         pts = self.points[ptSetName].pts
@@ -3394,6 +3419,9 @@ class FilletIntersection(Intersection):
 
         self._warpSurfPts(pts0, ptsNew, indices, curvePtCoords, delta)
 
+    def _getIntersectionSeam(self, comm):
+        pass
+
     def _getUpdatedCoords(self):
-        self.compA.updatePoints()
-        self.compB.updatePoints()
+        self.compA.updateSurfPts()
+        self.compB.updateSurfPts()
