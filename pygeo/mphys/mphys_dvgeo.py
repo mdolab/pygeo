@@ -734,9 +734,5 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                         jvtmp = np.dot(np.transpose(dcdx), dout)
                         d_inputs[dvname] += jvtmp
 
-            if self.multDVGeo:
-                for _, DVGeo in self.DVGeos.items():
-                    d_inputs = self.nom_computeOnDVGeo(DVGeo, d_inputs, d_outputs)
-            else:
-                DVGeo = self.nom_getDVGeo()
+            for _, DVGeo in self.DVGeos.items():
                 d_inputs = self.nom_computeOnDVGeo(DVGeo, d_inputs, d_outputs)
