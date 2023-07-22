@@ -19,14 +19,14 @@ To cite this paper, you can use the following BibTeX entry:
         number = {87},
         pages = {5319},
         author = {Hannah M. Hajdik and Anil Yildirim and Neil Wu and Benjamin J. Brelje and Sabet Seraj and Marco Mangano and Joshua L. Anibal and Eirikur Jonsson and Eytan J. Adler and Charles A. Mader and Gaetan K. W. Kenway and Joaquim R. R. A. Martins},
-        title = {pyGeo: A geometry package for multidisciplinary design optimization},
+        title = {py{G}eo: A geometry package for multidisciplinary design optimization},
         journal = {Journal of Open Source Software}
     }
 
 
-For more background and theory on the legacy FFD implementation, see [this paper](http://umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf).
+For more background and theory on the legacy FFD implementation, see `this paper <http://umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf>`__.
 
-    \G. K. W. Kenway, Kennedy, G. J., and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
+    \G. K. W. Kenway, G. J. Kennedy, and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
 
 
 .. code-block:: bibtex
