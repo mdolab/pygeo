@@ -4,7 +4,7 @@ Citation
 ========
 If you use pyGeo, please cite the following paper:
 
-    \H. Hajdik, A. Yildirim, N. Wu, B. Brelje, S. Seraj, M. Mangano, J. Anibal, E. Jonsson, E. Adler, C. A. Mader, G. Kenway, and J. R. R. A. Martins. pyGeo: A geometry package for multidisciplinary design optimization. Journal of Open Source Software,  8(87), 5319, July 2023. https://doi.org/10.21105/joss.05319
+    \H. Hajdik, A. Yildirim, N. Wu, B. Brelje, S. Seraj, M. Mangano, J. Anibal, E. Jonsson, E. Adler, C. A. Mader, G. Kenway, and J. R. R. A. Martins. pyGeo: A geometry package for multidisciplinary design optimization. Journal of Open Source Software, 8(87), 5319, July 2023. https://doi.org/10.21105/joss.05319
 
 The paper is available online from the Journal of Open Source Software `here <https://joss.theoj.org/papers/10.21105/joss.05319>`__.
 To cite this paper, you can use the following BibTeX entry:
@@ -26,7 +26,7 @@ To cite this paper, you can use the following BibTeX entry:
 
 For more background and theory on the legacy FFD implementation, see `this paper <http://umich.edu/~mdolaboratory/pdf/Kenway2010b.pdf>`__.
 
-    \G. K. W. Kenway, G. J. Kennedy, and Martins, J. R. R. A., “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
+    \G. K. W. Kenway, G. J. Kennedy, and J. R. R. A. Martins, “A CAD-Free Approach to High-Fidelity Aerostructural Optimization”, in Proceedings of the 13th AIAA/ISSMO Multidisciplinary Analysis Optimization Conference, Fort Worth, TX, 2010.
 
 
 .. code-block:: bibtex
