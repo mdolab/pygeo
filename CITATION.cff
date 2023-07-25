@@ -1,0 +1,94 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Hajdik
+  given-names: Hannah M.
+  orcid: "https://orcid.org/0000-0002-5103-7159"
+- family-names: Yildirim
+  given-names: Anil
+  orcid: "https://orcid.org/0000-0002-1814-9191"
+- family-names: Wu
+  given-names: Neil
+  orcid: "https://orcid.org/0000-0001-8856-9661"
+- family-names: Brelje
+  given-names: Benjamin J.
+  orcid: "https://orcid.org/0000-0002-9819-3028"
+- family-names: Seraj
+  given-names: Sabet
+  orcid: "https://orcid.org/0000-0002-7364-0071"
+- family-names: Mangano
+  given-names: Marco
+  orcid: "https://orcid.org/0000-0001-8495-3578"
+- family-names: Anibal
+  given-names: Joshua L.
+  orcid: "https://orcid.org/0000-0002-7795-2523"
+- family-names: Jonsson
+  given-names: Eirikur
+  orcid: "https://orcid.org/0000-0002-5166-3889"
+- family-names: Adler
+  given-names: Eytan J.
+  orcid: "https://orcid.org/0000-0002-8716-1805"
+- family-names: Mader
+  given-names: Charles A.
+  orcid: "https://orcid.org/0000-0002-2744-1151"
+- family-names: Kenway
+  given-names: Gaetan K. W.
+  orcid: "https://orcid.org/0000-0003-1352-5458"
+- family-names: Martins
+  given-names: Joaquim R. R. A.
+  orcid: "https://orcid.org/0000-0003-2143-1478"
+doi: 10.5281/zenodo.8027706
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Hajdik
+    given-names: Hannah M.
+    orcid: "https://orcid.org/0000-0002-5103-7159"
+  - family-names: Yildirim
+    given-names: Anil
+    orcid: "https://orcid.org/0000-0002-1814-9191"
+  - family-names: Wu
+    given-names: Neil
+    orcid: "https://orcid.org/0000-0001-8856-9661"
+  - family-names: Brelje
+    given-names: Benjamin J.
+    orcid: "https://orcid.org/0000-0002-9819-3028"
+  - family-names: Seraj
+    given-names: Sabet
+    orcid: "https://orcid.org/0000-0002-7364-0071"
+  - family-names: Mangano
+    given-names: Marco
+    orcid: "https://orcid.org/0000-0001-8495-3578"
+  - family-names: Anibal
+    given-names: Joshua L.
+    orcid: "https://orcid.org/0000-0002-7795-2523"
+  - family-names: Jonsson
+    given-names: Eirikur
+    orcid: "https://orcid.org/0000-0002-5166-3889"
+  - family-names: Adler
+    given-names: Eytan J.
+    orcid: "https://orcid.org/0000-0002-8716-1805"
+  - family-names: Mader
+    given-names: Charles A.
+    orcid: "https://orcid.org/0000-0002-2744-1151"
+  - family-names: Kenway
+    given-names: Gaetan K. W.
+    orcid: "https://orcid.org/0000-0003-1352-5458"
+  - family-names: Martins
+    given-names: Joaquim R. R. A.
+    orcid: "https://orcid.org/0000-0003-2143-1478"
+  date-published: 2023-07-19
+  doi: 10.21105/joss.05319
+  issn: 2475-9066
+  issue: 87
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 5319
+  title: "pyGeo: A geometry package for multidisciplinary design
+    optimization"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.05319"
+  volume: 8
+title: "pyGeo: A geometry package for multidisciplinary design
+  optimization"
