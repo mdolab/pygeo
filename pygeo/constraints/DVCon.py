@@ -69,7 +69,7 @@ class DVConstraints:
 
     def __init__(self, name="DVCon1"):
         """
-        Create a (empty) DVconstrains object. Specific types of
+        Create a (empty) DVConstraints object. Specific types of
         constraints will added individually
         """
 
@@ -265,7 +265,7 @@ class DVConstraints:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dv dictionary are simply ignored.
         """
 
         # loop over the generated constraint objects and add the necessary
@@ -420,7 +420,6 @@ class DVConstraints:
         stlmesh.vectors[:, 1, :] = p1
         stlmesh.vectors[:, 2, :] = p2
 
-        # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
 
     def addThicknessConstraints2D(
@@ -1374,7 +1373,7 @@ class DVConstraints:
         addToPyOpt=True,
     ):
         """
-        Add a single triangulated surface constraint to an aerosurface.
+        Add a single triangulated surface constraint to an aerosurface using Geograd.
         This constraint is designed to keep a general 'blob' of watertight
         geometry contained within an aerodynamic hull (e.g., a wing)
 
@@ -1385,19 +1384,19 @@ class DVConstraints:
             This should be the surface with the larger number of triangles.
             By default, it's the ADflow triangulated surface mesh.
 
-        DVGeo_1_name : str
+        DVGeo_1_name : str or None
             The name of the DVGeo object to associate surface_1 to.
             If None, surface_1 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         surface_2_name : str
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
 
-        DVGeo_2_name : str
+        DVGeo_2_name : str or None
             The name of the DVGeo object to associate surface_2 to.
             If None, surface_2 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         rho : float
             The rho factor of the KS function of min distance.
@@ -1421,8 +1420,8 @@ class DVConstraints:
              multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this
              computation for something other than a direct constraint
-             in pyOpt, i.e. it is required for a subsequent
-             computation.
+             in pyOpt, i.e. it is required for a subsequent computation.
+             The MPhys wrapper sets this name for tracking in OpenMDAO.
 
         scale : float
             This is the optimization scaling of the
@@ -1449,6 +1448,7 @@ class DVConstraints:
             DVGeo2 = self.DVGeometries[DVGeo_2_name]
         else:
             DVGeo2 = None
+
         if DVGeo1 is None and DVGeo2 is None:
             raise ValueError("At least one DVGeo object must be specified")
 
@@ -1749,12 +1749,10 @@ class DVConstraints:
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
 
-        The general ussage is as follows::
+        The general usage is as follows:
 
-          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
-                                    name='part1', addToPyOpt=False)
-          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
-                                    name='part2', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord, name='part1', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord, name='part2', addToPyOpt=False)
           DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
 
 

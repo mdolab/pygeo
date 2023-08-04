@@ -96,7 +96,7 @@ class DVGeometry(BaseDVGeometry):
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
-        super().__init__(fileName=fileName)
+        super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -112,9 +112,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
-
-        # Name (used for ensuring design variables names are unique to pyOptsparse)
-        self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild = child

@@ -15,8 +15,7 @@ except ImportError:
 
 class TriangulatedSurfaceConstraint(GeometricConstraint):
     """
-    This class is used to enclose a triangulated object inside an
-    aerodynamic surface.
+    This class is used to enclose a triangulated object inside an aerodynamic surface.
     """
 
     def __init__(
@@ -69,8 +68,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if heuristic_dist is not None:
             if heuristic_dist < computed_maxdim:
                 raise ValueError(
-                    "The heuristic distance must be less than the max diagonal"
-                    "dimension of the bounding box, " + str(computed_maxdim)
+                    f"The heuristic distance {heuristic_dist} must be less than the max diagonal dimension of the bounding box {computed_maxdim}"
                 )
             self.maxdim = heuristic_dist
         else:
@@ -110,11 +108,9 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
         """
-        # get the CFD triangulated mesh updates. need addToDVGeo = True when
-        # running setSurface()
+        # get the CFD triangulated mesh updates. need addToDVGeo = True when running setSurface()
 
         # check if the first mesh has a DVGeo, and if it does, update the points
-
         if self.DVGeo1 is not None:
             self.surf1_p0 = self.DVGeo1.update(self.surface_1_name + "_p0", config=config).transpose()
             self.surf1_p1 = self.DVGeo1.update(self.surface_1_name + "_p1", config=config).transpose()
@@ -257,9 +253,12 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if self.perim_length > self.max_perim:
             failflag = True
             if self.comm.rank == 0:
-                print(f"Intersection length {self.perim_length} exceeds tol {self.max_perim}, returning fail flag")
+                print(
+                    f"Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag"
+                )
         else:
             failflag = False
+
         return KS, perim_length, failflag
 
     def evalTriangulatedSurfConstraintSens(self):
@@ -279,6 +278,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             self.maxdim,
             self.comm.py2f(),
         )
+
         return deriv_output
 
     def addConstraintsPyOpt(self, optProb, exclude_wrt=None):
