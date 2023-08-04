@@ -73,7 +73,7 @@ class DVGeometryVSP(DVGeoSketch):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01, name=None):
         vspOutOfDate = False
         if vspInstalled:
             vspVersionStr = openvsp.GetVSPVersion()
@@ -104,7 +104,7 @@ class DVGeometryVSP(DVGeoSketch):
             print("Initializing DVGeometryVSP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         if hasattr(openvsp, "VSPVehicle"):
             self.vspModel = openvsp.VSPVehicle()
