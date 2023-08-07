@@ -1329,8 +1329,9 @@ class CompIntersection:
                         # This point is already associated with another surface so remove it from this surface
                         indASurf.remove(ind)
 
-                # Store the projection indices for this surface
-                self.projData[ptSetName]["compA"]["indSurfDict"][surface] = indASurf
+                # Store the projection indices for this surface if there are any
+                if indASurf:
+                    self.projData[ptSetName]["compA"]["indSurfDict"][surface] = indASurf
 
             # Store the component-wide projection indices
             self.projData[ptSetName]["compA"]["indAComp"] = indAComp
@@ -1345,7 +1346,8 @@ class CompIntersection:
                         indBComp.remove(ind)
                     except ValueError:
                         indBSurf.remove(ind)
-                self.projData[ptSetName]["compB"]["indSurfDict"][surface] = indBSurf
+                if indBSurf:
+                    self.projData[ptSetName]["compB"]["indSurfDict"][surface] = indBSurf
             self.projData[ptSetName]["compB"]["indBComp"] = indBComp
 
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
