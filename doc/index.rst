@@ -17,5 +17,6 @@ pyGeo is a geometry manipulation framework for multidisciplinary design optimiza
    introduction
    contribute
    install
+   citation
    tutorial
    API
