@@ -835,7 +835,15 @@ class DVGeometry(BaseDVGeometry):
         if childDVGeo.isChild is False:
             raise Error("Trying to add a child FFD that has NOT been " "created as a child. This operation is illegal.")
 
-        # check if this custom name has already been used
+        # set the index
+        iChild = len(self.children)
+        childDVGeo.iChild = iChild
+
+        # check if a custom name is provided, if not, we will use the old naming scheme based on the iChild index
+        if childName is None:
+            childName = f"child{iChild:d}"
+
+        # check if this child name has already been used
         if childName in self.children:
             raise Error(
                 f"Another child DVGeo has already been added with the name {childName}. Change the name of one of the child FFDs with the same name and try again."
@@ -843,13 +851,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
-        iChild = len(self.children)
-        childDVGeo.iChild = iChild
-
-        # check if a custom name is provided, if not, we will use the old naming scheme based on the iChild
-        if childName is None:
-            childName = f"child{iChild:d}"
-
         self.FFD.attachPoints(childDVGeo.FFD.coef, f"{childName}_coef")
         self.FFD.calcdPtdCoef(f"{childName}_coef")
 
