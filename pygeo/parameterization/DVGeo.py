@@ -743,7 +743,18 @@ class DVGeometry(BaseDVGeometry):
                         coords_new = np.dot(coords_new, rot_mat.T)
 
                     return coords_new
-
+        activeChildren : list
+            List of names of the child FFDs that should be used with this pointset.
+            For example, lets say there are 3 child FFDs with names a, b, and c.
+            When a pointset is added to this DVGeo object, it will always be added
+            to the parent. Then, if the activeChildren argument is none, the pointset
+            will also be added to all 3 child FFDs. If activeChildren argument is ["a", "b"],
+            then the pointset will only be added to the children named "a" and "b", and not "c".
+            If activeChildren argument is an empty dictionary, i.e. [], the pointset wont be added
+            to any of the child FFDs. When a pointset is added to a child FFD, the changes in the
+            child FFD is added to the displacement of the pointset. If it is not added to a child,
+            the changes from that child is not included in this pointset. This is useful to
+            control the effect of different child FFDs on different pointsets.
         """
 
         # compNames is only needed for DVGeometryMulti, so remove it if passed
