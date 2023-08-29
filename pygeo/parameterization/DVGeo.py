@@ -2671,7 +2671,7 @@ class DVGeometry(BaseDVGeometry):
 
         if self.nPts[ptSetName] is None:
             self.nPts[ptSetName] = len(self.update(ptSetName).flatten())
-        for child in self.children:
+        for child in self.children.values():
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
         DVGlobalCount, DVLocalCount, DVSecLocCount, DVSpanLocCount = self._getDVOffsets()
@@ -3826,7 +3826,7 @@ class DVGeometry(BaseDVGeometry):
 
         if self.nPts[ptSetName] is None:
             self.nPts[ptSetName] = len(coords0.flatten())
-        for child in self.children:
+        for child in self.children.values():
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
         DVGlobalCount, DVLocalCount, DVSecLocCount, DVSpanLocCount = self._getDVOffsets()
@@ -4439,7 +4439,7 @@ class DVGeometry(BaseDVGeometry):
 
         print("Computing Analytic Jacobian...")
         self.zeroJacobians(ptSetName)
-        for child in self.children:
+        for child in self.children.values():
             child.zeroJacobians(ptSetName)
 
         self.computeTotalJacobian(ptSetName)
@@ -4580,7 +4580,7 @@ class DVGeometry(BaseDVGeometry):
                 DVCountSpanLoc += 1
                 self.DV_listSpanwiseLocal[key].value[j] = refVal
 
-        for child in self.children:
+        for child in self.children.values():
             child.checkDerivatives(ptSetName)
 
     def printDesignVariables(self):
@@ -4602,7 +4602,7 @@ class DVGeometry(BaseDVGeometry):
             for i in range(self.DV_listSectionLocal[dsl].nVal):
                 print("%20.15f" % (self.DV_listSectionLocal[dsl].value[i]))
 
-        for child in self.children:
+        for child in self.children.values():
             child.printDesignVariables()
 
     def sectionFrame(self, sectionIndex, sectionTransform, sectionLink, ivol=0, orient0=None, orient2="svd"):
