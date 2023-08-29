@@ -897,13 +897,13 @@ class DVConstraints:
 
         # determine the seed points for the constraint
         if nSpan == -1:
+            nSpan = len(leList)
             X = leList.copy()
-            coords = np.zeros((len(leList), 3, 3))
         else:
             constr_line = Curve(X=leList, k=2)
             s = np.linspace(0, 1, nSpan)
             X = constr_line(s)
-            coords = np.zeros((nSpan, 3, 3))
+        coords = np.zeros((nSpan, 3, 3))
 
         # Create surface intersections
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
