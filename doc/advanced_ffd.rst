@@ -15,7 +15,7 @@ During this tutorial, we will use the Cessna 172 airplane wing as our example ge
 .. figure:: images/c172.jpg
    :width: 450
    :target: images/c172.jpg
-   :align: center 
+   :align: center
 
    A Cessna 172 in flight (Anna Zvereva, CC-BY)
 
@@ -27,7 +27,7 @@ We use the spline surfacing tool in `pyGeo` to generate the Cessna wing geometry
 A full description of the surfacing script is beyond the scope of this tutorial, but the script itself can be found at ``examples/c172_wing/c172.py``.
 Using the ``pyiges`` package, one of the IGES CAD files can be converted to a triangulated (.stl) format in order to turn the wing into a pointset.
 
-Next, we need to create an FFD volume that encloses the wing. 
+Next, we need to create an FFD volume that encloses the wing.
 We want to approximate the wing closely without any of the wing intersecting the box.
 Using our knowledge of the wing dimensions, it's easy to create a closely-conforming FFD.
 The example script is located at ``examples/c172_wing/genFFD.py``.
@@ -56,7 +56,7 @@ In the following example, we perturb a single point in the inner portion of the 
 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
     :start-after: # rst add local DV
-    :end-before: # rst ref axis
+    :end-before: # rst add shape function DVs
 
 
 This local perturbation produces the obvious deformation in the following rendering:
@@ -67,6 +67,17 @@ This local perturbation produces the obvious deformation in the following render
 
 
 .. _global_vars:
+
+--------------------------------------
+Adding shape function design variables
+--------------------------------------
+
+Similar to local design variables, shape function DVs can be used to define design variables that control the local shape using a single or several control points in specified directions. The shape functions define a direction and magnitude for control points. This DV can be used to link control point movements without using linear constraints.
+
+.. literalinclude:: ../examples/c172_wing/runFFDExample.py
+    :start-after: # rst add shape function DVs
+    :end-before: # rst ref axis
+
 
 -----------------------------------
 Reference axes and global variables
@@ -83,7 +94,7 @@ Global design variables commonly include the following mathematical transformati
 - Linear stretching or shrinking
 - Translation
 
-Rotating a point requires knowing an axis of rotation. 
+Rotating a point requires knowing an axis of rotation.
 Scaling a point requires a reference point.
 We can define these for the entire pointset by defining one or more *reference axes*.
 A reference axis is defined as a line or curve within the FFD volume.
@@ -142,7 +153,7 @@ The global design variable can be perturbed just like a local design variable, a
     :start-after: # rst set DV
     :end-before: # rst set DV 2
 
-Applying this twist results in the geometry pictured below. 
+Applying this twist results in the geometry pictured below.
 The location of the reference axis (and any points located close to the reference axis) is not affected by the rotation.
 This is a general principle of applying transformations: *the reference axis location remains invariant under the transformation*.
 
@@ -192,12 +203,12 @@ The results of the sweep are dramatic, as seen in the rendering.
 This example illustrates an important detail; namely, that the local control points do not rotate in the x-z plane as the wing is swept back.
 This is because of the way the reference axis is implemented.
 Every local control point (the red dots) is *projected* onto the reference axis when the axis is created.
-In this case, by default, the points were projected along the x axis. 
+In this case, by default, the points were projected along the x axis.
 Once the points are projected, they become rigidly linked to the projected point on the axis.
 Even if the reference axis is rotated, the rigid links do *not* rotate.
 However, the links do translate along with their reference point.
 Only the ``scale_`` and ``rot_`` operators change the rigid links.
-:meth:`writeLinks <.DVGeometry.writeLinks>` can be used to write out these links, which can then be viewed in Tecplot. 
+:meth:`writeLinks <.DVGeometry.writeLinks>` can be used to write out these links, which can then be viewed in Tecplot.
 
 --------------------------------
 Multiple global design variables
@@ -221,7 +232,7 @@ Let's also introduce a random perturbation to the local design variables to see 
 .. literalinclude:: ../examples/c172_wing/runFFDExample.py
     :start-after: # rst set DV 4
 
-The combination of multiple global and local design variables produces the wild shape in the rendering below. 
+The combination of multiple global and local design variables produces the wild shape in the rendering below.
 Obviously this is not a suitable optimized aircraft design.
 However, the optimizer is free to use all of these degrees of freedom to eventually find the best possible result.
 

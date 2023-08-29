@@ -16,7 +16,7 @@ from scipy.spatial import cKDTree
 # Local modules
 from .. import geo_utils, pyBlock, pyNetwork
 from .BaseDVGeo import BaseDVGeometry
-from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVSpanwiseLocal
+from .designVars import geoDVComposite, geoDVGlobal, geoDVLocal, geoDVSectionLocal, geoDVShapeFunc, geoDVSpanwiseLocal
 
 
 class DVGeometry(BaseDVGeometry):
@@ -96,7 +96,7 @@ class DVGeometry(BaseDVGeometry):
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
-        super().__init__(fileName=fileName)
+        super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -112,9 +112,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
-
-        # Name (used for ensuring design variables names are unique to pyOptsparse)
-        self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild = child
@@ -1433,6 +1430,101 @@ class DVGeometry(BaseDVGeometry):
 
         self.DVComposite = geoDVComposite(dvName, values, NDV, u, scale=scale, s=s)
         self.useComposite = True
+
+    def addShapeFunctionDV(
+        self,
+        dvName,
+        shapes,
+        lower=None,
+        upper=None,
+        scale=1.0,
+        config=None,
+    ):
+        """
+        Add shape function design variables to the DVGeometry.
+        Shape functions contain displacement vectors for one or
+        more FFD control points and can be used to define design
+        variables that move a set of control points together
+        according to some shape function determined by the user.
+
+        Parameters
+        ----------
+        dvName : str
+            A unique name to be given to this design variable group
+
+        shapes : list of dictionaries, or a single dictionary
+            If a single dictionary is provided, it will be converted to a
+            list with a single entry. The dictionaries in the list provide
+            the shape functions for each DV; so a list with N dictionaries
+            will result in N DVs. The dictionary keys are global point indices,
+            and the values are 3d numpy arrays that prescribe the direction
+            of the shape function displacement for that node. The magnitudes
+            of the arrays determine how much the FFD point moves with a
+            unit change in the DV. If an FFD point is controlled by multiple
+            shape DVs, the changes from each shape function is superposed
+            in the order shape functions are sorted in the list. The order
+            of the shape functions does not matter because the final control
+            point location only depends on the shapes and magnitude of the DV.
+            However, the order of the shapes must be consistent across processors
+            when running in parallel.
+
+        lower : float, or array size (N)
+            The lower bound for the variable(s). If a single float is provided,
+            it will be applied to all shape variables. If an array is provided,
+            it will be applied to each individual shape function.
+
+        upper : float, or array size (N)
+            The upper bound for the variable(s). If a single float is provided,
+            it will be applied to all shape variables. If an array is provided,
+            it will be applied to each individual shape function.
+
+        scale : float, or array size (N)
+            The scaling of the variables. A good approximate scale to
+            start with is approximately 1.0/(upper-lower). This gives
+            variables that are of order ~1.0. If a single value is provided,
+            it will be applied to all shape functions.
+
+        config : str or list
+            Define what configurations this design variable will be applied to
+            Use a string for a single configuration or a list for multiple
+            configurations. The default value of None implies that the design
+            variable applies to *ALL* configurations.
+
+        Returns
+        -------
+        N : int
+            The number of design variables added.
+
+        Examples
+        --------
+        We can add two shape functions as follows. The first shape moves the FFD control points
+        on indices 0,0,0 and 0,0,1 together in the +y direction. A value of 1.0 for this DV will
+        result in these points moving by 1 distance unit. The second shape moves the point
+        at 1,0,0 in the same direction and two other points at 1,0,1 and 2,0,1 in the same direction
+        but by half the magnitude.
+
+            >>> lidx = DVGeo.getLocalIndex(0)
+            >>> dir_up = np.array([0.0, 1.0, 0.0])
+            >>> shape_1 = {lidx[0, 0, 0]: dir_up, lidx[0, 0, 1]: dir_up}
+            >>> shape_2 = {lidx[1, 0, 0]: dir_up, lidx[1, 0, 1]: dir_up * 0.5, lidx[2, 0, 1]: dir_up * 0.5, }
+            >>> shapes = [shape_1, shape_2]
+            >>> DVGeo.addShapeFunctionDV("shape_func", shapes)
+
+        """
+        if self.name is not None:
+            dvName = self.name + "_" + dvName
+
+        if isinstance(config, str):
+            config = [config]
+
+        # convert the input shapes to a list if a single dictionary is provided.
+        if isinstance(shapes, dict):
+            shapes = [shapes]
+
+        # this is treated the same way as local DVs
+        self.DV_listLocal[dvName] = geoDVShapeFunc(dvName, shapes, lower, upper, scale, config)
+
+        return self.DV_listLocal[dvName].nVal
 
     def getSymmetricCoefList(self, volList=None, pointSelect=None, tol=1e-8, getSymmPlane=False):
         """
@@ -4081,12 +4173,11 @@ class DVGeometry(BaseDVGeometry):
 
     def _localDVJacobian(self, config=None):
         """
-        Return the derivative of the coefficients wrt the local design
-        variables
+        Return the derivative of the coefficients wrt the local and shape function
+        design variables
         """
-
-        # This is relatively straight forward, since the matrix is
-        # entirely one's or zeros
+        # This is relatively straight forward, since the matrix is entirely one's or zeros for local DVs,
+        # and the sparsity pattern is explicitly provided for the shape function dvs with the definition of the shapes.
         nDV = self._getNDVLocalSelf()
         self._getDVOffsets()
 
@@ -4111,11 +4202,28 @@ class DVGeometry(BaseDVGeometry):
                 ):
                     self.DV_listLocal[key](self.FFD.coef, config)
 
+                    # figure out if this is a regular local DV or if its a shapeFunc DV
+                    if hasattr(self.DV_listLocal[key], "shapes"):
+                        shapeFunc = True
+                    else:
+                        shapeFunc = False
+
                     nVal = self.DV_listLocal[key].nVal
                     for j in range(nVal):
-                        pt_dv = self.DV_listLocal[key].coefList[j]
-                        irow = pt_dv[0] * 3 + pt_dv[1]
-                        Jacobian[irow, iDVLocal] = 1.0
+                        if shapeFunc:
+                            # get the current shape
+                            shape = self.DV_listLocal[key].shapes[j]
+
+                            # loop over entries in shape and set values in jac
+                            for coefInd, direction in shape.items():
+                                # set the 3 coordinates
+                                for jj in range(3):
+                                    irow = coefInd * 3 + jj
+                                    Jacobian[irow, iDVLocal] = direction[jj]
+                        else:
+                            pt_dv = self.DV_listLocal[key].coefList[j]
+                            irow = pt_dv[0] * 3 + pt_dv[1]
+                            Jacobian[irow, iDVLocal] = 1.0
 
                         for childName, child in self.children.items():
                             # Get derivatives of child ref axis and FFD control
@@ -4125,7 +4233,18 @@ class DVGeometry(BaseDVGeometry):
 
                             tmp = np.zeros(self.FFD.coef.shape, dtype="d")
 
-                            tmp[pt_dv[0], pt_dv[1]] = 1.0
+                            if shapeFunc:
+                                # get the current shape
+                                shape = self.DV_listLocal[key].shapes[j]
+
+                                # loop over entries in shape and set values in jac
+                                for coefInd, direction in shape.items():
+                                    # set the 3 coordinates
+                                    for jj in range(3):
+                                        tmp[coefInd, jj] = direction[jj]
+
+                            else:
+                                tmp[pt_dv[0], pt_dv[1]] = 1.0
 
                             dXrefdXdvl = np.zeros((dXrefdCoef.shape[0] * 3), "d")
                             dCcdXdvl = np.zeros((dCcdCoef.shape[0] * 3), "d")
