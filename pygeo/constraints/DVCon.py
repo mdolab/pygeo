@@ -823,7 +823,9 @@ class DVConstraints:
             thickness constraints will be added.
 
         nSpan : int
-            The number of thickness constraints to add
+            The number of thickness constraints to add. If nSpan is provided
+            as -1, then leList is used directly and the number of radius
+            constraints will be equal to the number of points in leList
 
         axis : list or array of length 3
             The direction along which the up-down projections will occur.
@@ -893,11 +895,17 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        # Create mesh of intersections
-        constr_line = Curve(X=leList, k=2)
-        s = np.linspace(0, 1, nSpan)
-        X = constr_line(s)
+        # determine the seed points for the constraint
+        if nSpan == -1:
+            nSpan = len(leList)
+            X = leList.copy()
+        else:
+            constr_line = Curve(X=leList, k=2)
+            s = np.linspace(0, 1, nSpan)
+            X = constr_line(s)
         coords = np.zeros((nSpan, 3, 3))
+
+        # Create surface intersections
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
         for i in range(nSpan):
