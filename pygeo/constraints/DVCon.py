@@ -69,7 +69,7 @@ class DVConstraints:
 
     def __init__(self, name="DVCon1"):
         """
-        Create a (empty) DVconstrains object. Specific types of
+        Create a (empty) DVConstraints object. Specific types of
         constraints will added individually
         """
 
@@ -265,7 +265,7 @@ class DVConstraints:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dv dictionary are simply ignored.
         """
 
         # loop over the generated constraint objects and add the necessary
@@ -359,7 +359,7 @@ class DVConstraints:
             self.linearCon[key].writeTecplot(f)
         f.close()
 
-    def writeSurfaceTecplot(self, fileName, surfaceName="default"):
+    def writeSurfaceTecplot(self, fileName, surfaceName="default", fromDVGeo=None):
         """
         Write the triangulated surface mesh used in the constraint object
         to a tecplot file for visualization.
@@ -370,8 +370,12 @@ class DVConstraints:
             File name for tecplot file. Should have a .dat extension.
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
         """
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName, fromDVGeo)
 
         f = open(fileName, "w")
         f.write('TITLE = "DVConstraints Surface Mesh"\n')
@@ -400,26 +404,22 @@ class DVConstraints:
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
         fromDVGeo : str or None
-            Name of the DVGeo object to obtain the surface from (default is 'None')
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
         """
         try:
             # External modules
             from stl import mesh
         except ImportError as e:
             raise ImportError("numpy-stl package must be installed") from e
-        if fromDVGeo is None:
-            p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-        else:
-            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
-            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
-            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName, fromDVGeo)
 
         stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
         stlmesh.vectors[:, 0, :] = p0
         stlmesh.vectors[:, 1, :] = p1
         stlmesh.vectors[:, 2, :] = p2
 
-        # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
 
     def addThicknessConstraints2D(
@@ -1373,7 +1373,7 @@ class DVConstraints:
         addToPyOpt=True,
     ):
         """
-        Add a single triangulated surface constraint to an aerosurface.
+        Add a single triangulated surface constraint to an aerosurface using Geograd.
         This constraint is designed to keep a general 'blob' of watertight
         geometry contained within an aerodynamic hull (e.g., a wing)
 
@@ -1384,19 +1384,19 @@ class DVConstraints:
             This should be the surface with the larger number of triangles.
             By default, it's the ADflow triangulated surface mesh.
 
-        DVGeo_1_name : str
+        DVGeo_1_name : str or None
             The name of the DVGeo object to associate surface_1 to.
             If None, surface_1 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         surface_2_name : str
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
 
-        DVGeo_2_name : str
+        DVGeo_2_name : str or None
             The name of the DVGeo object to associate surface_2 to.
             If None, surface_2 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         rho : float
             The rho factor of the KS function of min distance.
@@ -1420,8 +1420,8 @@ class DVConstraints:
              multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this
              computation for something other than a direct constraint
-             in pyOpt, i.e. it is required for a subsequent
-             computation.
+             in pyOpt, i.e. it is required for a subsequent computation.
+             The MPhys wrapper sets this name for tracking in OpenMDAO.
 
         scale : float
             This is the optimization scaling of the
@@ -1448,6 +1448,7 @@ class DVConstraints:
             DVGeo2 = self.DVGeometries[DVGeo_2_name]
         else:
             DVGeo2 = None
+
         if DVGeo1 is None and DVGeo2 is None:
             raise ValueError("At least one DVGeo object must be specified")
 
@@ -1748,12 +1749,10 @@ class DVConstraints:
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
 
-        The general ussage is as follows::
+        The general usage is as follows:
 
-          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
-                                    name='part1', addToPyOpt=False)
-          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
-                                    name='part2', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord, name='part1', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord, name='part2', addToPyOpt=False)
           DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
 
 
@@ -3214,12 +3213,32 @@ class DVConstraints:
                 "constraints can be added."
             )
 
-    def _getSurfaceVertices(self, surfaceName):
-        if surfaceName not in self.surfaces.keys():
-            raise KeyError('Need to add surface "' + surfaceName + '" to the DVConstraints object')
-        p0 = self.surfaces[surfaceName][0]
-        p1 = self.surfaces[surfaceName][1]
-        p2 = self.surfaces[surfaceName][2]
+    def _getSurfaceVertices(self, surfaceName="default", fromDVGeo=None):
+        """Get the points that define a triangulated surface mesh.
+
+        Parameters
+        ----------
+        surfaceName : str
+            Which DVConstraints surface to get the points for (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
+
+        Returns
+        -------
+        (np.array, np.array, np.array)
+            Arrays of points that define the triangulated surface mesh
+        """
+        if fromDVGeo is None:
+            if surfaceName not in self.surfaces.keys():
+                raise KeyError('Need to add surface "' + surfaceName + '" to the DVConstraints object')
+            p0 = self.surfaces[surfaceName][0]
+            p1 = self.surfaces[surfaceName][1]
+            p2 = self.surfaces[surfaceName][2]
+        else:
+            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
+            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
+            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
         return p0, p1, p2
 
     def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):
