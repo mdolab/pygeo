@@ -1213,6 +1213,14 @@ class RegTestPyGeo(unittest.TestCase):
 
         np.testing.assert_allclose(test_points, new_points, atol=1e-15)
 
+    def test_volume_bounds(self):
+        # TODO
+        # initialize dvgeo with custom vol bounds
+        # project points and check u,v,w
+        # update vol bounds
+        # project again, and check the updated u,v,w
+        return
+
     def test_coord_xfer(self):
         DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
 
