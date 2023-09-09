@@ -885,30 +885,15 @@ class pyBlock:
 
             for j in range(self.nVol):
                 iVol = volList[j]
-                # TODO modify projectPoint call to take in the volume bounds
-                u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter)
+
+                if iVol in self.volBounds:
+                    volBounds = self.volBounds[iVol]
+                else:
+                    volBounds = None
+
+                u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter, volBounds=volBounds)
 
                 D0Norm = np.linalg.norm(D0)
-
-                # check if we have u,v,w bounds on this volume
-                if iVol in self.volBounds:
-                    # we have bounds enforced on this volume
-                    # need to make sure the solution is within the range we want
-                    u_min = self.volBounds[iVol][0][0]
-                    u_max = self.volBounds[iVol][0][1]
-                    v_min = self.volBounds[iVol][1][0]
-                    v_max = self.volBounds[iVol][1][1]
-                    w_min = self.volBounds[iVol][2][0]
-                    w_max = self.volBounds[iVol][2][1]
-
-                    # we set D0Norm to a large value if we are not within bounds
-                    within_bounds = (u_min <= u0 <= u_max) and \
-                        (v_min <= v0 <= v_max) and \
-                        (w_min <= w0 <= w_max)
-
-                    if not within_bounds:
-                        D0Norm = 2e11
-
                 # If the new distance is less than the previous best
                 # distance, set the volID, u, v, w, since this may be
                 # best we can do:
