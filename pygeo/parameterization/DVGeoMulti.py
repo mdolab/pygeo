@@ -2455,8 +2455,12 @@ class CompIntersection:
         # Now we are done with the ADT
         self.adtAPI.adtdeallocateadts(adtID)
 
+        # Extract the entries of dIdptComp that are for points on this processor
+        disp = comp.triMeshData["disp"]
+        dIdptComp = dIdptComp[:, disp[comp.comm.rank] : disp[comp.comm.rank + 1], :]
+
         # Call the total sensitivity of the component's DVGeo
-        compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh")
+        compSens = comp.DVGeo.totalSensitivity(dIdptComp, "triMesh", comm=comp.comm)
 
         # the entries in dIdpt is replaced with AD seeds of initial points that were projected
         # we also return the total sensitivity contributions from components' triMeshes
@@ -3187,13 +3191,20 @@ class CompIntersection:
             coorAb[ii] += cAb.T
             coorBb[ii] += cBb.T
 
+        # Extract the entries of coorAb and coorBb that are for points on this processor
+        disp = self.compA.triMeshData["disp"]
+        coorAb = coorAb[:, disp[self.compA.comm.rank] : disp[self.compA.comm.rank + 1], :]
+
+        disp = self.compB.triMeshData["disp"]
+        coorBb = coorBb[:, disp[self.compB.comm.rank] : disp[self.compB.comm.rank + 1], :]
+
         # get the total sensitivities from both components
         compSens_local = {}
-        compSensA = self.compA.DVGeo.totalSensitivity(coorAb, "triMesh")
+        compSensA = self.compA.DVGeo.totalSensitivity(coorAb, "triMesh", comm=self.compA.comm)
         for k, v in compSensA.items():
             compSens_local[k] = v
 
-        compSensB = self.compB.DVGeo.totalSensitivity(coorBb, "triMesh")
+        compSensB = self.compB.DVGeo.totalSensitivity(coorBb, "triMesh", comm=self.compB.comm)
         for k, v in compSensB.items():
             compSens_local[k] = v
 
