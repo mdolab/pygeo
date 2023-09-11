@@ -129,9 +129,9 @@ class DVGeometryMulti:
             disp[1:] = np.cumsum(sizes)
 
             # Save the size and displacement in a dictionary
-            triSurfData = {}
-            triSurfData["sizes"] = sizes
-            triSurfData["disp"] = disp
+            triMeshData = {}
+            triMeshData["sizes"] = sizes
+            triMeshData["disp"] = disp
 
             # Split up the points into the points for this processor
             procNodes = nodes[disp[self.comm.rank] : disp[self.comm.rank + 1]]
@@ -144,7 +144,7 @@ class DVGeometryMulti:
             triConn = None
             triConnStack = None
             barsConn = None
-            triSurfData = None
+            triMeshData = None
 
         # we will need the bounding box information later on, so save this here
         xMin, xMax = DVGeo.FFD.getBounds()
@@ -165,7 +165,7 @@ class DVGeometryMulti:
 
         # initialize the component object
         self.comps[comp] = component(
-            self.comm, comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triSurfData
+            self.comm, comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData
         )
 
         # add the name to the list
@@ -935,7 +935,7 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, comm, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triSurfData):
+    def __init__(self, comm, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData):
         # save the info
         self.comm = comm
         self.name = name
@@ -946,7 +946,7 @@ class component:
         self.barsConn = barsConn
         self.xMin = xMin
         self.xMax = xMax
-        self.triSurfData = triSurfData
+        self.triMeshData = triMeshData
 
         # also a dictionary for DV names
         self.dvDict = {}
@@ -960,8 +960,8 @@ class component:
     def updateTriMesh(self):
         # We need the full triangulated surface for this component
         # Get the stored processor splitting information
-        sizes = self.triSurfData["sizes"]
-        disp = self.triSurfData["disp"]
+        sizes = self.triMeshData["sizes"]
+        disp = self.triMeshData["disp"]
         nPts = disp[-1]
 
         # Update the triangulated surface mesh to get the points on this processor
