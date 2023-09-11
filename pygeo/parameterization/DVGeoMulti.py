@@ -114,14 +114,37 @@ class DVGeometryMulti:
             # scale the nodes
             nodes *= scale
 
-            # add these points to the corresponding dvgeo
-            DVGeo.addPointSet(nodes, "triMesh", **pointSetKwargs)
+            # We will split up the points by processor when adding them to the component DVGeo
+
+            # Compute the processor sizes with integer division
+            sizes = np.zeros(self.comm.size, dtype="intc")
+            nPts = nodes.shape[0]
+            sizes[:] = nPts // self.comm.size
+
+            # Add the leftovers
+            sizes[: nPts % self.comm.size] += 1
+
+            # Compute the processor displacements
+            disp = np.zeros(self.comm.size + 1, dtype="intc")
+            disp[1:] = np.cumsum(sizes)
+
+            # Save the size and displacement in a dictionary
+            triSurfData = {}
+            triSurfData["sizes"] = sizes
+            triSurfData["disp"] = disp
+
+            # Split up the points into the points for this processor
+            procNodes = nodes[disp[self.comm.rank] : disp[self.comm.rank + 1]]
+
+            # Add these points to the component DVGeo
+            DVGeo.addPointSet(procNodes, "triMesh", **pointSetKwargs)
         else:
             # the user has not provided a triangulated surface mesh for this file
             nodes = None
             triConn = None
             triConnStack = None
             barsConn = None
+            triSurfData = None
 
         # we will need the bounding box information later on, so save this here
         xMin, xMax = DVGeo.FFD.getBounds()
@@ -141,7 +164,9 @@ class DVGeometryMulti:
             xMax[2] = bbox["zmax"]
 
         # initialize the component object
-        self.comps[comp] = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax)
+        self.comps[comp] = component(
+            self.comm, comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triSurfData
+        )
 
         # add the name to the list
         self.compNames.append(comp)
@@ -910,8 +935,9 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax):
+    def __init__(self, comm, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triSurfData):
         # save the info
+        self.comm = comm
         self.name = name
         self.DVGeo = DVGeo
         self.nodes = nodes
@@ -920,6 +946,7 @@ class component:
         self.barsConn = barsConn
         self.xMin = xMin
         self.xMax = xMax
+        self.triSurfData = triSurfData
 
         # also a dictionary for DV names
         self.dvDict = {}
@@ -931,8 +958,34 @@ class component:
             self.triMesh = True
 
     def updateTriMesh(self):
-        # update the triangulated surface mesh
-        self.nodes = self.DVGeo.update("triMesh")
+        # We need the full triangulated surface for this component
+        # Get the stored processor splitting information
+        sizes = self.triSurfData["sizes"]
+        disp = self.triSurfData["disp"]
+        nPts = disp[-1]
+
+        # Update the triangulated surface mesh to get the points on this processor
+        procNodes = self.DVGeo.update("triMesh")
+
+        # Create the send buffer
+        procNodes = procNodes.flatten()
+        sendbuf = [procNodes, sizes[self.comm.rank] * 3]
+
+        # Set the appropriate type for the receiving buffer
+        if procNodes.dtype == float:
+            mpiType = MPI.DOUBLE
+        elif procNodes.dtype == complex:
+            mpiType = MPI.DOUBLE_COMPLEX
+
+        # Create the receiving buffer
+        newPtsGlobal = np.zeros(nPts * 3, dtype=procNodes.dtype)
+        recvbuf = [newPtsGlobal, sizes * 3, disp[0:-1] * 3, mpiType]
+
+        # Allgather the updated coordinates
+        self.comm.Allgatherv(sendbuf, recvbuf)
+
+        # Reshape into a nPts, 3 array
+        self.nodes = newPtsGlobal.reshape((nPts, 3))
 
 
 class PointSet:
