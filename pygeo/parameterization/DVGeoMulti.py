@@ -25,7 +25,6 @@ try:
 except ImportError:
     pysurfInstalled = False
 
-
 class DVGeometryMulti:
     """
     A class for manipulating multiple components using multiple FFDs
@@ -832,7 +831,7 @@ class DVGeometryMulti:
             # use the default routine in tsurftools
             nodes, sectionDict = tsurf_tools.getCGNSsections(filename, comm=MPI.COMM_SELF)
             print("Finished reading the cgns file")
-
+            
             # Convert the nodes to complex if necessary
             nodes = nodes.astype(self.dtype)
 
@@ -1220,6 +1219,9 @@ class CompIntersection:
         intersectPts = pts[indices]
         nPoints = len(intersectPts)
 
+        # Brandon: debug
+        #import pdb; pdb.set_trace()
+
         if self.projectFlag:
             # Create the dictionaries to save projection data
             self.projData[ptSetName] = {
@@ -1299,6 +1301,9 @@ class CompIntersection:
                 # This proc has some points to project
                 if len(compPoints) > 0:
                     self.associatePointsToSurface(compPoints, ptSetName, surface, surfaceEps)
+                    
+            # Brandon: debug
+            #import pdb; pdb.set_trace()
 
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
             if self.incCurves:
@@ -1351,6 +1356,9 @@ class CompIntersection:
                 # dict to save other data
                 self.curveProjData[ptSetName] = {}
 
+                # Brandon: debug
+                #import pdb; pdb.set_trace()
+                
                 # now loop over feature curves and use the epsilon that each curve has
                 # to determine which points maps to which curve
                 for curveName in allCurves:
@@ -1517,7 +1525,7 @@ class CompIntersection:
 
             # denominator only gets one integral
             den = np.sum(eval1)
-
+            
             # do each direction separately
             interp = np.zeros(3, dtype=self.dtype)
             for iDim in range(3):
@@ -1651,6 +1659,9 @@ class CompIntersection:
         if len(self.curvesOnB) > 0:
             flagB = True
 
+        # Brandon: debug
+        #import pdb; pdb.set_trace()
+        
         # do the pts on the intersection outside the loop
         nptsg = self.nCurvePts[ptSetName]["intersection"]
 
@@ -2616,7 +2627,12 @@ class CompIntersection:
             # and we need to invert the curves themselves
             seamConn = np.flip(seamConn, axis=0)
             seamConn = np.flip(seamConn, axis=1)
-
+            
+        # Brandon: check if we don't have any feature points
+        if len(breakList) == 0 :
+            breakList.append(np.array((0)))
+        
+            
         # roll so that the first breakList entry is the first node
         seamConn = np.roll(seamConn, -breakList[0], axis=0)
 
@@ -2624,12 +2640,16 @@ class CompIntersection:
         breakList = np.mod(breakList - breakList[0], nElem)
 
         # get the number of elements between each feature
-        curveSizes = []
-        for i in range(nFeature - 1):
-            curveSizes.append(np.mod(breakList[i + 1] - breakList[i], nElem))
-        # check the last curve outside the loop
-        curveSizes.append(np.mod(breakList[0] - breakList[-1], nElem))
-
+        # Brandon: debug - new if condition
+        if nFeature > 1 :
+            curveSizes = []
+            for i in range(nFeature - 1):
+                curveSizes.append(np.mod(breakList[i + 1] - breakList[i], nElem))
+            # check the last curve outside the loop
+            curveSizes.append(np.mod(breakList[0] - breakList[-1], nElem))
+        else :
+            curveSizes = [nElem]
+            
         # copy the curveSizes for the first call
         if firstCall:
             self.nElems = curveSizes[:]
