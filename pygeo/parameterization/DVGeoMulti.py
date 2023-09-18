@@ -1293,11 +1293,17 @@ class CompIntersection:
                 # Combine the excluded indices using a set to avoid duplicates
                 excludeSet = set()
                 for surface in self.excludeSurfaces:
-                    if surface in self.compA.triConn:
+                    compASurfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"]
+                    compBSurfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"]
+
+                    if surface in compASurfaceInd:
                         # Pop this surface from the saved data
-                        surfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"].pop(surface)
-                    elif surface in self.compB.triConn:
-                        surfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"].pop(surface)
+                        surfaceInd = compASurfaceInd.pop(surface)
+                    elif surface in compBSurfaceInd:
+                        surfaceInd = compBSurfaceInd.pop(surface)
+                    else:
+                        # This processor has no points on this excluded surface
+                        surfaceInd = set()
 
                     excludeSet.update(surfaceInd)
 
