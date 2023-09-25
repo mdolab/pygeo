@@ -69,7 +69,7 @@ class DVConstraints:
 
     def __init__(self, name="DVCon1"):
         """
-        Create a (empty) DVconstrains object. Specific types of
+        Create a (empty) DVConstraints object. Specific types of
         constraints will added individually
         """
 
@@ -265,7 +265,7 @@ class DVConstraints:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dv dictionary are simply ignored.
         """
 
         # loop over the generated constraint objects and add the necessary
@@ -420,7 +420,6 @@ class DVConstraints:
         stlmesh.vectors[:, 1, :] = p1
         stlmesh.vectors[:, 2, :] = p2
 
-        # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
 
     def addThicknessConstraints2D(
@@ -824,7 +823,9 @@ class DVConstraints:
             thickness constraints will be added.
 
         nSpan : int
-            The number of thickness constraints to add
+            The number of thickness constraints to add. If nSpan is provided
+            as -1, then leList is used directly and the number of radius
+            constraints will be equal to the number of points in leList
 
         axis : list or array of length 3
             The direction along which the up-down projections will occur.
@@ -894,11 +895,17 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        # Create mesh of intersections
-        constr_line = Curve(X=leList, k=2)
-        s = np.linspace(0, 1, nSpan)
-        X = constr_line(s)
+        # determine the seed points for the constraint
+        if nSpan == -1:
+            nSpan = len(leList)
+            X = leList.copy()
+        else:
+            constr_line = Curve(X=leList, k=2)
+            s = np.linspace(0, 1, nSpan)
+            X = constr_line(s)
         coords = np.zeros((nSpan, 3, 3))
+
+        # Create surface intersections
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
         for i in range(nSpan):
@@ -1374,7 +1381,7 @@ class DVConstraints:
         addToPyOpt=True,
     ):
         """
-        Add a single triangulated surface constraint to an aerosurface.
+        Add a single triangulated surface constraint to an aerosurface using Geograd.
         This constraint is designed to keep a general 'blob' of watertight
         geometry contained within an aerodynamic hull (e.g., a wing)
 
@@ -1385,19 +1392,19 @@ class DVConstraints:
             This should be the surface with the larger number of triangles.
             By default, it's the ADflow triangulated surface mesh.
 
-        DVGeo_1_name : str
+        DVGeo_1_name : str or None
             The name of the DVGeo object to associate surface_1 to.
             If None, surface_1 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         surface_2_name : str
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
 
-        DVGeo_2_name : str
+        DVGeo_2_name : str or None
             The name of the DVGeo object to associate surface_2 to.
             If None, surface_2 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         rho : float
             The rho factor of the KS function of min distance.
@@ -1421,8 +1428,8 @@ class DVConstraints:
              multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this
              computation for something other than a direct constraint
-             in pyOpt, i.e. it is required for a subsequent
-             computation.
+             in pyOpt, i.e. it is required for a subsequent computation.
+             The MPhys wrapper sets this name for tracking in OpenMDAO.
 
         scale : float
             This is the optimization scaling of the
@@ -1449,6 +1456,7 @@ class DVConstraints:
             DVGeo2 = self.DVGeometries[DVGeo_2_name]
         else:
             DVGeo2 = None
+
         if DVGeo1 is None and DVGeo2 is None:
             raise ValueError("At least one DVGeo object must be specified")
 
@@ -1749,12 +1757,10 @@ class DVConstraints:
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
 
-        The general ussage is as follows::
+        The general usage is as follows:
 
-          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
-                                    name='part1', addToPyOpt=False)
-          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
-                                    name='part2', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord, name='part1', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord, name='part2', addToPyOpt=False)
           DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
 
 
@@ -1844,7 +1850,7 @@ class DVConstraints:
         indSetB=None,
         name=None,
         config=None,
-        childIdx=None,
+        childName=None,
         comp=None,
         DVGeoName="default",
     ):
@@ -1913,10 +1919,8 @@ class DVConstraints:
             The DVGeo configuration to apply this constraint to. Must be either None
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
-        childIdx : int
-            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        childName : str
+            Name of the child FFD, if this constraint is being applied to a child FFD.
         comp: str
             The component name if using DVGeometryMulti.
 
@@ -1946,8 +1950,8 @@ class DVConstraints:
         else:
             DVGeo = self.DVGeometries[DVGeoName].DVGeoDict[comp]
 
-        if childIdx is not None:
-            DVGeo = DVGeo.children[childIdx]
+        if childName is not None:
+            DVGeo = DVGeo.children[childName]
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
@@ -2043,7 +2047,7 @@ class DVConstraints:
         upper=0,
         name=None,
         config=None,
-        childIdx=None,
+        childName=None,
         comp=None,
         DVGeoName="default",
     ):
@@ -2097,10 +2101,8 @@ class DVConstraints:
             The DVGeo configuration to apply this constraint to. Must be either None
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
-        childIdx : int
-            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        childName : str
+            Name of the child FFD, if this constraint is being applied to a child FFD.
         comp: str
             The component name if using DVGeometryMulti.
 
@@ -2124,8 +2126,8 @@ class DVConstraints:
         else:
             DVGeo = self.DVGeometries[DVGeoName].DVGeoDict[comp]
 
-        if childIdx is not None:
-            DVGeo = DVGeo.children[childIdx]
+        if childName is not None:
+            DVGeo = DVGeo.children[childName]
 
         if len(indSetA) != len(indSetB):
             raise Error("The length of the supplied indices are not " "the same length")
@@ -3139,7 +3141,7 @@ class DVConstraints:
         )
 
     def addMonotonicConstraints(
-        self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childIdx=None, comp=None, DVGeoName="default"
+        self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childName=None, comp=None, DVGeoName="default"
     ):
         """
         Add monotonic constraints to a given design variable.
@@ -3167,10 +3169,8 @@ class DVConstraints:
             The DVGeo configuration to apply this constraint to. Must be either None
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
-        childIdx : int
-            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        childName : str
+            Name of the child FFD, if this constraint is being applied to a child FFD.
         comp: str
             The component name if using DVGeometryMulti.
 
@@ -3185,8 +3185,8 @@ class DVConstraints:
         else:
             DVGeo = self.DVGeometries[DVGeoName].DVGeoDict[comp]
 
-        if childIdx is not None:
-            DVGeo = DVGeo.children[childIdx]
+        if childName is not None:
+            DVGeo = DVGeo.children[childName]
 
         if name is None:
             conName = "%s_monotonic_constraint_%d" % (self.name, len(self.linearCon))

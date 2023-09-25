@@ -1400,6 +1400,72 @@ class RegTestPyGeo(unittest.TestCase):
 
             handler.root_add_val("new_pts", new_pts, rtol=1e-10, atol=1e-10)
 
+    def train_active_children(self, train=True):
+        self.test_active_children(train=train)
+
+    def test_active_children(self, train=False):
+        """
+        Test active children option for adding pointsets
+        """
+
+        refFile = os.path.join(self.base_path, "ref/test_active_children.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test shape function DVs")
+
+            DVGeo, DVGeoChild1 = commonUtils.setupDVGeo(self.base_path)
+            _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path)
+
+            # add design variables
+            DVGeoChild1.addGlobalDV(dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+            DVGeoChild2.addGlobalDV(dvName="span2", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+            DVGeo.addChild(DVGeoChild1, "child1")
+            DVGeo.addChild(DVGeoChild2, "child2")
+
+            points = np.zeros([2, 3])
+            points[0, :] = [0.25, 0, 0]
+            points[1, :] = [-0.25, 0, 0]
+
+            # first, all children active
+            ptName = "testPointsAll"
+            DVGeo.addPointSet(points, ptName)
+
+            # only the first child
+            ptName = "testPoints1"
+            DVGeo.addPointSet(points, ptName, activeChildren=["child1"])
+
+            # only second
+            ptName = "testPoints2"
+            DVGeo.addPointSet(points, ptName, activeChildren=["child2"])
+
+            # no children
+            ptName = "testPointsNone"
+            DVGeo.addPointSet(points, ptName, activeChildren=[])
+
+            nPt = points.size
+            ptNames = ["testPointsAll", "testPoints1", "testPoints2", "testPointsNone"]
+            for ptName in ptNames:
+                # test derivatives
+                dIdPt = np.zeros([nPt, 2, 3])
+                dIdPt[0, 0, 0] = 1.0
+                dIdPt[1, 0, 1] = 1.0
+                dIdPt[2, 0, 2] = 1.0
+                dIdPt[3, 1, 0] = 1.0
+                dIdPt[4, 1, 1] = 1.0
+                dIdPt[5, 1, 2] = 1.0
+                dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
+
+                handler.root_add_dict(f"dIdx_{ptName}", dIdx, rtol=1e-10, atol=1e-10)
+
+            # perturb the DV and test point coordinates
+            xDV = {"span1": np.array([2.0]), "span2": np.array([3.0])}
+            DVGeo.setDesignVars(xDV)
+
+            for ptName in ptNames:
+                # testPoints were added in the commonUtils.testSensitivities call
+                new_pts = DVGeo.update(ptName)
+
+                handler.root_add_val(f"new_coords_{ptName}", new_pts, rtol=1e-10, atol=1e-10)
+
 
 if __name__ == "__main__":
     unittest.main()

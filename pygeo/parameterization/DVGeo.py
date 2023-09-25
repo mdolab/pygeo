@@ -96,7 +96,7 @@ class DVGeometry(BaseDVGeometry):
     """
 
     def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
-        super().__init__(fileName=fileName)
+        super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
         self.DV_listLocal = OrderedDict()  # Local Design Variable List
@@ -112,9 +112,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Coefficient rotation matrix dict for Section Local variables
         self.coefRotM = {}
-
-        # Name (used for ensuring design variables names are unique to pyOptsparse)
-        self.name = name
 
         # Flags to determine if this DVGeometry is a parent or child
         self.isChild = child
@@ -746,7 +743,18 @@ class DVGeometry(BaseDVGeometry):
                         coords_new = np.dot(coords_new, rot_mat.T)
 
                     return coords_new
-
+        activeChildren : list
+            List of names of the child FFDs that should be used with this pointset.
+            For example, lets say there are 3 child FFDs with names a, b, and c.
+            When a pointset is added to this DVGeo object, it will always be added
+            to the parent. Then, if the activeChildren argument is none, the pointset
+            will also be added to all 3 child FFDs. If activeChildren argument is ["a", "b"],
+            then the pointset will only be added to the children named "a" and "b", and not "c".
+            If activeChildren argument is an empty dictionary, i.e. [], the pointset wont be added
+            to any of the child FFDs. When a pointset is added to a child FFD, the changes in the
+            child FFD is added to the displacement of the pointset. If it is not added to a child,
+            the changes from that child is not included in this pointset. This is useful to
+            control the effect of different child FFDs on different pointsets.
         """
 
         # compNames is only needed for DVGeometryMulti, so remove it if passed
@@ -827,7 +835,15 @@ class DVGeometry(BaseDVGeometry):
         if childDVGeo.isChild is False:
             raise Error("Trying to add a child FFD that has NOT been " "created as a child. This operation is illegal.")
 
-        # check if this custom name has already been used
+        # set the index
+        iChild = len(self.children)
+        childDVGeo.iChild = iChild
+
+        # check if a custom name is provided, if not, we will use the old naming scheme based on the iChild index
+        if childName is None:
+            childName = f"child{iChild:d}"
+
+        # check if this child name has already been used
         if childName in self.children:
             raise Error(
                 f"Another child DVGeo has already been added with the name {childName}. Change the name of one of the child FFDs with the same name and try again."
@@ -835,13 +851,6 @@ class DVGeometry(BaseDVGeometry):
 
         # Extract the coef from the child FFD and ref axis and embed
         # them into the parent and compute their derivatives
-        iChild = len(self.children)
-        childDVGeo.iChild = iChild
-
-        # check if a custom name is provided, if not, we will use the old naming scheme based on the iChild
-        if childName is None:
-            childName = f"child{iChild:d}"
-
         self.FFD.attachPoints(childDVGeo.FFD.coef, f"{childName}_coef")
         self.FFD.calcdPtdCoef(f"{childName}_coef")
 
@@ -2674,7 +2683,7 @@ class DVGeometry(BaseDVGeometry):
 
         if self.nPts[ptSetName] is None:
             self.nPts[ptSetName] = len(self.update(ptSetName).flatten())
-        for child in self.children:
+        for child in self.children.values():
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
         DVGlobalCount, DVLocalCount, DVSecLocCount, DVSpanLocCount = self._getDVOffsets()
@@ -3829,7 +3838,7 @@ class DVGeometry(BaseDVGeometry):
 
         if self.nPts[ptSetName] is None:
             self.nPts[ptSetName] = len(coords0.flatten())
-        for child in self.children:
+        for child in self.children.values():
             child.nPts[ptSetName] = self.nPts[ptSetName]
 
         DVGlobalCount, DVLocalCount, DVSecLocCount, DVSpanLocCount = self._getDVOffsets()
@@ -4442,7 +4451,7 @@ class DVGeometry(BaseDVGeometry):
 
         print("Computing Analytic Jacobian...")
         self.zeroJacobians(ptSetName)
-        for child in self.children:
+        for child in self.children.values():
             child.zeroJacobians(ptSetName)
 
         self.computeTotalJacobian(ptSetName)
@@ -4583,7 +4592,7 @@ class DVGeometry(BaseDVGeometry):
                 DVCountSpanLoc += 1
                 self.DV_listSpanwiseLocal[key].value[j] = refVal
 
-        for child in self.children:
+        for child in self.children.values():
             child.checkDerivatives(ptSetName)
 
     def printDesignVariables(self):
@@ -4605,7 +4614,7 @@ class DVGeometry(BaseDVGeometry):
             for i in range(self.DV_listSectionLocal[dsl].nVal):
                 print("%20.15f" % (self.DV_listSectionLocal[dsl].value[i]))
 
-        for child in self.children:
+        for child in self.children.values():
             child.printDesignVariables()
 
     def sectionFrame(self, sectionIndex, sectionTransform, sectionLink, ivol=0, orient0=None, orient2="svd"):

@@ -474,8 +474,8 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
             if self.child:
-                DVCon.addLeTeConstraints(0, "iLow", childIdx=0)
-                DVCon.addLeTeConstraints(0, "iHigh", childIdx=0)
+                DVCon.addLeTeConstraints(0, "iLow", childName="child0")
+                DVCon.addLeTeConstraints(0, "iHigh", childName="child0")
             elif self.multi:
                 DVCon.addLeTeConstraints(0, "iLow", comp="deforming")
                 DVCon.addLeTeConstraints(0, "iHigh", comp="deforming")
@@ -669,7 +669,7 @@ class RegTestPyGeo(unittest.TestCase):
                 indSetB.append(lIndex[i, 0, 1])
             if self.child:
                 DVCon.addLinearConstraintsShape(
-                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childIdx=0
+                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childName="child0"
                 )
             elif self.multi:
                 DVCon.addLinearConstraintsShape(
@@ -791,8 +791,8 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
             if self.child:
-                DVCon.addMonotonicConstraints("twist", childIdx=0)
-                DVCon.addMonotonicConstraints("twist", start=1, stop=2, childIdx=0)
+                DVCon.addMonotonicConstraints("twist", childName="child0")
+                DVCon.addMonotonicConstraints("twist", start=1, stop=2, childName="child0")
             elif self.multi:
                 DVCon.addMonotonicConstraints("twist", comp="deforming")
                 DVCon.addMonotonicConstraints("twist", start=1, stop=2, comp="deforming")
