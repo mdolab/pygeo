@@ -3197,6 +3197,10 @@ class CompIntersection:
             coorAb[ii] += cAb.T
             coorBb[ii] += cBb.T
 
+        # Allreduce the derivative seeds
+        coorAb = comm.allreduce(coorAb)
+        coorBb = comm.allreduce(coorBb)
+
         # Extract the entries of coorAb and coorBb that are for points on this processor
         disp = self.compA.triMeshData["disp"]
         coorAb = coorAb[:, disp[self.compA.comm.rank] : disp[self.compA.comm.rank + 1], :]
