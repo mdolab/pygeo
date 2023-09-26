@@ -83,10 +83,10 @@ class DVGeometry(BaseDVGeometry):
         First list contains the min and max bounds for the u parameter, second v, third w.
         This parameter can also be set after initialization using the `setVolBounds` method.
         For example if the FFD has 3 volumes, setting volBounds to:
-          >>> volBounds = {
-          >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
-          >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
-          >>> }
+        >>> volBounds = {
+        >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
+        >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
+        >>> }
         will set the parametric bounds of the first and second volumes, while the third
         volume can still embed points using the usual bounds of 0 to 1 for all parametric
         directions. In this example, the first volume only embeds points if the u coordinate
