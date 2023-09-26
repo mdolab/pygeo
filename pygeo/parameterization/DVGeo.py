@@ -113,7 +113,18 @@ class DVGeometry(BaseDVGeometry):
       >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, volBounds=None, **kwargs):
+    def __init__(
+        self,
+        fileName,
+        *args,
+        isComplex=False,
+        child=False,
+        faceFreeze=None,
+        name=None,
+        kmax=4,
+        volBounds=None,
+        **kwargs,
+    ):
         super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
