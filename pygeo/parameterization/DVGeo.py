@@ -87,6 +87,7 @@ class DVGeometry(BaseDVGeometry):
             >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
             >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
             >>> }
+
         will set the parametric bounds of the first and second volumes, while the third
         volume can still embed points using the usual bounds of 0 to 1 for all parametric
         directions. In this example, the first volume only embeds points if the u coordinate
