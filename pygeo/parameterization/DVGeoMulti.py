@@ -2487,7 +2487,7 @@ class CompIntersection:
         self.adtAPI.adtdeallocateadts(adtID)
 
         # The entries in dIdpt are replaced with AD seeds of initial points that were projected
-        # We also return the total sensitivity contributions from component's triangulated mesh
+        # We also return the seeds for the component's triangulated mesh in dIdptTri
         return dIdpt, dIdptTri
 
     def _getUpdatedCoords(self):
