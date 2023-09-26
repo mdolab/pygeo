@@ -99,19 +99,19 @@ class DVGeometry(BaseDVGeometry):
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
-      >>> from pygeo import DVGeometry
-      >>> DVGeo = DVGeometry('FFD_file.fmt')
-      >>> # Embed a set of coordinates Xpt into the object
-      >>> DVGeo.addPointSet(Xpt, 'myPoints')
-      >>> # Associate a 'reference axis' for large-scale manipulation
-      >>> DVGeo.addRefAxis('wing_axis', axis_curve)
-      >>> # Define a global design variable function:
-      >>> def twist(val, geo):
-      >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
-      >>> # Now add this as a global variable:
-      >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
-      >>> # Now add local (shape) variables
-      >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
+        >>> from pygeo import DVGeometry
+        >>> DVGeo = DVGeometry('FFD_file.fmt')
+        >>> # Embed a set of coordinates Xpt into the object
+        >>> DVGeo.addPointSet(Xpt, 'myPoints')
+        >>> # Associate a 'reference axis' for large-scale manipulation
+        >>> DVGeo.addRefAxis('wing_axis', axis_curve)
+        >>> # Define a global design variable function:
+        >>> def twist(val, geo):
+        >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
+        >>> # Now add this as a global variable:
+        >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
+        >>> # Now add local (shape) variables
+        >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
     """
 
     def __init__(
