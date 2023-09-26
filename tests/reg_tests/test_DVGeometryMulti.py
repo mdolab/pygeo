@@ -291,6 +291,87 @@ class TestDVGeoMulti(unittest.TestCase):
         with self.assertRaises(Error):
             DVGeo.addPointSet(np.array([[-1.0, 0.0, 0.0]]), "test_error")
 
+    def test_trackSurfaces_shared_points(self):
+        """
+        Tests that points shared between two tracked surfaces are handled properly
+        """
+
+        comps = ["box1", "box2"]
+        ffdFiles = [os.path.join(inputDir, f"{comp}.xyz") for comp in comps]
+        triMeshFiles = [os.path.join(inputDir, f"{comp}.cgns") for comp in comps]
+
+        # Set up component DVGeo objects
+        DVGeoBox1 = DVGeometry(ffdFiles[0])
+        DVGeoBox2 = DVGeometry(ffdFiles[1])
+
+        # Set up DVGeometryMulti object
+        DVGeo = DVGeometryMulti()
+        DVGeo.addComponent("box1", DVGeoBox1, triMeshFiles[0])
+        DVGeo.addComponent("box2", DVGeoBox2, triMeshFiles[1])
+
+        # Define some feature curves
+        featureCurves = [
+            # Curves on box1
+            "part_15_1d",
+            # Curves on box2
+            "part_35_1d",
+            "part_37_1d",
+            "part_39_1d",
+        ]
+        curveEpsDict = {
+            # Curves on box1
+            "part_15_1d": 1e-3,
+            # Curves on box2
+            "part_35_1d": 1e-3,
+            "part_37_1d": 1e-3,
+            "part_39_1d": 1e-3,
+            # Intersection curve
+            "intersection": 1e-3,
+        }
+
+        # Track adjacent surfaces on both components
+        trackSurfaces = {
+            # box1
+            "part_14": 1e-3,
+            "part_15": 1e-3,
+            # box2
+            "part_38": 1e-3,
+            "part_39": 1e-3,
+        }
+
+        # Define a test point set
+        pts = np.array(
+            [
+                # Point on the curve between tracked surfaces part_14 and part_15, box1
+                [0.15, 0, 0.5],
+                # Point on the curve between tracked surfaces part_38 and part_39, box2
+                [0.25, 0, 0.6],
+            ]
+        )
+
+        # Add the intersection between box1 and box2
+        DVGeo.addIntersection(
+            "box1",
+            "box2",
+            dStarA=0.15,
+            dStarB=0.15,
+            featureCurves=featureCurves,
+            project=True,
+            includeCurves=True,
+            curveEpsDict=curveEpsDict,
+            trackSurfaces=trackSurfaces,
+        )
+
+        # Define a name and comm for the point set
+        ptSetName = "test_set"
+        comm = MPI.COMM_WORLD
+
+        # Add the point set
+        DVGeo.addPointSet(pts, ptSetName, comm=comm, applyIC=True)
+
+        # Check that updating the point set runs without errors
+        DVGeo.update(ptSetName)
+
 
 if __name__ == "__main__":
     unittest.main()

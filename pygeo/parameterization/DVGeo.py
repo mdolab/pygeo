@@ -77,25 +77,56 @@ class DVGeometry(BaseDVGeometry):
         Default is a 4th order spline in each direction if the dimensions
         allow.
 
+    volBounds : dict
+        Dictionary where volume embedding bounds for each FFD volume is specified.
+        Keys of the dictionary specifies the FFD volume index. Values are lists of lists.
+        First list contains the min and max bounds for the u parameter, second v, third w.
+        This parameter can also be set after initialization using the `setVolBounds` method.
+        For example if the FFD has 3 volumes, setting volBounds to:
+
+            >>> volBounds = {
+            >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
+            >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
+            >>> }
+
+        will set the parametric bounds of the first and second volumes, while the third
+        volume can still embed points using the usual bounds of 0 to 1 for all parametric
+        directions. In this example, the first volume only embeds points if the u coordinate
+        of the projection is between 0 and 0.5. Similarly, the second volume only embeds
+        a point if the v coordinate of the projection is between 0.5 and 1.0. This is useful
+        when multiple overlapping FFD volumes are used to either mimic circular or symmetric
+        FFDs.
+
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
-      >>> from pygeo import DVGeometry
-      >>> DVGeo = DVGeometry('FFD_file.fmt')
-      >>> # Embed a set of coordinates Xpt into the object
-      >>> DVGeo.addPointSet(Xpt, 'myPoints')
-      >>> # Associate a 'reference axis' for large-scale manipulation
-      >>> DVGeo.addRefAxis('wing_axis', axis_curve)
-      >>> # Define a global design variable function:
-      >>> def twist(val, geo):
-      >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
-      >>> # Now add this as a global variable:
-      >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
-      >>> # Now add local (shape) variables
-      >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
+        >>> from pygeo import DVGeometry
+        >>> DVGeo = DVGeometry('FFD_file.fmt')
+        >>> # Embed a set of coordinates Xpt into the object
+        >>> DVGeo.addPointSet(Xpt, 'myPoints')
+        >>> # Associate a 'reference axis' for large-scale manipulation
+        >>> DVGeo.addRefAxis('wing_axis', axis_curve)
+        >>> # Define a global design variable function:
+        >>> def twist(val, geo):
+        >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
+        >>> # Now add this as a global variable:
+        >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
+        >>> # Now add local (shape) variables
+        >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
+    def __init__(
+        self,
+        fileName,
+        *args,
+        isComplex=False,
+        child=False,
+        faceFreeze=None,
+        name=None,
+        kmax=4,
+        volBounds=None,
+        **kwargs,
+    ):
         super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
@@ -125,10 +156,13 @@ class DVGeometry(BaseDVGeometry):
         else:
             self.dtype = "d"
 
+        if volBounds is None:
+            volBounds = {}
+
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, volBounds=volBounds, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None
@@ -3213,6 +3247,35 @@ class DVGeometry(BaseDVGeometry):
 
         # Reset DVs to their original values
         self.setDesignVars(dvDict)
+
+    def setVolBounds(self, volBounds):
+        """
+        Routine to set the FFD embedding volume bounds after initialization
+
+        Parameters
+        ----------
+        volBounds : dict
+            Dictionary where volume embedding bounds for each FFD volume is specified.
+            Keys of the dictionary specifies the FFD volume index. Values are lists of lists.
+            First list contains the min and max bounds for the u parameter, second v, third w.
+            This parameter can also be set after initialization using the `setVolBounds` method.
+            For example if the FFD has 3 volumes, setting volBounds to:
+
+                >>> volBounds = {
+                >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
+                >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
+                >>> }
+
+            will set the parametric bounds of the first and second volumes, while the third
+            volume can still embed points using the usual bounds of 0 to 1 for all parametric
+            directions. In this example, the first volume only embeds points if the u coordinate
+            of the projection is between 0 and 0.5. Similarly, the second volume only embeds
+            a point if the v coordinate of the projection is between 0.5 and 1.0. This is useful
+            when multiple overlapping FFD volumes are used to either mimic circular or symmetric
+            FFDs.
+        """
+        #
+        self.FFD.setVolBounds(volBounds)
 
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
