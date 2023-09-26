@@ -1227,8 +1227,8 @@ class CompIntersection:
             # Create the dictionaries to save projection data
             self.projData[ptSetName] = {
                 # We need one dictionary for each component
-                "compA": {"surfaceInd": {}},
-                "compB": {"surfaceInd": {}},
+                "compA": {"surfaceIndMapDict": {}},
+                "compB": {"surfaceIndMapDict": {}},
             }
 
             if nPoints > 0 and self.excludeSurfaces:
@@ -1242,11 +1242,11 @@ class CompIntersection:
                 for surface in self.excludeSurfaces:
                     if surface in self.compA.triConn:
                         # Pop this surface from the saved data
-                        surfaceInd = self.projData[ptSetName]["compA"]["surfaceInd"].pop(surface)
+                        surfaceIndMap = self.projData[ptSetName]["compA"]["surfaceIndMapDict"].pop(surface)
                     elif surface in self.compB.triConn:
-                        surfaceInd = self.projData[ptSetName]["compB"]["surfaceInd"].pop(surface)
+                        surfaceIndMap = self.projData[ptSetName]["compB"]["surfaceIndMapDict"].pop(surface)
 
-                    excludeSet.update(surfaceInd)
+                    excludeSet.update(surfaceIndMap)
 
                 # Invert excludeSet to get the points we want to keep
                 oneToN = set(range(nPoints))
@@ -1289,6 +1289,14 @@ class CompIntersection:
             self.projData[ptSetName]["compB"]["flag"] = flagB
             self.projData[ptSetName]["compB"]["ind"] = indB
 
+            # Initialize component-wide projection indices as all the indices
+            # We will remove points associated with tracked surfaces below
+            indAComp = indA.copy()
+            indBComp = indB.copy()
+
+            self.projData[ptSetName]["compA"]["indSurfDict"] = {}
+            self.projData[ptSetName]["compB"]["indSurfDict"] = {}
+
             # Associate points with the tracked surfaces
             for surface in self.trackSurfaces:
                 surfaceEps = self.trackSurfaces[surface]
@@ -1302,6 +1310,45 @@ class CompIntersection:
                 # This proc has some points to project
                 if len(compPoints) > 0:
                     self.associatePointsToSurface(compPoints, ptSetName, surface, surfaceEps)
+
+            # Determine the component-wide projection indices for compA
+            # Also remove any duplicates if points are assigned to multiple surfaces
+            surfaceIndMapDictA = self.projData[ptSetName]["compA"]["surfaceIndMapDict"]
+            for surface in surfaceIndMapDictA:
+                surfaceIndMapA = surfaceIndMapDictA[surface]
+
+                # Get the subset of indices that is associated with this surface
+                indASurf = [indA[i] for i in surfaceIndMapA]
+
+                # Iterate over a copy of the indices because they might change in the loop
+                for ind in indASurf.copy():
+                    try:
+                        # Remove this point from the component-wide projection indices
+                        indAComp.remove(ind)
+                    except ValueError:
+                        # This point is already associated with another surface so remove it from this surface
+                        indASurf.remove(ind)
+
+                # Store the projection indices for this surface if there are any
+                if indASurf:
+                    self.projData[ptSetName]["compA"]["indSurfDict"][surface] = indASurf
+
+            # Store the component-wide projection indices
+            self.projData[ptSetName]["compA"]["indAComp"] = indAComp
+
+            # Do the same for compB
+            surfaceIndMapDictB = self.projData[ptSetName]["compB"]["surfaceIndMapDict"]
+            for surface in surfaceIndMapDictB:
+                surfaceIndMapB = surfaceIndMapDictB[surface]
+                indBSurf = [indB[i] for i in surfaceIndMapB]
+                for ind in indBSurf.copy():
+                    try:
+                        indBComp.remove(ind)
+                    except ValueError:
+                        indBSurf.remove(ind)
+                if indBSurf:
+                    self.projData[ptSetName]["compB"]["indSurfDict"][surface] = indBSurf
+            self.projData[ptSetName]["compB"]["indBComp"] = indBComp
 
             # if we include the feature curves in the warping, we also need to project the added points to the intersection and feature curves and determine how the points map to the curves
             if self.incCurves:
@@ -1811,29 +1858,22 @@ class CompIntersection:
         flagA = self.projData[ptSetName]["compA"]["flag"]
         flagB = self.projData[ptSetName]["compB"]["flag"]
 
-        # Initialize component-wide projection indices
-        indAComp = self.projData[ptSetName]["compA"]["ind"].copy()
-        indBComp = self.projData[ptSetName]["compB"]["ind"].copy()
+        # Get the component-wide projection indices
+        indAComp = self.projData[ptSetName]["compA"]["indAComp"]
+        indBComp = self.projData[ptSetName]["compB"]["indBComp"]
 
         # call the actual driver with the info to prevent code multiplication
         if flagA:
             # First project points on the tracked surfaces
-            surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
-            for surface in surfaceIndA:
-                surfaceInd = surfaceIndA[surface]
-
-                # Get the subset of indices that is associated with this surface
-                indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
-
-                # Remove these points from the component-wide projection indices
-                for ind in indA:
-                    indAComp.remove(ind)
+            indSurfDictA = self.projData[ptSetName]["compA"]["indSurfDict"]
+            for surface in indSurfDictA:
+                indASurf = indSurfDictA[surface]
 
                 # get the points using the mapping
-                ptsA = newPts[indA]
+                ptsA = newPts[indASurf]
                 # call the projection routine with the info
                 # this returns the projected points and we use the same mapping to put them back in place
-                newPts[indA] = self._projectToComponent(
+                newPts[indASurf] = self._projectToComponent(
                     ptsA, self.compA, self.projData[ptSetName][surface], surface=surface
                 )
 
@@ -1844,24 +1884,17 @@ class CompIntersection:
 
         # do the same for B
         if flagB:
-            surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
-            for surface in surfaceIndB:
-                surfaceInd = surfaceIndB[surface]
-                indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
-                for ind in indB:
-                    indBComp.remove(ind)
-                ptsB = newPts[indB]
-                newPts[indB] = self._projectToComponent(
+            indSurfDictB = self.projData[ptSetName]["compB"]["indSurfDict"]
+            for surface in indSurfDictB:
+                indBSurf = indSurfDictB[surface]
+                ptsB = newPts[indBSurf]
+                newPts[indBSurf] = self._projectToComponent(
                     ptsB, self.compB, self.projData[ptSetName][surface], surface=surface
                 )
 
             if indBComp:
                 ptsB = newPts[indBComp]
                 newPts[indBComp] = self._projectToComponent(ptsB, self.compB, self.projData[ptSetName]["compB"])
-
-        # Store component-wide indices for derivative computation
-        self.projData[ptSetName]["compA"]["indAComp"] = indAComp
-        self.projData[ptSetName]["compB"]["indBComp"] = indBComp
 
     def project_b(self, ptSetName, dIdpt, comm):
         # call the functions to propagate ad seeds bwd
@@ -1891,18 +1924,15 @@ class CompIntersection:
                 )
 
             # First project points on the tracked surfaces
-            surfaceIndA = self.projData[ptSetName]["compA"]["surfaceInd"]
-            for surface in surfaceIndA:
-                surfaceInd = surfaceIndA[surface]
-
-                # Get the subset of indices that is associated with this surface
-                indA = [self.projData[ptSetName]["compA"]["ind"][i] for i in surfaceInd]
+            indSurfDictA = self.projData[ptSetName]["compA"]["indSurfDict"]
+            for surface in indSurfDictA:
+                indASurf = indSurfDictA[surface]
 
                 # get the points using the mapping
-                dIdptA = dIdpt[:, indA]
+                dIdptA = dIdpt[:, indASurf]
                 # call the projection routine with the info
                 # this returns the projected points and we use the same mapping to put them back in place
-                dIdpt[:, indA], compSensA_temp = self._projectToComponent_b(
+                dIdpt[:, indASurf], compSensA_temp = self._projectToComponent_b(
                     dIdptA, self.compA, self.projData[ptSetName][surface], surface=surface
                 )
 
@@ -1936,12 +1966,11 @@ class CompIntersection:
                     dIdptB, self.compB, self.projData[ptSetName]["compB"]
                 )
 
-            surfaceIndB = self.projData[ptSetName]["compB"]["surfaceInd"]
-            for surface in surfaceIndB:
-                surfaceInd = surfaceIndB[surface]
-                indB = [self.projData[ptSetName]["compB"]["ind"][i] for i in surfaceInd]
-                dIdptB = dIdpt[:, indB]
-                dIdpt[:, indB], compSensB_temp = self._projectToComponent_b(
+            indSurfDictB = self.projData[ptSetName]["compB"]["indSurfDict"]
+            for surface in indSurfDictB:
+                indBSurf = indSurfDictB[surface]
+                dIdptB = dIdpt[:, indBSurf]
+                dIdpt[:, indBSurf], compSensB_temp = self._projectToComponent_b(
                     dIdptB, self.compB, self.projData[ptSetName][surface], surface=surface
                 )
 
@@ -3169,19 +3198,20 @@ class CompIntersection:
             raise Error(f"Surface {surface} was not found in {self.compA.name} or {self.compB.name}.")
 
         # Identify the points that are within the given tolerance from this surface
-        # surfaceInd contains indices of the provided points not the entire point set
+        # surfaceIndMap contains indices of the provided points, not the entire point set
+        # These get mapped to indices for the entire point set later
         surfaceDist = np.sqrt(np.array(projDict["dist2"]))
-        surfaceInd = [ind for ind, value in enumerate(surfaceDist) if (value < surfaceEps)]
+        surfaceIndMap = [ind for ind, value in enumerate(surfaceDist) if (value < surfaceEps)]
 
         # Output the points associated with this surface
         if self.debug:
-            data = [np.append(points[i], surfaceDist[i]) for i in surfaceInd]
+            data = [np.append(points[i], surfaceDist[i]) for i in surfaceIndMap]
             tecplot_interface.write_tecplot_scatter(
                 f"{surface}_points_{self.comm.rank}.plt", f"{surface}", ["X", "Y", "Z", "dist"], data
             )
 
         # Save the indices only if there is at least one point
-        if surfaceInd:
-            self.projData[ptSetName][comp]["surfaceInd"][surface] = surfaceInd
+        if surfaceIndMap:
+            self.projData[ptSetName][comp]["surfaceIndMapDict"][surface] = surfaceIndMap
             # Initialize a data dictionary for this surface
             self.projData[ptSetName][surface] = {}
