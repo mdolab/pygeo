@@ -978,14 +978,14 @@ class component:
             mpiType = MPI.DOUBLE_COMPLEX
 
         # Create the receiving buffer
-        newPtsGlobal = np.zeros(nPts * 3, dtype=procNodes.dtype)
-        recvbuf = [newPtsGlobal, sizes * 3, disp[0:-1] * 3, mpiType]
+        globalNodes = np.zeros(nPts * 3, dtype=procNodes.dtype)
+        recvbuf = [globalNodes, sizes * 3, disp[0:-1] * 3, mpiType]
 
         # Allgather the updated coordinates
         self.comm.Allgatherv(sendbuf, recvbuf)
 
         # Reshape into a nPts, 3 array
-        self.nodes = newPtsGlobal.reshape((nPts, 3))
+        self.nodes = globalNodes.reshape((nPts, 3))
 
 
 class PointSet:
