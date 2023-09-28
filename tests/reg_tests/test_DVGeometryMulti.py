@@ -7,6 +7,7 @@ from baseclasses import BaseRegTest
 from baseclasses.utils import Error
 from mpi4py import MPI
 import numpy as np
+from parameterized import parameterized_class
 
 # First party modules
 from pygeo import DVGeometry
@@ -26,11 +27,22 @@ if pysurfInstalled:
 baseDir = os.path.dirname(os.path.abspath(__file__))
 inputDir = os.path.join(baseDir, "../../input_files")
 
+# Run the boxes test in series and in parallel
+test_params = [
+    {
+        "name": "one_proc",
+        "N_PROCS": 1,
+    },
+    {
+        "name": "two_procs",
+        "N_PROCS": 2,
+    },
+]
 
+
+@parameterized_class(test_params)
 @unittest.skipUnless(pysurfInstalled, "requires pySurf")
 class TestDVGeoMulti(unittest.TestCase):
-    N_PROCS = 1
-
     def train_boxes(self, train=True):
         self.test_boxes(train=train)
 
@@ -142,7 +154,7 @@ class TestDVGeoMulti(unittest.TestCase):
                 [0.5, 0.25, 0.6],
                 [0.25, 0.5, 0.6],
                 [0.5, -0.25, 0.6],
-                # [0.25, -0.5, 0.6],
+                [0.25, -0.5, 0.6],
             ]
         )
 
@@ -210,10 +222,24 @@ class TestDVGeoMulti(unittest.TestCase):
             # Update the point set
             ptsUpdated = DVGeo.update(ptSetName)
 
+        # Create the send buffer
+        procPoints = ptsUpdated.flatten()
+        sendbuf = [procPoints, sizes[comm.rank] * 3]
+
+        # Create the receiving buffer
+        globalPoints = np.zeros(nPtsGlobal * 3)
+        recvbuf = [globalPoints, sizes * 3, disp[0:-1] * 3, MPI.DOUBLE]
+
+        # Allgather the updated coordinates
+        comm.Allgatherv(sendbuf, recvbuf)
+
+        # Reshape into a nPtsGlobal, 3 array
+        ptsUpdated = globalPoints.reshape((nPtsGlobal, 3))
+
         # Regression test the updated points for the real DVGeo
         refFile = os.path.join(baseDir, "ref/test_DVGeometryMulti.ref")
-        # with BaseRegTest(refFile, train=train) as handler:
-        #     handler.par_add_val("ptsUpdated", ptsUpdated, tol=1e-14)
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_add_val("ptsUpdated", ptsUpdated, tol=1e-14)
 
         # Now we will test the derivatives
 
@@ -282,14 +308,16 @@ class TestDVGeoMulti(unittest.TestCase):
             funcSensFD[x] = comm.allreduce(funcSensFD[x])
             funcSensCS[x] = comm.allreduce(funcSensCS[x])
 
-            print(max(max(funcSens[x].T - funcSensCS[x])))
-
             np.testing.assert_allclose(funcSens[x].T, funcSensFD[x], rtol=1e-4, atol=1e-10)
             np.testing.assert_allclose(funcSens[x].T, funcSensCS[x], rtol=1e-4, atol=1e-10)
 
         # Test that adding a point outside any FFD raises an Error
         with self.assertRaises(Error):
             DVGeo.addPointSet(np.array([[-1.0, 0.0, 0.0]]), "test_error")
+
+
+class TestDVGeoMultiEdgeCases(unittest.TestCase):
+    N_PROCS = 1
 
     def test_trackSurfaces_shared_points(self):
         """
