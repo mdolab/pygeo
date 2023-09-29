@@ -36,6 +36,7 @@ class DVGeometryMulti:
     ----------
     comm : MPI.IntraComm, optional
        The communicator associated with this geometry object.
+       This is also used to parallelize the triangulated meshes.
 
     checkDVs : bool, optional
         Flag to check whether there are duplicate DV names in or across components.
@@ -164,9 +165,7 @@ class DVGeometryMulti:
             xMax[2] = bbox["zmax"]
 
         # initialize the component object
-        self.comps[comp] = component(
-            self.comm, comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData
-        )
+        self.comps[comp] = component(comp, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData)
 
         # add the name to the list
         self.compNames.append(comp)
@@ -325,9 +324,7 @@ class DVGeometryMulti:
             To ease bookkeepping, an empty point set with ptName will be added to components not in this list.
             If a list is not provided, this point set is added to all components.
         comm : MPI.IntraComm, optional
-            Comm that is associated with the added point set. Does not
-            work now, just added to be consistent with the API of
-            other DVGeo types.
+            The communicator that is associated with the added point set.
         applyIC : bool, optional
             Flag to specify whether this point set will follow the updated intersection curve(s).
             This is typically only needed for the CFD surface mesh.
@@ -935,9 +932,8 @@ class DVGeometryMulti:
 
 
 class component:
-    def __init__(self, comm, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData):
+    def __init__(self, name, DVGeo, nodes, triConn, triConnStack, barsConn, xMin, xMax, triMeshData):
         # save the info
-        self.comm = comm
         self.name = name
         self.DVGeo = DVGeo
         self.nodes = nodes
@@ -957,7 +953,7 @@ class component:
         else:
             self.triMesh = True
 
-    def updateTriMesh(self):
+    def updateTriMesh(self, comm):
         # We need the full triangulated surface for this component
         # Get the stored processor splitting information
         sizes = self.triMeshData["sizes"]
@@ -969,7 +965,7 @@ class component:
 
         # Create the send buffer
         procNodes = procNodes.flatten()
-        sendbuf = [procNodes, sizes[self.comm.rank] * 3]
+        sendbuf = [procNodes, sizes[comm.rank] * 3]
 
         # Set the appropriate type for the receiving buffer
         if procNodes.dtype == float:
@@ -982,7 +978,7 @@ class component:
         recvbuf = [globalNodes, sizes * 3, disp[0:-1] * 3, mpiType]
 
         # Allgather the updated coordinates
-        self.comm.Allgatherv(sendbuf, recvbuf)
+        comm.Allgatherv(sendbuf, recvbuf)
 
         # Reshape into a nPts, 3 array
         self.nodes = globalNodes.reshape((nPts, 3))
@@ -1212,7 +1208,7 @@ class CompIntersection:
         """This set the new udpated surface on which we need to compute the new intersection curve"""
 
         # get the updated surface coordinates
-        self._getUpdatedCoords()
+        self._getUpdatedCoords(comm)
 
         self.seam = self._getIntersectionSeam(comm)
 
@@ -2010,7 +2006,7 @@ class CompIntersection:
 
         # Extract the entries of dIdptTri that are for points on this processor
         disp = self.compA.triMeshData["disp"]
-        dIdptTriA = dIdptTriA[:, disp[self.compA.comm.rank] : disp[self.compA.comm.rank + 1], :]
+        dIdptTriA = dIdptTriA[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
 
         # Call the total sensitivity of the component's DVGeo
         compSensA = self.compA.DVGeo.totalSensitivity(dIdptTriA, "triMesh")
@@ -2044,7 +2040,7 @@ class CompIntersection:
 
         dIdptTriB = self.comm.allreduce(dIdptTriB)
         disp = self.compB.triMeshData["disp"]
-        dIdptTriB = dIdptTriB[:, disp[self.compB.comm.rank] : disp[self.compB.comm.rank + 1], :]
+        dIdptTriB = dIdptTriB[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
         compSensB = self.compB.DVGeo.totalSensitivity(dIdptTriB, "triMesh")
         for k, v in compSensB.items():
             compSens_local[k] = v
@@ -2490,14 +2486,14 @@ class CompIntersection:
         # We also return the seeds for the component's triangulated mesh in dIdptTri
         return dIdpt, dIdptTri
 
-    def _getUpdatedCoords(self):
+    def _getUpdatedCoords(self, comm):
         # this code returns the updated coordinates
 
         # first comp a
-        self.compA.updateTriMesh()
+        self.compA.updateTriMesh(comm)
 
         # then comp b
-        self.compB.updateTriMesh()
+        self.compB.updateTriMesh(comm)
 
         return
 
@@ -3216,15 +3212,15 @@ class CompIntersection:
             coorBb[ii] += cBb.T
 
         # Allreduce the derivative seeds
-        coorAb = comm.allreduce(coorAb)
-        coorBb = comm.allreduce(coorBb)
+        coorAb = self.comm.allreduce(coorAb)
+        coorBb = self.comm.allreduce(coorBb)
 
         # Extract the entries of coorAb and coorBb that are for points on this processor
         disp = self.compA.triMeshData["disp"]
-        coorAb = coorAb[:, disp[self.compA.comm.rank] : disp[self.compA.comm.rank + 1], :]
+        coorAb = coorAb[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
 
         disp = self.compB.triMeshData["disp"]
-        coorBb = coorBb[:, disp[self.compB.comm.rank] : disp[self.compB.comm.rank + 1], :]
+        coorBb = coorBb[:, disp[self.comm.rank] : disp[self.comm.rank + 1], :]
 
         # get the total sensitivities from both components
         compSens_local = {}
