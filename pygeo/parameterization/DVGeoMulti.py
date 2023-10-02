@@ -1047,13 +1047,13 @@ class CompIntersection:
             self.curveSearchAPI = curveSearchAPI.curvesearchapi
             self.intersectionAPI = intersectionAPI.intersectionapi
             self.utilitiesAPI = utilitiesAPI.utilitiesapi
-            self.mpi_type = MPI.DOUBLE
+            self.mpiType = MPI.DOUBLE
         elif dtype == complex:
             self.adtAPI = adtAPI_cs.adtapi
             self.curveSearchAPI = curveSearchAPI_cs.curvesearchapi
             self.intersectionAPI = intersectionAPI_cs.intersectionapi
             self.utilitiesAPI = utilitiesAPI_cs.utilitiesapi
-            self.mpi_type = MPI.C_DOUBLE_COMPLEX
+            self.mpiType = MPI.DOUBLE_COMPLEX
 
         # tolerance used for each curve when mapping nodes to curves
         self.curveEpsDict = {}
@@ -1858,7 +1858,7 @@ class CompIntersection:
                 nptsg = self.nCurvePts[ptSetName][curveName]
                 deltaGlobal = np.zeros(nptsg * 3, dtype=self.dtype)
 
-                recvbuf = [deltaGlobal, sizes * 3, disp * 3, self.mpi_type]
+                recvbuf = [deltaGlobal, sizes * 3, disp * 3, self.mpiType]
 
                 # do an allgatherv
                 comm.Allgatherv(sendbuf, recvbuf)
@@ -2241,7 +2241,7 @@ class CompIntersection:
             # recvbuf
             ptsGlobal = np.zeros(3 * nptsg, dtype=self.dtype)
 
-            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpi_type]
+            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpiType]
 
             # do an allgatherv
             comm.Allgatherv(sendbuf, recvbuf)
