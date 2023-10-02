@@ -3629,6 +3629,47 @@ class FilletIntersection(Intersection):
 
             self.filletComp.surfPts = ptsNew
 
+    def project_b(self, ptSetName, dIdpt, comm):
+        # number of functions we have
+        N = dIdpt.shape[0]
+    
+        # Initialize dictionaries to accumulate triangulated mesh sensitivities
+        compSens_local = {}
+        compSensA = {}
+        compSensB = {}
+    
+        curvePtCoordsA = self.compA.curvePts
+        curvePtCoordsB = self.compB.curvePts
+
+        # call the bwd warping routine
+        # deltaA_b is the seed for the points projected to curves
+        deltaA_b_local = self._warpSurfPts_b(
+            dIdpt,
+            self.points[ptSetName][0],
+            self.surfIdxA[ptSetName],
+            curvePtCoordsA,
+        )
+
+        # do the same for comp B
+        deltaB_b_local = self._warpSurfPts_b(
+            dIdpt,
+            self.points[ptSetName][0],
+            self.surfIdxB[ptSetName],
+            curvePtCoordsB,
+        )
+
+        # reduce seeds for both
+        if ptSetComm:
+            deltaA_b = ptSetComm.allreduce(deltaA_b_local, op=MPI.SUM)
+            deltaB_b = ptSetComm.allreduce(deltaB_b_local, op=MPI.SUM)
+        # no comm, local is global
+        else:
+            deltaA_b = deltaA_b_local
+            deltaB_b = deltaB_b_local
+
+        return compSens
+
+        
     def _getIntersectionSeam(self, comm):
         pass
 
