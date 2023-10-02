@@ -316,6 +316,7 @@ class TestDVGeoMulti(unittest.TestCase):
             DVGeo.addPointSet(np.array([[-1.0, 0.0, 0.0]]), "test_error")
 
 
+@unittest.skipUnless(pysurfInstalled, "requires pySurf")
 class TestDVGeoMultiEdgeCases(unittest.TestCase):
     N_PROCS = 1
 
