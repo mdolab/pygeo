@@ -34,8 +34,8 @@ test_params = [
         "N_PROCS": 1,
     },
     {
-        "name": "two_procs",
-        "N_PROCS": 2,
+        "name": "three_procs",
+        "N_PROCS": 3,
     },
 ]
 
