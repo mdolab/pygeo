@@ -3629,17 +3629,14 @@ class FilletIntersection(Intersection):
 
             self.filletComp.surfPts = ptsNew
 
-    def project_b(self, ptSetName, dIdpt, comm):
-        # number of functions we have
-        N = dIdpt.shape[0]
-
-        # Initialize dictionaries to accumulate triangulated mesh sensitivities
-        compSens_local = {}
-        compSensA = {}
-        compSensB = {}
+    def project_b(self, ptSetName, dIdpt, comm=None):
+        compSens = {}
 
         curvePtCoordsA = self.compA.curvePts
         curvePtCoordsB = self.compB.curvePts
+
+        # get the comm for this point set
+        ptSetComm = self.points[ptSetName][3]
 
         # call the bwd warping routine
         # deltaA_b is the seed for the points projected to curves
@@ -3666,6 +3663,11 @@ class FilletIntersection(Intersection):
         else:
             deltaA_b = deltaA_b_local
             deltaB_b = deltaB_b_local
+
+        # zero out the seeds for the intersection on the fillet
+        # these points will be present in the fillet pointset and the components
+        deltaA_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
+        deltaB_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
 
         return compSens
 
