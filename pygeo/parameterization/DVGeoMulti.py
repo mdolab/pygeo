@@ -367,38 +367,27 @@ class DVGeometryMulti:
 
     def addCurve(self, compName, filletName, curveFiles):
         if not self.filletIntersection:
-            print("no")
+            print("no")  # TODO real error
 
         curvePts = self._readDATFile(curveFiles, surf=False)
 
+        # figure out which component and fillet we're dealing with
+        # and which intersection object they belong to
         comp = self.comps[compName]
         fillet = self.fillets[filletName]
         intersection = fillet.intersection
 
-        filletIntCurve, filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
-        compIntCurve, compIntInd = intersection.findIntersection(comp.surfPts, curvePts)
-
-        # lenF = len(filletIntInd)
-        # lenC = len(compIntInd)
-
-        # # TODO this is very hacky. stop
-        # if lenF < lenC:
-        #     lenC = lenF
-
-        # filletIntInd = filletIntInd[: lenC or None]
-        # compIntInd = compIntInd[: lenC or None]
-
-        # filletIntCurve = filletIntCurve[:lenC, :]
-        # compIntCurve = filletIntCurve[:lenC, :]
-
+        # find the indices of fillet points that lie on this intersection curve
+        # we need to know this to handle duplicates in derivative calcs later
+        filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
         fillet.intersectInd.update({compName: filletIntInd})
-        comp.intersectInd.update({filletName: compIntInd})
 
-        fillet.intersectPtsOrig.update({compName: filletIntCurve})
-        comp.intersectPtsOrig.update({filletName: compIntCurve})
-
-        fillet.intersectPts.update({compName: filletIntCurve})
-        comp.intersectPts.update({filletName: compIntCurve})
+        # add this curve to the component's DVGeo as a pointset so it gets deformed in the FFD
+        ptSetName = f"{compName}_curve"
+        comp.curvePtsName = ptSetName
+        comp.curvePts = curvePts
+        comp.curvePtsOrig = deepcopy(curvePts)
+        comp.DVGeo.addPointSet(curvePts, ptSetName)
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -603,6 +592,7 @@ class DVGeometryMulti:
                     self.fillets[comp].surfPtsName = ptName
                     self.fillets[comp].surfPts = points
                     self.fillets[comp].surfPtsOrig = deepcopy(self.fillets[comp].surfPts)
+                    self.fillets[comp].nPts = len(points)
 
         # check if this pointset will get the IC treatment
         if applyIC:
@@ -1169,10 +1159,9 @@ class Comp:
         self.xMax = xMax
         self.comm = comm
         self.surfPtsName = surfPtsName
-
+        self.curvePts = []
+        self.curvePtsName = None
         self.intersection = None
-        self.intersectPtsOrig = {}
-        self.intersectPts = {}
         self.intersectInd = {}
 
     def updateSurfPts(self):
@@ -1180,6 +1169,7 @@ class Comp:
             print("no")
         else:
             self.surfPts = self.DVGeo.update(self.surfPtsName)
+            self.curvePts = self.DVGeo.update(self.curvePtsName)
 
     def writeSurf(self, fileName):
         fileName = f"{fileName}_{self.name}_surf.dat"
@@ -1188,13 +1178,14 @@ class Comp:
         closeTecplot(f)
 
     def writeCurve(self, inter, fileName):
-        fileName = f"{fileName}_{self.name}_curve_a.dat"
+        fileName = f"{fileName}_{self.name}_curve.dat"
         f = openTecplot(fileName, 3)
-        writeTecplot1D(f, self.name, self.intersectPts[inter])
-        closeTecplot(f)
-        fileName = f"{fileName}_{self.name}_curve_b.dat"
-        f = openTecplot(fileName, 3)
-        writeTecplot1D(f, self.name, self.surfPts[self.intersectInd[inter]])
+
+        if self.fillet:
+            writeTecplot1D(f, self.name, self.surfPts[self.intersectInd[inter]])
+        else:
+            writeTecplot1D(f, self.name, self.curvePts)
+
         closeTecplot(f)
 
 
@@ -3599,22 +3590,14 @@ class FilletIntersection(Intersection):
 
     def update(self, ptSetName, delta):
         # update the pointset unless we haven't figured out the intersections yet
-        if len(self.filletComp.intersectInd) > 0:
+        # TODO change to a firstUpdate flag or something
+        if len(self.compA.curvePts) > 0:
+            pass
+
+        else:
             n = self.filletComp.surfPtsOrig.shape[0]
             indices = np.linspace(0, n - 1, n, dtype=int)
-            indices = np.delete(
-                indices,
-                self.filletComp.intersectInd[self.compA.name] + self.filletComp.intersectInd[self.compB.name],
-            )
             self.indices = indices
-
-            # make sure each component's subset of points on the intersection curve is up to date
-            self.compA.intersectPts[self.filletComp.name] = self.compA.surfPts[
-                self.compA.intersectInd[self.filletComp.name]
-            ]
-            self.compB.intersectPts[self.filletComp.name] = self.compB.surfPts[
-                self.compB.intersectInd[self.filletComp.name]
-            ]
 
         # don't update the delta because we aren't remeshing
         return delta
@@ -3624,36 +3607,69 @@ class FilletIntersection(Intersection):
         # TODO maybe stop doing this
 
         # update the pointset unless we haven't figured out the intersections yet
-        if len(self.filletComp.intersectInd) > 0:
+        if len(self.compA.curvePts) > 0:  # TODO change to a first project flag or something
             newCurveCoords = np.vstack(
                 (
-                    self.compA.intersectPts[self.filletComp.name],
-                    self.compB.intersectPts[self.filletComp.name],
-                    # self.compA.intersectCurvePts,
-                    # self.compB.intersectCurvePts,
+                    self.compA.curvePts,
+                    self.compB.curvePts,
                 )
             )
             curvePtCoords = np.vstack(
                 (
-                    self.compA.intersectPtsOrig[self.filletComp.name],
-                    self.compB.intersectPtsOrig[self.filletComp.name],
-                    # self.compA.intersectCurvePtsOrig,
-                    # self.compB.intersectCurvePtsOrig,
+                    self.compA.curvePtsOrig,
+                    self.compB.curvePtsOrig,
                 )
             )
             delta = newCurveCoords - curvePtCoords
 
-            # modify the intersection curves of the fillet
             ptsNew = deepcopy(self.filletComp.surfPtsOrig)
-
             pts0 = self.filletComp.surfPtsOrig
-            # indices = self.indices
-            indices = np.linspace(0, ptsNew.shape[0] - 1, ptsNew.shape[0], dtype=int)
 
-            self._warpSurfPts(pts0, ptsNew, indices, curvePtCoords, delta)
+            self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta)
 
             self.filletComp.surfPts = ptsNew
 
+    def project_b(self, ptSetName, dIdpt, comm):
+        # number of functions we have
+        N = dIdpt.shape[0]
+    
+        # Initialize dictionaries to accumulate triangulated mesh sensitivities
+        compSens_local = {}
+        compSensA = {}
+        compSensB = {}
+    
+        curvePtCoordsA = self.compA.curvePts
+        curvePtCoordsB = self.compB.curvePts
+
+        # call the bwd warping routine
+        # deltaA_b is the seed for the points projected to curves
+        deltaA_b_local = self._warpSurfPts_b(
+            dIdpt,
+            self.points[ptSetName][0],
+            self.surfIdxA[ptSetName],
+            curvePtCoordsA,
+        )
+
+        # do the same for comp B
+        deltaB_b_local = self._warpSurfPts_b(
+            dIdpt,
+            self.points[ptSetName][0],
+            self.surfIdxB[ptSetName],
+            curvePtCoordsB,
+        )
+
+        # reduce seeds for both
+        if ptSetComm:
+            deltaA_b = ptSetComm.allreduce(deltaA_b_local, op=MPI.SUM)
+            deltaB_b = ptSetComm.allreduce(deltaB_b_local, op=MPI.SUM)
+        # no comm, local is global
+        else:
+            deltaA_b = deltaA_b_local
+            deltaB_b = deltaB_b_local
+
+        return compSens
+
+        
     def _getIntersectionSeam(self, comm):
         pass
 
