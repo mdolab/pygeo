@@ -825,7 +825,9 @@ class DVGeometryMulti:
         for IC in self.intersectComps:
             if IC.projectFlag and ptSetName in IC.points:
                 # initialize the seed contribution to the intersection seam and feature curves from project_b
-                IC.seamBarProj[ptSetName] = np.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
+                # fillet intersections don't track seams
+                if not self.filletIntersection:
+                    IC.seamBarProj[ptSetName] = np.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
 
                 # we pass in dIdpt and the intersection object, along with pointset information
                 # the intersection object adjusts the entries corresponding to projected points
@@ -842,7 +844,8 @@ class DVGeometryMulti:
 
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
-        for IC in self.intersectComps:
+        # fillet intersections do not do curve-based warping
+        for IC in self.intersectComps and not self.filletIntersection:
             if ptSetName in IC.points:
                 compSens = IC.sens(dIdpt, ptSetName, comm)
                 # save the sensitivities from the intersection stuff
@@ -945,14 +948,15 @@ class DVGeometryMulti:
 
         # We can simply loop over all DV objects and call their respective addVariablesPyOpt function
         for comp in comps:
-            self.comps[comp].DVGeo.addVariablesPyOpt(
-                optProb,
-                globalVars=globalVars,
-                localVars=localVars,
-                sectionlocalVars=sectionlocalVars,
-                ignoreVars=ignoreVars,
-                freezeVars=freezeVars,
-            )
+            if not comp.isFillet:
+                self.comps[comp].DVGeo.addVariablesPyOpt(
+                    optProb,
+                    globalVars=globalVars,
+                    localVars=localVars,
+                    sectionlocalVars=sectionlocalVars,
+                    ignoreVars=ignoreVars,
+                    freezeVars=freezeVars,
+                )
 
     def getLocalIndex(self, iVol, comp):
         """Return the local index mapping that points to the global coefficient list for a given volume.
@@ -1098,19 +1102,24 @@ class DVGeometryMulti:
 
         dvOffset = 0
         # we need to call computeTotalJacobian from all comps and get the jacobians for this pointset
-        for comp in self.compNames:
+        for name in self.compNames:
+            comp = self.comps[name]
+            # fillet pointset needs points on boundary removed
+            if comp.fillet:
+                removeIntersectionPts()
+
             # number of design variables
-            nDVComp = self.comps[comp].DVGeo.getNDV()
+            nDVComp = comp.DVGeo.getNDV()
 
             # call the function to compute the total jacobian
-            self.comps[comp].DVGeo.computeTotalJacobian(ptSetName)
+            comp.DVGeo.computeTotalJacobian(ptSetName)
 
-            if self.comps[comp].DVGeo.JT[ptSetName] is not None:
+            if comp.DVGeo.JT[ptSetName] is not None:
                 # Get the component Jacobian
-                compJ = self.comps[comp].DVGeo.JT[ptSetName].T
+                compJ = comp.DVGeo.JT[ptSetName].T
 
                 # Set the block of the full Jacobian associated with this component
-                jac[ptSet.compMapFlat[comp], dvOffset : dvOffset + nDVComp] = compJ
+                jac[ptSet.compMapFlat[name], dvOffset : dvOffset + nDVComp] = compJ
 
             # increment the offset
             dvOffset += nDVComp
