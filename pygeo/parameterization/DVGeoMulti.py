@@ -887,7 +887,7 @@ class DVGeometryMulti:
                 # also increment the offset
                 dvOffset += nDVComp
 
-        # finally, we can add the contributions from triangulated component meshes
+        # finally, we can add the contributions from intersections
         for compSens in compSensList:
             # loop over the items of compSens, which are guaranteed to be in dIdxDict
             for k, v in compSens.items():
