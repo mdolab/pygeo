@@ -66,9 +66,6 @@ class DVGeometryMulti:
 
         self.compNames = []
         self.comps = OrderedDict()
-        # separate out fillets to avoid checking whether components in comps have a DVGeo everywhere
-        self.filletNames = []
-        self.fillets = OrderedDict()
         self.DVGeoDict = OrderedDict()
         self.points = OrderedDict()
         self.updated = {}
@@ -138,9 +135,9 @@ class DVGeometryMulti:
 
         # determine whether this component is a fillet or a normal surface
         if DVGeo is None:
-            filletComp = True
+            isFillet = True
         else:
-            filletComp = False
+            isFillet = False
 
         # if self.filletIntersection is True and triMesh is not None:
         # this should work with a triangulated surface it just isn't necessary
@@ -152,7 +149,7 @@ class DVGeometryMulti:
             pointSetKwargs = {}
 
         # fillets don't have a DVGeo to get a bounding box from and don't need it
-        if filletComp:
+        if isFillet:
             xMin = xMax = 3 * [0]
 
         # standard components need a bounding box to associate points with each FFD
@@ -185,7 +182,7 @@ class DVGeometryMulti:
                 nodes = surfPts
 
                 # add these points to the corresponding dvgeo unless this component is a fillet
-                if not filletComp:
+                if not isFillet:
                     DVGeo.addPointSet(nodes, "datPts", **pointSetKwargs)
 
             else:
@@ -193,7 +190,7 @@ class DVGeometryMulti:
 
             # initialize the component object
             # a different class is used for fillets & their adjacent components
-            component = Comp(comp, filletComp, nodes, DVGeo, xMin, xMax, self.comm)
+            component = Comp(comp, isFillet, nodes, DVGeo, xMin, xMax, self.comm)
 
         # we have a standard intersection group which has structured surfaces
         else:
@@ -218,12 +215,8 @@ class DVGeometryMulti:
 
         # add component object to the dictionary and list keeping track of components
         # if this component is a fillet (no DVGeo) put in a separate list to avoid unnecessary checks for a DVGeo later
-        if filletComp:
-            self.fillets[comp] = component
-            self.filletNames.append(comp)
-        else:
-            self.comps[comp] = component
-            self.compNames.append(comp)
+        self.comps[comp] = component
+        self.compNames.append(comp)
 
         # also save the DVGeometry pointer in the dictionary we pass back (fillet entry will be None)
         self.DVGeoDict[comp] = DVGeo
@@ -374,7 +367,7 @@ class DVGeometryMulti:
         # figure out which component and fillet we're dealing with
         # and which intersection object they belong to
         comp = self.comps[compName]
-        fillet = self.fillets[filletName]
+        fillet = self.comps[filletName]
         intersection = fillet.intersection
 
         # find the indices of fillet points that lie on this intersection curve
@@ -583,16 +576,12 @@ class DVGeometryMulti:
 
         elif self.filletIntersection:
             for comp in compNames:
+                self.comps[comp].surfPtsName = ptName
+                self.comps[comp].surfPts = points
+                self.comps[comp].nPts = len(points)
+                self.comps[comp].surfPtsOrig = deepcopy(points)
                 if comp != "fillet":
                     self.comps[comp].DVGeo.addPointSet(points, ptName, **kwargs)
-                    self.comps[comp].surfPtsName = ptName
-                    self.comps[comp].surfPts = points
-                    self.comps[comp].surfPtsOrig = points
-                else:
-                    self.fillets[comp].surfPtsName = ptName
-                    self.fillets[comp].surfPts = points
-                    self.fillets[comp].surfPtsOrig = deepcopy(self.fillets[comp].surfPts)
-                    self.fillets[comp].nPts = len(points)
 
         # check if this pointset will get the IC treatment
         if applyIC:
@@ -634,7 +623,8 @@ class DVGeometryMulti:
 
         # loop over the components and set the values
         for comp in self.compNames:
-            self.comps[comp].DVGeo.setDesignVars(dvDict)
+            if self.comps[comp].DVGeo is not None:
+                self.comps[comp].DVGeo.setDesignVars(dvDict)
 
         # We need to give the updated coordinates to each of the
         # intersectComps (if we have any) so they can update the new intersection curve
@@ -660,10 +650,11 @@ class DVGeometryMulti:
         dvDict = {}
         # we need to loop over each DVGeo object and get the DVs
         for comp in self.compNames:
-            dvDictComp = self.comps[comp].DVGeo.getValues()
-            # we need to loop over these DVs
-            for k, v in dvDictComp.items():
-                dvDict[k] = v
+            if self.comps[comp].DVGeo is not None:
+                dvDictComp = self.comps[comp].DVGeo.getValues()
+                # we need to loop over these DVs
+                for k, v in dvDictComp.items():
+                    dvDict[k] = v
 
         return dvDict
 
@@ -685,15 +676,16 @@ class DVGeometryMulti:
 
         # we first need to update all points with their respective DVGeo objects
         for compName, comp in self.comps.items():
-            if ptSetName in comp.DVGeo.ptSetNames:  # TODO make this work with old Multi
-                ptsComp = comp.DVGeo.update(ptSetName)
+            if comp.DVGeo is not None:
+                if ptSetName in comp.DVGeo.ptSetNames:  # TODO make this work with old Multi
+                    ptsComp = comp.DVGeo.update(ptSetName)
 
-                # now save this info with the pointset mapping
-                if not self.filletIntersection:
-                    ptMap = self.points[ptSetName].compMap[compName]
-                    newPts[ptMap] = ptsComp
-                else:
-                    newPts = self.points[ptSetName].points
+                    # now save this info with the pointset mapping
+                    if not self.filletIntersection:
+                        ptMap = self.points[ptSetName].compMap[compName]
+                        newPts[ptMap] = ptsComp
+                    else:
+                        newPts = self.points[ptSetName].points
 
         # get the delta
         delta = newPts - self.points[ptSetName].points
@@ -757,11 +749,12 @@ class DVGeometryMulti:
         dvNames = []
         # create a list of DVs from each comp
         for comp in self.compNames:
-            # first get the list of DVs from this component
-            varNames = self.comps[comp].DVGeo.getVarNames()
+            if self.comps[comp].DVGeo is not None:
+                # first get the list of DVs from this component
+                varNames = self.comps[comp].DVGeo.getVarNames()
 
-            # add the component DVs to the full list
-            dvNames.extend(varNames)
+                # add the component DVs to the full list
+                dvNames.extend(varNames)
 
         return dvNames
 
@@ -948,7 +941,7 @@ class DVGeometryMulti:
 
         # We can simply loop over all DV objects and call their respective addVariablesPyOpt function
         for comp in comps:
-            if not comp.isFillet:
+            if comp.DVGeo is not None:
                 self.comps[comp].DVGeo.addVariablesPyOpt(
                     optProb,
                     globalVars=globalVars,
@@ -977,17 +970,11 @@ class DVGeometryMulti:
         return DVGeo.FFD.topo.lIndex[iVol].copy()
 
     def writeCompSurf(self, compName, fileName):
-        if compName in self.compNames:
-            comp = self.comps[compName]
-        elif compName in self.filletNames:
-            comp = self.fillets[compName]
+        comp = self.comps[compName]
         comp.writeSurf(fileName)
 
     def writeCompCurve(self, compName, curveName, fileName):
-        if compName in self.compNames:
-            comp = self.comps[compName]
-        elif compName in self.filletNames:
-            comp = self.fillets[compName]
+        comp = self.comps[compName]
         comp.writeCurve(curveName, fileName)
 
     def writePointSet(self, name, fileName, solutionTime=None):
@@ -3564,7 +3551,7 @@ class FilletIntersection(Intersection):
     def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype, project=True):
         super().__init__(compA, compB, distTol, DVGeo, dtype, project)
 
-        self.filletComp = DVGeo.fillets[filletComp]
+        self.filletComp = DVGeo.comps[filletComp]
         self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
 
     def findIntersection(self, surf, curve):  # TODO fix this function
