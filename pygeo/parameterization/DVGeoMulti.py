@@ -3602,6 +3602,10 @@ class FilletIntersection(Intersection):
         # don't update the delta because we aren't remeshing
         return delta
 
+    def sens(self, dIdPt, ptSetName, comm):
+        compSens = {}
+        return compSens
+
     def project(self, ptSetName, newPts):
         # redo the delta because this is how the fillet was initially set up
         # TODO maybe stop doing this
@@ -3632,12 +3636,12 @@ class FilletIntersection(Intersection):
     def project_b(self, ptSetName, dIdpt, comm):
         # number of functions we have
         N = dIdpt.shape[0]
-    
+
         # Initialize dictionaries to accumulate triangulated mesh sensitivities
         compSens_local = {}
         compSensA = {}
         compSensB = {}
-    
+
         curvePtCoordsA = self.compA.curvePts
         curvePtCoordsB = self.compB.curvePts
 
@@ -3669,7 +3673,6 @@ class FilletIntersection(Intersection):
 
         return compSens
 
-        
     def _getIntersectionSeam(self, comm):
         pass
 
