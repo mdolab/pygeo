@@ -372,8 +372,8 @@ class DVGeometryMulti:
 
         # find the indices of fillet points that lie on this intersection curve
         # we need to know this to handle duplicates in derivative calcs later
-        filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
-        fillet.intersectInd.update({compName: filletIntInd})
+        # filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
+        # fillet.intersectInd.update({compName: filletIntInd})
 
         # add this curve to the component's DVGeo as a pointset so it gets deformed in the FFD
         ptSetName = f"{compName}_curve"
@@ -473,7 +473,21 @@ class DVGeometryMulti:
             self.points[ptName].compMap[comp] = []
             self.points[ptName].compMapFlat[comp] = []
 
-        if not self.filletIntersection:
+        # is this intersection group a fillet or normal
+        if self.filletIntersection:
+            # is this pointset being added to a fillet component or a controlled component
+            if familyName == "fillet":
+                for IC in self.intersectComps:
+                    # find the points on the fillet that match each intersection
+                    compAInterPts, IC.filletComp.compAInterInd = IC.findIntersection(points, IC.compA.curvePts)
+                    compBInterPts, IC.filletComp.compBInterInd = IC.findIntersection(points, IC.compB.curvePts)
+
+                    # add those intersection points to each DVGeo so they get deformed with the FFD
+                    IC.compA.DVGeo.addPointSet(compAInterPts, f"{IC.compA.name}_fillet_intersection")
+                    IC.compB.DVGeo.addPointSet(compBInterPts, f"{IC.compB.name}_fillet_intersection")
+
+        # non-fillet intersections require more checking
+        else:
             # we now need to create the component mapping information
             for i in range(self.points[ptName].nPts):
                 # initial flags
@@ -580,6 +594,7 @@ class DVGeometryMulti:
                 self.comps[comp].surfPts = points
                 self.comps[comp].nPts = len(points)
                 self.comps[comp].surfPtsOrig = deepcopy(points)
+
                 if comp != "fillet":
                     self.comps[comp].DVGeo.addPointSet(points, ptName, **kwargs)
 
@@ -884,6 +899,7 @@ class DVGeometryMulti:
                 dvOffset += nDVComp
 
         # finally, we can add the contributions from intersections
+        # TODO is this how the fillet contributions will get in? they aren't included in the DVGeo dIdxComp
         for compSens in compSensList:
             # loop over the items of compSens, which are guaranteed to be in dIdxDict
             for k, v in compSens.items():
@@ -1092,8 +1108,6 @@ class DVGeometryMulti:
         for name in self.compNames:
             comp = self.comps[name]
             # fillet pointset needs points on boundary removed
-            if comp.fillet:
-                removeIntersectionPts()
 
             # number of design variables
             nDVComp = comp.DVGeo.getNDV()
@@ -3587,13 +3601,10 @@ class FilletIntersection(Intersection):
     def update(self, ptSetName, delta):
         # update the pointset unless we haven't figured out the intersections yet
         # TODO change to a firstUpdate flag or something
-        if len(self.compA.curvePts) > 0:
-            pass
 
-        else:
-            n = self.filletComp.surfPtsOrig.shape[0]
-            indices = np.linspace(0, n - 1, n, dtype=int)
-            self.indices = indices
+        n = self.filletComp.surfPtsOrig.shape[0]
+        indices = np.linspace(0, n - 1, n, dtype=int)
+        self.indices = indices
 
         # don't update the delta because we aren't remeshing
         return delta
