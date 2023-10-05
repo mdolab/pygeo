@@ -2898,7 +2898,7 @@ class DVGeometry(BaseDVGeometry):
             )
 
     def writeTecplot(self, fileName, solutionTime=None):
-        """Write the (deformed) current state of the FFD's to a tecplot file,
+        """Write the (deformed) current state of the FFDs to a tecplot file,
         including the children
 
         Parameters

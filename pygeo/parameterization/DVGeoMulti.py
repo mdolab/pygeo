@@ -365,22 +365,23 @@ class DVGeometryMulti:
         curvePts = self._readDATFile(curveFiles, surf=False)
 
         # figure out which component and fillet we're dealing with
-        # and which intersection object they belong to
         comp = self.comps[compName]
-        fillet = self.comps[filletName]
-        intersection = fillet.intersection
-
-        # find the indices of fillet points that lie on this intersection curve
-        # we need to know this to handle duplicates in derivative calcs later
-        # filletIntInd = intersection.findIntersection(fillet.surfPts, curvePts)
-        # fillet.intersectInd.update({compName: filletIntInd})
 
         # add this curve to the component's DVGeo as a pointset so it gets deformed in the FFD
         ptSetName = f"{compName}_curve"
         comp.curvePtsName = ptSetName
         comp.curvePts = curvePts
         comp.curvePtsOrig = deepcopy(curvePts)
-        comp.DVGeo.addPointSet(curvePts, ptSetName)
+
+        # add the curve pointset to the component's DVGeo
+        comp.DVGeo.addPointSet(curvePts, ptSetName, self.comm)  # TODO is comm right here
+
+        # add the curve pointset to DVGeoMulti
+        self.points[ptSetName] = PointSet(curvePts, comm=self.comm, comp=compName)
+
+        # add the curve pointset to the intersection
+        for IC in self.intersectComps:
+            IC.addPointSet(curvePts, ptSetName, [], self.comm)
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -466,7 +467,11 @@ class DVGeometryMulti:
                 compNames = [familyName]
 
         # create the pointset class
-        self.points[ptName] = PointSet(points, comm=comm)
+        if self.filletIntersection:
+            comp = compNames[0]
+        else:
+            comp = None
+        self.points[ptName] = PointSet(points, comm=comm, comp=comp)
 
         for comp in self.compNames:
             # initialize the list for this component
@@ -479,12 +484,31 @@ class DVGeometryMulti:
             if familyName == "fillet":
                 for IC in self.intersectComps:
                     # find the points on the fillet that match each intersection
-                    compAInterPts, IC.filletComp.compAInterInd = IC.findIntersection(points, IC.compA.curvePts)
-                    compBInterPts, IC.filletComp.compBInterInd = IC.findIntersection(points, IC.compB.curvePts)
+                    compAInterPts, compAInterInd = IC.findIntersection(points, IC.compA.curvePts)
+                    compBInterPts, compBInterInd = IC.findIntersection(points, IC.compB.curvePts)
 
                     # add those intersection points to each DVGeo so they get deformed with the FFD
-                    IC.compA.DVGeo.addPointSet(compAInterPts, f"{IC.compA.name}_fillet_intersection")
-                    IC.compB.DVGeo.addPointSet(compBInterPts, f"{IC.compB.name}_fillet_intersection")
+                    compAPtsName = f"{IC.compA.name}_fillet_intersection"
+                    compBPtsName = f"{IC.compB.name}_fillet_intersection"
+                    IC.compA.DVGeo.addPointSet(compAInterPts, compAPtsName)
+                    IC.compB.DVGeo.addPointSet(compBInterPts, compBPtsName)
+
+                    # add intersection points to DVGeoMulti too
+                    self.points[compAPtsName] = PointSet(compAInterPts, comm=comm, comp=IC.compA.name)
+                    self.points[compBPtsName] = PointSet(compBInterPts, comm=comm, comp=IC.compB.name)
+
+                    # save the indices in the fillet component
+                    IC.filletComp.compAInterInd = compAInterInd
+                    IC.filletComp.compBInterInd = compBInterInd
+
+                    # save the names of the fillet intersection pointsets to find them later
+                    IC.filletComp.compAPtsName = compAPtsName
+                    IC.filletComp.compBPtsName = compBPtsName
+
+                    # add the points to the intersection object
+                    for IC in self.intersectComps:
+                        IC.addPointSet(compAInterPts, compAPtsName, [], comm)
+                        IC.addPointSet(compBInterPts, compBPtsName, [], comm)
 
         # non-fillet intersections require more checking
         else:
@@ -709,7 +733,7 @@ class DVGeometryMulti:
         for IC in self.intersectComps:
             # check if this IC is active for this ptSet
             if ptSetName in IC.points:
-                delta = IC.update(ptSetName, delta)
+                delta = IC.update(ptSetName, delta, self.comps[self.points[ptSetName].comp])
 
         # now we are ready to take the delta which may be modified by the intersections
         newPts = self.points[ptSetName].points + delta
@@ -816,8 +840,10 @@ class DVGeometryMulti:
 
         """
 
-        # Compute the total Jacobian for this point set
-        self._computeTotalJacobian(ptSetName)
+        # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
+        comp = self.points[ptSetName].comp
+        if comp is None or not comp.isFillet:
+            self._computeTotalJacobian(ptSetName)
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -840,7 +866,7 @@ class DVGeometryMulti:
                 # we pass in dIdpt and the intersection object, along with pointset information
                 # the intersection object adjusts the entries corresponding to projected points
                 # and passes back dIdpt in place.
-                compSens = IC.project_b(ptSetName, dIdpt, comm)
+                compSens = IC.project_b(ptSetName, dIdpt, comm, comp)
 
                 # append this to the dictionary list...
                 compSensList.append(compSens)
@@ -989,9 +1015,9 @@ class DVGeometryMulti:
         comp = self.comps[compName]
         comp.writeSurf(fileName)
 
-    def writeCompCurve(self, compName, curveName, fileName):
+    def writeCompCurve(self, compName, fileName):
         comp = self.comps[compName]
-        comp.writeCurve(curveName, fileName)
+        comp.writeCurve(fileName)
 
     def writePointSet(self, name, fileName, solutionTime=None):
         """
@@ -1159,9 +1185,9 @@ class component:
 
 
 class Comp:
-    def __init__(self, name, fillet, surfPts, DVGeo, xMin, xMax, comm, surfPtsName=None, tol=1e-3):
+    def __init__(self, name, isFillet, surfPts, DVGeo, xMin, xMax, comm, surfPtsName=None, tol=1e-3):
         self.name = name
-        self.fillet = fillet
+        self.isFillet = isFillet
         self.DVGeo = DVGeo
         self.surfPts = surfPts
         self.surfPtsOrig = deepcopy(surfPts)
@@ -1175,7 +1201,7 @@ class Comp:
         self.intersectInd = {}
 
     def updateSurfPts(self):
-        if self.fillet:
+        if self.isFillet:
             print("no")
         else:
             self.surfPts = self.DVGeo.update(self.surfPtsName)
@@ -1187,24 +1213,42 @@ class Comp:
         writeTecplot1D(f, self.name, self.surfPts)
         closeTecplot(f)
 
-    def writeCurve(self, inter, fileName):
+    def writeCurve(self, fileName):
         fileName = f"{fileName}_{self.name}_curve.dat"
         f = openTecplot(fileName, 3)
 
-        if self.fillet:
-            writeTecplot1D(f, self.name, self.surfPts[self.intersectInd[inter]])
+        if self.isFillet:
+            writeTecplot1D(f, self.name, self.surfPts[self.compAInterInd])
+            writeTecplot1D(f, self.name, self.surfPts[self.compBInterInd])
         else:
             writeTecplot1D(f, self.name, self.curvePts)
 
         closeTecplot(f)
 
+    def updateFilletPts(self, newInterPts, ptSetName):
+        newPts = deepcopy(self.surfPts)
+        if ptSetName == self.compAPtsName:
+            newPts[self.compAInterInd] = newInterPts  # TODO update compB here too
+        elif ptSetName == self.compBPtsName:
+            newPts[self.compAInterInd] = newInterPts
+        else:
+            print("no")
+
+        # update points stored in fillet object
+        self.surfPts = newPts
+        # update points stored in intersection object
+        self.intersection.points[self.surfPtsName] = newPts
+        # update DVGeoMulti pointset
+        self.intersection.DVGeo.points[ptSetName].points = newPts
+
 
 class PointSet:
-    def __init__(self, points, comm):
+    def __init__(self, points, comm, comp=None):
         self.points = points
         self.nPts = len(self.points)
         self.compMap = OrderedDict()
         self.compMapFlat = OrderedDict()
+        self.comp = comp
         self.comm = comm
 
 
@@ -1775,7 +1819,7 @@ class CompIntersection(Intersection):
                     # also save the total number for convenience
                     self.nCurvePts[ptSetName][curveName] = nPtsTotal
 
-    def update(self, ptSetName, delta):
+    def update(self, ptSetName, delta, comp=None):
         """Update the delta in ptSetName with our correction. The delta need
         to be supplied as we will be changing it and returning them
         """
@@ -3567,6 +3611,7 @@ class FilletIntersection(Intersection):
 
         self.filletComp = DVGeo.comps[filletComp]
         self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
+        self.firstUpdate = True
 
     def findIntersection(self, surf, curve):  # TODO fix this function
         nPtSurf = surf.shape[0]
@@ -3598,13 +3643,23 @@ class FilletIntersection(Intersection):
         # Save the affected indices and the factor in the little dictionary
         self.points[ptSetName] = [pts.copy(), [], [], comm]
 
-    def update(self, ptSetName, delta):
+    def update(self, ptSetName, delta, comp=None):
         # update the pointset unless we haven't figured out the intersections yet
         # TODO change to a firstUpdate flag or something
 
-        n = self.filletComp.surfPtsOrig.shape[0]
-        indices = np.linspace(0, n - 1, n, dtype=int)
-        self.indices = indices
+        if self.firstUpdate:
+            n = self.filletComp.surfPtsOrig.shape[0]
+            indices = np.linspace(0, n - 1, n, dtype=int)
+            self.indices = indices
+            self.firstUpdate = False
+        else:
+            # fillet points on boundaries need updated based on the points embedded in the neighbor FFDs
+            if comp is not None:
+                if not comp.isFillet:
+                    fillet = self.filletComp
+                    if ptSetName is fillet.compAPtsName or ptSetName is fillet.compBPtsName:
+                        points = self.points[ptSetName].points
+                        fillet.updateFilletPts(points, ptSetName)
 
         # don't update the delta because we aren't remeshing
         return delta
@@ -3640,7 +3695,13 @@ class FilletIntersection(Intersection):
 
             self.filletComp.surfPts = ptsNew
 
-    def project_b(self, ptSetName, dIdpt, comm=None):
+    def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
+        points = self.points[ptSetName][0]
+
+        # don't accumulate derivatives for fillet points on intersections
+        if comp.isFillet:
+            dIdpt = np.delete(dIdpt, [comp.compAInterInd, comp.compBInterInd])
+
         compSens = {}
 
         curvePtCoordsA = self.compA.curvePts
@@ -3653,7 +3714,7 @@ class FilletIntersection(Intersection):
         # deltaA_b is the seed for the points projected to curves
         deltaA_b_local = self._warpSurfPts_b(
             dIdpt,
-            self.points[ptSetName][0],
+            points,
             self.surfIdxA[ptSetName],
             curvePtCoordsA,
         )
@@ -3661,7 +3722,7 @@ class FilletIntersection(Intersection):
         # do the same for comp B
         deltaB_b_local = self._warpSurfPts_b(
             dIdpt,
-            self.points[ptSetName][0],
+            points,
             self.surfIdxB[ptSetName],
             curvePtCoordsB,
         )
