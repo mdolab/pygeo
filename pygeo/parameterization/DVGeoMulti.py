@@ -726,6 +726,10 @@ class DVGeometryMulti:
                     else:
                         newPts = self.points[ptSetName].points
 
+        comp = self.comps[self.points[ptSetName].comp]
+        if comp.isFillet:
+            newPts = comp.surfPts
+
         # get the delta
         delta = newPts - self.points[ptSetName].points
 
@@ -733,7 +737,7 @@ class DVGeometryMulti:
         for IC in self.intersectComps:
             # check if this IC is active for this ptSet
             if ptSetName in IC.points:
-                delta = IC.update(ptSetName, delta, self.comps[self.points[ptSetName].comp])
+                delta = IC.update(ptSetName, delta, comp)
 
         # now we are ready to take the delta which may be modified by the intersections
         newPts = self.points[ptSetName].points + delta
@@ -771,8 +775,10 @@ class DVGeometryMulti:
         """Return the number of DVs."""
         # Loop over components and sum the number of DVs
         nDV = 0
-        for comp in self.compNames:
-            nDV += self.comps[comp].DVGeo.getNDV()
+        for name in self.compNames:
+            comp = self.comps[name]
+            if comp.DVGeo is not None:
+                nDV += comp.DVGeo.getNDV()
         return nDV
 
     def getVarNames(self, pyOptSparse=False):
@@ -983,7 +989,7 @@ class DVGeometryMulti:
 
         # We can simply loop over all DV objects and call their respective addVariablesPyOpt function
         for comp in comps:
-            if comp.DVGeo is not None:
+            if self.comps[comp].DVGeo is not None:
                 self.comps[comp].DVGeo.addVariablesPyOpt(
                     optProb,
                     globalVars=globalVars,
@@ -3694,6 +3700,10 @@ class FilletIntersection(Intersection):
             self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta)
 
             self.filletComp.surfPts = ptsNew
+
+            # write curve coords from file to see which proc has which (all should have complete set)
+            np.savetxt(f"compACurve{self.DVGeo.comm.rank}.txt", self.compA.curvePts)
+            np.savetxt(f"compBCurve{self.DVGeo.comm.rank}.txt", self.compB.curvePts)
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = self.points[ptSetName][0]
