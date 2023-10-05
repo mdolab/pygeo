@@ -1228,9 +1228,9 @@ class Comp:
     def updateFilletPts(self, newInterPts, ptSetName):
         newPts = deepcopy(self.surfPts)
         if ptSetName == self.compAPtsName:
-            newPts[self.compAInterInd] = newInterPts  # TODO update compB here too
-        elif ptSetName == self.compBPtsName:
             newPts[self.compAInterInd] = newInterPts
+        elif ptSetName == self.compBPtsName:
+            newPts[self.compBInterInd] = newInterPts
         else:
             print("no")
 
