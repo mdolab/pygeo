@@ -381,7 +381,12 @@ class DVGeometryMulti:
 
         # add the curve pointset to the intersection
         for IC in self.intersectComps:
+            # IC.nCurvePts[ptSetName] = {}
             IC.addPointSet(curvePts, ptSetName, [], self.comm)
+            # IC.nCurvePts[ptSetName][curveName] = curvePts.shape[0]
+
+        print(f"awrite {compName} curve from proc {self.comm.rank}")
+        np.savetxt(f"comp{compName}_{self.comm.rank}.txt", curvePts)
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -484,8 +489,16 @@ class DVGeometryMulti:
             if familyName == "fillet":
                 for IC in self.intersectComps:
                     # find the points on the fillet that match each intersection
-                    compAInterPts, compAInterInd = IC.findIntersection(points, IC.compA.curvePts)
-                    compBInterPts, compBInterInd = IC.findIntersection(points, IC.compB.curvePts)
+                    compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
+                    compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
+
+                    compAInterPts = self.comm.allreduce(compAInterPtsLocal, op=MPI.SUM)
+                    compBInterPts = self.comm.allreduce(compBInterPtsLocal, op=MPI.SUM)
+                    compAInterInd = self.comm.allreduce(compAInterIndLocal, op=MPI.SUM)
+                    compBInterInd = self.comm.allreduce(compBInterIndLocal, op=MPI.SUM)
+
+                    print(f"rank {self.comm.rank} compAInterInd {compAInterInd}")
+                    print(f"rank {self.comm.rank} compBInterInd {compBInterInd}")
 
                     # add those intersection points to each DVGeo so they get deformed with the FFD
                     compAPtsName = f"{IC.compA.name}_fillet_intersection"
@@ -847,7 +860,7 @@ class DVGeometryMulti:
         """
 
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
-        comp = self.points[ptSetName].comp
+        comp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if comp is None or not comp.isFillet:
             self._computeTotalJacobian(ptSetName)
 
@@ -1102,9 +1115,7 @@ class DVGeometryMulti:
             surfFile = open(filename, "r")
             nElem = int(surfFile.readline())
             surfPts = np.loadtxt(filename, skiprows=1, max_rows=nElem)
-
             points = surfPts[surfPts[:, 0].argsort()]
-
         else:
             curves = []
             for f in filename:
@@ -1137,25 +1148,31 @@ class DVGeometryMulti:
 
         dvOffset = 0
         # we need to call computeTotalJacobian from all comps and get the jacobians for this pointset
-        for name in self.compNames:
-            comp = self.comps[name]
-            # fillet pointset needs points on boundary removed
 
-            # number of design variables
-            nDVComp = comp.DVGeo.getNDV()
-
-            # call the function to compute the total jacobian
+        if self.filletIntersection:
+            comp = self.comps[self.points[ptSetName].comp]
             comp.DVGeo.computeTotalJacobian(ptSetName)
 
-            if comp.DVGeo.JT[ptSetName] is not None:
-                # Get the component Jacobian
-                compJ = comp.DVGeo.JT[ptSetName].T
+        else:
+            for name in self.compNames:
+                comp = self.comps[name]
+                # fillet pointset needs points on boundary removed
 
-                # Set the block of the full Jacobian associated with this component
-                jac[ptSet.compMapFlat[name], dvOffset : dvOffset + nDVComp] = compJ
+                # number of design variables
+                nDVComp = comp.DVGeo.getNDV()
 
-            # increment the offset
-            dvOffset += nDVComp
+                # call the function to compute the total jacobian
+                comp.DVGeo.computeTotalJacobian(ptSetName)
+
+                if comp.DVGeo.JT[ptSetName] is not None:
+                    # Get the component Jacobian
+                    compJ = comp.DVGeo.JT[ptSetName].T
+
+                    # Set the block of the full Jacobian associated with this component
+                    jac[ptSet.compMapFlat[name], dvOffset : dvOffset + nDVComp] = compJ
+
+                # increment the offset
+                dvOffset += nDVComp
 
         # Convert to CSR format because this is better for arithmetic
         jac = sparse.csr_matrix(jac)
@@ -3618,6 +3635,8 @@ class FilletIntersection(Intersection):
         self.filletComp = DVGeo.comps[filletComp]
         self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
         self.firstUpdate = True
+        # dict to keep track of the total number of points on each curve
+        # self.nCurvePts = {}
 
     def findIntersection(self, surf, curve):  # TODO fix this function
         nPtSurf = surf.shape[0]
@@ -3702,6 +3721,7 @@ class FilletIntersection(Intersection):
             self.filletComp.surfPts = ptsNew
 
             # write curve coords from file to see which proc has which (all should have complete set)
+            print(f"write curves from proc {self.DVGeo.comm.rank}")
             np.savetxt(f"compACurve{self.DVGeo.comm.rank}.txt", self.compA.curvePts)
             np.savetxt(f"compBCurve{self.DVGeo.comm.rank}.txt", self.compB.curvePts)
 
@@ -3710,9 +3730,14 @@ class FilletIntersection(Intersection):
 
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
-            dIdpt = np.delete(dIdpt, [comp.compAInterInd, comp.compBInterInd])
+            intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
+            dIdpt[intInd] = 0
 
         compSens = {}
+
+        # skip calculating warping derivatives for curve points
+        if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
+            return compSens
 
         curvePtCoordsA = self.compA.curvePts
         curvePtCoordsB = self.compB.curvePts
@@ -3720,12 +3745,14 @@ class FilletIntersection(Intersection):
         # get the comm for this point set
         ptSetComm = self.points[ptSetName][3]
 
+        n = points.shape[0]
+        indices = np.linspace(0, n - 1, n, dtype=int)
         # call the bwd warping routine
         # deltaA_b is the seed for the points projected to curves
         deltaA_b_local = self._warpSurfPts_b(
             dIdpt,
             points,
-            self.surfIdxA[ptSetName],
+            indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
             curvePtCoordsA,
         )
 
@@ -3733,7 +3760,7 @@ class FilletIntersection(Intersection):
         deltaB_b_local = self._warpSurfPts_b(
             dIdpt,
             points,
-            self.surfIdxB[ptSetName],
+            indices,
             curvePtCoordsB,
         )
 
@@ -3748,8 +3775,8 @@ class FilletIntersection(Intersection):
 
         # zero out the seeds for the intersection on the fillet
         # these points will be present in the fillet pointset and the components
-        deltaA_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
-        deltaB_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
+        # deltaA_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
+        # deltaB_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
 
         return compSens
 
