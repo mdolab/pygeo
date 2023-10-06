@@ -898,11 +898,12 @@ class DVGeometryMulti:
         # we need to go through all ICs bec even though some procs might not have points on the intersection,
         # communication is easier and we can reduce compSens as we compute them
         # fillet intersections do not do curve-based warping
-        for IC in self.intersectComps and not self.filletIntersection:
-            if ptSetName in IC.points:
-                compSens = IC.sens(dIdpt, ptSetName, comm)
-                # save the sensitivities from the intersection stuff
-                compSensList.append(compSens)
+        for IC in self.intersectComps:
+            if not self.filletIntersection:
+                if ptSetName in IC.points:
+                    compSens = IC.sens(dIdpt, ptSetName, comm)
+                    # save the sensitivities from the intersection stuff
+                    compSensList.append(compSens)
 
         if self.debug:
             print(f"[{self.comm.rank}] finished IC.sens")
@@ -911,7 +912,11 @@ class DVGeometryMulti:
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         # jacobian for the pointset
-        jac = self.points[ptSetName].jac
+        if comp.isFillet:
+            n = self.points[ptSetName].points.shape[0]
+            jac = np.zeros((n * 3, n * 3))
+        else:
+            jac = self.points[ptSetName].jac
 
         # this is the mat-vec product for the remaining seeds.
         # this only contains the effects of the FFD motion,
@@ -928,9 +933,16 @@ class DVGeometryMulti:
         # use respective DVGeo's convert to dict functionality
         dIdxDict = OrderedDict()
         dvOffset = 0
-        for comp in self.compNames:
-            DVGeo = self.comps[comp].DVGeo
-            nDVComp = DVGeo.getNDV()
+        for comp in self.comps.values():
+            if comp.isFillet:
+                nDVComp = 0
+                for compDVGeo in self.DVGeoDict.values():
+                    # fillet is still stored in dict with None DVGeo
+                    if compDVGeo is not None:
+                        nDVComp += compDVGeo.getNDV()
+            else:
+                DVGeo = comp.DVGeo
+                nDVComp = DVGeo.getNDV()
 
             # we only do this if this component has at least one DV
             if nDVComp > 0:
@@ -3730,8 +3742,9 @@ class FilletIntersection(Intersection):
 
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
-            intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
-            dIdpt[intInd] = 0
+            # intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
+            comp.compAInterInd.extend(comp.compBInterInd)
+            dIdpt[comp.compAInterInd, :, :] = 0  # TODO indices
 
         compSens = {}
 
