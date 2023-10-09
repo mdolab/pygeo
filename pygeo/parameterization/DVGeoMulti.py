@@ -936,10 +936,6 @@ class DVGeometryMulti:
         for comp in self.comps.values():
             if comp.isFillet:
                 nDVComp = 0
-                for compDVGeo in self.DVGeoDict.values():
-                    # fillet is still stored in dict with None DVGeo
-                    if compDVGeo is not None:
-                        nDVComp += compDVGeo.getNDV()
             else:
                 DVGeo = comp.DVGeo
                 nDVComp = DVGeo.getNDV()
