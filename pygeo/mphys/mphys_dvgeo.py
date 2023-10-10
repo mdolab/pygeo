@@ -136,8 +136,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             )
 
         # Add child FFD
-        child_ffd = DVGeometry(ffd_file, child=True)
-        DVGeo.addChild(child_ffd, childName=childName)
+        child_ffd = DVGeometry(ffd_file, child=True, name=childName)
+        DVGeo.addChild(child_ffd)
 
         # Embed points from parent if not already done
         for pointSet in DVGeo.points:

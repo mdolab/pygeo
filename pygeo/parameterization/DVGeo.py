@@ -845,7 +845,7 @@ class DVGeometry(BaseDVGeometry):
         self.FFD.calcdPtdCoef(ptName)
         self.updated[ptName] = False
 
-    def addChild(self, childDVGeo, childName=None):
+    def addChild(self, childDVGeo):
         """Embed a child FFD into this object.
 
         An FFD child is a 'sub' FFD that is fully contained within
@@ -874,8 +874,10 @@ class DVGeometry(BaseDVGeometry):
         childDVGeo.iChild = iChild
 
         # check if a custom name is provided, if not, we will use the old naming scheme based on the iChild index
-        if childName is None:
+        if childDVGeo.name is None:
             childName = f"child{iChild:d}"
+        else:
+            childName = childDVGeo.name
 
         # check if this child name has already been used
         if childName in self.children:
