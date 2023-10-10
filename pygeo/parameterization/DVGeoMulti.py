@@ -885,7 +885,11 @@ class DVGeometryMulti:
                 # we pass in dIdpt and the intersection object, along with pointset information
                 # the intersection object adjusts the entries corresponding to projected points
                 # and passes back dIdpt in place.
+                # print(f"before sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
+                # np.savetxt("didpt1.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
                 compSens = IC.project_b(ptSetName, dIdpt, comm, comp)
+                # print(f"after sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
+                # np.savetxt("didpt2.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
 
                 # append this to the dictionary list...
                 compSensList.append(compSens)
@@ -914,7 +918,7 @@ class DVGeometryMulti:
         # jacobian for the pointset
         if comp.isFillet:
             n = self.points[ptSetName].points.shape[0]
-            jac = np.zeros((n * 3, n * 3))
+            jac = np.ones((n * 3, self.getNDV()))  # TODO
         else:
             jac = self.points[ptSetName].jac
 
@@ -3735,6 +3739,7 @@ class FilletIntersection(Intersection):
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = self.points[ptSetName][0]
+        N = dIdpt.shape[0]
 
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
@@ -3758,34 +3763,35 @@ class FilletIntersection(Intersection):
         indices = np.linspace(0, n - 1, n, dtype=int)
         # call the bwd warping routine
         # deltaA_b is the seed for the points projected to curves
-        deltaA_b_local = self._warpSurfPts_b(
+
+        curvePtCoords = np.vstack(
+            (
+                curvePtCoordsA,
+                curvePtCoordsB,
+            )
+        )
+        print(f"before sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
+        np.savetxt("didpt1.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
+        dIdpt = self._warpSurfPts_b(
             dIdpt,
             points,
             indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
-            curvePtCoordsA,
+            curvePtCoords,
         )
+        print(f"after sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
+        np.savetxt("didpt2.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
 
-        # do the same for comp B
-        deltaB_b_local = self._warpSurfPts_b(
-            dIdpt,
-            points,
-            indices,
-            curvePtCoordsB,
-        )
+        # # reduce seeds for both
+        # if ptSetComm:
+        #     delta_b = ptSetComm.allreduce(delta_b_local, op=MPI.SUM)
+        # # no comm, local is global
+        # else:
+        #     delta_b = delta_b_local
 
-        # reduce seeds for both
-        if ptSetComm:
-            deltaA_b = ptSetComm.allreduce(deltaA_b_local, op=MPI.SUM)
-            deltaB_b = ptSetComm.allreduce(deltaB_b_local, op=MPI.SUM)
-        # no comm, local is global
-        else:
-            deltaA_b = deltaA_b_local
-            deltaB_b = deltaB_b_local
+        # deltaBar = delta_b[:, :n, :]
 
-        # zero out the seeds for the intersection on the fillet
-        # these points will be present in the fillet pointset and the components
-        # deltaA_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
-        # deltaB_b[:, self.nCurvePts[ptSetName]["intersection"] :] = 0
+        # for k in range(N):
+        #     dIdpt[k, :, :] = deltaBar[k]
 
         return compSens
 
