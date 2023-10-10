@@ -1472,14 +1472,14 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test shape function DVs")
 
-            DVGeo, DVGeoChild1 = commonUtils.setupDVGeo(self.base_path)
-            _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path)
+            DVGeo, DVGeoChild1 = commonUtils.setupDVGeo(self.base_path, childName="child1")
+            _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path, childName="child2")
 
             # add design variables
             DVGeoChild1.addGlobalDV(dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
             DVGeoChild2.addGlobalDV(dvName="span2", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
-            DVGeo.addChild(DVGeoChild1, "child1")
-            DVGeo.addChild(DVGeoChild2, "child2")
+            DVGeo.addChild(DVGeoChild1)
+            DVGeo.addChild(DVGeoChild2)
 
             points = np.zeros([2, 3])
             points[0, :] = [0.25, 0, 0]
