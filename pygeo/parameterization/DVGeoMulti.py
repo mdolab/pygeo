@@ -737,7 +737,7 @@ class DVGeometryMulti:
                         ptMap = self.points[ptSetName].compMap[compName]
                         newPts[ptMap] = ptsComp
                     else:
-                        newPts = self.points[ptSetName].points
+                        newPts = ptsComp
 
         comp = self.comps[self.points[ptSetName].comp]
         if comp.isFillet:
@@ -763,6 +763,8 @@ class DVGeometryMulti:
 
         # set the pointset up to date
         self.updated[ptSetName] = True
+
+        self.points[ptSetName].points = newPts
 
         return newPts
 
@@ -3729,9 +3731,9 @@ class FilletIntersection(Intersection):
             self.filletComp.surfPts = ptsNew
 
             # write curve coords from file to see which proc has which (all should have complete set)
-            print(f"write curves from proc {self.DVGeo.comm.rank}")
-            np.savetxt(f"compACurve{self.DVGeo.comm.rank}.txt", self.compA.curvePts)
-            np.savetxt(f"compBCurve{self.DVGeo.comm.rank}.txt", self.compB.curvePts)
+            # print(f"write curves from proc {self.DVGeo.comm.rank}")
+            # np.savetxt(f"compACurve{self.DVGeo.comm.rank}.txt", self.compA.curvePts)
+            # np.savetxt(f"compBCurve{self.DVGeo.comm.rank}.txt", self.compB.curvePts)
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = self.points[ptSetName][0]
