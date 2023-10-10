@@ -489,20 +489,31 @@ class DVGeometryMulti:
             if familyName == "fillet":
                 for IC in self.intersectComps:
                     # find the points on the fillet that match each intersection
-                    compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
-                    compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
+                    compAInterPts, compAInterInd = IC.findIntersection(points, IC.compA.curvePts)
+                    compBInterPts, compBInterInd = IC.findIntersection(points, IC.compB.curvePts)
+                    # compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
+                    # compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
 
-                    compAInterPts = self.comm.allreduce(compAInterPtsLocal, op=MPI.SUM)
-                    compBInterPts = self.comm.allreduce(compBInterPtsLocal, op=MPI.SUM)
-                    compAInterInd = self.comm.allreduce(compAInterIndLocal, op=MPI.SUM)
-                    compBInterInd = self.comm.allreduce(compBInterIndLocal, op=MPI.SUM)
+                    # print(f"\nrank {self.comm.rank} local compAInterInd {compAInterIndLocal}")
+                    # compAInterNPts, compAInterSizes, compAInterPts, compAInterInd = IC._commCurveProj(
+                    #     compAInterPtsLocal, compAInterIndLocal, self.comm
+                    # )
+                    # compBInterNPts, compBInterSizes, compBInterPts, compBInterInd = IC._commCurveProj(
+                    #     compBInterPtsLocal, compBInterIndLocal, self.comm
+                    # )
 
-                    print(f"rank {self.comm.rank} compAInterInd {compAInterInd}")
-                    print(f"rank {self.comm.rank} compBInterInd {compBInterInd}")
+                    # print(f"\nrank {self.comm.rank} local compBInterInd {compBInterIndLocal}")
+                    # print(f"\nrank {self.comm.rank} total compBInterInd {compAInterInd}")
+                    # print(f"\nrank {self.comm.rank} total compBInterInd {compBInterPts}")
+                    # exit()
 
                     # add those intersection points to each DVGeo so they get deformed with the FFD
                     compAPtsName = f"{IC.compA.name}_fillet_intersection"
                     compBPtsName = f"{IC.compB.name}_fillet_intersection"
+
+                    # print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
+                    # print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
+
                     IC.compA.DVGeo.addPointSet(compAInterPts, compAPtsName)
                     IC.compB.DVGeo.addPointSet(compBInterPts, compBPtsName)
 
@@ -1290,7 +1301,7 @@ class PointSet:
 
 
 class Intersection:
-    def __init__(self, compA, compB, distTol, DVGeo, dtype, project):
+    def __init__(self, compA, compB, distTol, DVGeo, project, dtype=float):
         componentA = DVGeo.comps[compA]
         componentB = DVGeo.comps[compB]
 
@@ -1307,6 +1318,11 @@ class Intersection:
 
         # flag to determine if we want to project nodes after intersection treatment
         self.projectFlag = project
+
+        if dtype == float:
+            self.mpi_type = MPI.C_DOUBLE_COMPLEX
+        elif dtype == complex:
+            self.mpi_type = MPI.DOUBLE
 
     def setSurface(self, comm):
         """This set the new updated surface on which we need to compute the new intersection curve"""
@@ -1379,6 +1395,54 @@ class Intersection:
 
         # return the seeds for the delta vector
         return deltaBar
+
+    def _commCurveProj(self, pts, indices, comm):
+        """
+        This function will get the points, indices, and comm.
+        This function is called once for each feature curve.
+        The indices are the indices of points that was mapped to this curve.
+        We compute how many points we have mapped to this curve globally.
+        Furthermore, we compute the displacements.
+        Finally, we communicate the initial coordinates of these points.
+        These will later be used in the point-based warping.
+
+        """
+
+        # only do this fancy stuff if this is a "parallel" pointset
+        if comm:
+            nproc = comm.size
+
+            # communicate the counts
+            sizes = np.array(comm.allgather(len(indices)), dtype="intc")
+
+            # total number of points
+            nptsg = np.sum(sizes)
+
+            # get the displacements
+            disp = np.array([np.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
+
+            # sendbuf
+            ptsLocal = pts.flatten()
+            sendbuf = [ptsLocal, len(indices) * 3]
+
+            # recvbuf
+            ptsGlobal = np.zeros(3 * nptsg, dtype=self.dtype)
+
+            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpi_type]
+
+            # do an allgatherv
+            comm.Allgatherv(sendbuf, recvbuf)
+
+            # reshape into a nptsg,3 array
+            curvePtCoords = ptsGlobal.reshape((nptsg, 3))
+
+        # this is a "serial" pointset, so the results are just local
+        else:
+            nptsg = len(indices)
+            sizes = [nptsg]
+            curvePtCoords = pts[indices]
+
+        return nptsg, sizes, curvePtCoords, indices
 
 
 class CompIntersection(Intersection):
@@ -2596,54 +2660,6 @@ class CompIntersection(Intersection):
 
         return compSens
 
-    def _commCurveProj(self, pts, indices, comm):
-        """
-        This function will get the points, indices, and comm.
-        This function is called once for each feature curve.
-        The indices are the indices of points that was mapped to this curve.
-        We compute how many points we have mapped to this curve globally.
-        Furthermore, we compute the displacements.
-        Finally, we communicate the initial coordinates of these points.
-        These will later be used in the point-based warping.
-
-        """
-
-        # only do this fancy stuff if this is a "parallel" pointset
-        if comm:
-            nproc = comm.size
-
-            # communicate the counts
-            sizes = np.array(comm.allgather(len(indices)), dtype="intc")
-
-            # total number of points
-            nptsg = np.sum(sizes)
-
-            # get the displacements
-            disp = np.array([np.sum(sizes[:i]) for i in range(nproc)], dtype="intc")
-
-            # sendbuf
-            ptsLocal = pts[indices].flatten()
-            sendbuf = [ptsLocal, len(indices) * 3]
-
-            # recvbuf
-            ptsGlobal = np.zeros(3 * nptsg, dtype=self.dtype)
-
-            recvbuf = [ptsGlobal, sizes * 3, disp * 3, self.mpi_type]
-
-            # do an allgatherv
-            comm.Allgatherv(sendbuf, recvbuf)
-
-            # reshape into a nptsg,3 array
-            curvePtCoords = ptsGlobal.reshape((nptsg, 3))
-
-        # this is a "serial" pointset, so the results are just local
-        else:
-            nptsg = len(indices)
-            sizes = [nptsg]
-            curvePtCoords = pts[indices]
-
-        return nptsg, sizes, curvePtCoords
-
     def _projectToComponent(self, pts, comp, projDict, surface=None):
         # We build an ADT for this component using pySurf
         # Set bounding box for new tree
@@ -3644,7 +3660,7 @@ class CompIntersection(Intersection):
 
 class FilletIntersection(Intersection):
     def __init__(self, compA, compB, filletComp, distTol, DVGeo, dtype, project=True):
-        super().__init__(compA, compB, distTol, DVGeo, dtype, project)
+        super().__init__(compA, compB, distTol, DVGeo, project, dtype)
 
         self.filletComp = DVGeo.comps[filletComp]
         self.compA.intersection = self.compB.intersection = self.filletComp.intersection = self
