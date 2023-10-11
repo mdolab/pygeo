@@ -875,7 +875,7 @@ class DVGeometryMulti:
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
         comp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if comp is None or not comp.isFillet:
-            self._computeTotalJacobian(ptSetName)
+            self._computeTotalJacobian(ptSetName)  # TODO in fillet case get curve ptsets jacobians
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -3762,7 +3762,7 @@ class FilletIntersection(Intersection):
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
             # intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
-            comp.compAInterInd.extend(comp.compBInterInd)
+            comp.compAInterInd.extend(comp.compBInterInd)  # TODO make new list instead
             dIdpt[comp.compAInterInd, :, :] = 0  # TODO indices
 
         compSens = {}
@@ -3771,7 +3771,7 @@ class FilletIntersection(Intersection):
         if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
             return compSens
 
-        curvePtCoordsA = self.compA.curvePts
+        curvePtCoordsA = self.compA.curvePts  # TODO should be original
         curvePtCoordsB = self.compB.curvePts
 
         # get the comm for this point set
