@@ -876,6 +876,9 @@ class DVGeometryMulti:
         comp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if comp is None or not comp.isFillet:
             self._computeTotalJacobian(ptSetName)  # TODO in fillet case get curve ptsets jacobians
+        elif comp.isFillet:
+            self._computeTotalJacobian(comp.compACurvePtName)
+            self._computeTotalJacobian(comp.compBCurvePtName)
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -952,7 +955,7 @@ class DVGeometryMulti:
         dvOffset = 0
         for comp in self.comps.values():
             if comp.isFillet:
-                nDVComp = 0
+                nDVComp = IC.compA.DVGeo.getNDV() + IC.compB.DVGeo.getNDV()
             else:
                 DVGeo = comp.DVGeo
                 nDVComp = DVGeo.getNDV()
@@ -3762,8 +3765,11 @@ class FilletIntersection(Intersection):
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
             # intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
-            comp.compAInterInd.extend(comp.compBInterInd)  # TODO make new list instead
+            allInd = deepcopy(comp.compAInterInd)
+            allInd.extend(comp.compBInterInd)
             dIdpt[comp.compAInterInd, :, :] = 0  # TODO indices
+        else:
+            print("no?")
 
         compSens = {}
 
@@ -3771,8 +3777,8 @@ class FilletIntersection(Intersection):
         if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
             return compSens
 
-        curvePtCoordsA = self.compA.curvePts  # TODO should be original
-        curvePtCoordsB = self.compB.curvePts
+        curvePtCoordsA = self.compA.curvePtsOrig
+        curvePtCoordsB = self.compB.curvePtsOrig
 
         # get the comm for this point set
         ptSetComm = self.points[ptSetName][3]
@@ -3790,7 +3796,7 @@ class FilletIntersection(Intersection):
         )
         print(f"before sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
         np.savetxt("didpt1.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
-        dIdpt = self._warpSurfPts_b(
+        deltaBar = self._warpSurfPts_b(
             dIdpt,
             points,
             indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
@@ -3798,6 +3804,13 @@ class FilletIntersection(Intersection):
         )
         print(f"after sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
         np.savetxt("didpt2.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
+
+        curveInd = len(comp.compAInterInd)
+        deltaBarCompA = deltaBar[:, :curveInd, :]
+        deltaBarCompB = deltaBar[:, curveInd:, :]
+
+        dIdxCompA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.curvePtNameA)
+        dIdxCompB = self.compB.DVGeo.totalSensitivity(deltaBarCompB, self.curvePtNameB)
 
         # # reduce seeds for both
         # if ptSetComm:
