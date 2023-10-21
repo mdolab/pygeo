@@ -276,11 +276,11 @@ class ProximityConstraint(GeometricConstraint):
         """
 
         handle.write("Zone T=%s\n" % self.name)
-        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coordsA) * 2, len(self.coords)))
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coordsA) * 2, len(self.coordsA)))
         handle.write("DATAPACKING=POINT\n")
-        for i in range(len(self.coords)):
+        for i in range(len(self.coordsA)):
             handle.write(f"{self.coordsA[i, 0]:f} {self.coordsA[i, 1]:f} {self.coordsA[i, 2]:f}\n")
             handle.write(f"{self.coordsB[i, 0]:f} {self.coordsB[i, 1]:f} {self.coordsB[i, 2]:f}\n")
 
-        for i in range(len(self.coords)):
+        for i in range(len(self.coordsA)):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
