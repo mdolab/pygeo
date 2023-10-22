@@ -900,7 +900,7 @@ class DVGeometry(BaseDVGeometry):
         # Add the child to the parent and return
         self.children[childName] = childDVGeo
 
-    def addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None):
+    def addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None, prependName=True):
         """
         Add a global design variable to the DVGeometry object. This
         type of design variable acts on one or more reference axis.
@@ -941,9 +941,11 @@ class DVGeometry(BaseDVGeometry):
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
         """
         # if the parent DVGeometry object has a name attribute, prepend it
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -951,7 +953,16 @@ class DVGeometry(BaseDVGeometry):
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
 
     def addLocalDV(
-        self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
+        self,
+        dvName,
+        lower=None,
+        upper=None,
+        scale=1.0,
+        axis="y",
+        volList=None,
+        pointSelect=None,
+        config=None,
+        prependName=True,
     ):
         """
         Add one or more local design variables ot the DVGeometry
@@ -996,6 +1007,9 @@ class DVGeometry(BaseDVGeometry):
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
 
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+
         Returns
         -------
         N : int
@@ -1014,7 +1028,7 @@ class DVGeometry(BaseDVGeometry):
         >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addLocalDV('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -1230,6 +1244,7 @@ class DVGeometry(BaseDVGeometry):
         orient0=None,
         orient2="svd",
         config=None,
+        prependName=True,
     ):
         """
         Add one or more section local design variables to the DVGeometry
@@ -1351,6 +1366,9 @@ class DVGeometry(BaseDVGeometry):
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
 
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+
         Returns
         -------
         N : int
@@ -1362,7 +1380,7 @@ class DVGeometry(BaseDVGeometry):
         >>> # moving in the 1 direction, within +/- 1.0 units
         >>> DVGeo.addLocalSectionDV('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -1436,7 +1454,7 @@ class DVGeometry(BaseDVGeometry):
 
         return self.DV_listSectionLocal[dvName].nVal
 
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, prependName=True):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -1451,9 +1469,11 @@ class DVGeometry(BaseDVGeometry):
             The u matrix used for the composite DV, by default None
         scale : float or ndarray, optional
             The scaling applied to this DV, by default None
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
         """
         NDV = self.getNDV()
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = f"{self.name}_{dvName}"
         if u is not None:
             # we are after a square matrix
@@ -1487,6 +1507,7 @@ class DVGeometry(BaseDVGeometry):
         upper=None,
         scale=1.0,
         config=None,
+        prependName=True,
     ):
         """
         Add shape function design variables to the DVGeometry.
@@ -1538,6 +1559,9 @@ class DVGeometry(BaseDVGeometry):
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
 
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+
         Returns
         -------
         N : int
@@ -1559,7 +1583,7 @@ class DVGeometry(BaseDVGeometry):
             >>> DVGeo.addShapeFunctionDV("shape_func", shapes)
 
         """
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
