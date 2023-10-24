@@ -2359,7 +2359,18 @@ class DVGeometry(BaseDVGeometry):
         dIdx_local = np.zeros((N, nDV), "d")
         for i in range(N):
             if self.JT[ptSetName] is not None:
+                y = dIdpt[i, :, :]
+                x = dIdpt[i, :, :].flatten()
                 dIdx_local[i, :] = self.JT[ptSetName].dot(dIdpt[i, :, :].flatten())
+
+        # (first point)
+        # dIdpt is 609x3x3
+        # JT for fuse_fillet_intersection is 2x9 (pointset is 3x3)
+        # our portion of dIdpt is 3x3
+        # flattened it's 9
+        # dIdx local is supposed to be 609x2
+        # we do this N (609) times so it should be fine
+        # but I can't tell which i is stopping it
 
         if comm:  # If we have a comm, globaly reduce with sum
             dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)

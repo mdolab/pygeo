@@ -83,7 +83,7 @@ class DVGeometryMulti:
             self.adtAPI = adtAPI_cs.adtapi
         else:
             self.dtype = float
-            self.adtAPI = adtAPI.adtapi
+            # self.adtAPI = adtAPI.adtapi
 
     def addComponent(
         self,
@@ -877,8 +877,8 @@ class DVGeometryMulti:
         if comp is None or not comp.isFillet:
             self._computeTotalJacobian(ptSetName)  # TODO in fillet case get curve ptsets jacobians
         elif comp.isFillet:
-            self._computeTotalJacobian(comp.compACurvePtName)
-            self._computeTotalJacobian(comp.compBCurvePtName)
+            self._computeTotalJacobian(comp.compAPtsName)
+            self._computeTotalJacobian(comp.compBPtsName)
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -3762,6 +3762,10 @@ class FilletIntersection(Intersection):
         points = self.points[ptSetName][0]
         N = dIdpt.shape[0]
 
+        compSens_local = {}
+        compSensA = {}
+        compSensB = {}
+
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
             # intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
@@ -3805,12 +3809,11 @@ class FilletIntersection(Intersection):
         print(f"after sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
         np.savetxt("didpt2.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
 
+        # TODO reduce warping sensitivities
+
         curveInd = len(comp.compAInterInd)
         deltaBarCompA = deltaBar[:, :curveInd, :]
         deltaBarCompB = deltaBar[:, curveInd:, :]
-
-        dIdxCompA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.curvePtNameA)
-        dIdxCompB = self.compB.DVGeo.totalSensitivity(deltaBarCompB, self.curvePtNameB)
 
         # # reduce seeds for both
         # if ptSetComm:
@@ -3823,6 +3826,25 @@ class FilletIntersection(Intersection):
 
         # for k in range(N):
         #     dIdpt[k, :, :] = deltaBar[k]
+
+        compSensA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.filletComp.compAPtsName)
+        compSensB = self.compB.DVGeo.totalSensitivity(deltaBarCompB, self.filletComp.compBPtsName)
+
+        for k, v in compSensA.items():
+            compSens_local[k] = v
+
+        for k, v in compSensB.items():
+            compSens_local[k] = v
+
+        # finally sum the results across procs if we are provided with a comm
+        if comm:
+            compSens = {}
+            # because the results are in a dictionary, we need to loop over the items and sum
+            for k in compSens_local:
+                compSens[k] = comm.allreduce(compSens_local[k], op=MPI.SUM)
+        else:
+            # we can just pass the dictionary
+            compSens = compSens_local
 
         return compSens
 
