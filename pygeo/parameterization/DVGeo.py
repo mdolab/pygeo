@@ -2359,9 +2359,6 @@ class DVGeometry(BaseDVGeometry):
         dIdx_local = np.zeros((N, nDV), "d")
         for i in range(N):
             if self.JT[ptSetName] is not None:
-                x = dIdpt[i, :, :]
-                y = self.JT[ptSetName]
-                z = self.JT[ptSetName].dot(dIdpt[i, :, :].flatten())
                 dIdx_local[i, :] = self.JT[ptSetName].dot(dIdpt[i, :, :].flatten())
 
         if comm:  # If we have a comm, globaly reduce with sum
