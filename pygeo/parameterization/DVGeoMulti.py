@@ -873,12 +873,12 @@ class DVGeometryMulti:
         """
 
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
-        comp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
-        if comp is None or not comp.isFillet:
+        ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
+        if ptSetComp is None or not ptSetComp.isFillet:
             self._computeTotalJacobian(ptSetName)  # TODO in fillet case get curve ptsets jacobians
-        elif comp.isFillet:
-            self._computeTotalJacobian(comp.compAPtsName)
-            self._computeTotalJacobian(comp.compBPtsName)
+        # elif ptSetComp.isFillet:
+        #     self._computeTotalJacobian(self.intersectComps[0].compA.curvePtsName)
+        #     self._computeTotalJacobian(self.intersectComps[0].compB.curvePtsName)
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -901,14 +901,11 @@ class DVGeometryMulti:
                 # we pass in dIdpt and the intersection object, along with pointset information
                 # the intersection object adjusts the entries corresponding to projected points
                 # and passes back dIdpt in place.
-                # print(f"before sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
-                # np.savetxt("didpt1.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
-                compSens = IC.project_b(ptSetName, dIdpt, comm, comp)
-                # print(f"after sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
-                # np.savetxt("didpt2.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
+                if ptSetComp.isFillet:  # TODO fix for old
+                    compSens = IC.project_b(ptSetName, dIdpt, comm, ptSetComp)
 
-                # append this to the dictionary list...
-                compSensList.append(compSens)
+                    # append this to the dictionary list...
+                    compSensList.append(compSens)
 
         # do the transpose multiplication
 
@@ -932,7 +929,7 @@ class DVGeometryMulti:
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
         # jacobian for the pointset
-        if comp.isFillet:
+        if ptSetComp.isFillet:
             n = self.points[ptSetName].points.shape[0]
             jac = np.ones((n * 3, self.getNDV()))  # TODO
         else:
@@ -953,31 +950,36 @@ class DVGeometryMulti:
         # use respective DVGeo's convert to dict functionality
         dIdxDict = OrderedDict()
         dvOffset = 0
-        for comp in self.comps.values():
-            if comp.isFillet:
-                nDVComp = IC.compA.DVGeo.getNDV() + IC.compB.DVGeo.getNDV()
-            else:
-                DVGeo = comp.DVGeo
-                nDVComp = DVGeo.getNDV()
 
-            # we only do this if this component has at least one DV
-            if nDVComp > 0:
-                # this part of the sensitivity matrix is owned by this dvgeo
-                dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
+        if not ptSetComp.isFillet:
+            for comp in self.comps.values():
+                if not comp.isFillet:
+                    DVGeo = comp.DVGeo
+                    nDVComp = DVGeo.getNDV()
 
-                for k, v in dIdxComp.items():
-                    dIdxDict[k] = v
+                    # we only do this if this component has at least one DV
+                    if nDVComp > 0:
+                        # this part of the sensitivity matrix is owned by this dvgeo
+                        dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
 
-                # also increment the offset
-                dvOffset += nDVComp
+                        for k, v in dIdxComp.items():
+                            dIdxDict[k] = v
 
-        # finally, we can add the contributions from intersections
-        # TODO is this how the fillet contributions will get in? they aren't included in the DVGeo dIdxComp
-        for compSens in compSensList:
-            # loop over the items of compSens, which are guaranteed to be in dIdxDict
-            for k, v in compSens.items():
-                # these will bring in effects from projections and intersection computations
-                dIdxDict[k] += v
+                        # also increment the offset
+                        dvOffset += nDVComp
+
+            # finally, we can add the contributions from intersections
+            # TODO is this how the fillet contributions will get in? they aren't included in the DVGeo dIdxComp
+            for compSens in compSensList:
+                # loop over the items of compSens, which are guaranteed to be in dIdxDict
+                for k, v in compSens.items():
+                    # these will bring in effects from projections and intersection computations
+                    dIdxDict[k] += v
+
+        else:
+            compSens = compSensList[0]
+            for key, val in compSens.items():
+                dIdxDict[key] = val
 
         if self.debug:
             print(f"[{self.comm.rank}] finished DVGeo.totalSensitivity")
@@ -1180,6 +1182,7 @@ class DVGeometryMulti:
         if self.filletIntersection:
             comp = self.comps[self.points[ptSetName].comp]
             comp.DVGeo.computeTotalJacobian(ptSetName)
+            jac = comp.DVGeo.JT[ptSetName].T
 
         else:
             for name in self.compNames:
@@ -3760,7 +3763,6 @@ class FilletIntersection(Intersection):
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = self.points[ptSetName][0]
-        N = dIdpt.shape[0]
 
         compSens_local = {}
         compSensA = {}
@@ -3771,7 +3773,11 @@ class FilletIntersection(Intersection):
             # intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
             allInd = deepcopy(comp.compAInterInd)
             allInd.extend(comp.compBInterInd)
-            dIdpt[comp.compAInterInd, :, :] = 0  # TODO indices
+
+            for i in range(len(points)):
+                if i in (allInd):
+                    for j in range(3):
+                        dIdpt[i * 3 + j, i, j] = 0
         else:
             print("no?")
 
@@ -3781,8 +3787,8 @@ class FilletIntersection(Intersection):
         if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
             return compSens
 
-        curvePtCoordsA = self.compA.curvePtsOrig
-        curvePtCoordsB = self.compB.curvePtsOrig
+        curvePtCoordsA = self.compA.curvePts
+        curvePtCoordsB = self.compB.curvePts
 
         # get the comm for this point set
         ptSetComm = self.points[ptSetName][3]
@@ -3792,43 +3798,35 @@ class FilletIntersection(Intersection):
         # call the bwd warping routine
         # deltaA_b is the seed for the points projected to curves
 
-        curvePtCoords = np.vstack(
-            (
-                curvePtCoordsA,
-                curvePtCoordsB,
-            )
-        )
-        print(f"before sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
-        np.savetxt("didpt1.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
+        curvePtCoords = np.vstack((curvePtCoordsA, curvePtCoordsB))
+
+        pts0 = points
+        # pts0 = deepcopy(self.filletComp.surfPtsOrig)
+
         deltaBar = self._warpSurfPts_b(
             dIdpt,
-            points,
+            pts0,  # TODO original points here?
             indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
             curvePtCoords,
         )
-        print(f"after sum {np.sum(dIdpt)} min {np.min(dIdpt)} max {np.max(dIdpt)}")
-        np.savetxt("didpt2.txt", dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3)))
 
         # TODO reduce warping sensitivities
 
-        curveInd = len(comp.compAInterInd)
-        deltaBarCompA = deltaBar[:, :curveInd, :]
-        deltaBarCompB = deltaBar[:, curveInd:, :]
+        curveInd = len(curvePtCoordsA)
+        deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
+        deltaBarCompB_local = deepcopy(deltaBar[:, curveInd:, :])
 
-        # # reduce seeds for both
-        # if ptSetComm:
-        #     delta_b = ptSetComm.allreduce(delta_b_local, op=MPI.SUM)
-        # # no comm, local is global
-        # else:
-        #     delta_b = delta_b_local
+        # reduce seeds for both
+        if ptSetComm:
+            deltaBarCompA = ptSetComm.allreduce(deltaBarCompA_local, op=MPI.SUM)
+            deltaBarCompB = ptSetComm.allreduce(deltaBarCompB_local, op=MPI.SUM)
+        # no comm, local is global
+        else:
+            deltaBarCompA = deltaBarCompA_local
+            deltaBarCompB = deltaBarCompB_local
 
-        # deltaBar = delta_b[:, :n, :]
-
-        # for k in range(N):
-        #     dIdpt[k, :, :] = deltaBar[k]
-
-        compSensA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.filletComp.compAPtsName)
-        compSensB = self.compB.DVGeo.totalSensitivity(deltaBarCompB, self.filletComp.compBPtsName)
+        compSensA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.compA.curvePtsName)
+        compSensB = self.compB.DVGeo.totalSensitivity(deltaBarCompB, self.compB.curvePtsName)
 
         for k, v in compSensA.items():
             compSens_local[k] = v
