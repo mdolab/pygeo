@@ -80,10 +80,12 @@ class DVGeometryMulti:
         # Set real or complex Fortran API
         if isComplex:
             self.dtype = complex
-            self.adtAPI = adtAPI_cs.adtapi
+            if not filletIntersection:
+                self.adtAPI = adtAPI_cs.adtapi
         else:
             self.dtype = float
-            # self.adtAPI = adtAPI.adtapi
+            if not filletIntersection:
+                self.adtAPI = adtAPI.adtapi
 
     def addComponent(
         self,
@@ -1326,9 +1328,9 @@ class Intersection:
         self.projectFlag = project
 
         if dtype == float:
-            self.mpi_type = MPI.C_DOUBLE_COMPLEX
-        elif dtype == complex:
             self.mpi_type = MPI.DOUBLE
+        elif dtype == complex:
+            self.mpi_type = MPI.C_DOUBLE_COMPLEX
 
     def setSurface(self, comm):
         """This set the new updated surface on which we need to compute the new intersection curve"""
