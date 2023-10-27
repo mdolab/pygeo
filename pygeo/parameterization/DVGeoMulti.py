@@ -383,12 +383,10 @@ class DVGeometryMulti:
 
         # add the curve pointset to the intersection
         for IC in self.intersectComps:
-            # IC.nCurvePts[ptSetName] = {}
             IC.addPointSet(curvePts, ptSetName, [], self.comm)
-            # IC.nCurvePts[ptSetName][curveName] = curvePts.shape[0]
 
-        print(f"awrite {compName} curve from proc {self.comm.rank}")
-        np.savetxt(f"comp{compName}_{self.comm.rank}.txt", curvePts)
+        # print(f"awrite {compName} curve from proc {self.comm.rank}")
+        # np.savetxt(f"comp{compName}_{self.comm.rank}.txt", curvePts)
 
     def getDVGeoDict(self):
         """Return a dictionary of component DVGeo objects."""
@@ -976,7 +974,6 @@ class DVGeometryMulti:
                         dvOffset += nDVComp
 
             # finally, we can add the contributions from intersections
-            # TODO is this how the fillet contributions will get in? they aren't included in the DVGeo dIdxComp
             for compSens in compSensList:
                 # loop over the items of compSens, which are guaranteed to be in dIdxDict
                 for k, v in compSens.items():
@@ -3741,25 +3738,16 @@ class FilletIntersection(Intersection):
 
         # update the pointset unless we haven't figured out the intersections yet
         if len(self.compA.curvePts) > 0:  # TODO change to a first project flag or something
-            newCurveCoords = np.vstack(
-                (
-                    self.compA.curvePts,
-                    self.compB.curvePts,
-                )
-            )
-            curvePtCoords = np.vstack(
-                (
-                    self.compA.curvePtsOrig,
-                    self.compB.curvePtsOrig,
-                )
-            )
+            # get delta of curve points to drive warping
+            newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
+            curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
             delta = newCurveCoords - curvePtCoords
 
             ptsNew = deepcopy(self.filletComp.surfPtsOrig)
             pts0 = self.filletComp.surfPtsOrig
 
+            # warp interior fillet points
             self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta)
-
             self.filletComp.surfPts = ptsNew
 
             # write curve coords from file to see which proc has which (all should have complete set)
@@ -3810,6 +3798,7 @@ class FilletIntersection(Intersection):
             curvePtCoords,
         )
 
+        # split deltaBar into the contributions from each curve
         curveInd = len(curvePtCoordsA)
         deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
         deltaBarCompB_local = deepcopy(deltaBar[:, curveInd:, :])
