@@ -491,8 +491,14 @@ class DVGeometryMulti:
             if familyName == "fillet":
                 for IC in self.intersectComps:
                     # find the points on the fillet that match each intersection
-                    compAInterPts, compAInterInd = IC.findIntersection(points, IC.compA.curvePts)
-                    compBInterPts, compBInterInd = IC.findIntersection(points, IC.compB.curvePts)
+                    compAInterPts, compAInterInd = IC.findIntersection(
+                        points.astype(float), IC.compA.curvePts.astype(float)
+                    )
+                    compBInterPts, compBInterInd = IC.findIntersection(
+                        points.astype(float), IC.compB.curvePts.astype(float)
+                    )
+                    compAInterPts.dtype = self.dtype
+                    compBInterPts.dtype = self.dtype
                     # compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
                     # compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
 
@@ -877,10 +883,10 @@ class DVGeometryMulti:
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
         ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if ptSetComp is None or not ptSetComp.isFillet:
-            self._computeTotalJacobian(ptSetName)  # TODO in fillet case get curve ptsets jacobians
-        # elif ptSetComp.isFillet:
-        #     self._computeTotalJacobian(self.intersectComps[0].compA.curvePtsName)
-        #     self._computeTotalJacobian(self.intersectComps[0].compB.curvePtsName)
+            self._computeTotalJacobian(ptSetName)
+        elif ptSetComp.isFillet:
+            self._computeTotalJacobian(self.intersectComps[0].compA.curvePtsName)
+            self._computeTotalJacobian(self.intersectComps[0].compB.curvePtsName)
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -1146,12 +1152,12 @@ class DVGeometryMulti:
         if surf:
             surfFile = open(filename, "r")
             nElem = int(surfFile.readline())
-            surfPts = np.loadtxt(filename, skiprows=1, max_rows=nElem)
+            surfPts = np.loadtxt(filename, skiprows=1, max_rows=nElem, dtype=self.dtype)
             points = surfPts[surfPts[:, 0].argsort()]
         else:
             curves = []
             for f in filename:
-                curvePts = np.loadtxt(f, skiprows=1)
+                curvePts = np.loadtxt(f, skiprows=1, dtype=self.dtype)
                 curves.append(curvePts)
 
             points = curves[0]
@@ -1189,7 +1195,6 @@ class DVGeometryMulti:
         else:
             for name in self.compNames:
                 comp = self.comps[name]
-                # fillet pointset needs points on boundary removed
 
                 # number of design variables
                 nDVComp = comp.DVGeo.getNDV()
@@ -1208,7 +1213,7 @@ class DVGeometryMulti:
                 dvOffset += nDVComp
 
         # Convert to CSR format because this is better for arithmetic
-        jac = sparse.csr_matrix(jac)
+        # jac = sparse.csr_matrix(jac)
 
         # now we can save this jacobian in the pointset
         ptSet.jac = jac
@@ -1376,7 +1381,7 @@ class Intersection:
 
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
         # seeds for delta
-        deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3))
+        deltaBar = np.zeros((dIdPt.shape[0], curvePtCoords.shape[0], 3), dtype=self.dtype)
 
         # Return zeros if curvePtCoords is empty
         if not np.any(curvePtCoords):
@@ -3678,7 +3683,7 @@ class FilletIntersection(Intersection):
 
     def findIntersection(self, surf, curve):  # TODO fix this function
         nPtSurf = surf.shape[0]
-        minSurfCurveDist = -np.ones(nPtSurf)
+        minSurfCurveDist = -np.ones(nPtSurf, dtype=self.dtype)
         intersectPts = []
         intersectInd = []
 
@@ -3698,7 +3703,7 @@ class FilletIntersection(Intersection):
                 intersectPts.append(surfPt)
                 intersectInd.append(i)
 
-        intersectPts = np.asarray(intersectPts)
+        intersectPts = np.asarray(intersectPts, dtype=self.dtype)
 
         return intersectPts, intersectInd
 
