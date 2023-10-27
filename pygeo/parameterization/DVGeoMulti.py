@@ -938,22 +938,21 @@ class DVGeometryMulti:
 
         # jacobian for the pointset
         if ptSetComp.isFillet:
-            n = self.points[ptSetName].points.shape[0]
-            jac = np.ones((n * 3, self.getNDV()))  # TODO
+            pass
         else:
             jac = self.points[ptSetName].jac
 
-        # this is the mat-vec product for the remaining seeds.
-        # this only contains the effects of the FFD motion,
-        # projections and intersections are handled separately in compSens
-        dIdxT_local = jac.T.dot(dIdpt.T)
-        dIdx_local = dIdxT_local.T
+            # this is the mat-vec product for the remaining seeds.
+            # this only contains the effects of the FFD motion,
+            # projections and intersections are handled separately in compSens
+            dIdxT_local = jac.T.dot(dIdpt.T)
+            dIdx_local = dIdxT_local.T
 
-        # If we have a comm, globaly reduce with sum
-        if comm:
-            dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
-        else:
-            dIdx = dIdx_local
+            # If we have a comm, globaly reduce with sum
+            if comm:
+                dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
+            else:
+                dIdx = dIdx_local
 
         # use respective DVGeo's convert to dict functionality
         dIdxDict = OrderedDict()
@@ -3777,7 +3776,6 @@ class FilletIntersection(Intersection):
 
         # don't accumulate derivatives for fillet points on intersections
         if comp.isFillet:
-            # intInd = np.vstack((comp.compAInterInd, comp.compBInterInd))
             allInd = deepcopy(comp.compAInterInd)
             allInd.extend(comp.compBInterInd)
 
@@ -3802,22 +3800,15 @@ class FilletIntersection(Intersection):
 
         n = points.shape[0]
         indices = np.linspace(0, n - 1, n, dtype=int)
-        # call the bwd warping routine
-        # deltaA_b is the seed for the points projected to curves
-
         curvePtCoords = np.vstack((curvePtCoordsA, curvePtCoordsB))
 
-        pts0 = points
-        # pts0 = deepcopy(self.filletComp.surfPtsOrig)
-
+        # call the bwd warping routine
         deltaBar = self._warpSurfPts_b(
             dIdpt,
-            pts0,  # TODO original points here?
+            points,
             indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
             curvePtCoords,
         )
-
-        # TODO reduce warping sensitivities
 
         curveInd = len(curvePtCoordsA)
         deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
