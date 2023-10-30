@@ -882,6 +882,7 @@ class DVGeometryMulti:
         ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if ptSetComp is None or not ptSetComp.isFillet:
             self._computeTotalJacobian(ptSetName)
+        # if this is a fillet, get the jacobian of the border curves
         elif ptSetComp.isFillet:
             self._computeTotalJacobian(self.intersectComps[0].compA.curvePtsName)
             self._computeTotalJacobian(self.intersectComps[0].compB.curvePtsName)
@@ -904,10 +905,10 @@ class DVGeometryMulti:
                 if not self.filletIntersection:
                     IC.seamBarProj[ptSetName] = np.zeros((N, IC.seam0.shape[0], IC.seam0.shape[1]))
 
-                # we pass in dIdpt and the intersection object, along with pointset information
-                # the intersection object adjusts the entries corresponding to projected points
-                # and passes back dIdpt in place.
-                if ptSetComp.isFillet:  # TODO fix for old
+                # we pass in dIdpt and the intersection object, along with pointset information the intersection
+                # object adjusts the entries corresponding to projected points and passes back dIdpt in place.
+                # if this is a component that surrounds a fillet, we don't get warping derivatives
+                if ptSetComp.isFillet or self.filletIntersection:
                     compSens = IC.project_b(ptSetName, dIdpt, comm, ptSetComp)
 
                     # append this to the dictionary list...
@@ -934,9 +935,10 @@ class DVGeometryMulti:
         # reshape the dIdpt array from [N] * [nPt] * [3] to  [N] * [nPt*3]
         dIdpt = dIdpt.reshape((dIdpt.shape[0], dIdpt.shape[1] * 3))
 
-        # jacobian for the pointset
+        # fillet pointset has no jacobian from FFD motion
         if ptSetComp.isFillet:
             pass
+        # jacobian for the pointset
         else:
             jac = self.points[ptSetName].jac
 
@@ -956,6 +958,8 @@ class DVGeometryMulti:
         dIdxDict = OrderedDict()
         dvOffset = 0
 
+        # convert dIdx from FFD motion into dIdxDict for pyOptSparse
+        # fillet has no dIdx from FFD motion
         if not ptSetComp.isFillet:
             for comp in self.comps.values():
                 if not comp.isFillet:
@@ -980,6 +984,7 @@ class DVGeometryMulti:
                     # these will bring in effects from projections and intersection computations
                     dIdxDict[k] += v
 
+        # add warping derivatives to dIdxDict for fillet
         else:
             compSens = compSensList[0]
             for key, val in compSens.items():
@@ -3757,12 +3762,13 @@ class FilletIntersection(Intersection):
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = self.points[ptSetName][0]
+        n = points.shape[0]
 
         compSens_local = {}
         compSensA = {}
         compSensB = {}
 
-        # don't accumulate derivatives for fillet points on intersections
+        # don't accumulate derivatives for fillet points on intersections, set seeds to 0
         if comp.isFillet:
             allInd = deepcopy(comp.compAInterInd)
             allInd.extend(comp.compBInterInd)
@@ -3777,18 +3783,19 @@ class FilletIntersection(Intersection):
         compSens = {}
 
         # skip calculating warping derivatives for curve points
+        # TODO these pointsets should never some here from totalSensitivity
         if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
             return compSens
 
+        # get current curve points (full definition from pointwise) owned by each component
         curvePtCoordsA = self.compA.curvePts
         curvePtCoordsB = self.compB.curvePts
+        curvePtCoords = np.vstack((curvePtCoordsA, curvePtCoordsB))
 
         # get the comm for this point set
         ptSetComm = self.points[ptSetName][3]
 
-        n = points.shape[0]
         indices = np.linspace(0, n - 1, n, dtype=int)
-        curvePtCoords = np.vstack((curvePtCoordsA, curvePtCoordsB))
 
         # call the bwd warping routine
         deltaBar = self._warpSurfPts_b(
@@ -3812,9 +3819,11 @@ class FilletIntersection(Intersection):
             deltaBarCompA = deltaBarCompA_local
             deltaBarCompB = deltaBarCompB_local
 
+        # run each curve through totalSensitivity on their respective DVGeo
         compSensA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.compA.curvePtsName)
         compSensB = self.compB.DVGeo.totalSensitivity(deltaBarCompB, self.compB.curvePtsName)
 
+        # add up the compSens from each curve
         for k, v in compSensA.items():
             compSens_local[k] = v
 
