@@ -59,6 +59,7 @@ class pyBlock:
         self.coef = None  # The global (reduced) set of control pts
         self.embeddedVolumes = {}
         self.symmPlane = symmPlane
+        self.filename = fileName
 
         if initType == "plot3d":
             self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
@@ -931,10 +932,9 @@ class pyBlock:
 
             # Check to see if we have bad projections and print a warning:
             if counter > 0:
-                print(
-                    " -> Warning: %d point(s) not projected to tolerance: %g. " % (counter, eps)
-                    + "Max Error: %12.6g ; RMS Error: %12.6g" % (DMax, DRms)
-                )
+                print(self.filename)
+                print(f" -> Warning: {counter} point(s) from {self.filename} not projected to tolerance {eps}.")
+                print(f"Max Error: {DMax:.6g} ; RMS Error: {DRms:.6g}")
                 print("List of Points is: (pt, delta):")
                 for i in range(len(badPts)):
                     print(
