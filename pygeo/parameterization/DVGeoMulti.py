@@ -839,7 +839,7 @@ class DVGeometryMulti:
         """
         This function computes sensitivity information.
 
-        Specificly, it computes the following:
+        Specifically, it computes the following:
         :math:`\\frac{dX_{pt}}{dX_{DV}}^T \\frac{dI}{d_{pt}}`
 
         Parameters
@@ -882,10 +882,6 @@ class DVGeometryMulti:
         ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if ptSetComp is None or not ptSetComp.isFillet:
             self._computeTotalJacobian(ptSetName)
-        # if this is a fillet, get the jacobian of the border curves
-        elif ptSetComp.isFillet:
-            self._computeTotalJacobian(self.intersectComps[0].compA.curvePtsName)
-            self._computeTotalJacobian(self.intersectComps[0].compB.curvePtsName)
 
         # Make dIdpt at least 3D
         if len(dIdpt.shape) == 2:
@@ -908,10 +904,10 @@ class DVGeometryMulti:
                 # we pass in dIdpt and the intersection object, along with pointset information the intersection
                 # object adjusts the entries corresponding to projected points and passes back dIdpt in place.
                 # if this is a component that surrounds a fillet, we don't get warping derivatives
-                if ptSetComp.isFillet or self.filletIntersection:
+                if ptSetComp.isFillet or not self.filletIntersection:
                     compSens = IC.project_b(ptSetName, dIdpt, comm, ptSetComp)
 
-                    # append this to the dictionary list...
+                    # append this to the dictionary list
                     compSensList.append(compSens)
 
         # do the transpose multiplication
@@ -938,6 +934,7 @@ class DVGeometryMulti:
         # fillet pointset has no jacobian from FFD motion
         if ptSetComp.isFillet:
             pass
+
         # jacobian for the pointset
         else:
             jac = self.points[ptSetName].jac
@@ -948,7 +945,7 @@ class DVGeometryMulti:
             dIdxT_local = jac.T.dot(dIdpt.T)
             dIdx_local = dIdxT_local.T
 
-            # If we have a comm, globaly reduce with sum
+            # If we have a comm, globally reduce with sum
             if comm:
                 dIdx = comm.allreduce(dIdx_local, op=MPI.SUM)
             else:
@@ -1135,7 +1132,7 @@ class DVGeometryMulti:
 
             print(f"The {filename} mesh has {len(nodes)} nodes and {len(triConnStack)} elements.")
         else:
-            # create these to recieve the data
+            # create these to receive the data
             nodes = None
             triConn = None
             triConnStack = None
@@ -1266,8 +1263,8 @@ class Comp:
         if self.isFillet:
             print("no")
         else:
-            self.surfPts = self.DVGeo.update(self.surfPtsName)
-            self.curvePts = self.DVGeo.update(self.curvePtsName)
+            self.surfPts = self.DVGeo.update(self.surfPtsName).copy()
+            self.curvePts = self.DVGeo.update(self.curvePtsName).copy()
 
     def writeSurf(self, fileName):
         fileName = f"{fileName}_{self.name}_surf.dat"
@@ -3761,9 +3758,10 @@ class FilletIntersection(Intersection):
             # np.savetxt(f"compBCurve{self.DVGeo.comm.rank}.txt", self.compB.curvePts)
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
-        points = self.points[ptSetName][0]
+        points = deepcopy(self.filletComp.surfPtsOrig)
         n = points.shape[0]
 
+        # Initialize dictionaries to accumulate warping sensitivities
         compSens_local = {}
         compSensA = {}
         compSensB = {}
@@ -3788,8 +3786,8 @@ class FilletIntersection(Intersection):
             return compSens
 
         # get current curve points (full definition from pointwise) owned by each component
-        curvePtCoordsA = self.compA.curvePts
-        curvePtCoordsB = self.compB.curvePts
+        curvePtCoordsA = self.compA.curvePtsOrig
+        curvePtCoordsB = self.compB.curvePtsOrig
         curvePtCoords = np.vstack((curvePtCoordsA, curvePtCoordsB))
 
         # get the comm for this point set
