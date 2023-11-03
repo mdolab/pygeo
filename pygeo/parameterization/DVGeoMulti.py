@@ -360,11 +360,16 @@ class DVGeometryMulti:
 
         self.intersectComps.append(inter)
 
-    def addCurve(self, compName, filletName, curveFiles):
+    def addCurve(self, compName, filletName, curveFiles=None, curvePtsArray=None):
         if not self.filletIntersection:
             print("no")  # TODO real error
 
-        curvePts = self._readDATFile(curveFiles, surf=False)
+        if curveFiles is not None:
+            curvePts = self._readDATFile(curveFiles, surf=False)
+        elif curvePtsArray is not None:
+            curvePts = curvePtsArray
+        else:
+            print("no")
 
         # figure out which component and fillet we're dealing with
         comp = self.comps[compName]
