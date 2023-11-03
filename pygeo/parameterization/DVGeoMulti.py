@@ -367,7 +367,7 @@ class DVGeometryMulti:
         if curveFiles is not None:
             curvePts = self._readDATFile(curveFiles, surf=False)
         elif curvePtsArray is not None:
-            curvePts = curvePtsArray
+            curvePts = np.atleast_2d(curvePtsArray)
         else:
             print("no")
 
@@ -3695,7 +3695,7 @@ class FilletIntersection(Intersection):
             surfPt = surf[i]
 
             # calculate distances between this surface point and the whole curve
-            ptSurfCurveDist = cdist(surfPt.reshape(1, 3), curve)
+            ptSurfCurveDist = cdist(surfPt.reshape(1, 3), np.atleast_2d(curve))
 
             # find minimum of these distances and save it
             dist2ClosestPt = min(ptSurfCurveDist[0])
@@ -3809,7 +3809,7 @@ class FilletIntersection(Intersection):
         )
 
         # split deltaBar into the contributions from each curve
-        curveInd = len(curvePtCoordsA)
+        curveInd = curvePtCoordsA.shape[0]
         deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
         deltaBarCompB_local = deepcopy(deltaBar[:, curveInd:, :])
 
@@ -3851,3 +3851,4 @@ class FilletIntersection(Intersection):
     def _getUpdatedCoords(self):
         self.compA.updateSurfPts()
         self.compB.updateSurfPts()
+        self.DVGeo.update("fillet_surf_points")  # TODO might not be necessary
