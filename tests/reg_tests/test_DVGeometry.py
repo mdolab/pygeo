@@ -1476,7 +1476,9 @@ class RegTestPyGeo(unittest.TestCase):
             _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path, childName="child2")
 
             # add design variables
-            DVGeoChild1.addGlobalDV(dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1, prependName=False)
+            DVGeoChild1.addGlobalDV(
+                dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1, prependName=False
+            )
             DVGeoChild2.addGlobalDV(dvName="span2", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
             DVGeo.addChild(DVGeoChild1)
             DVGeo.addChild(DVGeoChild2)
