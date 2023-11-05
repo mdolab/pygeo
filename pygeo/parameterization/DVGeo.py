@@ -943,6 +943,14 @@ class DVGeometry(BaseDVGeometry):
             variable applies to *ALL* configurations.
         prependName : bool
             Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
         """
         # if the parent DVGeometry object has a name attribute, prepend it
         if self.name is not None and prependName:
@@ -1009,6 +1017,14 @@ class DVGeometry(BaseDVGeometry):
 
         prependName : bool
             Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
 
         Returns
         -------
@@ -1368,6 +1384,14 @@ class DVGeometry(BaseDVGeometry):
 
         prependName : bool
             Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
 
         Returns
         -------
@@ -1471,6 +1495,14 @@ class DVGeometry(BaseDVGeometry):
             The scaling applied to this DV, by default None
         prependName : bool
             Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
         """
         NDV = self.getNDV()
         if self.name is not None and prependName:
@@ -1561,6 +1593,14 @@ class DVGeometry(BaseDVGeometry):
 
         prependName : bool
             Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
 
         Returns
         -------

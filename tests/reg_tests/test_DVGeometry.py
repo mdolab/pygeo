@@ -1476,7 +1476,9 @@ class RegTestPyGeo(unittest.TestCase):
             _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path, childName="child2")
 
             # add design variables
-            DVGeoChild1.addGlobalDV(dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+            DVGeoChild1.addGlobalDV(
+                dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1, prependName=False
+            )
             DVGeoChild2.addGlobalDV(dvName="span2", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
             DVGeo.addChild(DVGeoChild1)
             DVGeo.addChild(DVGeoChild2)
@@ -1517,7 +1519,7 @@ class RegTestPyGeo(unittest.TestCase):
                 handler.root_add_dict(f"dIdx_{ptName}", dIdx, rtol=1e-10, atol=1e-10)
 
             # perturb the DV and test point coordinates
-            xDV = {"span1": np.array([2.0]), "span2": np.array([3.0])}
+            xDV = {"span1": np.array([2.0]), "child2_span2": np.array([3.0])}
             DVGeo.setDesignVars(xDV)
 
             for ptName in ptNames:
