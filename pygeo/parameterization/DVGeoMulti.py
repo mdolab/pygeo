@@ -868,7 +868,7 @@ class DVGeometryMulti:
             Define what configurations this design variable will be applied to
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
-            variable appies to *ALL* configurations.
+            variable applies to *ALL* configurations.
 
 
         Returns
@@ -1096,6 +1096,7 @@ class DVGeometryMulti:
             make visualization easier in tecplot.
         """
 
+        print(f"write {name}")
         coords = self.update(name)
         fileName = fileName + "_%s.dat" % name
         f = openTecplot(fileName, 3)
@@ -1254,7 +1255,6 @@ class Comp:
         self.isFillet = isFillet
         self.DVGeo = DVGeo
         self.surfPts = surfPts
-        self.surfPtsOrig = deepcopy(surfPts)
         self.xMin = xMin
         self.xMax = xMax
         self.comm = comm
@@ -3750,7 +3750,7 @@ class FilletIntersection(Intersection):
             curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
             delta = newCurveCoords - curvePtCoords
 
-            ptsNew = deepcopy(self.filletComp.surfPtsOrig)
+            ptsNew = self.filletComp.surfPtsOrig.copy()
             pts0 = self.filletComp.surfPtsOrig
 
             # warp interior fillet points
