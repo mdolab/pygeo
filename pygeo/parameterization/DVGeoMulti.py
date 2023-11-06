@@ -3851,4 +3851,4 @@ class FilletIntersection(Intersection):
     def _getUpdatedCoords(self):
         self.compA.updateSurfPts()
         self.compB.updateSurfPts()
-        self.DVGeo.update("fillet_surf_points")  # TODO might not be necessary
+        self.DVGeo.update("fillet_surf_points")
