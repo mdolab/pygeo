@@ -961,24 +961,38 @@ class DVGeometryMulti:
         dvOffset = 0
 
         # convert dIdx from FFD motion into dIdxDict for pyOptSparse
+        # non-fillet intersections can have pointsets that span multiple DVGeos
         # fillet has no dIdx from FFD motion
-        if not ptSetComp.isFillet:
+        if not self.filletIntersection:
             for comp in self.comps.values():
-                if not comp.isFillet:
-                    DVGeo = comp.DVGeo
-                    nDVComp = DVGeo.getNDV()
+                DVGeo = comp.DVGeo
+                nDVComp = DVGeo.getNDV()
 
-                    # we only do this if this component has at least one DV
-                    if nDVComp > 0:
-                        # this part of the sensitivity matrix is owned by this dvgeo
-                        dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
+                # we only do this if this component has at least one DV
+                if nDVComp > 0:
+                    # this part of the sensitivity matrix is owned by this dvgeo
+                    dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
 
-                        for k, v in dIdxComp.items():
-                            dIdxDict[k] = v
+                    for k, v in dIdxComp.items():
+                        dIdxDict[k] = v
 
-                        # also increment the offset
-                        dvOffset += nDVComp
+                    # also increment the offset
+                    dvOffset += nDVComp
 
+        # pointsets in fillet intersection are only tied to one component
+        elif not ptSetComp.isFillet:
+            DVGeo = ptSetComp.DVGeo
+            nDVComp = DVGeo.getNDV()
+
+            # we only do this if this component has at least one DV
+            if nDVComp > 0:
+                dIdxComp = DVGeo.convertSensitivityToDict(dIdx[:, dvOffset : dvOffset + nDVComp])
+
+                for k, v in dIdxComp.items():
+                    dIdxDict[k] = v
+
+        # accumulate dIdxDict if we have derivatives from FFD
+        if not ptSetComp.isFillet:
             # finally, we can add the contributions from intersections
             for compSens in compSensList:
                 # loop over the items of compSens, which are guaranteed to be in dIdxDict
@@ -991,6 +1005,15 @@ class DVGeometryMulti:
             compSens = compSensList[0]
             for key, val in compSens.items():
                 dIdxDict[key] = val
+
+        # fillet intersections don't have multiple DVGeos contributing to one pointset
+        # manually add zeros to that entry 
+        if len(dIdxDict) < self.getNDV():
+            dvNames = self.getVarNames()
+
+            for dv in dvNames:
+                if dv not in dIdxDict.keys():
+                    dIdxDict[dv] = np.zeros((N, 1))
 
         if self.debug:
             print(f"[{self.comm.rank}] finished DVGeo.totalSensitivity")
