@@ -1959,6 +1959,7 @@ class DVGeometry(BaseDVGeometry):
             variable applies to *ALL* configurations.
 
         """
+
         self.curPtSet = ptSetName
         # We've postponed things as long as we can...do the finalization.
         self._finalize()
@@ -2897,7 +2898,7 @@ class DVGeometry(BaseDVGeometry):
                 optProb, globalVars, localVars, sectionlocalVars, spanwiselocalVars, ignoreVars, freezeVars
             )
 
-    def writeTecplot(self, fileName, solutionTime=None):
+    def writeTecplot(self, fileName, solutionTime=None, writeEmbedding=True):
         """Write the (deformed) current state of the FFDs to a tecplot file,
         including the children
 
@@ -2908,6 +2909,9 @@ class DVGeometry(BaseDVGeometry):
         SolutionTime : float
             Solution time to write to the file. This could be a fictitious time to
             make visualization easier in tecplot.
+        writeEmbeding : bool
+            Whether to write the embedding volume in the file.
+            True by default for visualization but can be turned off for a leaner file.
         """
 
         # Name here doesn't matter, just take the first one
@@ -2919,7 +2923,7 @@ class DVGeometry(BaseDVGeometry):
         vol_counter = 0
 
         # Write master volumes:
-        vol_counter += self._writeVols(f, vol_counter, solutionTime)
+        vol_counter += self._writeVols(f, vol_counter, solutionTime, writeEmbedding)
 
         closeTecplot(f)
         if len(self.points) > 0:
@@ -4426,11 +4430,14 @@ class DVGeometry(BaseDVGeometry):
 
         return Jacobian
 
-    def _writeVols(self, handle, vol_counter, solutionTime):
+    def _writeVols(self, handle, vol_counter, solutionTime, writeEmbedding):
         for i in range(len(self.FFD.vols)):
             writeTecplot3D(handle, "FFD_vol%d" % i, self.FFD.vols[i].coef, solutionTime)
             self.FFD.vols[i].computeData(recompute=True)
-            writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
+
+            if writeEmbedding:
+                writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
+
             vol_counter += 1
 
         # Write children volumes:
