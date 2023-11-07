@@ -1007,7 +1007,7 @@ class DVGeometryMulti:
                 dIdxDict[key] = val
 
         # fillet intersections don't have multiple DVGeos contributing to one pointset
-        # manually add zeros to that entry 
+        # manually add zeros to that entry
         if len(dIdxDict) < self.getNDV():
             dvNames = self.getVarNames()
 
@@ -3874,4 +3874,4 @@ class FilletIntersection(Intersection):
     def _getUpdatedCoords(self):
         self.compA.updateSurfPts()
         self.compB.updateSurfPts()
-        self.DVGeo.update("fillet_surf_points")
+        self.DVGeo.update(self.filletComp.surfPtsName)
