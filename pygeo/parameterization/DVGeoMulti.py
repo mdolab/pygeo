@@ -840,6 +840,26 @@ class DVGeometryMulti:
 
         return dvNames
 
+    def getVarVals(self):
+        dvVals = OrderedDict()
+
+        for comp in self.compNames:
+            DVGeo = self.comps[comp].DVGeo
+            if DVGeo is not None:
+                names = DVGeo.getVarNames()
+                for dv in names:
+                    if dv in DVGeo.DV_listGlobal:
+                        val = DVGeo.DV_listGlobal[dv].nVal
+                    elif dv in DVGeo.DV_listSpanwiseLocal:
+                        val = DVGeo.DV_listSpanwiseLocal[dv].nVal
+                    elif dv in DVGeo.DV_listSectionLocal:
+                        val = DVGeo.DV_listSectionLocal[dv].nVal
+                    else:
+                        val = DVGeo.DV_listLocal[dv].nVal
+                    dvVals[dv] = val
+
+        return dvVals
+
     def totalSensitivity(self, dIdpt, ptSetName, comm=None, config=None):
         """
         This function computes sensitivity information.
@@ -1009,11 +1029,11 @@ class DVGeometryMulti:
         # fillet intersections don't have multiple DVGeos contributing to one pointset
         # manually add zeros to that entry
         if len(dIdxDict) < self.getNDV():
-            dvNames = self.getVarNames()
+            dvVals = self.getVarVals()
 
-            for dv in dvNames:
+            for dv, nVals in dvVals.items():
                 if dv not in dIdxDict.keys():
-                    dIdxDict[dv] = np.zeros((N, 1))
+                    dIdxDict[dv] = np.zeros((N, nVals))
 
         if self.debug:
             print(f"[{self.comm.rank}] finished DVGeo.totalSensitivity")
@@ -1119,7 +1139,6 @@ class DVGeometryMulti:
             make visualization easier in tecplot.
         """
 
-        print(f"write {name}")
         coords = self.update(name)
         fileName = fileName + "_%s.dat" % name
         f = openTecplot(fileName, 3)
