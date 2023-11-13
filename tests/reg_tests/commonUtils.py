@@ -13,10 +13,10 @@ from pygeo import DVGeometry, DVGeometryAxi
 ##################
 
 
-def setupDVGeo(base_path, rotType=None):
+def setupDVGeo(base_path, rotType=None, parentName=None, childName=None):
     # create the Parent FFD
     FFDFile = os.path.join(base_path, "../../input_files/outerBoxFFD.xyz")
-    DVGeo = DVGeometry(FFDFile)
+    DVGeo = DVGeometry(FFDFile, name=parentName)
 
     # create a reference axis for the parent
     axisPoints = [[-1.0, 0.0, 0.0], [1.5, 0.0, 0.0]]
@@ -29,7 +29,7 @@ def setupDVGeo(base_path, rotType=None):
 
     # create the child FFD
     FFDFile = os.path.join(base_path, "../../input_files/simpleInnerFFD.xyz")
-    DVGeoChild = DVGeometry(FFDFile, child=True)
+    DVGeoChild = DVGeometry(FFDFile, child=True, name=childName)
 
     # create a reference axis for the child
     axisPoints = [[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
