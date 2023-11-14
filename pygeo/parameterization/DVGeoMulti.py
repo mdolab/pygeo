@@ -494,36 +494,36 @@ class DVGeometryMulti:
             if familyName == "fillet":
                 for IC in self.intersectComps:
                     # find the points on the fillet that match each intersection
-                    compAInterPts, compAInterInd = IC.findIntersection(
-                        points.astype(float), IC.compA.curvePts.astype(float)
-                    )
-                    compBInterPts, compBInterInd = IC.findIntersection(
-                        points.astype(float), IC.compB.curvePts.astype(float)
-                    )
-                    compAInterPts.dtype = self.dtype
-                    compBInterPts.dtype = self.dtype
-                    # compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
-                    # compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
+                    # compAInterPts, compAInterInd = IC.findIntersection(
+                    #     points.astype(float), IC.compA.curvePts.astype(float)
+                    # )
+                    # compBInterPts, compBInterInd = IC.findIntersection(
+                    #     points.astype(float), IC.compB.curvePts.astype(float)
+                    # )
+                    compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
+                    compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
 
                     # print(f"\nrank {self.comm.rank} local compAInterInd {compAInterIndLocal}")
-                    # compAInterNPts, compAInterSizes, compAInterPts, compAInterInd = IC._commCurveProj(
-                    #     compAInterPtsLocal, compAInterIndLocal, self.comm
-                    # )
-                    # compBInterNPts, compBInterSizes, compBInterPts, compBInterInd = IC._commCurveProj(
-                    #     compBInterPtsLocal, compBInterIndLocal, self.comm
-                    # )
+                    compAInterNPts, compAInterSizes, compAInterPts, compAInterInd = IC._commCurveProj(
+                        compAInterPtsLocal, compAInterIndLocal, self.comm
+                    )
+                    compBInterNPts, compBInterSizes, compBInterPts, compBInterInd = IC._commCurveProj(
+                        compBInterPtsLocal, compBInterIndLocal, self.comm
+                    )
+
+                    compAInterPts.dtype = self.dtype
+                    compBInterPts.dtype = self.dtype
 
                     # print(f"\nrank {self.comm.rank} local compBInterInd {compBInterIndLocal}")
                     # print(f"\nrank {self.comm.rank} total compBInterInd {compAInterInd}")
                     # print(f"\nrank {self.comm.rank} total compBInterInd {compBInterPts}")
-                    # exit()
 
                     # add those intersection points to each DVGeo so they get deformed with the FFD
                     compAPtsName = f"{IC.compA.name}_fillet_intersection"
                     compBPtsName = f"{IC.compB.name}_fillet_intersection"
 
-                    # print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
-                    # print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
+                    print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
+                    print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
 
                     IC.compA.DVGeo.addPointSet(compAInterPts, compAPtsName)
                     IC.compB.DVGeo.addPointSet(compBInterPts, compBPtsName)
