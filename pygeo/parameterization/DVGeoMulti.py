@@ -522,8 +522,8 @@ class DVGeometryMulti:
                     compAPtsName = f"{IC.compA.name}_fillet_intersection"
                     compBPtsName = f"{IC.compB.name}_fillet_intersection"
 
-                    print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
-                    print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
+                    # print(f"\nrank {self.comm.rank} compAInterPts {compAInterPts}")
+                    # print(f"\nrank {self.comm.rank} compBInterPts {compAInterPts}")
 
                     IC.compA.DVGeo.addPointSet(compAInterPts, compAPtsName)
                     IC.compB.DVGeo.addPointSet(compBInterPts, compBPtsName)
@@ -3806,7 +3806,7 @@ class FilletIntersection(Intersection):
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = deepcopy(self.filletComp.surfPtsOrig)
-        n = points.shape[0]
+        n = points.shape[1]
 
         # Initialize dictionaries to accumulate warping sensitivities
         compSens_local = {}
@@ -3818,10 +3818,10 @@ class FilletIntersection(Intersection):
             allInd = deepcopy(comp.compAInterInd)
             allInd.extend(comp.compBInterInd)
 
-            for i in range(len(points)):
-                if i in (allInd):
-                    for j in range(3):
-                        dIdpt[i * 3 + j, i, j] = 0
+            for i in range(dIdpt.shape[0]):
+                for j in range(dIdpt.shape[1]):
+                    if j in (allInd):
+                        dIdpt[i, j, :] = 0
         else:
             print("no?")
 
