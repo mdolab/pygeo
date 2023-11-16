@@ -2607,6 +2607,9 @@ class DVGeometry(BaseDVGeometry):
         """Return the total point jacobian in CSR format since we
         need this for TACS"""
 
+        if MPI.COMM_WORLD.rank == 0:
+            print(f"computeTotalJacobian for {ptSetName}")
+
         # Finalize the object, if not done yet
         self._finalize()
         self.curPtSet = ptSetName
@@ -4442,7 +4445,7 @@ class DVGeometry(BaseDVGeometry):
 
         # Write children volumes:
         for child in self.children.values():
-            vol_counter += child._writeVols(handle, vol_counter, solutionTime)
+            vol_counter += child._writeVols(handle, vol_counter, solutionTime, writeEmbedding)
 
         return vol_counter
 
