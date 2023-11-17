@@ -1233,12 +1233,16 @@ class DVGeometryMulti:
         dvOffset = 0
         # we need to call computeTotalJacobian from all comps and get the jacobians for this pointset
 
-        if self.comm.rank == 0:
-            print(f"_computeTotalJacobian for {ptSetName}")
+        # if self.comm.rank == 0:
+            # print(f"_computeTotalJacobian for {ptSetName} with comm {self.points[ptSetName].comm}")
         if self.filletIntersection:
             comp = self.comps[self.points[ptSetName].comp]
             comp.DVGeo.computeTotalJacobian(ptSetName)
-            jac = comp.DVGeo.JT[ptSetName].T
+            # print(f"\nrank {self.comm.rank} jac for pointset {ptSetName}: {comp.DVGeo.JT[ptSetName]}")
+
+            # if the pointset isn't on this proc we won't have a jac
+            if comp.DVGeo.JT[ptSetName] is not None:
+                jac = comp.DVGeo.JT[ptSetName].T
 
         else:
             for name in self.compNames:
