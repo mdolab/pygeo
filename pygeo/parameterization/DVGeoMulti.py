@@ -479,8 +479,10 @@ class DVGeometryMulti:
         # create the pointset class
         if self.filletIntersection:
             comp = compNames[0]
+            comm = self.comm
         else:
             comp = None
+        
         self.points[ptName] = PointSet(points, comm=comm, comp=comp)
 
         for comp in self.compNames:
@@ -1437,7 +1439,7 @@ class Intersection:
         # Return zeros if curvePtCoords is empty
         if not np.any(curvePtCoords):
             return deltaBar
-
+            
         for k in range(dIdPt.shape[0]):
             for j in indices:
                 # point coordinates with the baseline design
@@ -3812,7 +3814,9 @@ class FilletIntersection(Intersection):
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = deepcopy(self.filletComp.surfPtsOrig)
-        n = points.shape[1]
+
+        # number of functions we have
+        N = dIdpt.shape[0]
 
         # Initialize dictionaries to accumulate warping sensitivities
         compSens_local = {}
@@ -3846,20 +3850,36 @@ class FilletIntersection(Intersection):
         # get the comm for this point set
         ptSetComm = self.points[ptSetName][3]
 
-        indices = np.linspace(0, n - 1, n, dtype=int)
-
+        if ptSetComm:
+            nCurvePtCoordsA = ptSetComm.allreduce(len(curvePtCoordsA), op=MPI.MAX)
+            nCurvePtCoordsB = ptSetComm.allreduce(len(curvePtCoordsB), op=MPI.MAX)
+        else:
+            nCurvePtCoordsA = len(curvePtCoordsA)
+            nCurvePtCoordsB = len(curvePtCoordsB)
+            
         # call the bwd warping routine
-        deltaBar = self._warpSurfPts_b(
-            dIdpt,
-            points,
-            indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
-            curvePtCoords,
-        )
+        deltaBar = []
+        if len(points) > 0:
+            print(f"go to _warpSurfPts_b for {ptSetName} comm {self.DVGeo.comm.rank} with comm {comm}")
+            
+            deltaBar = self._warpSurfPts_b(
+                dIdpt,
+                points,
+                self.indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
+                curvePtCoords,
+            )
 
-        # split deltaBar into the contributions from each curve
-        curveInd = curvePtCoordsA.shape[0]
-        deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
-        deltaBarCompB_local = deepcopy(deltaBar[:, curveInd:, :])
+            # split deltaBar into the contributions from each curve
+            curveInd = curvePtCoordsA.shape[0]
+            deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
+            deltaBarCompB_local = deepcopy(deltaBar[:, curveInd:, :])
+
+        else:
+            deltaBarCompA_local = np.zeros((N, nCurvePtCoordsA, 3))
+            deltaBarCompB_local = np.zeros((N, nCurvePtCoordsB, 3))
+            # deltaBarCompA_local = np.zeros((0,0,0))
+            # deltaBarCompB_local = np.zeros((0,0,0))
+            print(f"skip warpsurf for {ptSetName} comm {self.DVGeo.comm.rank}")
 
         # reduce seeds for both
         if ptSetComm:
@@ -3891,6 +3911,9 @@ class FilletIntersection(Intersection):
             # we can just pass the dictionary
             compSens = compSens_local
 
+        if comm.rank == 0:
+            print(f"after project_b compSens {compSens}")
+    
         return compSens
 
     def _getIntersectionSeam(self, comm):
