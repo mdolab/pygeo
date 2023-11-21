@@ -77,6 +77,9 @@ class DVGeometryMulti:
         self.debug = debug
         self.complex = isComplex
 
+        # dictionary to save any coordinate transformations we are given
+        self.coordXfer = {}
+
         # Set real or complex Fortran API
         if isComplex:
             self.dtype = complex
@@ -405,6 +408,7 @@ class DVGeometryMulti:
         compNames=None,
         comm=None,
         applyIC=True,
+        coordXfer=None,
         **kwargs,
     ):
         """
@@ -420,6 +424,8 @@ class DVGeometryMulti:
             A user supplied name to associate with the set of coordinates.
             This name will need to be provided when updating the coordinates
             or when getting the derivatives of the coordinates.
+        coordXfer : function
+            see DVGeo addPointSet() documentation
         compNames : list, optional
             A list of component names that this point set should be added to.
             To ease bookkeeping, an empty point set with ptName will be added to components not in this list.
@@ -657,7 +663,12 @@ class DVGeometryMulti:
                 self.comps[comp].surfPtsOrig = deepcopy(points)
 
                 if comp != "fillet":
-                    self.comps[comp].DVGeo.addPointSet(points, ptName, **kwargs)
+                    if self.comm.rank ==0:
+                        print(f"adding {ptName} to {comp}")
+                    # The addPointSet call should pass coordXfer all the way through
+                    self.comps[comp].DVGeo.addPointSet(points, ptName, 
+                                                       coordXfer=coordXfer, 
+                                                       **kwargs)
 
         # check if this pointset will get the IC treatment
         if applyIC:
@@ -788,6 +799,12 @@ class DVGeometryMulti:
         # set the pointset up to date
         self.updated[ptSetName] = True
 
+        # apply coord transformation on newPts
+        if ptSetName in self.coordXfer:
+            if self.comm.rank == 0:
+                print(f"running {ptSetName} through coordXfer")
+            newPts = self.coordXfer[ptSetName](newPts, mode="fwd", applyDisplacement=True)
+        
         self.points[ptSetName].points = newPts
 
         return newPts
@@ -904,6 +921,16 @@ class DVGeometryMulti:
         internally and should not be changed by the user.
 
         """
+
+        # apply coord transformation on dIdpt
+        if ptSetName in self.coordXfer:
+            if self.comm.rank == 0:
+                print("applying coordXfer to dIdpt")
+            # loop over functions
+            for ifunc in range(N):
+                # its important to remember that dIdpt are vector-like values,
+                # so we don't apply the transformations and only the rotations!
+                dIdpt[ifunc] = self.coordXfer[ptSetName](dIdpt[ifunc], mode="bwd", applyDisplacement=False)
 
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
         ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
