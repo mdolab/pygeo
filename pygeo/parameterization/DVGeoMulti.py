@@ -363,7 +363,7 @@ class DVGeometryMulti:
 
         self.intersectComps.append(inter)
 
-    def addCurve(self, compName, filletName, curveFiles=None, curvePtsArray=None):
+    def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None):
         if not self.filletIntersection:
             print("no")  # TODO real error
 
@@ -384,7 +384,7 @@ class DVGeometryMulti:
         comp.curvePtsOrig = deepcopy(curvePts)
 
         # add the curve pointset to the component's DVGeo
-        comp.DVGeo.addPointSet(curvePts, ptSetName, self.comm)  # TODO is comm right here
+        comp.DVGeo.addPointSet(curvePts, ptSetName, origConfig=origConfig, coordXfer=coordXfer)  # TODO is comm right here
 
         # add the curve pointset to DVGeoMulti
         self.points[ptSetName] = PointSet(curvePts, comm=self.comm, comp=compName)
