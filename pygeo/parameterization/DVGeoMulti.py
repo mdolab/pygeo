@@ -364,6 +364,9 @@ class DVGeometryMulti:
         self.intersectComps.append(inter)
 
     def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None):
+        """
+        Chances are you do not need coordXfer and origConfig passed through here.
+        """
         if not self.filletIntersection:
             print("no")  # TODO real error
 
@@ -424,8 +427,6 @@ class DVGeometryMulti:
             A user supplied name to associate with the set of coordinates.
             This name will need to be provided when updating the coordinates
             or when getting the derivatives of the coordinates.
-        coordXfer : function
-            see DVGeo addPointSet() documentation
         compNames : list, optional
             A list of component names that this point set should be added to.
             To ease bookkeeping, an empty point set with ptName will be added to components not in this list.
@@ -437,8 +438,23 @@ class DVGeometryMulti:
         applyIC : bool, optional
             Flag to specify whether this point set will follow the updated intersection curve(s).
             This is typically only needed for the CFD surface mesh.
+        coordXfer : function, optional
+            See DVGeo docs
 
         """
+
+        # Do the very first coordXfer if it exists
+        # We do not need to pass a coordXfer callback all the way through 
+        # because it already exists in the DVGeo level
+        if coordXfer is not None:
+            self.coordXfer[ptName] = coordXfer
+            # print(f"running {ptName} through coordXfer")
+            # points = self.coordXfer[ptName](points, mode="fwd", applyDisplacement=True)
+            print("running coordXfer and saving it")
+            points = coordXfer(points, mode="fwd", applyDisplacement=True)
+        else:
+            print(f"no coordXfer for {ptName}")
+        # Find out what the **kwargs are here
 
         # if compList is not provided, we use all components
         if compNames is None:
@@ -663,12 +679,7 @@ class DVGeometryMulti:
                 self.comps[comp].surfPtsOrig = deepcopy(points)
 
                 if comp != "fillet":
-                    if self.comm.rank ==0:
-                        print(f"adding {ptName} to {comp}")
-                    # The addPointSet call should pass coordXfer all the way through
-                    self.comps[comp].DVGeo.addPointSet(points, ptName, 
-                                                       coordXfer=coordXfer, 
-                                                       **kwargs)
+                    self.comps[comp].DVGeo.addPointSet(points, ptName, **kwargs)
 
         # check if this pointset will get the IC treatment
         if applyIC:
