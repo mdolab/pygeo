@@ -3911,7 +3911,7 @@ class FilletIntersection(Intersection):
             # we can just pass the dictionary
             compSens = compSens_local
 
-        if comm.rank == 0:
+        if comm is None or comm.rank == 0:
             print(f"after project_b compSens {compSens}")
     
         return compSens
