@@ -927,10 +927,8 @@ class DVGeometryMulti:
 
         """
 
-        # apply coord transformation on dIdpt
+        # apply coord transformation on dIdpt if this pointset has it.
         if ptSetName in self.coordXfer:
-            if self.comm.rank == 0:
-                print("applying coordXfer to dIdpt")
             # loop over functions
             for ifunc in range(N):
                 # its important to remember that dIdpt are vector-like values,
