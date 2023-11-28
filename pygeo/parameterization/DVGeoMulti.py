@@ -365,7 +365,8 @@ class DVGeometryMulti:
 
     def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None):
         """
-        Chances are you do not need coordXfer and origConfig passed through here.
+        If using coordXfer callback function, the curvePts need to be in the ADflow reference frame
+        and the callback function needs to be passed in
         """
         if not self.filletIntersection:
             print("no")  # TODO real error
@@ -445,16 +446,11 @@ class DVGeometryMulti:
 
         # Do the very first coordXfer if it exists
         # We do not need to pass a coordXfer callback all the way through 
-        # because it already exists in the DVGeo level
+        # because it already exists in the DVGeoMulti level
         if coordXfer is not None:
             self.coordXfer[ptName] = coordXfer
-            # print(f"running {ptName} through coordXfer")
-            # points = self.coordXfer[ptName](points, mode="fwd", applyDisplacement=True)
-            print("running coordXfer and saving it")
-            points = coordXfer(points, mode="fwd", applyDisplacement=True)
-        else:
-            print(f"no coordXfer for {ptName}")
-        # Find out what the **kwargs are here
+
+            points = self.coordXfer[ptName](points, mode="bwd", applyDisplacement=True)
 
         # if compList is not provided, we use all components
         if compNames is None:
@@ -812,8 +808,6 @@ class DVGeometryMulti:
 
         # apply coord transformation on newPts
         if ptSetName in self.coordXfer:
-            if self.comm.rank == 0:
-                print(f"running {ptSetName} through coordXfer")
             newPts = self.coordXfer[ptSetName](newPts, mode="fwd", applyDisplacement=True)
         
         self.points[ptSetName].points = newPts
