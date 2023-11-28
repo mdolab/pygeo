@@ -2901,7 +2901,7 @@ class DVGeometry(BaseDVGeometry):
                 optProb, globalVars, localVars, sectionlocalVars, spanwiselocalVars, ignoreVars, freezeVars
             )
 
-    def writeTecplot(self, fileName, solutionTime=None, writeEmbedding=True):
+    def writeTecplot(self, fileName, solutionTime=None, writeEmbedding=True, coordXfer=None):
         """Write the (deformed) current state of the FFDs to a tecplot file,
         including the children
 
@@ -2915,6 +2915,10 @@ class DVGeometry(BaseDVGeometry):
         writeEmbeding : bool
             Whether to write the embedding volume in the file.
             True by default for visualization but can be turned off for a leaner file.
+        coordXfer : callback func
+            Apply the coordinate transfer to the points before writing. If not, the
+            output is the deformed points in the FFD coordinate system.
+            None by default.
         """
 
         # Name here doesn't matter, just take the first one
@@ -2926,7 +2930,7 @@ class DVGeometry(BaseDVGeometry):
         vol_counter = 0
 
         # Write master volumes:
-        vol_counter += self._writeVols(f, vol_counter, solutionTime, writeEmbedding)
+        vol_counter += self._writeVols(f, vol_counter, solutionTime, writeEmbedding, coordXfer)
 
         closeTecplot(f)
         if len(self.points) > 0:
@@ -4433,13 +4437,38 @@ class DVGeometry(BaseDVGeometry):
 
         return Jacobian
 
-    def _writeVols(self, handle, vol_counter, solutionTime, writeEmbedding):
+    def _writeVols(self, handle, vol_counter, solutionTime, writeEmbedding, coordXfer):
         for i in range(len(self.FFD.vols)):
-            writeTecplot3D(handle, "FFD_vol%d" % i, self.FFD.vols[i].coef, solutionTime)
+            if coordXfer is not None:
+                data = self.FFD.vols[i].coef
+                ny = data.shape[1]
+                nz = data.shape[2]
+                FFDPts = np.zeros_like(data)
+                for k in range(nz):
+                    for j in range(ny):
+                        points = data[:, j, k, :]
+                        FFDPt = coordXfer(points, mode="fwd", applyDisplacement=True)
+                        FFDPts[:, j, k, :] = FFDPt
+            else:
+                FFDPts = self.FFD.vols[i].coef
+
+            writeTecplot3D(handle, "FFD_vol%d" % i, FFDPts, solutionTime)
             self.FFD.vols[i].computeData(recompute=True)
 
             if writeEmbedding:
-                writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
+                if coordXfer is not None:
+                    data = self.FFD.vols[i].data
+                    ny = data.shape[1]
+                    nz = data.shape[2]
+                    embeddingPts = np.zeros_like(data)
+                    for k in range(nz):
+                        for j in range(ny):
+                            points = data[:, j, k, :]
+                            embeddingPt = coordXfer(points, mode="fwd", applyDisplacement=True)
+                            embeddingPts[:, j, k, :] = embeddingPt
+                else:
+                    embeddingPts = self.FFD.vols[i].data
+                writeTecplot3D(handle, "embedding_vol", embeddingPts, solutionTime)
 
             vol_counter += 1
 
