@@ -185,7 +185,7 @@ class DVGeometryMulti:
 
                 # add these points to the corresponding dvgeo unless this component is a fillet
                 if not isFillet:
-                    DVGeo.addPointSet(nodes, "datPts", **pointSetKwargs)
+                    DVGeo.addPointSet(nodes, f"{comp}DatPts", **pointSetKwargs)
 
             else:
                 nodes = None
@@ -381,7 +381,9 @@ class DVGeometryMulti:
         comp.curvePtsOrig = deepcopy(curvePts)
 
         # add the curve pointset to the component's DVGeo
-        comp.DVGeo.addPointSet(curvePts, ptSetName, origConfig=origConfig, coordXfer=coordXfer)  # TODO is comm right here
+        comp.DVGeo.addPointSet(
+            curvePts, ptSetName, origConfig=origConfig, coordXfer=coordXfer
+        )  # TODO is comm right here
 
         # add the curve pointset to DVGeoMulti
         self.points[ptSetName] = PointSet(curvePts, comm=self.comm, comp=compName)
@@ -482,7 +484,7 @@ class DVGeometryMulti:
             comm = self.comm
         else:
             comp = None
-        
+
         self.points[ptName] = PointSet(points, comm=comm, comp=comp)
 
         for comp in self.compNames:
@@ -1236,7 +1238,7 @@ class DVGeometryMulti:
         # we need to call computeTotalJacobian from all comps and get the jacobians for this pointset
 
         # if self.comm.rank == 0:
-            # print(f"_computeTotalJacobian for {ptSetName} with comm {self.points[ptSetName].comm}")
+        # print(f"_computeTotalJacobian for {ptSetName} with comm {self.points[ptSetName].comm}")
         if self.filletIntersection:
             comp = self.comps[self.points[ptSetName].comp]
             comp.DVGeo.computeTotalJacobian(ptSetName)
@@ -1439,7 +1441,7 @@ class Intersection:
         # Return zeros if curvePtCoords is empty
         if not np.any(curvePtCoords):
             return deltaBar
-            
+
         for k in range(dIdPt.shape[0]):
             for j in indices:
                 # point coordinates with the baseline design
@@ -3856,12 +3858,12 @@ class FilletIntersection(Intersection):
         else:
             nCurvePtCoordsA = len(curvePtCoordsA)
             nCurvePtCoordsB = len(curvePtCoordsB)
-            
+
         # call the bwd warping routine
         deltaBar = []
         if len(points) > 0:
             print(f"go to _warpSurfPts_b for {ptSetName} comm {self.DVGeo.comm.rank} with comm {comm}")
-            
+
             deltaBar = self._warpSurfPts_b(
                 dIdpt,
                 points,
@@ -3913,7 +3915,7 @@ class FilletIntersection(Intersection):
 
         if comm is None or comm.rank == 0:
             print(f"after project_b compSens {compSens}")
-    
+
         return compSens
 
     def _getIntersectionSeam(self, comm):
