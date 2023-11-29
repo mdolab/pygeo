@@ -19,7 +19,7 @@ from .gearPostConstraint import GearPostConstraint
 from .locationConstraint import LocationConstraint
 from .planarityConstraint import PlanarityConstraint
 from .radiusConstraint import RadiusConstraint
-from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint, ProximityConstraint
+from .thicknessConstraint import ProximityConstraint, ThicknessConstraint, ThicknessToChordConstraint
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
