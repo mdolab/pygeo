@@ -927,14 +927,6 @@ class DVGeometryMulti:
 
         """
 
-        # apply coord transformation on dIdpt if this pointset has it.
-        if ptSetName in self.coordXfer:
-            # loop over functions
-            for ifunc in range(N):
-                # its important to remember that dIdpt are vector-like values,
-                # so we don't apply the transformations and only the rotations!
-                dIdpt[ifunc] = self.coordXfer[ptSetName](dIdpt[ifunc], mode="bwd", applyDisplacement=False)
-
         # Compute the total Jacobian for this point set as long as this isn't a fillet (no DVGeo control)
         ptSetComp = self.comps[self.points[ptSetName].comp]  # todo this is dumb!!
         if ptSetComp is None or not ptSetComp.isFillet:
@@ -944,6 +936,15 @@ class DVGeometryMulti:
         if len(dIdpt.shape) == 2:
             dIdpt = np.array([dIdpt])
         N = dIdpt.shape[0]
+
+        # apply coord transformation on dIdpt if this pointset has it.
+        if ptSetName in self.coordXfer:
+            # loop over functions
+            for ifunc in range(N):
+                # its important to remember that dIdpt are vector-like values,
+                # so we don't apply the transformations and only the rotations!
+                dIdpt[ifunc] = self.coordXfer[ptSetName](dIdpt[ifunc], mode="bwd", applyDisplacement=False)
+
 
         # create a dictionary to save total sensitivity info that might come out of the ICs
         compSensList = []
