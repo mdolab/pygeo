@@ -980,7 +980,6 @@ class RegTestProximity(unittest.TestCase):
     def test_proximity_constraint(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_proximity_constraints.ref")
         with BaseRegTest(refFile, train=train) as handler:
-
             # create a dvgeo with one parent, and two overlapping children
             parent_ffd_file = os.path.join(self.base_path, "../../input_files/parent.xyz")
             child_ffd_file = os.path.join(self.base_path, "../../input_files/box1.xyz")
