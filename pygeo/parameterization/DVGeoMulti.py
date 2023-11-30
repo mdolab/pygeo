@@ -1255,7 +1255,11 @@ class DVGeometryMulti:
         """
 
         # number of design variables
-        nDV = self.getNDV()
+        if self.filletIntersection:
+            comp = self.comps[self.points[ptSetName].comp]
+            nDV = comp.DVGeo.getNDV()
+        else:
+            nDV = self.getNDV()
 
         # Initialize the Jacobian as a LIL matrix because this is convenient for indexing
         jac = sparse.lil_matrix((self.points[ptSetName].nPts * 3, nDV))
@@ -1269,7 +1273,7 @@ class DVGeometryMulti:
         # if self.comm.rank == 0:
             # print(f"_computeTotalJacobian for {ptSetName} with comm {self.points[ptSetName].comm}")
         if self.filletIntersection:
-            comp = self.comps[self.points[ptSetName].comp]
+
             comp.DVGeo.computeTotalJacobian(ptSetName)
             # print(f"\nrank {self.comm.rank} jac for pointset {ptSetName}: {comp.DVGeo.JT[ptSetName]}")
 
