@@ -5,7 +5,7 @@ import openmdao.api as om
 from openmdao.api import AnalysisError
 
 # Local modules
-from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryVSP, DVGeometryMulti
+from .. import DVConstraints, DVGeometry, DVGeometryESP, DVGeometryMulti, DVGeometryVSP
 
 
 # class that actually calls the DVGeometry methods
