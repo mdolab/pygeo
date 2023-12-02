@@ -184,7 +184,6 @@ class DVGeometryMulti:
         project=False,
         marchDir=1,
         includeCurves=False,
-        slidingCurves=[],
         intDir=None,
         curveEpsDict=None,
         trackSurfaces=None,
@@ -233,10 +232,6 @@ class DVGeometryMulti:
 
         includeCurves : bool, optional
             Flag to specify whether to include features curves in the inverse-distance deformation.
-
-        slidingCurves : list, optional
-            The list of curves to project to, but on which the mesh nodes are not frozen in their initial positions.
-            This allows the mesh nodes to slide along the feature curve.
 
         intDir : int, optional
             If there are multiple intersection curves, this specifies which curve to choose.
@@ -295,7 +290,6 @@ class DVGeometryMulti:
                 project,
                 marchDir,
                 includeCurves,
-                slidingCurves,
                 intDir,
                 curveEpsDict,
                 trackSurfaces,
@@ -1012,7 +1006,6 @@ class CompIntersection:
         project,
         marchDir,
         includeCurves,
-        slidingCurves,
         intDir,
         curveEpsDict,
         trackSurfaces,
@@ -1201,10 +1194,6 @@ class CompIntersection:
 
         # flag to include feature curves in ID-warping
         self.incCurves = includeCurves
-
-        # list of curves that allow nodes to slide on them. we only use these for the projection step,
-        # but they are not included in the first line based IDWarp
-        self.slidingCurves = slidingCurves
 
         # direction to pick if we have multiple intersection curves
         self.intDir = intDir
@@ -1444,7 +1433,7 @@ class CompIntersection:
                     elemIDs[:] = elemIDs + 1
                     # (we need to do this separetely because Fortran will actively change elemIDs contents.
                     self.curveSearchAPI.mindistancecurve(
-                        ptsToCurves.T, self.seam0.T, self.seamConnFull.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
+                        ptsToCurves.T, self.seam0.T, self.seamConn.T + 1, xyzProj.T, tanProj.T, dist2, elemIDs
                     )
 
                     # Adjust indices back to Python standards
@@ -1554,7 +1543,7 @@ class CompIntersection:
         # we use the initial seam coordinates here
         coor = self.seam0
         # bar connectivity for the remeshed elements
-        conn = self.seamConnWarp
+        conn = self.seamConn
         # deltas for each point (nNode, 3) in size
         if self.seam.shape == self.seam0.shape:
             dr = self.seam - self.seam0
@@ -1661,7 +1650,7 @@ class CompIntersection:
         # we use the initial seam coordinates here
         coor = self.seam0
         # bar connectivity for the remeshed elements
-        conn = self.seamConnWarp
+        conn = self.seamConn
 
         # Get the two end points for the line elements
         r0 = coor[conn[:, 0]]
@@ -1798,7 +1787,7 @@ class CompIntersection:
             # conn of the current curve
             seamBeg = self.seamBeg[curveName]
             seamEnd = self.seamEnd[curveName]
-            curveConn = self.seamConnFull[seamBeg:seamEnd]
+            curveConn = self.seamConn[seamBeg:seamEnd]
 
             # Project these to the combined curves using pySurf
             # Get number of points
@@ -2780,8 +2769,7 @@ class CompIntersection:
                 self.distFeature = {}
 
             remeshedCurves = np.zeros((0, 3), dtype=self.dtype)
-            remeshedCurveConnFull = np.zeros((0, 2), dtype="int32")
-            remeshedCurveConnWarp = np.zeros((0, 2), dtype="int32")
+            remeshedCurveConn = np.zeros((0, 2), dtype="int32")
 
             # loop over each curve, figure out what nodes get re-meshed, re-mesh, and append to seam...
             for curveName in self.featureCurveNames:
@@ -2904,10 +2892,7 @@ class CompIntersection:
 
                 # append this new curve to the featureCurve data
                 remeshedCurves = np.vstack((remeshedCurves, newCoor))
-                remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
-
-                if curveName not in self.slidingCurves:
-                    remeshedCurveConnWarp = np.vstack((remeshedCurveConnWarp, newBarsConn))
+                remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
 
                 # number of new nodes added in the opposite direction
                 nNewNodesReverse = 0
@@ -2934,10 +2919,7 @@ class CompIntersection:
                     newBarsConn = newBarsConn + len(remeshedCurves)
 
                     remeshedCurves = np.vstack((remeshedCurves, newCoor))
-                    remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
-
-                    if curveName not in self.slidingCurves:
-                        remeshedCurveConnWarp = np.vstack((remeshedCurveConnWarp, newBarsConn))
+                    remeshedCurveConn = np.vstack((remeshedCurveConn, newBarsConn))
 
                 if curveName in curveBegCoor:
                     # finally, put the modified initial and final points back in place.
@@ -2955,31 +2937,28 @@ class CompIntersection:
                 if firstCall:
                     # save the beginning and end indices of these elements
                     self.seamBeg[curveName] = (
-                        len(finalConn) + len(remeshedCurveConnFull) - (nNewNodes + nNewNodesReverse) + 2
+                        len(finalConn) + len(remeshedCurveConn) - (nNewNodes + nNewNodesReverse) + 2
                     )
-                    self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConnFull)
+                    self.seamEnd[curveName] = len(finalConn) + len(remeshedCurveConn)
 
             # Output the feature curves
             if self.comm.rank == 0 and self.debug:
                 curvename = f"featureCurves_{self.counter}"
-                tecplot_interface.writeTecplotFEdata(remeshedCurves, remeshedCurveConnFull, curvename, curvename)
+                tecplot_interface.writeTecplotFEdata(remeshedCurves, remeshedCurveConn, curvename, curvename)
 
             # now we are done going over curves,
             # so we can append all the new curves to the "seam",
             # which now contains the intersection, and re-meshed feature curves
 
             # increment the conn from curves
-            remeshedCurveConnFull += len(seam)
-            remeshedCurveConnWarp += len(seam)
+            remeshedCurveConn += len(seam)
             # stack the nodes
             seam = np.vstack((seam, remeshedCurves))
             # stack the conn
-            finalConnFull = np.vstack((finalConn, remeshedCurveConnFull))
-            finalConnWarp = np.vstack((finalConn, remeshedCurveConnWarp))
+            finalConn = np.vstack((finalConn, remeshedCurveConn))
 
         # save the connectivity
-        self.seamConnFull = finalConnFull
-        self.seamConnWarp = finalConnWarp
+        self.seamConn = finalConn
 
         self.counter += 1
 
