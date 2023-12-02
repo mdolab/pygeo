@@ -2935,7 +2935,7 @@ class CompIntersection:
 
                     remeshedCurves = np.vstack((remeshedCurves, newCoor))
                     remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
-                    
+
                     if curveName not in self.slidingCurves:
                         remeshedCurveConnWarp = np.vstack((remeshedCurveConnWarp, newBarsConn))
 
