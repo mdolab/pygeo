@@ -179,12 +179,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
+    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, applyIC=False, **kwargs):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
-        DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        if isinstance(DVGeo, DVGeometryMulti):
+            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, applyIC, **kwargs)
+        else:
+            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
         if isinstance(DVGeo, DVGeometry):
