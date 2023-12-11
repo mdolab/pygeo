@@ -302,13 +302,13 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # call the dvgeo object and add this dv
         if childName is not None and comp is not None:
-            DVGeo.DVGeoDict[comp].children[childName].addGlobalDV(dvName, value, func)
+            DVGeo.DVGeoDict[comp].children[childName].addGlobalDV(dvName, value, func, prependName=False)
         elif comp is not None:
-            DVGeo.DVGeoDict[comp].addGlobalDV(dvName, value, func)
+            DVGeo.DVGeoDict[comp].addGlobalDV(dvName, value, func, prependName=False)
         elif childName is not None:
-            DVGeo.children[childName].addGlobalDV(dvName, value, func)
+            DVGeo.children[childName].addGlobalDV(dvName, value, func, prependName=False)
         else:
-            DVGeo.addGlobalDV(dvName, value, func)
+            DVGeo.addGlobalDV(dvName, value, func, prependName=False)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -327,13 +327,17 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type: {type(DVGeo).__name__}")
 
         if childName is not None and comp is not None:
-            nVal = DVGeo.DVGeoDict[comp].children[childName].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = (
+                DVGeo.DVGeoDict[comp]
+                .children[childName]
+                .addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False)
+            )
         elif comp is not None:
-            nVal = DVGeo.DVGeoDict[comp].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = DVGeo.DVGeoDict[comp].addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False)
         elif childName is not None:
-            nVal = DVGeo.children[childName].addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = DVGeo.children[childName].addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False)
         else:
-            nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+            nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -421,21 +425,25 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             nVal = (
                 DVGeo.DVGeoDict[comp]
                 .children[childName]
-                .addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config)
+                .addLocalSectionDV(
+                    dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
+                )
             )
 
         elif comp is not None:
             nVal = DVGeo.DVGeoDict[comp].addLocalSectionDV(
-                dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config
+                dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
             )
 
         elif childName is not None:
             nVal = DVGeo.children[childName].addLocalSectionDV(
-                dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config
+                dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
             )
 
         else:
-            nVal = DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config)
+            nVal = DVGeo.addLocalSectionDV(
+                dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
+            )
 
         # define the input
         self.add_input(dvName, distributed=False, shape=nVal)
@@ -489,16 +497,18 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         # add the DV to DVGeo
         if childName is not None and comp is not None:
-            nVal = DVGeo.DVGeoDict[comp].children[childName].addShapeFunctionDV(dvName, shapes, config)
+            nVal = (
+                DVGeo.DVGeoDict[comp].children[childName].addShapeFunctionDV(dvName, shapes, config, prependName=False)
+            )
 
         elif comp is not None:
-            nVal = DVGeo.DVGeoDict[comp].addShapeFunctionDV(dvName, shapes, config)
+            nVal = DVGeo.DVGeoDict[comp].addShapeFunctionDV(dvName, shapes, config, prependName=False)
 
         elif childName is not None:
-            nVal = DVGeo.children[childName].addShapeFunctionDV(dvName, shapes, config)
+            nVal = DVGeo.children[childName].addShapeFunctionDV(dvName, shapes, config, prependName=False)
 
         else:
-            nVal = DVGeo.addShapeFunctionDV(dvName, shapes, config)
+            nVal = DVGeo.addShapeFunctionDV(dvName, shapes, config, prependName=False)
 
         # define the input
         self.add_input(dvName, distributed=False, shape=nVal)
@@ -509,7 +519,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # call the dvgeo object and add this dv
-        DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
+        DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, prependName=False, **kwargs)
         val = DVGeo.getValues()
 
         # define the input
