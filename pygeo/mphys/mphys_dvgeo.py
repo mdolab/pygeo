@@ -165,9 +165,8 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             if pointSet not in child_ffd.points:
                 child_ffd.addPointSet(DVGeo.points[pointSet], pointSet)
 
-    def nom_add_discipline_coords(self, discipline, points=None, DVGeoName=None, applyIC=False):
+    def nom_add_discipline_coords(self, discipline, points=None, DVGeoName=None, **kwargs):
         # TODO remove one of these methods to keep only one method to add pointsets
-
         if points is None:
             # no pointset info is provided, just do a generic i/o. We will add these points during the first compute
             self.add_input("x_%s_in" % discipline, distributed=True, shape_by_conn=True)
@@ -175,19 +174,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
 
         else:
             # we are provided with points. we can do the full initialization now
-            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False, DVGeoName=DVGeoName, applyIC=applyIC)
+            self.nom_addPointSet(points, "x_%s0" % discipline, add_output=False, DVGeoName=DVGeoName, **kwargs)
             self.add_input("x_%s_in" % discipline, distributed=True, val=points.flatten())
             self.add_output("x_%s0" % discipline, distributed=True, val=points.flatten())
 
-    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, applyIC=False, **kwargs):
+    def nom_addPointSet(self, points, ptName, add_output=True, DVGeoName=None, **kwargs):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # add the points to the dvgeo object
-        if isinstance(DVGeo, DVGeometryMulti):
-            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, applyIC, **kwargs)
-        else:
-            DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
+        DVGeo.addPointSet(points.reshape(len(points) // 3, 3), ptName, **kwargs)
         self.omPtSetList.append(ptName)
 
         if isinstance(DVGeo, DVGeometry):
