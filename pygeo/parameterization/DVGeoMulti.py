@@ -1709,7 +1709,7 @@ class CompIntersection(Intersection):
         self.intDir = intDir
 
         # only the node coordinates will be modified for the intersection calculations because we have calculated and saved all the connectivity information
-        if self.comm.rank == 0:
+        if self.comm.rank == 0 and self.debug:
             print(f"Computing initial intersection between {compA} and {compB}")
         self.seam0 = self._getIntersectionSeam(self.comm, firstCall=True)
         self.seam = self.seam0.copy()
@@ -3862,7 +3862,8 @@ class FilletIntersection(Intersection):
         # call the bwd warping routine
         deltaBar = []
         if len(points) > 0:
-            print(f"go to _warpSurfPts_b for {ptSetName} comm {self.DVGeo.comm.rank} with comm {comm}")
+            if self.DVGeo.debug:
+                print(f"go to _warpSurfPts_b for {ptSetName} comm {self.DVGeo.comm.rank} with comm {comm}")
 
             deltaBar = self._warpSurfPts_b(
                 dIdpt,
@@ -3881,7 +3882,8 @@ class FilletIntersection(Intersection):
             deltaBarCompB_local = np.zeros((N, nCurvePtCoordsB, 3))
             # deltaBarCompA_local = np.zeros((0,0,0))
             # deltaBarCompB_local = np.zeros((0,0,0))
-            print(f"skip warpsurf for {ptSetName} comm {self.DVGeo.comm.rank}")
+            if self.DVGeo.debug:
+                print(f"skip warpsurf for {ptSetName} comm {self.DVGeo.comm.rank}")
 
         # reduce seeds for both
         if ptSetComm:
@@ -3913,8 +3915,8 @@ class FilletIntersection(Intersection):
             # we can just pass the dictionary
             compSens = compSens_local
 
-        if comm is None or comm.rank == 0:
-            print(f"after project_b compSens {compSens}")
+        # if comm is None or comm.rank == 0:
+        #     print(f"after project_b compSens {compSens}")
 
         return compSens
 
