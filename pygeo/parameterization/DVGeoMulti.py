@@ -447,7 +447,7 @@ class DVGeometryMulti:
         """
 
         # Do the very first coordXfer if it exists
-        # We do not need to pass a coordXfer callback all the way through 
+        # We do not need to pass a coordXfer callback all the way through
         # because it already exists in the DVGeoMulti level
         if coordXfer is not None:
             self.coordXfer[ptName] = coordXfer
@@ -678,6 +678,11 @@ class DVGeometryMulti:
 
                 if comp != "fillet":
                     self.comps[comp].DVGeo.addPointSet(points, ptName, **kwargs)
+                # add a dummy array for indices
+                # only necessary to fix test cases,
+                else:
+                    for IC in self.intersectComps:
+                        IC.indices = np.linspace(0, len(points) - 1, len(points), dtype=int)
 
         # check if this pointset will get the IC treatment
         if applyIC:
@@ -811,7 +816,7 @@ class DVGeometryMulti:
         # apply coord transformation on newPts
         if ptSetName in self.coordXfer:
             newPts = self.coordXfer[ptSetName](newPts, mode="fwd", applyDisplacement=True)
-        
+
         self.points[ptSetName].points = newPts
 
         return newPts
@@ -946,7 +951,6 @@ class DVGeometryMulti:
                 # its important to remember that dIdpt are vector-like values,
                 # so we don't apply the transformations and only the rotations!
                 dIdpt[ifunc] = self.coordXfer[ptSetName](dIdpt[ifunc], mode="bwd", applyDisplacement=False)
-
 
         # create a dictionary to save total sensitivity info that might come out of the ICs
         compSensList = []
@@ -1275,7 +1279,6 @@ class DVGeometryMulti:
         # if self.comm.rank == 0:
         # print(f"_computeTotalJacobian for {ptSetName} with comm {self.points[ptSetName].comm}")
         if self.filletIntersection:
-
             comp.DVGeo.computeTotalJacobian(ptSetName)
             # print(f"\nrank {self.comm.rank} jac for pointset {ptSetName}: {comp.DVGeo.JT[ptSetName]}")
 
@@ -3852,6 +3855,12 @@ class FilletIntersection(Intersection):
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = deepcopy(self.filletComp.surfPtsOrig)
 
+        # skip calculating warping derivatives for curve points
+        # TODO these pointsets should never some here from totalSensitivity
+        if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
+            print("no")
+            return compSens
+
         # number of functions we have
         N = dIdpt.shape[0]
 
@@ -3872,12 +3881,17 @@ class FilletIntersection(Intersection):
         else:
             print("no?")
 
-        compSens = {}
-
-        # skip calculating warping derivatives for curve points
-        # TODO these pointsets should never some here from totalSensitivity
-        if ptSetName == self.filletComp.compAPtsName or ptSetName == self.filletComp.compBPtsName:
-            return compSens
+        # loop over each entry in xA and xB and create a dummy zero gradient array for all
+        xA = self.compA.DVGeo.getValues()
+        xB = self.compB.DVGeo.getValues()
+        for k, v in xA.items():
+            # create the zero array:
+            zeroSens = np.zeros((N, v.shape[0]))
+            compSens_local[k] = zeroSens
+        for k, v in xB.items():
+            # create the zero array:
+            zeroSens = np.zeros((N, v.shape[0]))
+            compSens_local[k] = zeroSens
 
         # get current curve points (full definition from pointwise) owned by each component
         curvePtCoordsA = self.compA.curvePtsOrig
@@ -3895,12 +3909,11 @@ class FilletIntersection(Intersection):
             nCurvePtCoordsB = len(curvePtCoordsB)
 
         # call the bwd warping routine
-        deltaBar = []
         if len(points) > 0:
             if self.DVGeo.debug:
                 print(f"go to _warpSurfPts_b for {ptSetName} comm {self.DVGeo.comm.rank} with comm {comm}")
 
-            deltaBar = self._warpSurfPts_b(
+            delta_b_local = self._warpSurfPts_b(
                 dIdpt,
                 points,
                 self.indices,  # TODO could maybe just feed in all indices except boundaries in fillet case
@@ -3909,25 +3922,15 @@ class FilletIntersection(Intersection):
 
             # split deltaBar into the contributions from each curve
             curveInd = curvePtCoordsA.shape[0]
-            deltaBarCompA_local = deepcopy(deltaBar[:, :curveInd, :])
-            deltaBarCompB_local = deepcopy(deltaBar[:, curveInd:, :])
+            deltaBarCompA = deepcopy(delta_b_local[:, :curveInd, :])
+            deltaBarCompB = deepcopy(delta_b_local[:, curveInd:, :])
 
         else:
-            deltaBarCompA_local = np.zeros((N, nCurvePtCoordsA, 3))
-            deltaBarCompB_local = np.zeros((N, nCurvePtCoordsB, 3))
-            # deltaBarCompA_local = np.zeros((0,0,0))
-            # deltaBarCompB_local = np.zeros((0,0,0))
+            deltaBarCompA = np.zeros((N, nCurvePtCoordsA, 3))
+            deltaBarCompB = np.zeros((N, nCurvePtCoordsB, 3))
+
             if self.DVGeo.debug:
                 print(f"skip warpsurf for {ptSetName} comm {self.DVGeo.comm.rank}")
-
-        # reduce seeds for both
-        if ptSetComm:
-            deltaBarCompA = ptSetComm.allreduce(deltaBarCompA_local, op=MPI.SUM)
-            deltaBarCompB = ptSetComm.allreduce(deltaBarCompB_local, op=MPI.SUM)
-        # no comm, local is global
-        else:
-            deltaBarCompA = deltaBarCompA_local
-            deltaBarCompB = deltaBarCompB_local
 
         # run each curve through totalSensitivity on their respective DVGeo
         compSensA = self.compA.DVGeo.totalSensitivity(deltaBarCompA, self.compA.curvePtsName)
