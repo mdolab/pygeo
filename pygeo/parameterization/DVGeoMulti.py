@@ -77,6 +77,9 @@ class DVGeometryMulti:
         self.debug = debug
         self.complex = isComplex
 
+        # dictionary to save any coordinate transformations we are given
+        self.coordXfer = {}
+
         # Set real or complex Fortran API
         if isComplex:
             self.dtype = complex
@@ -361,6 +364,10 @@ class DVGeometryMulti:
         self.intersectComps.append(inter)
 
     def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None):
+        """
+        If using coordXfer callback function, the curvePts need to be in the ADflow reference frame
+        and the callback function needs to be passed in
+        """
         if not self.filletIntersection:
             print("no")  # TODO real error
 
@@ -407,6 +414,7 @@ class DVGeometryMulti:
         compNames=None,
         comm=None,
         applyIC=True,
+        coordXfer=None,
         **kwargs,
     ):
         """
@@ -433,8 +441,18 @@ class DVGeometryMulti:
         applyIC : bool, optional
             Flag to specify whether this point set will follow the updated intersection curve(s).
             This is typically only needed for the CFD surface mesh.
+        coordXfer : function, optional
+            See DVGeo docs
 
         """
+
+        # Do the very first coordXfer if it exists
+        # We do not need to pass a coordXfer callback all the way through 
+        # because it already exists in the DVGeoMulti level
+        if coordXfer is not None:
+            self.coordXfer[ptName] = coordXfer
+
+            points = self.coordXfer[ptName](points, mode="bwd", applyDisplacement=True)
 
         # if compList is not provided, we use all components
         if compNames is None:
@@ -790,6 +808,10 @@ class DVGeometryMulti:
         # set the pointset up to date
         self.updated[ptSetName] = True
 
+        # apply coord transformation on newPts
+        if ptSetName in self.coordXfer:
+            newPts = self.coordXfer[ptSetName](newPts, mode="fwd", applyDisplacement=True)
+        
         self.points[ptSetName].points = newPts
 
         return newPts
@@ -916,6 +938,15 @@ class DVGeometryMulti:
         if len(dIdpt.shape) == 2:
             dIdpt = np.array([dIdpt])
         N = dIdpt.shape[0]
+
+        # apply coord transformation on dIdpt if this pointset has it.
+        if ptSetName in self.coordXfer:
+            # loop over functions
+            for ifunc in range(N):
+                # its important to remember that dIdpt are vector-like values,
+                # so we don't apply the transformations and only the rotations!
+                dIdpt[ifunc] = self.coordXfer[ptSetName](dIdpt[ifunc], mode="bwd", applyDisplacement=False)
+
 
         # create a dictionary to save total sensitivity info that might come out of the ICs
         compSensList = []
@@ -1226,7 +1257,11 @@ class DVGeometryMulti:
         """
 
         # number of design variables
-        nDV = self.getNDV()
+        if self.filletIntersection:
+            comp = self.comps[self.points[ptSetName].comp]
+            nDV = comp.DVGeo.getNDV()
+        else:
+            nDV = self.getNDV()
 
         # Initialize the Jacobian as a LIL matrix because this is convenient for indexing
         jac = sparse.lil_matrix((self.points[ptSetName].nPts * 3, nDV))
@@ -1240,7 +1275,7 @@ class DVGeometryMulti:
         # if self.comm.rank == 0:
         # print(f"_computeTotalJacobian for {ptSetName} with comm {self.points[ptSetName].comm}")
         if self.filletIntersection:
-            comp = self.comps[self.points[ptSetName].comp]
+
             comp.DVGeo.computeTotalJacobian(ptSetName)
             # print(f"\nrank {self.comm.rank} jac for pointset {ptSetName}: {comp.DVGeo.JT[ptSetName]}")
 
