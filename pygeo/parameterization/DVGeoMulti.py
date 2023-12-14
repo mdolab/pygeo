@@ -413,7 +413,7 @@ class DVGeometryMulti:
         familyName=None,
         compNames=None,
         comm=None,
-        applyIC=True,
+        applyIC=False,
         coordXfer=None,
         **kwargs,
     ):
@@ -513,7 +513,9 @@ class DVGeometryMulti:
         # is this intersection group a fillet or normal
         if self.filletIntersection:
             # is this pointset being added to a fillet component or a controlled component
-            if familyName == "fillet":
+            # only find intersections if this is the mesh pointset (applyIC=True)
+            # if this is from a constraint (applyIC=False) skip this step
+            if familyName == "fillet" and applyIC:
                 for IC in self.intersectComps:
                     # find the points on the fillet that match each intersection
                     # compAInterPts, compAInterInd = IC.findIntersection(
@@ -671,16 +673,18 @@ class DVGeometryMulti:
 
         elif self.filletIntersection:
             for comp in compNames:
-                self.comps[comp].surfPtsName = ptName
-                self.comps[comp].surfPts = points
-                self.comps[comp].nPts = len(points)
-                self.comps[comp].surfPtsOrig = deepcopy(points)
+                # only save this as the surface points if it's the actual mesh pointset (applyIC=True)
+                if applyIC:
+                    self.comps[comp].surfPtsName = ptName
+                    self.comps[comp].surfPtsOrig = deepcopy(points)
+                    self.comps[comp].surfPts = points
+                    self.comps[comp].nPts = len(points)
 
                 if comp != "fillet":
                     self.comps[comp].DVGeo.addPointSet(points, ptName, **kwargs)
                 # add a dummy array for indices
                 # only necessary to fix test cases,
-                else:
+                elif applyIC:
                     for IC in self.intersectComps:
                         IC.indices = np.linspace(0, len(points) - 1, len(points), dtype=int)
 
