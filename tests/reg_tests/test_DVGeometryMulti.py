@@ -460,9 +460,10 @@ class TestDVGeoMulti(unittest.TestCase):
         # Reshape into a nPtsGlobal, 3 array
         ptsUpdated = globalPoints.reshape((nPtsGlobal, 3))
 
-        # Test that the X and Z coordinates are unchanged
+        # Test that the X and Z coordinates are unchanged and Y coordinates are changed
         for i in range(np.size(pts, 0)):
             self.assertAlmostEqual(pts[i, 0], ptsUpdated[i, 0])
+            self.assertNotEqual(pts[i, 1], ptsUpdated[i, 1])
             self.assertAlmostEqual(pts[i, 2], ptsUpdated[i, 2])
 
 
