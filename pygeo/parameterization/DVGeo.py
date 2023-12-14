@@ -2607,9 +2607,6 @@ class DVGeometry(BaseDVGeometry):
         """Return the total point jacobian in CSR format since we
         need this for TACS"""
 
-        if MPI.COMM_WORLD.rank == 0:
-            print(f"computeTotalJacobian for {ptSetName}")
-
         # Finalize the object, if not done yet
         self._finalize()
         self.curPtSet = ptSetName
