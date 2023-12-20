@@ -184,7 +184,7 @@ class DVGeometryMulti:
         project=False,
         marchDir=1,
         includeCurves=False,
-        slidingCurves=[],
+        slidingCurves=None,
         intDir=None,
         curveEpsDict=None,
         trackSurfaces=None,
@@ -275,6 +275,8 @@ class DVGeometryMulti:
         # Assign mutable defaults
         if featureCurves is None:
             featureCurves = []
+        if slidingCurves is None:
+            slidingCurves = []
         if curveEpsDict is None:
             curveEpsDict = {}
         if trackSurfaces is None:

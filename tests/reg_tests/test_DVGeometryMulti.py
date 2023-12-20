@@ -315,7 +315,7 @@ class TestDVGeoMulti(unittest.TestCase):
         with self.assertRaises(Error):
             DVGeo.addPointSet(np.array([[-1.0, 0.0, 0.0]]), "test_error")
 
-    def test_slidingcurves(self):
+    def test_slidingCurves(self):
         # box1 and box2 intersect
         comps = ["box1", "box2"]
         ffdFiles = [os.path.join(inputDir, f"{comp}.xyz") for comp in comps]
@@ -329,7 +329,7 @@ class TestDVGeoMulti(unittest.TestCase):
         DVGeoBox2 = DVGeometry(ffdFiles[1])
 
         # Set up real DVGeometryMulti object
-        DVGeo = DVGeometryMulti(comm=comm, debug=True)
+        DVGeo = DVGeometryMulti(comm=comm)
         DVGeo.addComponent("box1", DVGeoBox1, triMeshFiles[0])
         DVGeo.addComponent("box2", DVGeoBox2, triMeshFiles[1])
 
@@ -361,31 +361,16 @@ class TestDVGeoMulti(unittest.TestCase):
             "part_23_1d",
         ]
 
-        # Track some intersecting surfaces
-        trackSurfaces = {
-            # box1
-            "part_14": 1e-3,
-            "part_15": 1e-3,
-            # box2
-            "part_39": 1e-3,
-        }
-
-        # Exclude some intersecting surfaces
-        excludeSurfaces = {
-            # box2
-            "part_40": 1e-3,
-        }
-
         # Define a name for the point set
         ptSetName = "test_set"
 
         # Define a test point set
         pts = np.array(
             [
-                [1.0, -0.4, 0.5],
-                [1.0, -0.2, 0.5],
-                [1.0, 0.2, 0.5],
-                [1.0, 0.4, 0.5],
+                [1.0, -0.4, 0.5],  # curve 22
+                [1.0, -0.2, 0.5],  # curve 22
+                [1.0, 0.2, 0.5],  # curve 23
+                [1.0, 0.4, 0.5],  # curve 23
             ]
         )
 
@@ -415,9 +400,6 @@ class TestDVGeoMulti(unittest.TestCase):
             includeCurves=True,
             slidingCurves=slidingCurves,
             curveEpsDict=curveEpsDict,
-            trackSurfaces=trackSurfaces,
-            excludeSurfaces=excludeSurfaces,
-            anisotropy=[1.0, 1.0, 0.8],
         )
 
         # Add a few design variables
@@ -435,10 +417,9 @@ class TestDVGeoMulti(unittest.TestCase):
             DVGeoDict[comp].addGlobalDV(dvName=f"{comp}_twist", value=[0] * nTwist, func=twist)
 
         # Add the point set
-        pts_dtype = localPts
-        DVGeo.addPointSet(pts_dtype, ptSetName, comm=comm, applyIC=True)
+        DVGeo.addPointSet(localPts, ptSetName, comm=comm, applyIC=True)
 
-        # Apply twist to the two intersecting boxes
+        # Apply twist to box 2
         dvDict = DVGeo.getValues()
         dvDict["box2_twist"] = 10
         DVGeo.setDesignVars(dvDict)
@@ -462,9 +443,9 @@ class TestDVGeoMulti(unittest.TestCase):
 
         # Test that the X and Z coordinates are unchanged and Y coordinates are changed
         for i in range(np.size(pts, 0)):
-            self.assertAlmostEqual(pts[i, 0], ptsUpdated[i, 0])
-            self.assertNotEqual(pts[i, 1], ptsUpdated[i, 1])
-            self.assertAlmostEqual(pts[i, 2], ptsUpdated[i, 2])
+            np.testing.assert_almost_equal(pts[i, 0], ptsUpdated[i, 0])
+            np.testing.assert_equal(pts[i, 1] == ptsUpdated[i, 1], False)
+            np.testing.assert_almost_equal(pts[i, 2], ptsUpdated[i, 2])
 
 
 @unittest.skipUnless(pysurfInstalled, "requires pySurf")
