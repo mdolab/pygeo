@@ -1204,8 +1204,8 @@ class CompIntersection:
         # flag to include feature curves in ID-warping
         self.incCurves = includeCurves
 
-        # list of curves that allow nodes to slide on them. we only use these for the projection step,
-        # but they are not included in the first line based IDWarp
+        # List of curves that allow nodes to slide on them. We only use these for the projection step,
+        # but these curves are not included as seeds in the curve-based deformation.
         self.slidingCurves = slidingCurves
 
         # direction to pick if we have multiple intersection curves
@@ -2904,10 +2904,14 @@ class CompIntersection:
                 # increment the connectivitiy data
                 newBarsConn += len(remeshedCurves)
 
-                # append this new curve to the featureCurve data
+                # Append this new curve to the featureCurve data.
                 remeshedCurves = np.vstack((remeshedCurves, newCoor))
-                remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
 
+                # By excluding sliding curves here in the 'warp' array,
+                # they are not used as seeds for the curved-based deformation.
+                # This means that points on these curves get warped like any other point.
+                # We also still want the 'full' connectivity because that is used for projections.
+                remeshedCurveConnFull = np.vstack((remeshedCurveConnFull, newBarsConn))
                 if curveName not in self.slidingCurves:
                     remeshedCurveConnWarp = np.vstack((remeshedCurveConnWarp, newBarsConn))
 
