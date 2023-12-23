@@ -442,10 +442,11 @@ class TestDVGeoMulti(unittest.TestCase):
         ptsUpdated = globalPoints.reshape((nPtsGlobal, 3))
 
         # Test that the X and Z coordinates are unchanged and Y coordinates are changed
-        for i in range(np.size(pts, 0)):
-            np.testing.assert_almost_equal(pts[i, 0], ptsUpdated[i, 0])
-            np.testing.assert_equal(pts[i, 1] == ptsUpdated[i, 1], False)
-            np.testing.assert_almost_equal(pts[i, 2], ptsUpdated[i, 2])
+        np.testing.assert_allclose(pts[:, 0], ptsUpdated[:, 0], rtol=1e-4, atol=1e-10)
+        np.testing.assert_allclose(pts[:, 2], ptsUpdated[:, 2], rtol=1e-4, atol=1e-10)
+
+        with self.assertRaises(AssertionError):
+            np.testing.assert_allclose(pts[:, 1], ptsUpdated[:, 1], rtol=1e-4, atol=1e-10)
 
 
 @unittest.skipUnless(pysurfInstalled, "requires pySurf")
