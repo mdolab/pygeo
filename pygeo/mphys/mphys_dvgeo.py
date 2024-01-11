@@ -293,7 +293,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # global DVs are only added to FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry) and not isinstance(DVGeo, DVGeometryMulti):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type: {type(DVGeo).__name__}")
 
         # call the dvgeo object and add this dv
@@ -319,7 +319,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry) and not isinstance(DVGeo, DVGeometryMulti):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type: {type(DVGeo).__name__}")
 
         if childName is not None and comp is not None:
@@ -411,7 +411,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry) and not isinstance(DVGeo, DVGeometryMulti):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(
                 f"Only FFD-based DVGeo objects can use local section DVs, not type: {type(DVGeo).__name__}"
             )
@@ -569,7 +569,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
         # references axes are only needed in FFD-based DVGeo objects
-        if not isinstance(DVGeo, DVGeometry) and not isinstance(DVGeo, DVGeometryMulti):
+        if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use reference axes, not type: {type(DVGeo).__name__}")
 
         # add ref axis to the DVGeo
