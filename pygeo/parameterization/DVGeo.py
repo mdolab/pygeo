@@ -1774,9 +1774,9 @@ class DVGeometry(BaseDVGeometry):
         def _checkArrLength(key, nIn, nRef):
             if nIn != nRef:
                 raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {nRef} variables but received {nIn}"
-                    )
+                    f"Incorrect number of design variables for DV: {key}.\n"
+                    + f"Expecting {nRef} variables but received {nIn}"
+                )
 
         for key in dvDict:
             if key in self.DV_listGlobal:
@@ -2929,7 +2929,9 @@ class DVGeometry(BaseDVGeometry):
         # then we simply return without adding any of the other DVs
         if self.useComposite:
             dv = self.DVComposite
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(
+                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale
+            )
 
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
@@ -2974,11 +2976,23 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.lower,
+                                upper=dv.upper,
+                                scale=dv.scale,
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.value,
+                                upper=dv.value,
+                                scale=dv.scale,
                             )
 
         # Add variables from the children
