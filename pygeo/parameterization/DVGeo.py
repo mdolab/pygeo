@@ -2939,7 +2939,7 @@ class DVGeometry(BaseDVGeometry):
         # then we simply return without adding any of the other DVs
         if self.useComposite:
             dv = self.DVComposite
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale)
 
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
@@ -2984,11 +2984,11 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.value, upper=dv.value, scale=dv.scale
                             )
 
         # Add variables from the children
