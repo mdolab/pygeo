@@ -1113,14 +1113,13 @@ class DVConstraints:
         chordDir /= np.linalg.norm(chordDir)
         for i in range(nSpan):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], chordDir, p0, p1 - p0, p2 - p0)
+            lePts[i], fail = geo_utils.projectNodePosOnly(X[i], chordDir, p0, p1 - p0, p2 - p0)
             if fail > 0:
                 raise Error(
                     "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)."
+                    "at (%f, %f, %f) in direction (%f, %f, %f)."
                     % (X[i, 0], X[i, 1], X[i, 2], chordDir[0], chordDir[1], chordDir[2])
                 )
-            lePts[i] = up
 
         # Check that points can form radius
         d = np.linalg.norm(coords[:, 0, :] - coords[:, 1, :], axis=1)
