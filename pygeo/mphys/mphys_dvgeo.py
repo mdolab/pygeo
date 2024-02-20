@@ -560,7 +560,18 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
-    def nom_addVolumeConstraint(self, name, leList, teList, nSpan=10, nChord=10, scaled=True, surfaceName="default"):
+    def nom_addVolumeConstraint(
+        self,
+        name,
+        leList,
+        teList,
+        nSpan=10,
+        nChord=10,
+        scaled=True,
+        surfaceName="default",
+        DVGeoName="default",
+        compNames=None,
+    ):
         """
         Add a DVCon volume constraint to the problem
         Wrapper for :meth:`addVolumeConstraint <.DVConstraints.addVolumeConstraint>`
@@ -582,14 +593,55 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             See wrapped
         surfaceName : str, optional
             See wrapped
+        DVGeoName : str, optional
+            See wrapped
+        compNames : list, optional
+            See wrapped
         """
 
         self.DVCon.addVolumeConstraint(
-            leList, teList, nSpan=nSpan, nChord=nChord, scaled=scaled, name=name, surfaceName=surfaceName
+            leList,
+            teList,
+            nSpan=nSpan,
+            nChord=nChord,
+            scaled=scaled,
+            name=name,
+            surfaceName=surfaceName,
+            DVGeoName=DVGeoName,
+            compNames=compNames,
         )
         self.add_output(name, distributed=False, val=1.0)
 
-    def nom_addProjectedAreaConstraint(self, name, axis, scaled=True, surface_name="default"):
+    def nom_addSurfaceAreaConstraint(
+        self, name, scaled=True, surfaceName="default", DVGeoName="default", compNames=None
+    ):
+        """
+        Add a DVCon surface area constraint to the problem
+        Wrapper for :meth:`addSurfaceAreaConstraint <.DVConstraints.addSurfaceAreaConstraint>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
+
+        Parameters
+        ----------
+        name :
+            See wrapped
+        scaled : bool, optional
+            See wrapped
+        surfaceName : str, optional
+            See wrapped
+        DVGeoName : str, optional
+            See wrapped
+        compNames : list, optional
+            See wrapped
+        """
+
+        self.DVCon.addSurfaceAreaConstraint(
+            name=name, scaled=scaled, surfaceName=surfaceName, DVGeoName=DVGeoName, compNames=compNames
+        )
+        self.add_output(name, distributed=False, val=1.0)
+
+    def nom_addProjectedAreaConstraint(
+        self, name, axis, scaled=True, surface_name="default", DVGeoName="default", compNames=None
+    ):
         """
         Add a DVCon projected area constraint to the problem
         Wrapper for :meth:`addProjectedAreaConstraint <.DVConstraints.addProjectedAreaConstraint>`
@@ -605,9 +657,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             See wrapped
         surface_name : str, optional
             See wrapped
+        DVGeoName : str, optional
+            See wrapped
+        compNames : list, optional
+            See wrapped
         """
 
-        self.DVCon.addProjectedAreaConstraint(axis, name=name, scaled=scaled, surfaceName=surface_name)
+        self.DVCon.addProjectedAreaConstraint(
+            axis, name=name, scaled=scaled, surfaceName=surface_name, DVGeoName=DVGeoName, compNames=compNames
+        )
         self.add_output(name, distributed=False, val=1.0)
 
     def nom_add_LETEConstraint(self, name, volID, faceID, topID=None, childName=None):
