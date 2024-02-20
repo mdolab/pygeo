@@ -589,6 +589,25 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         self.add_output(name, distributed=False, val=1.0)
 
+    def nom_addSurfaceAreaConstraint(self, name, scaled=True, surface_name="default"):
+        """
+        Add a DVCon surface area constraint to the problem
+        Wrapper for :meth:`addSurfaceAreaConstraint <.DVConstraints.addSurfaceAreaConstraint>`
+        Input parameters are identical to those in wrapped function unless otherwise specified
+
+        Parameters
+        ----------
+        name :
+            See wrapped
+        scaled : bool, optional
+            See wrapped
+        surface_name : str, optional
+            See wrapped
+        """
+
+        self.DVCon.addSurfaceAreaConstraint(name=name, scaled=scaled, surfaceName=surface_name)
+        self.add_output(name, distributed=False, val=1.0)
+
     def nom_addProjectedAreaConstraint(self, name, axis, scaled=True, surface_name="default"):
         """
         Add a DVCon projected area constraint to the problem
