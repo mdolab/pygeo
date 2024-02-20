@@ -613,7 +613,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_output(name, distributed=False, val=1.0)
 
     def nom_addSurfaceAreaConstraint(
-        self, name, scaled=True, surface_name="default", DVGeoName="default", compNames=None
+        self, name, scaled=True, surfaceName="default", DVGeoName="default", compNames=None
     ):
         """
         Add a DVCon surface area constraint to the problem
@@ -626,7 +626,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             See wrapped
         scaled : bool, optional
             See wrapped
-        surface_name : str, optional
+        surfaceName : str, optional
             See wrapped
         DVGeoName : str, optional
             See wrapped
@@ -635,7 +635,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         """
 
         self.DVCon.addSurfaceAreaConstraint(
-            name=name, scaled=scaled, surfaceName=surface_name, DVGeoName=DVGeoName, compNames=compNames
+            name=name, scaled=scaled, surfaceName=surfaceName, DVGeoName=DVGeoName, compNames=compNames
         )
         self.add_output(name, distributed=False, val=1.0)
 
