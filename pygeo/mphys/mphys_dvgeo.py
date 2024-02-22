@@ -277,12 +277,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, distributed=False, shape=len(np.atleast_1d(value)))
 
-        # call the dvgeo object and add this dv
-        if childName is None:
-            DVGeo.addGlobalDV(dvName, value, func)
-        else:
-            DVGeo.children[childName].addGlobalDV(dvName, value, func)
-
     def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
