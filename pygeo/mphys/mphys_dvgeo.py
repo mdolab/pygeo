@@ -228,7 +228,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     Wrapper for DVGeo functions
     """
 
-    def nom_addGlobalDV(self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None):
+    def nom_addGlobalDV(self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None, prependName=False):
         """
         Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
 
@@ -265,6 +265,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isinstance(DVGeo, DVGeometry):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use global DVs, not type: {type(DVGeo).__name__}")
 
+        # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
+        # this keeps track of DVs between multiple DVGeo objects
+        if DVGeoName is not None and prependName:
+            dvName = DVGeoName + "_" + dvName
+
         # call the dvgeo object and add this dv
         DVGeo.addGlobalDV(dvName, value, func)
 
@@ -274,13 +279,18 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, distributed=False, shape=len(np.atleast_1d(value)))
 
-    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None):
+    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None, prependName=False):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
 
         # local DVs are only added to FFD-based DVGeo objects
         if not isinstance(DVGeo, DVGeometry):
             raise RuntimeError(f"Only FFD-based DVGeo objects can use local DVs, not type: {type(DVGeo).__name__}")
+
+        # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
+        # this keeps track of DVs between multiple DVGeo objects
+        if DVGeoName is not None and prependName:
+            dvName = DVGeoName + "_" + dvName
 
         # add the DV to DVGeo
         nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
@@ -304,6 +314,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         orient2="svd",
         config=None,
         DVGeoName=None,
+        prependName=False,
     ):
         """
         Add one or more section local design variables to the DVGeometry object
@@ -362,6 +373,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 f"Only FFD-based DVGeo objects can use local section DVs, not type: {type(DVGeo).__name__}"
             )
 
+        # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
+        # this keeps track of DVs between multiple DVGeo objects
+        if DVGeoName is not None and prependName:
+            dvName = DVGeoName + "_" + dvName
+
         # add the DV to DVGeo
         nVal = DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config)
 
@@ -369,7 +385,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addShapeFunctionDV(self, dvName, shapes, childName=None, config=None, DVGeoName=None):
+    def nom_addShapeFunctionDV(self, dvName, shapes, childName=None, config=None, DVGeoName=None, prependName=False):
         """
         Add one or more local shape function design variables to the DVGeometry object
         Wrapper for :meth:`addShapeFunctionDV <.DVGeometry.addShapeFunctionDV>`
@@ -412,6 +428,11 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 f"Only FFD-based DVGeo objects can use shape function DVs, not type: {type(DVGeo).__name__}"
             )
 
+        # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
+        # this keeps track of DVs between multiple DVGeo objects
+        if DVGeoName is not None and prependName:
+            dvName = DVGeoName + "_" + dvName
+
         # add the DV to DVGeo
         nVal = DVGeo.addShapeFunctionDV(dvName, shapes, config)
 
@@ -419,9 +440,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, DVGeoName=None, **kwargs):
+    def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, DVGeoName=None, prependName=False, **kwargs):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
+
+        # if this DVGeo object has a name attribute, prepend it to match up with what DVGeo is expecting
+        # this keeps track of DVs between multiple DVGeo objects
+        if DVGeoName is not None and prependName:
+            dvName = DVGeoName + "_" + dvName
 
         # call the dvgeo object and add this dv
         DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
