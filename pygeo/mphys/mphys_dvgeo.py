@@ -271,7 +271,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # call the dvgeo object and add this dv
-        DVGeo.addGlobalDV(dvName, value, func)
+        DVGeo.addGlobalDV(dvName, value, func, prependName=False)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -293,7 +293,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # add the DV to DVGeo
-        nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect)
+        nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -379,7 +379,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # add the DV to DVGeo
-        nVal = DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config)
+        nVal = DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False)
 
         # define the input
         self.add_input(dvName, distributed=False, shape=nVal)
@@ -434,7 +434,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # add the DV to DVGeo
-        nVal = DVGeo.addShapeFunctionDV(dvName, shapes, config)
+        nVal = DVGeo.addShapeFunctionDV(dvName, shapes, config, prependName=False)
 
         # define the input
         self.add_input(dvName, distributed=False, shape=nVal)
@@ -450,7 +450,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # call the dvgeo object and add this dv
-        DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, **kwargs)
+        DVGeo.addCompositeDV(dvName, ptSetName=ptSetName, u=u, scale=scale, prependName=False, **kwargs)
         val = DVGeo.getValues()
 
         # define the input
