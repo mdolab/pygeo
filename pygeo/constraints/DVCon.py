@@ -784,7 +784,10 @@ class DVConstraints:
         r"""
         Add "toothpick" thickness constraints between multiple surfaces.
         This can be used to control proximity of multiple components,
-        each defined with its own surface.
+        each defined with its own surface. Surfaces must move in the same
+        direction as the constraint orientation to prevent skewness.
+        i.e, if the toothpicks are oriented in the y-direction,
+        the surfaces must only move in the y-direction.
 
         Parameters
         ----------
@@ -800,18 +803,24 @@ class DVConstraints:
             point to component B
 
         surfA : str
-            Name of the surface mesh that defines component A
+            Name of the DVCon surface mesh that defines component A
 
         surfB : str
-            Name of the surface mesh that defines component B
+            Name of the DVCon surface mesh that defines component B
 
         pointSetKwargsA : dict
             The dictionary of keyword arguments to be passed to DVGeo
-            when points on component A is added to DVGeo.
+            when points on component A is added to DVGeo. The most common
+            use case is to pick which child FFDs are active for this point.
+            This is an optional argument. The default behavior adds toothpick
+            points to DVGeo like any other point.
 
         pointSetKwargsB : dict
             The dictionary of keyword arguments to be passed to DVGeo
-            when points on component B is added to DVGeo.
+            when points on component B is added to DVGeo. The most common
+            use case is to pick which child FFDs are active for this point.
+            This is an optional argument. The default behavior adds toothpick
+            points to DVGeo like any other point.
 
         lower : float or array of size nCon
             The lower bound for the constraint. A single float will
@@ -858,11 +867,6 @@ class DVConstraints:
             Normally this should be left at the default of True. If
             the values need to be processed (modified) *before* they are
             given to the optimizer, set this flag to False.
-
-        surfaceName : str
-            Name of the surface to project to. This should be the same
-            as the surfaceName provided when setSurface() was called.
-            For backward compatibility, the name is 'default' by default.
 
         DVGeoName : str
             Name of the DVGeo object to compute the constraint with. You only
