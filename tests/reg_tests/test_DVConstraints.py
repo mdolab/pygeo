@@ -4,6 +4,7 @@ import unittest
 
 # External modules
 from baseclasses import BaseRegTest
+from baseclasses.utils import Error as baseclassesError
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
@@ -964,6 +965,141 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             funcs, funcsSens = self.wing_test_twist(DVGeo, DVCon, handler)
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
+
+
+class RegTestProximity(unittest.TestCase):
+    N_PROCS = 1
+
+    def setUp(self):
+        # Store the path where this current script lives
+        # This all paths in the script are relative to this path
+        # This is needed to support testflo running directories and files as inputs
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.comm = MPI.COMM_WORLD
+
+    def test_proximity_constraint(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_proximity_constraints.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            # create a dvgeo with one parent, and two overlapping children
+            parent_ffd_file = os.path.join(self.base_path, "../../input_files/parent.xyz")
+            child_ffd_file = os.path.join(self.base_path, "../../input_files/box1.xyz")
+
+            DVGeo_parent = DVGeometry(parent_ffd_file, name="parent")
+            # the children ffd box's extents are:
+            # x \in [-0.1, 1.1]
+            # y \in [-0.6, 0.6]
+            # z \in [-0.6, 0.6]
+            DVGeo_child1 = DVGeometry(child_ffd_file, child=True, name="child1")
+            DVGeo_child2 = DVGeometry(child_ffd_file, child=True, name="child2")
+            DVGeo_child1.addRefAxis("ref_axis1", xFraction=0.25, alignIndex="k")
+            DVGeo_child2.addRefAxis("ref_axis2", xFraction=0.25, alignIndex="k")
+
+            DVGeo_parent.addChild(DVGeo_child1)
+            DVGeo_parent.addChild(DVGeo_child2)
+
+            # add shape func DVs to each child DVGeo so that we can move them in the x dir
+            lindex1 = DVGeo_child1.getLocalIndex(0).flatten()
+            lindex2 = DVGeo_child2.getLocalIndex(0).flatten()
+
+            shape1 = {}
+            shape2 = {}
+            # the two ffds are identical so we just have one loop
+            for idx in range(len(lindex1)):
+                idx1 = lindex1[idx]
+                idx2 = lindex2[idx]
+                shape1[idx1] = np.array([1.0, 0.0, 0.0])
+                shape2[idx2] = np.array([1.0, 0.0, 0.0])
+
+            # dvgeo names will be prepended to the dv name to distinguish the two
+            DVGeo_child1.addShapeFunctionDV("x_disp", [shape1])
+            DVGeo_child2.addShapeFunctionDV("x_disp", [shape2])
+
+            # create the dvcon object
+            DVCon = DVConstraints()
+            DVCon.setDVGeo(DVGeo_parent)
+
+            # dummy tri meshes for dvcon to be used for projections.
+            # these represent different cfd surfaces. these can be arbitrarily large
+            # because they wont be embedded in the FFDs.
+            # we have constant x coordinates for the surfaces.
+            p0 = np.array([0.1, -1.0, -1.0])
+            p1 = np.array([0.1, 1.0, -1.0])
+            p2 = np.array([0.1, 0.0, 2.0])
+            surf1 = [[p0.copy()], [p1 - p0], [p2 - p0]]
+
+            p0[0] = 0.2
+            p1[0] = 0.2
+            p2[0] = 0.2
+            surf2 = [[p0.copy()], [p1 - p0], [p2 - p0]]
+
+            # the last surface is outside the child FFDs
+            p0[0] = 1.2
+            p1[0] = 1.2
+            p2[0] = 1.2
+            surf3 = [[p0.copy()], [p1 - p0], [p2 - p0]]
+
+            # add three surfaces to dvcon
+            DVCon.setSurface(surf1, "surf1")
+            DVCon.setSurface(surf2, "surf2")
+            DVCon.setSurface(surf3, "surf3")
+
+            # add the proximity constraints
+            # we want to add 2 constraints;
+            # first one goes from surf1 to surf2. The first point is in the first child,
+            # and second is in the second child.
+            DVCon.addProximityConstraints(
+                [np.array([0.15, 0.0, 0.0])],
+                [np.array([-1.0, 0.0, 0.0])],
+                "surf1",
+                "surf2",
+                pointSetKwargsA={"activeChildren": ["child1"]},
+                pointSetKwargsB={"activeChildren": ["child2"]},
+                scaled=False,
+                name="proximity1",
+            )
+
+            # second constraint goes from surf2 to surf3. The pt in surf2 is in the second child,
+            # the pt in surf3 is not added to any child FFDs
+            DVCon.addProximityConstraints(
+                [np.array([0.25, 0.0, 0.0])],
+                [np.array([-1.0, 0.0, 0.0])],
+                "surf2",
+                "surf3",
+                pointSetKwargsA={"activeChildren": ["child2"]},
+                pointSetKwargsB={},
+                scaled=False,
+                name="proximity2",
+            )
+
+            # add a third constraint where the vector direction is wrong and catch the error
+            with self.assertRaises(baseclassesError):
+                DVCon.addProximityConstraints(
+                    [np.array([0.25, 0.0, 0.0])],
+                    [np.array([1.0, 0.0, 0.0])],
+                    "surf2",
+                    "surf3",
+                    pointSetKwargsA={"activeChildren": ["child2"]},
+                    pointSetKwargsB={},
+                    scaled=False,
+                    name="proximity3",
+                )
+
+            # evaluate the original values
+            funcs = {}
+            DVCon.evalFunctions(funcs, includeLinear=True)
+            handler.root_add_dict("funcs_base", funcs, rtol=1e-10, atol=1e-10)
+            funcsSens = {}
+            DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
+            handler.root_add_dict("sens_base", funcsSens, rtol=1e-10, atol=1e-10)
+
+            # move child2 and re-evaluate
+            DVGeo_parent.setDesignVars({"child2_x_disp": 0.05})
+            funcs = {}
+            DVCon.evalFunctions(funcs, includeLinear=True)
+            handler.root_add_dict("funcs_new", funcs, rtol=1e-10, atol=1e-10)
+            funcsSens = {}
+            DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
+            handler.root_add_dict("sens_new", funcsSens, rtol=1e-10, atol=1e-10)
 
 
 @unittest.skipUnless(geogradInstalled, "requires geograd")
