@@ -94,7 +94,7 @@ class ProjectedThicknessConstraint(GeometricConstraint):
     constraints. One of these objects is created each time a
     addThicknessConstraints2D or addThicknessConstraints1D call is
     made. The user should not have to deal with this class directly.
-    
+
     This is different from ThicknessConstraints becuase it measures the projected
     thickness along the orginal direction of the constraint.
     """
@@ -116,7 +116,6 @@ class ProjectedThicknessConstraint(GeometricConstraint):
             vec = self.coords[2 * i] - self.coords[2 * i + 1]
             self.D0[i] = geo_utils.norm.euclideanNorm(vec)
             self.dir_vec[i] = vec / self.D0[i]
-        
 
     def evalFunctions(self, funcs, config):
         """
@@ -132,13 +131,13 @@ class ProjectedThicknessConstraint(GeometricConstraint):
         D = np.zeros(self.nCon)
         for i in range(self.nCon):
             vec = self.coords[2 * i] - self.coords[2 * i + 1]
-            
+
             # take the dot product with the direction vector
-            D[i] = vec[0]*self.dir_vec[i, 0] + vec[1]*self.dir_vec[i, 1] + vec[2]*self.dir_vec[i, 2]
-            
+            D[i] = vec[0] * self.dir_vec[i, 0] + vec[1] * self.dir_vec[i, 1] + vec[2] * self.dir_vec[i, 2]
+
             if self.scaled:
                 D[i] /= self.D0[i]
-        
+
         funcs[self.name] = D
 
     def evalFunctionsSens(self, funcsSens, config):
@@ -157,13 +156,13 @@ class ProjectedThicknessConstraint(GeometricConstraint):
             dTdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
             for i in range(self.nCon):
                 D_b = 1.0
-                
+
                 if self.scaled:
                     D_b /= self.D0[i]
-                
+
                 # d(dot(vec,n)/dvec = n
-                vec_b = self.dir_vec[i]*D_b
-                
+                vec_b = self.dir_vec[i] * D_b
+
                 dTdPt[i, 2 * i, :] = vec_b
                 dTdPt[i, 2 * i + 1, :] = -vec_b
 
@@ -183,20 +182,20 @@ class ProjectedThicknessConstraint(GeometricConstraint):
 
         for i in range(len(self.coords) // 2):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
-        
+
         handle.write("Zone T=%s_ref_directions\n" % self.name)
-        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.dir_vec)*2, len(self.dir_vec)))
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.dir_vec) * 2, len(self.dir_vec)))
         handle.write("DATAPACKING=POINT\n")
-        
+
         for i in range(self.nCon):
-            pt1 = self.coords[i*2 + 1] 
+            pt1 = self.coords[i * 2 + 1]
             pt2 = pt1 + self.dir_vec[i]
             handle.write(f"{pt1[0]:f} {pt1[1]:f} {pt1[2]:f}\n")
             handle.write(f"{pt2[0]:f} {pt2[1]:f} {pt2[2]:f}\n")
 
         for i in range(self.nCon):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
-        
+
 
 class ThicknessToChordConstraint(GeometricConstraint):
     """

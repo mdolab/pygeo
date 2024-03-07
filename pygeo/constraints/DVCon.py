@@ -19,7 +19,12 @@ from .gearPostConstraint import GearPostConstraint
 from .locationConstraint import LocationConstraint
 from .planarityConstraint import PlanarityConstraint
 from .radiusConstraint import RadiusConstraint
-from .thicknessConstraint import ProximityConstraint, ThicknessConstraint, ThicknessToChordConstraint, ProjectedThicknessConstraint
+from .thicknessConstraint import (
+    ProximityConstraint,
+    ThicknessConstraint,
+    ThicknessToChordConstraint,
+    ProjectedThicknessConstraint,
+)
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
@@ -581,7 +586,7 @@ class DVConstraints:
 
         projected : bool
             Use the component of the toothpick thickness aligned with 
-            the orginal thickness direciton.
+            the original thickness direction.
             
         Examples
         --------
@@ -621,7 +626,7 @@ class DVConstraints:
             thickness_class = ProjectedThicknessConstraint
         else:
             thickness_class = ThicknessConstraint
-        
+
         self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
@@ -640,7 +645,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
-        projected=False
+        projected=False,
     ):
         r"""
         Add a set of thickness constraints oriented along a poly-line.
@@ -741,7 +746,7 @@ class DVConstraints:
 
         projected : bool
             Use the component of the toothpick thickness aligned with 
-            the orginal thickness direciton.
+            the original thickness direction.
 
         """
         self._checkDVGeo(DVGeoName)
@@ -776,12 +781,12 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        
+
         if projected:
             thickness_class = ProjectedThicknessConstraint
         else:
             thickness_class = ThicknessConstraint
-        
+
         self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )

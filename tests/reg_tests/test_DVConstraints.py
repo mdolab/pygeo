@@ -319,21 +319,21 @@ class RegTestPyGeo(unittest.TestCase):
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
             )
-    
+
     def test_projected_thickness1D_box(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projected_thickness1D_box.ref")
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("box")
             DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
-            ptList = [[0.0, 0.0, 0.1], [0.0, 0., 5.0]]
+            ptList = [[0.0, 0.0, 0.1], [0.0, 0.0, 5.0]]
             ptList2 = [[-0.5, 0.0, 2.0], [0.5, 0.0, 2.0]]
-            ptList3 = [[-0.5, 0.0, 0], [1, 1.0, 8.0]] # corner to corner
-            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[0, 1, 0],  projected=True, scaled=False)
-            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[1, 0, 0],  projected=True, scaled=False)
+            ptList3 = [[-0.5, 0.0, 0], [1, 1.0, 8.0]]  # corner to corner
+            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[0, 1, 0], projected=True, scaled=False)
+            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[1, 0, 0], projected=True, scaled=False)
             DVCon.addThicknessConstraints1D(ptList2, nCon=3, axis=[0, 0, 1], projected=True, scaled=False)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
-            
+
             funcSens = {}
             # Check that unscaled thicknesses are computed correctly at baseline
             handler.assert_allclose(
@@ -345,19 +345,19 @@ class RegTestPyGeo(unittest.TestCase):
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
             )
-            
+
             # add skew to one face
             nodes = DVGeo.FFD.coef
-            dx = np.max(nodes[:,0]) - np.min(nodes[:,0]) 
-            dy = np.max(nodes[:,1]) - np.min(nodes[:,1]) 
-            y_scale = ((nodes[:,1] - np.min(nodes[:,1]))/dy)*(nodes[:,0] - np.min(nodes[:,0]))/dx
-            
+            dx = np.max(nodes[:, 0]) - np.min(nodes[:, 0])
+            dy = np.max(nodes[:, 1]) - np.min(nodes[:, 1])
+            y_scale = ((nodes[:, 1] - np.min(nodes[:, 1])) / dy) * (nodes[:, 0] - np.min(nodes[:, 0])) / dx
+
             DVGeo.setDesignVars({"local_x": y_scale})
-            
+
             funcs = {}
             DVCon.evalFunctions(funcs)
-            
-            # DVCon1_thickness_constraints_0 should stay the same since the thickness contraint is projected!
+
+            # DVCon1_thickness_constraints_0 should stay the same since the thickness constraint is projected!
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_0"], np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
             )
@@ -463,7 +463,7 @@ class RegTestPyGeo(unittest.TestCase):
             leList3 = [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]]
             teList3 = [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]]
 
-            DVCon.addThicknessConstraints2D(leList, teList, 2, 2, scaled=False  , projected=True)
+            DVCon.addThicknessConstraints2D(leList, teList, 2, 2, scaled=False, projected=True)
             DVCon.addThicknessConstraints2D(leList2, teList2, 2, 2, scaled=False, projected=True)
             DVCon.addThicknessConstraints2D(leList3, teList3, 2, 2, scaled=False, projected=True)
 
@@ -478,30 +478,33 @@ class RegTestPyGeo(unittest.TestCase):
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
             )
-            
+
             # add skew to one face
             nodes = DVGeo.FFD.coef
-            dx = np.max(nodes[:,0]) - np.min(nodes[:,0]) 
-            dy = np.max(nodes[:,1]) - np.min(nodes[:,1]) 
-            y_scale = ((nodes[:,1] - np.min(nodes[:,1]))/dy)*(nodes[:,0] - np.min(nodes[:,0]))/dx
-            
+            dx = np.max(nodes[:, 0]) - np.min(nodes[:, 0])
+            dy = np.max(nodes[:, 1]) - np.min(nodes[:, 1])
+            y_scale = ((nodes[:, 1] - np.min(nodes[:, 1])) / dy) * (nodes[:, 0] - np.min(nodes[:, 0])) / dx
+
             DVGeo.setDesignVars({"local_x": y_scale})
-            
+
             funcs = {}
             DVCon.evalFunctions(funcs)
-            
-            # DVCon1_thickness_constraints_0 should stay the same since the thickness contraint is projected!
+
+            # DVCon1_thickness_constraints_0 should stay the same since the thickness constraint is projected!
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_0"], np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
             )
             handler.assert_allclose(
-                funcs["DVCon1_thickness_constraints_1"], np.array([2.25, 2.75, 2.25, 2.75]), name="thickness_base", rtol=1e-7, atol=1e-7
+                funcs["DVCon1_thickness_constraints_1"],
+                np.array([2.25, 2.75, 2.25, 2.75]),
+                name="thickness_base",
+                rtol=1e-7,
+                atol=1e-7,
             )
             # The z direction is uneffected by the changes
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
             )
-            
 
     def test_volume(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_volume.ref")
