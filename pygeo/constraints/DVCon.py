@@ -19,7 +19,7 @@ from .gearPostConstraint import GearPostConstraint
 from .locationConstraint import LocationConstraint
 from .planarityConstraint import PlanarityConstraint
 from .radiusConstraint import RadiusConstraint
-from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
+from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint, ProjectedThicknessConstraint
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
@@ -437,6 +437,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False,
     ):
         r"""
         Add a set of thickness constraints that span a logically a
@@ -578,6 +579,10 @@ class DVConstraints:
             with this constraint should be added.
             If None, the point set is added to all components.
 
+        projected : bool
+            Use the component of the toothpick thickness aligned with 
+            the orginal thickness direciton.
+            
         Examples
         --------
         >>> # Take unique square in x-z plane and and 10 along z-direction (spanWise)
@@ -611,7 +616,13 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.constraints[typeName][conName] = ThicknessConstraint(
+
+        if projected:
+            thickness_class = ProjectedThicknessConstraint
+        else:
+            thickness_class = ThicknessConstraint
+        
+        self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
 
@@ -629,6 +640,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False
     ):
         r"""
         Add a set of thickness constraints oriented along a poly-line.
@@ -727,6 +739,10 @@ class DVConstraints:
             with this constraint should be added.
             If None, the point set is added to all components.
 
+        projected : bool
+            Use the component of the toothpick thickness aligned with 
+            the orginal thickness direciton.
+
         """
         self._checkDVGeo(DVGeoName)
 
@@ -760,7 +776,13 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.constraints[typeName][conName] = ThicknessConstraint(
+        
+        if projected:
+            thickness_class = ProjectedThicknessConstraint
+        else:
+            thickness_class = ThicknessConstraint
+        
+        self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
 
