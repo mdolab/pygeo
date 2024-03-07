@@ -1771,42 +1771,32 @@ class DVGeometry(BaseDVGeometry):
         if self.useComposite:
             dvDict = self.mapXDictToDVGeo(dvDict)
 
+        def _checkArrLength(key, nIn, nRef):
+            if nIn != nRef:
+                raise Error(
+                    f"Incorrect number of design variables for DV: {key}.\n"
+                    + f"Expecting {nRef} variables but received {nIn}"
+                )
+
         for key in dvDict:
             if key in self.DV_listGlobal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listGlobal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listGlobal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
-
+                _checkArrLength(key, len(vals_to_set), self.DV_listGlobal[key].nVal)
                 self.DV_listGlobal[key].value = vals_to_set
 
             if key in self.DV_listLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listLocal[key].nVal)
                 self.DV_listLocal[key].value = vals_to_set
 
             if key in self.DV_listSectionLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listSectionLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listSectionLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listSectionLocal[key].nVal)
                 self.DV_listSectionLocal[key].value = vals_to_set
 
             if key in self.DV_listSpanwiseLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listSpanwiseLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listSpanwiseLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listSpanwiseLocal[key].nVal)
                 self.DV_listSpanwiseLocal[key].value = vals_to_set
 
             # Jacobians are, in general, no longer up to date
@@ -2939,7 +2929,9 @@ class DVGeometry(BaseDVGeometry):
         # then we simply return without adding any of the other DVs
         if self.useComposite:
             dv = self.DVComposite
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(
+                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale
+            )
 
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
@@ -2984,11 +2976,23 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.lower,
+                                upper=dv.upper,
+                                scale=dv.scale,
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.value,
+                                upper=dv.value,
+                                scale=dv.scale,
                             )
 
         # Add variables from the children

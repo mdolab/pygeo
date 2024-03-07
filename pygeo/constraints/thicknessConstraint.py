@@ -284,3 +284,113 @@ class ThicknessToChordConstraint(GeometricConstraint):
 
         for i in range(len(self.coords) // 2):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
+
+class ProximityConstraint(GeometricConstraint):
+    """
+    DVConstraints representation of a set of proximity
+    constraints. The user should not have to deal with this
+    class directly.
+    """
+
+    def __init__(
+        self,
+        name,
+        coordsA,
+        coordsB,
+        pointSetKwargsA,
+        pointSetKwargsB,
+        lower,
+        upper,
+        scaled,
+        scale,
+        DVGeo,
+        addToPyOpt,
+        compNames,
+    ):
+        super().__init__(name, len(coordsA), lower, upper, scale, DVGeo, addToPyOpt)
+
+        self.coordsA = coordsA
+        self.coordsB = coordsB
+        self.scaled = scaled
+
+        # First thing we can do is embed the coordinates into the DVGeo.
+        # ptsets A and B get different kwargs
+        self.DVGeo.addPointSet(self.coordsA, f"{self.name}_A", compNames=compNames, **pointSetKwargsA)
+        self.DVGeo.addPointSet(self.coordsB, f"{self.name}_B", compNames=compNames, **pointSetKwargsB)
+
+        # Now get the reference lengths
+        self.D0 = np.zeros(self.nCon)
+        for i in range(self.nCon):
+            self.D0[i] = geo_utils.norm.euclideanNorm(self.coordsA[i] - self.coordsB[i])
+
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.coordsA = self.DVGeo.update(f"{self.name}_A", config=config)
+        self.coordsB = self.DVGeo.update(f"{self.name}_B", config=config)
+        D = np.zeros(self.nCon)
+        for i in range(self.nCon):
+            D[i] = geo_utils.norm.euclideanNorm(self.coordsA[i] - self.coordsB[i])
+            if self.scaled:
+                D[i] /= self.D0[i]
+        funcs[self.name] = D
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dTdPtA = np.zeros((self.nCon, self.nCon, 3))
+            dTdPtB = np.zeros((self.nCon, self.nCon, 3))
+
+            for i in range(self.nCon):
+                pAb, pBb = geo_utils.eDist_b(self.coordsA[i], self.coordsB[i])
+                if self.scaled:
+                    pAb /= self.D0[i]
+                    pBb /= self.D0[i]
+                dTdPtA[i, i, :] = pAb
+                dTdPtB[i, i, :] = pBb
+
+            funcSensA = self.DVGeo.totalSensitivity(dTdPtA, f"{self.name}_A", config=config)
+            funcSensB = self.DVGeo.totalSensitivity(dTdPtB, f"{self.name}_B", config=config)
+
+            funcsSens[self.name] = {}
+            for key, value in funcSensA.items():
+                funcsSens[self.name][key] = value
+            for key, value in funcSensB.items():
+                if key in funcsSens[self.name]:
+                    funcsSens[self.name][key] += value
+                else:
+                    funcsSens[self.name][key] = value
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coordsA) * 2, len(self.coordsA)))
+        handle.write("DATAPACKING=POINT\n")
+        for i in range(len(self.coordsA)):
+            handle.write(f"{self.coordsA[i, 0]:f} {self.coordsA[i, 1]:f} {self.coordsA[i, 2]:f}\n")
+            handle.write(f"{self.coordsB[i, 0]:f} {self.coordsB[i, 1]:f} {self.coordsB[i, 2]:f}\n")
+
+        for i in range(len(self.coordsA)):
+            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
