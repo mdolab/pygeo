@@ -531,6 +531,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False,
     ):
         self.DVCon.addThicknessConstraints2D(
             leList,
@@ -542,11 +543,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             surfaceName=surfaceName,
             DVGeoName=DVGeoName,
             compNames=compNames,
+            projected=projected,
         )
         self.add_output(name, distributed=False, val=np.ones((nSpan * nChord,)), shape=nSpan * nChord)
 
     def nom_addThicknessConstraints1D(
-        self, name, ptList, nCon, axis, scaled=True, surfaceName="default", DVGeoName="default", compNames=None
+        self,
+        name,
+        ptList,
+        nCon,
+        axis,
+        scaled=True,
+        surfaceName="default",
+        DVGeoName="default",
+        compNames=None,
+        projected=False,
     ):
         self.DVCon.addThicknessConstraints1D(
             ptList,
@@ -557,6 +568,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             surfaceName=surfaceName,
             DVGeoName=DVGeoName,
             compNames=compNames,
+            projected=projected,
         )
         self.add_output(name, distributed=False, val=np.ones(nCon), shape=nCon)
 
