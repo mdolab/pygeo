@@ -20,10 +20,10 @@ from .locationConstraint import LocationConstraint
 from .planarityConstraint import PlanarityConstraint
 from .radiusConstraint import RadiusConstraint
 from .thicknessConstraint import (
+    ProjectedThicknessConstraint,
     ProximityConstraint,
     ThicknessConstraint,
     ThicknessToChordConstraint,
-    ProjectedThicknessConstraint,
 )
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
