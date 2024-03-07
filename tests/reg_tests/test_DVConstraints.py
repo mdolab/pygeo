@@ -327,14 +327,12 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
             ptList = [[0.0, 0.0, 0.1], [0.0, 0.0, 5.0]]
             ptList2 = [[-0.5, 0.0, 2.0], [0.5, 0.0, 2.0]]
-            ptList3 = [[-0.5, 0.0, 0], [1, 1.0, 8.0]]  # corner to corner
             DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[0, 1, 0], projected=True, scaled=False)
             DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[1, 0, 0], projected=True, scaled=False)
             DVCon.addThicknessConstraints1D(ptList2, nCon=3, axis=[0, 0, 1], projected=True, scaled=False)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
 
-            funcSens = {}
             # Check that unscaled thicknesses are computed correctly at baseline
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_0"], np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7

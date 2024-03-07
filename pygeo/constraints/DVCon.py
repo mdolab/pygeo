@@ -585,9 +585,9 @@ class DVConstraints:
             If None, the point set is added to all components.
 
         projected : bool
-            Use the component of the toothpick thickness aligned with 
+            Use the component of the toothpick thickness aligned with
             the original thickness direction.
-            
+
         Examples
         --------
         >>> # Take unique square in x-z plane and and 10 along z-direction (spanWise)
@@ -745,7 +745,7 @@ class DVConstraints:
             If None, the point set is added to all components.
 
         projected : bool
-            Use the component of the toothpick thickness aligned with 
+            Use the component of the toothpick thickness aligned with
             the original thickness direction.
 
         """
