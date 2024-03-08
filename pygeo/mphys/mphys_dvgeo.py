@@ -228,7 +228,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     Wrapper for DVGeo functions
     """
 
-    def nom_addGlobalDV(self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None, prependName=False):
+    def nom_addGlobalDV(
+        self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None, prependName=False
+    ):
         """
         Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
 
@@ -279,7 +281,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         if not isComposite:
             self.add_input(dvName, distributed=False, shape=len(np.atleast_1d(value)))
 
-    def nom_addLocalDV(self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None, prependName=False):
+    def nom_addLocalDV(
+        self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None, prependName=False
+    ):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
 
@@ -379,7 +383,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # add the DV to DVGeo
-        nVal = DVGeo.addLocalSectionDV(dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False)
+        nVal = DVGeo.addLocalSectionDV(
+            dvName, secIndex, axis, pointSelect, volList, orient0, orient2, config, prependName=False
+        )
 
         # define the input
         self.add_input(dvName, distributed=False, shape=nVal)
@@ -440,7 +446,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addGeoCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, DVGeoName=None, prependName=False, **kwargs):
+    def nom_addGeoCompositeDV(
+        self, dvName, ptSetName=None, u=None, scale=None, DVGeoName=None, prependName=False, **kwargs
+    ):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
@@ -679,9 +687,17 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.addCurvatureConstraint1D(start=start, end=end, nPts=nPts, axis=axis, name=name, **kwargs)
         self.add_output(name, distributed=False, val=1.0)
 
-    def nom_addLinearConstraintsShape(self, name, indSetA, indSetB, factorA, factorB, childName=None, DVGeoName="default"):
+    def nom_addLinearConstraintsShape(
+        self, name, indSetA, indSetB, factorA, factorB, childName=None, DVGeoName="default"
+    ):
         self.DVCon.addLinearConstraintsShape(
-            indSetA=indSetA, indSetB=indSetB, factorA=factorA, factorB=factorB, name=name, childName=childName, DVGeoName=DVGeoName
+            indSetA=indSetA,
+            indSetB=indSetB,
+            factorA=factorA,
+            factorB=factorB,
+            name=name,
+            childName=childName,
+            DVGeoName=DVGeoName,
         )
         lSize = len(indSetA)
         self.add_output(name, distributed=False, val=np.zeros(lSize), shape=lSize)
