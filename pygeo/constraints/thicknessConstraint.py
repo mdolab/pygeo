@@ -162,18 +162,18 @@ class ProjectedThicknessConstraint(GeometricConstraint):
                     D_b /= self.D0[i]
 
                 # d(dot(vec,n))/d(vec) = n
-                # where vec = thickness vector 
+                # where vec = thickness vector
                 #   and  n = the reference direction
                 #  This is easier to see if you write out the dot product
                 # dot(vec, n) = vec_1*n_1 + vec_2*n_2 + vec_3*n_3
-                # d(dot(vec,n))/d(vec_1) = n_1 
-                # d(dot(vec,n))/d(vec_2) = n_2 
-                # d(dot(vec,n))/d(vec_3) = n_3 
+                # d(dot(vec,n))/d(vec_1) = n_1
+                # d(dot(vec,n))/d(vec_2) = n_2
+                # d(dot(vec,n))/d(vec_3) = n_3
                 vec_b = self.dir_vec[i] * D_b
 
                 # the reverse mode of calculating vec is just scattering the seed of vec_b to the coords
                 # vec = self.coords[2 * i] - self.coords[2 * i + 1]
-                # we just set the coordinate seeds directly into the jacobian  
+                # we just set the coordinate seeds directly into the jacobian
                 dTdPt[i, 2 * i, :] = vec_b
                 dTdPt[i, 2 * i + 1, :] = -vec_b
 
