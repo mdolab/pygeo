@@ -157,7 +157,7 @@ class ProjectedThicknessConstraint(GeometricConstraint):
             for i in range(self.nCon):
                 D_b = 1.0
 
-                # the reverse mode seeds still need to be scaled 
+                # the reverse mode seeds still need to be scaled
                 if self.scaled:
                     D_b /= self.D0[i]
 
@@ -193,7 +193,7 @@ class ProjectedThicknessConstraint(GeometricConstraint):
 
         for i in range(len(self.coords) // 2):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
-        
+
         # create a seperate zone to plot the projected direction for each thickness constraint
         handle.write("Zone T=%s_ref_directions\n" % self.name)
         handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.dir_vec) * 2, len(self.dir_vec)))
