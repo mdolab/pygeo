@@ -1520,6 +1520,7 @@ class DVGeometry(BaseDVGeometry):
             self.computeTotalJacobian(ptSetName)
             J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full, full_matrices=False)
+            u = np.array(u)
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
