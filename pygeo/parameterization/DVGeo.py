@@ -506,7 +506,7 @@ class DVGeometry(BaseDVGeometry):
                     "rot0axis": rot0axis,
                 }
             nAxis = len(curve.coef)
-        elif xFraction or yFraction or zFraction:
+        elif xFraction is not None or yFraction is not None or zFraction is not None:
             # Some assumptions
             #   - FFD should be a close approximation of geometry surface so that
             #       xFraction roughly corresponds to airfoil LE, TE, or 1/4 chord
