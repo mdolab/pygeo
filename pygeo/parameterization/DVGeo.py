@@ -1518,9 +1518,8 @@ class DVGeometry(BaseDVGeometry):
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
-            J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
+            J_full = self.JT[ptSetName].toarray()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full, full_matrices=False)
-            u = np.array(u)
             scale = np.sqrt(s)
             # normalize the scaling
             scale = scale * (NDV / np.sum(scale))
