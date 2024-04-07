@@ -594,7 +594,7 @@ class DVGeometry(BaseDVGeometry):
                             pts_vec[ct_, :] = p_rot
 
                     # Temporary ref axis node coordinates - aligned with main system of reference
-                    if xFraction:
+                    if xFraction is not None:
                         # getting the bounds of the FFD section
                         x_min = np.min(pts_vec[:, 0])
                         x_max = np.max(pts_vec[:, 0])
@@ -602,14 +602,14 @@ class DVGeometry(BaseDVGeometry):
                     else:
                         x_node = np.mean(pts_vec[:, 0])
 
-                    if yFraction:
+                    if yFraction is not None:
                         y_min = np.min(pts_vec[:, 1])
                         y_max = np.max(pts_vec[:, 1])
                         y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
                     else:
                         y_node = np.mean(pts_vec[:, 1])
 
-                    if zFraction:
+                    if zFraction is not None:
                         z_min = np.min(pts_vec[:, 2])
                         z_max = np.max(pts_vec[:, 2])
                         z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
