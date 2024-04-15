@@ -19,7 +19,12 @@ from .gearPostConstraint import GearPostConstraint
 from .locationConstraint import LocationConstraint
 from .planarityConstraint import PlanarityConstraint
 from .radiusConstraint import RadiusConstraint
-from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
+from .thicknessConstraint import (
+    ProjectedThicknessConstraint,
+    ProximityConstraint,
+    ThicknessConstraint,
+    ThicknessToChordConstraint,
+)
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
@@ -437,6 +442,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False,
     ):
         r"""
         Add a set of thickness constraints that span a logically a
@@ -578,6 +584,10 @@ class DVConstraints:
             with this constraint should be added.
             If None, the point set is added to all components.
 
+        projected : bool
+            Use the component of the toothpick thickness aligned with
+            the original thickness direction.
+
         Examples
         --------
         >>> # Take unique square in x-z plane and and 10 along z-direction (spanWise)
@@ -611,7 +621,13 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.constraints[typeName][conName] = ThicknessConstraint(
+
+        if projected:
+            thickness_class = ProjectedThicknessConstraint
+        else:
+            thickness_class = ThicknessConstraint
+
+        self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
 
@@ -629,6 +645,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False,
     ):
         r"""
         Add a set of thickness constraints oriented along a poly-line.
@@ -727,6 +744,10 @@ class DVConstraints:
             with this constraint should be added.
             If None, the point set is added to all components.
 
+        projected : bool
+            Use the component of the toothpick thickness aligned with
+            the original thickness direction.
+
         """
         self._checkDVGeo(DVGeoName)
 
@@ -760,8 +781,203 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.constraints[typeName][conName] = ThicknessConstraint(
+
+        if projected:
+            thickness_class = ProjectedThicknessConstraint
+        else:
+            thickness_class = ThicknessConstraint
+
+        self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+        )
+
+    def addProximityConstraints(
+        self,
+        ptList,
+        vecList,
+        surfA,
+        surfB,
+        pointSetKwargsA=None,
+        pointSetKwargsB=None,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        DVGeoName="default",
+        compNames=None,
+    ):
+        r"""
+        Add "toothpick" thickness constraints between multiple surfaces.
+        This can be used to control proximity of multiple components,
+        each defined with its own surface. Surfaces must move in the same
+        direction as the constraint orientation to prevent skewness.
+        i.e, if the toothpicks are oriented in the y-direction,
+        the surfaces must only move in the y-direction.
+
+        Parameters
+        ----------
+        ptList : list or array of size (N x 3)
+            Together with the vecList, these points will be used to
+            determine the intersections with each component surface.
+
+        vecList : list or array of size (N x 3)
+            Directions that originate from each point in ptList
+            that define the search vector directions for component
+            surface intersections. The vector direction should
+            point to component A, and the opposite direction should
+            point to component B
+
+        surfA : str
+            Name of the DVCon surface mesh that defines component A
+
+        surfB : str
+            Name of the DVCon surface mesh that defines component B
+
+        pointSetKwargsA : dict
+            The dictionary of keyword arguments to be passed to DVGeo
+            when points on component A is added to DVGeo. The most common
+            use case is to pick which child FFDs are active for this point.
+            This is an optional argument. The default behavior adds toothpick
+            points to DVGeo like any other point.
+
+        pointSetKwargsB : dict
+            The dictionary of keyword arguments to be passed to DVGeo
+            when points on component B is added to DVGeo. The most common
+            use case is to pick which child FFDs are active for this point.
+            This is an optional argument. The default behavior adds toothpick
+            points to DVGeo like any other point.
+
+        lower : float or array of size nCon
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial length of each thickness
+              constraint is defined to be 1.0. In this case, the lower
+              and upper bounds are given in multiple of the initial
+              length. lower=0.85, upper=1.15, would allow for 15%
+              change in each direction from the original length. For
+              aerodynamic shape optimizations, this option is used
+              most often.
+
+            * scaled=False: No scaling is applied and the physical lengths
+              must be specified for the lower and upper bounds.
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the thickness constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value of the resulting physical
+            thickness have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constraint names
+            need to be distinguished **or** you are using this set of
+            thickness constraints for something other than a direct
+            constraint in pyOptSparse.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) *before* they are
+            given to the optimizer, set this flag to False.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
+        compNames : list
+            If using DVGeometryMulti, the components to which the point set associated
+            with this constraint should be added.
+            If None, the point set is added to all components.
+
+        """
+        self._checkDVGeo(DVGeoName)
+
+        if pointSetKwargsA is None:
+            pointSetKwargsA = {}
+        if pointSetKwargsB is None:
+            pointSetKwargsB = {}
+
+        ptList = np.atleast_2d(ptList)
+        vecList = np.atleast_2d(vecList)
+        nCon = ptList.shape[0]
+        if nCon != vecList.shape[0]:
+            raise Error(
+                "The vecList argument of addProximityConstraints needs to have the same number of vectors as the number of points."
+            )
+        coordsA = np.zeros((nCon, 3))
+        coordsB = np.zeros((nCon, 3))
+
+        # get the intersections with both components A and B
+        p0A, p1A, p2A = self._getSurfaceVertices(surfaceName=surfA)
+        v1A = p1A - p0A
+        v2A = p2A - p0A
+        p0B, p1B, p2B = self._getSurfaceVertices(surfaceName=surfB)
+        v1B = p1B - p0B
+        v2B = p2B - p0B
+
+        # Project all the points
+        for ii in range(nCon):
+            # get the point and vector
+            pt = ptList[ii]
+            vec = vecList[ii]
+
+            # Projections. Surf A first.
+            projA, fail = geo_utils.projectNodePosOnly(pt, vec, p0A, v1A, v2A)
+            if fail > 0:
+                raise Error(
+                    "There was an error projecting a node to surf A "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (pt[0], pt[1], pt[2], vec[0], vec[1], vec[2])
+                )
+
+            # Surf B.
+            projB, fail = geo_utils.projectNodePosOnly(pt, -vec, p0B, v1B, v2B)
+            if fail > 0:
+                raise Error(
+                    "There was an error projecting a node to surf B"
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (pt[0], pt[1], pt[2], -vec[0], -vec[1], -vec[2])
+                )
+
+            coordsA[ii] = projA
+            coordsB[ii] = projB
+
+        # Create the thickness constraint object:
+        typeName = "thickCon"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = "%s_proximity_constraints_%d" % (self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+        self.constraints[typeName][conName] = ProximityConstraint(
+            conName,
+            coordsA,
+            coordsB,
+            pointSetKwargsA,
+            pointSetKwargsB,
+            lower,
+            upper,
+            scaled,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+            compNames,
         )
 
     def addLERadiusConstraints(
