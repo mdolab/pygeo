@@ -2976,11 +2976,23 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=np.real(dv.value), lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.lower,
+                                upper=dv.upper,
+                                scale=dv.scale,
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=np.real(dv.value), lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.value,
+                                upper=dv.value,
+                                scale=dv.scale,
                             )
 
         # Add variables from the children
