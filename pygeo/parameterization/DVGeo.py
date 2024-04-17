@@ -2976,23 +2976,11 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name,
-                                dv.nVal,
-                                "c",
-                                value=dv.value.real,
-                                lower=dv.lower,
-                                upper=dv.upper,
-                                scale=dv.scale,
+                                dv.name, dv.nVal, "c", value=np.real(dv.value), lower=dv.lower, upper=dv.upper, scale=dv.scale
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name,
-                                dv.nVal,
-                                "c",
-                                value=dv.value.real,
-                                lower=dv.value,
-                                upper=dv.value,
-                                scale=dv.scale,
+                                dv.name, dv.nVal, "c", value=np.real(dv.value), lower=dv.value, upper=dv.value, scale=dv.scale
                             )
 
         # Add variables from the children
@@ -3716,6 +3704,7 @@ class DVGeometry(BaseDVGeometry):
             self.nDVG_count = 0
             self.nDVSL_count = self.nDVG_T
             self.nDVL_count = self.nDVG_T + self.nDVSL_T
+            self.nDVSW_count = self.nDVG_T + self.nDVSL_T + self.nDVL_T
 
         nDVG = self._getNDVGlobalSelf()
         nDVL = self._getNDVLocalSelf()
@@ -3734,7 +3723,7 @@ class DVGeometry(BaseDVGeometry):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-            child.nDVSW_count = self.nDVSW_count + nDVSL
+            child.nDVSW_count = self.nDVSW_count + nDVSW
 
             # Increment the counters for the children
             nDVG += child._getNDVGlobalSelf()
