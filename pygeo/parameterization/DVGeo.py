@@ -3716,6 +3716,7 @@ class DVGeometry(BaseDVGeometry):
             self.nDVG_count = 0
             self.nDVSL_count = self.nDVG_T
             self.nDVL_count = self.nDVG_T + self.nDVSL_T
+            self.nDVSW_count = self.nDVG_T + self.nDVSL_T + self.nDVL_T
 
         nDVG = self._getNDVGlobalSelf()
         nDVL = self._getNDVLocalSelf()
@@ -3734,7 +3735,7 @@ class DVGeometry(BaseDVGeometry):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-            child.nDVSW_count = self.nDVSW_count + nDVSL
+            child.nDVSW_count = self.nDVSW_count + nDVSW
 
             # Increment the counters for the children
             nDVG += child._getNDVGlobalSelf()
