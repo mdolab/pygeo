@@ -131,7 +131,7 @@ def getCoordinatesFromFile(fileName):
 
     Parameters
     ----------
-    fileName : str'
+    fileName : str
         filename for file
 
     Returns
@@ -139,14 +139,12 @@ def getCoordinatesFromFile(fileName):
     coordinates : list
         list of coordinates
     """
+    with open(fileName, "r") as f:
+        coordinates = []
+        for line in f:
+            aux = line.split()
+            coordinates.append([float(aux[0]), float(aux[1]), float(aux[2])])
 
-    f = open(fileName)
-    coordinates = []
-    for line in f:
-        aux = line.split()
-        coordinates.append([float(aux[0]), float(aux[1]), float(aux[2])])
-
-    f.close()
     coordinates = np.transpose(np.array(coordinates))
 
     return coordinates
