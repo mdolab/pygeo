@@ -4,6 +4,8 @@ import unittest
 
 # External modules
 from baseclasses import BaseRegTest
+from baseclasses.utils import Error as baseclassesError
+from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
 from stl import mesh
@@ -140,6 +142,7 @@ class RegTestPyGeo(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.comm = MPI.COMM_WORLD
 
         # Skip multi component test if DVGeometryMulti cannot be imported (i.e. pySurf is not installed)
         if self.multi and not pysurfInstalled:
@@ -317,6 +320,53 @@ class RegTestPyGeo(unittest.TestCase):
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
             )
 
+    def test_projected_thickness1D_box(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projected_thickness1D_box.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("box")
+            DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
+            ptList = [[0.0, 0.0, 0.1], [0.0, 0.0, 5.0]]
+            ptList2 = [[-0.5, 0.0, 2.0], [0.5, 0.0, 2.0]]
+            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[0, 1, 0], projected=True, scaled=False)
+            DVCon.addThicknessConstraints1D(ptList, nCon=3, axis=[1, 0, 0], projected=True, scaled=False)
+            DVCon.addThicknessConstraints1D(ptList2, nCon=3, axis=[0, 0, 1], projected=True, scaled=False)
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+
+            # Check that unscaled thicknesses are computed correctly at baseline
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_0"], np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_1"], 2.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+
+            # add skew to one face
+            nodes = DVGeo.FFD.coef
+            dx = np.max(nodes[:, 0]) - np.min(nodes[:, 0])
+            dy = np.max(nodes[:, 1]) - np.min(nodes[:, 1])
+            y_scale = ((nodes[:, 1] - np.min(nodes[:, 1])) / dy) * (nodes[:, 0] - np.min(nodes[:, 0])) / dx
+
+            DVGeo.setDesignVars({"local_x": y_scale})
+
+            funcs = {}
+            DVCon.evalFunctions(funcs)
+
+            # DVCon1_thickness_constraints_0 should stay the same since the thickness constraint is projected!
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_0"], np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_1"], 2.5 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            # The z direction is uneffected by the changes
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(3), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+
     def test_thickness2D(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_thickness2D.ref")
         with BaseRegTest(refFile, train=train) as handler:
@@ -392,6 +442,64 @@ class RegTestPyGeo(unittest.TestCase):
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_1"], 2.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
             )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+
+    def test_projected_thickness2D_box(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projected_thickness2D_box.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            DVGeo, DVCon = self.generate_dvgeo_dvcon("box")
+            DVGeo.addLocalDV("local_x", lower=-0.5, upper=0.5, axis="x", scale=1)
+
+            leList = [[-0.25, 0.0, 0.1], [-0.25, 0.0, 7.9]]
+            teList = [[0.75, 0.0, 0.1], [0.75, 0.0, 7.9]]
+
+            leList2 = [[0.0, -0.25, 0.1], [0.0, -0.25, 7.9]]
+            teList2 = [[0.0, 0.25, 0.1], [0.0, 0.25, 7.9]]
+
+            leList3 = [[-0.5, -0.25, 0.1], [0.5, -0.25, 0.1]]
+            teList3 = [[-0.5, 0.25, 0.1], [0.5, 0.25, 0.1]]
+
+            DVCon.addThicknessConstraints2D(leList, teList, 2, 2, scaled=False, projected=True)
+            DVCon.addThicknessConstraints2D(leList2, teList2, 2, 2, scaled=False, projected=True)
+            DVCon.addThicknessConstraints2D(leList3, teList3, 2, 2, scaled=False, projected=True)
+
+            funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
+            # Check that unscaled thicknesses are computed correctly at baseline
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_0"], np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_1"], 2.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+
+            # add skew to one face
+            nodes = DVGeo.FFD.coef
+            dx = np.max(nodes[:, 0]) - np.min(nodes[:, 0])
+            dy = np.max(nodes[:, 1]) - np.min(nodes[:, 1])
+            y_scale = ((nodes[:, 1] - np.min(nodes[:, 1])) / dy) * (nodes[:, 0] - np.min(nodes[:, 0])) / dx
+
+            DVGeo.setDesignVars({"local_x": y_scale})
+
+            funcs = {}
+            DVCon.evalFunctions(funcs)
+
+            # DVCon1_thickness_constraints_0 should stay the same since the thickness constraint is projected!
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_0"], np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_thickness_constraints_1"],
+                np.array([2.25, 2.75, 2.25, 2.75]),
+                name="thickness_base",
+                rtol=1e-7,
+                atol=1e-7,
+            )
+            # The z direction is uneffected by the changes
             handler.assert_allclose(
                 funcs["DVCon1_thickness_constraints_2"], 8.0 * np.ones(4), name="thickness_base", rtol=1e-7, atol=1e-7
             )
@@ -472,8 +580,8 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
             if self.child:
-                DVCon.addLeTeConstraints(0, "iLow", childIdx=0)
-                DVCon.addLeTeConstraints(0, "iHigh", childIdx=0)
+                DVCon.addLeTeConstraints(0, "iLow", childName="child0")
+                DVCon.addLeTeConstraints(0, "iHigh", childName="child0")
             elif self.multi:
                 DVCon.addLeTeConstraints(0, "iLow", comp="deforming")
                 DVCon.addLeTeConstraints(0, "iHigh", comp="deforming")
@@ -667,7 +775,7 @@ class RegTestPyGeo(unittest.TestCase):
                 indSetB.append(lIndex[i, 0, 1])
             if self.child:
                 DVCon.addLinearConstraintsShape(
-                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childIdx=0
+                    indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0, upper=0, childName="child0"
                 )
             elif self.multi:
                 DVCon.addLinearConstraintsShape(
@@ -789,8 +897,8 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
             if self.child:
-                DVCon.addMonotonicConstraints("twist", childIdx=0)
-                DVCon.addMonotonicConstraints("twist", start=1, stop=2, childIdx=0)
+                DVCon.addMonotonicConstraints("twist", childName="child0")
+                DVCon.addMonotonicConstraints("twist", start=1, stop=2, childName="child0")
             elif self.multi:
                 DVCon.addMonotonicConstraints("twist", comp="deforming")
                 DVCon.addMonotonicConstraints("twist", start=1, stop=2, comp="deforming")
@@ -847,8 +955,12 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("bwb", addToDVGeo=True)
 
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=1000.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", None, rho=10.0, addToPyOpt=True
+            )
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", None, rho=1000.0, addToPyOpt=True
+            )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, fdstep=1e-3)
             handler.assert_allclose(
@@ -864,7 +976,9 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("bwb", addToDVGeo=True, intersected=True)
 
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", None, rho=10.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", None, rho=10.0, addToPyOpt=True
+            )
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             np.testing.assert_array_less(np.zeros(1), funcs["DVCon1_trisurf_constraint_0_perim"])
@@ -958,6 +1072,141 @@ class RegTestPyGeo(unittest.TestCase):
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
 
+class RegTestProximity(unittest.TestCase):
+    N_PROCS = 1
+
+    def setUp(self):
+        # Store the path where this current script lives
+        # This all paths in the script are relative to this path
+        # This is needed to support testflo running directories and files as inputs
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.comm = MPI.COMM_WORLD
+
+    def test_proximity_constraint(self, train=False, refDeriv=False):
+        refFile = os.path.join(self.base_path, "ref/test_proximity_constraints.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            # create a dvgeo with one parent, and two overlapping children
+            parent_ffd_file = os.path.join(self.base_path, "../../input_files/parent.xyz")
+            child_ffd_file = os.path.join(self.base_path, "../../input_files/box1.xyz")
+
+            DVGeo_parent = DVGeometry(parent_ffd_file, name="parent")
+            # the children ffd box's extents are:
+            # x \in [-0.1, 1.1]
+            # y \in [-0.6, 0.6]
+            # z \in [-0.6, 0.6]
+            DVGeo_child1 = DVGeometry(child_ffd_file, child=True, name="child1")
+            DVGeo_child2 = DVGeometry(child_ffd_file, child=True, name="child2")
+            DVGeo_child1.addRefAxis("ref_axis1", xFraction=0.25, alignIndex="k")
+            DVGeo_child2.addRefAxis("ref_axis2", xFraction=0.25, alignIndex="k")
+
+            DVGeo_parent.addChild(DVGeo_child1)
+            DVGeo_parent.addChild(DVGeo_child2)
+
+            # add shape func DVs to each child DVGeo so that we can move them in the x dir
+            lindex1 = DVGeo_child1.getLocalIndex(0).flatten()
+            lindex2 = DVGeo_child2.getLocalIndex(0).flatten()
+
+            shape1 = {}
+            shape2 = {}
+            # the two ffds are identical so we just have one loop
+            for idx in range(len(lindex1)):
+                idx1 = lindex1[idx]
+                idx2 = lindex2[idx]
+                shape1[idx1] = np.array([1.0, 0.0, 0.0])
+                shape2[idx2] = np.array([1.0, 0.0, 0.0])
+
+            # dvgeo names will be prepended to the dv name to distinguish the two
+            DVGeo_child1.addShapeFunctionDV("x_disp", [shape1])
+            DVGeo_child2.addShapeFunctionDV("x_disp", [shape2])
+
+            # create the dvcon object
+            DVCon = DVConstraints()
+            DVCon.setDVGeo(DVGeo_parent)
+
+            # dummy tri meshes for dvcon to be used for projections.
+            # these represent different cfd surfaces. these can be arbitrarily large
+            # because they wont be embedded in the FFDs.
+            # we have constant x coordinates for the surfaces.
+            p0 = np.array([0.1, -1.0, -1.0])
+            p1 = np.array([0.1, 1.0, -1.0])
+            p2 = np.array([0.1, 0.0, 2.0])
+            surf1 = [[p0.copy()], [p1 - p0], [p2 - p0]]
+
+            p0[0] = 0.2
+            p1[0] = 0.2
+            p2[0] = 0.2
+            surf2 = [[p0.copy()], [p1 - p0], [p2 - p0]]
+
+            # the last surface is outside the child FFDs
+            p0[0] = 1.2
+            p1[0] = 1.2
+            p2[0] = 1.2
+            surf3 = [[p0.copy()], [p1 - p0], [p2 - p0]]
+
+            # add three surfaces to dvcon
+            DVCon.setSurface(surf1, "surf1")
+            DVCon.setSurface(surf2, "surf2")
+            DVCon.setSurface(surf3, "surf3")
+
+            # add the proximity constraints
+            # we want to add 2 constraints;
+            # first one goes from surf1 to surf2. The first point is in the first child,
+            # and second is in the second child.
+            DVCon.addProximityConstraints(
+                [np.array([0.15, 0.0, 0.0])],
+                [np.array([-1.0, 0.0, 0.0])],
+                "surf1",
+                "surf2",
+                pointSetKwargsA={"activeChildren": ["child1"]},
+                pointSetKwargsB={"activeChildren": ["child2"]},
+                scaled=False,
+                name="proximity1",
+            )
+
+            # second constraint goes from surf2 to surf3. The pt in surf2 is in the second child,
+            # the pt in surf3 is not added to any child FFDs
+            DVCon.addProximityConstraints(
+                [np.array([0.25, 0.0, 0.0])],
+                [np.array([-1.0, 0.0, 0.0])],
+                "surf2",
+                "surf3",
+                pointSetKwargsA={"activeChildren": ["child2"]},
+                pointSetKwargsB={},
+                scaled=False,
+                name="proximity2",
+            )
+
+            # add a third constraint where the vector direction is wrong and catch the error
+            with self.assertRaises(baseclassesError):
+                DVCon.addProximityConstraints(
+                    [np.array([0.25, 0.0, 0.0])],
+                    [np.array([1.0, 0.0, 0.0])],
+                    "surf2",
+                    "surf3",
+                    pointSetKwargsA={"activeChildren": ["child2"]},
+                    pointSetKwargsB={},
+                    scaled=False,
+                    name="proximity3",
+                )
+
+            # evaluate the original values
+            funcs = {}
+            DVCon.evalFunctions(funcs, includeLinear=True)
+            handler.root_add_dict("funcs_base", funcs, rtol=1e-10, atol=1e-10)
+            funcsSens = {}
+            DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
+            handler.root_add_dict("sens_base", funcsSens, rtol=1e-10, atol=1e-10)
+
+            # move child2 and re-evaluate
+            DVGeo_parent.setDesignVars({"child2_x_disp": 0.05})
+            funcs = {}
+            DVCon.evalFunctions(funcs, includeLinear=True)
+            handler.root_add_dict("funcs_new", funcs, rtol=1e-10, atol=1e-10)
+            funcsSens = {}
+            DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
+            handler.root_add_dict("sens_new", funcsSens, rtol=1e-10, atol=1e-10)
+
+
 @unittest.skipUnless(geogradInstalled, "requires geograd")
 class RegTestGeograd(unittest.TestCase):
     N_PROCS = 1
@@ -967,6 +1216,7 @@ class RegTestGeograd(unittest.TestCase):
         # This all paths in the script are relative to this path
         # This is needed to support testflo running directories and files as inputs
         self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.comm = MPI.COMM_WORLD
 
     def test_triangulatedSurface_intersected_2DVGeos(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_triangulatedSurface_intersected_2DVGeos.ref")
@@ -1017,7 +1267,9 @@ class RegTestGeograd(unittest.TestCase):
             p0b = p0b + np.array([0.0, 0.3, 0.0])
             DVCon.setSurface([p0b, v1b, v2b], name="blob", addToDVGeo=True, DVGeoName="second")
 
-            DVCon.addTriangulatedSurfaceConstraint("default", "default", "blob", "second", rho=10.0, addToPyOpt=True)
+            DVCon.addTriangulatedSurfaceConstraint(
+                self.comm, "default", "default", "blob", "second", rho=10.0, addToPyOpt=True
+            )
 
             funcs = {}
             DVCon.evalFunctions(funcs, includeLinear=True)
