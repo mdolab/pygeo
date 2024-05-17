@@ -234,7 +234,7 @@ class DVGeometryMulti:
         dStarA=0.2,
         dStarB=0.2,
         featureCurves=None,
-        distTol=1e-14,
+        distTol=1e-4,
         project=False,
         marchDir=1,
         includeCurves=False,
@@ -496,6 +496,9 @@ class DVGeometryMulti:
             if familyName is not None:
                 compNames = [familyName]
 
+        if self.debug:
+            print(f"addPointSet {ptName} to {compNames} applyIC {applyIC}")
+
         # create the pointset class
         if self.filletIntersection:
             comp = compNames[0]
@@ -715,7 +718,6 @@ class DVGeometryMulti:
             Any additional keys in the dictionary are simply ignored.
 
         """
-
         # Check if we have duplicate DV names
         if self.checkDVs:
             dvNames = self.getVarNames()
@@ -775,7 +777,6 @@ class DVGeometryMulti:
             This must match one of those added in an :func:`addPointSet()` call.
 
         """
-
         # get the new points
         newPts = np.zeros((self.points[ptSetName].nPts, 3), dtype=self.dtype)
 
