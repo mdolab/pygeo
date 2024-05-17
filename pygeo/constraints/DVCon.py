@@ -19,7 +19,12 @@ from .gearPostConstraint import GearPostConstraint
 from .locationConstraint import LocationConstraint
 from .planarityConstraint import PlanarityConstraint
 from .radiusConstraint import RadiusConstraint
-from .thicknessConstraint import ThicknessConstraint, ThicknessToChordConstraint
+from .thicknessConstraint import (
+    ProjectedThicknessConstraint,
+    ProximityConstraint,
+    ThicknessConstraint,
+    ThicknessToChordConstraint,
+)
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
 
@@ -69,7 +74,7 @@ class DVConstraints:
 
     def __init__(self, name="DVCon1"):
         """
-        Create a (empty) DVconstrains object. Specific types of
+        Create a (empty) DVConstraints object. Specific types of
         constraints will added individually
         """
 
@@ -265,7 +270,7 @@ class DVConstraints:
         dvDict : dict
             Dictionary of design variables. The keys of the dictionary
             must correspond to the design variable names. Any
-            additional keys in the dfvdictionary are simply ignored.
+            additional keys in the dv dictionary are simply ignored.
         """
 
         # loop over the generated constraint objects and add the necessary
@@ -359,7 +364,7 @@ class DVConstraints:
             self.linearCon[key].writeTecplot(f)
         f.close()
 
-    def writeSurfaceTecplot(self, fileName, surfaceName="default"):
+    def writeSurfaceTecplot(self, fileName, surfaceName="default", fromDVGeo=None):
         """
         Write the triangulated surface mesh used in the constraint object
         to a tecplot file for visualization.
@@ -370,8 +375,12 @@ class DVConstraints:
             File name for tecplot file. Should have a .dat extension.
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
         """
-        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName, fromDVGeo)
 
         f = open(fileName, "w")
         f.write('TITLE = "DVConstraints Surface Mesh"\n')
@@ -400,26 +409,22 @@ class DVConstraints:
         surfaceName : str
             Which DVConstraints surface to write to file (default is 'default')
         fromDVGeo : str or None
-            Name of the DVGeo object to obtain the surface from (default is 'None')
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
         """
         try:
             # External modules
             from stl import mesh
         except ImportError as e:
             raise ImportError("numpy-stl package must be installed") from e
-        if fromDVGeo is None:
-            p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
-        else:
-            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
-            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
-            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
+
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName, fromDVGeo)
 
         stlmesh = mesh.Mesh(np.zeros(p0.shape[0], dtype=mesh.Mesh.dtype))
         stlmesh.vectors[:, 0, :] = p0
         stlmesh.vectors[:, 1, :] = p1
         stlmesh.vectors[:, 2, :] = p2
 
-        # Write the mesh to file "cube.stl"
         stlmesh.save(fileName)
 
     def addThicknessConstraints2D(
@@ -437,6 +442,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False,
     ):
         r"""
         Add a set of thickness constraints that span a logically a
@@ -578,6 +584,10 @@ class DVConstraints:
             with this constraint should be added.
             If None, the point set is added to all components.
 
+        projected : bool
+            Use the component of the toothpick thickness aligned with
+            the original thickness direction.
+
         Examples
         --------
         >>> # Take unique square in x-z plane and and 10 along z-direction (spanWise)
@@ -611,7 +621,13 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.constraints[typeName][conName] = ThicknessConstraint(
+
+        if projected:
+            thickness_class = ProjectedThicknessConstraint
+        else:
+            thickness_class = ThicknessConstraint
+
+        self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
 
@@ -629,6 +645,7 @@ class DVConstraints:
         surfaceName="default",
         DVGeoName="default",
         compNames=None,
+        projected=False,
     ):
         r"""
         Add a set of thickness constraints oriented along a poly-line.
@@ -727,6 +744,10 @@ class DVConstraints:
             with this constraint should be added.
             If None, the point set is added to all components.
 
+        projected : bool
+            Use the component of the toothpick thickness aligned with
+            the original thickness direction.
+
         """
         self._checkDVGeo(DVGeoName)
 
@@ -760,8 +781,203 @@ class DVConstraints:
             conName = "%s_thickness_constraints_%d" % (self.name, len(self.constraints[typeName]))
         else:
             conName = name
-        self.constraints[typeName][conName] = ThicknessConstraint(
+
+        if projected:
+            thickness_class = ProjectedThicknessConstraint
+        else:
+            thickness_class = ThicknessConstraint
+
+        self.constraints[typeName][conName] = thickness_class(
             conName, coords, lower, upper, scaled, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+        )
+
+    def addProximityConstraints(
+        self,
+        ptList,
+        vecList,
+        surfA,
+        surfB,
+        pointSetKwargsA=None,
+        pointSetKwargsB=None,
+        lower=1.0,
+        upper=3.0,
+        scaled=True,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        DVGeoName="default",
+        compNames=None,
+    ):
+        r"""
+        Add "toothpick" thickness constraints between multiple surfaces.
+        This can be used to control proximity of multiple components,
+        each defined with its own surface. Surfaces must move in the same
+        direction as the constraint orientation to prevent skewness.
+        i.e, if the toothpicks are oriented in the y-direction,
+        the surfaces must only move in the y-direction.
+
+        Parameters
+        ----------
+        ptList : list or array of size (N x 3)
+            Together with the vecList, these points will be used to
+            determine the intersections with each component surface.
+
+        vecList : list or array of size (N x 3)
+            Directions that originate from each point in ptList
+            that define the search vector directions for component
+            surface intersections. The vector direction should
+            point to component A, and the opposite direction should
+            point to component B
+
+        surfA : str
+            Name of the DVCon surface mesh that defines component A
+
+        surfB : str
+            Name of the DVCon surface mesh that defines component B
+
+        pointSetKwargsA : dict
+            The dictionary of keyword arguments to be passed to DVGeo
+            when points on component A is added to DVGeo. The most common
+            use case is to pick which child FFDs are active for this point.
+            This is an optional argument. The default behavior adds toothpick
+            points to DVGeo like any other point.
+
+        pointSetKwargsB : dict
+            The dictionary of keyword arguments to be passed to DVGeo
+            when points on component B is added to DVGeo. The most common
+            use case is to pick which child FFDs are active for this point.
+            This is an optional argument. The default behavior adds toothpick
+            points to DVGeo like any other point.
+
+        lower : float or array of size nCon
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        scaled : bool
+            Flag specifying whether or not the constraint is to be
+            implemented in a scaled fashion or not.
+
+            * scaled=True: The initial length of each thickness
+              constraint is defined to be 1.0. In this case, the lower
+              and upper bounds are given in multiple of the initial
+              length. lower=0.85, upper=1.15, would allow for 15%
+              change in each direction from the original length. For
+              aerodynamic shape optimizations, this option is used
+              most often.
+
+            * scaled=False: No scaling is applied and the physical lengths
+              must be specified for the lower and upper bounds.
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the thickness constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value of the resulting physical
+            thickness have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constraint names
+            need to be distinguished **or** you are using this set of
+            thickness constraints for something other than a direct
+            constraint in pyOptSparse.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) *before* they are
+            given to the optimizer, set this flag to False.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
+        compNames : list
+            If using DVGeometryMulti, the components to which the point set associated
+            with this constraint should be added.
+            If None, the point set is added to all components.
+
+        """
+        self._checkDVGeo(DVGeoName)
+
+        if pointSetKwargsA is None:
+            pointSetKwargsA = {}
+        if pointSetKwargsB is None:
+            pointSetKwargsB = {}
+
+        ptList = np.atleast_2d(ptList)
+        vecList = np.atleast_2d(vecList)
+        nCon = ptList.shape[0]
+        if nCon != vecList.shape[0]:
+            raise Error(
+                "The vecList argument of addProximityConstraints needs to have the same number of vectors as the number of points."
+            )
+        coordsA = np.zeros((nCon, 3))
+        coordsB = np.zeros((nCon, 3))
+
+        # get the intersections with both components A and B
+        p0A, p1A, p2A = self._getSurfaceVertices(surfaceName=surfA)
+        v1A = p1A - p0A
+        v2A = p2A - p0A
+        p0B, p1B, p2B = self._getSurfaceVertices(surfaceName=surfB)
+        v1B = p1B - p0B
+        v2B = p2B - p0B
+
+        # Project all the points
+        for ii in range(nCon):
+            # get the point and vector
+            pt = ptList[ii]
+            vec = vecList[ii]
+
+            # Projections. Surf A first.
+            projA, fail = geo_utils.projectNodePosOnly(pt, vec, p0A, v1A, v2A)
+            if fail > 0:
+                raise Error(
+                    "There was an error projecting a node to surf A "
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (pt[0], pt[1], pt[2], vec[0], vec[1], vec[2])
+                )
+
+            # Surf B.
+            projB, fail = geo_utils.projectNodePosOnly(pt, -vec, p0B, v1B, v2B)
+            if fail > 0:
+                raise Error(
+                    "There was an error projecting a node to surf B"
+                    "at (%f, %f, %f) with normal (%f, %f, %f)." % (pt[0], pt[1], pt[2], -vec[0], -vec[1], -vec[2])
+                )
+
+            coordsA[ii] = projA
+            coordsB[ii] = projB
+
+        # Create the thickness constraint object:
+        typeName = "thickCon"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+
+        if name is None:
+            conName = "%s_proximity_constraints_%d" % (self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+        self.constraints[typeName][conName] = ProximityConstraint(
+            conName,
+            coordsA,
+            coordsB,
+            pointSetKwargsA,
+            pointSetKwargsB,
+            lower,
+            upper,
+            scaled,
+            scale,
+            self.DVGeometries[DVGeoName],
+            addToPyOpt,
+            compNames,
         )
 
     def addLERadiusConstraints(
@@ -823,7 +1039,9 @@ class DVConstraints:
             thickness constraints will be added.
 
         nSpan : int
-            The number of thickness constraints to add
+            The number of thickness constraints to add. If nSpan is provided
+            as -1, then leList is used directly and the number of radius
+            constraints will be equal to the number of points in leList
 
         axis : list or array of length 3
             The direction along which the up-down projections will occur.
@@ -893,11 +1111,17 @@ class DVConstraints:
         """
         self._checkDVGeo(DVGeoName)
 
-        # Create mesh of intersections
-        constr_line = Curve(X=leList, k=2)
-        s = np.linspace(0, 1, nSpan)
-        X = constr_line(s)
+        # determine the seed points for the constraint
+        if nSpan == -1:
+            nSpan = len(leList)
+            X = leList.copy()
+        else:
+            constr_line = Curve(X=leList, k=2)
+            s = np.linspace(0, 1, nSpan)
+            X = constr_line(s)
         coords = np.zeros((nSpan, 3, 3))
+
+        # Create surface intersections
         p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
         # Project all the points
         for i in range(nSpan):
@@ -920,14 +1144,13 @@ class DVConstraints:
         chordDir /= np.linalg.norm(chordDir)
         for i in range(nSpan):
             # Project actual node:
-            up, down, fail = geo_utils.projectNode(X[i], chordDir, p0, p1 - p0, p2 - p0)
+            lePts[i], fail = geo_utils.projectNodePosOnly(X[i], chordDir, p0, p1 - p0, p2 - p0)
             if fail > 0:
                 raise Error(
                     "There was an error projecting a node "
-                    "at (%f, %f, %f) with normal (%f, %f, %f)."
+                    "at (%f, %f, %f) in direction (%f, %f, %f)."
                     % (X[i, 0], X[i, 1], X[i, 2], chordDir[0], chordDir[1], chordDir[2])
                 )
-            lePts[i] = up
 
         # Check that points can form radius
         d = np.linalg.norm(coords[:, 0, :] - coords[:, 1, :], axis=1)
@@ -1359,6 +1582,7 @@ class DVConstraints:
 
     def addTriangulatedSurfaceConstraint(
         self,
+        comm,
         surface_1_name=None,
         DVGeo_1_name="default",
         surface_2_name="default",
@@ -1372,7 +1596,7 @@ class DVConstraints:
         addToPyOpt=True,
     ):
         """
-        Add a single triangulated surface constraint to an aerosurface.
+        Add a single triangulated surface constraint to an aerosurface using Geograd.
         This constraint is designed to keep a general 'blob' of watertight
         geometry contained within an aerodynamic hull (e.g., a wing)
 
@@ -1383,19 +1607,19 @@ class DVConstraints:
             This should be the surface with the larger number of triangles.
             By default, it's the ADflow triangulated surface mesh.
 
-        DVGeo_1_name : str
+        DVGeo_1_name : str or None
             The name of the DVGeo object to associate surface_1 to.
             If None, surface_1 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         surface_2_name : str
             The name of the second triangulated surface to constrain.
             This should be the surface with the smaller number of triangles.
 
-        DVGeo_2_name : str
+        DVGeo_2_name : str or None
             The name of the DVGeo object to associate surface_2 to.
             If None, surface_2 will remain static during optimization.
-            By default, it's the 'default' DVGeo object
+            By default, it's the 'default' DVGeo object.
 
         rho : float
             The rho factor of the KS function of min distance.
@@ -1419,8 +1643,8 @@ class DVConstraints:
              multiple DVCon objects and the constraint names need to
              be distinguished **OR** you are using this
              computation for something other than a direct constraint
-             in pyOpt, i.e. it is required for a subsequent
-             computation.
+             in pyOpt, i.e. it is required for a subsequent computation.
+             The MPhys wrapper sets this name for tracking in OpenMDAO.
 
         scale : float
             This is the optimization scaling of the
@@ -1447,6 +1671,7 @@ class DVConstraints:
             DVGeo2 = self.DVGeometries[DVGeo_2_name]
         else:
             DVGeo2 = None
+
         if DVGeo1 is None and DVGeo2 is None:
             raise ValueError("At least one DVGeo object must be specified")
 
@@ -1464,6 +1689,7 @@ class DVConstraints:
 
         # Finally add constraint object
         self.constraints[typeName][conName] = TriangulatedSurfaceConstraint(
+            comm,
             conName,
             surface_1,
             surface_1_name,
@@ -1746,12 +1972,10 @@ class DVConstraints:
         Add a composite volume constraint. This used previously added
         constraints and combines them to form a single volume constraint.
 
-        The general ussage is as follows::
+        The general usage is as follows:
 
-          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord,
-                                    name='part1', addToPyOpt=False)
-          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord,
-                                    name='part2', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList1, teList1, nSpan, nChord, name='part1', addToPyOpt=False)
+          DVCon.addVolumeConstraint(leList2, teList2, nSpan, nChord, name='part2', addToPyOpt=False)
           DVCon.addCompositeVolumeConstraint(['part1', 'part2'], lower=1)
 
 
@@ -1841,7 +2065,7 @@ class DVConstraints:
         indSetB=None,
         name=None,
         config=None,
-        childIdx=None,
+        childName=None,
         comp=None,
         DVGeoName="default",
     ):
@@ -1910,10 +2134,8 @@ class DVConstraints:
             The DVGeo configuration to apply this constraint to. Must be either None
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
-        childIdx : int
-            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        childName : str
+            Name of the child FFD, if this constraint is being applied to a child FFD.
         comp: str
             The component name if using DVGeometryMulti.
 
@@ -1943,8 +2165,8 @@ class DVConstraints:
         else:
             DVGeo = self.DVGeometries[DVGeoName].DVGeoDict[comp]
 
-        if childIdx is not None:
-            DVGeo = DVGeo.children[childIdx]
+        if childName is not None:
+            DVGeo = DVGeo.children[childName]
 
         # Now determine what type of specification we have:
         if volID is not None and faceID is not None:
@@ -2040,7 +2262,7 @@ class DVConstraints:
         upper=0,
         name=None,
         config=None,
-        childIdx=None,
+        childName=None,
         comp=None,
         DVGeoName="default",
     ):
@@ -2094,10 +2316,8 @@ class DVConstraints:
             The DVGeo configuration to apply this constraint to. Must be either None
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
-        childIdx : int
-            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        childName : str
+            Name of the child FFD, if this constraint is being applied to a child FFD.
         comp: str
             The component name if using DVGeometryMulti.
 
@@ -2121,8 +2341,8 @@ class DVConstraints:
         else:
             DVGeo = self.DVGeometries[DVGeoName].DVGeoDict[comp]
 
-        if childIdx is not None:
-            DVGeo = DVGeo.children[childIdx]
+        if childName is not None:
+            DVGeo = DVGeo.children[childName]
 
         if len(indSetA) != len(indSetB):
             raise Error("The length of the supplied indices are not " "the same length")
@@ -3136,9 +3356,11 @@ class DVConstraints:
         )
 
     def addMonotonicConstraints(
-        self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childIdx=None, comp=None, DVGeoName="default"
+        self, key, slope=1.0, name=None, start=0, stop=-1, config=None, childName=None, comp=None, DVGeoName="default"
     ):
         """
+        Add monotonic constraints to a given design variable.
+
         Parameters
         ----------
         key : str
@@ -3162,10 +3384,8 @@ class DVConstraints:
             The DVGeo configuration to apply this constraint to. Must be either None
             which will apply to *ALL* the local DV groups or a single string specifying
             a particular configuration.
-        childIdx : int
-            The zero-based index of the child FFD, if this constraint is being applied to a child FFD.
-            The index is defined by the order in which you add the child FFD to the parent.
-            For example, the first child FFD has an index of 0, the second an index of 1, and so on.
+        childName : str
+            Name of the child FFD, if this constraint is being applied to a child FFD.
         comp: str
             The component name if using DVGeometryMulti.
 
@@ -3180,8 +3400,8 @@ class DVConstraints:
         else:
             DVGeo = self.DVGeometries[DVGeoName].DVGeoDict[comp]
 
-        if childIdx is not None:
-            DVGeo = DVGeo.children[childIdx]
+        if childName is not None:
+            DVGeo = DVGeo.children[childName]
 
         if name is None:
             conName = "%s_monotonic_constraint_%d" % (self.name, len(self.linearCon))
@@ -3210,12 +3430,32 @@ class DVConstraints:
                 "constraints can be added."
             )
 
-    def _getSurfaceVertices(self, surfaceName):
-        if surfaceName not in self.surfaces.keys():
-            raise KeyError('Need to add surface "' + surfaceName + '" to the DVConstraints object')
-        p0 = self.surfaces[surfaceName][0]
-        p1 = self.surfaces[surfaceName][1]
-        p2 = self.surfaces[surfaceName][2]
+    def _getSurfaceVertices(self, surfaceName="default", fromDVGeo=None):
+        """Get the points that define a triangulated surface mesh.
+
+        Parameters
+        ----------
+        surfaceName : str
+            Which DVConstraints surface to get the points for (default is 'default')
+        fromDVGeo : str or None
+            Name of the DVGeo object to obtain the surface from (default is 'None' in which case the surface is obtained
+            from self.surfaces, which will always be the original surface)
+
+        Returns
+        -------
+        (np.array, np.array, np.array)
+            Arrays of points that define the triangulated surface mesh
+        """
+        if fromDVGeo is None:
+            if surfaceName not in self.surfaces.keys():
+                raise KeyError('Need to add surface "' + surfaceName + '" to the DVConstraints object')
+            p0 = self.surfaces[surfaceName][0]
+            p1 = self.surfaces[surfaceName][1]
+            p2 = self.surfaces[surfaceName][2]
+        else:
+            p0 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p0")
+            p1 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p1")
+            p2 = self.DVGeometries[fromDVGeo].update(surfaceName + "_p2")
         return p0, p1, p2
 
     def _generateIntersections(self, leList, teList, nSpan, nChord, surfaceName):

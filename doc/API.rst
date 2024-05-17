@@ -9,6 +9,7 @@ This package consists of the following modules:
    :maxdepth: 1
 
    DVConstraints
+   mphys_dvgeo
    DVGeometry
    DVGeometryMulti
    DVGeometryESP

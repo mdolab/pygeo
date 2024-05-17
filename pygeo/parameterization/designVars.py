@@ -296,6 +296,41 @@ class geoDVComposite(geoDV):
         self.s = s
 
 
+class geoDVShapeFunc(geoDV):
+    def __init__(self, name, shapes, lower, upper, scale, config):
+        """
+        Create a set of geometric design variables that are represented
+        as shape functions defined on one or more FFD control points.
+        See addShapeFunctionDV for more information
+
+        """
+
+        nVal = len(shapes)
+        super().__init__(name=name, value=np.zeros(nVal, "D"), nVal=nVal, lower=lower, upper=upper, scale=scale)
+
+        self.config = config
+        self.shapes = shapes
+
+    def __call__(self, coef, config):
+        """When the object is called, apply the design variable values to
+        coefficients"""
+        if self.config is None or config is None or any(c0 == config for c0 in self.config):
+            # loop over the shapes and add the perturbations to each coef
+            for ii, shape in enumerate(self.shapes):
+                for idx, vec in shape.items():
+                    coef[idx] += vec * self.value[ii].real
+
+        return coef
+
+    def updateComplex(self, coef, config):
+        if self.config is None or config is None or any(c0 == config for c0 in self.config):
+            for ii, shape in enumerate(self.shapes):
+                for idx, vec in shape.items():
+                    coef[idx] += vec * self.value[ii].imag * 1j
+
+        return coef
+
+
 class espDV(geoDV):
     def __init__(self, csmDesPmtr, name, value, lower, upper, scale, rows, cols, dh, globalstartind):
         """
