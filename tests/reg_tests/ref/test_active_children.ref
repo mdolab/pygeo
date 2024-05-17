@@ -27,7 +27,7 @@
                 1
             ]
         },
-        "span2": {
+        "child2_span2": {
             "__ndarray__": [
                 [
                     0.0
@@ -83,7 +83,7 @@
                 1
             ]
         },
-        "span2": {
+        "child2_span2": {
             "__ndarray__": [
                 [
                     0.375
@@ -139,7 +139,7 @@
                 1
             ]
         },
-        "span2": {
+        "child2_span2": {
             "__ndarray__": [
                 [
                     0.375
@@ -195,7 +195,7 @@
                 1
             ]
         },
-        "span2": {
+        "child2_span2": {
             "__ndarray__": [
                 [
                     0.0

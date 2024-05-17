@@ -1213,6 +1213,66 @@ class RegTestPyGeo(unittest.TestCase):
 
         np.testing.assert_allclose(test_points, new_points, atol=1e-15)
 
+    def train_volume_bounds(self, train=True):
+        self.test_volume_bounds(train=train)
+
+    def test_volume_bounds(self, train=False):
+        refFile = os.path.join(self.base_path, "ref/test_vol_bounds.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test point embedding with volume bounds")
+
+            ffdfile = os.path.join(self.base_path, "../../input_files/outerBoxFFD.xyz")
+
+            volBounds = {
+                0: [[0.5, 1.0], [0.0, 0.5], [0.25, 0.75]],
+                1: [[0.0, 1.0], [0.0, 1.0], [0.0, 0.5]],
+            }
+
+            # initialize with custom volume bounds
+            DVGeo = DVGeometry(ffdfile, volBounds=volBounds)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+
+            # get a few points inside and outside the bound for the boxes
+            uvw = [
+                np.array([0.75, 0.25, 0.4]),  # in both boxes
+                np.array([0.75, 0.25, 0.6]),  # in first box, outside second
+                np.array([0.25, 0.75, 0.25]),  # in first box, outside second
+            ]
+
+            # get the x-y-z coordinates of these points
+            pts0 = []
+            pts1 = []
+            for ii in range(len(uvw)):
+                pts0.append(DVGeo.FFD.vols[0](uvw[ii][0], uvw[ii][1], uvw[ii][2]))
+                pts1.append(DVGeo.FFD.vols[1](uvw[ii][0], uvw[ii][1], uvw[ii][2]))
+
+            # project these points back into the FFD
+            DVGeo.addPointSet(pts0, "pts0")
+            DVGeo.addPointSet(pts1, "pts1")
+
+            pts0_1 = DVGeo.update("pts0")
+            pts1_1 = DVGeo.update("pts1")
+
+            handler.root_add_val("pts0_1", pts0_1, rtol=1e-12, atol=1e-12)
+            handler.root_add_val("pts1_1", pts1_1, rtol=1e-12, atol=1e-12)
+
+            # change the bounds and do it again
+            volBounds = {
+                0: [[0.8, 1.0], [0.0, 0.5], [0.25, 0.75]],
+                1: [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]],
+            }
+            DVGeo.setVolBounds(volBounds)
+
+            # project these points back into the FFD
+            DVGeo.addPointSet(pts0, "pts0_new")
+            DVGeo.addPointSet(pts1, "pts1_new")
+
+            pts0_2 = DVGeo.update("pts0_new")
+            pts1_2 = DVGeo.update("pts1_new")
+
+            handler.root_add_val("pts0_2", pts0_2, rtol=1e-12, atol=1e-12)
+            handler.root_add_val("pts1_2", pts1_2, rtol=1e-12, atol=1e-12)
+
     def test_coord_xfer(self):
         DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
 
@@ -1412,14 +1472,16 @@ class RegTestPyGeo(unittest.TestCase):
         with BaseRegTest(refFile, train=train) as handler:
             handler.root_print("Test shape function DVs")
 
-            DVGeo, DVGeoChild1 = commonUtils.setupDVGeo(self.base_path)
-            _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path)
+            DVGeo, DVGeoChild1 = commonUtils.setupDVGeo(self.base_path, childName="child1")
+            _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path, childName="child2")
 
             # add design variables
-            DVGeoChild1.addGlobalDV(dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+            DVGeoChild1.addGlobalDV(
+                dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1, prependName=False
+            )
             DVGeoChild2.addGlobalDV(dvName="span2", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
-            DVGeo.addChild(DVGeoChild1, "child1")
-            DVGeo.addChild(DVGeoChild2, "child2")
+            DVGeo.addChild(DVGeoChild1)
+            DVGeo.addChild(DVGeoChild2)
 
             points = np.zeros([2, 3])
             points[0, :] = [0.25, 0, 0]
@@ -1457,7 +1519,7 @@ class RegTestPyGeo(unittest.TestCase):
                 handler.root_add_dict(f"dIdx_{ptName}", dIdx, rtol=1e-10, atol=1e-10)
 
             # perturb the DV and test point coordinates
-            xDV = {"span1": np.array([2.0]), "span2": np.array([3.0])}
+            xDV = {"span1": np.array([2.0]), "child2_span2": np.array([3.0])}
             DVGeo.setDesignVars(xDV)
 
             for ptName in ptNames:

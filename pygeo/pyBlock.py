@@ -50,7 +50,7 @@ class pyBlock:
         allow.
     """
 
-    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, **kwargs):
+    def __init__(self, initType, fileName=None, FFD=False, symmPlane=None, kmax=4, volBounds=None, **kwargs):
         self.initType = initType
         self.FFD = False
         self.topo = None  # The topology of the volumes/surface
@@ -59,7 +59,10 @@ class pyBlock:
         self.coef = None  # The global (reduced) set of control pts
         self.embeddedVolumes = {}
         self.symmPlane = symmPlane
-        self.filename = fileName
+        if volBounds is None:
+            self.volBounds = {}
+        else:
+            self.volBounds = volBounds
 
         if initType == "plot3d":
             self._readPlot3D(fileName, FFD=FFD, kmax=kmax, **kwargs)
@@ -882,7 +885,13 @@ class pyBlock:
 
             for j in range(self.nVol):
                 iVol = volList[j]
-                u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter)
+
+                if iVol in self.volBounds:
+                    volBounds = self.volBounds[iVol]
+                else:
+                    volBounds = None
+
+                u0, v0, w0, D0 = self.vols[iVol].projectPoint(x0[i], eps=eps, nIter=nIter, volBounds=volBounds)
 
                 D0Norm = np.linalg.norm(D0)
                 # If the new distance is less than the previous best
@@ -932,9 +941,10 @@ class pyBlock:
 
             # Check to see if we have bad projections and print a warning:
             if counter > 0:
-                print(self.filename)
-                print(f" -> Warning: {counter} point(s) from {self.filename} not projected to tolerance {eps}.")
-                print(f"Max Error: {DMax:.6g} ; RMS Error: {DRms:.6g}")
+                print(
+                    " -> Warning: %d point(s) not projected to tolerance: %g. " % (counter, eps)
+                    + "Max Error: %12.6g ; RMS Error: %12.6g" % (DMax, DRms)
+                )
                 print("List of Points is: (pt, delta):")
                 for i in range(len(badPts)):
                     print(
@@ -970,6 +980,10 @@ class pyBlock:
                 Xmax[iDim] = max(Xmax[iDim], Xmax0[iDim])
 
         return Xmin, Xmax
+
+    def setVolBounds(self, volBounds):
+        # routine to update the volume bounds after initialization
+        self.volBounds = volBounds
 
 
 class EmbeddedVolume:

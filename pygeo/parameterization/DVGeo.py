@@ -77,25 +77,56 @@ class DVGeometry(BaseDVGeometry):
         Default is a 4th order spline in each direction if the dimensions
         allow.
 
+    volBounds : dict
+        Dictionary where volume embedding bounds for each FFD volume is specified.
+        Keys of the dictionary specifies the FFD volume index. Values are lists of lists.
+        First list contains the min and max bounds for the u parameter, second v, third w.
+        This parameter can also be set after initialization using the `setVolBounds` method.
+        For example if the FFD has 3 volumes, setting volBounds to:
+
+            >>> volBounds = {
+            >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
+            >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
+            >>> }
+
+        will set the parametric bounds of the first and second volumes, while the third
+        volume can still embed points using the usual bounds of 0 to 1 for all parametric
+        directions. In this example, the first volume only embeds points if the u coordinate
+        of the projection is between 0 and 0.5. Similarly, the second volume only embeds
+        a point if the v coordinate of the projection is between 0.5 and 1.0. This is useful
+        when multiple overlapping FFD volumes are used to either mimic circular or symmetric
+        FFDs.
+
     Examples
     --------
     The general sequence of operations for using DVGeometry is as follows::
-      >>> from pygeo import DVGeometry
-      >>> DVGeo = DVGeometry('FFD_file.fmt')
-      >>> # Embed a set of coordinates Xpt into the object
-      >>> DVGeo.addPointSet(Xpt, 'myPoints')
-      >>> # Associate a 'reference axis' for large-scale manipulation
-      >>> DVGeo.addRefAxis('wing_axis', axis_curve)
-      >>> # Define a global design variable function:
-      >>> def twist(val, geo):
-      >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
-      >>> # Now add this as a global variable:
-      >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
-      >>> # Now add local (shape) variables
-      >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
+        >>> from pygeo import DVGeometry
+        >>> DVGeo = DVGeometry('FFD_file.fmt')
+        >>> # Embed a set of coordinates Xpt into the object
+        >>> DVGeo.addPointSet(Xpt, 'myPoints')
+        >>> # Associate a 'reference axis' for large-scale manipulation
+        >>> DVGeo.addRefAxis('wing_axis', axis_curve)
+        >>> # Define a global design variable function:
+        >>> def twist(val, geo):
+        >>>    geo.rot_z['wing_axis'].coef[:] = val[:]
+        >>> # Now add this as a global variable:
+        >>> DVGeo.addGlobalDV('wing_twist', 0.0, twist, lower=-10, upper=10)
+        >>> # Now add local (shape) variables
+        >>> DVGeo.addLocalDV('shape', lower=-0.5, upper=0.5, axis='y')
     """
 
-    def __init__(self, fileName, *args, isComplex=False, child=False, faceFreeze=None, name=None, kmax=4, **kwargs):
+    def __init__(
+        self,
+        fileName,
+        *args,
+        isComplex=False,
+        child=False,
+        faceFreeze=None,
+        name=None,
+        kmax=4,
+        volBounds=None,
+        **kwargs,
+    ):
         super().__init__(fileName=fileName, name=name)
 
         self.DV_listGlobal = OrderedDict()  # Global Design Variable List
@@ -125,10 +156,13 @@ class DVGeometry(BaseDVGeometry):
         else:
             self.dtype = "d"
 
+        if volBounds is None:
+            volBounds = {}
+
         # Load the FFD file in FFD mode. Also note that args and
         # kwargs are passed through in case additional pyBlock options
         # need to be set.
-        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, **kwargs)
+        self.FFD = pyBlock("plot3d", fileName=fileName, FFD=True, kmax=kmax, volBounds=volBounds, **kwargs)
         self.origFFDCoef = self.FFD.coef.copy()
 
         self.coef = None
@@ -472,7 +506,7 @@ class DVGeometry(BaseDVGeometry):
                     "rot0axis": rot0axis,
                 }
             nAxis = len(curve.coef)
-        elif xFraction or yFraction or zFraction:
+        elif xFraction is not None or yFraction is not None or zFraction is not None:
             # Some assumptions
             #   - FFD should be a close approximation of geometry surface so that
             #       xFraction roughly corresponds to airfoil LE, TE, or 1/4 chord
@@ -560,7 +594,7 @@ class DVGeometry(BaseDVGeometry):
                             pts_vec[ct_, :] = p_rot
 
                     # Temporary ref axis node coordinates - aligned with main system of reference
-                    if xFraction:
+                    if xFraction is not None:
                         # getting the bounds of the FFD section
                         x_min = np.min(pts_vec[:, 0])
                         x_max = np.max(pts_vec[:, 0])
@@ -568,14 +602,14 @@ class DVGeometry(BaseDVGeometry):
                     else:
                         x_node = np.mean(pts_vec[:, 0])
 
-                    if yFraction:
+                    if yFraction is not None:
                         y_min = np.min(pts_vec[:, 1])
                         y_max = np.max(pts_vec[:, 1])
                         y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
                     else:
                         y_node = np.mean(pts_vec[:, 1])
 
-                    if zFraction:
+                    if zFraction is not None:
                         z_min = np.min(pts_vec[:, 2])
                         z_max = np.max(pts_vec[:, 2])
                         z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
@@ -811,7 +845,7 @@ class DVGeometry(BaseDVGeometry):
         self.FFD.calcdPtdCoef(ptName)
         self.updated[ptName] = False
 
-    def addChild(self, childDVGeo, childName=None):
+    def addChild(self, childDVGeo):
         """Embed a child FFD into this object.
 
         An FFD child is a 'sub' FFD that is fully contained within
@@ -840,8 +874,10 @@ class DVGeometry(BaseDVGeometry):
         childDVGeo.iChild = iChild
 
         # check if a custom name is provided, if not, we will use the old naming scheme based on the iChild index
-        if childName is None:
+        if childDVGeo.name is None:
             childName = f"child{iChild:d}"
+        else:
+            childName = childDVGeo.name
 
         # check if this child name has already been used
         if childName in self.children:
@@ -864,7 +900,7 @@ class DVGeometry(BaseDVGeometry):
         # Add the child to the parent and return
         self.children[childName] = childDVGeo
 
-    def addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None):
+    def addGlobalDV(self, dvName, value, func, lower=None, upper=None, scale=1.0, config=None, prependName=True):
         """
         Add a global design variable to the DVGeometry object. This
         type of design variable acts on one or more reference axis.
@@ -905,9 +941,19 @@ class DVGeometry(BaseDVGeometry):
             Use a string for a single configuration or a list for multiple
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
         """
         # if the parent DVGeometry object has a name attribute, prepend it
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -915,7 +961,16 @@ class DVGeometry(BaseDVGeometry):
         self.DV_listGlobal[dvName] = geoDVGlobal(dvName, value, lower, upper, scale, func, config)
 
     def addLocalDV(
-        self, dvName, lower=None, upper=None, scale=1.0, axis="y", volList=None, pointSelect=None, config=None
+        self,
+        dvName,
+        lower=None,
+        upper=None,
+        scale=1.0,
+        axis="y",
+        volList=None,
+        pointSelect=None,
+        config=None,
+        prependName=True,
     ):
         """
         Add one or more local design variables ot the DVGeometry
@@ -960,6 +1015,17 @@ class DVGeometry(BaseDVGeometry):
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
 
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
+
         Returns
         -------
         N : int
@@ -978,7 +1044,7 @@ class DVGeometry(BaseDVGeometry):
         >>> PS = geo_utils.PointSelect(type = 'y', pt1=[0,0,0], pt2=[10, 0, 10])
         >>> nVar = DVGeo.addLocalDV('shape_vars', lower=-1.0, upper=1.0, pointSelect=PS)
         """
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -1194,6 +1260,7 @@ class DVGeometry(BaseDVGeometry):
         orient0=None,
         orient2="svd",
         config=None,
+        prependName=True,
     ):
         """
         Add one or more section local design variables to the DVGeometry
@@ -1315,6 +1382,17 @@ class DVGeometry(BaseDVGeometry):
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
 
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
+
         Returns
         -------
         N : int
@@ -1326,7 +1404,7 @@ class DVGeometry(BaseDVGeometry):
         >>> # moving in the 1 direction, within +/- 1.0 units
         >>> DVGeo.addLocalSectionDV('shape_vars', secIndex='k', lower=-1, upper=1, axis=1)
         """
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -1400,7 +1478,7 @@ class DVGeometry(BaseDVGeometry):
 
         return self.DV_listSectionLocal[dvName].nVal
 
-    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None):
+    def addCompositeDV(self, dvName, ptSetName=None, u=None, scale=None, prependName=True):
         """
         Add composite DVs. Note that this is essentially a preprocessing call which only works in serial
         at the moment.
@@ -1415,9 +1493,19 @@ class DVGeometry(BaseDVGeometry):
             The u matrix used for the composite DV, by default None
         scale : float or ndarray, optional
             The scaling applied to this DV, by default None
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
         """
         NDV = self.getNDV()
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = f"{self.name}_{dvName}"
         if u is not None:
             # we are after a square matrix
@@ -1430,7 +1518,7 @@ class DVGeometry(BaseDVGeometry):
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
-            J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
+            J_full = self.JT[ptSetName].toarray()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full, full_matrices=False)
             scale = np.sqrt(s)
             # normalize the scaling
@@ -1451,6 +1539,7 @@ class DVGeometry(BaseDVGeometry):
         upper=None,
         scale=1.0,
         config=None,
+        prependName=True,
     ):
         """
         Add shape function design variables to the DVGeometry.
@@ -1502,6 +1591,17 @@ class DVGeometry(BaseDVGeometry):
             configurations. The default value of None implies that the design
             variable applies to *ALL* configurations.
 
+        prependName : bool
+            Flag to determine if self.name attribute is prepended to this DV name.
+            The self.name attribute of DVGeo objects can be useful when there
+            are several DVGeo objects kicking around. One example use case for this
+            is when we have multiple child DVGeos. In this case, initializing all
+            children DVGeos with the name kwarg helps with bookkeeping; however,
+            if the name attribute is not None, the default behavior is to modify
+            DV names such that the DVGeo's name is prepended to the user provided
+            name. For backwards compatability, this behavior is maintained, but
+            can be disabled by setting the prependName argument to False.
+
         Returns
         -------
         N : int
@@ -1523,7 +1623,7 @@ class DVGeometry(BaseDVGeometry):
             >>> DVGeo.addShapeFunctionDV("shape_func", shapes)
 
         """
-        if self.name is not None:
+        if self.name is not None and prependName:
             dvName = self.name + "_" + dvName
 
         if isinstance(config, str):
@@ -1671,42 +1771,32 @@ class DVGeometry(BaseDVGeometry):
         if self.useComposite:
             dvDict = self.mapXDictToDVGeo(dvDict)
 
+        def _checkArrLength(key, nIn, nRef):
+            if nIn != nRef:
+                raise Error(
+                    f"Incorrect number of design variables for DV: {key}.\n"
+                    + f"Expecting {nRef} variables but received {nIn}"
+                )
+
         for key in dvDict:
             if key in self.DV_listGlobal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listGlobal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listGlobal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
-
+                _checkArrLength(key, len(vals_to_set), self.DV_listGlobal[key].nVal)
                 self.DV_listGlobal[key].value = vals_to_set
 
             if key in self.DV_listLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listLocal[key].nVal)
                 self.DV_listLocal[key].value = vals_to_set
 
             if key in self.DV_listSectionLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listSectionLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listSectionLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listSectionLocal[key].nVal)
                 self.DV_listSectionLocal[key].value = vals_to_set
 
             if key in self.DV_listSpanwiseLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listSpanwiseLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listSpanwiseLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listSpanwiseLocal[key].nVal)
                 self.DV_listSpanwiseLocal[key].value = vals_to_set
 
             # Jacobians are, in general, no longer up to date
@@ -1959,7 +2049,6 @@ class DVGeometry(BaseDVGeometry):
             variable applies to *ALL* configurations.
 
         """
-
         self.curPtSet = ptSetName
         # We've postponed things as long as we can...do the finalization.
         self._finalize()
@@ -2840,7 +2929,9 @@ class DVGeometry(BaseDVGeometry):
         # then we simply return without adding any of the other DVs
         if self.useComposite:
             dv = self.DVComposite
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(
+                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale
+            )
 
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
@@ -2885,11 +2976,23 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.lower,
+                                upper=dv.upper,
+                                scale=dv.scale,
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.value,
+                                upper=dv.value,
+                                scale=dv.scale,
                             )
 
         # Add variables from the children
@@ -2898,8 +3001,8 @@ class DVGeometry(BaseDVGeometry):
                 optProb, globalVars, localVars, sectionlocalVars, spanwiselocalVars, ignoreVars, freezeVars
             )
 
-    def writeTecplot(self, fileName, solutionTime=None, writeEmbedding=True, coordXfer=None):
-        """Write the (deformed) current state of the FFDs to a tecplot file,
+    def writeTecplot(self, fileName, solutionTime=None):
+        """Write the (deformed) current state of the FFD's to a tecplot file,
         including the children
 
         Parameters
@@ -2909,13 +3012,6 @@ class DVGeometry(BaseDVGeometry):
         SolutionTime : float
             Solution time to write to the file. This could be a fictitious time to
             make visualization easier in tecplot.
-        writeEmbeding : bool
-            Whether to write the embedding volume in the file.
-            True by default for visualization but can be turned off for a leaner file.
-        coordXfer : callback func
-            Apply the coordinate transfer to the points before writing. If not, the
-            output is the deformed points in the FFD coordinate system.
-            None by default.
         """
 
         # Name here doesn't matter, just take the first one
@@ -2927,7 +3023,7 @@ class DVGeometry(BaseDVGeometry):
         vol_counter = 0
 
         # Write master volumes:
-        vol_counter += self._writeVols(f, vol_counter, solutionTime, writeEmbedding, coordXfer)
+        vol_counter += self._writeVols(f, vol_counter, solutionTime)
 
         closeTecplot(f)
         if len(self.points) > 0:
@@ -3253,6 +3349,35 @@ class DVGeometry(BaseDVGeometry):
 
         # Reset DVs to their original values
         self.setDesignVars(dvDict)
+
+    def setVolBounds(self, volBounds):
+        """
+        Routine to set the FFD embedding volume bounds after initialization
+
+        Parameters
+        ----------
+        volBounds : dict
+            Dictionary where volume embedding bounds for each FFD volume is specified.
+            Keys of the dictionary specifies the FFD volume index. Values are lists of lists.
+            First list contains the min and max bounds for the u parameter, second v, third w.
+            This parameter can also be set after initialization using the `setVolBounds` method.
+            For example if the FFD has 3 volumes, setting volBounds to:
+
+                >>> volBounds = {
+                >>>    0: [[0., 0.5], [0., 1.], [0., 1.]],
+                >>>    1: [[0., 1.], [0.5, 1.], [0., 1.]]
+                >>> }
+
+            will set the parametric bounds of the first and second volumes, while the third
+            volume can still embed points using the usual bounds of 0 to 1 for all parametric
+            directions. In this example, the first volume only embeds points if the u coordinate
+            of the projection is between 0 and 0.5. Similarly, the second volume only embeds
+            a point if the v coordinate of the projection is between 0.5 and 1.0. This is useful
+            when multiple overlapping FFD volumes are used to either mimic circular or symmetric
+            FFDs.
+        """
+        #
+        self.FFD.setVolBounds(volBounds)
 
     # ----------------------------------------------------------------------
     #        THE REMAINDER OF THE FUNCTIONS NEED NOT BE CALLED BY THE USER
@@ -3591,6 +3716,7 @@ class DVGeometry(BaseDVGeometry):
             self.nDVG_count = 0
             self.nDVSL_count = self.nDVG_T
             self.nDVL_count = self.nDVG_T + self.nDVSL_T
+            self.nDVSW_count = self.nDVG_T + self.nDVSL_T + self.nDVL_T
 
         nDVG = self._getNDVGlobalSelf()
         nDVL = self._getNDVLocalSelf()
@@ -3609,7 +3735,7 @@ class DVGeometry(BaseDVGeometry):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-            child.nDVSW_count = self.nDVSW_count + nDVSL
+            child.nDVSW_count = self.nDVSW_count + nDVSW
 
             # Increment the counters for the children
             nDVG += child._getNDVGlobalSelf()
@@ -4434,44 +4560,16 @@ class DVGeometry(BaseDVGeometry):
 
         return Jacobian
 
-    def _writeVols(self, handle, vol_counter, solutionTime, writeEmbedding, coordXfer):
+    def _writeVols(self, handle, vol_counter, solutionTime):
         for i in range(len(self.FFD.vols)):
-            if coordXfer is not None:
-                data = self.FFD.vols[i].coef
-                ny = data.shape[1]
-                nz = data.shape[2]
-                FFDPts = np.zeros_like(data)
-                for k in range(nz):
-                    for j in range(ny):
-                        points = data[:, j, k, :]
-                        FFDPt = coordXfer(points, mode="fwd", applyDisplacement=True)
-                        FFDPts[:, j, k, :] = FFDPt
-            else:
-                FFDPts = self.FFD.vols[i].coef
-
-            writeTecplot3D(handle, "FFD_vol%d" % i, FFDPts, solutionTime)
+            writeTecplot3D(handle, "FFD_vol%d" % i, self.FFD.vols[i].coef, solutionTime)
             self.FFD.vols[i].computeData(recompute=True)
-
-            if writeEmbedding:
-                if coordXfer is not None:
-                    data = self.FFD.vols[i].data
-                    ny = data.shape[1]
-                    nz = data.shape[2]
-                    embeddingPts = np.zeros_like(data)
-                    for k in range(nz):
-                        for j in range(ny):
-                            points = data[:, j, k, :]
-                            embeddingPt = coordXfer(points, mode="fwd", applyDisplacement=True)
-                            embeddingPts[:, j, k, :] = embeddingPt
-                else:
-                    embeddingPts = self.FFD.vols[i].data
-                writeTecplot3D(handle, "embedding_vol", embeddingPts, solutionTime)
-
+            writeTecplot3D(handle, "embedding_vol", self.FFD.vols[i].data, solutionTime)
             vol_counter += 1
 
         # Write children volumes:
         for child in self.children.values():
-            vol_counter += child._writeVols(handle, vol_counter, solutionTime, writeEmbedding)
+            vol_counter += child._writeVols(handle, vol_counter, solutionTime)
 
         return vol_counter
 
