@@ -297,7 +297,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # add the DV to DVGeo
-        nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False)
+        nVal = DVGeo.addLocalDV(dvName, axis=axis, pointSelect=pointSelect, prependName=False, **kwargs)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
@@ -710,6 +710,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             name=name,
             childName=childName,
             DVGeoName=DVGeoName,
+            **kwargs
         )
         lSize = len(indSetA)
         self.add_output(name, distributed=False, val=np.zeros(lSize), shape=lSize)
