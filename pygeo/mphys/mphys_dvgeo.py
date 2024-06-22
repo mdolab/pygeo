@@ -282,7 +282,15 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_input(dvName, distributed=False, shape=len(np.atleast_1d(value)))
 
     def nom_addLocalDV(
-        self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None, prependName=False, **kwargs
+        self,
+        dvName,
+        axis="y",
+        pointSelect=None,
+        childName=None,
+        isComposite=False,
+        DVGeoName=None,
+        prependName=False,
+        **kwargs,
     ):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
@@ -710,7 +718,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             name=name,
             childName=childName,
             DVGeoName=DVGeoName,
-            **kwargs
+            **kwargs,
         )
         lSize = len(indSetA)
         self.add_output(name, distributed=False, val=np.zeros(lSize), shape=lSize)
