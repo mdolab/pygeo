@@ -282,7 +282,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             self.add_input(dvName, distributed=False, shape=len(np.atleast_1d(value)))
 
     def nom_addLocalDV(
-        self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None, prependName=False
+        self, dvName, axis="y", pointSelect=None, childName=None, isComposite=False, DVGeoName=None, prependName=False, **kwargs
     ):
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
@@ -700,7 +700,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_output(name, distributed=False, val=1.0)
 
     def nom_addLinearConstraintsShape(
-        self, name, indSetA, indSetB, factorA, factorB, childName=None, DVGeoName="default"
+        self, name, indSetA, indSetB, factorA, factorB, childName=None, DVGeoName="default", **kwargs
     ):
         self.DVCon.addLinearConstraintsShape(
             indSetA=indSetA,
