@@ -229,7 +229,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     """
 
     def nom_addGlobalDV(
-        self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None, prependName=False
+        self, dvName, value, func, childName=None, isComposite=False, DVGeoName=None, prependName=False, **kwargs
     ):
         """
         Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
@@ -273,7 +273,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             dvName = DVGeoName + "_" + dvName
 
         # call the dvgeo object and add this dv
-        DVGeo.addGlobalDV(dvName, value, func, prependName=False)
+        DVGeo.addGlobalDV(dvName, value, func, prependName=False, **kwargs)
 
         # define the input
         # When composite DVs are used, input is not required for the default DVs. Now the composite DVs are
