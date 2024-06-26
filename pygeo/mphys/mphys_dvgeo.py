@@ -554,7 +554,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
             curve=curve,
             xFraction=xFraction,
             yFraction=yFraction,
-            xFraction=zFraction,
+            zFraction=zFraction,
             volumes=volumes,
             rotType=rotType,
             axis=axis,
