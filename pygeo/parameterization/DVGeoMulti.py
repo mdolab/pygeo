@@ -527,16 +527,15 @@ class DVGeometryMulti:
                     # compBInterPts, compBInterInd = IC.findIntersection(
                     #     points.astype(float), IC.compB.curvePts.astype(float)
                     # )
-                    compAInterPtsLocal, compAInterIndLocal = IC.findIntersection(points, IC.compA.curvePts)
-                    compBInterPtsLocal, compBInterIndLocal = IC.findIntersection(points, IC.compB.curvePts)
+                    compAInterPtsLocal, compAInterIndLocal, compACurvePtDistLocal, compACurveIndLocal = IC.findIntersection(points, IC.compA.curvePts)
+                    compBInterPtsLocal, compBInterIndLocal, compBCurvePtDistLocal, compBCurveIndLocal = IC.findIntersection(points, IC.compB.curvePts)
 
                     # print(f"\nrank {self.comm.rank} local compAInterInd {compAInterIndLocal}")
-                    compAInterNPts, compAInterSizes, compAInterPts, compAInterInd = IC._commCurveProj(
-                        compAInterPtsLocal, compAInterIndLocal, self.comm
-                    )
-                    compBInterNPts, compBInterSizes, compBInterPts, compBInterInd = IC._commCurveProj(
-                        compBInterPtsLocal, compBInterIndLocal, self.comm
-                    )
+                    _, _, compAInterPts, compAInterInd = IC._commCurveProj(compAInterPtsLocal, compAInterIndLocal, self.comm)
+                    _, _, compBInterPts, compBInterInd = IC._commCurveProj(compBInterPtsLocal, compBInterIndLocal, self.comm)
+
+                    _, _, compACurvePtDist, _ = IC._commCurveProj(compACurvePtDistLocal, compACurveIndLocal, self.comm)
+                    _, _, compBCurvePtDist, _ = IC._commCurveProj(compBCurvePtDistLocal, compBCurveIndLocal, self.comm)
 
                     compAInterPts.dtype = self.dtype
                     compBInterPts.dtype = self.dtype
@@ -562,6 +561,10 @@ class DVGeometryMulti:
                     # save the indices in the fillet component
                     IC.filletComp.compAInterInd = compAInterInd
                     IC.filletComp.compBInterInd = compBInterInd
+
+                    # save the point-curve distances in the fillet component
+                    IC.filletComp.compACurvePtDist = compACurvePtDist
+                    IC.filletComp.compBCurvePtDist = compBCurvePtDist
 
                     # save the names of the fillet intersection pointsets to find them later
                     IC.filletComp.compAPtsName = compAPtsName
@@ -1443,7 +1446,7 @@ class Intersection:
 
         self.seam = self._getIntersectionSeam(comm)
 
-    def _warpSurfPts(self, pts0, ptsNew, indices, curvePtCoords, delta):
+    def _warpSurfPts(self, pts0, ptsNew, indices, curvePtCoords, delta, update=True):
         """
         This function warps points using the displacements from curve projections.
 
@@ -1452,6 +1455,7 @@ class Intersection:
         indices: Indices of the points that we will use for this operation.
         curvePtCoords: Original coordinates of points on curves.
         delta: Displacements of the points on curves after projecting them.
+        update: Whether to update the coordinates in place. If not, ptsNew will just be the displacements
 
         """
 
@@ -1474,8 +1478,11 @@ class Intersection:
             for iDim in range(3):
                 interp[iDim] = np.sum(Wi * delta[:, iDim]) / den
 
-            # finally, update the coord in place
-            ptsNew[j] = ptsNew[j] + interp
+            if update:
+                # finally, update the coord in place
+                ptsNew[j] = ptsNew[j] + interp
+            else:
+                ptsNew[j] = interp
 
     def _warpSurfPts_b(self, dIdPt, pts0, indices, curvePtCoords):
         # seeds for delta
@@ -3782,6 +3789,7 @@ class FilletIntersection(Intersection):
     def findIntersection(self, surf, curve):  # TODO fix this function
         nPtSurf = surf.shape[0]
         minSurfCurveDist = -np.ones(nPtSurf, dtype=self.dtype)
+        minSurfCurveDistInd = np.zeros(nPtSurf)
         intersectPts = []
         intersectInd = []
 
@@ -3795,6 +3803,7 @@ class FilletIntersection(Intersection):
             # find minimum of these distances and save it
             dist2ClosestPt = min(ptSurfCurveDist[0])
             minSurfCurveDist[i] = dist2ClosestPt
+            minSurfCurveDistInd[i] = i
 
             # keep this as an intersection point if it is within tolerance
             if dist2ClosestPt < self.distTol:
@@ -3803,7 +3812,7 @@ class FilletIntersection(Intersection):
 
         intersectPts = np.asarray(intersectPts, dtype=self.dtype)
 
-        return intersectPts, intersectInd
+        return intersectPts, intersectInd, minSurfCurveDist, minSurfCurveDistInd
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
         # Save the affected indices and the factor in the little dictionary
@@ -3835,27 +3844,47 @@ class FilletIntersection(Intersection):
         return compSens
 
     def project(self, ptSetName, newPts):
-        # redo the delta because this is how the fillet was initially set up
-        # TODO maybe stop doing this
 
         # update the pointset unless we haven't figured out the intersections yet
         if len(self.compA.curvePts) > 0:  # TODO change to a first project flag or something
             # get delta of curve points to drive warping
-            newCurveCoords = np.vstack((self.compA.curvePts, self.compB.curvePts))
-            curvePtCoords = np.vstack((self.compA.curvePtsOrig, self.compB.curvePtsOrig))
-            delta = newCurveCoords - curvePtCoords
+            comps = [self.compA, self.compB]
+            sepDisp = [[], []]
 
-            ptsNew = self.filletComp.surfPtsOrig.copy()
-            pts0 = self.filletComp.surfPtsOrig
+            for ii, comp in enumerate(comps):
+                newCurveCoords = comp.curvePts
+                curvePtCoords = comp.curvePtsOrig
+                delta = newCurveCoords - curvePtCoords
 
-            # warp interior fillet points
-            self._warpSurfPts(pts0, ptsNew, self.indices, curvePtCoords, delta)
-            self.filletComp.surfPts = ptsNew
+                disp = self.filletComp.surfPtsOrig.copy()
+                pts0 = self.filletComp.surfPtsOrig
 
-            # write curve coords from file to see which proc has which (all should have complete set)
-            # print(f"write curves from proc {self.DVGeo.comm.rank}")
-            # np.savetxt(f"compACurve{self.DVGeo.comm.rank}.txt", self.compA.curvePts)
-            # np.savetxt(f"compBCurve{self.DVGeo.comm.rank}.txt", self.compB.curvePts)
+                self._warpSurfPts(pts0, disp, self.indices, curvePtCoords, delta, update=False)
+                sepDisp[ii] = disp
+
+            # blend between the two displacements
+            for ii in range(self.filletComp.surfPts):
+                # distance from this point to each curve
+                dA = self.filletComp.compACurvePtDist
+                dB = self.filletComp.compBCurvePtDist
+
+                # calculate weighting based on which curve is closer to this point
+                x = dA / (dA + dB)
+
+                if dA < dB:
+                    f = 4 * x ** 3
+                elif dB >= dA:
+                    f = 1 - 4 * x ** 3
+
+                # inverse distance-weighted displacement for this point from each curve
+                dxA = sepDisp[0][ii]
+                dxB = sepDisp[1][ii]
+
+                # calculate displacement of this point
+                disp = dxA * (1.0 - f) + dxB * f
+                
+                self.filletComp.surfPts[ii] = self.filletComp.surfPtsOrig[ii] + disp
+
 
     def project_b(self, ptSetName, dIdpt, comm=None, comp=None):
         points = deepcopy(self.filletComp.surfPtsOrig)
