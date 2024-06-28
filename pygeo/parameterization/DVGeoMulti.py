@@ -534,8 +534,8 @@ class DVGeometryMulti:
                     _, _, compAInterPts, compAInterInd = IC._commCurveProj(compAInterPtsLocal, compAInterIndLocal, self.comm)
                     _, _, compBInterPts, compBInterInd = IC._commCurveProj(compBInterPtsLocal, compBInterIndLocal, self.comm)
 
-                    _, _, compACurvePtDist, _ = IC._commCurveProj(compACurvePtDistLocal, compACurveIndLocal, self.comm)
-                    _, _, compBCurvePtDist, _ = IC._commCurveProj(compBCurvePtDistLocal, compBCurveIndLocal, self.comm)
+                    _, _, compACurvePtDist, _ = IC._commCurveProj(compACurvePtDistLocal, compACurveIndLocal, self.comm, reshape=False)
+                    _, _, compBCurvePtDist, _ = IC._commCurveProj(compBCurvePtDistLocal, compBCurveIndLocal, self.comm, reshape=False)
 
                     compAInterPts.dtype = self.dtype
                     compBInterPts.dtype = self.dtype
@@ -1514,7 +1514,7 @@ class Intersection:
         # return the seeds for the delta vector
         return deltaBar
 
-    def _commCurveProj(self, pts, indices, comm):
+    def _commCurveProj(self, pts, indices, comm, reshape=True):
         """
         This function will get the points, indices, and comm.
         This function is called once for each feature curve.
@@ -1552,7 +1552,10 @@ class Intersection:
             comm.Allgatherv(sendbuf, recvbuf)
 
             # reshape into a nptsg,3 array
-            curvePtCoords = ptsGlobal.reshape((nptsg, 3))
+            if reshape:
+                curvePtCoords = ptsGlobal.reshape((nptsg, 3))
+            else:
+                curvePtCoords = ptsGlobal
 
         # this is a "serial" pointset, so the results are just local
         else:
@@ -3807,11 +3810,12 @@ class FilletIntersection(Intersection):
 
             # keep this as an intersection point if it is within tolerance
             if dist2ClosestPt < self.distTol:
+                print(f"intersection {surfPt} ind {i} {dist2ClosestPt} away")
                 intersectPts.append(surfPt)
                 intersectInd.append(i)
 
         intersectPts = np.asarray(intersectPts, dtype=self.dtype)
-
+        print(f"min { minSurfCurveDist}")
         return intersectPts, intersectInd, minSurfCurveDist, minSurfCurveDistInd
 
     def addPointSet(self, pts, ptSetName, compMap, comm):
@@ -3863,10 +3867,13 @@ class FilletIntersection(Intersection):
                 sepDisp[ii] = disp
 
             # blend between the two displacements
-            for ii in range(self.filletComp.surfPts):
+            for ii in range(self.filletComp.surfPts.shape[0]):
                 # distance from this point to each curve
-                dA = self.filletComp.compACurvePtDist
-                dB = self.filletComp.compBCurvePtDist
+                dA = self.filletComp.compACurvePtDist[ii]
+                dB = self.filletComp.compBCurvePtDist[ii]
+
+                print(dA)
+                print(dB)
 
                 # calculate weighting based on which curve is closer to this point
                 x = dA / (dA + dB)
