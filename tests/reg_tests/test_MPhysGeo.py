@@ -10,7 +10,7 @@ from pyspline import Curve
 try:
     from mphys.multipoint import Multipoint
     from openmdao.api import IndepVarComp, Problem
-    from openmdao.utils.assert_utils import assert_check_partials, assert_near_equal
+    from openmdao.utils.assert_utils import assert_check_partials, assert_near_equal, assert_check_totals
 
     mphysInstalled = True
 
@@ -80,7 +80,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
                 self.add_constraint(f"geometry.{ptName}")
 
         prob = Problem(model=FFDGroup())
-        prob.setup(mode="rev")
+        prob.setup(mode="rev", force_alloc_complex=True)
 
         self.prob = prob
     
@@ -90,11 +90,8 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
     def testDVs(self):
         self.prob.run_model()
 
-        data = self.prob.check_totals(step=1e-7, compact_print=True)
-        for _, err in data.items():
-
-            rel_err = err["rel error"]
-            assert_near_equal(rel_err.forward, 0.0, 1e-5)
+        totals = self.prob.check_totals(step=1e-7, compact_print=True)
+        assert_check_totals(totals)
 
 if __name__ == "__main__":
     unittest.main()
