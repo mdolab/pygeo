@@ -10,7 +10,7 @@ from pyspline import Curve
 
 try:
     from openmdao.api import IndepVarComp, Problem, Group
-    from openmdao.utils.assert_utils import assert_check_partials, assert_near_equal, assert_check_totals
+    from openmdao.utils.assert_utils import assert_near_equal, assert_check_totals
 
     omInstalled = True
 
