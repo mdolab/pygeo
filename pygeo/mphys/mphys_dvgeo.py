@@ -947,3 +947,5 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                     # in multiple objective seeds with totalSensitivity. we can remove the [0]
                                     # once we move back to totalSensitivityTransProd
                                     d_inputs[k] += xdotg[k][0]
+        else:
+            raise RuntimeError(f"OM_DVGEOCOMP supports only \"rev\" derivative mode, but \"{mode}\" was selected")
