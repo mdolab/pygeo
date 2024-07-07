@@ -948,4 +948,4 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                     # once we move back to totalSensitivityTransProd
                                     d_inputs[k] += xdotg[k][0]
         elif mode != "rev":
-            raise RuntimeError(f"OM_DVGEOCOMP supports only \"rev\" derivative mode, but \"{mode}\" was selected")
+            raise RuntimeError(f'OM_DVGEOCOMP supports only "rev" derivative mode, but "{mode}" was selected')
