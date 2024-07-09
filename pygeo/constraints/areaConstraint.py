@@ -38,7 +38,7 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
         if geograd_parallel is None:
             raise ImportError("Geograd package must be installed to use triangulated surface constraint")
 
-        super().__init__(name, 2, -1e10, 0.0, scale, None, addToPyOpt)
+        super().__init__(name, 2, None, 0.0, scale, None, addToPyOpt)
 
         self.comm = comm
 
@@ -254,7 +254,21 @@ class TriangulatedSurfaceConstraint(GeometricConstraint):
             failflag = True
             if self.comm.rank == 0:
                 print(
-                    f"Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag"
+                    "+-----------------------------------------------------------------------------------------------------\n"
+                    + "| ########                                                                        ########\n"
+                    + "|         ########                                                        ########\n"
+                    + "|                 ########                                        ########\n"
+                    + "|                         ########                        ########\n"
+                    + "|                                 ########        ########\n"
+                    + "|\n"
+                    + f"| Intersection length {self.perim_length} in triSurfCon {self.name} exceeds tol {self.max_perim}, returning fail flag\n"
+                    + "|\n"
+                    + "|                                 ########        ########\n"
+                    + "|                         ########                        ########\n"
+                    + "|                 ########                                        ########\n"
+                    + "|         ########                                                        ########\n"
+                    + "| ########                                                                        ########\n"
+                    + "+-----------------------------------------------------------------------------------------------------"
                 )
         else:
             failflag = False

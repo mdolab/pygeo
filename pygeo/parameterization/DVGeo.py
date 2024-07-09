@@ -506,7 +506,7 @@ class DVGeometry(BaseDVGeometry):
                     "rot0axis": rot0axis,
                 }
             nAxis = len(curve.coef)
-        elif xFraction or yFraction or zFraction:
+        elif xFraction is not None or yFraction is not None or zFraction is not None:
             # Some assumptions
             #   - FFD should be a close approximation of geometry surface so that
             #       xFraction roughly corresponds to airfoil LE, TE, or 1/4 chord
@@ -594,7 +594,7 @@ class DVGeometry(BaseDVGeometry):
                             pts_vec[ct_, :] = p_rot
 
                     # Temporary ref axis node coordinates - aligned with main system of reference
-                    if xFraction:
+                    if xFraction is not None:
                         # getting the bounds of the FFD section
                         x_min = np.min(pts_vec[:, 0])
                         x_max = np.max(pts_vec[:, 0])
@@ -602,14 +602,14 @@ class DVGeometry(BaseDVGeometry):
                     else:
                         x_node = np.mean(pts_vec[:, 0])
 
-                    if yFraction:
+                    if yFraction is not None:
                         y_min = np.min(pts_vec[:, 1])
                         y_max = np.max(pts_vec[:, 1])
                         y_node = y_max - yFraction * (y_max - y_min)  # top-bottom
                     else:
                         y_node = np.mean(pts_vec[:, 1])
 
-                    if zFraction:
+                    if zFraction is not None:
                         z_min = np.min(pts_vec[:, 2])
                         z_max = np.max(pts_vec[:, 2])
                         z_node = z_max - zFraction * (z_max - z_min)  # top-bottom
@@ -1518,7 +1518,7 @@ class DVGeometry(BaseDVGeometry):
             if ptSetName is None:
                 raise ValueError("If u and s need to be computed, you must specify the ptSetName")
             self.computeTotalJacobian(ptSetName)
-            J_full = self.JT[ptSetName].todense()  # this is in CSR format but we convert it to a dense matrix
+            J_full = self.JT[ptSetName].toarray()  # this is in CSR format but we convert it to a dense matrix
             u, s, _ = np.linalg.svd(J_full, full_matrices=False)
             scale = np.sqrt(s)
             # normalize the scaling
@@ -1771,42 +1771,32 @@ class DVGeometry(BaseDVGeometry):
         if self.useComposite:
             dvDict = self.mapXDictToDVGeo(dvDict)
 
+        def _checkArrLength(key, nIn, nRef):
+            if nIn != nRef:
+                raise Error(
+                    f"Incorrect number of design variables for DV: {key}.\n"
+                    + f"Expecting {nRef} variables but received {nIn}"
+                )
+
         for key in dvDict:
             if key in self.DV_listGlobal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listGlobal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listGlobal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
-
+                _checkArrLength(key, len(vals_to_set), self.DV_listGlobal[key].nVal)
                 self.DV_listGlobal[key].value = vals_to_set
 
             if key in self.DV_listLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listLocal[key].nVal)
                 self.DV_listLocal[key].value = vals_to_set
 
             if key in self.DV_listSectionLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listSectionLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listSectionLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listSectionLocal[key].nVal)
                 self.DV_listSectionLocal[key].value = vals_to_set
 
             if key in self.DV_listSpanwiseLocal:
                 vals_to_set = np.atleast_1d(dvDict[key]).astype("D")
-                if len(vals_to_set) != self.DV_listSpanwiseLocal[key].nVal:
-                    raise Error(
-                        f"Incorrect number of design variables for DV: {key}.\n"
-                        + f"Expecting {self.DV_listSpanwiseLocal[key].nVal} variables but received {len(vals_to_set)}"
-                    )
+                _checkArrLength(key, len(vals_to_set), self.DV_listSpanwiseLocal[key].nVal)
                 self.DV_listSpanwiseLocal[key].value = vals_to_set
 
             # Jacobians are, in general, no longer up to date
@@ -2939,7 +2929,9 @@ class DVGeometry(BaseDVGeometry):
         # then we simply return without adding any of the other DVs
         if self.useComposite:
             dv = self.DVComposite
-            optProb.addVarGroup(dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale)
+            optProb.addVarGroup(
+                dv.name, dv.nVal, "c", value=dv.value.real, lower=dv.lower, upper=dv.upper, scale=dv.scale
+            )
 
             # add the linear DV constraints that replace the existing bounds!
             # Note that we assume all DVs are added here, i.e. no ignoreVars or any of the vars = False
@@ -2984,11 +2976,23 @@ class DVGeometry(BaseDVGeometry):
                         dv = varLists[lst][key]
                         if key not in freezeVars:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.lower, upper=dv.upper, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.lower,
+                                upper=dv.upper,
+                                scale=dv.scale,
                             )
                         else:
                             optProb.addVarGroup(
-                                dv.name, dv.nVal, "c", value=dv.value, lower=dv.value, upper=dv.value, scale=dv.scale
+                                dv.name,
+                                dv.nVal,
+                                "c",
+                                value=dv.value.real,
+                                lower=dv.value,
+                                upper=dv.value,
+                                scale=dv.scale,
                             )
 
         # Add variables from the children
@@ -3712,6 +3716,7 @@ class DVGeometry(BaseDVGeometry):
             self.nDVG_count = 0
             self.nDVSL_count = self.nDVG_T
             self.nDVL_count = self.nDVG_T + self.nDVSL_T
+            self.nDVSW_count = self.nDVG_T + self.nDVSL_T + self.nDVL_T
 
         nDVG = self._getNDVGlobalSelf()
         nDVL = self._getNDVLocalSelf()
@@ -3730,7 +3735,7 @@ class DVGeometry(BaseDVGeometry):
             child.nDVG_count = self.nDVG_count + nDVG
             child.nDVL_count = self.nDVL_count + nDVL
             child.nDVSL_count = self.nDVSL_count + nDVSL
-            child.nDVSW_count = self.nDVSW_count + nDVSL
+            child.nDVSW_count = self.nDVSW_count + nDVSW
 
             # Increment the counters for the children
             nDVG += child._getNDVGlobalSelf()
