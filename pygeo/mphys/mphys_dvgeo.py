@@ -278,7 +278,16 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
     """
 
     def nom_addGlobalDV(
-        self, dvName, value, func, childName=None, comp=None, isComposite=False, DVGeoName=None, prependName=False, config=None
+        self,
+        dvName,
+        value,
+        func,
+        childName=None,
+        comp=None,
+        isComposite=False,
+        DVGeoName=None,
+        prependName=False,
+        config=None,
     ):
         """
         Add a global design variable to the DVGeo object. This is a wrapper for the DVGeo.addGlobalDV method.
@@ -459,7 +468,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.add_input(dvName, distributed=False, shape=nVal)
         return nVal
 
-    def nom_addShapeFunctionDV(self, dvName, shapes, childName=None, comp=None, config=None, DVGeoName=None, prependName=False):
+    def nom_addShapeFunctionDV(
+        self, dvName, shapes, childName=None, comp=None, config=None, DVGeoName=None, prependName=False
+    ):
         """
         Add one or more local shape function design variables to the DVGeometry object
         Wrapper for :meth:`addShapeFunctionDV <.DVGeometry.addShapeFunctionDV>`
