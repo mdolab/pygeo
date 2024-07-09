@@ -614,7 +614,7 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         # But doing this may create backward incompatibility. So we will use `volumes` for now
 
         # if we have multiple DVGeos use the one specified by name
-        DVGeo = self.nom_getDVGeo(childName=childName, DVGeoName=DVGeoName)
+        DVGeo = self.nom_getDVGeo(childName=childName, comp=comp, DVGeoName=DVGeoName)
 
         # references axes are only needed in FFD-based DVGeo objects
         if not isinstance(DVGeo, (DVGeometry, DVGeometryMulti)):
