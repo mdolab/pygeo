@@ -4,7 +4,7 @@ Citation
 ========
 If you use pyGeo, please cite the following paper:
 
-    \H. Hajdik, A. Yildirim, N. Wu, B. Brelje, S. Seraj, M. Mangano, J. Anibal, E. Jonsson, E. Adler, C. A. Mader, G. Kenway, and J. R. R. A. Martins. pyGeo: A geometry package for multidisciplinary design optimization. Journal of Open Source Software, 8(87), 5319, July 2023. https://doi.org/10.21105/joss.05319
+    \H. Hajdik, A. Yildirim, E. Wu, B. Brelje, S. Seraj, M. Mangano, J. Anibal, E. Jonsson, E. Adler, C. A. Mader, G. Kenway, and J. R. R. A. Martins. pyGeo: A geometry package for multidisciplinary design optimization. Journal of Open Source Software, 8(87), 5319, July 2023. https://doi.org/10.21105/joss.05319
 
 The paper is available online from the Journal of Open Source Software `here <https://joss.theoj.org/papers/10.21105/joss.05319>`__.
 To cite this paper, you can use the following BibTeX entry:
@@ -18,7 +18,7 @@ To cite this paper, you can use the following BibTeX entry:
         volume = {8},
         number = {87},
         pages = {5319},
-        author = {Hannah M. Hajdik and Anil Yildirim and Neil Wu and Benjamin J. Brelje and Sabet Seraj and Marco Mangano and Joshua L. Anibal and Eirikur Jonsson and Eytan J. Adler and Charles A. Mader and Gaetan K. W. Kenway and Joaquim R. R. A. Martins},
+        author = {Hannah M. Hajdik and Anil Yildirim and Ella Wu and Benjamin J. Brelje and Sabet Seraj and Marco Mangano and Joshua L. Anibal and Eirikur Jonsson and Eytan J. Adler and Charles A. Mader and Gaetan K. W. Kenway and Joaquim R. R. A. Martins},
         title = {{pyGeo}: A geometry package for multidisciplinary design optimization},
         journal = {Journal of Open Source Software}
     }

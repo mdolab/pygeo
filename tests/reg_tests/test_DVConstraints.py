@@ -412,7 +412,6 @@ class RegTestPyGeo(unittest.TestCase):
             )
             
     def test_distance_1D_c172(self, train=True, refDeriv=False):
-        # refFile = os.path.join(self.base_path, "ref/test_DVConstraints_distance_1D_box.ref")
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_distance_1D_c172.ref")
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")

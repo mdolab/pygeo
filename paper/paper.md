@@ -10,7 +10,7 @@ authors:
   - name: Anil Yildirim
     orcid: 0000-0002-1814-9191
     affiliation: 1
-  - name: Neil Wu
+  - name: Ella Wu
     orcid: 0000-0001-8856-9661
     affiliation: 1
   - name: Benjamin J. Brelje
