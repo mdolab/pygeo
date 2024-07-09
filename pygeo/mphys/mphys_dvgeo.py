@@ -129,6 +129,24 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.update_jac = True
 
     def nom_addComponent(self, comp, ffd_file, triMesh, DVGeoName=None):
+        """
+        Add a component a DVGeometryMulti object. This is a wrapper for the DVGeoMulti.addComponent method.
+
+        Parameters
+        ----------
+        comp : str
+            The name of the component.
+
+        ffd_file : str
+            Path to the FFD file for the new DVGeo object for this component.
+
+        triMesh : str, optional
+            Path to the triangulated mesh file for this component.
+
+        DVGeoName : str, optional
+            The name of the DVGeo object to add this component to.
+        """
+
         # if we have multiple DVGeos use the one specified by name
         DVGeo = self.nom_getDVGeo(DVGeoName=DVGeoName)
 
