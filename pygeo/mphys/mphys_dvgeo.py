@@ -629,9 +629,6 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         )
         # add ref axis to the specified child
 
-        else:
-            return DVGeo.addRefAxis(**kwargs)
-
     """
     Wrapper for DVCon functions
     """
