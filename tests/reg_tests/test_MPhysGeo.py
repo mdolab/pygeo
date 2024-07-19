@@ -147,15 +147,21 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
 
                 self.add_constraint(f"geometry.{ptName}")
 
-        prob = Problem(model=FFDGroup())
-        prob.setup(mode="rev")
+        self.prob = Problem(model=FFDGroup())
 
-        self.prob = prob
-    
     def test_run_model(self):
+        self.prob.setup(mode="rev")
         self.prob.run_model()
 
-    def testDVs(self):
+    def test_deriv_fwd(self):
+        self.prob.setup(mode="fwd")
+        self.prob.run_model()
+
+        totals = self.prob.check_totals(step=1e-7, out_stream=None)
+        assert_check_totals(totals)
+
+    def test_deriv_rev(self):
+        self.prob.setup(mode="fwd")
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
@@ -218,7 +224,6 @@ class TestDVConMPhysBox(unittest.TestCase):
                 self.add_objective(kwargs["name"])
 
         p = Problem(model=BoxGeo())
-        p.setup(mode="rev")
         return p
 
     def test_undeformed_vals(self):
@@ -226,16 +231,18 @@ class TestDVConMPhysBox(unittest.TestCase):
         Test the value of the functional on the baseline geometry.
         """
         p = self.get_box_prob()
+        p.setup()
         p.run_model()
         val = p.get_val(self.kwargs["name"])
         tol = 1e-5 if not hasattr(self, "valTol") else self.valTol
         assert_near_equal(val, self.valCheck, tolerance=tol)
 
-    def test_deformed_derivs(self):
+    def test_deformed_derivs_fwd(self):
         """
-        Test the total derivatives on a random perturbation to the baseline.
+        Test the total derivatives in forward mode on a random perturbation to the baseline.
         """
         p = self.get_box_prob()
+        p.setup(mode="fwd")
 
         # Pick some random deformed state
         p.set_val("twist", self.rand.random() * 10)
@@ -244,7 +251,24 @@ class TestDVConMPhysBox(unittest.TestCase):
         p.run_model()
 
         # Check total derivatives using a directional derivatives
-        totals = p.check_totals(step=1e-6, out_stream=None, directional=True)
+        totals = p.check_totals(step=1e-6, out_stream=None, directional=False)
+        assert_check_totals(totals, atol=1e-5, rtol=3e-5)
+
+    def test_deformed_derivs_rev(self):
+        """
+        Test the total derivatives in reverse mode on a random perturbation to the baseline.
+        """
+        p = self.get_box_prob()
+        p.setup(mode="rev")
+
+        # Pick some random deformed state
+        p.set_val("twist", self.rand.random() * 10)
+        p.set_val("local", self.rand.random() * 10)
+
+        p.run_model()
+
+        # Check total derivatives using a directional derivatives
+        totals = p.check_totals(step=1e-6, out_stream=None, directional=False)
         assert_check_totals(totals, atol=1e-5, rtol=3e-5)
 
 
