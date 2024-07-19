@@ -150,7 +150,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         self.prob = Problem(model=FFDGroup())
 
     def test_run_model(self):
-        self.prob.setup(mode="rev")
+        self.prob.setup()
         self.prob.run_model()
 
     def test_deriv_fwd(self):
