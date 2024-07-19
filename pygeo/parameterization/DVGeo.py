@@ -2498,7 +2498,7 @@ class DVGeometry(BaseDVGeometry):
         newvec = np.zeros(self.getNDV(), self.dtype)
 
         i = 0
-        missingVars = set()  # set of variables
+        missingVars = set(names)  # set of variables to find in this DVGeo or its children
         for vecKey in vec:
             # check if the seed DV is actually a design variable for the DVGeo object
             if vecKey not in names:
@@ -2522,8 +2522,6 @@ class DVGeometry(BaseDVGeometry):
                     dv = geoObj.DV_listLocal[key]
                     missingVars.discard(key)
                 else:
-                    # keep track of DVs which are in the full name list but not in this DVGeo object
-                    missingVars.add(key)
                     continue
 
                 if key in vec:

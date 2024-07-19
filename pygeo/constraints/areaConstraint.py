@@ -546,10 +546,10 @@ class ProjectedAreaConstraint(GeometricConstraint):
                 v2 = p2[i, :] - p0[i, :]
                 SAvec = np.cross(v1, v2)
                 PA = np.dot(SAvec, self.axis)
-                if PA > 0:
-                    PAb = areasb[i]
-                else:
+                if PA < 0:
                     PAb = 0.0
+                else:
+                    PAb = areasb[i]
                 SAvecb, _ = geo_utils.dot_b(SAvec, self.axis, PAb)
                 v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
                 p2b[i, :] = p2b[i, :] + v2b
