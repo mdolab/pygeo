@@ -890,10 +890,12 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         self.DVCon.setSurface(surface, name=name, addToDVGeo=addToDVGeo, DVGeoName=DVGeoName, surfFormat=surfFormat)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-        # only do the computations when we have more than zero entries in d_inputs in the reverse mode
-        ni = len(list(d_inputs.keys()))
+        # only do the computations when we have more than zero entries in d_inputs
+        # in the reverse mode or d_outputs in the forward mode
+        doRev = mode == "rev" and len(list(d_inputs.keys())) > 0
+        doFwd = mode == "fwd" and len(list(d_outputs.keys())) > 0
 
-        if mode == "rev" and ni > 0:
+        if doFwd or doRev:
             # this flag will be set to True after every compute call.
             # if it is true, we assume the design has changed so we re-run the sensitivity update
             # there can be hundreds of calls to this routine due to thickness constraints,
@@ -905,47 +907,63 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 # set the flag to False so we dont run the update again if this is called w/o a compute in between
                 self.update_jac = False
 
+            # Directly do Jacobian vector product with the derivatives from DVConstraints
             for constraintname in self.constraintfuncsens:
                 for dvname in self.constraintfuncsens[constraintname]:
-                    if dvname in d_inputs:
+                    if constraintname in d_outputs and dvname in d_inputs:
                         dcdx = self.constraintfuncsens[constraintname][dvname]
-                        dout = d_outputs[constraintname]
-                        jvtmp = np.dot(np.transpose(dcdx), dout)
-                        d_inputs[dvname] += jvtmp
+                        if doFwd:
+                            din = d_inputs[dvname]
+                            jvtmp = np.dot(dcdx, din)
+                            d_outputs[constraintname] += jvtmp
+                        elif doRev:
+                            dout = d_outputs[constraintname]
+                            jvtmp = np.dot(np.transpose(dcdx), dout)
+                            d_inputs[dvname] += jvtmp
 
             for _, DVGeo in self.DVGeos.items():
+                dvs = DVGeo.getVarNames()
                 for ptSetName in DVGeo.ptSetNames:
                     if ptSetName in self.omPtSetList:
-                        dout = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
+                        # Process the seeds
+                        if doFwd:
+                            # Collect the d_inputs associated with the current DVGeo
+                            seeds = {}
+                            for k in d_inputs:
+                                if k in dvs:
+                                    seeds[k] = d_inputs[k]
+                        elif doRev:
+                            seeds = d_outputs[ptSetName].reshape(len(d_outputs[ptSetName]) // 3, 3)
 
-                        # only do the calc. if d_output is not zero on ANY proc
-                        local_all_zeros = np.all(dout == 0)
+                        # only do the calc. if seeds are not zero on ANY proc
+                        local_all_zeros = np.all(seeds == 0)
                         global_all_zeros = np.zeros(1, dtype=bool)
                         # we need to communicate for this check otherwise we may hang
                         self.comm.Allreduce([local_all_zeros, MPI.BOOL], [global_all_zeros, MPI.BOOL], MPI.LAND)
 
-                        # global_all_zeros is a numpy array of size 1
+                        # Compute the Jacobian vector product
                         if not global_all_zeros[0]:
-                            # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
-                            # xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
-                            xdot = DVGeo.totalSensitivity(dout, ptSetName)
+                            if doFwd:
+                                d_outputs[ptSetName] += DVGeo.totalSensitivityProd(seeds, ptSetName)
+                            elif doRev:
+                                # TODO totalSensitivityTransProd is broken. does not work with zero surface nodes on a proc
+                                # xdot = DVGeo.totalSensitivityTransProd(dout, ptSetName)
+                                xdot = DVGeo.totalSensitivity(seeds, ptSetName)
 
-                            # loop over dvs and accumulate
-                            xdotg = {}
-                            for k in xdot:
-                                # check if this dv is present
-                                if k in d_inputs:
-                                    # do the allreduce
-                                    # TODO reove the allreduce when this is fixed in openmdao
-                                    # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
-                                    xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
+                                # loop over dvs and accumulate
+                                xdotg = {}
+                                for k in xdot:
+                                    # check if this dv is present
+                                    if k in d_inputs:
+                                        # do the allreduce
+                                        # TODO remove the allreduce when this is fixed in openmdao
+                                        # reduce the result ourselves for now. ideally, openmdao will do the reduction itself when this is fixed. this is because the bcast is also done by openmdao (pyoptsparse, but regardless, it is not done here, so reduce should also not be done here)
+                                        xdotg[k] = self.comm.allreduce(xdot[k], op=MPI.SUM)
 
-                                    # accumulate in the dict
-                                    # TODO
-                                    # because we only do one point set at a time, we always want the 0th
-                                    # entry of this array since dvgeo always behaves like we are passing
-                                    # in multiple objective seeds with totalSensitivity. we can remove the [0]
-                                    # once we move back to totalSensitivityTransProd
-                                    d_inputs[k] += xdotg[k][0]
-        elif mode != "rev":
-            raise RuntimeError(f'OM_DVGEOCOMP supports only "rev" derivative mode, but "{mode}" was selected')
+                                        # accumulate in the dict
+                                        # TODO
+                                        # because we only do one point set at a time, we always want the 0th
+                                        # entry of this array since dvgeo always behaves like we are passing
+                                        # in multiple objective seeds with totalSensitivity. we can remove the [0]
+                                        # once we move back to totalSensitivityTransProd
+                                        d_inputs[k] += xdotg[k][0]
