@@ -367,6 +367,15 @@ class DVGeometryMulti:
         """
         If using coordXfer callback function, the curvePts need to be in the ADflow reference frame
         and the callback function needs to be passed in
+
+        curveFiles assumes you have a dat file or files in the format Pointwise exports or a similar version
+        This is either a list of files where each looks like:
+            row 1: header
+            row 2-end: x y z of point on curve
+        or a singular file with similar sections for each individual connector:
+            row 1: header specifying how many points are on that connector
+            row 2-that number: x y z of point
+            where this repeats for as many segments make up the connector 
         """
         if not self.filletIntersection:
             print("no")  # TODO real error
@@ -1249,13 +1258,34 @@ class DVGeometryMulti:
             points = surfPts[surfPts[:, 0].argsort()]
         else:
             curves = []
-            for f in filename:
-                curvePts = np.loadtxt(f, skiprows=1, dtype=self.dtype)
-                curves.append(curvePts)
 
-            points = curves[0]
-            for i in range(1, len(filename)):
-                points = np.vstack((points, curves[i]))
+            # list of filenames
+            # assume each file looks like
+            # row 1: header
+            # row 2-end: x y z of point on connector
+            if isinstance(filename, list):
+                for f in filename:
+                    curvePts = np.loadtxt(f, skiprows=1, dtype=self.dtype)
+                    curves.append(curvePts)
+
+            # singular file
+            # assume it is made up of sections for each connector from the mesh
+            # where each looks like
+            # row 1: header containing number of points on connector
+            # row 2 - numPoints: x y z of point
+            elif isinstance(filename, str):
+                begin = 0
+                with open(filename) as file:
+                    while line := file.readline():
+                        if " " not in line:
+                            skip = int(line)
+
+                            temp = np.loadtxt(filename, skiprows=begin+1, max_rows=skip)
+                            begin += skip + 1
+
+                            curves.append(temp)
+
+            points = np.vstack(curves)
 
         return points
 
