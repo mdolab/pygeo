@@ -405,3 +405,37 @@ class ProximityConstraint(GeometricConstraint):
 
         for i in range(len(self.coordsA)):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
+class MaxThicknessToChordConstraint(GeometricConstraint):
+    """
+    MaxThicknessToChordConstraint represents of a set of
+    absolute max thickess-to-chord ratio constraints.
+
+    The user should not have to deal with this class directly.
+    """
+
+    def __init__(self, name, coords, lecurve, tecurve, lower, upper, scale,
+                 DVGeo, addToPyOpt, compNames):
+        
+        super().__init__(name, len(coords) // 4, lower, upper, scale, DVGeo, addToPyOpt)
+        self.coords = coords
+
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
+
+        
+        # Store the LE and TE B-Spline curves
+        self.lecurve = lecurve
+        self.tecurve = tecurve
+
+    def evalFunctions(self, funcs, config) :
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        
