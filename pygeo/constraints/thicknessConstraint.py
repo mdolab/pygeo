@@ -431,7 +431,7 @@ class MaxThicknessToChordConstraint(GeometricConstraint):
             c = np.linalg.norm(self.coords[4 * i + 2] - self.coords[4 * i + 3])
             self.ToC0[i] = t / c
 
-        self.KSCoeff = 1.0
+        self.KSCoeff = 300.
         
 
     def evalFunctions(self, funcs, config) :

@@ -1600,8 +1600,31 @@ class DVConstraints:
     ):
         r"""
         Add a set of max thickness-to-chord ratio constraints.
+        This requires that a series of points along the leading edge and
+        trailing edge be provided. These are used to compute the chord length
+        at any and all spanwise stations. Several points along the chord
+        at each station will be sampled for the computation of thickness/chord.
+        These will then be aggregated together using a KS function to get
+        a smooth version of a max t/c constraint.
 
-        Need to add more text here
+        .. code-block:: text
+
+          Planform view of the wing: The '+' are the (three dimensional)
+          points that are supplied in leList and teList:
+
+                  Points in leList, should match physical extent of wing
+                                   \
+          +-------+--------+--------+--------+
+          |                                  |
+          |                                  |
+          |                                  |
+          |                                  |
+          |                                  |
+          |                                  |
+          |                                  |
+          +--------+---------+--------+------+
+                                       \
+                                        Points in teList
 
 
 
@@ -1614,7 +1637,16 @@ class DVConstraints:
             The list of points lying on the TE of the wing
 
         nSpan : int
-            The number of segments along span to take
+            The number of thickness constraints to be (linear)
+            interpolated *along* the leading and trailing edges.
+            Each spanwise station is a separate constraint, such
+            that the number of constraints is equal to nSpan.
+        
+        nChord : int
+            The number of thickness locations to be (linearly)
+            interpolated between the leading and trailing edges.
+            Each chordwise location is included to the KS function
+            for its respective spanwise station.
 
         axis : list or array of length 3
             The direction along which the projections will occur.
