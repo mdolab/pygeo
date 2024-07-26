@@ -24,6 +24,7 @@ from .thicknessConstraint import (
     ProximityConstraint,
     ThicknessConstraint,
     ThicknessToChordConstraint,
+    MaxThicknessToChordConstraint,
 )
 from .volumeConstraint import CompositeVolumeConstraint, TriangulatedVolumeConstraint, VolumeConstraint
 
@@ -1578,6 +1579,190 @@ class DVConstraints:
             conName = name
         self.constraints[typeName][conName] = ThicknessToChordConstraint(
             conName, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
+        )
+
+    def addMaxThicknessToChordConstraints2D(
+        self,
+        leList,
+        teList,    
+        nSpan,
+        nChord, 
+        axis,
+        chordDir,
+        lower=1.0,
+        upper=3.0,
+        scale=1.0,
+        name=None,
+        addToPyOpt=True,
+        surfaceName="default",
+        DVGeoName="default",
+        compNames=None,
+    ):
+        r"""
+        Add a set of max thickness-to-chord ratio constraints.
+
+        Need to add more text here
+
+
+
+        Parameters
+        ----------
+        leList : list or array of size (N x 3) where N >=2
+            The list of points lying on the LE of the wing
+            
+        teList : list or array of size (N x 3) where N >=2
+            The list of points lying on the TE of the wing
+
+        nSpan : int
+            The number of segments along span to take
+
+        axis : list or array of length 3
+            The direction along which the projections will occur.
+            Typically this will be y or z axis ([0,1,0] or [0,0,1])
+
+        chordDir : list or array or length 3
+            The direction defining "chord". This will typically be the
+            xasis ([1,0,0]). The magnitude of the vector doesn't
+            matter.
+
+        lower : float or array of size nCon
+
+            The lower bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint. This
+            constraint can only be used in "scaled" mode. That means,
+            the actual t/c is *never* computed. This constraint can
+            only be used to constrain the relative change in t/c. A
+            lower bound of 1.0, therefore mean the t/c cannot
+            decrease. This is the typical use of this constraint.
+
+        upper : float or array of size nCon
+            The upper bound for the constraint. A single float will
+            apply the same bounds to all constraints, while the array
+            option will use different bounds for each constraint.
+
+        scale : float or array of size nCon
+            This is the optimization scaling of the
+            constraint. Typically this parameter will not need to be
+            changed. If the thickness constraints are scaled, this
+            already results in well-scaled constraint values, and
+            scale can be left at 1.0. If scaled=False, it may changed
+            to a more suitable value of the resulting physical
+            thickness have magnitudes vastly different than O(1).
+
+        name : str
+            Normally this does not need to be set. Only use this if
+            you have multiple DVCon objects and the constraint names
+            need to be distinguished **or** you are using this set of
+            thickness constraints for something other than a direct
+            constraint in pyOptSparse.
+
+        addToPyOpt : bool
+            Normally this should be left at the default of True. If
+            the values need to be processed (modified) *before* they are
+            given to the optimizer, set this flag to False.
+
+        DVGeoName : str
+            Name of the DVGeo object to compute the constraint with. You only
+            need to set this if you're using multiple DVGeo objects
+            for a problem. For backward compatibility, the name is 'default' by default
+
+        compNames : list
+            If using DVGeometryMulti, the components to which the point set associated
+            with this constraint should be added.
+            If None, the point set is added to all components.
+
+        """
+        self._checkDVGeo(DVGeoName)
+
+        # Create B-Spline curves for the LE and TE
+        leCurve = Curve(X=leList, k=4)
+        teCurve = Curve(X=teList, k=4)
+
+        # Get an equidistant set of parameter locations along the LE
+        leS = np.linspace(0, 1, nSpan)
+
+        # Get the surface of the wing for the thickness projections
+        p0, p1, p2 = self._getSurfaceVertices(surfaceName=surfaceName)
+
+        # Normalize the chord direction vector
+        chordDir /= np.linalg.norm(np.array(chordDir, "d"))
+
+        # Compute the span direction vector with a cross-product
+        spanDir = np.cross(chordDir, axis)
+        spanDir /= np.linalg.norm(spanDir)
+
+        # Data layout:
+        # coords[:,:,0,:] = coordinate on the upper surf of wing used for thickness
+        # coords[:,:,1,:] = coordinate on the lower surf of wing used for thickness
+        # coords[:,:,2,:] = coordinate on the LE of wing used for chord
+        # coords[:,:,3,:] = coordinate on the TE of wing used for chord        
+        coords = np.zeros((nSpan, nChord, 4, 3))
+
+        # Loop over each constraint
+        for i in range(nSpan) :
+
+            # Begin by getting the physical point on the LE for this parameters
+            xyz = np.zeros((2,3))
+            xyz[0,:] = leCurve(leS[i])
+
+            # Newton search to find the matching parameter on the teCurve
+            # for the same Y location    
+            s = 0.5
+            for j in range(10) :
+                f  = spanDir.dot(teCurve(s) - xyz[0,:])
+                df = spanDir.dot(teCurve.getDerivative(s))
+                s -= f / df
+                
+                # Convergence criterion
+                if abs(f) < 1e-12 : break
+                
+            # Get the coordinate on the TE
+            xyz[1,:] = teCurve(s)
+
+            chordCurve = Curve(x=xyz[:,0], y=xyz[:,1], z=xyz[:,2], k=4)
+
+            # Split this curve along the chord into segments, bringing
+            # the coordinates slightly inside to make sure we get a
+            # valid projection            
+            X = chordCurve(np.linspace(0.1, 0.9, nChord))
+            if len(X.shape) == 1 :
+                X = np.array([X])
+            
+            for j in range(nChord):
+                # Project node onto the surface
+                up, down, fail = geo_utils.projectNode(X[j], axis, p0, p1 - p0, p2 - p0)
+                if fail:
+                    raise Error(
+                        "There was an error projecting a node "
+                        "at (%f, %f, %f) with normal (%f, %f, %f)." % (X[i, 0], X[i, 1], X[i, 2], axis[0], axis[1], axis[2])
+                    )
+
+                # Store the coordinates on the wing used for the thickenss calcs
+                coords[i, j, 0,:] = up
+                coords[i, j, 1,:] = down
+                
+                # Store the coordinates on the wing used for the chord calcs
+                coords[i, j, 2,:] = xyz[0,:]
+                coords[i, j, 3,:] = xyz[1,:]
+
+
+        # Reshape the data to get a continuous array because
+        # that is what is needed by the FFD object for
+        # parameterization
+        coords = coords.reshape((nSpan * nChord * 4, 3))
+                
+        typeName = "maxThickToChordCon"
+        if typeName not in self.constraints:
+            self.constraints[typeName] = OrderedDict()
+        
+        if name is None:
+            conName = "%s_max_thickness_to_chord_constraints_%d" % (self.name, len(self.constraints[typeName]))
+        else:
+            conName = name
+    
+        self.constraints[typeName][conName] = MaxThicknessToChordConstraint(
+            conName, nSpan, coords, lower, upper, scale, self.DVGeometries[DVGeoName], addToPyOpt, compNames
         )
 
     def addTriangulatedSurfaceConstraint(
