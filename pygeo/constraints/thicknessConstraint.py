@@ -405,3 +405,138 @@ class ProximityConstraint(GeometricConstraint):
 
         for i in range(len(self.coordsA)):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
+class MaxThicknessToChordConstraint(GeometricConstraint):
+    """
+    MaxThicknessToChordConstraint represents of a set of
+    absolute max thickess-to-chord ratio constraints.
+
+    The user should not have to deal with this class directly.
+    """
+
+    def __init__(self, name, ncon, coords, lower, upper, scale,
+                 DVGeo, addToPyOpt, compNames):
+        
+        super().__init__(name, ncon, lower, upper, scale, DVGeo, addToPyOpt)
+        self.coords = coords
+
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.coords, self.name, compNames=compNames)
+
+        # Now get the reference lengths
+        self.ToC0 = np.zeros(self.nCon)
+        for i in range(self.nCon):
+            t = np.linalg.norm(self.coords[4 * i] - self.coords[4 * i + 1])
+            c = np.linalg.norm(self.coords[4 * i + 2] - self.coords[4 * i + 3])
+            self.ToC0[i] = t / c
+
+        self.KSCoeff = 1.0
+        
+
+    def evalFunctions(self, funcs, config) :
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+
+        # init KS function value and coefficients
+        KS = np.zeros((self.nCon))
+        KSCoeff = self.KSCoeff
+        
+        # Pull out the most recent set of coordinates:
+        self.coords = self.DVGeo.update(self.name, config=config)
+        
+        nchord = int(len(self.coords) / self.nCon / 4)
+        
+        # Loop over the spanwise stations
+        for i in range(self.nCon):
+            
+            # Loop over the chordwise stations
+            for j in range(nchord) :
+
+                idx = 4*(j+i*nchord)
+            
+                t = geo_utils.eDist(self.coords[idx], self.coords[idx + 1])
+                c = geo_utils.eDist(self.coords[idx + 2], self.coords[idx + 3])
+
+                KS[i] += np.exp(KSCoeff * (t/c) )
+                
+            KS[i] = np.log(KS[i]) / KSCoeff
+            
+        funcs[self.name] = KS
+
+        
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        # KS Coeff
+        KSCoeff = self.KSCoeff
+
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dKSdPt = np.zeros((self.nCon, self.coords.shape[0], self.coords.shape[1]))
+
+            nchord = int(len(self.coords) / self.nCon / 4)
+
+            for i in range(self.nCon):
+                KS = 0.0
+                dToCdPt = np.zeros((4, 3))
+                
+                # Loop over the chordwise stations
+                for j in range(nchord) :
+                    
+                    idx = 4*(j+i*nchord)
+
+                    # Thickness and chord valuves
+                    t = geo_utils.eDist(self.coords[idx], self.coords[idx + 1])
+                    c = geo_utils.eDist(self.coords[idx + 2], self.coords[idx + 3])
+
+                    # KS function value
+                    val = np.exp(KSCoeff * (t/c) )
+                    KS += val
+                    
+                    # Derivatives of points
+                    p1b, p2b = geo_utils.eDist_b(self.coords[idx, :], self.coords[idx + 1, :])
+                    p3b, p4b = geo_utils.eDist_b(self.coords[idx + 2, :], self.coords[idx + 3, :])
+
+                    # Derivative of ratios
+                    dToCdPt[0, :] = p1b / c 
+                    dToCdPt[1, :] = p2b / c
+                    dToCdPt[2, :] = (-p3b * t / c**2)
+                    dToCdPt[3, :] = (-p4b * t / c**2)
+
+                    # Intermediate derivative of the KS function
+                    dKSdPt[i, idx:idx+4, :] += val * dToCdPt
+                    
+                # Finalize the KS derivative
+                dKSdPt[i, :, :] /= KS
+
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dKSdPt, self.name, config=config)
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.coords), len(self.coords) // 2))
+        handle.write("DATAPACKING=POINT\n")
+        for i in range(len(self.coords)):
+            handle.write(f"{self.coords[i, 0]:f} {self.coords[i, 1]:f} {self.coords[i, 2]:f}\n")
+
+        for i in range(len(self.coords) // 2):
+            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
