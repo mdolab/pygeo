@@ -1626,7 +1626,9 @@ class DVConstraints:
                                        \
                                         Points in teList
 
-
+        This constraint is an absolute constraint, i.e., it places
+        a constraint on the absolute value of the max t/c at
+        each span location. This is _not_ a relative constraint.
 
         Parameters
         ----------
@@ -1661,12 +1663,7 @@ class DVConstraints:
 
             The lower bound for the constraint. A single float will
             apply the same bounds to all constraints, while the array
-            option will use different bounds for each constraint. This
-            constraint can only be used in "scaled" mode. That means,
-            the actual t/c is *never* computed. This constraint can
-            only be used to constrain the relative change in t/c. A
-            lower bound of 1.0, therefore mean the t/c cannot
-            decrease. This is the typical use of this constraint.
+            option will use different bounds for each constraint. 
 
         upper : float or array of size nCon
             The upper bound for the constraint. A single float will
@@ -1675,12 +1672,7 @@ class DVConstraints:
 
         scale : float or array of size nCon
             This is the optimization scaling of the
-            constraint. Typically this parameter will not need to be
-            changed. If the thickness constraints are scaled, this
-            already results in well-scaled constraint values, and
-            scale can be left at 1.0. If scaled=False, it may changed
-            to a more suitable value of the resulting physical
-            thickness have magnitudes vastly different than O(1).
+            constraint. 
 
         name : str
             Normally this does not need to be set. Only use this if
@@ -1694,6 +1686,11 @@ class DVConstraints:
             the values need to be processed (modified) *before* they are
             given to the optimizer, set this flag to False.
 
+        surfaceName : str
+            Name of the surface to project to. This should be the same
+            as the surfaceName provided when setSurface() was called.
+            For backward compatibility, the name is 'default' by default.
+        
         DVGeoName : str
             Name of the DVGeo object to compute the constraint with. You only
             need to set this if you're using multiple DVGeo objects
@@ -1757,7 +1754,7 @@ class DVConstraints:
             # Split this curve along the chord into segments, bringing
             # the coordinates slightly inside to make sure we get a
             # valid projection            
-            X = chordCurve(np.linspace(0.1, 0.9, nChord))
+            X = chordCurve(np.linspace(0.15, 0.95, nChord))
             if len(X.shape) == 1 :
                 X = np.array([X])
             
