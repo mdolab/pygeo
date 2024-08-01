@@ -364,7 +364,7 @@ class DVGeometryMulti:
 
         self.intersectComps.append(inter)
 
-    def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None):
+    def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None, secondary=False):
         """
         If using coordXfer callback function, the curvePts need to be in the ADflow reference frame
         and the callback function needs to be passed in
@@ -391,11 +391,24 @@ class DVGeometryMulti:
         # figure out which component and fillet we're dealing with
         comp = self.comps[compName]
 
-        # add this curve to the component's DVGeo as a pointset so it gets deformed in the FFD
-        ptSetName = f"{compName}_curve"
-        comp.curvePtsName = ptSetName
-        comp.curvePts = curvePts
-        comp.curvePtsOrig = deepcopy(curvePts)
+        if secondary:
+            # add this curve to the component's DVGeo as a pointset so it gets deformed in the FFD
+            ptSetName = f"{compName}_curve_secondary"
+            comp.secondCurvePtsName = ptSetName
+            comp.secondCurvePts = curvePts
+            comp.secondCurvePtsOrig = deepcopy(curvePts)
+
+            # get the initial vector so we can calculate rotations
+            vector = comp.curvePts - curvePts
+            comp.vector = vector
+            comp.vectorOrig = deepcopy(vector)
+
+        else:
+            # add this curve to the component's DVGeo as a pointset so it gets deformed in the FFD
+            ptSetName = f"{compName}_curve"
+            comp.curvePtsName = ptSetName
+            comp.curvePts = curvePts
+            comp.curvePtsOrig = deepcopy(curvePts)
 
         # add the curve pointset to the component's DVGeo
         comp.DVGeo.addPointSet(
@@ -1187,9 +1200,9 @@ class DVGeometryMulti:
         comp = self.comps[compName]
         comp.writeSurf(fileName)
 
-    def writeCompCurve(self, compName, fileName):
+    def writeCompCurve(self, compName, fileName, secondary=False):
         comp = self.comps[compName]
-        comp.writeCurve(fileName)
+        comp.writeCurve(fileName, secondary)
 
     def writePointSet(self, name, fileName, solutionTime=None):
         """
@@ -1402,6 +1415,8 @@ class Comp:
         self.surfPtsName = surfPtsName
         self.curvePts = []
         self.curvePtsName = None
+        self.secondCurvePts = []
+        self.secondCurvePtsName = None
         self.intersection = None
         self.intersectInd = {}
 
@@ -1418,15 +1433,22 @@ class Comp:
         writeTecplot1D(f, self.name, self.surfPts)
         closeTecplot(f)
 
-    def writeCurve(self, fileName):
-        fileName = f"{fileName}_{self.name}_curve.dat"
+    def writeCurve(self, fileName, secondary):
+        if secondary:
+            curveName = self.secondCurvePtsName
+            curvePts = self.secondCurvePts
+        else:
+            curveName = self.curvePtsName
+            curvePts = self.curvePts
+
+        fileName = f"{fileName}_{curveName}.dat"
         f = openTecplot(fileName, 3)
 
         if self.isFillet:
             writeTecplot1D(f, self.name, self.surfPts[self.compAInterInd])
             writeTecplot1D(f, self.name, self.surfPts[self.compBInterInd])
         else:
-            writeTecplot1D(f, self.name, self.curvePts)
+            writeTecplot1D(f, self.name, curvePts)
 
         closeTecplot(f)
 
