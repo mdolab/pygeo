@@ -1754,7 +1754,7 @@ class DVConstraints:
             # Split this curve along the chord into segments, bringing
             # the coordinates slightly inside to make sure we get a
             # valid projection            
-            X = chordCurve(np.linspace(0.15, 0.95, nChord))
+            X = chordCurve(np.linspace(0.05, 0.95, nChord))
             if len(X.shape) == 1 :
                 X = np.array([X])
             
