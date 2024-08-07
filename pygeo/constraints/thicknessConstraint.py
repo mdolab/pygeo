@@ -88,6 +88,90 @@ class ThicknessConstraint(GeometricConstraint):
             handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
 
 
+class DistanceConstraint(GeometricConstraint):
+    """
+    DVConstraints representation of a set of distance
+    constraints. One of these objects is created each time a
+    addDistanceConstraints or addDistanceConstraints1D call is
+    made. The user should not have to deal with this class directly.
+    """
+
+    def __init__(self, name, moving_pts, anchor_pts,  lower, upper, scaled, scale, DVGeo, addToPyOpt, compNames):
+        super().__init__(name, len(moving_pts), lower, upper, scale, DVGeo, addToPyOpt)
+
+        self.moving_pts = moving_pts
+        self.scaled = scaled
+        self.anchored_pts = anchor_pts
+
+        # First thing we can do is embed the coordinates into DVGeo
+        # with the name provided:
+        self.DVGeo.addPointSet(self.moving_pts, self.name, compNames=compNames)
+
+        # Now get the reference lengths
+        self.D0 = np.zeros(self.nCon)
+        for i in range(self.nCon):
+            self.D0[i] = geo_utils.norm.euclideanNorm(self.moving_pts[i] - self.anchored_pts[i])
+            
+    def evalFunctions(self, funcs, config):
+        """
+        Evaluate the functions this object has and place in the funcs dictionary
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary to place function values
+        """
+        # Pull out the most recent set of coordinates:
+        self.moving_pts = self.DVGeo.update(self.name, config=config)
+        D = np.zeros(self.nCon)
+        for i in range(self.nCon):
+            dx = self.moving_pts[i] - self.anchored_pts[i]
+            D[i] = geo_utils.norm.euclideanNorm(dx)
+            if self.scaled:
+                D[i] /= self.D0[i]
+        funcs[self.name] = D
+
+    def evalFunctionsSens(self, funcsSens, config):
+        """
+        Evaluate the sensitivity of the functions this object has and
+        place in the funcsSens dictionary
+
+        Parameters
+        ----------
+        funcsSens : dict
+            Dictionary to place function values
+        """
+
+        nDV = self.DVGeo.getNDV()
+        if nDV > 0:
+            dDdPt = np.zeros((self.nCon, self.moving_pts.shape[0], self.moving_pts.shape[1]))
+
+            for i in range(self.nCon):
+                p1b, _ = geo_utils.eDist_b(self.moving_pts[i, :], self.anchored_pts[i] )
+                
+                if self.scaled:
+                    p1b /= self.D0[i]
+                dDdPt[i, i, :] = p1b
+            
+            funcsSens[self.name] = self.DVGeo.totalSensitivity(dDdPt, self.name, config=config)
+
+
+    def writeTecplot(self, handle):
+        """
+        Write the visualization of this set of thickness constraints
+        to the open file handle
+        """
+        handle.write("Zone T=%s\n" % self.name)
+        handle.write("Nodes = %d, Elements = %d ZONETYPE=FELINESEG\n" % (len(self.moving_pts)*2, len(self.moving_pts)))
+        handle.write("DATAPACKING=POINT\n")
+        for i in range(self.nCon):
+            handle.write(f"{self.moving_pts[i, 0]:f} {self.moving_pts[i, 1]:f} {self.moving_pts[i, 2]:f}\n")
+            handle.write(f"{self.anchored_pts[i, 0]:f} {self.anchored_pts[i, 1]:f} {self.anchored_pts[i, 2]:f}\n")
+
+        for i in range(len(self.moving_pts)):
+            handle.write("%d %d\n" % (2 * i + 1, 2 * i + 2))
+
+
 class ProjectedThicknessConstraint(GeometricConstraint):
     """
     DVConstraints representation of a set of projected thickness
