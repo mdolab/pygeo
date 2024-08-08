@@ -213,7 +213,8 @@ class DVGeometryCST(BaseDVGeometry):
 
         # Save the upper and lower trailing edge coordinates if it is not sharp
         if self.sharp:
-            self.thicknessTE = np.array([0.0])
+            self.yUpperTE = np.array([0.0])
+            self.yLowerTE = np.array([0.0])
         else:
             if self.foilCoords[cornerIdx[0], self.yIdx] > self.foilCoords[cornerIdx[1], self.yIdx]:
                 self.coordUpperTE = self.foilCoords[cornerIdx[0]]
@@ -221,7 +222,9 @@ class DVGeometryCST(BaseDVGeometry):
             else:
                 self.coordUpperTE = self.foilCoords[cornerIdx[1]]
                 self.coordLowerTE = self.foilCoords[cornerIdx[0]]
-            self.thicknessTE = self.coordUpperTE[self.yIdx] - self.coordLowerTE[self.yIdx]
+
+            self.yUpperTE = self.coordUpperTE[self.yIdx]
+            self.yLowerTE = self.coordLowerTE[self.yIdx]
 
         # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet).
         # preFoil defines the leading edge as the point furthest from the trailing edge
@@ -237,9 +240,20 @@ class DVGeometryCST(BaseDVGeometry):
             print(f"######## Fitting CST coefficients to coordinates in {datFile} ########")
         for dvType in ["upper", "lower"]:
             if self.comm.rank == 0:
+                xPts = self.foilCoords[self.idxFoil[dvType], self.xIdx]
+                yPts = self.foilCoords[self.idxFoil[dvType], self.yIdx]
+
+                if dvType == "upper":
+                    yTE = self.yUpperTE
+                else:
+                    yTE = self.yLowerTE
+
+                # Subtract the linear TE thickness function
+                yMinusTE = yPts - yTE * xPts
+
                 self.defaultDV[dvType] = self.computeCSTfromCoords(
-                    self.foilCoords[self.idxFoil[dvType], self.xIdx],
-                    self.foilCoords[self.idxFoil[dvType], self.yIdx],
+                    xPts,
+                    yMinusTE,
                     self.defaultDV[dvType].size,
                     N1=self.defaultDV[f"n1_{dvType}"],
                     N2=self.defaultDV[f"n2_{dvType}"],
@@ -247,8 +261,6 @@ class DVGeometryCST(BaseDVGeometry):
                 )
 
                 # Compute the quality of the fit by computing an L2 norm of the fit vs. the actual coordinates
-                xPts = self.foilCoords[self.idxFoil[dvType], self.xIdx]
-                yTE = self.thicknessTE / 2 if dvType == "upper" else -self.thicknessTE / 2
                 ptsFit = chord * self.computeCSTCoordinates(
                     xPts / chord,
                     self.defaultDV["n1_lower"],
@@ -257,9 +269,7 @@ class DVGeometryCST(BaseDVGeometry):
                     yTE,
                     dtype=self.dtype,
                 )
-                L2norm = np.sqrt(
-                    1 / ptsFit.size * np.sum((self.foilCoords[self.idxFoil[dvType], self.yIdx] - ptsFit) ** 2)
-                )
+                L2norm = np.sqrt(1 / ptsFit.size * np.sum((yPts - ptsFit) ** 2))
 
                 print(f"{dvType.capitalize()} surface")
                 print(f"    L2 norm of coordinates in dat file versus fit coordinates: {L2norm}")
@@ -306,7 +316,8 @@ class DVGeometryCST(BaseDVGeometry):
             "points": points,
             "xMax": self.xMax.copy(),
             "xMin": self.xMin.copy(),
-            "thicknessTE": self.thicknessTE.copy(),
+            "yUpperTE": self.yUpperTE.copy(),
+            "yLowerTE": self.yLowerTE.copy(),
         }
 
         # Determine which points are on the upper and lower surfaces
@@ -824,19 +835,31 @@ class DVGeometryCST(BaseDVGeometry):
         ptsY = points[:, self.yIdx]
         xMax = self.points[ptSetName]["xMax"]
         xMin = self.points[ptSetName]["xMin"]
-        thicknessTE = self.points[ptSetName]["thicknessTE"]
+        yUpperTE = self.points[ptSetName]["yUpperTE"]
+        yLowerTE = self.points[ptSetName]["yLowerTE"]
 
         # Scale the airfoil to the range 0 to 1 in x direction
         shift = xMin
         chord = xMax - xMin
         scaledX = (ptsX - shift) / chord
-        yTE = thicknessTE / chord / 2  # half the scaled trailing edge thickness
+        scaledYUpperTE = yUpperTE / chord
+        scaledYLowerTE = yLowerTE / chord
 
         ptsY[idxUpper] = desVars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxUpper], desVars["n1_upper"], desVars["n2_upper"], desVars["upper"], yTE, dtype=self.dtype
+            scaledX[idxUpper],
+            desVars["n1_upper"],
+            desVars["n2_upper"],
+            desVars["upper"],
+            scaledYUpperTE,
+            dtype=self.dtype,
         )
         ptsY[idxLower] = desVars["chord"] * self.computeCSTCoordinates(
-            scaledX[idxLower], desVars["n1_lower"], desVars["n2_lower"], desVars["lower"], -yTE, dtype=self.dtype
+            scaledX[idxLower],
+            desVars["n1_lower"],
+            desVars["n2_lower"],
+            desVars["lower"],
+            scaledYLowerTE,
+            dtype=self.dtype,
         )
         ptsY[idxTE] *= desVars["chord"] / chord
 
@@ -845,7 +868,8 @@ class DVGeometryCST(BaseDVGeometry):
 
         # Scale the point set's properties based on the new chord length
         self.points[ptSetName]["xMax"] = (xMax - shift) * desVars["chord"] / chord + shift
-        self.points[ptSetName]["thicknessTE"] *= desVars["chord"] / chord
+        self.points[ptSetName]["yUpperTE"] *= desVars["chord"] / chord
+        self.points[ptSetName]["yLowerTE"] *= desVars["chord"] / chord
 
         self.updated[ptSetName] = True
 
