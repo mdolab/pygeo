@@ -180,7 +180,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - 1)
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         self.DVGeo.addPointSet(coords, "test")
 
@@ -189,7 +190,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
             self.assertIn(idx, self.DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -200,7 +202,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         # Randomize the index order (do indices so we can track where they end up)
         rng = np.random.default_rng(1)
@@ -223,7 +226,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         for idx in idxLowerRand:
             if idx != idxShuffle[-1]:
                 self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -241,7 +245,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0] - nPointsTE + 2 - 1)
-        thickTE = coords[0, 1] - coords[coords.shape[0] - nPointsTE + 1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[coords.shape[0] - nPointsTE + 1, 1]
 
         self.DVGeo.addPointSet(coords, "test")
 
@@ -250,7 +255,8 @@ class DVGeometryCSTPointSetSerial(unittest.TestCase):
             self.assertIn(idx, self.DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -278,7 +284,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         isUpper = isUpper == 1
         isLower = np.logical_not(isUpper)
 
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         # Divide up the points among the procs (mostly evenly, but not quite to check the harder case)
         if self.N_PROCS == 1:
@@ -304,7 +311,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         for idx in idxLower:
             if idx != coords.shape[0] - 1:
                 self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -319,7 +327,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         isUpper = isUpper == 1
         isLower = np.logical_not(isUpper)
 
-        thickTE = coords[0, 1] - coords[-1, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
 
         # Randomize the index order (do indices so we can track where they end up)
         rng = np.random.default_rng(1)
@@ -379,7 +388,8 @@ class DVGeometryCSTPointSetParallel(unittest.TestCase):
         for idx in idxLower:
             if idx != idxEnd:
                 self.assertIn(idx, self.DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, self.DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, self.DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, self.DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), self.DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), self.DVGeo.points["test"]["xMax"])
 
@@ -404,7 +414,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE)
         idxLower = np.arange(idxLE, coords.shape[0] - 1)
-        thickTE = 0.0
+        yUpperTE = 0.0
+        yLowerTE = 0.0
 
         DVGeo.addPointSet(coords, "test")
 
@@ -413,7 +424,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
             self.assertIn(idx, DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), DVGeo.points["test"]["xMax"])
         self.assertTrue(DVGeo.sharp)
@@ -433,7 +445,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
         # that they'll be included in the upper and lower surface (which is ok)
         idxUpper = np.arange(1, idxLE)
         idxLower = np.arange(idxLE, coords.shape[0] - 2)
-        thickTE = coords[0, 1] - coords[-2, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-2, 1]
 
         DVGeo.addPointSet(coords, "test")
 
@@ -442,7 +455,8 @@ class DVGeometryCSTSharpOrClosed(unittest.TestCase):
             self.assertIn(idx, DVGeo.points["test"]["upper"])
         for idx in idxLower:
             self.assertIn(idx, DVGeo.points["test"]["lower"])
-        np.testing.assert_equal(thickTE, DVGeo.points["test"]["thicknessTE"])
+        np.testing.assert_equal(yUpperTE, DVGeo.points["test"]["yUpperTE"])
+        np.testing.assert_equal(yLowerTE, DVGeo.points["test"]["yLowerTE"])
         self.assertEqual(min(coords[:, 0]), DVGeo.points["test"]["xMin"])
         self.assertEqual(max(coords[:, 0]), DVGeo.points["test"]["xMax"])
         self.assertFalse(DVGeo.sharp)
