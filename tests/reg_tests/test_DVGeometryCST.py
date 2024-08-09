@@ -608,7 +608,7 @@ class TestFunctionality(unittest.TestCase):
     """
 
     def test_plotCST(self):
-        DVGeometryCST.plotCST(np.ones(4), np.ones(3))
+        DVGeometryCST.plotCST(np.ones(4), np.ones(3), 1e-3, 1e-3)
 
     def test_print(self):
         curDir = os.path.abspath(os.path.dirname(__file__))
