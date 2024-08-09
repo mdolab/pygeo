@@ -74,6 +74,9 @@ class DVGeometryCST(BaseDVGeometry):
         Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
     idxVertical : int, optional
         Index of the column in the point set to use as the vertical (y in CST) airfoil coordinates, by default 1
+    idxFoil : dict, optional
+        Dictionary with keys ``"upper"`` and ``"lower"`` specifying the coordinate indices (rows of the dat file)
+        that correspond to the upper and lower surfaces. If None, these indices are determined using a spline fit.
     comm : MPI communicator, optional
         Communicator for DVGeometryCST instance, by default MPI.COMM_WORLD
     isComplex : bool, optional
@@ -94,6 +97,7 @@ class DVGeometryCST(BaseDVGeometry):
         numCST=8,
         idxChord=0,
         idxVertical=1,
+        idxFoil=None,
         comm=MPI.COMM_WORLD,
         isComplex=False,
         debug=False,
@@ -107,6 +111,7 @@ class DVGeometryCST(BaseDVGeometry):
         super().__init__(datFile, name=name)
         self.xIdx = idxChord
         self.yIdx = idxVertical
+        self.idxFoil = idxFoil
         self.comm = comm
         self.isComplex = isComplex
         if isComplex:
@@ -232,8 +237,9 @@ class DVGeometryCST(BaseDVGeometry):
         self.upperSpline, self.lowerSpline = self.foil.splitAirfoil()
 
         # Fit CST parameters to the airfoil's upper and lower surface
-        self.idxFoil = {}
-        self.idxFoil["upper"], self.idxFoil["lower"] = self._splitUpperLower(self.foilCoords)
+        if self.idxFoil is None:
+            self.idxFoil = {}
+            self.idxFoil["upper"], self.idxFoil["lower"] = self._splitUpperLower(self.foilCoords)
         chord = self.xMax - self.xMin
         self.defaultDV["chord"][0] = chord
         if self.comm.rank == 0:
