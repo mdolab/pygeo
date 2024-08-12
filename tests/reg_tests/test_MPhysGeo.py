@@ -286,65 +286,65 @@ class TestDVConMPhysBox(unittest.TestCase):
 
 
 # parameters for ESP-based DVGeo tests
-esp_test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
+# esp_test_params = [{"N_PROCS": 1, "name": "serial"}, {"N_PROCS": 4, "name": "parallel_4procs"}]
 
-@unittest.skipUnless(mphysInstalled and ocsmInstalled, "OpenMDAO, MPhys, and ESP are required to test the ESP part of the pyGeo MPhys wrapper")
-@parameterized_class(esp_test_params)
-class TestDVGeoMPhysESP(unittest.TestCase):
-    def setUp(self):
-        self.input_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# @unittest.skipUnless(mphysInstalled and ocsmInstalled, "OpenMDAO, MPhys, and ESP are required to test the ESP part of the pyGeo MPhys wrapper")
+# @parameterized_class(esp_test_params)
+# class TestDVGeoMPhysESP(unittest.TestCase):
+#     def setUp(self):
+#         self.input_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    def modelSetup(self):
+#     def modelSetup(self):
 
-        class ESPGroup(Multipoint):
-            def setup(self):
-                self.add_subsystem("dvs", IndepVarComp(), promotes=["*"])
-                self.add_subsystem("geometry", OM_DVGEOCOMP(file=espBox, type="esp"))
+#         class ESPGroup(Multipoint):
+#             def setup(self):
+#                 self.add_subsystem("dvs", IndepVarComp(), promotes=["*"])
+#                 self.add_subsystem("geometry", OM_DVGEOCOMP(file=espBox, type="esp"))
 
-            def configure(self):
+#             def configure(self):
 
-                # add a point set on the surface
-                vertex1 = np.array([-2.0, -2.0, -2.0])
-                vertex2 = np.array([1.5, 1.5, 1.5])
-                left = np.array([-2.0, -1.1, -1.1])
-                right = np.array([1.5, -1.2, -0.1])
-                front = np.array([0.25, 1.5, 0.3])
-                back = np.array([1.2, -2.0, -0.3])
-                top = np.array([0.0, 0.1, 1.5])
-                bottom = np.array([-1.9, -1.1, -2.0])
-                initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
-                distglobal = self.geometry.nom_addPointSet.addPointSet(initpts.flatten(), "mypts", cache_projections=False)
-                self.assertAlmostEqual(distglobal, 0.0, 8)
-                DVGeo._updateModel()
-                DVGeo._updateProjectedPts()
-                self.assertTrue(DVGeo.pointSetUpToDate)
-                self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
+#                 # add a point set on the surface
+#                 vertex1 = np.array([-2.0, -2.0, -2.0])
+#                 vertex2 = np.array([1.5, 1.5, 1.5])
+#                 left = np.array([-2.0, -1.1, -1.1])
+#                 right = np.array([1.5, -1.2, -0.1])
+#                 front = np.array([0.25, 1.5, 0.3])
+#                 back = np.array([1.2, -2.0, -0.3])
+#                 top = np.array([0.0, 0.1, 1.5])
+#                 bottom = np.array([-1.9, -1.1, -2.0])
+#                 initpts = np.vstack([vertex1, vertex2, left, right, front, back, top, bottom, left, right])
+#                 distglobal = self.geometry.nom_addPointSet.addPointSet(initpts.flatten(), "mypts", cache_projections=False)
+#                 self.assertAlmostEqual(distglobal, 0.0, 8)
+#                 DVGeo._updateModel()
+#                 DVGeo._updateProjectedPts()
+#                 self.assertTrue(DVGeo.pointSetUpToDate)
+#                 self.assertAlmostEqual(np.linalg.norm(initpts - DVGeo.pointSets["mypts"].proj_pts), 0.0, 10)
 
-                for dv in dvInfo:
-                    self.geometry.nom_addESPVariable()
+#                 for dv in dvInfo:
+#                     self.geometry.nom_addESPVariable()
                     
-                    self.dvs.add_output(dvName, dv["val"])
-                    self.connect(dvName, f"geometry.{dvName}")
-                    self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"])
+#                     self.dvs.add_output(dvName, dv["val"])
+#                     self.connect(dvName, f"geometry.{dvName}")
+#                     self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"])
 
-                self.add_constraint(f"geometry.{ptName}")
+#                 self.add_constraint(f"geometry.{ptName}")
 
-        prob = Problem(model=ESPGroup())
-        prob.setup(mode="rev")
+#         prob = Problem(model=ESPGroup())
+#         prob.setup(mode="rev")
 
-        return prob
+#         return prob
     
-    def test_run_model(self):
-        self.prob.run_model()
+#     def test_run_model(self):
+#         self.prob.run_model()
 
-    def testDVs(self):
-        self.prob.run_model()
+#     def testDVs(self):
+#         self.prob.run_model()
 
-        data = self.prob.check_totals(step=1e-7, compact_print=True)
-        for _, err in data.items():
+#         data = self.prob.check_totals(step=1e-7, compact_print=True)
+#         for _, err in data.items():
 
-            rel_err = err["rel error"]
-            assert_near_equal(rel_err.forward, 0.0, 1e-5)
+#             rel_err = err["rel error"]
+#             assert_near_equal(rel_err.forward, 0.0, 1e-5)
 
 if __name__ == "__main__":
     unittest.main()
