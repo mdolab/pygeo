@@ -364,6 +364,8 @@ class DVGeometryMulti:
 
         self.intersectComps.append(inter)
 
+        return inter
+
     def addCurve(self, compName, curveFiles=None, curvePtsArray=None, origConfig=True, coordXfer=None, secondary=False):
         """
         If using coordXfer callback function, the curvePts need to be in the ADflow reference frame
@@ -3891,13 +3893,12 @@ class FilletIntersection(Intersection):
 
     def update(self, ptSetName, delta, comp=None):
         # update the pointset unless we haven't figured out the intersections yet
-        # TODO change to a firstUpdate flag or something
-
         if self.firstUpdate:
             n = self.filletComp.surfPtsOrig.shape[0]
             indices = np.linspace(0, n - 1, n, dtype=int)
             self.indices = indices
             self.firstUpdate = False
+            
         else:
             # fillet points on boundaries need updated based on the points embedded in the neighbor FFDs
             if comp is not None:
@@ -4082,3 +4083,12 @@ class FilletIntersection(Intersection):
         self.compA.updateSurfPts()
         self.compB.updateSurfPts()
         self.DVGeo.update(self.filletComp.surfPtsName)
+
+    def _updateRotation(self):
+        comps = [self.compA, self.compB]
+
+        for comp in comps:
+            vOrig = comp.vectorOrig
+            v = comp.curvePts - comp.secondCurvePts
+
+            comp.vector = v
