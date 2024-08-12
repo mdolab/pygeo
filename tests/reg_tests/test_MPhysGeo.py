@@ -161,7 +161,7 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         assert_check_totals(totals)
 
     def test_deriv_rev(self):
-        self.prob.setup(mode="fwd")
+        self.prob.setup(mode="rev")
         self.prob.run_model()
 
         totals = self.prob.check_totals(step=1e-7, out_stream=None)
