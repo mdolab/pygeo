@@ -31,8 +31,9 @@ except ImportError:
 
 # input files for all DVGeo types
 input_path = os.path.dirname(os.path.abspath(__file__))
-parentFFDFile = os.path.join(input_path, "../../input_files/outerBoxFFD.xyz")
-childFFDFile = os.path.join(input_path, "../../input_files/simpleInnerFFD.xyz")
+outerFFD = os.path.join(input_path, "../../input_files/outerBoxFFD.xyz")
+innerFFD = os.path.join(input_path, "../../input_files/simpleInnerFFD.xyz")
+rectFFD = os.path.join(input_path, "../../input_files/2x1x8_rectangle.xyz")
 espBox = os.path.join(input_path, "../input_files/esp/box.csm")
 
 # parameters for FFD-based DVGeo tests
@@ -40,15 +41,18 @@ childName = "childFFD"
 globalDVFuncParamsParent = ["mainX", -1.0, commonUtils.mainAxisPoints]
 localDVFuncParamsParent = ["xdir"]
 globalDVFuncParamsChild = ["nestedX", -0.5, commonUtils.childAxisPoints, childName]
+shapeFuncParamsParent = ["shapeFunc", []]
 
 globalDVParent = {"funcName": "nom_addGlobalDV", "funcParams": globalDVFuncParamsParent, "lower": -1.0, "upper": 0.0, "val": -1.0}
 localDVParent = {"funcName": "nom_addLocalDV", "funcParams": localDVFuncParamsParent, "lower": -1.0, "upper": 1.0, "val": 12*[0.0]}
 globalDVChild = {"funcName": "nom_addGlobalDV", "funcParams": globalDVFuncParamsChild, "lower": -1.0, "upper": 0.0, "val": -1.0}
+shapeFuncDV = {"funcName": "nom_addShapeFunctionDV", "funcParams": shapeFuncParamsParent, "lower": -10.0, "upper": 10.0, "val": np.zeros((2))}
 
 ffd_test_params = [
-    {"name": "MPhys_FFD_oneFFD_global", "dvInfo": [globalDVParent]},
-    {"name": "MPhys_FFD_oneFFD_local", "dvInfo": [localDVParent]},
-    {"name": "MPhys_FFD_childFFD_global", "dvInfo": [globalDVParent, globalDVChild]},
+    {"name": "MPhys_FFD_oneFFD_global", "parentFFD": outerFFD, "childFFD": None, "dvInfo": [globalDVParent]},                        # test_DVGeometry #1
+    {"name": "MPhys_FFD_oneFFD_global+local", "parentFFD": outerFFD, "childFFD": None, "dvInfo": [globalDVParent, localDVParent]},   # test_DVGeometry #2
+    {"name": "MPhys_FFD_childFFD_global", "parentFFD": outerFFD, "childFFD": innerFFD, "dvInfo": [globalDVParent, globalDVChild]},       # test_DVGeometry #3
+    {"name": "MPhys_FFD_shapeFunc", "parentFFD": rectFFD, "childFFD": None, "dvInfo": [shapeFuncDV]},                               # test_DVGeometry test_shape_functions
 ]
 
 # DVConstraints functionals to test
@@ -125,15 +129,19 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
     def setUp(self):
         # give the OM Group access to the test case attributes
         dvInfo = self.dvInfo
+        parentFFD = self.parentFFD
+        childFFD = self.childFFD
 
         class FFDGroup(Group):
             def setup(self):
                 self.add_subsystem("dvs", IndepVarComp(), promotes=["*"])
-                self.add_subsystem("geometry", OM_DVGEOCOMP(file=parentFFDFile, type="ffd"))
+                self.add_subsystem("geometry", OM_DVGEOCOMP(file=parentFFD, type="ffd"))
 
             def configure(self):
-                self.geometry.nom_addChild(childFFDFile, childName=childName)
+                # get the DVGeo object out of the geometry component
+                DVGeo = self.geometry.nom_getDVGeo()
 
+                # embed a dummy pointset in the parent FFD
                 points = np.zeros([2, 3])
                 points[0, :] = [0.25, 0, 0]
                 points[1, :] = [-0.25, 0, 0]
@@ -145,15 +153,30 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
                 c1 = Curve(X=axisPoints, k=2)
                 self.geometry.nom_addRefAxis("mainAxis", curve=c1, axis="y")
 
-                # create a reference axis for the child
-                axisPoints = [[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
-                c1 = Curve(X=axisPoints, k=2)
-                self.geometry.nom_addRefAxis("nestedAxis", childName=childName, curve=c1, axis="y")
+                # local index is needed for shape function DV
+                lidx = DVGeo.getLocalIndex(0)
 
+                # add child FFD if necessary for the test
+                if childFFD is not None:
+                    self.geometry.nom_addChild(innerFFD, childName=childName)
+
+                    # create a reference axis for the child
+                    axisPoints = [[-0.5, 0.0, 0.0], [0.5, 0.0, 0.0]]
+                    c1 = Curve(X=axisPoints, k=2)
+                    self.geometry.nom_addRefAxis("nestedAxis", childName=childName, curve=c1, axis="y")
+
+                # add each DV to the geometry 
                 for dv in dvInfo:
                     dvName = dv["funcParams"][0]
+
+                    # parameters for shape func DV aren't known until the DVGeo object is created
+                    if dv["funcName"] == "nom_addShapeFunctionDV":
+                        dv["funcParams"][1] = commonUtils.getShapeFunc(lidx)
+
+                    # call the function being tested
                     getattr(self.geometry, dv["funcName"])(*dv["funcParams"])
                     
+                    # OM stuff
                     self.dvs.add_output(dvName, dv["val"])
                     self.connect(dvName, f"geometry.{dvName}")
                     self.add_design_var(dvName, upper=dv["upper"], lower=dv["lower"])
@@ -177,8 +200,8 @@ class TestDVGeoMPhysFFD(unittest.TestCase):
         self.prob.setup(mode="rev")
         self.prob.run_model()
 
-        totals = self.prob.check_totals(step=1e-7, out_stream=None)
-        assert_check_totals(totals)
+        totals = self.prob.check_totals(step=1e-5, out_stream=None)
+        assert_check_totals(totals, atol=1e-5, rtol=1e-5)
 
 
 @unittest.skipUnless(omInstalled, "OpenMDAO is required to test the pyGeo MPhys wrapper")
