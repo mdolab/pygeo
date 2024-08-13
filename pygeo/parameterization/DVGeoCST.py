@@ -254,12 +254,10 @@ class DVGeometryCST(BaseDVGeometry):
                 else:
                     yTE = self.yLowerTE
 
-                # Subtract the linear TE thickness function
-                yMinusTE = yPts - yTE * xPts
-
                 self.defaultDV[dvType] = self.computeCSTfromCoords(
                     xPts,
-                    yMinusTE,
+                    yPts,
+                    yTE,
                     self.defaultDV[dvType].size,
                     N1=self.defaultDV[f"n1_{dvType}"],
                     N2=self.defaultDV[f"n2_{dvType}"],
@@ -268,11 +266,11 @@ class DVGeometryCST(BaseDVGeometry):
 
                 # Compute the quality of the fit by computing an L2 norm of the fit vs. the actual coordinates
                 ptsFit = chord * self.computeCSTCoordinates(
-                    xPts / chord,
+                    (xPts - self.xMin) / chord,
                     self.defaultDV["n1_lower"],
                     self.defaultDV["n2_lower"],
                     self.defaultDV[dvType],
-                    yTE,
+                    yTE / chord,
                     dtype=self.dtype,
                 )
                 L2norm = np.sqrt(1 / ptsFit.size * np.sum((yPts - ptsFit) ** 2))
@@ -1183,7 +1181,7 @@ class DVGeometryCST(BaseDVGeometry):
         return dydN2
 
     @staticmethod
-    def computeCSTfromCoords(xCoord, yCoord, nCST, N1=0.5, N2=1.0, dtype=float):
+    def computeCSTfromCoords(xCoord, yCoord, yTE, nCST, N1=0.5, N2=1.0, dtype=float):
         """
         Compute the CST coefficients that fit a set of airfoil
         coordinates (either for the upper or lower surface, not both).
@@ -1215,11 +1213,15 @@ class DVGeometryCST(BaseDVGeometry):
         # Normalize x and y
         chord = np.max(xCoord) - np.min(xCoord)
         xCoord = (xCoord - np.min(xCoord)) / chord
-        yCoord /= chord
+        yCoord = yCoord / chord
+        yTE = yTE / chord
+
+        # Subtract the linear TE thickness function
+        yMinusTE = yCoord - yTE * xCoord
 
         # Compute the coefficients via linear least squares
         dydw = DVGeometryCST.computeCSTdydw(xCoord, N1, N2, np.ones(nCST), dtype=dtype)
-        w = np.linalg.lstsq(dydw.T, yCoord, rcond=None)[0]
+        w = np.linalg.lstsq(dydw.T, yMinusTE, rcond=None)[0]
         return w
 
     @staticmethod
