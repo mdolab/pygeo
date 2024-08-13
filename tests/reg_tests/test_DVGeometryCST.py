@@ -131,17 +131,22 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         idxLE = np.argmin(coords[:, 0])
         idxUpper = np.arange(0, idxLE + self.LEUpper)
         idxLower = np.arange(idxLE + self.LEUpper, coords.shape[0])
-        yTE = coords[0, 1]
+        yUpperTE = coords[0, 1]
+        yLowerTE = coords[-1, 1]
         N1 = 0.5
         N2 = 1.0
 
         for nCST in range(2, 10):
             # Fit the CST parameters and then compute the coordinates
             # with those parameters and check that it's close
-            upperCST = DVGeometryCST.computeCSTfromCoords(coords[idxUpper, 0], coords[idxUpper, 1], nCST, N1=N1, N2=N2)
-            lowerCST = DVGeometryCST.computeCSTfromCoords(coords[idxLower, 0], coords[idxLower, 1], nCST, N1=N1, N2=N2)
-            fitCoordsUpper = DVGeometryCST.computeCSTCoordinates(coords[idxUpper, 0], N1, N2, upperCST, yTE)
-            fitCoordsLower = DVGeometryCST.computeCSTCoordinates(coords[idxLower, 0], N1, N2, lowerCST, -yTE)
+            upperCST = DVGeometryCST.computeCSTfromCoords(
+                coords[idxUpper, 0], coords[idxUpper, 1], yUpperTE, nCST, N1=N1, N2=N2
+            )
+            lowerCST = DVGeometryCST.computeCSTfromCoords(
+                coords[idxLower, 0], coords[idxLower, 1], yLowerTE, nCST, N1=N1, N2=N2
+            )
+            fitCoordsUpper = DVGeometryCST.computeCSTCoordinates(coords[idxUpper, 0], N1, N2, upperCST, yUpperTE)
+            fitCoordsLower = DVGeometryCST.computeCSTCoordinates(coords[idxLower, 0], N1, N2, lowerCST, yLowerTE)
 
             # Loosen the tolerances for the challenging e63 airfoil
             if self.fName == "e63.dat":
