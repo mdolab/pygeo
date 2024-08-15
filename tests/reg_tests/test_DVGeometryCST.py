@@ -136,6 +136,13 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         N1 = 0.5
         N2 = 1.0
 
+        # Normalize the x-coordinates
+        xMin = np.min(coords[:, 0])
+        xMax = np.max(coords[:, 0])
+        chord = xMax - xMin
+        xScaledUpper = (coords[idxUpper, 0] - xMin) / chord
+        xScaledLower = (coords[idxLower, 0] - xMin) / chord
+
         for nCST in range(2, 10):
             # Fit the CST parameters and then compute the coordinates
             # with those parameters and check that it's close
@@ -145,17 +152,21 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
             lowerCST = DVGeometryCST.computeCSTfromCoords(
                 coords[idxLower, 0], coords[idxLower, 1], yLowerTE, nCST, N1=N1, N2=N2
             )
-            fitCoordsUpper = DVGeometryCST.computeCSTCoordinates(coords[idxUpper, 0], N1, N2, upperCST, yUpperTE)
-            fitCoordsLower = DVGeometryCST.computeCSTCoordinates(coords[idxLower, 0], N1, N2, lowerCST, yLowerTE)
+            fitCoordsUpper = (
+                DVGeometryCST.computeCSTCoordinates(xScaledUpper, N1, N2, upperCST, yUpperTE / chord) * chord
+            )
+            fitCoordsLower = (
+                DVGeometryCST.computeCSTCoordinates(xScaledLower, N1, N2, lowerCST, yLowerTE / chord) * chord
+            )
 
             # Loosen the tolerances for the challenging e63 airfoil
             if self.fName == "e63.dat":
                 if nCST < 4:
-                    atol = 1e-1
-                    rtol = 1.0
+                    atol = 5e-3
+                    rtol = 1e-1
                 else:
-                    atol = 1e-2
-                    rtol = 6e-1
+                    atol = 2e-3
+                    rtol = 1e-1
             else:
                 atol = 1e-3
                 rtol = 1e-1

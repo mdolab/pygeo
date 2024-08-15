@@ -991,7 +991,8 @@ class DVGeometryCST(BaseDVGeometry):
         """
         Compute the vertical coordinates of a CST curve.
 
-        This function assumes x has been normalized to the range [0,1].
+        This function assumes x has been normalized to the range [0,1]
+        and that yte has been normalized by the chord.
 
         Parameters
         ----------
