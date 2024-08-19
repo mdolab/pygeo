@@ -112,6 +112,9 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 if ptName in self.omPtSetList:
                     # update this pointset and write it as output
                     outputs[ptName] = DVGeo.update(ptName).flatten()
+            
+            file_name = os.path.join(self.options['output_dir'], f"vsp_dvs_{self.call_counter}.des")            
+            DVGeo.createDesignFile(file_name)
 
         # compute the DVCon constraint values
         constraintfunc = dict()
@@ -978,3 +981,4 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                     # in multiple objective seeds with totalSensitivity. we can remove the [0]
                                     # once we move back to totalSensitivityTransProd
                                     d_inputs[k] += xdotg[k][0]
+                                    

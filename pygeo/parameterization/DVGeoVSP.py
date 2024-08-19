@@ -728,7 +728,7 @@ class DVGeometryVSP(DVGeoSketch):
         f.write("%d\n" % len(self.DVs))
         for dvName in self.DVs:
             DV = self.DVs[dvName]
-            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}:{float(DV.value):20.15g}\n")
+            f.write(f"{DV.parmID}:{DV.component}:{DV.group}:{DV.parm}: {float(DV.value):20.15g}\n")
         f.close()
 
     def writePlot3D(self, fileName, exportSet=0):
