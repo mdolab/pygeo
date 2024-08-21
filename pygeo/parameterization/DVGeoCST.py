@@ -74,9 +74,6 @@ class DVGeometryCST(BaseDVGeometry):
         Index of the column in the point set to use as the chordwise (x in CST) coordinates, by default 0
     idxVertical : int, optional
         Index of the column in the point set to use as the vertical (y in CST) airfoil coordinates, by default 1
-    idxFoil : dict, optional
-        Dictionary with keys ``"upper"`` and ``"lower"`` specifying the coordinate indices (rows of the dat file)
-        that correspond to the upper and lower surfaces. If None, these indices are determined using a spline fit.
     comm : MPI communicator, optional
         Communicator for DVGeometryCST instance, by default MPI.COMM_WORLD
     isComplex : bool, optional
@@ -97,7 +94,6 @@ class DVGeometryCST(BaseDVGeometry):
         numCST=8,
         idxChord=0,
         idxVertical=1,
-        idxFoil=None,
         comm=MPI.COMM_WORLD,
         isComplex=False,
         debug=False,
@@ -111,7 +107,6 @@ class DVGeometryCST(BaseDVGeometry):
         super().__init__(datFile, name=name)
         self.xIdx = idxChord
         self.yIdx = idxVertical
-        self.idxFoil = idxFoil
         self.comm = comm
         self.isComplex = isComplex
         if isComplex:
@@ -169,21 +164,34 @@ class DVGeometryCST(BaseDVGeometry):
         self.foilCoords[:, self.xIdx] = coords[:, 0]
         self.foilCoords[:, self.yIdx] = coords[:, 1]
 
-        # Set the leading and trailing edge x coordinates
-        self.xMin = np.min(self.foilCoords[:, self.xIdx])
-        self.xMax = np.max(self.foilCoords[:, self.xIdx])
-
-        # Check that the leading edge is at y = 0
-        idxLE = np.argmin(self.foilCoords[:, self.xIdx])
-        yLE = self.foilCoords[idxLE, self.yIdx]
-        if abs(yLE) > 1e-2:
-            raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {yLE}")
-
         # Determine if the dat file is closed (first and last points are the same); remove the duplicate point if so
         distance = np.linalg.norm(self.foilCoords[0, :] - self.foilCoords[-1, :])
         distTol = 1e-12
         if distance < distTol:
             self.foilCoords = self.foilCoords[:-1, :]
+
+        # Flip the y-coordinates to counter-clockwise if they are clockwise
+        if self.foilCoords[0, self.yIdx] < self.foilCoords[-1, self.yIdx]:
+            self.foilCoords = np.flip(self.foilCoords, self.yIdx)
+
+        # Set the leading and trailing edge x coordinates
+        self.xMin = np.min(self.foilCoords[:, self.xIdx])
+        self.xMax = np.max(self.foilCoords[:, self.xIdx])
+
+        # The airfoil file can have one or two points at the minimum x-coordinate
+        idxLE = np.where(self.foilCoords[:, self.xIdx] == self.xMin)[0]
+        if len(idxLE) > 2:
+            raise ValueError(f"There can only be one or two points at the minimum x-coordinate, not {len(idxLE)}")
+
+        # Check that the leading edge is at y = 0
+        for idx in idxLE:
+            yLE = self.foilCoords[idx, self.yIdx]
+            if abs(yLE) > 1e-2:
+                raise ValueError(f"Leading edge y (or idxVertical) value must equal zero, not {yLE}")
+
+        # If there is one leading edge point, add a duplicate index to make setting idxFoil easier
+        if len(idxLE) == 1:
+            idxLE = np.repeat(idxLE, 2)
 
         # Traverse the airfoil surface to find the corner(s) defining the trailing edge (ignore anything in the front
         # half, chordwise, of the airfoil)
@@ -216,20 +224,25 @@ class DVGeometryCST(BaseDVGeometry):
         # Airfoil is sharp if only one corner is detected
         self.sharp = len(cornerIdx) == 1
 
-        # Save the upper and lower trailing edge coordinates if it is not sharp
+        # Save the trailing edge coordinates and surface indices
+        self.idxFoil = {}
         if self.sharp:
             self.yUpperTE = np.array([0.0])
             self.yLowerTE = np.array([0.0])
+
+            self.idxFoil["upper"] = np.arange(cornerIdx[0], idxLE[0] + 1)
+            self.idxFoil["lower"] = np.concatenate(
+                (np.arange(idxLE[1], self.foilCoords.shape[0]), np.array([cornerIdx[0]]))
+            )
         else:
-            if self.foilCoords[cornerIdx[0], self.yIdx] > self.foilCoords[cornerIdx[1], self.yIdx]:
-                self.coordUpperTE = self.foilCoords[cornerIdx[0]]
-                self.coordLowerTE = self.foilCoords[cornerIdx[1]]
-            else:
-                self.coordUpperTE = self.foilCoords[cornerIdx[1]]
-                self.coordLowerTE = self.foilCoords[cornerIdx[0]]
+            self.coordUpperTE = self.foilCoords[cornerIdx[0]]
+            self.coordLowerTE = self.foilCoords[cornerIdx[1]]
 
             self.yUpperTE = self.coordUpperTE[self.yIdx]
             self.yLowerTE = self.coordLowerTE[self.yIdx]
+
+            self.idxFoil["upper"] = np.arange(cornerIdx[0], idxLE[0] + 1)
+            self.idxFoil["lower"] = np.arange(idxLE[1], cornerIdx[1] + 1)
 
         # Compute splines for the upper and lower surfaces (used to split the foil in addPointSet).
         # preFoil defines the leading edge as the point furthest from the trailing edge
@@ -237,9 +250,6 @@ class DVGeometryCST(BaseDVGeometry):
         self.upperSpline, self.lowerSpline = self.foil.splitAirfoil()
 
         # Fit CST parameters to the airfoil's upper and lower surface
-        if self.idxFoil is None:
-            self.idxFoil = {}
-            self.idxFoil["upper"], self.idxFoil["lower"] = self._splitUpperLower(self.foilCoords)
         chord = self.xMax - self.xMin
         self.defaultDV["chord"][0] = chord
         if self.comm.rank == 0:
