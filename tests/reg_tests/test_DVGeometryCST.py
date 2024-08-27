@@ -9,6 +9,7 @@ import os
 import unittest
 
 # External modules
+from baseclasses import BaseRegTest
 from mpi4py import MPI
 import numpy as np
 from parameterized import parameterized_class
@@ -31,6 +32,16 @@ airfoils = [
     {"fName": "naca2412.dat", "LEUpper": False},
     {"fName": "naca0012.dat", "LEUpper": True},
     {"fName": "e63.dat", "LEUpper": False},
+]
+
+airfoils_cst_reg = [
+    {"name": "naca2412"},
+    {"name": "naca0012"},
+    {"name": "naca0012_closed"},
+    {"name": "naca0012_clockwise"},
+    {"name": "naca0012_sharp"},
+    {"name": "naca0012_zeroLE"},
+    {"name": "e63"},
 ]
 
 # Parameterization of design variables
@@ -175,6 +186,40 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
 
             np.testing.assert_allclose(fitCoordsUpper, coords[idxUpper, 1], atol=atol, rtol=rtol)
             np.testing.assert_allclose(fitCoordsLower, coords[idxLower, 1], atol=atol, rtol=rtol)
+
+
+@parameterized_class(airfoils_cst_reg)
+class DVGeometryCSTFitRegTest(unittest.TestCase):
+    N_PROCS = 1
+
+    def train_cst_fit(self):
+        self.test_cst_fit(train=True)
+
+    def test_cst_fit(self, train=False):
+        datFile = os.path.join(inputDir, f"{self.name}.dat")
+        DVGeo = DVGeometryCST(datFile, numCST=8)
+
+        upperCST = DVGeo.defaultDV["upper"]
+        lowerCST = DVGeo.defaultDV["lower"]
+
+        if self.name in ["naca0012_closed", "naca0012_clockwise"]:
+            # The closed and clockwise versions of naca0012.dat should have the same CST coefficients
+            # as the original, so use the same ref file
+            refName = "naca0012"
+        else:
+            refName = self.name
+
+        refFile = os.path.join(baseDir, "ref", f"test_DVGeometryCST_{refName}.ref")
+        tol = 1e-12
+        with BaseRegTest(refFile, train=train) as handler:
+            # Regression test the upper surface CST coefficients
+            handler.root_add_val("upperCST", upperCST, tol=tol)
+            if "naca0012" in self.name:
+                # Test that the coefficients are symmetric for symmetric airfoils
+                np.testing.assert_allclose(upperCST, -lowerCST, rtol=tol)
+            else:
+                # Regression test the lower surface CST coefficients for asymmetric airfoils
+                handler.root_add_val("lowerCST", lowerCST, tol=tol)
 
 
 @unittest.skipUnless(prefoilImported, "preFoil is required for DVGeometryCST")
