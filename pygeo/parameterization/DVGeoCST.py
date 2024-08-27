@@ -172,7 +172,7 @@ class DVGeometryCST(BaseDVGeometry):
 
         # Flip the y-coordinates to counter-clockwise if they are clockwise
         if self.foilCoords[0, self.yIdx] < self.foilCoords[-1, self.yIdx]:
-            self.foilCoords = np.flip(self.foilCoords, self.yIdx)
+            self.foilCoords = np.flip(self.foilCoords, self.xIdx)
 
         # Set the leading and trailing edge x coordinates
         self.xMin = np.min(self.foilCoords[:, self.xIdx])
