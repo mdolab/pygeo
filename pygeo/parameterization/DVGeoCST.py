@@ -170,8 +170,14 @@ class DVGeometryCST(BaseDVGeometry):
         if distance < distTol:
             self.foilCoords = self.foilCoords[:-1, :]
 
-        # Flip the y-coordinates to counter-clockwise if they are clockwise
-        if self.foilCoords[0, self.yIdx] < self.foilCoords[-1, self.yIdx]:
+        # Check if the coordinates are clockwise or counter-clockwise by taking the cross-product of
+        # vectors from adjacent points at the trailing edge
+        vec1 = np.append(self.foilCoords[0] - self.foilCoords[-1], 0)
+        vec2 = np.append(self.foilCoords[1] - self.foilCoords[0], 0)
+        crossProduct = np.cross(vec1, vec2)
+
+        # Flip the y-coordinates to counter-clockwise if they are clockwise (negative cross-product)
+        if crossProduct[2] < 0:
             self.foilCoords = np.flip(self.foilCoords, self.xIdx)
 
         # Set the leading and trailing edge x coordinates
