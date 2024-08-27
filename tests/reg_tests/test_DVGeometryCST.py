@@ -25,7 +25,7 @@ except ImportError:
     prefoilImported = False
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
-inputDir = os.path.join(baseDir, "../../input_files")
+inputDir = os.path.join(baseDir, "..", "..", "input_files")
 
 # LEUpper is true if the leading edge (minimum x) point is considered to be on the upper surface
 airfoils = [
