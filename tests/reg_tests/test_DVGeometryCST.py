@@ -159,12 +159,8 @@ class DVGeometryCSTUnitTest(unittest.TestCase):
         for nCST in range(2, 10):
             # Fit the CST parameters and then compute the coordinates
             # with those parameters and check that it's close
-            upperCST = DVGeometryCST.computeCSTfromCoords(
-                coords[idxUpper, 0], coords[idxUpper, 1], yUpperTE, nCST, N1=N1, N2=N2
-            )
-            lowerCST = DVGeometryCST.computeCSTfromCoords(
-                coords[idxLower, 0], coords[idxLower, 1], yLowerTE, nCST, N1=N1, N2=N2
-            )
+            upperCST = DVGeometryCST.computeCSTfromCoords(coords[idxUpper, 0], coords[idxUpper, 1], nCST, N1=N1, N2=N2)
+            lowerCST = DVGeometryCST.computeCSTfromCoords(coords[idxLower, 0], coords[idxLower, 1], nCST, N1=N1, N2=N2)
             fitCoordsUpper = (
                 DVGeometryCST.computeCSTCoordinates(xScaledUpper, N1, N2, upperCST, yUpperTE / chord) * chord
             )

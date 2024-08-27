@@ -267,7 +267,6 @@ class DVGeometryCST(BaseDVGeometry):
                 self.defaultDV[dvType] = self.computeCSTfromCoords(
                     xPts,
                     yPts,
-                    yTE,
                     self.defaultDV[dvType].size,
                     N1=self.defaultDV[f"n1_{dvType}"],
                     N2=self.defaultDV[f"n2_{dvType}"],
@@ -1192,7 +1191,7 @@ class DVGeometryCST(BaseDVGeometry):
         return dydN2
 
     @staticmethod
-    def computeCSTfromCoords(xCoord, yCoord, yTE, nCST, N1=0.5, N2=1.0, dtype=float):
+    def computeCSTfromCoords(xCoord, yCoord, nCST, N1=0.5, N2=1.0, dtype=float):
         """
         Compute the CST coefficients that fit a set of airfoil
         coordinates (either for the upper or lower surface, not both).
@@ -1225,7 +1224,10 @@ class DVGeometryCST(BaseDVGeometry):
         chord = np.max(xCoord) - np.min(xCoord)
         xCoord = (xCoord - np.min(xCoord)) / chord
         yCoord = yCoord / chord
-        yTE = yTE / chord
+
+        # Find the y-coordinate at the trailing edge
+        idxTE = np.argmax(xCoord)
+        yTE = yCoord[idxTE]
 
         # Subtract the linear TE thickness function
         yMinusTE = yCoord - yTE * xCoord
