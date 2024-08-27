@@ -1236,7 +1236,7 @@ class DVGeometryCST(BaseDVGeometry):
         return w
 
     @staticmethod
-    def plotCST(upperCoeff, lowerCoeff, yUpperTE, yLowerTE, N1=0.5, N2=1.0, nPts=100, ax=None, **kwargs):
+    def plotCST(upperCoeff, lowerCoeff, yUpperTE=0.0, yLowerTE=0.0, N1=0.5, N2=1.0, nPts=100, ax=None, **kwargs):
         """Simple utility to generate a plot from CST coefficients.
 
         Parameters
@@ -1245,13 +1245,13 @@ class DVGeometryCST(BaseDVGeometry):
             One dimensional array of CST coefficients for the upper surface.
         lowerCoeff : ndarray
             One dimensional array of CST coefficients for the lower surface.
-        yUpperTE : float
+        yUpperTE : float, optional
             y-coordinate for the upper surface trailing edge point.
-        yLowerTE : float
+        yLowerTE : float, optional
             y-coordinate for the lower surface trailing edge point.
-        N1 : float
+        N1 : float, optional
             First class shape parameter.
-        N2 : float
+        N2 : float, optional
             Second class shape parameter.
         nPts : int, optional
             Number of coordinates to compute on each surface.
