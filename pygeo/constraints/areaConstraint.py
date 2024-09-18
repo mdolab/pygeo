@@ -528,42 +528,42 @@ class ProjectedAreaConstraint(GeometricConstraint):
             dAdp1 = np.zeros((self.nCon, self.p1.shape[0], self.p1.shape[1]))
 
             dAdp2 = np.zeros((self.nCon, self.p2.shape[0], self.p2.shape[1]))
-        p0 = self.p0
-        p1 = self.p1
-        p2 = self.p2
-        for con in range(self.nCon):
-            p0b = dAdp0[con, :, :]
-            p1b = dAdp1[con, :, :]
-            p2b = dAdp2[con, :, :]
-            areab = 1
-            areasb = np.empty(self.n)
-            if self.scaled:
-                areab = areab / self.X0
-            areasb[:] = areab / 2.0
-
-            for i in range(self.n):
-                v1 = p1[i, :] - p0[i, :]
-                v2 = p2[i, :] - p0[i, :]
-                SAvec = np.cross(v1, v2)
-                PA = np.dot(SAvec, self.axis)
-                if PA > 0:
-                    PAb = areasb[i]
-                else:
-                    PAb = 0.0
-                SAvecb, _ = geo_utils.dot_b(SAvec, self.axis, PAb)
-                v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
-                p2b[i, :] = p2b[i, :] + v2b
-                p1b[i, :] = p1b[i, :] + v1b
-                p0b[i, :] = p0b[i, :] - v1b - v2b
-
-        tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name + "p0", config=config)
-        tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name + "p1", config=config)
-        tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name + "p2", config=config)
-        tmpTotal = {}
-        for key in tmpp0:
-            tmpTotal[key] = tmpp0[key] + tmpp1[key] + tmpp2[key]
-
-        funcsSens[self.name] = tmpTotal
+            p0 = self.p0
+            p1 = self.p1
+            p2 = self.p2
+            for con in range(self.nCon):
+                p0b = dAdp0[con, :, :]
+                p1b = dAdp1[con, :, :]
+                p2b = dAdp2[con, :, :]
+                areab = 1
+                areasb = np.empty(self.n)
+                if self.scaled:
+                    areab = areab / self.X0
+                areasb[:] = areab / 2.0
+    
+                for i in range(self.n):
+                    v1 = p1[i, :] - p0[i, :]
+                    v2 = p2[i, :] - p0[i, :]
+                    SAvec = np.cross(v1, v2)
+                    PA = np.dot(SAvec, self.axis)
+                    if PA > 0:
+                        PAb = areasb[i]
+                    else:
+                        PAb = 0.0
+                    SAvecb, _ = geo_utils.dot_b(SAvec, self.axis, PAb)
+                    v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
+                    p2b[i, :] = p2b[i, :] + v2b
+                    p1b[i, :] = p1b[i, :] + v1b
+                    p0b[i, :] = p0b[i, :] - v1b - v2b
+    
+            tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name + "p0", config=config)
+            tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name + "p1", config=config)
+            tmpp2 = self.DVGeo.totalSensitivity(dAdp2, self.name + "p2", config=config)
+            tmpTotal = {}
+            for key in tmpp0:
+                tmpTotal[key] = tmpp0[key] + tmpp1[key] + tmpp2[key]
+    
+            funcsSens[self.name] = tmpTotal
 
     def _computeProjectedAreaTri(self, p0, p1, p2, axis, plot=False):
         """
