@@ -966,18 +966,21 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
         ni = len(list(d_inputs.keys()))
         no = len(list(d_outputs.keys()))
 
+        do_fwd = mode == "fwd" and no > 0
+        do_rev = mode == "rev" and ni > 0
+
+        if (do_fwd or do_rev) and self.update_jac:
+            self.constraintfuncsens = dict()
+            self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
+            # set the flag to False so we dont run the update again if this is called w/o a compute in between
+            self.update_jac = False
+
         # this flag will be set to True after every compute call.
         # if it is true, we assume the design has changed so we re-run the sensitivity update
         # there can be hundreds of calls to this routine due to thickness constraints,
         # as a result, we only run the actual sensitivity comp once and save the jacobians
         # this might be better suited with the matrix-based API
-        if mode == "rev" and ni > 0:
-            if self.update_jac:
-                self.constraintfuncsens = dict()
-                self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
-                # set the flag to False so we dont run the update again if this is called w/o a compute in between
-                self.update_jac = False
-
+        if do_rev:
             for constraintname in self.constraintfuncsens:
                 for dvname in self.constraintfuncsens[constraintname]:
                     if dvname in d_inputs:
@@ -1030,16 +1033,10 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                                     # once we move back to totalSensitivityTransProd
                                     d_inputs[k] += xdotg[k][0]
 
-        elif mode == "fwd" and no > 0:
-            if self.update_jac:
-                self.constraintfuncsens = dict()
-                self.DVCon.evalFunctionsSens(self.constraintfuncsens, includeLinear=True)
-                # set the flag to False so we dont run the update again if this is called w/o a compute in between
-                self.update_jac = False
-
+        elif do_fwd:
             for constraintname in self.constraintfuncsens:
                 for dvname in self.constraintfuncsens[constraintname]:
-                    if outname in d_outputs:
+                    if constraintname in d_outputs:
                         dcdx = self.constraintfuncsens[constraintname][dvname]
                         din = d_inputs[dvname]
                         jvmp = np.dot(dcdx, din)
@@ -1055,14 +1052,14 @@ class OM_DVGEOCOMP(om.ExplicitComponent):
                 else:
                     ptSetNames = DVGeo.ptSetNames
 
-            for ptSetName in ptSetNames:
-                if ptSetName in self.omPtSetList:
-                    all_zeros = True
-                    for input_name in d_inputs:
-                        if np.any(d_inputs[input_name] != 0):
-                            all_zeros = False
-                            break
+                for ptSetName in ptSetNames:
+                    if ptSetName in self.omPtSetList:
+                        all_zeros = True
+                        for input_name in d_inputs:
+                            if np.any(d_inputs[input_name] != 0):
+                                all_zeros = False
+                                break
 
-                    if not all_zeros:
-                        dout = DVGeo.totalSensitivityProd(d_inputs, ptSetName)
-                        d_outputs[ptSetName] += dout.flatten()
+                        if not all_zeros:
+                            dout = DVGeo.totalSensitivityProd(d_inputs, ptSetName)
+                            d_outputs[ptSetName] += dout.flatten()
