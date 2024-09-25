@@ -118,6 +118,7 @@ class DVGeometryESP(DVGeoSketch):
         exclude_edge_projections=False,
         ulimits=None,
         vlimits=None,
+        name=None,
     ):
         if not ocsmImported:
             raise ImportError("OCSM and pyOCSM must be installed to use DVGeometryESP.")
@@ -125,7 +126,7 @@ class DVGeometryESP(DVGeoSketch):
             print("Initializing DVGeometryESP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         self.maxproc = maxproc
         self.esp = True
@@ -655,7 +656,7 @@ class DVGeometryESP(DVGeoSketch):
             modelCopy = self.espModel.Copy()
             n_branches, _, _ = modelCopy.Info()
             modelCopy.NewBrch(
-                n_branches, modelCopy.GetCode("dump"), "<none>", 0, filename, "0", "0", "", "", "", "", "", ""
+                n_branches, modelCopy.GetCode("dump"), "<none>", 0, filename, "0", "0", "0", "", "", "", "", ""
             )
             modelCopy.Build(0, 0)
 

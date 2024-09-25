@@ -30,22 +30,6 @@ except ImportError:
         vspInstalled = False
 
 
-vspOutOfDate = False
-if vspInstalled:
-    vspVersionStr = openvsp.GetVSPVersion()
-    words = vspVersionStr.split()
-    vspVersion = words[-1]
-    # VSP is installed, but version too old
-    if Version(vspVersion) < Version("3.28.0"):
-        vspOutOfDate = True
-    # Prior to OpenVSP 3.33.0, the "s" parameter varried between [0, 0.5]
-    elif Version(vspVersion) < Version("3.33.0"):
-        SMAX = 0.5
-    # After this version, the range was changed to [0, 1.0].
-    else:  # Version(vsp_version) >= Version("3.33.0")
-        SMAX = 1.0
-
-
 class DVGeometryVSP(DVGeoSketch):
     """
     A class for manipulating OpenVSP geometry.
@@ -89,7 +73,22 @@ class DVGeometryVSP(DVGeoSketch):
 
     """
 
-    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01):
+    def __init__(self, fileName, comm=MPI.COMM_WORLD, scale=1.0, comps=[], projTol=0.01, name=None):
+        vspOutOfDate = False
+        if vspInstalled:
+            vspVersionStr = openvsp.GetVSPVersion()
+            words = vspVersionStr.split()
+            vspVersion = words[-1]
+            # VSP is installed, but version too old
+            if Version(vspVersion) < Version("3.28.0"):
+                vspOutOfDate = True
+            # Prior to OpenVSP 3.33.0, the "s" parameter varied between [0, 0.5]
+            elif Version(vspVersion) < Version("3.33.0"):
+                self.SMAX = 0.5
+            # After this version, the range was changed to [0, 1.0].
+            else:  # Version(vsp_version) >= Version("3.33.0")
+                self.SMAX = 1.0
+
         if not vspInstalled:
             raise ImportError(
                 "The OpenVSP Python API is required in order to use DVGeometryVSP. "
@@ -105,7 +104,7 @@ class DVGeometryVSP(DVGeoSketch):
             print("Initializing DVGeometryVSP")
             t0 = time.time()
 
-        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol)
+        super().__init__(fileName=fileName, comm=comm, scale=scale, projTol=projTol, name=name)
 
         if hasattr(openvsp, "VSPVehicle"):
             self.vspModel = openvsp.VSPVehicle()
@@ -283,10 +282,10 @@ class DVGeometryVSP(DVGeoSketch):
             rg = ug
             if vg < 0.5:
                 # This point is on the lower surface
-                sg = SMAX * 2.0 * vg
+                sg = self.SMAX * 2.0 * vg
             else:
                 # This point is on the upper surface
-                sg = SMAX * 2.0 * (1.0 - vg)
+                sg = self.SMAX * 2.0 * (1.0 - vg)
             # tg = 0.5 places the initial guess in the middle of the upper and lower surfaces for the volume
             # Note: If the point we're looking for actually lies on the surface openvsp's
             # projection algorithm (FindRSTGuess) will still quickly locate it, since our volume interpolation

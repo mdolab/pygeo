@@ -1091,11 +1091,11 @@ class RegTestPyGeo(unittest.TestCase):
 
         # Check that files were written
         self.assertTrue(os.path.isfile(axesPath + "_parent.dat"))
-        self.assertTrue(os.path.isfile(axesPath + "_child000.dat"))
+        self.assertTrue(os.path.isfile(axesPath + "_child0.dat"))
 
         # Delete axis files
         os.remove(axesPath + "_parent.dat")
-        os.remove(axesPath + "_child000.dat")
+        os.remove(axesPath + "_child0.dat")
 
     def train_ffdSplineOrder(self, train=True, refDeriv=True):
         self.test_ffdSplineOrder(train=train, refDeriv=refDeriv)
@@ -1213,6 +1213,66 @@ class RegTestPyGeo(unittest.TestCase):
 
         np.testing.assert_allclose(test_points, new_points, atol=1e-15)
 
+    def train_volume_bounds(self, train=True):
+        self.test_volume_bounds(train=train)
+
+    def test_volume_bounds(self, train=False):
+        refFile = os.path.join(self.base_path, "ref/test_vol_bounds.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test point embedding with volume bounds")
+
+            ffdfile = os.path.join(self.base_path, "../../input_files/outerBoxFFD.xyz")
+
+            volBounds = {
+                0: [[0.5, 1.0], [0.0, 0.5], [0.25, 0.75]],
+                1: [[0.0, 1.0], [0.0, 1.0], [0.0, 0.5]],
+            }
+
+            # initialize with custom volume bounds
+            DVGeo = DVGeometry(ffdfile, volBounds=volBounds)
+            DVGeo.addLocalDV("xdir", lower=-1.0, upper=1.0, axis="x", scale=1.0)
+
+            # get a few points inside and outside the bound for the boxes
+            uvw = [
+                np.array([0.75, 0.25, 0.4]),  # in both boxes
+                np.array([0.75, 0.25, 0.6]),  # in first box, outside second
+                np.array([0.25, 0.75, 0.25]),  # in first box, outside second
+            ]
+
+            # get the x-y-z coordinates of these points
+            pts0 = []
+            pts1 = []
+            for ii in range(len(uvw)):
+                pts0.append(DVGeo.FFD.vols[0](uvw[ii][0], uvw[ii][1], uvw[ii][2]))
+                pts1.append(DVGeo.FFD.vols[1](uvw[ii][0], uvw[ii][1], uvw[ii][2]))
+
+            # project these points back into the FFD
+            DVGeo.addPointSet(pts0, "pts0")
+            DVGeo.addPointSet(pts1, "pts1")
+
+            pts0_1 = DVGeo.update("pts0")
+            pts1_1 = DVGeo.update("pts1")
+
+            handler.root_add_val("pts0_1", pts0_1, rtol=1e-12, atol=1e-12)
+            handler.root_add_val("pts1_1", pts1_1, rtol=1e-12, atol=1e-12)
+
+            # change the bounds and do it again
+            volBounds = {
+                0: [[0.8, 1.0], [0.0, 0.5], [0.25, 0.75]],
+                1: [[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]],
+            }
+            DVGeo.setVolBounds(volBounds)
+
+            # project these points back into the FFD
+            DVGeo.addPointSet(pts0, "pts0_new")
+            DVGeo.addPointSet(pts1, "pts1_new")
+
+            pts0_2 = DVGeo.update("pts0_new")
+            pts1_2 = DVGeo.update("pts1_new")
+
+            handler.root_add_val("pts0_2", pts0_2, rtol=1e-12, atol=1e-12)
+            handler.root_add_val("pts1_2", pts1_2, rtol=1e-12, atol=1e-12)
+
     def test_coord_xfer(self):
         DVGeo, _ = commonUtils.setupDVGeo(self.base_path)
 
@@ -1321,6 +1381,152 @@ class RegTestPyGeo(unittest.TestCase):
             DVGeo._finalize()
 
             handler.root_add_val("links_x", DVGeo.links_x, rtol=1e-12, atol=1e-12)
+
+    def train_shape_functions(self, train=True, refDeriv=True):
+        self.test_shape_functions(train=train, refDeriv=refDeriv)
+
+    def test_shape_functions(self, train=False, refDeriv=False):
+        """
+        Shape function DV test
+        """
+
+        refFile = os.path.join(self.base_path, "ref/test_shape_function_dv.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test shape function DVs")
+
+            DVGeo = DVGeometry(os.path.join(self.base_path, "../../input_files/2x1x8_rectangle.xyz"))
+
+            # this array can be access as [i,j,k] that follows the FFD volume's topology, and returns the global
+
+            # coef indices, which is what we need to set the shape
+            lidx = DVGeo.getLocalIndex(0)
+
+            # create the dictionaries
+            shape_1 = {}
+            shape_2 = {}
+
+            k_center = 2
+            i_center = 1
+            n_chord = lidx.shape[0]
+
+            for kk in [-1, 0, 1]:
+                if kk == 0:
+                    k_weight = 1.0
+                else:
+                    k_weight = 0.5
+
+                for ii in range(n_chord):
+                    # compute the chord weight. we want the shape to peak at i_center
+                    if ii == i_center:
+                        i_weight = 1.0
+                    elif ii < i_center:
+                        # we are ahead of the center point
+                        i_weight = ii / i_center
+                    else:
+                        # we are behind the center point
+                        i_weight = (n_chord - ii - 1) / (n_chord - i_center - 1)
+
+                    # get the direction vectors with unit length
+                    dir_up = np.array([0.0, 1.0, 0.0])
+                    # dir down can also be defined as an upwards pointing vector. Then, the DV itself
+                    # getting a negative value means the surface would move down etc. For now, we define
+                    # the vector as its pointing down, so a positive DV value moves the surface down.
+                    dir_down = np.array([0.0, -1.0, 0.0])
+
+                    # scale them by the i and k weights
+                    dir_up *= k_weight * i_weight
+                    dir_down *= k_weight * i_weight
+
+                    # get this point's global index and add to the dictionary with the direction vector.
+                    gidx_up = lidx[ii, 1, kk + k_center]
+                    gidx_down = lidx[ii, 0, kk + k_center]
+
+                    shape_1[gidx_up] = dir_up
+                    # the lower face is perturbed with a separate dictionary
+                    shape_2[gidx_down] = dir_down
+
+            shapes = [shape_1, shape_2]
+            DVGeo.addShapeFunctionDV("shape_func", shapes)
+
+            # test derivatives
+            commonUtils.testSensitivities(DVGeo, refDeriv, handler, pointset=2)
+
+            # perturb the DV and test point coordinates
+            xDV = {"shape_func": np.array([0.5, 1.0])}
+            DVGeo.setDesignVars(xDV)
+
+            # testPoints were added in the commonUtils.testSensitivities call
+            new_pts = DVGeo.update("testPoints")
+
+            handler.root_add_val("new_pts", new_pts, rtol=1e-10, atol=1e-10)
+
+    def train_active_children(self, train=True):
+        self.test_active_children(train=train)
+
+    def test_active_children(self, train=False):
+        """
+        Test active children option for adding pointsets
+        """
+
+        refFile = os.path.join(self.base_path, "ref/test_active_children.ref")
+        with BaseRegTest(refFile, train=train) as handler:
+            handler.root_print("Test shape function DVs")
+
+            DVGeo, DVGeoChild1 = commonUtils.setupDVGeo(self.base_path, childName="child1")
+            _, DVGeoChild2 = commonUtils.setupDVGeo(self.base_path, childName="child2")
+
+            # add design variables
+            DVGeoChild1.addGlobalDV(
+                dvName="span1", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1, prependName=False
+            )
+            DVGeoChild2.addGlobalDV(dvName="span2", value=0.5, func=commonUtils.spanX, lower=0.1, upper=10, scale=1)
+            DVGeo.addChild(DVGeoChild1)
+            DVGeo.addChild(DVGeoChild2)
+
+            points = np.zeros([2, 3])
+            points[0, :] = [0.25, 0, 0]
+            points[1, :] = [-0.25, 0, 0]
+
+            # first, all children active
+            ptName = "testPointsAll"
+            DVGeo.addPointSet(points, ptName)
+
+            # only the first child
+            ptName = "testPoints1"
+            DVGeo.addPointSet(points, ptName, activeChildren=["child1"])
+
+            # only second
+            ptName = "testPoints2"
+            DVGeo.addPointSet(points, ptName, activeChildren=["child2"])
+
+            # no children
+            ptName = "testPointsNone"
+            DVGeo.addPointSet(points, ptName, activeChildren=[])
+
+            nPt = points.size
+            ptNames = ["testPointsAll", "testPoints1", "testPoints2", "testPointsNone"]
+            for ptName in ptNames:
+                # test derivatives
+                dIdPt = np.zeros([nPt, 2, 3])
+                dIdPt[0, 0, 0] = 1.0
+                dIdPt[1, 0, 1] = 1.0
+                dIdPt[2, 0, 2] = 1.0
+                dIdPt[3, 1, 0] = 1.0
+                dIdPt[4, 1, 1] = 1.0
+                dIdPt[5, 1, 2] = 1.0
+                dIdx = DVGeo.totalSensitivity(dIdPt, ptName)
+
+                handler.root_add_dict(f"dIdx_{ptName}", dIdx, rtol=1e-10, atol=1e-10)
+
+            # perturb the DV and test point coordinates
+            xDV = {"span1": np.array([2.0]), "child2_span2": np.array([3.0])}
+            DVGeo.setDesignVars(xDV)
+
+            for ptName in ptNames:
+                # testPoints were added in the commonUtils.testSensitivities call
+                new_pts = DVGeo.update(ptName)
+
+                handler.root_add_val(f"new_coords_{ptName}", new_pts, rtol=1e-10, atol=1e-10)
 
 
 if __name__ == "__main__":
