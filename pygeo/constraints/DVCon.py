@@ -1158,6 +1158,10 @@ class DVConstraints:
         r = np.linalg.norm(midPts - lePts, axis=1)
         for i in range(nSpan):
             if d[i] < 2 * r[i]:
+                print("d = ", d[i], "r = ", r[i])
+                print("midPts = ", midPts[i])
+                print("lePts = ", lePts[i])
+                
                 raise Error(
                     "Leading edge radius points are too far from the "
                     "leading edge point to form a circle between the "
@@ -3666,7 +3670,7 @@ class DVConstraints:
             # Project actual node:
             # we only take the up point
             up, _, fail = geo_utils.projectNode(anchored_pts[i], axis, p0, p1 - p0, p2 - p0)
-            if fail > 0:
+            if fail == 2:
                 raise Error(
                     "There was an error projecting a node "
                     "at (%f, %f, %f) with normal (%f, %f, %f)." % (anchored_pts[i, 0], anchored_pts[i, 1], anchored_pts[i, 2], axis[0], axis[1], axis[2])
