@@ -3668,14 +3668,20 @@ class DVConstraints:
         # Project all the points
         for i in range(nCon):
             # Project actual node:
-            # we only take the up point
-            up, _, fail = geo_utils.projectNode(anchored_pts[i], axis, p0, p1 - p0, p2 - p0)
-            if fail == 2:
+            pt1, pt2, flag = geo_utils.projectNode(anchored_pts[i], axis, p0, p1 - p0, p2 - p0)
+            
+            # we only take the closer point
+            if flag==0:
+                moving_pts[i] = pt2
+            elif flag == 1 or flag == -1:
+                moving_pts[i] = pt1
+            elif flag == 2:
                 raise Error(
-                    "There was an error projecting a node "
+                    "No solutions found when projecting node "
                     "at (%f, %f, %f) with normal (%f, %f, %f)." % (anchored_pts[i, 0], anchored_pts[i, 1], anchored_pts[i, 2], axis[0], axis[1], axis[2])
                 )
-            moving_pts[i] = up
+            else:
+                raise RuntimeError(f'fail flag "{flag}" from projectNode not recognized')
 
         typeName = "distCon"
         if typeName not in self.constraints:
