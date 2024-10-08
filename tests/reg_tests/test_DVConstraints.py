@@ -668,15 +668,25 @@ class RegTestPyGeo(unittest.TestCase):
             )
 
     def test_projectedArea(self, train=False, refDeriv=False):
+        np.random.seed(37)
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projectedArea.ref")
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
             DVCon.addProjectedAreaConstraint()
+            axis = np.random.rand(3)
+            DVCon.addProjectedAreaConstraint(axis=axis, scaled=True)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
             handler.assert_allclose(
                 funcs["DVCon1_projectedArea_constraints_0"],
+                np.ones(1),
+                name="projected_area_base",
+                rtol=1e-7,
+                atol=1e-7,
+            )
+            handler.assert_allclose(
+                funcs["DVCon1_projectedArea_constraints_1"],
                 np.ones(1),
                 name="projected_area_base",
                 rtol=1e-7,
@@ -687,7 +697,7 @@ class RegTestPyGeo(unittest.TestCase):
 
             funcs, funcsSens = self.wing_test_deformed(DVGeo, DVCon, handler)
 
-    def test_projectedArea_box_funcVals(self, train=True, refDeriv=False):
+    def test_projectedArea_box_funcVals(self, train=False, refDeriv=False):
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projectedArea_box.ref")
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("box")
@@ -722,7 +732,7 @@ class RegTestPyGeo(unittest.TestCase):
                 atol=1e-7,
             )
 
-    def test_projectedArea_box_funcSens(self, train=True, refDeriv=False):
+    def test_projectedArea_box_funcSens(self, train=False, refDeriv=False):
         np.random.seed(37)
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projectedArea_box_sens.ref")
         with BaseRegTest(refFile, train=train) as handler:
