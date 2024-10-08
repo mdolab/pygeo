@@ -2730,6 +2730,10 @@ class DVConstraints:
         Sum up the total surface area of the triangles included in the
         DVCon surface projected to a plane defined by "axis".
 
+        .. note::
+            The derivative of the projected area can be inaccurate when triangles in the surface mesh are exactly
+            orthogonal to the projection axis. Fortunately, this is a rare occurrence in practice.
+
         Parameters
         ----------
         axis : str or array of length 3
