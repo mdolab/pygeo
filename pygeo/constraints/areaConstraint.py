@@ -526,7 +526,6 @@ class ProjectedAreaConstraint(GeometricConstraint):
         if nDV > 0:
             dAdp0 = np.zeros((self.nCon, self.p0.shape[0], self.p0.shape[1]))
             dAdp1 = np.zeros((self.nCon, self.p1.shape[0], self.p1.shape[1]))
-
             dAdp2 = np.zeros((self.nCon, self.p2.shape[0], self.p2.shape[1]))
             p0 = self.p0
             p1 = self.p1
@@ -544,17 +543,15 @@ class ProjectedAreaConstraint(GeometricConstraint):
                 for i in range(self.n):
                     v1 = p1[i, :] - p0[i, :]
                     v2 = p2[i, :] - p0[i, :]
-                    SAvec = np.cross(v1, v2)
-                    PA = np.dot(SAvec, self.axis)
-                    if PA > 0:
+                    surfaceAreaVec = np.cross(v1, v2)
+                    projectedArea = np.dot(surfaceAreaVec, self.axis)
+                    if projectedArea >= 0.0:
                         PAb = areasb[i]
-                    else:
-                        PAb = 0.0
-                    SAvecb, _ = geo_utils.dot_b(SAvec, self.axis, PAb)
-                    v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
-                    p2b[i, :] = p2b[i, :] + v2b
-                    p1b[i, :] = p1b[i, :] + v1b
-                    p0b[i, :] = p0b[i, :] - v1b - v2b
+                        SAvecb, _ = geo_utils.dot_b(surfaceAreaVec, self.axis, PAb)
+                        v1b, v2b = geo_utils.cross_b(v1, v2, SAvecb)
+                        p2b[i, :] += v2b
+                        p1b[i, :] += v1b
+                        p0b[i, :] += -(v1b + v2b)
 
             tmpp0 = self.DVGeo.totalSensitivity(dAdp0, self.name + "p0", config=config)
             tmpp1 = self.DVGeo.totalSensitivity(dAdp1, self.name + "p1", config=config)
