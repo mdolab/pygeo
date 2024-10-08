@@ -2810,8 +2810,8 @@ class DVConstraints:
         self.constraints[typeName][conName] = ProjectedAreaConstraint(
             conName,
             p0,
-            p1 - p0,
-            p2 - p0,
+            p1,
+            p2,
             axis,
             lower,
             upper,

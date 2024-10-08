@@ -468,7 +468,7 @@ class ProjectedAreaConstraint(GeometricConstraint):
     The user should not have to deal with this class directly.
     """
 
-    def __init__(self, name, p0, v1, v2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt, compNames):
+    def __init__(self, name, p0, p1, p2, axis, lower, upper, scale, scaled, DVGeo, addToPyOpt, compNames):
         super().__init__(name, 1, lower, upper, scale, DVGeo, addToPyOpt)
         self.scaled = scaled
 
@@ -480,8 +480,8 @@ class ProjectedAreaConstraint(GeometricConstraint):
 
         # The first thing we do is convert v1 and v2 to coords
         self.p0 = p0
-        self.p1 = v1 + p0
-        self.p2 = v2 + p0
+        self.p1 = p1
+        self.p2 = p2
 
         # Now embed the coordinates into DVGeo
         # with the name provided:
