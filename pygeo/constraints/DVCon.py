@@ -2736,7 +2736,7 @@ class DVConstraints:
 
         Parameters
         ----------
-        axis : str or array of length 3
+        axis : str or array-like of length 3
             The axis normal to the projection plane can be specified as a string ('x', 'y', or 'z') or as a vector
             (e.g [1, 0, 1]) that will be normalized internally
         lower : float
