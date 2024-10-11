@@ -266,8 +266,8 @@ class RegTestPyGeo(unittest.TestCase):
         funcs = {}
         funcsSens = {}
         xDV = DVGeo.getValues()
-        np.random.seed(37)
-        xDV["local"] = np.random.normal(0.0, 0.05, len(xDV["local"]))
+        rng = np.random.default_rng(37)
+        xDV["local"] = rng.normal(0.0, 0.05, len(xDV["local"]))
         DVGeo.setDesignVars(xDV)
         DVCon.evalFunctions(funcs, includeLinear=True)
         DVCon.evalFunctionsSens(funcsSens, includeLinear=True)
@@ -668,13 +668,13 @@ class RegTestPyGeo(unittest.TestCase):
             )
 
     def test_projectedArea(self, train=False, refDeriv=False):
-        np.random.seed(37)
+        rng = np.random.default_rng(37)
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projectedArea.ref")
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("c172")
 
             DVCon.addProjectedAreaConstraint()
-            axis = np.random.rand(3)
+            axis = rng.random(3)
             DVCon.addProjectedAreaConstraint(axis=axis, scaled=True)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler)
@@ -733,12 +733,12 @@ class RegTestPyGeo(unittest.TestCase):
             )
 
     def test_projectedArea_box_funcSens(self, train=False, refDeriv=False):
-        np.random.seed(37)
+        rng = np.random.default_rng(37)
         refFile = os.path.join(self.base_path, "ref/test_DVConstraints_projectedArea_box_sens.ref")
         with BaseRegTest(refFile, train=train) as handler:
             DVGeo, DVCon = self.generate_dvgeo_dvcon("box")
 
-            axis = np.random.rand(3)
+            axis = rng.random(3)
             DVCon.addProjectedAreaConstraint(axis=axis, scaled=False)
 
             funcs, funcsSens = generic_test_base(DVGeo, DVCon, handler, checkDerivs=True)
