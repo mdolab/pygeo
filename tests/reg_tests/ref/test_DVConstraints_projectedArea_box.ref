@@ -1,7 +1,7 @@
 {
     "funcs_base": {
-        "DVCon1_projectedArea_constraints_0": 16.0,
+        "DVCon1_projectedArea_constraints_0": 15.999999999999886,
         "DVCon1_projectedArea_constraints_1": 2.0,
-        "DVCon1_projectedArea_constraints_2": 8.0
+        "DVCon1_projectedArea_constraints_2": 7.999999999999943
     }
 }
