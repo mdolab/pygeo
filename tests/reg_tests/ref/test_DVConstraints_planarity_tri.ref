@@ -1,13 +1,5 @@
 {
     "funcs_base": {
-        "DVCon1_planarity_constraints_0": {
-            "__ndarray__": [
-                3.3306690738754696e-16
-            ],
-            "dtype": "float64",
-            "shape": [
-                1
-            ]
-        }
+        "DVCon1_planarity_constraints_0": 1.8619006149354548e-16
     }
 }
