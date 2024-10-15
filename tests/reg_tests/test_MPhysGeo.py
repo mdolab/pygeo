@@ -211,14 +211,19 @@ class TestDVConMPhysBox(unittest.TestCase):
         # Random number generator
         self.rand = np.random.default_rng(1)
 
-    def get_box_prob(self):
+    def get_box_prob(self, **kwargs):
         """
         Generate an OpenMDAO problem with the OM_DVGEOCOMP component with the
-        functional dictated by the parameterized class.
+        functional dictated by the parameterized class. Custom keyword arguments
+        can be passed in, which will override any specified in the parameterized
+        constraint information.
         """
         # Parameterized values
         conFunc = self.conFunc
-        kwargs = self.kwargs
+        paramKwargs = self.kwargs
+
+        # Update the parameterized constraint keyword arguments with any manually specified ones
+        paramKwargs.update(kwargs)
 
         meshFile = os.path.join(input_path, "../../input_files/2x1x8_rectangle.stl")
         ffdFile = os.path.join(input_path, "../../input_files/2x1x8_rectangle.xyz")
@@ -242,7 +247,7 @@ class TestDVConMPhysBox(unittest.TestCase):
                 self.geo.nom_setConstraintSurface([p0, v1, v2], addToDVGeo=False)
 
                 # Add the geometric functional
-                getattr(self.geo, conFunc)(**kwargs)
+                getattr(self.geo, conFunc)(**paramKwargs)
 
                 # Add DVs
                 nRefAxPts = self.geo.nom_addRefAxis("wing", xFraction=xFraction, alignIndex="k")
@@ -257,7 +262,7 @@ class TestDVConMPhysBox(unittest.TestCase):
 
                 self.add_design_var("twist")
                 self.add_design_var("local")
-                self.add_objective(kwargs["name"])
+                self.add_objective(paramKwargs["name"])
 
         p = Problem(model=BoxGeo())
         return p
@@ -277,7 +282,11 @@ class TestDVConMPhysBox(unittest.TestCase):
         """
         Test the total derivatives in forward mode on a random perturbation to the baseline.
         """
-        p = self.get_box_prob()
+        if "addProjectedAreaConstraint" in self.conFunc:
+            # Use some random axis to avoid ill-conditioned derivatives
+            p = self.get_box_prob(axis=np.array([0.5, 3, -1]))
+        else:
+            p = self.get_box_prob()
         p.setup(mode="fwd")
 
         # Pick some random deformed state
@@ -294,7 +303,12 @@ class TestDVConMPhysBox(unittest.TestCase):
         """
         Test the total derivatives in reverse mode on a random perturbation to the baseline.
         """
-        p = self.get_box_prob()
+        if "addProjectedAreaConstraint" in self.conFunc:
+            # Use some random axis to avoid ill-conditioned derivatives caused by triangle
+            # elements with normals orthogonal to the projection direction
+            p = self.get_box_prob(axis=np.array([0.5, 3, -1]))
+        else:
+            p = self.get_box_prob()
         p.setup(mode="rev")
 
         # Pick some random deformed state
